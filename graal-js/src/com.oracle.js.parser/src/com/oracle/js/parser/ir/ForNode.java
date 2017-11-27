@@ -52,7 +52,11 @@ public final class ForNode extends LoopNode {
     /** Does this loop need a per-iteration scope because its init contain a LET declaration? */
     public static final int PER_ITERATION_SCOPE = 1 << 2;
 
+    /** Is this a for of loop? */
     public static final int IS_FOR_OF = 1 << 3;
+
+    /** Is this a for await of loop? */
+    public static final int IS_FOR_AWAIT_OF = 1 << 4;
 
     private final int flags;
 
@@ -198,11 +202,19 @@ public final class ForNode extends LoopNode {
     }
 
     /**
+     * Is this an ECMAScript 8 for-await-of construct.
+     * @return true if this is a for-await-of construct
+     */
+    public boolean isForAwaitOf() {
+        return (flags & IS_FOR_AWAIT_OF) != 0;
+    }
+
+    /**
      * Is this a for-in or for-of statement?
      * @return true if this is a for-in or for-of loop
      */
     public boolean isForInOrOf() {
-        return isForIn() || isForOf();
+        return isForIn() || isForOf() || isForAwaitOf();
     }
 
     /**
