@@ -371,6 +371,22 @@ public abstract class AbstractParser {
     }
 
     /**
+     * Get the value of the current token. If the current token contains an Unicode sequence, the
+     * method does not attempt to convert it.
+     *
+     * @return JavaScript value of the token.
+     */
+    protected final Object getValueNoUnicode() {
+        try {
+            return lexer.getValueOf(token, isStrictMode, false);
+        } catch (final ParserException e) {
+            errors.error(e);
+        }
+
+        return null;
+    }
+
+    /**
      * Get the value of the current token.
      *
      * @return JavaScript value of the token.
