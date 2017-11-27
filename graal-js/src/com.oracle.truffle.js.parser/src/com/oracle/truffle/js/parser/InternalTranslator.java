@@ -254,6 +254,8 @@ final class InternalTranslator extends GraalJSTranslator {
                         return IsCallableNode.create(arguments[0]);
                     case "Assert":
                         return createAssert(arguments[0]);
+                    case "Print":
+                        return createPrint(arguments[0]);
                     case "ArrayPush":
                         DynamicObject arrayPushFunction = context.getRealm().lookupFunction(JSArray.PROTOTYPE_NAME, ArrayPrototype.push.getName());
                         JavaScriptNode functionNode = JSConstantNode.create(arrayPushFunction);
@@ -275,6 +277,29 @@ final class InternalTranslator extends GraalJSTranslator {
                 return new InternalFunctionCallNode(name);
             }
             return super.createFunctionCall(context, function, arguments);
+        }
+
+        private static JavaScriptNode createPrint(JavaScriptNode assertion) {
+
+            class PrintNode extends StatementNode {
+                @Child private JavaScriptNode statement;
+
+                PrintNode(JavaScriptNode assertionNode) {
+                    this.statement = assertionNode;
+                }
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    System.out.println(statement.execute(frame));
+                    return EMPTY;
+                }
+
+                @Override
+                protected JavaScriptNode copyUninitialized() {
+                    return new PrintNode(cloneUninitialized(statement));
+                }
+            }
+            return new PrintNode(assertion);
         }
 
         private JavaScriptNode createAssert(JavaScriptNode assertion) {
