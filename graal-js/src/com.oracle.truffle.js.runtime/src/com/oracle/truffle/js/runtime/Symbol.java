@@ -30,6 +30,11 @@ public final class Symbol implements TruffleObject {
      */
     public static final Symbol SYMBOL_ITERATOR = Symbol.create("Symbol.iterator");
     /**
+     * A method that returns the default asynchronous iterator for an object. Called by the
+     * semantics of the for-await-of statement.
+     */
+    public static final Symbol SYMBOL_ASYNC_ITERATOR = Symbol.create("Symbol.asyncIterator");
+    /**
      * A regular expression method that matches the regular expression against a string. Called by
      * the String.prototype.match method.
      */

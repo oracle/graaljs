@@ -1,9 +1,10 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -13,6 +14,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -21,37 +23,66 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
- * ES6 7.4.1 GetIterator(obj, method = @@iterator).
+ * ES8 7.4.1 GetIterator(obj, hint).
  */
 @ImportStatic(JSInteropUtil.class)
 @NodeChild(value = "iteratedObject", type = JavaScriptNode.class)
 public abstract class GetIteratorNode extends JavaScriptNode {
+    @Child private PropertySetNode setState;
     @Child private GetMethodNode getIteratorMethodNode;
+    @Child private GetMethodNode getAsyncIteratorMethodNode;
 
-    protected GetIteratorNode(JSContext context) {
-        this.getIteratorMethodNode = GetMethodNode.create(context, null, Symbol.SYMBOL_ITERATOR);
+    private final boolean hint;
+    private final JSContext context;
+
+    private final ConditionProfile asyncToSync = ConditionProfile.createBinaryProfile();
+
+    protected GetIteratorNode(JSContext context, boolean hint) {
+        this.hint = hint;
+        this.context = context;
+        this.setState = PropertySetNode.create("SyncIterator", false, context, false);
+        this.getAsyncIteratorMethodNode = GetMethodNode.create(context, null, Symbol.SYMBOL_ASYNC_ITERATOR);
     }
 
     public static GetIteratorNode create(JSContext context) {
         return create(context, null);
     }
 
+    public static GetIteratorNode createAsync(JSContext context, JavaScriptNode iteratedObject) {
+        return GetIteratorNodeGen.create(context, true, iteratedObject);
+    }
+
     public static GetIteratorNode create(JSContext context, JavaScriptNode iteratedObject) {
-        return GetIteratorNodeGen.create(context, iteratedObject);
+        return GetIteratorNodeGen.create(context, false, iteratedObject);
     }
 
     protected JSContext getContext() {
-        return getIteratorMethodNode.getContext();
+        return getAsyncIteratorMethodNode.getContext();
     }
 
-    @Specialization(guards = "!isForeignObject(iteratedObject)")
-    protected DynamicObject doGetIterator(Object iteratedObject,
+    @Specialization(guards = {"!isForeignObject(iteratedObject)"})
+    protected DynamicObject doGetAsyncIterator(Object iteratedObject,
                     @Cached("createCall()") JSFunctionCallNode methodCallNode,
                     @Cached("create()") IsObjectNode isObjectNode) {
-        Object method = getIteratorMethodNode.executeWithTarget(iteratedObject);
+        Object method;
+        if (hint) {
+            method = getAsyncIteratorMethodNode.executeWithTarget(iteratedObject);
+            // TODO binary profile
+            if (asyncToSync.profile(method == Undefined.instance)) {
+                Object syncMethod = getIteratorMethodNode().executeWithTarget(iteratedObject);
+                Object syncIterator = getIterator(iteratedObject, syncMethod, methodCallNode, isObjectNode, this);
+                return createAsyncFromSyncIterator(syncIterator);
+            }
+        } else {
+            method = getIteratorMethodNode().executeWithTarget(iteratedObject);
+
+        }
         return getIterator(iteratedObject, method, methodCallNode, isObjectNode, this);
     }
 
@@ -79,7 +110,7 @@ public abstract class GetIteratorNode extends JavaScriptNode {
     }
 
     protected EnumerateNode createEnumerateValues() {
-        return EnumerateNode.create(getIteratorMethodNode.getContext(), null, true);
+        return EnumerateNode.create(getAsyncIteratorMethodNode.getContext(), null, true);
     }
 
     @Override
@@ -91,6 +122,23 @@ public abstract class GetIteratorNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return GetIteratorNodeGen.create(getIteratorMethodNode.getContext(), cloneUninitialized(getIteratedObject()));
+        return GetIteratorNodeGen.create(getAsyncIteratorMethodNode.getContext(), cloneUninitialized(getIteratedObject()));
+    }
+
+    private GetMethodNode getIteratorMethodNode() {
+        if (getIteratorMethodNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            getIteratorMethodNode = insert(GetMethodNode.create(context, null, Symbol.SYMBOL_ITERATOR));
+        }
+        return getIteratorMethodNode;
+    }
+
+    private DynamicObject createAsyncFromSyncIterator(Object syncIterator) {
+        if (!JSObject.isJSObject(syncIterator)) {
+            throw Errors.createTypeError("Object expected");
+        }
+        DynamicObject obj = JSObject.create(context.getRealm(), context.getRealm().getAsyncFromSyncIteratorPrototypeBuiltins(), JSUserObject.INSTANCE);
+        setState.setValue(obj, syncIterator);
+        return obj;
     }
 }

@@ -670,6 +670,6 @@ var AsyncFunctionAwait = function(value, execContextData) {
     PerformPromiseThen(promiseCapability.promise, onFulFilled, onRejected, tawayCapability);
 }
 
-Internal.RegisterAsyncFunctionBuiltins(AsyncFunctionAwait, NewDefaultCapability);
+Internal.RegisterAsyncFunctionBuiltins(AsyncFunctionAwait, NewDefaultCapability, PerformPromiseThen);
 
 })();

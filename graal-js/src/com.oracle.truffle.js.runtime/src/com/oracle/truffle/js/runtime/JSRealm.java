@@ -188,6 +188,8 @@ public class JSRealm implements ShapeContext {
     private final JSConstructor proxyConstructor;
     private final DynamicObjectFactory proxyFactory;
     private final DynamicObject iteratorPrototype;
+    private final DynamicObject asyncIteratorPrototype;
+    private final DynamicObject asyncFromSyncIteratorPrototypeBuiltins;
 
     @CompilationFinal(dimensions = 1) private final JSConstructor[] simdTypeConstructors;
     @CompilationFinal(dimensions = 1) private final DynamicObjectFactory[] simdTypeFactories;
@@ -376,6 +378,9 @@ public class JSRealm implements ShapeContext {
         this.dictionaryShapeObjectPrototype = JSTruffleOptions.DictionaryObject ? JSDictionaryObject.makeDictionaryShape(context, objectPrototype) : null;
 
         boolean es8 = JSTruffleOptions.MaxECMAScriptVersion >= 8;
+        this.asyncIteratorPrototype = es8 ? createAsyncIteratorPrototype() : null;
+        this.asyncFromSyncIteratorPrototypeBuiltins = es8 ? createAsyncFromSyncIteratorPrototype() : null;
+
         this.asyncFunctionConstructor = es8 ? JSFunction.createAsyncFunctionConstructor(this) : null;
         this.initialAsyncFunctionFactory = es8 ? JSFunction.makeInitialAsyncFunctionConstructorShape(this, asyncFunctionConstructor.getPrototype()).createFactory() : null;
 
@@ -775,6 +780,14 @@ public class JSRealm implements ShapeContext {
         return iteratorPrototype;
     }
 
+    public DynamicObject getAsyncIteratorPrototype() {
+        return asyncIteratorPrototype;
+    }
+
+    public DynamicObject getAsyncFromSyncIteratorPrototypeBuiltins() {
+        return asyncFromSyncIteratorPrototypeBuiltins;
+    }
+
     /**
      * This function is used whenever a function is required that throws a TypeError. It is used by
      * some of the builtins that provide accessor functions that should not be called (e.g., as a
@@ -1000,6 +1013,7 @@ public class JSRealm implements ShapeContext {
         putSymbolProperty(symbolFunction, "hasInstance", Symbol.SYMBOL_HAS_INSTANCE);
         putSymbolProperty(symbolFunction, "isConcatSpreadable", Symbol.SYMBOL_IS_CONCAT_SPREADABLE);
         putSymbolProperty(symbolFunction, "iterator", Symbol.SYMBOL_ITERATOR);
+        putSymbolProperty(symbolFunction, "asyncIterator", Symbol.SYMBOL_ASYNC_ITERATOR);
         putSymbolProperty(symbolFunction, "match", Symbol.SYMBOL_MATCH);
         putSymbolProperty(symbolFunction, "replace", Symbol.SYMBOL_REPLACE);
         putSymbolProperty(symbolFunction, "search", Symbol.SYMBOL_SEARCH);
@@ -1056,6 +1070,23 @@ public class JSRealm implements ShapeContext {
      */
     private DynamicObject createIteratorPrototype() {
         return JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+    }
+
+    /**
+     * Creates the %AsyncIteratorPrototype% object as specified in ES8 11.1.2.
+     */
+    private DynamicObject createAsyncIteratorPrototype() {
+        return JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+    }
+
+    /**
+     * Creates the %AsyncFromSyncIteratorPrototype% object as specified in ES8 11.1.3.2.
+     */
+    private DynamicObject createAsyncFromSyncIteratorPrototype() {
+        DynamicObject prototype = JSObject.create(this, getObjectPrototype(), JSUserObject.INSTANCE);
+        // sets the size just for the prototype
+        JSObjectUtil.putFunctionsFromContainer(this, prototype, JSFunction.ASYNC_FROM_SYNC_ITERATOR_PROTOTYPE_NAME);
+        return prototype;
     }
 
     public DynamicObject getArrayProtoValuesIterator() {

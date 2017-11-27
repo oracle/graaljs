@@ -1662,6 +1662,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 result = desugarForOf(forNode, modify, target);
             } else if (forNode.isForIn()) {
                 result = desugarForIn(forNode, modify, target);
+            } else if (forNode.isForAwaitOf()) {
+                result = desugarForAwaitOf(forNode, modify, target);
             } else {
                 JavaScriptNode body = transform(forNode.getBody());
                 JavaScriptNode wrappedBody = target.wrapContinueTargetNode(body);
@@ -1729,12 +1731,54 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode desugarForHeadAssignment(ForNode forNode, JavaScriptNode next) {
+        return desugarForHeadAssignment(forNode, next, false);
+    }
+
+    private JavaScriptNode desugarForHeadAssignment(ForNode forNode, JavaScriptNode next, boolean iteratorHint) {
         if (forNode.getInit() instanceof IdentNode) {
             return findScopeVarCheckTDZ(((IdentNode) forNode.getInit()).getName(), true).createWriteNode(next);
         } else {
             // transform destructuring assignment
-            return transformAssignment(forNode.getInit(), next, null, false, false, true);
+            return transformAssignment(forNode.getInit(), next, null, false, false, true, iteratorHint);
         }
+    }
+
+    private JavaScriptNode desugarForAwaitOf(ForNode forNode, JavaScriptNode modify, JumpTargetCloseable<ContinueTarget> jumpTarget) {
+        assert forNode.isForAwaitOf();
+        JavaScriptNode getIterator = factory.createGetAsyncIterator(context, modify);
+        return desugarForAwaitBody(forNode, getIterator, jumpTarget);
+    }
+
+    private JavaScriptNode desugarForAwaitBody(ForNode forNode, JavaScriptNode getIterator, JumpTargetCloseable<ContinueTarget> jumpTarget) {
+        VarRef iteratorVar = environment.createTempVar();
+        JavaScriptNode iteratorInit = iteratorVar.createWriteNode(getIterator);
+        VarRef nextResultVar = environment.createTempVar();
+
+        currentFunction().addAwait();
+        JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncResultSlot()).createReadNode();
+        JSReadFrameSlotNode asyncContextNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncContextSlot()).createReadNode();
+        JavaScriptNode iteratorStep = factory.createAsyncIteratorStep(context, iteratorVar.createReadNode(), asyncContextNode, asyncResultNode);
+        // while(nextResult = await IteratorStep(iterator))
+        JavaScriptNode condition = nextResultVar.createWriteNode(iteratorStep);
+        JavaScriptNode wrappedBody;
+        try (EnvironmentCloseable blockEnv = forNode.hasPerIterationScope() ? enterBlockEnvironment(lc.getCurrentBlock()) : new EnvironmentCloseable(environment)) {
+            // var nextValue = IteratorValue(nextResult);
+            VarRef nextResultVar2 = environment.findTempVar(nextResultVar.getFrameSlot());
+            JavaScriptNode nextResult = nextResultVar2.createReadNode();
+            JavaScriptNode nextValue = factory.createIteratorValue(context, nextResult);
+            JavaScriptNode writeNext = tagWithHaltTag(desugarForHeadAssignment(forNode, nextValue, /* iteratorHint */ true));
+            JavaScriptNode body = transform(forNode.getBody());
+            wrappedBody = blockEnv.wrapBlockScope(createBlock(writeNext, body));
+        }
+        wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
+        JavaScriptNode whileNode = createWhileDo(condition, wrappedBody);
+        currentFunction().addAwait();
+        JavaScriptNode wrappedWhile = factory.createAsyncIteratorCloseWrapper(context,
+                        jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(), asyncContextNode,
+                        asyncResultNode);
+        JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(DEFAULT_VALUE));
+        wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
+        return createBlock(iteratorInit, wrappedWhile);
     }
 
     @Override
@@ -2166,6 +2210,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode transformAssignment(Expression lhsExpression, JavaScriptNode assignedValue, BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertRHSToNumber,
                     boolean initializationAssignment) {
+        return transformAssignment(lhsExpression, assignedValue, shortcutOperation, returnOldValue, convertRHSToNumber, initializationAssignment, false);
+    }
+
+    private JavaScriptNode transformAssignment(Expression lhsExpression, JavaScriptNode assignedValue, BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertRHSToNumber,
+                    boolean initializationAssignment, boolean iteratorHint) {
         assert shortcutOperation != null || (!returnOldValue && !convertRHSToNumber) : "returnOldValue / convertRHSToNumber can only be used with shortcut assignments";
         JavaScriptNode assignedNode = null;
         JavaScriptNode rhs;
@@ -2268,7 +2317,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 VarRef valueTempVar = environment.createTempVar();
                 VarRef doneVar = environment.createTempVar();
                 JavaScriptNode initValue = valueTempVar.createWriteNode(assignedValue);
-                JavaScriptNode getIterator = factory.createGetIterator(context, initValue);
+                JavaScriptNode getIterator = iteratorHint ? factory.createGetAsyncIterator(context, initValue) : factory.createGetIterator(context, initValue);
                 JavaScriptNode initIteratorTempVar = iteratorTempVar.createWriteNode(getIterator);
                 JavaScriptNode writeDone = doneVar.createWriteNode(factory.createConstantBoolean(true));
 
@@ -2294,7 +2343,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         lhsExpr = ((UnaryNode) lhsExpr).getExpression();
                     }
                     if (lhsExpr != null) {
-                        initElements[i] = transformAssignment(lhsExpr, rhsNode, null, false, false, initializationAssignment);
+                        initElements[i] = transformAssignment(lhsExpr, rhsNode, null, false, false, initializationAssignment, iteratorHint);
                     } else {
                         initElements[i] = rhsNode;
                     }
@@ -2334,7 +2383,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     if (init != null) {
                         rhsNode = factory.createNotUndefinedOr(rhsNode, transform(init));
                     }
-                    initElements[i] = transformAssignment(lhsExpr, rhsNode, null, false, false, initializationAssignment);
+                    initElements[i] = transformAssignment(lhsExpr, rhsNode, null, false, false, initializationAssignment, iteratorHint);
                 }
                 assignedNode = factory.createExprBlock(initValueTempVar, createBlock(initElements), valueTempVar.createReadNode());
                 break;
