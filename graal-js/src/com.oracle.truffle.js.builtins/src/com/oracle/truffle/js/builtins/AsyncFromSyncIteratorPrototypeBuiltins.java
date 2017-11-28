@@ -185,7 +185,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 processCapabilityReject(promiseCapability, e);
                 return getPromise(promiseCapability);
             }
-
             DynamicObject valueWrapperCapability = createPromiseCapability();
             processCapabilityResolve(valueWrapperCapability, nextValue);
             DynamicObject onFullfilled = createOnFullFilled(nextValue, nextDone);
@@ -195,113 +194,97 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
     }
 
-    public abstract static class AsyncFromSyncReturn extends AsyncFromSyncBaseNode {
+    public abstract static class AsyncFromSyncMethod extends AsyncFromSyncBaseNode {
 
-        @Child private GetMethodNode getMethod;
         @Child private JSFunctionCallNode executeReturnMethod;
         @Child private CreateIterResultObjectNode createIterResult;
 
-        public AsyncFromSyncReturn(JSContext context, JSBuiltin builtin) {
+        public AsyncFromSyncMethod(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getMethod = GetMethodNode.create(context, null, "return");
             this.createIterResult = CreateIterResultObjectNodeGen.create(getContext());
             this.executeReturnMethod = JSFunctionCallNode.create(false);
         }
 
-        @Specialization(guards = "isObject(thisObj)")
-        protected Object resume(VirtualFrame frame, DynamicObject thisObj) {
+        protected abstract GetMethodNode getMethod();
+
+        protected Object doMethod(VirtualFrame frame, DynamicObject thisObj) {
             DynamicObject promiseCapability = createPromiseCapability();
             if (!isValidThis(thisObj)) {
                 JSException typeError = Errors.createTypeError("wrong type");
                 processCapabilityReject(promiseCapability, typeError);
                 return getPromise(promiseCapability);
             }
-            boolean returnDone;
-            Object returnValue;
+            boolean done;
+            Object value;
             DynamicObject syncIterator = (DynamicObject) getGeneratorTarget.getValue(thisObj);
-            Object returnMethod = getMethod.executeWithTarget(syncIterator);
-            if (returnMethod == Undefined.instance) {
+            Object method = getMethod().executeWithTarget(syncIterator);
+            if (method == Undefined.instance) {
                 DynamicObject iterResult = createIterResult.execute(frame, /* value? */Undefined.instance, true);
                 processCapabilityResolve(promiseCapability, iterResult);
                 return getPromise(promiseCapability);
             }
-            DynamicObject returnResult = (DynamicObject) executeReturnMethod.executeCall(JSArguments.create(syncIterator, returnMethod));
+            DynamicObject returnResult = (DynamicObject) executeReturnMethod.executeCall(JSArguments.create(syncIterator, method));
             if (!JSObject.isJSObject(returnResult)) {
                 processCapabilityReject(promiseCapability, Errors.createTypeError("Wrong type"));
                 return getPromise(promiseCapability);
             }
             try {
-                returnDone = iteratorComplete.execute(returnResult);
+                done = iteratorComplete.execute(returnResult);
             } catch (GraalJSException e) {
                 processCapabilityReject(promiseCapability, e);
                 return getPromise(promiseCapability);
             }
             try {
-                returnValue = iteratorValue.execute(returnResult);
+                value = iteratorValue.execute(returnResult);
             } catch (Exception e) {
                 processCapabilityReject(promiseCapability, e);
                 return getPromise(promiseCapability);
             }
             DynamicObject valueWrapperCapability = createPromiseCapability();
-            processCapabilityResolve(valueWrapperCapability, returnValue);
-            DynamicObject onFullfilled = createOnFullFilled(returnValue, returnDone);
+            processCapabilityResolve(valueWrapperCapability, value);
+            DynamicObject onFullfilled = createOnFullFilled(value, done);
             performPromiseThen(getPromise(valueWrapperCapability), onFullfilled, Undefined.instance, promiseCapability);
             return getPromise(promiseCapability);
         }
     }
 
-    public abstract static class AsyncFromSyncThrow extends AsyncFromSyncBaseNode {
+    public abstract static class AsyncFromSyncReturn extends AsyncFromSyncMethod {
 
-        @Child private GetMethodNode getMethod;
-        @Child private JSFunctionCallNode executeReturnMethod;
-        @Child private CreateIterResultObjectNode createIterResult;
+        @Child private GetMethodNode getReturn;
+
+        public AsyncFromSyncReturn(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.getReturn = GetMethodNode.create(context, null, "return");
+        }
+
+        @Override
+        protected GetMethodNode getMethod() {
+            return getReturn;
+        }
+
+        @Specialization(guards = "isObject(thisObj)")
+        protected Object resume(VirtualFrame frame, DynamicObject thisObj) {
+            return doMethod(frame, thisObj);
+        }
+    }
+
+    public abstract static class AsyncFromSyncThrow extends AsyncFromSyncMethod {
+
+        @Child private GetMethodNode getThrow;
 
         public AsyncFromSyncThrow(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getMethod = GetMethodNode.create(context, null, "throw");
-            this.createIterResult = CreateIterResultObjectNodeGen.create(getContext());
-            this.executeReturnMethod = JSFunctionCallNode.create(false);
+            this.getThrow = GetMethodNode.create(context, null, "throw");
+        }
+
+        @Override
+        protected GetMethodNode getMethod() {
+            return getThrow;
         }
 
         @Specialization(guards = "isObject(thisObj)")
         protected Object doThrow(VirtualFrame frame, DynamicObject thisObj) {
-            DynamicObject promiseCapability = createPromiseCapability();
-            if (!isValidThis(thisObj)) {
-                JSException typeError = Errors.createTypeError("wrong type");
-                processCapabilityReject(promiseCapability, typeError);
-                return getPromise(promiseCapability);
-            }
-            boolean throwDone;
-            Object throwValue;
-            DynamicObject syncIterator = (DynamicObject) getGeneratorTarget.getValue(thisObj);
-            Object throwMethod = getMethod.executeWithTarget(syncIterator);
-            if (throwMethod == Undefined.instance) {
-                DynamicObject iterResult = createIterResult.execute(frame, /* value? */Undefined.instance, true);
-                processCapabilityResolve(promiseCapability, iterResult);
-                return getPromise(promiseCapability);
-            }
-            DynamicObject throwResult = (DynamicObject) executeReturnMethod.executeCall(JSArguments.create(syncIterator, throwMethod));
-            if (!JSObject.isJSObject(throwResult)) {
-                processCapabilityReject(promiseCapability, Errors.createTypeError("Wrong type"));
-                return getPromise(promiseCapability);
-            }
-            try {
-                throwDone = iteratorComplete.execute(throwResult);
-            } catch (GraalJSException e) {
-                processCapabilityReject(promiseCapability, e);
-                return getPromise(promiseCapability);
-            }
-            try {
-                throwValue = iteratorValue.execute(throwResult);
-            } catch (Exception e) {
-                processCapabilityReject(promiseCapability, e);
-                return getPromise(promiseCapability);
-            }
-            DynamicObject valueWrapperCapability = createPromiseCapability();
-            processCapabilityResolve(valueWrapperCapability, throwValue);
-            DynamicObject onFullfilled = createOnFullFilled(throwValue, throwDone);
-            performPromiseThen(getPromise(valueWrapperCapability), onFullfilled, Undefined.instance, promiseCapability);
-            return getPromise(promiseCapability);
+            return doMethod(frame, thisObj);
         }
     }
 
