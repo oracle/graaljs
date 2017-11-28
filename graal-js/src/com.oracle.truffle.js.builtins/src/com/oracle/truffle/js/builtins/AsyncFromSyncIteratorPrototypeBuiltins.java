@@ -113,7 +113,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         protected boolean isValidThis(DynamicObject thiz) {
-            // TODO use shape?
             return thiz != Undefined.instance && getGeneratorTarget.getValue(thiz) != Undefined.instance;
         }
 
@@ -199,12 +198,14 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
     public abstract static class AsyncFromSyncReturn extends AsyncFromSyncBaseNode {
 
         @Child private GetMethodNode getMethod;
+        @Child private JSFunctionCallNode executeReturnMethod;
         @Child private CreateIterResultObjectNode createIterResult;
 
         public AsyncFromSyncReturn(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.getMethod = GetMethodNode.create(context, null, "return");
             this.createIterResult = CreateIterResultObjectNodeGen.create(getContext());
+            this.executeReturnMethod = JSFunctionCallNode.create(false);
         }
 
         @Specialization(guards = "isObject(thisObj)")
@@ -224,8 +225,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 processCapabilityResolve(promiseCapability, iterResult);
                 return getPromise(promiseCapability);
             }
-            // TODO use function call node
-            DynamicObject returnResult = (DynamicObject) JSFunction.call(JSArguments.create(syncIterator, returnMethod));
+            DynamicObject returnResult = (DynamicObject) executeReturnMethod.executeCall(JSArguments.create(syncIterator, returnMethod));
             if (!JSObject.isJSObject(returnResult)) {
                 processCapabilityReject(promiseCapability, Errors.createTypeError("Wrong type"));
                 return getPromise(promiseCapability);
@@ -250,15 +250,58 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
     }
 
-    public abstract static class AsyncFromSyncThrow extends JSBuiltinNode {
+    public abstract static class AsyncFromSyncThrow extends AsyncFromSyncBaseNode {
+
+        @Child private GetMethodNode getMethod;
+        @Child private JSFunctionCallNode executeReturnMethod;
+        @Child private CreateIterResultObjectNode createIterResult;
 
         public AsyncFromSyncThrow(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            this.getMethod = GetMethodNode.create(context, null, "throw");
+            this.createIterResult = CreateIterResultObjectNodeGen.create(getContext());
+            this.executeReturnMethod = JSFunctionCallNode.create(false);
         }
 
         @Specialization(guards = "isObject(thisObj)")
-        protected Object resume(DynamicObject thisObj) {
-            throw new UnsupportedOperationException("TODO " + thisObj);
+        protected Object doThrow(VirtualFrame frame, DynamicObject thisObj) {
+            DynamicObject promiseCapability = createPromiseCapability();
+            if (!isValidThis(thisObj)) {
+                JSException typeError = Errors.createTypeError("wrong type");
+                processCapabilityReject(promiseCapability, typeError);
+                return getPromise(promiseCapability);
+            }
+            boolean throwDone;
+            Object throwValue;
+            DynamicObject syncIterator = (DynamicObject) getGeneratorTarget.getValue(thisObj);
+            Object throwMethod = getMethod.executeWithTarget(syncIterator);
+            if (throwMethod == Undefined.instance) {
+                DynamicObject iterResult = createIterResult.execute(frame, /* value? */Undefined.instance, true);
+                processCapabilityResolve(promiseCapability, iterResult);
+                return getPromise(promiseCapability);
+            }
+            DynamicObject throwResult = (DynamicObject) executeReturnMethod.executeCall(JSArguments.create(syncIterator, throwMethod));
+            if (!JSObject.isJSObject(throwResult)) {
+                processCapabilityReject(promiseCapability, Errors.createTypeError("Wrong type"));
+                return getPromise(promiseCapability);
+            }
+            try {
+                throwDone = iteratorComplete.execute(throwResult);
+            } catch (GraalJSException e) {
+                processCapabilityReject(promiseCapability, e);
+                return getPromise(promiseCapability);
+            }
+            try {
+                throwValue = iteratorValue.execute(throwResult);
+            } catch (Exception e) {
+                processCapabilityReject(promiseCapability, e);
+                return getPromise(promiseCapability);
+            }
+            DynamicObject valueWrapperCapability = createPromiseCapability();
+            processCapabilityResolve(valueWrapperCapability, throwValue);
+            DynamicObject onFullfilled = createOnFullFilled(throwValue, throwDone);
+            performPromiseThen(getPromise(valueWrapperCapability), onFullfilled, Undefined.instance, promiseCapability);
+            return getPromise(promiseCapability);
         }
     }
 
