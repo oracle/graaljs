@@ -1318,9 +1318,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private EnvironmentCloseable enterBlockEnvironment(Block block) {
         if (block.hasDeclarations() || JSTruffleOptions.ManyBlockScopes) {
             /*
-             * The function environment is filled with top-level vars from the function body, unless
-             * the function has parameter expressions, then the function body gets a separate scope
-             * and we populate the env with parameter vars (cf. FunctionDeclarationInstantiation).
+             * The function environment is filled with top-level vars from the function body, unless the
+             * function has parameter expressions, then the function body gets a separate scope and we populate
+             * the env with parameter vars (cf. FunctionDeclarationInstantiation).
              */
             if (block.isParameterBlock() || (block.isFunctionBody() && lc.getCurrentFunction().getParameterBlock() == null)) {
                 assert environment instanceof FunctionEnvironment;
@@ -1630,8 +1630,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     /**
-     * Wraps a statement, completion value of which is never the value empty. Sets the completion
-     * value to undefined, executes the statement, and reads and returns the completion value.
+     * Wraps a statement, completion value of which is never the value empty. Sets the completion value
+     * to undefined, executes the statement, and reads and returns the completion value.
      */
     private JavaScriptNode wrapClearAndGetCompletionValue(JavaScriptNode statement) {
         if (currentFunction().returnsLastStatementResult()) {
@@ -1746,10 +1746,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode desugarForAwaitOf(ForNode forNode, JavaScriptNode modify, JumpTargetCloseable<ContinueTarget> jumpTarget) {
         assert forNode.isForAwaitOf();
         JavaScriptNode getIterator = factory.createGetAsyncIterator(context, modify);
-        return desugarForAwaitBody(forNode, getIterator, jumpTarget);
-    }
-
-    private JavaScriptNode desugarForAwaitBody(ForNode forNode, JavaScriptNode getIterator, JumpTargetCloseable<ContinueTarget> jumpTarget) {
         VarRef iteratorVar = environment.createTempVar();
         JavaScriptNode iteratorInit = iteratorVar.createWriteNode(getIterator);
         VarRef nextResultVar = environment.createTempVar();
@@ -2782,8 +2778,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     /**
-     * Identifies whether a SwitchNode matches the pattern where the expression is a typeof() and
-     * the cases are all string constants.
+     * Identifies whether a SwitchNode matches the pattern where the expression is a typeof() and the
+     * cases are all string constants.
      */
     private static boolean isSwitchTypeofStringConstant(com.oracle.js.parser.ir.SwitchNode switchNode, JavaScriptNode switchExpression) {
         if (!(switchExpression instanceof TypeOfNode)) {

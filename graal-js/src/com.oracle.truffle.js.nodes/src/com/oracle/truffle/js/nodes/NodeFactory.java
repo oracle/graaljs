@@ -112,7 +112,7 @@ import com.oracle.truffle.js.nodes.control.ForNode;
 import com.oracle.truffle.js.nodes.control.GeneratorBodyNode;
 import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
 import com.oracle.truffle.js.nodes.control.IfNode;
-import com.oracle.truffle.js.nodes.control.IteratorAsyncCloseWrapperNode;
+import com.oracle.truffle.js.nodes.control.AsyncIteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.IteratorCloseIfNotDoneNode;
 import com.oracle.truffle.js.nodes.control.IteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.LabelNode;
@@ -789,7 +789,7 @@ public class NodeFactory {
 
     public JavaScriptNode createAsyncIteratorCloseWrapper(JSContext context, JavaScriptNode loopNode, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode,
                     JSReadFrameSlotNode asyncResultNode) {
-        return IteratorAsyncCloseWrapperNode.create(context, loopNode, iterator, asyncContextNode, asyncResultNode);
+        return AsyncIteratorCloseWrapperNode.create(context, loopNode, iterator, asyncContextNode, asyncResultNode);
     }
 
     public JavaScriptNode createIteratorClose(JSContext context, JavaScriptNode iterator) {

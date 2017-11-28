@@ -189,7 +189,7 @@ public class JSRealm implements ShapeContext {
     private final DynamicObjectFactory proxyFactory;
     private final DynamicObject iteratorPrototype;
     private final DynamicObject asyncIteratorPrototype;
-    private final DynamicObject asyncFromSyncIteratorPrototypeBuiltins;
+    private final DynamicObject asyncFromSyncIteratorPrototype;
 
     @CompilationFinal(dimensions = 1) private final JSConstructor[] simdTypeConstructors;
     @CompilationFinal(dimensions = 1) private final DynamicObjectFactory[] simdTypeFactories;
@@ -379,7 +379,7 @@ public class JSRealm implements ShapeContext {
 
         boolean es8 = JSTruffleOptions.MaxECMAScriptVersion >= 8;
         this.asyncIteratorPrototype = es8 ? createAsyncIteratorPrototype() : null;
-        this.asyncFromSyncIteratorPrototypeBuiltins = es8 ? createAsyncFromSyncIteratorPrototype() : null;
+        this.asyncFromSyncIteratorPrototype = es8 ? createAsyncFromSyncIteratorPrototype() : null;
 
         this.asyncFunctionConstructor = es8 ? JSFunction.createAsyncFunctionConstructor(this) : null;
         this.initialAsyncFunctionFactory = es8 ? JSFunction.makeInitialAsyncFunctionConstructorShape(this, asyncFunctionConstructor.getPrototype()).createFactory() : null;
@@ -784,15 +784,15 @@ public class JSRealm implements ShapeContext {
         return asyncIteratorPrototype;
     }
 
-    public DynamicObject getAsyncFromSyncIteratorPrototypeBuiltins() {
-        return asyncFromSyncIteratorPrototypeBuiltins;
+    public DynamicObject getAsyncFromSyncIteratorPrototype() {
+        return asyncFromSyncIteratorPrototype;
     }
 
     /**
-     * This function is used whenever a function is required that throws a TypeError. It is used by
-     * some of the builtins that provide accessor functions that should not be called (e.g., as a
-     * method of deprecation). In the specification, this is often referred to as
-     * "[[ThrowTypeError]] function Object (13.2.3)".
+     * This function is used whenever a function is required that throws a TypeError. It is used by some
+     * of the builtins that provide accessor functions that should not be called (e.g., as a method of
+     * deprecation). In the specification, this is often referred to as "[[ThrowTypeError]] function
+     * Object (13.2.3)".
      *
      */
     private DynamicObject createThrowerFunction() {
@@ -1084,7 +1084,6 @@ public class JSRealm implements ShapeContext {
      */
     private DynamicObject createAsyncFromSyncIteratorPrototype() {
         DynamicObject prototype = JSObject.create(this, getObjectPrototype(), JSUserObject.INSTANCE);
-        // sets the size just for the prototype
         JSObjectUtil.putFunctionsFromContainer(this, prototype, JSFunction.ASYNC_FROM_SYNC_ITERATOR_PROTOTYPE_NAME);
         return prototype;
     }

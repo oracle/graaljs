@@ -14,6 +14,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -38,15 +39,15 @@ public abstract class GetIteratorNode extends JavaScriptNode {
     @Child private GetMethodNode getIteratorMethodNode;
     @Child private GetMethodNode getAsyncIteratorMethodNode;
 
-    private final boolean hint;
+    private final boolean asyncHint;
     private final JSContext context;
 
     private final ConditionProfile asyncToSync = ConditionProfile.createBinaryProfile();
 
-    protected GetIteratorNode(JSContext context, boolean hint) {
-        this.hint = hint;
+    protected GetIteratorNode(JSContext context, boolean asyncHint) {
+        this.asyncHint = asyncHint;
         this.context = context;
-        this.setState = PropertySetNode.create("SyncIterator", false, context, false);
+        this.setState = PropertySetNode.create(new HiddenKey("SyncIterator"), false, context, false);
         this.getAsyncIteratorMethodNode = GetMethodNode.create(context, null, Symbol.SYMBOL_ASYNC_ITERATOR);
     }
 
@@ -62,6 +63,10 @@ public abstract class GetIteratorNode extends JavaScriptNode {
         return GetIteratorNodeGen.create(context, false, iteratedObject);
     }
 
+    public static GetIteratorNode create(JSContext context, boolean asyncHint, JavaScriptNode iteratedObject) {
+        return GetIteratorNodeGen.create(context, asyncHint, iteratedObject);
+    }
+
     protected JSContext getContext() {
         return getAsyncIteratorMethodNode.getContext();
     }
@@ -71,9 +76,8 @@ public abstract class GetIteratorNode extends JavaScriptNode {
                     @Cached("createCall()") JSFunctionCallNode methodCallNode,
                     @Cached("create()") IsObjectNode isObjectNode) {
         Object method;
-        if (hint) {
+        if (asyncHint) {
             method = getAsyncIteratorMethodNode.executeWithTarget(iteratedObject);
-            // TODO binary profile
             if (asyncToSync.profile(method == Undefined.instance)) {
                 Object syncMethod = getIteratorMethodNode().executeWithTarget(iteratedObject);
                 Object syncIterator = getIterator(iteratedObject, syncMethod, methodCallNode, isObjectNode, this);
@@ -121,7 +125,7 @@ public abstract class GetIteratorNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return GetIteratorNodeGen.create(getAsyncIteratorMethodNode.getContext(), cloneUninitialized(getIteratedObject()));
+        return GetIteratorNodeGen.create(getAsyncIteratorMethodNode.getContext(), asyncHint, cloneUninitialized(getIteratedObject()));
     }
 
     private GetMethodNode getIteratorMethodNode() {
@@ -136,7 +140,7 @@ public abstract class GetIteratorNode extends JavaScriptNode {
         if (!JSObject.isJSObject(syncIterator)) {
             throw Errors.createTypeError("Object expected");
         }
-        DynamicObject obj = JSObject.create(context.getRealm(), context.getRealm().getAsyncFromSyncIteratorPrototypeBuiltins(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.create(context.getRealm(), context.getRealm().getAsyncFromSyncIteratorPrototype(), JSUserObject.INSTANCE);
         setState.setValue(obj, syncIterator);
         return obj;
     }

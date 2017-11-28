@@ -112,7 +112,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             return (DynamicObject) createPromiseCapability.executeCall(JSArguments.create(Undefined.instance, getContext().getAsyncFunctionPromiseCapabilityConstructor(), new Object[]{}));
         }
 
-        protected boolean isValidThis(DynamicObject thiz) {
+        protected boolean isAsyncFromSyncIterator(DynamicObject thiz) {
             return thiz != Undefined.instance && getGeneratorTarget.getValue(thiz) != Undefined.instance;
         }
 
@@ -134,7 +134,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             performPromiseThenCall.executeCall(JSArguments.create(Undefined.instance, getContext().getPerformPromiseThen(), promise, onFullfilled, instance, promiseCapability));
         }
 
-        protected DynamicObject createOnFullFilled(Object value, boolean done) {
+        protected DynamicObject createOnFulFilled(Object value, boolean done) {
             CallTarget unwrap = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
 
                 @Child private CreateIterResultObjectNode iterResult = CreateIterResultObjectNodeGen.create(getContext());
@@ -158,7 +158,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         @Specialization(guards = "isObject(thisObj)")
         protected Object next(DynamicObject thisObj) {
             DynamicObject promiseCapability = createPromiseCapability();
-            if (!isValidThis(thisObj)) {
+            if (!isAsyncFromSyncIterator(thisObj)) {
                 JSException typeError = Errors.createTypeError("wrong type");
                 processCapabilityReject(promiseCapability, typeError);
                 return getPromise(promiseCapability);
@@ -187,7 +187,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             }
             DynamicObject valueWrapperCapability = createPromiseCapability();
             processCapabilityResolve(valueWrapperCapability, nextValue);
-            DynamicObject onFullfilled = createOnFullFilled(nextValue, nextDone);
+            DynamicObject onFullfilled = createOnFulFilled(nextValue, nextDone);
             performPromiseThen(getPromise(valueWrapperCapability), onFullfilled, Undefined.instance, promiseCapability);
             return getPromise(promiseCapability);
         }
@@ -209,7 +209,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         protected Object doMethod(VirtualFrame frame, DynamicObject thisObj) {
             DynamicObject promiseCapability = createPromiseCapability();
-            if (!isValidThis(thisObj)) {
+            if (!isAsyncFromSyncIterator(thisObj)) {
                 JSException typeError = Errors.createTypeError("wrong type");
                 processCapabilityReject(promiseCapability, typeError);
                 return getPromise(promiseCapability);
@@ -242,7 +242,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             }
             DynamicObject valueWrapperCapability = createPromiseCapability();
             processCapabilityResolve(valueWrapperCapability, value);
-            DynamicObject onFullfilled = createOnFullFilled(value, done);
+            DynamicObject onFullfilled = createOnFulFilled(value, done);
             performPromiseThen(getPromise(valueWrapperCapability), onFullfilled, Undefined.instance, promiseCapability);
             return getPromise(promiseCapability);
         }

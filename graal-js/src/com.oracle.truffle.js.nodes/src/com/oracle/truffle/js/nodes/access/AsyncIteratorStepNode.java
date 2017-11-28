@@ -13,6 +13,7 @@ import com.oracle.truffle.js.nodes.control.YieldException;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -65,7 +66,7 @@ public class AsyncIteratorStepNode extends AwaitNode {
             // We have been restored at this point. The frame contains the resumption state.
             Object result = readAsyncResultNode.execute(frame);
             if (result instanceof Rejected) {
-                throw new UnsupportedOperationException("TODO");
+                throw UserScriptException.create(((Rejected) result).reason, this);
             }
             if (!JSObject.isJSObject(result)) {
                 throw Errors.createTypeError("Iterator Result not an object");

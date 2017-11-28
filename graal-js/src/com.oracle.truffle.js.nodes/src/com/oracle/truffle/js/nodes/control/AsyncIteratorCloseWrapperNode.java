@@ -23,7 +23,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 /**
  * ES8 5.2 AsyncIteratorClose(iterator, completion).
  */
-public class IteratorAsyncCloseWrapperNode extends JavaScriptNode implements ResumableNode {
+public class AsyncIteratorCloseWrapperNode extends JavaScriptNode implements ResumableNode {
 
     private final JSContext context;
 
@@ -38,7 +38,7 @@ public class IteratorAsyncCloseWrapperNode extends JavaScriptNode implements Res
     @Child private JavaScriptNode iterator;
     @Child private PropertyGetNode getValue;
 
-    protected IteratorAsyncCloseWrapperNode(JSContext context, JavaScriptNode loopNode, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
+    protected AsyncIteratorCloseWrapperNode(JSContext context, JavaScriptNode loopNode, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
         this.context = context;
         this.loopNode = loopNode;
         this.iterator = iterator;
@@ -57,7 +57,7 @@ public class IteratorAsyncCloseWrapperNode extends JavaScriptNode implements Res
 
     public static JavaScriptNode create(JSContext context, JavaScriptNode loopNode, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode,
                     JSReadFrameSlotNode asyncResultNode) {
-        return new IteratorAsyncCloseWrapperNode(context, loopNode, iterator, asyncContextNode, asyncResultNode);
+        return new AsyncIteratorCloseWrapperNode(context, loopNode, iterator, asyncContextNode, asyncResultNode);
     }
 
     @Override
@@ -66,13 +66,10 @@ public class IteratorAsyncCloseWrapperNode extends JavaScriptNode implements Res
         // The for-await-of loop returned here.
         // 5.2 AsyncIteratorClose (iterator, completion)
         Object returnMethod = getReturnNode.executeWithTarget(frame, iterator.execute(frame));
-
         if (returnMethod == Undefined.instance) {
             return completion;
         }
-
         Object innerResult = methodCallNode.executeCall(JSArguments.create(iterator.execute(frame), returnMethod, Undefined.instance));
-
         Object[] initialState = (Object[]) readAsyncContextNode.execute(frame);
         CallTarget target = (CallTarget) initialState[0];
         DynamicObject currentCapability = (DynamicObject) initialState[1];
@@ -103,7 +100,7 @@ public class IteratorAsyncCloseWrapperNode extends JavaScriptNode implements Res
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new IteratorAsyncCloseWrapperNode(context, cloneUninitialized(loopNode), cloneUninitialized(iterator), cloneUninitialized(readAsyncContextNode),
+        return new AsyncIteratorCloseWrapperNode(context, cloneUninitialized(loopNode), cloneUninitialized(iterator), cloneUninitialized(readAsyncContextNode),
                         cloneUninitialized(readAsyncResultNode));
     }
 }
