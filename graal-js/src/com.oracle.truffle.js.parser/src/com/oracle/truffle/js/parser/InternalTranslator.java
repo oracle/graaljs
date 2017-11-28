@@ -24,6 +24,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArrayPrototype;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectDefinePropertyNodeGen;
+import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
@@ -254,8 +255,6 @@ final class InternalTranslator extends GraalJSTranslator {
                         return IsCallableNode.create(arguments[0]);
                     case "Assert":
                         return createAssert(arguments[0]);
-                    case "Print":
-                        return createPrint(arguments[0]);
                     case "ArrayPush":
                         DynamicObject arrayPushFunction = context.getRealm().lookupFunction(JSArray.PROTOTYPE_NAME, ArrayPrototype.push.getName());
                         JavaScriptNode functionNode = JSConstantNode.create(arrayPushFunction);
@@ -277,29 +276,6 @@ final class InternalTranslator extends GraalJSTranslator {
                 return new InternalFunctionCallNode(name);
             }
             return super.createFunctionCall(context, function, arguments);
-        }
-
-        private static JavaScriptNode createPrint(JavaScriptNode assertion) {
-
-            class PrintNode extends StatementNode {
-                @Child private JavaScriptNode statement;
-
-                PrintNode(JavaScriptNode assertionNode) {
-                    this.statement = assertionNode;
-                }
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    System.out.println(statement.execute(frame));
-                    return EMPTY;
-                }
-
-                @Override
-                protected JavaScriptNode copyUninitialized() {
-                    return new PrintNode(cloneUninitialized(statement));
-                }
-            }
-            return new PrintNode(assertion);
         }
 
         private JavaScriptNode createAssert(JavaScriptNode assertion) {
