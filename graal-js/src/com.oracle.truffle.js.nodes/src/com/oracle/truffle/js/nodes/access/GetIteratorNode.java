@@ -81,7 +81,6 @@ public abstract class GetIteratorNode extends JavaScriptNode {
             }
         } else {
             method = getIteratorMethodNode().executeWithTarget(iteratedObject);
-
         }
         return getIterator(iteratedObject, method, methodCallNode, isObjectNode, this);
     }

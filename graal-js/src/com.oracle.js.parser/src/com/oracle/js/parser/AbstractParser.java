@@ -382,7 +382,6 @@ public abstract class AbstractParser {
         } catch (final ParserException e) {
             errors.error(e);
         }
-
         return null;
     }
 

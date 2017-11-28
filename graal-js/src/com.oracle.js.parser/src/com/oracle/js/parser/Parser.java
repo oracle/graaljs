@@ -2179,7 +2179,7 @@ loop:
                 next();
 
                 // For-of only allows AssignmentExpression.
-                modify = isForOf|| isForAwaitOf ? new JoinPredecessorExpression(assignmentExpression(false)) : joinPredecessorExpression();
+                modify = isForOf || isForAwaitOf ? new JoinPredecessorExpression(assignmentExpression(false)) : joinPredecessorExpression();
                 break;
 
             default:

@@ -1845,7 +1845,6 @@ public class Lexer extends Scanner {
         }
     }
 
-
     /**
      * Return value of token given its token descriptor.
      *

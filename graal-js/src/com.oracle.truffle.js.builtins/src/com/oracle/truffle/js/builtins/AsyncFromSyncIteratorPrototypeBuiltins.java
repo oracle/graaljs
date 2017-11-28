@@ -94,7 +94,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         @Child protected PropertyGetNode getGeneratorTarget;
         @Child private JSFunctionCallNode performPromiseThenCall;
 
-        public AsyncFromSyncBaseNode(JSContext context, JSBuiltin builtin) {
+        AsyncFromSyncBaseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.createPromiseCapability = JSFunctionCallNode.create(false);
             this.getPromiseReject = PropertyGetNode.create("reject", false, context);
