@@ -2317,6 +2317,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 VarRef valueTempVar = environment.createTempVar();
                 VarRef doneVar = environment.createTempVar();
                 JavaScriptNode initValue = valueTempVar.createWriteNode(assignedValue);
+                // By default, we use the hint to track the type of iterator.
                 JavaScriptNode getIterator = iteratorHint ? factory.createGetAsyncIterator(context, initValue) : factory.createGetIterator(context, initValue);
                 JavaScriptNode initIteratorTempVar = iteratorTempVar.createWriteNode(getIterator);
                 JavaScriptNode writeDone = doneVar.createWriteNode(factory.createConstantBoolean(true));
@@ -2339,7 +2340,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         rhsNode = factory.createNotUndefinedOr(rhsNode, transform(init));
                     }
                     if (lhsExpr != null && lhsExpr.isTokenType(TokenType.SPREAD_ARRAY)) {
+                        // spread arrays require to use a normal iterator.
+                        getIterator = factory.createGetIterator(context, initValue);
+                        initIteratorTempVar = iteratorTempVar.createWriteNode(getIterator);
+                        writeDone = doneVar.createWriteNode(factory.createConstantBoolean(true));
                         rhsNode = factory.createIteratorToArray(context, iteratorTempVar.createReadNode(), writeDone);
+
                         lhsExpr = ((UnaryNode) lhsExpr).getExpression();
                     }
                     if (lhsExpr != null) {
