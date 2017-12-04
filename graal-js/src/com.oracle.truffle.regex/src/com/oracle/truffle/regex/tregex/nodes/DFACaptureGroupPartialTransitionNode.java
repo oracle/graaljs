@@ -37,15 +37,19 @@ public final class DFACaptureGroupPartialTransitionNode extends Node {
         return new DFACaptureGroupPartialTransitionNode(newOrder, arrayCopies, indexUpdates, indexClears);
     }
 
-    public void apply(final int[][] results, final int[] currentResultOrder, final int[] swap, final int currentIndex) {
+    public boolean doesReorderResults() {
+        return newOrder != null;
+    }
+
+    public void apply(DFACaptureGroupTrackingData d, final int currentIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (newOrder != null) {
-            System.arraycopy(currentResultOrder, 0, swap, 0, newOrder.length);
-            applyNewOrder(currentResultOrder, swap);
+            System.arraycopy(d.currentResultOrder, 0, d.swap, 0, newOrder.length);
+            applyNewOrder(d.currentResultOrder, d.swap);
         }
-        applyArrayCopy(results, currentResultOrder);
-        applyIndexUpdate(results, currentResultOrder, currentIndex);
-        applyIndexClear(results, currentResultOrder);
+        applyArrayCopy(d.results, d.currentResultOrder);
+        applyIndexUpdate(d.results, d.currentResultOrder, currentIndex);
+        applyIndexClear(d.results, d.currentResultOrder);
     }
 
     @ExplodeLoop

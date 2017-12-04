@@ -23,32 +23,29 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
         this.precedingTransitions = precedingTransitions;
     }
 
-    public void applyPartialTransition(DFACaptureGroupLazyTransitionNode[] transitions, short t, int partialTransitionIndex,
-                    int[][] results, int[] currentResultOrder, int[] swap, int currentIndex) {
+    public void applyPartialTransition(DFACaptureGroupLazyTransitionNode[] transitions, short t, int partialTransitionIndex, DFACaptureGroupTrackingData d, int currentIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (precedingTransitions.length > EXPLODE_THRESHOLD) {
-            applyPartialTransitionBoundary(transitions, t, partialTransitionIndex, results, currentResultOrder, swap, currentIndex);
+            applyPartialTransitionBoundary(transitions, t, partialTransitionIndex, d, currentIndex);
         } else {
-            applyPartialTransitionExploded(transitions, t, partialTransitionIndex, results, currentResultOrder, swap, currentIndex);
+            applyPartialTransitionExploded(transitions, t, partialTransitionIndex, d, currentIndex);
         }
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static void applyPartialTransitionBoundary(DFACaptureGroupLazyTransitionNode[] transitions, short t, int partialTransitionIndex,
-                    int[][] results, int[] currentResultOrder, int[] swap, int currentIndex) {
-        transitions[t].getPartialTransitions()[partialTransitionIndex].apply(results, currentResultOrder, swap, currentIndex);
+    private static void applyPartialTransitionBoundary(DFACaptureGroupLazyTransitionNode[] transitions, short t, int partialTransitionIndex, DFACaptureGroupTrackingData d, int currentIndex) {
+        transitions[t].getPartialTransitions()[partialTransitionIndex].apply(d, currentIndex);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    private void applyPartialTransitionExploded(DFACaptureGroupLazyTransitionNode[] transitions, short t, int partialTransitionIndex,
-                    int[][] results, int[] currentResultOrder, int[] swap, int currentIndex) {
+    private void applyPartialTransitionExploded(DFACaptureGroupLazyTransitionNode[] transitions, short t, int partialTransitionIndex, DFACaptureGroupTrackingData d, int currentIndex) {
         for (short possibleTransition : precedingTransitions) {
             if (t == possibleTransition) {
                 final DFACaptureGroupPartialTransitionNode[] partialTransitions = transitions[possibleTransition].getPartialTransitions();
                 for (int i = 0; i < partialTransitions.length; i++) {
                     CompilerAsserts.partialEvaluationConstant(i);
                     if (i == partialTransitionIndex) {
-                        partialTransitions[i].apply(results, currentResultOrder, swap, currentIndex);
+                        partialTransitions[i].apply(d, currentIndex);
                         return;
                     }
                 }
@@ -58,60 +55,54 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
         throw new IllegalStateException();
     }
 
-    public void applyAnchoredFinalTransition(DFACaptureGroupLazyTransitionNode[] transitions, short t,
-                    int[][] results, int[] currentResultOrder, int[] swap, int currentIndex, boolean isAtEnd) {
+    public void applyAnchoredFinalTransition(DFACaptureGroupLazyTransitionNode[] transitions, short t, DFACaptureGroupTrackingData d, int currentIndex, boolean isAtEnd) {
         if (isAtEnd) {
             CompilerAsserts.partialEvaluationConstant(this);
             if (precedingTransitions.length > EXPLODE_THRESHOLD) {
-                applyAnchoredFinalTransitionBoundary(transitions, t, results, currentResultOrder, swap, currentIndex);
+                applyAnchoredFinalTransitionBoundary(transitions, t, d, currentIndex);
             } else {
-                applyAnchoredFinalTransitionExploded(transitions, t, results, currentResultOrder, swap, currentIndex);
+                applyAnchoredFinalTransitionExploded(transitions, t, d, currentIndex);
             }
         }
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static void applyAnchoredFinalTransitionBoundary(DFACaptureGroupLazyTransitionNode[] transitions, short t,
-                    int[][] results, int[] currentResultOrder, int[] swap, int currentIndex) {
-        transitions[t].getTransitionToAnchoredFinalState().apply(results, currentResultOrder, swap, currentIndex);
+    private static void applyAnchoredFinalTransitionBoundary(DFACaptureGroupLazyTransitionNode[] transitions, short t, DFACaptureGroupTrackingData d, int currentIndex) {
+        transitions[t].getTransitionToAnchoredFinalState().apply(d, currentIndex);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    private void applyAnchoredFinalTransitionExploded(DFACaptureGroupLazyTransitionNode[] transitions, short t,
-                    int[][] results, int[] currentResultOrder, int[] swap, int currentIndex) {
+    private void applyAnchoredFinalTransitionExploded(DFACaptureGroupLazyTransitionNode[] transitions, short t, DFACaptureGroupTrackingData d, int currentIndex) {
         for (short possibleTransition : precedingTransitions) {
             if (t == possibleTransition) {
-                transitions[possibleTransition].getTransitionToAnchoredFinalState().apply(results, currentResultOrder, swap, currentIndex);
+                transitions[possibleTransition].getTransitionToAnchoredFinalState().apply(d, currentIndex);
                 return;
             }
         }
         throw new IllegalStateException();
     }
 
-    public void applyFinalTransition(DFACaptureGroupLazyTransitionNode[] transitions, short t,
-                    int[][] results, int[] currentResultOrder, int[] swap, int currentIndex, boolean isAtEnd) {
+    public void applyFinalTransition(DFACaptureGroupLazyTransitionNode[] transitions, short t, DFACaptureGroupTrackingData d, int currentIndex, boolean isAtEnd) {
         if (isAtEnd) {
             CompilerAsserts.partialEvaluationConstant(this);
             if (precedingTransitions.length > EXPLODE_THRESHOLD) {
-                applyFinalTransitionBoundary(transitions, t, results, currentResultOrder, swap, currentIndex);
+                applyFinalTransitionBoundary(transitions, t, d, currentIndex);
             } else {
-                applyFinalTransitionExploded(transitions, t, results, currentResultOrder, swap, currentIndex);
+                applyFinalTransitionExploded(transitions, t, d, currentIndex);
             }
         }
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static void applyFinalTransitionBoundary(DFACaptureGroupLazyTransitionNode[] transitions, short t,
-                    int[][] results, int[] currentResultOrder, int[] swap, int currentIndex) {
-        transitions[t].getTransitionToFinalState().apply(results, currentResultOrder, swap, currentIndex);
+    private static void applyFinalTransitionBoundary(DFACaptureGroupLazyTransitionNode[] transitions, short t, DFACaptureGroupTrackingData d, int currentIndex) {
+        transitions[t].getTransitionToFinalState().apply(d, currentIndex);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    private void applyFinalTransitionExploded(DFACaptureGroupLazyTransitionNode[] transitions, short t,
-                    int[][] results, int[] currentResultOrder, int[] swap, int currentIndex) {
+    private void applyFinalTransitionExploded(DFACaptureGroupLazyTransitionNode[] transitions, short t, DFACaptureGroupTrackingData d, int currentIndex) {
         for (short possibleTransition : precedingTransitions) {
             if (t == possibleTransition) {
-                transitions[possibleTransition].getTransitionToFinalState().apply(results, currentResultOrder, swap, currentIndex);
+                transitions[possibleTransition].getTransitionToFinalState().apply(d, currentIndex);
                 return;
             }
         }

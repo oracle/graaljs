@@ -6,6 +6,7 @@ package com.oracle.truffle.regex.tregex.util;
 
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.nodes.BackwardDFAStateNode;
 import com.oracle.truffle.regex.tregex.nodes.DFAStateNode;
 
 import java.util.ArrayDeque;
@@ -64,7 +65,6 @@ public final class DFANodeSplit {
             cpy.preds = new TreeSet<>(preds);
             cpy.succs = new TreeSet<>(succs);
             cpy.succsDom = new TreeSet<>(succsDom);
-            cpy.idom = idom;
             cpy.header = header;
             cpy.level = level;
             cpy.weight = weight;
@@ -192,9 +192,6 @@ public final class DFANodeSplit {
 
     private DFAStateNode[] process() throws DFANodeSplitBailoutException {
         buildPostOrder();
-        if (!allNodesTraversed()) {
-            throw new DFANodeSplitBailoutException();
-        }
         buildDominatorTree();
         setLevel(start, 1);
         markUndone();
@@ -209,6 +206,16 @@ public final class DFANodeSplit {
     }
 
     private boolean graphIsConsistent() {
+        for (GraphNode p : start.preds) {
+            if (!p.succs.contains(start)) {
+                return false;
+            }
+        }
+        for (GraphNode s : start.succs) {
+            if (!s.preds.contains(start)) {
+                return false;
+            }
+        }
         for (GraphNode n : nodes) {
             for (GraphNode p : n.preds) {
                 if (!p.succs.contains(n)) {
@@ -224,23 +231,16 @@ public final class DFANodeSplit {
         return true;
     }
 
-    private boolean allNodesTraversed() {
-        for (GraphNode n : nodes) {
-            if (!n.traversed) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     private void buildPostOrder() {
         assert graphIsConsistent();
+        start.traversed = false;
         for (GraphNode n : nodes) {
             n.traversed = false;
         }
         nextPostOrderIndex = 0;
         postOrder = new GraphNode[nodes.size() + 1];
         traversePostOrder(start);
+        assert allNodesTraversed();
     }
 
     private void traversePostOrder(GraphNode cur) {
@@ -252,6 +252,18 @@ public final class DFANodeSplit {
         }
         cur.postOrderIndex = nextPostOrderIndex++;
         postOrder[cur.postOrderIndex] = cur;
+    }
+
+    private boolean allNodesTraversed() {
+        if (!start.traversed) {
+            return false;
+        }
+        for (GraphNode n : nodes) {
+            if (!n.traversed) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void buildDominatorTree() {
@@ -291,13 +303,13 @@ public final class DFANodeSplit {
                 }
             }
         }
+        start.succsDom.clear();
         for (GraphNode n : nodes) {
             n.succsDom.clear();
         }
         for (int i = 0; i < doms.length; i++) {
             GraphNode dominator = postOrder[doms[i]];
             GraphNode successor = postOrder[i];
-            successor.idom = dominator;
             if (dominator != successor) {
                 dominator.succsDom.add(successor);
             }
@@ -316,6 +328,10 @@ public final class DFANodeSplit {
             }
         }
         return finger1;
+    }
+
+    private GraphNode idom(GraphNode n) {
+        return postOrder[doms[n.postOrderIndex]];
     }
 
     private boolean dom(GraphNode a, GraphNode b) {
@@ -459,12 +475,12 @@ public final class DFANodeSplit {
         }
     }
 
-    private static Set<GraphNode> findTopNodes(Set<GraphNode> scc) {
+    private Set<GraphNode> findTopNodes(Set<GraphNode> scc) {
         Set<GraphNode> tops = new TreeSet<>();
         for (GraphNode tmp : scc) {
-            GraphNode top = tmp.idom;
+            GraphNode top = idom(tmp);
             while (scc.contains(top)) {
-                top = top.idom;
+                top = idom(top);
             }
             if (!tops.contains(top)) {
                 tops.add(top);
@@ -507,6 +523,7 @@ public final class DFANodeSplit {
     }
 
     private void markUndone() {
+        start.markUndone();
         nodes.forEach(GraphNode::markUndone);
     }
 }

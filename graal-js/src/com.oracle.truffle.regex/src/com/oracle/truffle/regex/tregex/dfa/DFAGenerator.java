@@ -5,7 +5,6 @@
 package com.oracle.truffle.regex.tregex.dfa;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
@@ -78,7 +77,7 @@ public final class DFAGenerator {
     }
 
     @TruffleBoundary
-    public static TRegexDFAExecutorNode createForwardDFAExecutor(NFA nfa, InputIterator inputIterator, FrameSlot result, FrameSlot lastTransition, boolean trackCaptureGroups,
+    public static TRegexDFAExecutorNode createForwardDFAExecutor(NFA nfa, InputIterator inputIterator, boolean trackCaptureGroups,
                     CompilationBuffer compilationBuffer) {
         DFAGenerator gen = new DFAGenerator(nfa, true, trackCaptureGroups, false, compilationBuffer);
         final int numberOfEntryPoints = nfa.getAnchoredEntry().size();
@@ -165,8 +164,6 @@ public final class DFAGenerator {
         }
         return new TRegexDFAExecutorNode(
                         inputIterator,
-                        result,
-                        lastTransition,
                         anchoredEntries,
                         unAnchoredEntries,
                         states,
@@ -179,7 +176,7 @@ public final class DFAGenerator {
     }
 
     @TruffleBoundary
-    public static TRegexDFAExecutorNode createBackwardDFAExecutor(NFA nfa, InputIterator inputIterator, FrameSlot result, CompilationBuffer compilationBuffer) {
+    public static TRegexDFAExecutorNode createBackwardDFAExecutor(NFA nfa, InputIterator inputIterator, CompilationBuffer compilationBuffer) {
         final boolean prune = nfa.isTraceFinderNFA() && nfa.hasReverseUnAnchoredEntry();
         DFAGenerator gen = new DFAGenerator(nfa, false, false, prune, compilationBuffer);
         NFATransitionSet anchoredEntry = NFATransitionSet.create(nfa, false, false, nfa.getReverseAnchoredEntry().getPrev());
@@ -202,8 +199,6 @@ public final class DFAGenerator {
         }
         return new TRegexDFAExecutorNode(
                         inputIterator,
-                        result,
-                        null,
                         anchoredEntries,
                         unAnchoredEntries,
                         states,
@@ -245,7 +240,7 @@ public final class DFAGenerator {
             if (matchers.length == 1 && matchers[0] == AnyMatcher.INSTANCE) {
                 matchers = AnyMatcher.INSTANCE_ARRAY;
             }
-            short[] successors = s.getSuccessors().length > 0 ? new short[s.getSuccessors().length] : EMPTY_SHORT_ARRAY;
+            short[] successors = s.getNumberOfSuccessors() > 0 ? new short[s.getNumberOfSuccessors()] : EMPTY_SHORT_ARRAY;
             short[] cgTransitions = null;
             short[] cgPrecedingTransitions = null;
             if (trackCaptureGroups) {
@@ -258,11 +253,11 @@ public final class DFAGenerator {
                     cgPrecedingTransitions[i] = transitionBuilder.toLazyTransition(cgTransitionIDCounter, compilationBuffer).getId();
                 }
             }
-            boolean loopToSelf = false;
-            for (int i = 0; i < successors.length; i++) {
+            short loopToSelf = -1;
+            for (int i = 0; i < successors.length - (s.hasBackwardPrefixState() ? 1 : 0); i++) {
                 successors[i] = s.getSuccessors()[i].getId();
                 if (successors[i] == s.getId()) {
-                    loopToSelf = true;
+                    loopToSelf = (short) i;
                 }
                 assert successors[i] >= 0 && successors[i] < ret.length;
                 if (trackCaptureGroups) {
@@ -271,20 +266,23 @@ public final class DFAGenerator {
                     registerTransition(transition);
                 }
             }
+            if (s.hasBackwardPrefixState()) {
+                successors[successors.length - 1] = s.getBackwardPrefixState();
+            }
             boolean findSingleChar = matchers.length == 2 &&
                             matchers[0] instanceof SingleCharMatcher &&
                             matchers[1] instanceof AnyMatcher &&
                             successors[1] == s.getId();
             if (trackCaptureGroups) {
-                ret[s.getId()] = new CGTrackingDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), loopToSelf, findSingleChar, successors, matchers,
+                ret[s.getId()] = new CGTrackingDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, loopToSelf, successors, matchers,
                                 cgTransitions, cgPrecedingTransitions);
             } else if (nfa.isTraceFinderNFA()) {
-                ret[s.getId()] = new TraceFinderDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), loopToSelf, findSingleChar, successors, matchers,
-                                s.getBackwardPrefixState(), s.getUnAnchoredResult(), s.getAnchoredResult());
+                ret[s.getId()] = new TraceFinderDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, loopToSelf, successors, matchers,
+                                s.getUnAnchoredResult(), s.getAnchoredResult());
             } else if (forward) {
-                ret[s.getId()] = new DFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), loopToSelf, findSingleChar, successors, matchers);
+                ret[s.getId()] = new DFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, loopToSelf, successors, matchers);
             } else {
-                ret[s.getId()] = new BackwardDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), loopToSelf, findSingleChar, successors, matchers, s.getBackwardPrefixState());
+                ret[s.getId()] = new BackwardDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, loopToSelf, successors, matchers);
             }
         }
         return ret;

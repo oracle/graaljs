@@ -118,24 +118,25 @@ public final class TRegexEngine implements RegexEngine {
             FrameSlot fromIndex = frameDescriptor.addFrameSlot("fromIndex", FrameSlotKind.Int);
             FrameSlot index = frameDescriptor.addFrameSlot("index", FrameSlotKind.Int);
             FrameSlot maxIndex = frameDescriptor.addFrameSlot("maxIndex", FrameSlotKind.Int);
+            FrameSlot curMaxIndex = frameDescriptor.addFrameSlot("curMaxIndex", FrameSlotKind.Int);
             FrameSlot result = frameDescriptor.addFrameSlot("result", FrameSlotKind.Int);
             FrameSlot captureGroupResult = createCaptureGroupTracker ? frameDescriptor.addFrameSlot("captureGroupResult", FrameSlotKind.Object) : null;
             FrameSlot lastTransition = createCaptureGroupTracker ? frameDescriptor.addFrameSlot("lastTransition", FrameSlotKind.Int) : null;
             TRegexDFAExecutorNode captureGroupExecutor = null;
             phaseStart("Forward DFA");
             TRegexDFAExecutorNode executorNode = DFAGenerator.createForwardDFAExecutor(
-                            nfa, new InputIterator(inputString, fromIndex, index, maxIndex, true), result, null, false, compilationBuffer);
+                            nfa, new InputIterator(inputString, fromIndex, index, maxIndex, curMaxIndex, null, result, true), false, compilationBuffer);
             phaseEnd("Forward DFA");
             if (createCaptureGroupTracker) {
                 phaseStart("CG DFA");
                 captureGroupExecutor = DFAGenerator.createForwardDFAExecutor(
-                                nfa, new InputIterator(inputString, fromIndex, index, maxIndex, true), captureGroupResult, lastTransition, true, compilationBuffer);
+                                nfa, new InputIterator(inputString, fromIndex, index, maxIndex, curMaxIndex, lastTransition, captureGroupResult, true), true, compilationBuffer);
                 phaseEnd("CG DFA");
             }
             phaseStart("Backward DFA");
             TRegexDFAExecutorNode executorNodeB = DFAGenerator.createBackwardDFAExecutor(
                             (preCalculatedResults != null && preCalculatedResults.length > 1) ? traceFinder : nfa,
-                            new InputIterator(inputString, fromIndex, index, maxIndex, false), result, compilationBuffer);
+                            new InputIterator(inputString, fromIndex, index, maxIndex, curMaxIndex, null, result, false), compilationBuffer);
             phaseEnd("Backward DFA");
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TRegexRootNode.TRegexForwardSearchRootNode(
                             frameDescriptor,
