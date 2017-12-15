@@ -13,10 +13,12 @@ import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.control.AwaitNode.AsyncAwaitExecutionContext;
+import com.oracle.truffle.js.nodes.control.AwaitNode.Rejected;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -90,7 +92,9 @@ public class AsyncIteratorCloseWrapperNode extends JavaScriptNode implements Res
             setState(frame, 0);
             // We have been restored at this point. The frame contains the resumption state.
             Object innerResult = readAsyncResultNode.execute(frame);
-            // TODO what if rejected?
+            if (innerResult instanceof Rejected) {
+                throw UserScriptException.create(((Rejected) innerResult).reason, this);
+            }
             if (!JSObject.isJSObject(innerResult)) {
                 throw Errors.createTypeError("not an object");
             }
