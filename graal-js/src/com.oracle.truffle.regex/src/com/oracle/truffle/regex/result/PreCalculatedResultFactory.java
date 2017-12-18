@@ -5,7 +5,7 @@
 package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.regex.CompiledRegex;
+import com.oracle.truffle.regex.RegexCompiledRegex;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 import java.util.Arrays;
@@ -68,11 +68,11 @@ public final class PreCalculatedResultFactory {
         }
     }
 
-    public RegexResult createFromStart(CompiledRegex regex, Object input, int start) {
+    public RegexResult createFromStart(RegexCompiledRegex regex, Object input, int start) {
         return createFromOffset(regex, input, start - indices[0]);
     }
 
-    public RegexResult createFromEnd(CompiledRegex regex, Object input, int end) {
+    public RegexResult createFromEnd(RegexCompiledRegex regex, Object input, int end) {
         return createFromOffset(regex, input, end - length);
     }
 
@@ -80,7 +80,7 @@ public final class PreCalculatedResultFactory {
         return indices.length / 2;
     }
 
-    private RegexResult createFromOffset(CompiledRegex regex, Object input, int offset) {
+    private RegexResult createFromOffset(RegexCompiledRegex regex, Object input, int offset) {
         final int[] realIndices = new int[indices.length];
         applyOffset(realIndices, offset);
         return new SingleIndexArrayResult(regex, input, realIndices);

@@ -11,77 +11,77 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.result.RegexResult;
-import com.oracle.truffle.regex.runtime.RegexResultObjectMessageResolutionFactory.ReadCacheNodeGen;
+import com.oracle.truffle.regex.runtime.RegexResultMessageResolutionFactory.ReadCacheNodeGen;
 
-@MessageResolution(receiverType = RegexResultObject.class)
-class RegexResultObjectMessageResolution {
+@MessageResolution(receiverType = RegexResult.class)
+public class RegexResultMessageResolution {
 
     abstract static class ResultPropertyNode extends Node {
 
-        abstract Object execute(RegexResultObject receiver);
+        abstract Object execute(RegexResult receiver);
     }
 
     static class GetInputNode extends ResultPropertyNode {
 
         @Override
-        Object execute(RegexResultObject receiver) {
-            return receiver.getResult().getInput();
+        Object execute(RegexResult receiver) {
+            return receiver.getInput();
         }
     }
 
     static class IsMatchNode extends ResultPropertyNode {
 
         @Override
-        Object execute(RegexResultObject receiver) {
-            return receiver.getResult() != RegexResult.NO_MATCH;
+        Object execute(RegexResult receiver) {
+            return receiver != RegexResult.NO_MATCH;
         }
     }
 
     static class GetGroupCountNode extends ResultPropertyNode {
 
         @Override
-        Object execute(RegexResultObject receiver) {
-            return receiver.getResult().getGroupCount();
+        Object execute(RegexResult receiver) {
+            return receiver.getGroupCount();
         }
     }
 
     static class GetStartArrayNode extends ResultPropertyNode {
 
         @Override
-        Object execute(RegexResultObject receiver) {
-            return new RegexResultStartArrayObject(receiver.getResult());
+        Object execute(RegexResult receiver) {
+            return receiver.getStartArrayObject();
         }
     }
 
     static class GetEndArrayNode extends ResultPropertyNode {
 
         @Override
-        Object execute(RegexResultObject receiver) {
-            return new RegexResultEndArrayObject(receiver.getResult());
+        Object execute(RegexResult receiver) {
+            return receiver.getEndArrayObject();
         }
     }
 
     static class GetCompiledRegexNode extends ResultPropertyNode {
 
         @Override
-        Object execute(RegexResultObject receiver) {
-            return new RegexCompiledRegex(receiver.getResult().getCompiledRegex());
+        Object execute(RegexResult receiver) {
+            return receiver.getCompiledRegex();
         }
     }
 
     abstract static class ReadCacheNode extends Node {
 
-        abstract Object execute(RegexResultObject receiver, String symbol);
+        abstract Object execute(RegexResult receiver, String symbol);
 
         @Specialization(guards = "symbol == cachedSymbol", limit = "6")
-        public Object readIdentity(RegexResultObject receiver, @SuppressWarnings("unused") String symbol,
+        public Object readIdentity(RegexResult receiver, @SuppressWarnings("unused") String symbol,
                         @Cached("symbol") @SuppressWarnings("unused") String cachedSymbol,
                         @Cached("getResultProperty(symbol)") ResultPropertyNode propertyNode) {
             return propertyNode.execute(receiver);
         }
 
         @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "6", replaces = "readIdentity")
-        public Object readEquals(RegexResultObject receiver, @SuppressWarnings("unused") String symbol,
+        public Object readEquals(RegexResult receiver, @SuppressWarnings("unused") String symbol,
                         @Cached("symbol") @SuppressWarnings("unused") String cachedSymbol,
                         @Cached("getResultProperty(symbol)") ResultPropertyNode propertyNode) {
             return propertyNode.execute(receiver);
@@ -112,7 +112,7 @@ class RegexResultObjectMessageResolution {
 
         @Child ReadCacheNode cache = ReadCacheNodeGen.create();
 
-        public Object access(RegexResultObject receiver, String symbol) {
+        public Object access(RegexResult receiver, String symbol) {
             return cache.execute(receiver, symbol);
         }
     }

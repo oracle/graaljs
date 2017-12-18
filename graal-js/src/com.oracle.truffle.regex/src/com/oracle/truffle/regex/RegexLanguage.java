@@ -40,7 +40,7 @@ import com.oracle.truffle.regex.util.LRUCache;
  * cast to {@code int}, since a {@link String} can not be longer than {@link Integer#MAX_VALUE}. If
  * {@code fromIndex} is greater than {@link Integer#MAX_VALUE}, this method will immediately return
  * NO_MATCH.</li>
- * <li>The return value is a {@link RegexResultObject}, which has the following properties:
+ * <li>The return value is a {@link RegexResult}, which has the following properties:
  * <ol>
  * <li>{@code Object input}: The input sequence this result was calculated from. If the result is no
  * match, this property is {@code null}.</li>
@@ -87,7 +87,7 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     private final TRegexEngine tRegexEngine = new TRegexEngine();
     private final JoniRegexEngine fallbackEngine = new JoniRegexEngine();
     static final String NO_MATCH_RESULT_IDENTIFIER = "T_REGEX_NO_MATCH_RESULT";
-    public static final RegexResultObject EXPORT_NO_MATCH_RESULT = new RegexResultObject(RegexResult.NO_MATCH);
+    public static final RegexResult EXPORT_NO_MATCH_RESULT = RegexResult.NO_MATCH;
     private static final Iterable<Scope> NO_MATCH_RESULT_SCOPE = Collections.singleton(Scope.newBuilder("global", new NoMatchResultObject()).build());
 
     /**
@@ -162,8 +162,8 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
         return new RegexSource(patternString, RegexFlags.parseFlags(flagsString), RegexOptions.parse(optionsString));
     }
 
-    private CompiledRegex compileRegex(RegexSource regexSource) throws RegexSyntaxException {
-        CompiledRegex regex = null;
+    private RegexCompiledRegex compileRegex(RegexSource regexSource) throws RegexSyntaxException {
+        RegexCompiledRegex regex = null;
         if (!regexSource.getOptions().useJoniEngine()) {
             regex = tRegexEngine.compile(regexSource);
         }

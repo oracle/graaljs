@@ -12,7 +12,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.regex.CompiledRegex;
+import com.oracle.truffle.regex.RegexCompiledRegex;
 import com.oracle.truffle.regex.result.LazyCaptureGroupsResult;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.result.RegexResult;
@@ -96,7 +96,7 @@ public abstract class TRegexRootNode extends RootNode {
         public final Object execute(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
             assert args.length == 3;
-            final CompiledRegex regex = (CompiledRegex) args[0];
+            final RegexCompiledRegex regex = (RegexCompiledRegex) args[0];
             final Object input = args[1];
             int fromIndexArg = NumberConversion.intValue((Number) args[2]);
 
@@ -114,7 +114,7 @@ public abstract class TRegexRootNode extends RootNode {
             }
         }
 
-        private Object executeForward(VirtualFrame frame, CompiledRegex regex, Object input, int fromIndexArg) {
+        private Object executeForward(VirtualFrame frame, RegexCompiledRegex regex, Object input, int fromIndexArg) {
             frame.setObject(inputSeq, input);
             frame.setInt(fromIndex, fromIndexArg);
             frame.setInt(index, fromIndexArg);
@@ -148,7 +148,7 @@ public abstract class TRegexRootNode extends RootNode {
             }
         }
 
-        private Object executeBackwardAnchored(VirtualFrame frame, CompiledRegex regex, Object input, int fromIndexArg) {
+        private Object executeBackwardAnchored(VirtualFrame frame, RegexCompiledRegex regex, Object input, int fromIndexArg) {
             final int inputLength = inputLengthNode.execute(input);
             frame.setObject(inputSeq, input);
             frame.setInt(fromIndex, 0);

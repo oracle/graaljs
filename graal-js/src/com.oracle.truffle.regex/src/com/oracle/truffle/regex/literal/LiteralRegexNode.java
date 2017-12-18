@@ -4,7 +4,7 @@
  */
 package com.oracle.truffle.regex.literal;
 
-import com.oracle.truffle.regex.CompiledRegex;
+import com.oracle.truffle.regex.RegexCompiledRegex;
 import com.oracle.truffle.regex.RegexNode;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.result.RegexResult;
@@ -60,7 +60,7 @@ public abstract class LiteralRegexNode extends RegexNode {
         }
 
         @Override
-        protected RegexResult execute(CompiledRegex regex, Object input, int fromIndex) {
+        protected RegexResult execute(RegexCompiledRegex regex, Object input, int fromIndex) {
             return resultFactory.createFromStart(regex, input, fromIndex);
         }
     }
@@ -77,7 +77,7 @@ public abstract class LiteralRegexNode extends RegexNode {
         }
 
         @Override
-        protected RegexResult execute(CompiledRegex regex, Object input, int fromIndex) {
+        protected RegexResult execute(RegexCompiledRegex regex, Object input, int fromIndex) {
             return fromIndex == 0 ? resultFactory.createFromStart(regex, input, 0) : RegexResult.NO_MATCH;
         }
     }
@@ -96,7 +96,7 @@ public abstract class LiteralRegexNode extends RegexNode {
         }
 
         @Override
-        protected RegexResult execute(CompiledRegex regex, Object input, int fromIndex) {
+        protected RegexResult execute(RegexCompiledRegex regex, Object input, int fromIndex) {
             assert fromIndex <= lengthNode.execute(input);
             return resultFactory.createFromEnd(regex, input, lengthNode.execute(input));
         }
@@ -116,7 +116,7 @@ public abstract class LiteralRegexNode extends RegexNode {
         }
 
         @Override
-        protected RegexResult execute(CompiledRegex regex, Object input, int fromIndex) {
+        protected RegexResult execute(RegexCompiledRegex regex, Object input, int fromIndex) {
             assert fromIndex <= lengthNode.execute(input);
             return lengthNode.execute(input) == 0 ? resultFactory.createFromStart(regex, input, 0) : RegexResult.NO_MATCH;
         }
@@ -140,7 +140,7 @@ public abstract class LiteralRegexNode extends RegexNode {
         }
 
         @Override
-        protected RegexResult execute(CompiledRegex regex, Object input, int fromIndex) {
+        protected RegexResult execute(RegexCompiledRegex regex, Object input, int fromIndex) {
             int start = indexOfNode.execute(input, c, fromIndex, lengthNode.execute(input));
             if (start == -1) {
                 return RegexResult.NO_MATCH;
@@ -163,7 +163,7 @@ public abstract class LiteralRegexNode extends RegexNode {
         }
 
         @Override
-        protected RegexResult execute(CompiledRegex regex, Object input, int fromIndex) {
+        protected RegexResult execute(RegexCompiledRegex regex, Object input, int fromIndex) {
             return fromIndex == 0 && startsWithNode.execute(input, literal) ? resultFactory.createFromStart(regex, input, 0) : RegexResult.NO_MATCH;
         }
     }
@@ -183,7 +183,7 @@ public abstract class LiteralRegexNode extends RegexNode {
         }
 
         @Override
-        protected RegexResult execute(CompiledRegex regex, Object input, int fromIndex) {
+        protected RegexResult execute(RegexCompiledRegex regex, Object input, int fromIndex) {
             return fromIndex <= lengthNode.execute(input) - literal.length() && endsWithNode.execute(input, literal) ? resultFactory.createFromEnd(regex, input, lengthNode.execute(input))
                             : RegexResult.NO_MATCH;
         }
@@ -203,7 +203,7 @@ public abstract class LiteralRegexNode extends RegexNode {
         }
 
         @Override
-        protected RegexResult execute(CompiledRegex regex, Object input, int fromIndex) {
+        protected RegexResult execute(RegexCompiledRegex regex, Object input, int fromIndex) {
             return fromIndex == 0 && equalsNode.execute(input, literal) ? resultFactory.createFromStart(regex, input, 0) : RegexResult.NO_MATCH;
         }
     }
@@ -222,7 +222,7 @@ public abstract class LiteralRegexNode extends RegexNode {
         }
 
         @Override
-        protected RegexResult execute(CompiledRegex regex, Object input, int fromIndex) {
+        protected RegexResult execute(RegexCompiledRegex regex, Object input, int fromIndex) {
             return regionMatchesNode.execute(input, literal, fromIndex) ? resultFactory.createFromStart(regex, input, fromIndex) : RegexResult.NO_MATCH;
         }
     }

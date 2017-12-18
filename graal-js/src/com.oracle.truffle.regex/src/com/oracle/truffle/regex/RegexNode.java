@@ -29,7 +29,7 @@ public abstract class RegexNode extends RootNode {
         Object[] args = frame.getArguments();
         assert args.length == 3;
 
-        CompiledRegex regex = (CompiledRegex) args[0];
+        RegexCompiledRegex regex = (RegexCompiledRegex) args[0];
         Object input = args[1];
         int fromIndex = NumberConversion.intValue((Number) args[2]);
 
@@ -43,7 +43,7 @@ public abstract class RegexNode extends RootNode {
         return execute(regex, input, fromIndex);
     }
 
-    protected abstract RegexResult execute(CompiledRegex regex, Object input, int fromIndex);
+    protected abstract RegexResult execute(RegexCompiledRegex regex, Object input, int fromIndex);
 
     @Override
     @TruffleBoundary

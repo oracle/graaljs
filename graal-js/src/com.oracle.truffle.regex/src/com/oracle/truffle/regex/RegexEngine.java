@@ -10,10 +10,10 @@ public interface RegexEngine {
      * Uses the engine to try and compile the regular expression described in {@code source}.
      * 
      * @param source
-     * @return the {@link CompiledRegex} or null if the engine could not compile the regular
+     * @return the {@link RegexCompiledRegex} or null if the engine could not compile the regular
      *         expression
      * @throws RegexSyntaxException if the engine discovers a syntax error in the regular expression
      */
-    CompiledRegex compile(RegexSource source) throws RegexSyntaxException;
+    RegexCompiledRegex compile(RegexSource source) throws RegexSyntaxException;
 
 }

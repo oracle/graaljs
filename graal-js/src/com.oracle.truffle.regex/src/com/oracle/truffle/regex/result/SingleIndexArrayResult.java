@@ -5,13 +5,13 @@
 package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.regex.CompiledRegex;
+import com.oracle.truffle.regex.RegexCompiledRegex;
 
 public final class SingleIndexArrayResult extends RegexResult {
 
     @CompilationFinal(dimensions = 1) private final int[] indices;
 
-    public SingleIndexArrayResult(CompiledRegex regex, Object input, int[] indices) {
+    public SingleIndexArrayResult(RegexCompiledRegex regex, Object input, int[] indices) {
         super(regex, input, indices.length / 2);
         this.indices = indices;
     }

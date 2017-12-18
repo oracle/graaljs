@@ -11,11 +11,12 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.RegexCompiledRegex;
 import com.oracle.truffle.regex.runtime.RegexCompiledRegexMessageResolutionFactory.ReadCacheNodeGen;
 import com.oracle.truffle.regex.runtime.nodes.ExecuteRegexDispatchNode;
 
 @MessageResolution(receiverType = RegexCompiledRegex.class)
-class RegexCompiledRegexMessageResolution {
+public class RegexCompiledRegexMessageResolution {
 
     abstract static class CompiledRegexPropertyNode extends Node {
 
@@ -26,7 +27,7 @@ class RegexCompiledRegexMessageResolution {
 
         @Override
         Object execute(RegexCompiledRegex receiver) {
-            return receiver.getRegex().getSource().getPattern();
+            return receiver.getSource().getPattern();
         }
     }
 
@@ -34,7 +35,7 @@ class RegexCompiledRegexMessageResolution {
 
         @Override
         Object execute(RegexCompiledRegex receiver) {
-            return receiver.getFlagsObject();
+            return receiver.getSource().getFlags();
         }
     }
 
@@ -100,7 +101,7 @@ class RegexCompiledRegexMessageResolution {
             if (args.length != 2) {
                 throw ArityException.raise(2, args.length);
             }
-            return doExecute.execute(receiver.getRegex(), args[0], args[1]);
+            return doExecute.execute(receiver, args[0], args[1]);
         }
     }
 }

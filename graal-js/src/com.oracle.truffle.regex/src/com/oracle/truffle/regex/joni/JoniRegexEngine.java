@@ -7,7 +7,7 @@ package com.oracle.truffle.regex.joni;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.regex.CompiledRegex;
+import com.oracle.truffle.regex.RegexCompiledRegex;
 import com.oracle.truffle.regex.RegexEngine;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
@@ -57,7 +57,7 @@ public final class JoniRegexEngine implements RegexEngine {
 
     @CompilerDirectives.TruffleBoundary
     @Override
-    public CompiledRegex compile(RegexSource source) throws RegexSyntaxException {
+    public RegexCompiledRegex compile(RegexSource source) throws RegexSyntaxException {
         Regex implementation = createJoniRegex(source.getPattern(), source.getFlags());
         CallTarget callTarget;
         boolean group = PatternAnalyzer.containsGroup(source.getPattern());
@@ -66,7 +66,7 @@ public final class JoniRegexEngine implements RegexEngine {
         } else {
             callTarget = group ? searchGroupCallTarget() : searchSimpleCallTarget();
         }
-        return new JoniCompiledRegex(source, callTarget, implementation);
+        return new JoniRegexCompiledRegex(source, callTarget, implementation);
     }
 
     @CompilerDirectives.TruffleBoundary

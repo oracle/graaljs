@@ -81,12 +81,12 @@ public final class TRegexEngine implements RegexEngine {
                 return null;
             }
             if (ast.getRoot().isDead()) {
-                return new CompiledRegex(source, Truffle.getRuntime().createCallTarget(new DeadRegexNode(source.getPattern())));
+                return new RegexCompiledRegex(source, Truffle.getRuntime().createCallTarget(new DeadRegexNode(source.getPattern())));
             }
             RegexNode literal = LiteralRegexEngine.createNode(ast);
             if (literal != null) {
                 logSizes.log(String.format("\"/%s/\", \"%s\", %d, %d, %d, %d, %d, \"literal\"", source.getPattern(), source.getFlags(), 0, 0, 0, 0, 0));
-                return new CompiledRegex(source, Truffle.getRuntime().createCallTarget(literal));
+                return new RegexCompiledRegex(source, Truffle.getRuntime().createCallTarget(literal));
             }
             PreCalculatedResultFactory[] preCalculatedResults = null;
             if (!(properties.hasAlternations() || properties.hasLookAroundAssertions())) {
@@ -156,7 +156,7 @@ public final class TRegexEngine implements RegexEngine {
                 logAutomatonSizes(source, ast, nfa, traceFinder, captureGroupExecutor, executorNode, executorNodeB);
                 logAutomatonSizesCSV(source, ast, nfa, traceFinder, captureGroupExecutor, executorNode, executorNodeB);
             }
-            return new CompiledRegex(source, callTarget);
+            return new RegexCompiledRegex(source, callTarget);
         } catch (UnsupportedRegexException e) {
             phaseEnd("DFA Bailout");
             logBailout.log(e.getMessage() + ": " + source);

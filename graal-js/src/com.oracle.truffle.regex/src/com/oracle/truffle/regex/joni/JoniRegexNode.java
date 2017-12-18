@@ -5,7 +5,7 @@
 package com.oracle.truffle.regex.joni;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.CompiledRegex;
+import com.oracle.truffle.regex.RegexCompiledRegex;
 import com.oracle.truffle.regex.RegexNode;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Matcher;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Regex;
@@ -30,8 +30,8 @@ public abstract class JoniRegexNode extends RegexNode {
     }
 
     @Override
-    protected RegexResult execute(CompiledRegex regex, Object input, int fromIndex) {
-        Regex impl = ((JoniCompiledRegex) regex).implementation;
+    protected RegexResult execute(RegexCompiledRegex regex, Object input, int fromIndex) {
+        Regex impl = ((JoniRegexCompiledRegex) regex).implementation;
         Matcher matcher = sticky ? match(impl, toStringNode.execute(input), fromIndex) : search(impl, toStringNode.execute(input), fromIndex);
 
         return (matcher != null) ? getMatchResult(regex, input, matcher) : RegexResult.NO_MATCH;
@@ -55,7 +55,7 @@ public abstract class JoniRegexNode extends RegexNode {
         return isMatch ? matcher : null;
     }
 
-    protected abstract RegexResult getMatchResult(CompiledRegex regex, Object input, Matcher matcher);
+    protected abstract RegexResult getMatchResult(RegexCompiledRegex regex, Object input, Matcher matcher);
 
     @Override
     protected String getEngineLabel() {
@@ -68,7 +68,7 @@ public abstract class JoniRegexNode extends RegexNode {
         }
 
         @Override
-        protected RegexResult getMatchResult(CompiledRegex regex, Object input, Matcher matcher) {
+        protected RegexResult getMatchResult(RegexCompiledRegex regex, Object input, Matcher matcher) {
             return new SingleResult(regex, input, matcher.getBegin(), matcher.getEnd());
         }
 
@@ -84,7 +84,7 @@ public abstract class JoniRegexNode extends RegexNode {
         }
 
         @Override
-        protected RegexResult getMatchResult(CompiledRegex regex, Object input, Matcher matcher) {
+        protected RegexResult getMatchResult(RegexCompiledRegex regex, Object input, Matcher matcher) {
             Region reg = matcher.getRegion();
             return new StartsEndsIndexArrayResult(regex, input, reg.beg, reg.end);
         }

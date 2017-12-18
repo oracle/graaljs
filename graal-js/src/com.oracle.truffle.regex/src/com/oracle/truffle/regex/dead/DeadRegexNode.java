@@ -4,7 +4,7 @@
  */
 package com.oracle.truffle.regex.dead;
 
-import com.oracle.truffle.regex.CompiledRegex;
+import com.oracle.truffle.regex.RegexCompiledRegex;
 import com.oracle.truffle.regex.RegexNode;
 import com.oracle.truffle.regex.result.RegexResult;
 
@@ -21,7 +21,7 @@ public final class DeadRegexNode extends RegexNode {
     }
 
     @Override
-    protected RegexResult execute(CompiledRegex regex, Object input, int fromIndex) {
+    protected RegexResult execute(RegexCompiledRegex regex, Object input, int fromIndex) {
         return RegexResult.NO_MATCH;
     }
 

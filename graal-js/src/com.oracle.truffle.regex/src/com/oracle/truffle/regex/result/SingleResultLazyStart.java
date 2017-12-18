@@ -5,7 +5,7 @@
 package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.regex.CompiledRegex;
+import com.oracle.truffle.regex.RegexCompiledRegex;
 
 public final class SingleResultLazyStart extends RegexResult {
 
@@ -14,7 +14,7 @@ public final class SingleResultLazyStart extends RegexResult {
     private final int end;
     private final CallTarget findStartCallTarget;
 
-    public SingleResultLazyStart(CompiledRegex regex, Object input, int fromIndex, int end, CallTarget findStartCallTarget) {
+    public SingleResultLazyStart(RegexCompiledRegex regex, Object input, int fromIndex, int end, CallTarget findStartCallTarget) {
         super(regex, input, 1);
         this.fromIndex = fromIndex;
         this.end = end;

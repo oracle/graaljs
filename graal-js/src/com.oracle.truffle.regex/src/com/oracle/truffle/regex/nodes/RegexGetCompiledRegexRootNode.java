@@ -8,8 +8,8 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.regex.RegexCompiledRegex;
 import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.runtime.RegexCompiledRegex;
 
 @NodeInfo(language = "REGEX", description = "REGEX RootNode responsible for providing access to a RegexCompiledRegex")
 public class RegexGetCompiledRegexRootNode extends RootNode {

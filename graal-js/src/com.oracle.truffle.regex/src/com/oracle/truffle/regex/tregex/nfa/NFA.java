@@ -114,6 +114,9 @@ public class NFA implements StateIndex<NFAState> {
     }
 
     public NFAMatcherState createLoopBackMatcher() {
+        if (states[states.length - 1] != null) {
+            return (NFAMatcherState) states[states.length - 1];
+        }
         ASTNodeSet<RegexASTNode> cc = new ASTNodeSet<>(ast);
         CharacterClass loopBackCC = ast.createLoopBackMatcher();
         cc.add(loopBackCC);
