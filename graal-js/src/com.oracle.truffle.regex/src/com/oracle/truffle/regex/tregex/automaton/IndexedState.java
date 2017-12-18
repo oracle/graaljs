@@ -5,5 +5,5 @@
 package com.oracle.truffle.regex.tregex.automaton;
 
 public interface IndexedState {
-    int getId();
+    short getId();
 }

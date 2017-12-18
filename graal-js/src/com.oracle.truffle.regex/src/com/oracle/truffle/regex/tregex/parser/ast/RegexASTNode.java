@@ -47,7 +47,7 @@ public abstract class RegexASTNode implements IndexedState {
     }
 
     @Override
-    public int getId() {
+    public short getId() {
         assert idInitialized();
         return id;
     }

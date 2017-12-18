@@ -5,5 +5,8 @@
 package com.oracle.truffle.regex.tregex.automaton;
 
 public interface StateIndex<S> {
-    S[] getIndex();
+
+    int getNumberOfStates();
+
+    S getState(int id);
 }

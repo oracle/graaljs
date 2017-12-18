@@ -251,19 +251,19 @@ public final class NFATraceFinderGenerator {
     }
 
     private NFAFinalState copy(NFAFinalState state, int resultID) {
-        final NFAFinalState copy = new NFAFinalState(stateID.inc(), state.getStateSet(), resultID);
+        final NFAFinalState copy = new NFAFinalState((short) stateID.inc(), state.getStateSet(), resultID);
         registerCopy(state, copy);
         return copy;
     }
 
     private NFAAnchoredFinalState copy(NFAAnchoredFinalState state, int resultID) {
-        final NFAAnchoredFinalState copy = new NFAAnchoredFinalState(stateID.inc(), state.getStateSet(), resultID);
+        final NFAAnchoredFinalState copy = new NFAAnchoredFinalState((short) stateID.inc(), state.getStateSet(), resultID);
         registerCopy(state, copy);
         return copy;
     }
 
     private NFAMatcherState copy(NFAMatcherState s, int resultID) {
-        final NFAMatcherState copy = new NFAMatcherState(stateID.inc(), s.getStateSet(), s.getMatcherBuilder(), s.getFinishedLookBehinds(), s.hasPrefixStates());
+        final NFAMatcherState copy = new NFAMatcherState((short) stateID.inc(), s.getStateSet(), s.getMatcherBuilder(), s.getFinishedLookBehinds(), s.hasPrefixStates());
         copy.addPossibleResult(resultID);
         registerCopy(s, copy);
         return copy;

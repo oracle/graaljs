@@ -90,8 +90,13 @@ public class RegexAST implements StateIndex<RegexASTNode> {
     }
 
     @Override
-    public RegexASTNode[] getIndex() {
-        return nodes;
+    public int getNumberOfStates() {
+        return nodes.length;
+    }
+
+    @Override
+    public RegexASTNode getState(int id) {
+        return nodes[id];
     }
 
     public void setIndex(RegexASTNode[] index) {

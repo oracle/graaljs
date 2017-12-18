@@ -10,11 +10,11 @@ import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 public class NFAFinalState extends NFAAbstractFinalState {
 
-    public NFAFinalState(int id, ASTNodeSet<? extends RegexASTNode> stateSet) {
+    public NFAFinalState(short id, ASTNodeSet<? extends RegexASTNode> stateSet) {
         super(id, stateSet);
     }
 
-    public NFAFinalState(int id, ASTNodeSet<? extends RegexASTNode> stateSet, int preCalculatedResultIndex) {
+    public NFAFinalState(short id, ASTNodeSet<? extends RegexASTNode> stateSet, int preCalculatedResultIndex) {
         super(id, stateSet, preCalculatedResultIndex);
     }
 

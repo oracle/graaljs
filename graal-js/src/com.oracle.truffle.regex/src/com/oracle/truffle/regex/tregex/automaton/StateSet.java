@@ -47,7 +47,7 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
 
     private void checkSwitchToBitSet(int newSize) {
         if (!useBitSet() && newSize > SWITCH_TO_BITSET_THRESHOLD) {
-            bitSet = new CompilationFinalBitSet(stateIndex.getIndex().length);
+            bitSet = new CompilationFinalBitSet(stateIndex.getNumberOfStates());
             for (int i = 0; i < size(); i++) {
                 bitSet.set(stateListElement(stateList));
                 stateList >>>= Short.SIZE;
@@ -117,7 +117,7 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
 
     private boolean contains(int index) {
         if (useBitSet()) {
-            return bitSet.getWithoutBoundsCheck(index);
+            return bitSet.get(index);
         }
         long sl = stateList;
         for (int i = 0; i < size(); i++) {
@@ -145,7 +145,7 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
     }
 
     private boolean add(int index) {
-        assert index <= 0xffff;
+        assert index >= 0 && index <= 0xffff;
         if (contains(index)) {
             return false;
         }
@@ -175,10 +175,13 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
     @SuppressWarnings("unchecked")
     @Override
     public boolean remove(Object o) {
-        S state = (S) o;
+        return remove(((S) o).getId());
+    }
+
+    private boolean remove(int stateID) {
         if (useBitSet()) {
-            if (bitSet.get(state.getId())) {
-                bitSet.clear(state.getId());
+            if (bitSet.get(stateID)) {
+                bitSet.clear(stateID);
                 size--;
                 setHashComputed(false);
                 return true;
@@ -186,7 +189,7 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
         } else {
             long sl = stateList;
             for (int i = 0; i < size(); i++) {
-                if (stateListElement(sl) == state.getId()) {
+                if (stateListElement(sl) == stateID) {
                     switch (i) {
                         case 0:
                             stateList = sl >>> Short.SIZE;
@@ -420,6 +423,7 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
 
         private final StateIndex<? super S> stateIndex;
         private final PrimitiveIterator.OfInt intIterator;
+        private int lastID = -1;
 
         private StateSetIterator(StateIndex<? super S> stateIndex, PrimitiveIterator.OfInt intIterator) {
             this.stateIndex = stateIndex;
@@ -434,7 +438,14 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
         @SuppressWarnings("unchecked")
         @Override
         public S next() {
-            return (S) stateIndex.getIndex()[intIterator.nextInt()];
+            lastID = intIterator.nextInt();
+            return (S) stateIndex.getState(lastID);
+        }
+
+        @Override
+        public void remove() {
+            assert lastID >= 0;
+            StateSet.this.remove(lastID);
         }
     }
 

@@ -44,15 +44,15 @@ public final class NFAGenerator {
         this.ast = ast;
         this.astStepVisitor = new ASTStepVisitor(ast, compilationBuffer);
         stateID.inc();
-        anchoredFinalState = new NFAAnchoredFinalState(stateID.inc(), new ASTNodeSet<>(ast, ast.getReachableDollars()));
-        finalState = new NFAFinalState(stateID.inc(), new ASTNodeSet<>(ast, ast.getRoot().getSubTreeParent().getMatchFound()));
+        anchoredFinalState = new NFAAnchoredFinalState((short) stateID.inc(), new ASTNodeSet<>(ast, ast.getReachableDollars()));
+        finalState = new NFAFinalState((short) stateID.inc(), new ASTNodeSet<>(ast, ast.getRoot().getSubTreeParent().getMatchFound()));
         nfaStates.put(anchoredFinalState.getStateSet(), anchoredFinalState);
         nfaStates.put(finalState.getStateSet(), finalState);
         anchoredInitialStates = new ArrayList<>(ast.getWrappedPrefixLength() + 1);
         initialStates = new ArrayList<>(ast.getWrappedPrefixLength() + 1);
         for (int i = 0; i <= ast.getWrappedPrefixLength(); i++) {
-            final NFAFinalState initialState = new NFAFinalState(stateID.inc(), new ASTNodeSet<>(ast, ast.getNFAUnAnchoredInitialState(i)));
-            final NFAAnchoredFinalState anchoredInitialState = new NFAAnchoredFinalState(stateID.inc(), new ASTNodeSet<>(ast, ast.getNFAAnchoredInitialState(i)));
+            final NFAFinalState initialState = new NFAFinalState((short) stateID.inc(), new ASTNodeSet<>(ast, ast.getNFAUnAnchoredInitialState(i)));
+            final NFAAnchoredFinalState anchoredInitialState = new NFAAnchoredFinalState((short) stateID.inc(), new ASTNodeSet<>(ast, ast.getNFAAnchoredInitialState(i)));
             initialStates.add(initialState);
             anchoredInitialStates.add(anchoredInitialState);
             nfaStates.put(initialState.getStateSet(), initialState);
@@ -172,7 +172,7 @@ public final class NFAGenerator {
         if (nfaStates.containsKey(stateSetCC)) {
             return nfaStates.get(stateSetCC);
         } else {
-            NFAState state = new NFAMatcherState(stateID.inc(), stateSetCC, matcherBuilder, finishedLookBehinds, containsPrefixStates);
+            NFAState state = new NFAMatcherState((short) stateID.inc(), stateSetCC, matcherBuilder, finishedLookBehinds, containsPrefixStates);
             expansionQueue.push(state);
             nfaStates.put(state.getStateSet(), state);
             return state;

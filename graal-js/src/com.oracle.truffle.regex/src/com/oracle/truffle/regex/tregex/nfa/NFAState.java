@@ -25,14 +25,14 @@ import java.util.stream.Collectors;
  */
 public abstract class NFAState implements IndexedState {
 
-    private final int id;
+    private final short id;
     private final ASTNodeSet<? extends RegexASTNode> stateSet;
     private boolean hasPrefixStates;
     private List<NFAStateTransition> next;
     private List<NFAStateTransition> prev;
     private List<Integer> possibleResults;
 
-    protected NFAState(int id, ASTNodeSet<? extends RegexASTNode> stateSet, List<NFAStateTransition> next, List<NFAStateTransition> prev, List<Integer> possibleResults) {
+    protected NFAState(short id, ASTNodeSet<? extends RegexASTNode> stateSet, List<NFAStateTransition> next, List<NFAStateTransition> prev, List<Integer> possibleResults) {
         this.id = id;
         this.stateSet = stateSet;
         this.next = next;
@@ -40,7 +40,7 @@ public abstract class NFAState implements IndexedState {
         this.possibleResults = possibleResults;
     }
 
-    protected NFAState(int id, ASTNodeSet<? extends RegexASTNode> stateSet) {
+    protected NFAState(short id, ASTNodeSet<? extends RegexASTNode> stateSet) {
         this(id, stateSet, new ArrayList<>(), new ArrayList<>(), null);
     }
 
@@ -94,7 +94,7 @@ public abstract class NFAState implements IndexedState {
     }
 
     @Override
-    public int getId() {
+    public short getId() {
         return id;
     }
 
