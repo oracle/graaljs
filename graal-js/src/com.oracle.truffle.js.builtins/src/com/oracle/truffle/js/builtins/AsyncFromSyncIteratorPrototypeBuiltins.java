@@ -104,7 +104,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             this.iteratorNext = IteratorNextNodeGen.create(context);
             this.iteratorComplete = IteratorCompleteNodeGen.create(context);
             this.iteratorValue = IteratorValueNodeGen.create(context);
-            this.getGeneratorTarget = PropertyGetNode.create("SyncIterator", false, context);
+            this.getGeneratorTarget = PropertyGetNode.create(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, false, context);
             this.performPromiseThenCall = JSFunctionCallNode.create(false);
         }
 

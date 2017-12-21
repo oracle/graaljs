@@ -69,6 +69,7 @@ public final class JSFunction extends JSBuiltinObject {
     public static final String BUILTIN_SOURCE_NAME = "<builtin>";
     public static final SourceSection BUILTIN_SOURCE_SECTION = createBuiltinSourceSection(BUILTIN_SOURCE_NAME);
 
+    public static final HiddenKey ASYNC_FROM_SYNC_ITERATOR_KEY = new HiddenKey("SyncIterator");
     public static final String ASYNC_FROM_SYNC_ITERATOR_PROTOTYPE_NAME = "%AsyncFromSyncIteratorPrototype%";
 
     private static final Property PROTOTYPE_PROPERTY_WRITABLE;
