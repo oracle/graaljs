@@ -27,15 +27,10 @@ import java.util.stream.Collectors;
 public class DFAExport {
 
     @CompilerDirectives.TruffleBoundary
-    public static void exportDot(Map<NFATransitionSet, DFAStateNodeBuilder> stateMap,
-                    short[] anchoredEntries, short[] unAnchoredEntries, String path, boolean shortLabels) {
-        TreeSet<Short> anchoredIDs = new TreeSet<>();
-        for (short i : anchoredEntries) {
-            anchoredIDs.add(i);
-        }
-        TreeSet<Short> unAnchoredIDs = new TreeSet<>();
-        for (short i : unAnchoredEntries) {
-            unAnchoredIDs.add(i);
+    public static void exportDot(Map<NFATransitionSet, DFAStateNodeBuilder> stateMap, short[] entryStates, String path, boolean shortLabels) {
+        TreeSet<Short> entryIDs = new TreeSet<>();
+        for (short i : entryStates) {
+            entryIDs.add(i);
         }
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
             writer.write("digraph finite_state_machine {");
@@ -55,26 +50,20 @@ public class DFAExport {
             writer.write("    node [shape = circle];");
             writer.newLine();
             for (DFAStateNodeBuilder state : stateMap.values()) {
-                if (anchoredIDs.contains(state.getId())) {
-                    for (int i = 0; i < anchoredEntries.length; i++) {
-                        if (anchoredEntries[i] == state.getId()) {
-                            DotExport.printConnection(writer, "Anchored" + i, dotState(state, shortLabels), "");
-                            break;
-                        }
-                    }
-                }
-                if (unAnchoredIDs.contains(state.getId())) {
-                    for (int i = 0; i < unAnchoredEntries.length; i++) {
-                        if (unAnchoredEntries[i] == state.getId()) {
-                            DotExport.printConnection(writer, "UnAnchored" + i, dotState(state, shortLabels), "");
+                if (entryIDs.contains(state.getId())) {
+                    for (int i = 0; i < entryStates.length; i++) {
+                        if (entryStates[i] == state.getId()) {
+                            DotExport.printConnection(writer, (i < entryStates.length / 2 ? "I^" : "I") + i, dotState(state, shortLabels), "");
                             break;
                         }
                     }
                 }
                 DFAStateNodeBuilder[] successors = state.getSuccessors();
                 MatcherBuilder[] matchers = state.getMatcherBuilders();
-                for (int i = 0; i < successors.length; i++) {
-                    DotExport.printConnection(writer, dotState(state, shortLabels), dotState(successors[i], shortLabels), matchers[i].toString());
+                if (successors != null) {
+                    for (int i = 0; i < successors.length; i++) {
+                        DotExport.printConnection(writer, dotState(state, shortLabels), dotState(successors[i], shortLabels), matchers[i].toString());
+                    }
                 }
             }
             writer.write("}");

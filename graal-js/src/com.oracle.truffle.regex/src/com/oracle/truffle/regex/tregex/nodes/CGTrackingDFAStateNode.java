@@ -8,7 +8,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
-import com.oracle.truffle.regex.tregex.nodes.input.InputIterator;
 
 public class CGTrackingDFAStateNode extends DFAStateNode {
 
@@ -46,108 +45,148 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     }
 
     @Override
-    protected void beforeFindSuccessor(VirtualFrame frame, InputIterator inputIterator, DFACaptureGroupLazyTransitionNode[] transitions, DFACaptureGroupTrackingData d) {
+    protected void beforeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
+        if (executor.isSearching()) {
+            checkFinalState(frame, executor, curIndex(frame, executor) + 1);
+        }
     }
 
     @Override
-    protected void successorFound1(VirtualFrame frame, InputIterator inputIterator, DFACaptureGroupLazyTransitionNode[] transitions, DFACaptureGroupTrackingData d, int i) {
+    protected void successorFound1(VirtualFrame frame, TRegexDFAExecutorNode executor, int i) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(i);
         if (precedingCaptureGroupTransitions.length == 1) {
-            transitions[precedingCaptureGroupTransitions[0]].getPartialTransitions()[i].apply(d, inputIterator.getIndex(frame));
+            executor.getCGTransitions()[precedingCaptureGroupTransitions[0]].getPartialTransitions()[i].apply(executor.getCGData(frame), executor.getIndex(frame));
         } else {
-            transitionDispatchNode.applyPartialTransition(transitions, inputIterator.getLastTransition(frame), i, d, inputIterator.getIndex(frame));
+            transitionDispatchNode.applyPartialTransition(frame, executor, executor.getLastTransition(frame), i, executor.getIndex(frame));
         }
-        inputIterator.setLastTransition(frame, captureGroupTransitions[i]);
+        executor.setLastTransition(frame, captureGroupTransitions[i]);
     }
 
     @Override
-    protected int atEnd1(VirtualFrame frame, InputIterator inputIterator, DFACaptureGroupLazyTransitionNode[] transitions, DFACaptureGroupTrackingData d) {
+    protected int atEnd1(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
-        int currentIndex = inputIterator.getIndex(frame) + 1;
-        if (isAnchoredFinalState() && inputIterator.atEnd(frame)) {
+        if (isAnchoredFinalState() && executor.atEnd(frame)) {
             if (precedingCaptureGroupTransitions.length == 1) {
-                transitions[precedingCaptureGroupTransitions[0]].getTransitionToAnchoredFinalState().apply(d, currentIndex);
+                executor.getCGTransitions()[precedingCaptureGroupTransitions[0]].getTransitionToAnchoredFinalState().applyFinalStateTransition(executor.getCGData(frame), executor.isSearching(),
+                                nextIndex(frame, executor));
             } else {
-                transitionDispatchNode.applyAnchoredFinalTransition(transitions, inputIterator.getLastTransition(frame), d, currentIndex, true);
+                transitionDispatchNode.applyAnchoredFinalTransition(frame, executor, executor.getLastTransition(frame), nextIndex(frame, executor));
             }
+            storeResult(frame, executor);
         } else {
-            assert isFinalState();
-            if (precedingCaptureGroupTransitions.length == 1) {
-                transitions[precedingCaptureGroupTransitions[0]].getTransitionToFinalState().apply(d, currentIndex);
-            } else {
-                transitionDispatchNode.applyFinalTransition(transitions, inputIterator.getLastTransition(frame), d, currentIndex, true);
-            }
+            checkFinalState(frame, executor, nextIndex(frame, executor));
         }
-        inputIterator.setResultObject(frame, d.results[d.currentResultOrder[DFACaptureGroupPartialTransitionNode.FINAL_STATE_RESULT_INDEX]]);
         return FS_RESULT_NO_SUCCESSOR;
     }
 
     @Override
-    protected void successorFound2(VirtualFrame frame, InputIterator inputIterator, DFACaptureGroupLazyTransitionNode[] transitions, DFACaptureGroupTrackingData d, int i) {
+    protected void successorFound2(VirtualFrame frame, TRegexDFAExecutorNode executor, int i) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(i);
-        assert inputIterator.getLastTransition(frame) == captureGroupTransitions[loopToSelf];
-        transitions[captureGroupTransitions[loopToSelf]].getPartialTransitions()[i].apply(d, inputIterator.getIndex(frame));
-        inputIterator.setLastTransition(frame, captureGroupTransitions[i]);
+        assert executor.getLastTransition(frame) == captureGroupTransitions[loopToSelf];
+        if (executor.isSearching()) {
+            checkFinalStateLoop(frame, executor, curIndex(frame, executor));
+        }
+        executor.getCGTransitions()[captureGroupTransitions[loopToSelf]].getPartialTransitions()[i].apply(executor.getCGData(frame), executor.getIndex(frame));
+        executor.setLastTransition(frame, captureGroupTransitions[i]);
     }
 
     @Override
-    protected void noSuccessor2(VirtualFrame frame, InputIterator inputIterator) {
-        throw new IllegalStateException();
-    }
-
-    @Override
-    protected int atEnd2(VirtualFrame frame, InputIterator inputIterator, DFACaptureGroupLazyTransitionNode[] transitions, DFACaptureGroupTrackingData d) {
+    protected void noSuccessor2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
-        return atEndLoop(frame, inputIterator, transitions, d);
+        assert executor.isSearching();
+        checkFinalStateLoop(frame, executor, curIndex(frame, executor));
     }
 
     @Override
-    protected void successorFound3(VirtualFrame frame, InputIterator inputIterator, DFACaptureGroupLazyTransitionNode[] transitions, DFACaptureGroupTrackingData d, int i, int preLoopIndex) {
+    protected int atEnd2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        return atEndLoop(frame, executor);
+    }
+
+    @Override
+    protected void successorFound3(VirtualFrame frame, TRegexDFAExecutorNode executor, int i, int preLoopIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(i);
-        applyLoopTransitions(transitions, d, preLoopIndex, inputIterator.getIndex(frame) - 1);
-        transitions[captureGroupTransitions[loopToSelf]].getPartialTransitions()[i].apply(d, inputIterator.getIndex(frame));
-        inputIterator.setLastTransition(frame, captureGroupTransitions[i]);
+        applyLoopTransitions(frame, executor, preLoopIndex, prevIndex(frame, executor));
+        if (executor.isSearching()) {
+            checkFinalStateLoop(frame, executor, curIndex(frame, executor));
+        }
+        executor.getCGTransitions()[captureGroupTransitions[loopToSelf]].getPartialTransitions()[i].apply(executor.getCGData(frame), executor.getIndex(frame));
+        executor.setLastTransition(frame, captureGroupTransitions[i]);
     }
 
     @Override
-    protected void noSuccessor3(VirtualFrame frame, InputIterator inputIterator) {
-        throw new IllegalStateException();
+    protected void noSuccessor3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        assert executor.isSearching();
+        applyLoopTransitions(frame, executor, preLoopIndex, prevIndex(frame, executor));
+        checkFinalStateLoop(frame, executor, curIndex(frame, executor));
     }
 
     @Override
-    protected int atEnd3(VirtualFrame frame, InputIterator inputIterator, DFACaptureGroupLazyTransitionNode[] transitions, DFACaptureGroupTrackingData d, int preLoopIndex) {
+    protected int atEnd3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
-        applyLoopTransitions(transitions, d, preLoopIndex, inputIterator.getIndex(frame));
-        return atEndLoop(frame, inputIterator, transitions, d);
+        applyLoopTransitions(frame, executor, preLoopIndex, executor.getIndex(frame));
+        return atEndLoop(frame, executor);
     }
 
-    private void applyLoopTransitions(DFACaptureGroupLazyTransitionNode[] transitions, DFACaptureGroupTrackingData d, int preLoopIndex, int postLoopIndex) {
+    private void applyLoopTransitions(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex, int postLoopIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
-        DFACaptureGroupPartialTransitionNode transition = transitions[captureGroupTransitions[loopToSelf]].getPartialTransitions()[loopToSelf];
+        DFACaptureGroupPartialTransitionNode transition = executor.getCGTransitions()[captureGroupTransitions[loopToSelf]].getPartialTransitions()[loopToSelf];
         if (transition.doesReorderResults()) {
             for (int i = preLoopIndex; i <= postLoopIndex; i++) {
-                transition.apply(d, i);
+                transition.apply(executor.getCGData(frame), i);
             }
         } else {
-            transition.apply(d, postLoopIndex);
+            transition.apply(executor.getCGData(frame), postLoopIndex);
         }
     }
 
-    private int atEndLoop(VirtualFrame frame, InputIterator inputIterator, DFACaptureGroupLazyTransitionNode[] transitions, DFACaptureGroupTrackingData d) {
+    private int atEndLoop(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
-        assert inputIterator.getLastTransition(frame) == captureGroupTransitions[loopToSelf];
-        int currentIndex = inputIterator.getIndex(frame) + 1;
-        if (isAnchoredFinalState() && inputIterator.atEnd(frame)) {
-            transitions[captureGroupTransitions[loopToSelf]].getTransitionToAnchoredFinalState().apply(d, currentIndex);
-        } else {
-            assert isFinalState();
-            transitions[captureGroupTransitions[loopToSelf]].getTransitionToFinalState().apply(d, currentIndex);
+        assert executor.getLastTransition(frame) == captureGroupTransitions[loopToSelf];
+        if (isAnchoredFinalState() && executor.atEnd(frame)) {
+            executor.getCGTransitions()[captureGroupTransitions[loopToSelf]].getTransitionToAnchoredFinalState().applyFinalStateTransition(executor.getCGData(frame), executor.isSearching(),
+                            nextIndex(frame, executor));
+            storeResult(frame, executor);
+        } else if (isFinalState()) {
+            executor.getCGTransitions()[captureGroupTransitions[loopToSelf]].getTransitionToFinalState().applyFinalStateTransition(executor.getCGData(frame), executor.isSearching(),
+                            nextIndex(frame, executor));
+            storeResult(frame, executor);
         }
-        inputIterator.setResultObject(frame, d.results[d.currentResultOrder[DFACaptureGroupPartialTransitionNode.FINAL_STATE_RESULT_INDEX]]);
         return FS_RESULT_NO_SUCCESSOR;
+    }
+
+    private void checkFinalState(VirtualFrame frame, TRegexDFAExecutorNode executor, int currentIndex) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        if (isFinalState()) {
+            if (precedingCaptureGroupTransitions.length == 1) {
+                executor.getCGTransitions()[precedingCaptureGroupTransitions[0]].getTransitionToFinalState().applyFinalStateTransition(executor.getCGData(frame), executor.isSearching(), currentIndex);
+            } else {
+                transitionDispatchNode.applyFinalTransition(frame, executor, executor.getLastTransition(frame), currentIndex);
+            }
+            storeResult(frame, executor);
+        }
+    }
+
+    private void checkFinalStateLoop(VirtualFrame frame, TRegexDFAExecutorNode executor, int currentIndex) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        assert executor.getLastTransition(frame) == captureGroupTransitions[loopToSelf];
+        if (isFinalState()) {
+            executor.getCGTransitions()[captureGroupTransitions[loopToSelf]].getTransitionToFinalState().applyFinalStateTransition(executor.getCGData(frame), executor.isSearching(), currentIndex);
+            storeResult(frame, executor);
+        }
+    }
+
+    private void storeResult(VirtualFrame frame, TRegexDFAExecutorNode executor) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        if (executor.isSearching()) {
+            executor.setResultObject(frame, executor.getCGData(frame).currentResult);
+        } else {
+            executor.setResultObject(frame, executor.getCGData(frame).results[executor.getCGData(frame).currentResultOrder[DFACaptureGroupPartialTransitionNode.FINAL_STATE_RESULT_INDEX]]);
+        }
     }
 }

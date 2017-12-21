@@ -130,7 +130,7 @@ public final class RegexFlags implements TruffleObject, RegexLanguageObject {
         return obj == this || obj != null && obj instanceof RegexFlags && value == ((RegexFlags) obj).value;
     }
 
-    public static boolean isInstance(Object object) {
+    public static boolean isInstance(TruffleObject object) {
         return object instanceof RegexFlags;
     }
 

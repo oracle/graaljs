@@ -16,11 +16,13 @@ public class RegexCompiledRegex implements TruffleObject, RegexLanguageObject {
     private final RegexSource source;
     private final CallTarget callTarget;
     private final RegexCompiledRegexExec execMethod;
+    private final RegexProfile regexProfile;
 
     public RegexCompiledRegex(RegexSource source, CallTarget callTarget) {
         this.source = source;
         this.callTarget = callTarget;
         execMethod = new RegexCompiledRegexExec(this);
+        regexProfile = new RegexProfile();
     }
 
     public RegexSource getSource() {
@@ -40,7 +42,11 @@ public class RegexCompiledRegex implements TruffleObject, RegexLanguageObject {
         return execMethod;
     }
 
-    public static boolean isInstance(Object object) {
+    public RegexProfile getRegexProfile() {
+        return regexProfile;
+    }
+
+    public static boolean isInstance(TruffleObject object) {
         return object instanceof RegexCompiledRegex;
     }
 

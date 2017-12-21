@@ -165,14 +165,14 @@ public final class NFATransitionSet implements Iterable<NFAStateTransition> {
         if (target instanceof NFAMatcherState) {
             appendTransition(transition);
         } else if (target instanceof NFAAnchoredFinalState) {
-            anchoredFinalState = (short) target.getId();
+            anchoredFinalState = target.getId();
             if (target.hasPossibleResults()) {
                 updatePreCalcAnchoredResult(target.getPossibleResults().get(0));
             }
             appendTransition(transition);
         } else {
             assert target instanceof NFAFinalState;
-            finalState = (short) target.getId();
+            finalState = target.getId();
             if (target.hasPossibleResults()) {
                 updatePreCalcUnAnchoredResult(target.getPossibleResults().get(0));
             }

@@ -10,14 +10,14 @@ import com.oracle.truffle.regex.tregex.automaton.IndexedState;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.ShortArrayBuffer;
-import com.oracle.truffle.regex.tregex.nodes.DFAStateNode;
+import com.oracle.truffle.regex.tregex.nodes.DFAAbstractStateNode;
+import com.oracle.truffle.regex.tregex.nodes.DFAInitialStateNode;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -39,7 +39,7 @@ public final class DFANodeSplit implements StateIndex<DFANodeSplit.GraphNode> {
 
         private static final short[] NO_DOM_CHILDREN = new short[0];
 
-        private DFAStateNode dfaNode;
+        private DFAAbstractStateNode dfaNode;
         boolean dfaNodeCopied = false;
         private final short[] successorSet;
 
@@ -61,11 +61,7 @@ public final class DFANodeSplit implements StateIndex<DFANodeSplit.GraphNode> {
 
         GraphNode copy;
 
-        GraphNode(DFANodeSplit graph) {
-            this(graph, null, null);
-        }
-
-        GraphNode(DFANodeSplit graph, DFAStateNode dfaNode, short[] successorSet) {
+        GraphNode(DFANodeSplit graph, DFAAbstractStateNode dfaNode, short[] successorSet) {
             this.dfaNode = dfaNode;
             this.successorSet = successorSet;
             predecessorSet = new short[10];
@@ -92,7 +88,11 @@ public final class DFANodeSplit implements StateIndex<DFANodeSplit.GraphNode> {
             this.traversed = cpy.traversed;
         }
 
-        void createCopy(DFANodeSplit graph, short dfaNodeId, List<GraphNode> nodes) {
+        void createCopy(DFANodeSplit graph, short dfaNodeId) {
+            if (getId() == 0) {
+                assert dfaNode instanceof DFAInitialStateNode;
+                throw new UnsupportedOperationException();
+            }
             this.copy = new GraphNode(this, dfaNodeId);
             graph.addGraphNode(copy);
         }
@@ -282,58 +282,7 @@ public final class DFANodeSplit implements StateIndex<DFANodeSplit.GraphNode> {
         }
     }
 
-    private static class EntryNode extends GraphNode {
-
-        private short[] entries;
-
-        private EntryNode(DFANodeSplit graph) {
-            super(graph);
-        }
-
-        public void setEntries(short[] entries) {
-            this.entries = entries;
-        }
-
-        @Override
-        public short getId() {
-            return Short.MAX_VALUE;
-        }
-
-        @Override
-        int nodeWeight() {
-            return 0;
-        }
-
-        @Override
-        void createCopy(DFANodeSplit graph, short dfaNodeId, List<GraphNode> nodes) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        void replaceSuccessor(GraphNode suc) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        Iterable<GraphNode> successors(StateIndex<GraphNode> index) {
-            return () -> new Iterator<GraphNode>() {
-
-                private int i = 0;
-
-                @Override
-                public boolean hasNext() {
-                    return i < entries.length;
-                }
-
-                @Override
-                public GraphNode next() {
-                    return index.getState(entries[i++]);
-                }
-            };
-        }
-    }
-
-    private final EntryNode start;
+    private final GraphNode start;
     private final ArrayList<GraphNode> nodes;
     private short nextId;
 
@@ -341,16 +290,20 @@ public final class DFANodeSplit implements StateIndex<DFANodeSplit.GraphNode> {
     private GraphNode[] postOrder;
     private int[] doms;
 
-    private DFANodeSplit(short[] anchoredEntries, short[] unAnchoredEntries, DFAStateNode[] dfa) {
+    private DFANodeSplit(DFAAbstractStateNode[] dfa) {
         nodes = new ArrayList<>(dfa.length);
         CompilationFinalBitSet successorBitSet = new CompilationFinalBitSet(dfa.length);
         ShortArrayBuffer successorBuffer = new ShortArrayBuffer();
-        for (DFAStateNode n : dfa) {
+        for (DFAAbstractStateNode n : dfa) {
             for (int i = 0; i < n.getSuccessors().length; i++) {
-                if (!successorBitSet.get(n.getSuccessors()[i])) {
-                    successorBuffer.add((short) i);
+                if (n.getSuccessors()[i] == -1) {
+                    assert n instanceof DFAInitialStateNode;
+                } else {
+                    if (!successorBitSet.get(n.getSuccessors()[i])) {
+                        successorBuffer.add((short) i);
+                    }
+                    successorBitSet.set(n.getSuccessors()[i]);
                 }
-                successorBitSet.set(n.getSuccessors()[i]);
             }
             GraphNode graphNode = new GraphNode(this, n, successorBuffer.toArray());
             successorBitSet.clear();
@@ -363,24 +316,10 @@ public final class DFANodeSplit implements StateIndex<DFANodeSplit.GraphNode> {
                 successor.addPredecessorUnsorted(graphNode);
             }
         }
-        start = new EntryNode(this);
-        for (short[] arr : new short[][] {anchoredEntries, unAnchoredEntries}) {
-            for (short i : arr) {
-                if (i != -1) {
-                    if (!successorBitSet.get(i)) {
-                        successorBuffer.add(i);
-                    }
-                    successorBitSet.set(i);
-                }
-            }
-        }
-        start.setEntries(successorBuffer.toArray());
-        for (GraphNode successor : start.successors(this)) {
-            successor.addPredecessorUnsorted(start);
-        }
         for (GraphNode n : nodes) {
             n.sortPredecessors();
         }
+        start = nodes.get(0);
     }
 
     private void addGraphNode(GraphNode graphNode) {
@@ -389,29 +328,26 @@ public final class DFANodeSplit implements StateIndex<DFANodeSplit.GraphNode> {
         assert graphNode == nodes.get(graphNode.getId());
     }
 
-    public static DFAStateNode[] createReducibleGraph(short[] anchoredEntries, short[] unAnchoredEntries, DFAStateNode[] nodes) throws DFANodeSplitBailoutException {
-        return new DFANodeSplit(anchoredEntries, unAnchoredEntries, nodes).process();
+    public static DFAAbstractStateNode[] createReducibleGraph(DFAAbstractStateNode[] nodes) throws DFANodeSplitBailoutException {
+        return new DFANodeSplit(nodes).process();
     }
 
     @Override
     public int getNumberOfStates() {
-        return nodes.size() + 1;
+        return nodes.size();
     }
 
     @Override
     public GraphNode getState(int id) {
-        if (id == Short.MAX_VALUE) {
-            return start;
-        }
         return nodes.get(id);
     }
 
-    private DFAStateNode[] process() throws DFANodeSplitBailoutException {
+    private DFAAbstractStateNode[] process() throws DFANodeSplitBailoutException {
         createDomTree();
         searchBackEdges(start);
         markUndone();
         splitLoops(start, new TreeSet<>());
-        DFAStateNode[] ret = new DFAStateNode[nodes.size()];
+        DFAAbstractStateNode[] ret = new DFAAbstractStateNode[nodes.size()];
         for (GraphNode node : nodes) {
             ret[node.dfaNode.getId()] = node.dfaNode;
         }
@@ -426,11 +362,6 @@ public final class DFANodeSplit implements StateIndex<DFANodeSplit.GraphNode> {
     }
 
     private boolean graphIsConsistent() {
-        for (GraphNode s : start.successors(this)) {
-            if (!s.hasPredecessor(start)) {
-                return false;
-            }
-        }
         for (GraphNode n : nodes) {
             for (GraphNode s : n.successors(this)) {
                 if (!s.hasPredecessor(n)) {
@@ -443,12 +374,11 @@ public final class DFANodeSplit implements StateIndex<DFANodeSplit.GraphNode> {
 
     private void buildPostOrder() {
         assert graphIsConsistent();
-        start.traversed = false;
         for (GraphNode n : nodes) {
             n.traversed = false;
         }
         nextPostOrderIndex = 0;
-        postOrder = new GraphNode[nodes.size() + 1];
+        postOrder = new GraphNode[nodes.size()];
         traversePostOrder(start);
         assert allNodesTraversed();
     }
@@ -465,9 +395,6 @@ public final class DFANodeSplit implements StateIndex<DFANodeSplit.GraphNode> {
     }
 
     private boolean allNodesTraversed() {
-        if (!start.traversed) {
-            return false;
-        }
         for (GraphNode n : nodes) {
             if (!n.traversed) {
                 return false;
@@ -477,7 +404,7 @@ public final class DFANodeSplit implements StateIndex<DFANodeSplit.GraphNode> {
     }
 
     private void buildDominatorTree() {
-        doms = new int[nodes.size() + 1];
+        doms = new int[nodes.size()];
         Arrays.fill(doms, -1);
         doms[start.postOrderIndex] = start.postOrderIndex;
         boolean changed = true;
@@ -514,7 +441,6 @@ public final class DFANodeSplit implements StateIndex<DFANodeSplit.GraphNode> {
                 }
             }
         }
-        start.clearDomChildren();
         for (GraphNode n : nodes) {
             n.clearDomChildren();
         }
@@ -647,7 +573,7 @@ public final class DFANodeSplit implements StateIndex<DFANodeSplit.GraphNode> {
                 if (nextId == TRegexOptions.TRegexMaxDFASizeAfterNodeSplitting) {
                     throw new DFANodeSplitBailoutException();
                 }
-                n.createCopy(this, nextId++, nodes);
+                n.createCopy(this, nextId++);
             }
         }
         for (GraphNode cur : scc) {
@@ -730,7 +656,6 @@ public final class DFANodeSplit implements StateIndex<DFANodeSplit.GraphNode> {
     }
 
     private void markUndone() {
-        start.markUndone();
         for (GraphNode node : nodes) {
             node.markUndone();
         }

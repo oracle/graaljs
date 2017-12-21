@@ -6,7 +6,6 @@ package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
-import com.oracle.truffle.regex.tregex.nodes.input.InputIterator;
 
 public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
 
@@ -56,17 +55,17 @@ public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
     }
 
     @Override
-    protected void storeResult(VirtualFrame frame, InputIterator inputIterator, int index, boolean anchored) {
+    protected void storeResult(VirtualFrame frame, TRegexDFAExecutorNode executor, int index, boolean anchored) {
         if (anchored) {
             assert hasPreCalculatedAnchoredResult();
             if (hasPreCalculatedUnAnchoredResult() && getPreCalculatedUnAnchoredResult() < getPreCalculatedAnchoredResult()) {
-                inputIterator.setResultInt(frame, getPreCalculatedUnAnchoredResult());
+                executor.setResultInt(frame, getPreCalculatedUnAnchoredResult());
             } else {
-                inputIterator.setResultInt(frame, getPreCalculatedAnchoredResult());
+                executor.setResultInt(frame, getPreCalculatedAnchoredResult());
             }
         } else {
             assert hasPreCalculatedUnAnchoredResult();
-            inputIterator.setResultInt(frame, getPreCalculatedUnAnchoredResult());
+            executor.setResultInt(frame, getPreCalculatedUnAnchoredResult());
         }
     }
 }

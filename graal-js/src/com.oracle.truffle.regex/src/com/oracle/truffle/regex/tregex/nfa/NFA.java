@@ -122,7 +122,7 @@ public class NFA implements StateIndex<NFAState> {
         cc.add(loopBackCC);
         NFAMatcherState ret = new NFAMatcherState((short) stateIDCounter.inc(), cc, MatcherBuilder.createFull(), Collections.emptySet(), false);
         for (NFAStateTransition t : getUnAnchoredEntry().get(0).getNext()) {
-            NFAStateTransition loopBackTransition = new NFAStateTransition((short) transitionIDCounter.inc(), ret, t.getTarget(), new GroupBoundaries());
+            NFAStateTransition loopBackTransition = new NFAStateTransition((short) transitionIDCounter.inc(), ret, t.getTarget(), t.getGroupBoundaries());
             assert transitions[loopBackTransition.getId()] == null;
             transitions[loopBackTransition.getId()] = loopBackTransition;
             ret.addLoopBackNext(loopBackTransition);

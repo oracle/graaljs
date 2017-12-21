@@ -52,6 +52,49 @@ public final class DFACaptureGroupPartialTransitionNode extends Node {
         applyIndexClear(d.results, d.currentResultOrder);
     }
 
+    public void applyFinalStateTransition(DFACaptureGroupTrackingData d, boolean searching, final int currentIndex) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        if (!searching) {
+            apply(d, currentIndex);
+            return;
+        }
+        CompilerAsserts.partialEvaluationConstant(this);
+        final int source;
+        if (newOrder == null) {
+            source = 0;
+        } else {
+            source = Byte.toUnsignedInt(newOrder[0]);
+        }
+        System.arraycopy(d.results[d.currentResultOrder[source]], 0, d.currentResult, 0, d.currentResult.length);
+        assert arrayCopies.length == 0;
+        assert indexUpdates.length <= 1;
+        assert indexClears.length <= 1;
+        if (indexUpdates.length == 1) {
+            assert indexUpdates[0][0] == 0;
+            applyFinalStateTransitionIndexUpdates(d, currentIndex);
+        }
+        if (indexClears.length == 1) {
+            assert indexClears[0][0] == 0;
+            applyFinalStateTransitionIndexClears(d);
+        }
+    }
+
+    @ExplodeLoop
+    private void applyFinalStateTransitionIndexUpdates(DFACaptureGroupTrackingData d, int currentIndex) {
+        for (int i = 1; i < indexUpdates[0].length; i++) {
+            final int targetIndex = Byte.toUnsignedInt(indexUpdates[0][i]);
+            d.currentResult[targetIndex] = currentIndex;
+        }
+    }
+
+    @ExplodeLoop
+    private void applyFinalStateTransitionIndexClears(DFACaptureGroupTrackingData d) {
+        for (int i = 1; i < indexClears[0].length; i++) {
+            final int targetIndex = Byte.toUnsignedInt(indexClears[0][i]);
+            d.currentResult[targetIndex] = 0;
+        }
+    }
+
     @ExplodeLoop
     private void applyNewOrder(int[] currentResultOrder, int[] swap) {
         for (int i = 0; i < newOrder.length; i++) {

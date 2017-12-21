@@ -6,17 +6,10 @@ package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
-import com.oracle.truffle.regex.tregex.nodes.input.InputIterator;
 
 public class BackwardDFAStateNode extends DFAStateNode {
 
-    public BackwardDFAStateNode(short id,
-                    boolean finalState,
-                    boolean anchoredFinalState,
-                    boolean findSingleChar,
-                    short loopToSelf,
-                    short[] successors,
-                    CharMatcher[] matchers) {
+    public BackwardDFAStateNode(short id, boolean finalState, boolean anchoredFinalState, boolean findSingleChar, short loopToSelf, short[] successors, CharMatcher[] matchers) {
         super(id, finalState, anchoredFinalState, findSingleChar, loopToSelf, successors, matchers);
     }
 
@@ -39,31 +32,31 @@ public class BackwardDFAStateNode extends DFAStateNode {
     }
 
     @Override
-    protected int prevIndex(VirtualFrame frame, InputIterator inputIterator) {
-        return inputIterator.getIndex(frame) + 1;
+    protected int prevIndex(VirtualFrame frame, TRegexDFAExecutorNode executor) {
+        return executor.getIndex(frame) + 1;
     }
 
     @Override
-    protected int atEnd1(VirtualFrame frame, InputIterator inputIterator, DFACaptureGroupLazyTransitionNode[] transitions, DFACaptureGroupTrackingData d) {
-        super.atEnd1(frame, inputIterator, transitions, d);
-        return switchToPrefixState(inputIterator, frame);
+    protected int atEnd1(VirtualFrame frame, TRegexDFAExecutorNode executor) {
+        super.atEnd1(frame, executor);
+        return switchToPrefixState(executor, frame);
     }
 
     @Override
-    protected int atEnd2(VirtualFrame frame, InputIterator inputIterator, DFACaptureGroupLazyTransitionNode[] transitions, DFACaptureGroupTrackingData d) {
-        super.atEnd2(frame, inputIterator, transitions, d);
-        return switchToPrefixState(inputIterator, frame);
+    protected int atEnd2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
+        super.atEnd2(frame, executor);
+        return switchToPrefixState(executor, frame);
     }
 
     @Override
-    protected int atEnd3(VirtualFrame frame, InputIterator inputIterator, DFACaptureGroupLazyTransitionNode[] transitions, DFACaptureGroupTrackingData d, int preLoopIndex) {
-        super.atEnd3(frame, inputIterator, transitions, d, preLoopIndex);
-        return switchToPrefixState(inputIterator, frame);
+    protected int atEnd3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {
+        super.atEnd3(frame, executor, preLoopIndex);
+        return switchToPrefixState(executor, frame);
     }
 
-    private int switchToPrefixState(InputIterator inputIterator, VirtualFrame frame) {
-        if (inputIterator.getIndex(frame) == inputIterator.getFromIndex(frame) - 1 && inputIterator.getFromIndex(frame) - 1 > inputIterator.getMaxIndex(frame) && hasBackwardPrefixState()) {
-            inputIterator.setCurMaxIndex(frame, inputIterator.getMaxIndex(frame));
+    private int switchToPrefixState(TRegexDFAExecutorNode executor, VirtualFrame frame) {
+        if (executor.getIndex(frame) == executor.getFromIndex(frame) - 1 && executor.getFromIndex(frame) - 1 > executor.getMaxIndex(frame) && hasBackwardPrefixState()) {
+            executor.setCurMaxIndex(frame, executor.getMaxIndex(frame));
             return getBackwardPrefixStateIndex();
         }
         return FS_RESULT_NO_SUCCESSOR;

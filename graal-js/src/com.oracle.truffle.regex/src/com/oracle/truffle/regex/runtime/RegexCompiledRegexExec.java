@@ -21,10 +21,6 @@ public final class RegexCompiledRegexExec implements TruffleObject, RegexLanguag
         return regex;
     }
 
-    public static boolean isInstance(Object object) {
-        return object instanceof RegexCompiledRegexExec;
-    }
-
     public static boolean isInstance(TruffleObject object) {
         return object instanceof RegexCompiledRegexExec;
     }

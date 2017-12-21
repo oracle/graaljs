@@ -6,68 +6,56 @@ package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.tregex.nodes.input.InputIterator;
+import com.oracle.truffle.regex.tregex.nodes.input.InputCharAtNode;
+import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 
 public final class TRegexDFAExecutorNode extends Node {
 
     public static final int NO_MATCH = -2;
-    @Child private InputIterator inputIterator;
-
-    /**
-     * Entry points in case we start matching at the beginning of the input string.
-     */
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final short[] anchoredEntry;
-
-    /**
-     * Entry points in case we do not start matching at the beginning of the input string. If all
-     * possible matches must start at the beginning of the input string, entry points may be -1.
-     */
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final short[] unAnchoredEntry;
-
-    @Children private final DFAStateNode[] states;
-
-    @Children private final DFACaptureGroupLazyTransitionNode[] transitions;
-
-    private final boolean trackCaptureGroups;
+    private final TRegexDFAExecutorProperties props;
     private final int maxNumberOfNFAStates;
-    private final int numberOfCaptureGroups;
+    @Child private InputLengthNode lengthNode = InputLengthNode.create();
+    @Child private InputCharAtNode charAtNode = InputCharAtNode.create();
+    @Children private final DFAAbstractStateNode[] states;
+    @Children private final DFACaptureGroupLazyTransitionNode[] cgTransitions;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final short[] anchoredInitCaptureGroupTransition;
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final short[] unAnchoredInitCaptureGroupTransition;
-
-    public TRegexDFAExecutorNode(
-                    InputIterator inputIterator,
-                    short[] anchoredEntry,
-                    short[] unAnchoredEntry,
-                    DFAStateNode[] states,
-                    DFACaptureGroupLazyTransitionNode[] transitions,
-                    boolean trackCaptureGroups,
-                    int maxNumberOfNFAStates,
-                    int numberOfCaptureGroups,
-                    short[] anchoredInitCaptureGroupTransition,
-                    short[] unAnchoredInitCaptureGroupTransition) {
-        this.transitions = transitions;
-        assert anchoredEntry.length == unAnchoredEntry.length;
-        this.inputIterator = inputIterator;
-        this.anchoredEntry = anchoredEntry;
-        this.unAnchoredEntry = unAnchoredEntry;
-        this.states = states;
-        this.trackCaptureGroups = trackCaptureGroups;
+    public TRegexDFAExecutorNode(TRegexDFAExecutorProperties props, int maxNumberOfNFAStates, DFAAbstractStateNode[] states, DFACaptureGroupLazyTransitionNode[] cgTransitions) {
+        this.props = props;
         this.maxNumberOfNFAStates = maxNumberOfNFAStates;
-        this.numberOfCaptureGroups = numberOfCaptureGroups;
-        this.anchoredInitCaptureGroupTransition = anchoredInitCaptureGroupTransition;
-        this.unAnchoredInitCaptureGroupTransition = unAnchoredInitCaptureGroupTransition;
+        this.states = states;
+        this.cgTransitions = cgTransitions;
+    }
+
+    private DFAInitialStateNode getInitialState() {
+        return (DFAInitialStateNode) states[0];
     }
 
     public int getPrefixLength() {
-        return anchoredEntry.length - 1;
+        return getInitialState().getPrefixLength();
     }
 
-    public boolean hasUnAnchoredEntry() {
-        return unAnchoredEntry[0] != -1;
+    public boolean isAnchored() {
+        return !getInitialState().hasUnAnchoredEntry();
+    }
+
+    public boolean isForward() {
+        return props.isForward();
+    }
+
+    public boolean isBackward() {
+        return !props.isForward();
+    }
+
+    public boolean isSearching() {
+        return props.isSearching();
+    }
+
+    public DFACaptureGroupLazyTransitionNode[] getCGTransitions() {
+        return cgTransitions;
     }
 
     public int getNumberOfStates() {
@@ -75,7 +63,7 @@ public final class TRegexDFAExecutorNode extends Node {
     }
 
     public int getNumberOfCaptureGroups() {
-        return numberOfCaptureGroups;
+        return props.getNumberOfCaptureGroups();
     }
 
     /**
@@ -83,80 +71,204 @@ public final class TRegexDFAExecutorNode extends Node {
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     protected void execute(final VirtualFrame frame) {
+        CompilerDirectives.ensureVirtualized(frame);
+        CompilerAsserts.compilationConstant(states);
         CompilerAsserts.compilationConstant(states.length);
-        CompilerAsserts.compilationConstant(anchoredEntry.length);
-        CompilerAsserts.compilationConstant(unAnchoredEntry.length);
-        if (!inputIterator.validArgs(frame)) {
+        if (!validArgs(frame)) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalArgumentException(String.format("Got illegal args! (fromIndex %d, initialIndex %d, maxIndex %d)",
-                            inputIterator.getFromIndex(frame), inputIterator.getIndex(frame), inputIterator.getMaxIndex(frame)));
+                            getFromIndex(frame), getIndex(frame), getMaxIndex(frame)));
         }
-        if (inputIterator.isBackward() && inputIterator.getFromIndex(frame) - 1 > inputIterator.getMaxIndex(frame)) {
-            inputIterator.setCurMaxIndex(frame, inputIterator.getFromIndex(frame) - 1);
+        if (isBackward() && getFromIndex(frame) - 1 > getMaxIndex(frame)) {
+            setCurMaxIndex(frame, getFromIndex(frame) - 1);
         } else {
-            inputIterator.setCurMaxIndex(frame, inputIterator.getMaxIndex(frame));
+            setCurMaxIndex(frame, getMaxIndex(frame));
         }
-        final DFACaptureGroupTrackingData cgData;
-        if (trackCaptureGroups) {
-            cgData = new DFACaptureGroupTrackingData(maxNumberOfNFAStates, numberOfCaptureGroups);
-            initResultOrder(cgData);
-            inputIterator.setResultObject(frame, cgData.results[0]);
+        if (props.isTrackCaptureGroups()) {
+            createCGData(frame);
+            initResultOrder(frame);
+            setResultObject(frame, null);
         } else {
-            cgData = null;
-            inputIterator.setResultInt(frame, TRegexDFAExecutorNode.NO_MATCH);
+            setResultInt(frame, TRegexDFAExecutorNode.NO_MATCH);
         }
-        int ip = -1;
+        int ip = 0;
         outer: while (true) {
-            if (ip == -1) {
-                final int lookBehindOffset = trackCaptureGroups ? Math.max(0, Math.min(anchoredEntry.length - 1, inputIterator.getFromIndex(frame) - inputIterator.getIndex(frame)))
-                                : inputIterator.rewindUpTo(frame, anchoredEntry.length - 1);
-                if (inputIterator.atBegin(frame)) {
-                    for (int i = 0; i < anchoredEntry.length; i++) {
-                        if (i == lookBehindOffset) {
-                            if (trackCaptureGroups) {
-                                inputIterator.setLastTransition(frame, anchoredInitCaptureGroupTransition[i]);
-                            }
-                            ip = anchoredEntry[i];
-                            continue outer;
-                        }
-                    }
-                    throw new IllegalStateException();
-                } else if (!hasUnAnchoredEntry()) {
-                    break;
-                } else {
-                    for (int i = 0; i < unAnchoredEntry.length; i++) {
-                        if (i == lookBehindOffset) {
-                            if (trackCaptureGroups) {
-                                inputIterator.setLastTransition(frame, unAnchoredInitCaptureGroupTransition[i]);
-                            }
-                            ip = unAnchoredEntry[i];
-                            continue outer;
-                        }
-                    }
-                    throw new IllegalStateException();
-                }
-            }
             CompilerAsserts.partialEvaluationConstant(ip);
-            CompilerAsserts.partialEvaluationConstant(states[ip]);
-            final DFAStateNode curState = states[ip];
+            if (ip == -1) {
+                break;
+            }
+            final DFAAbstractStateNode curState = states[ip];
             CompilerAsserts.partialEvaluationConstant(curState);
             final short[] successors = curState.getSuccessors();
             CompilerAsserts.partialEvaluationConstant(successors);
-            final int successorIndex = curState.execute(frame, inputIterator, transitions, cgData);
+            CompilerAsserts.partialEvaluationConstant(successors.length);
+            curState.execute(frame, this);
+            if (getSuccessorIndex(frame) == -1) {
+                break;
+            }
             for (int i = 0; i < successors.length; i++) {
-                if (i == successorIndex) {
+                if (i == getSuccessorIndex(frame)) {
                     ip = successors[i];
                     continue outer;
                 }
             }
-            break;
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException();
+        }
+    }
+
+    public int getIndex(VirtualFrame frame) {
+        return FrameUtil.getIntSafe(frame, props.getIndexFS());
+    }
+
+    public void setIndex(VirtualFrame frame, int i) {
+        frame.setInt(props.getIndexFS(), i);
+    }
+
+    public int getFromIndex(VirtualFrame frame) {
+        return FrameUtil.getIntSafe(frame, props.getFromIndexFS());
+    }
+
+    public void setFromIndex(VirtualFrame frame, int fromIndex) {
+        frame.setInt(props.getFromIndexFS(), fromIndex);
+    }
+
+    public int getMaxIndex(VirtualFrame frame) {
+        return FrameUtil.getIntSafe(frame, props.getMaxIndexFS());
+    }
+
+    public void setMaxIndex(VirtualFrame frame, int maxIndex) {
+        frame.setInt(props.getMaxIndexFS(), maxIndex);
+    }
+
+    public int getCurMaxIndex(VirtualFrame frame) {
+        return FrameUtil.getIntSafe(frame, props.getCurMaxIndexFS());
+    }
+
+    public void setCurMaxIndex(VirtualFrame frame, int value) {
+        frame.setInt(props.getCurMaxIndexFS(), value);
+    }
+
+    public Object getInput(VirtualFrame frame) {
+        return FrameUtil.getObjectSafe(frame, props.getInputFS());
+    }
+
+    public void setInput(VirtualFrame frame, Object input) {
+        frame.setObject(props.getInputFS(), input);
+    }
+
+    public int getInputLength(VirtualFrame frame) {
+        return lengthNode.execute(getInput(frame));
+    }
+
+    public char getChar(VirtualFrame frame) {
+        return charAtNode.execute(getInput(frame), getIndex(frame));
+    }
+
+    public void advance(VirtualFrame frame) {
+        setIndex(frame, props.isForward() ? getIndex(frame) + 1 : getIndex(frame) - 1);
+    }
+
+    public boolean hasNext(VirtualFrame frame) {
+        return props.isForward() ? getIndex(frame) < getCurMaxIndex(frame) : getIndex(frame) > getCurMaxIndex(frame);
+    }
+
+    public boolean atBegin(VirtualFrame frame) {
+        return getIndex(frame) == (props.isForward() ? 0 : getInputLength(frame) - 1);
+    }
+
+    public boolean atEnd(VirtualFrame frame) {
+        final int i = getIndex(frame);
+        if (props.isForward()) {
+            return i == getInputLength(frame);
+        } else {
+            return i < 0;
+        }
+    }
+
+    public int rewindUpTo(VirtualFrame frame, int length) {
+        if (props.isForward()) {
+            final int offset = Math.min(getIndex(frame), length);
+            setIndex(frame, getIndex(frame) - offset);
+            return offset;
+        } else {
+            assert length == 0;
+            return 0;
+        }
+    }
+
+    public void setLastTransition(VirtualFrame frame, short lastTransition) {
+        frame.setInt(props.getLastTransitionFS(), lastTransition);
+    }
+
+    public short getLastTransition(VirtualFrame frame) {
+        return (short) FrameUtil.getIntSafe(frame, props.getLastTransitionFS());
+    }
+
+    public void setSuccessorIndex(VirtualFrame frame, int successorIndex) {
+        frame.setInt(props.getSuccessorIndexFS(), successorIndex);
+    }
+
+    public int getSuccessorIndex(VirtualFrame frame) {
+        return FrameUtil.getIntSafe(frame, props.getSuccessorIndexFS());
+    }
+
+    public int getResultInt(VirtualFrame frame) {
+        assert !props.isTrackCaptureGroups();
+        return FrameUtil.getIntSafe(frame, props.getResultFS());
+    }
+
+    public void setResultInt(VirtualFrame frame, int result) {
+        frame.setInt(props.getResultFS(), result);
+    }
+
+    public int[] getResultCaptureGroups(VirtualFrame frame) {
+        assert props.isTrackCaptureGroups();
+        return (int[]) FrameUtil.getObjectSafe(frame, props.getCaptureGroupResultFS());
+    }
+
+    public void setResultObject(VirtualFrame frame, Object result) {
+        frame.setObject(props.getCaptureGroupResultFS(), result);
+    }
+
+    public DFACaptureGroupTrackingData getCGData(VirtualFrame frame) {
+        return (DFACaptureGroupTrackingData) FrameUtil.getObjectSafe(frame, props.getCgDataFS());
+    }
+
+    private void createCGData(VirtualFrame frame) {
+        DFACaptureGroupTrackingData trackingData = new DFACaptureGroupTrackingData(maxNumberOfNFAStates, props.getNumberOfCaptureGroups());
+        frame.setObject(props.getCgDataFS(), trackingData);
+    }
+
+    private boolean validArgs(VirtualFrame frame) {
+        final int initialIndex = getIndex(frame);
+        final int inputLength = getInputLength(frame);
+        final int fromIndex = getFromIndex(frame);
+        final int maxIndex = getMaxIndex(frame);
+        if (props.isForward()) {
+            return inputLength >= 0 && inputLength < Integer.MAX_VALUE - 20 &&
+                            fromIndex >= 0 && fromIndex <= inputLength &&
+                            initialIndex >= 0 && initialIndex <= inputLength &&
+                            maxIndex >= 0 && maxIndex <= inputLength &&
+                            initialIndex <= maxIndex;
+        } else {
+            return inputLength >= 0 && inputLength < Integer.MAX_VALUE - 20 &&
+                            fromIndex >= 0 && fromIndex <= inputLength &&
+                            initialIndex >= -1 && initialIndex < inputLength &&
+                            maxIndex >= -1 && maxIndex < inputLength &&
+                            initialIndex >= maxIndex;
         }
     }
 
     @ExplodeLoop
-    private void initResultOrder(DFACaptureGroupTrackingData cgData) {
+    private void initResultOrder(VirtualFrame frame) {
+        DFACaptureGroupTrackingData cgData = getCGData(frame);
         for (int i = 0; i < maxNumberOfNFAStates; i++) {
             cgData.currentResultOrder[i] = i;
         }
+    }
+
+    public TRegexDFAExecutorProperties getProperties() {
+        return props;
     }
 }

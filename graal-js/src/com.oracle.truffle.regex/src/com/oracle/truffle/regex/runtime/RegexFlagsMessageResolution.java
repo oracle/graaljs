@@ -6,10 +6,8 @@ package com.oracle.truffle.regex.runtime;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexFlags;
@@ -126,14 +124,6 @@ public class RegexFlagsMessageResolution {
 
         public Object access(RegexFlags receiver, String symbol) {
             return cache.execute(receiver, symbol);
-        }
-    }
-
-    @CanResolve
-    abstract static class CanResolveRegexFlagsObjectNode extends Node {
-
-        public boolean test(TruffleObject receiver) {
-            return receiver instanceof RegexFlagsObject;
         }
     }
 }

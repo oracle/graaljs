@@ -51,7 +51,7 @@ public abstract class RegexResult implements TruffleObject, RegexLanguageObject 
         return endArrayObject;
     }
 
-    public static boolean isInstance(Object object) {
+    public static boolean isInstance(TruffleObject object) {
         return object instanceof RegexResult;
     }
 

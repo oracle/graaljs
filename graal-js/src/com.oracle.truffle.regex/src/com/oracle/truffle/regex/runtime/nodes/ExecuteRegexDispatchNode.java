@@ -19,10 +19,10 @@ public abstract class ExecuteRegexDispatchNode extends Node {
 
     @Specialization(guards = "receiver == cachedReceiver", limit = "4")
     public RegexResult doCached(RegexCompiledRegex receiver, Object input, Object fromIndex,
-                                      @Cached("create()") ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
-                                      @Cached("create()") ExpectNumberNode expectNumberNode,
-                                      @SuppressWarnings("unused") @Cached("receiver") RegexCompiledRegex cachedReceiver,
-                                      @Cached("create(cachedReceiver.getCallTarget())") DirectCallNode directCallNode) {
+                    @Cached("create()") ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
+                    @Cached("create()") ExpectNumberNode expectNumberNode,
+                    @SuppressWarnings("unused") @Cached("receiver") RegexCompiledRegex cachedReceiver,
+                    @Cached("create(cachedReceiver.getCallTarget())") DirectCallNode directCallNode) {
         final Object unboxedInput = expectStringOrTruffleObjectNode.execute(input);
         final Number fromIndexNumber = expectNumberNode.execute(fromIndex);
         if (fromIndexNumber instanceof Long && ((Long) fromIndexNumber) > Integer.MAX_VALUE) {
@@ -33,9 +33,9 @@ public abstract class ExecuteRegexDispatchNode extends Node {
 
     @Specialization(replaces = "doCached")
     public RegexResult doUnCached(RegexCompiledRegex receiver, Object input, Object fromIndex,
-                                        @Cached("create()") ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
-                                        @Cached("create()") ExpectNumberNode expectNumberNode,
-                                        @Cached("create()") IndirectCallNode indirectCallNode) {
+                    @Cached("create()") ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
+                    @Cached("create()") ExpectNumberNode expectNumberNode,
+                    @Cached("create()") IndirectCallNode indirectCallNode) {
         final Object unboxedInput = expectStringOrTruffleObjectNode.execute(input);
         final Number fromIndexNumber = expectNumberNode.execute(fromIndex);
         if (fromIndexNumber instanceof Long && ((Long) fromIndexNumber) > Integer.MAX_VALUE) {

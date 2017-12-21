@@ -4,9 +4,6 @@
  */
 package com.oracle.truffle.regex;
 
-import java.util.Collections;
-import java.util.Map;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
@@ -17,12 +14,13 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.joni.JoniRegexEngine;
 import com.oracle.truffle.regex.nodes.RegexGetCompiledRegexRootNode;
 import com.oracle.truffle.regex.result.RegexResult;
-import com.oracle.truffle.regex.runtime.RegexCompiledRegex;
-import com.oracle.truffle.regex.runtime.RegexResultObject;
 import com.oracle.truffle.regex.tregex.TRegexEngine;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.util.LRUCache;
+
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * Truffle Regular Expression Language
@@ -131,8 +129,8 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
 
     private ParsingResult compileCallTarget(RegexSource regexSource) {
         try {
-            CompiledRegex regex = compileRegex(regexSource);
-            RegexGetCompiledRegexRootNode rootNode = new RegexGetCompiledRegexRootNode(this, null, new RegexCompiledRegex(regex));
+            RegexCompiledRegex regex = compileRegex(regexSource);
+            RegexGetCompiledRegexRootNode rootNode = new RegexGetCompiledRegexRootNode(this, null, regex);
             return new ParsingResult(Truffle.getRuntime().createCallTarget(rootNode), null);
         } catch (RegexSyntaxException e) {
             return new ParsingResult(null, e);
