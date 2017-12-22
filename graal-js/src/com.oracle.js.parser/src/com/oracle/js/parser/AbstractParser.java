@@ -432,8 +432,43 @@ public abstract class AbstractParser {
     }
 
     /**
-     * Certain future reserved words can be used as identifiers in non-strict mode. Check if the
-     * current token is one such.
+     * Get the value of a specific token. If the current token contains an Unicode sequence, the method
+     * does not attempt to convert it.
+     *
+     * @param valueToken the token
+     *
+     * @return JavaScript value of the token
+     */
+    protected final Object getValueNoUnicode(final long valueToken) {
+        try {
+            return lexer.getValueOf(valueToken, isStrictMode, false);
+        } catch (final ParserException e) {
+            errors.error(e);
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the value of a specific token
+     *
+     * @param valueToken the token
+     *
+     * @return JavaScript value of the token
+     */
+    protected final Object getValue(final long valueToken, boolean skipUnicode) {
+        try {
+            return lexer.getValueOf(valueToken, isStrictMode, skipUnicode);
+        } catch (final ParserException e) {
+            errors.error(e);
+        }
+
+        return null;
+    }
+
+    /**
+     * Certain future reserved words can be used as identifiers in non-strict mode. Check if the current
+     * token is one such.
      *
      * @return true if non strict mode identifier
      */

@@ -5944,7 +5944,7 @@ loop:
     }
 
     private boolean isAsync() {
-        return ES8_ASYNC_FUNCTION && isES8() && type == IDENT && ASYNC_IDENT.equals(getValue(token));
+        return ES8_ASYNC_FUNCTION && isES8() && type == IDENT && ASYNC_IDENT.equals(getValueNoUnicode(token));
     }
 
     private boolean lookaheadIsAsyncArrowParameterListStart() {
