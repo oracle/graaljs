@@ -30,7 +30,6 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 @ImportStatic(JSInteropUtil.class)
 @NodeChild(value = "iteratedObject", type = JavaScriptNode.class)
 public abstract class GetIteratorNode extends JavaScriptNode {
-    @Child private PropertySetNode setState;
     @Child private GetMethodNode getIteratorMethodNode;
 
     protected final JSContext context;
