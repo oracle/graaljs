@@ -371,8 +371,8 @@ public abstract class AbstractParser {
     }
 
     /**
-     * Check next token, get its value and advance. If the current token contains an Unicode sequence,
-     * the method does not attempt to convert it.
+     * Check next token, get its value and advance. If the current token contains an Unicode
+     * sequence, the method does not attempt to convert it.
      *
      * @param expected Expected tokenType.
      * @return The JavaScript value of the token
@@ -391,8 +391,8 @@ public abstract class AbstractParser {
     }
 
     /**
-     * Get the value of the current token. If the current token contains an Unicode sequence, the method
-     * does not attempt to convert it.
+     * Get the value of the current token. If the current token contains an Unicode sequence, the
+     * method does not attempt to convert it.
      *
      * @return JavaScript value of the token.
      */
@@ -432,8 +432,8 @@ public abstract class AbstractParser {
     }
 
     /**
-     * Get the value of a specific token. If the current token contains an Unicode sequence, the method
-     * does not attempt to convert it.
+     * Get the value of a specific token. If the current token contains an Unicode sequence, the
+     * method does not attempt to convert it.
      *
      * @param valueToken the token
      *
@@ -467,8 +467,8 @@ public abstract class AbstractParser {
     }
 
     /**
-     * Certain future reserved words can be used as identifiers in non-strict mode. Check if the current
-     * token is one such.
+     * Certain future reserved words can be used as identifiers in non-strict mode. Check if the
+     * current token is one such.
      *
      * @return true if non strict mode identifier
      */
