@@ -2336,16 +2336,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         rhsNode = factory.createNotUndefinedOr(rhsNode, transform(init));
                     }
                     if (lhsExpr != null && lhsExpr.isTokenType(TokenType.SPREAD_ARRAY)) {
-                        // spread arrays require to use a normal iterator, even when asynchronous
-                        // iterators are used in for-await-of.
-                        getIterator = factory.createGetIterator(context, initValue);
-                        initIteratorTempVar = iteratorTempVar.createWriteNode(getIterator);
-                        writeDone = doneVar.createWriteNode(factory.createConstantBoolean(true));
                         rhsNode = factory.createIteratorToArray(context, iteratorTempVar.createReadNode(), writeDone);
                         lhsExpr = ((UnaryNode) lhsExpr).getExpression();
                     }
                     if (lhsExpr != null) {
-                        initElements[i] = transformAssignment(lhsExpr, rhsNode, null, false, false, initializationAssignment, false);
+                        initElements[i] = transformAssignment(lhsExpr, rhsNode, null, false, false, initializationAssignment);
                     } else {
                         initElements[i] = rhsNode;
                     }
