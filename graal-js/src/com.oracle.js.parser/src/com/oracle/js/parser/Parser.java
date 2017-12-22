@@ -3678,7 +3678,7 @@ loop:
 
         if (ES6_NEW_TARGET && type == PERIOD && isES6()) {
             next();
-            if (type == IDENT && "target".equals(getValue())) {
+            if (type == IDENT && "target".equals(getValueNoUnicode())) {
                 if (lc.getCurrentFunction().isProgram()) {
                     throw error(AbstractParser.message("new.target.in.function"), token);
                 }
