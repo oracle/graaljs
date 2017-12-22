@@ -371,8 +371,28 @@ public abstract class AbstractParser {
     }
 
     /**
-     * Get the value of the current token. If the current token contains an Unicode sequence, the
-     * method does not attempt to convert it.
+     * Check next token, get its value and advance. If the current token contains an Unicode sequence,
+     * the method does not attempt to convert it.
+     *
+     * @param expected Expected tokenType.
+     * @return The JavaScript value of the token
+     * @throws ParserException on unexpected token type
+     */
+    protected final Object expectValueNoUnicode(final TokenType expected) throws ParserException {
+        if (type != expected) {
+            throw error(expectMessage(expected));
+        }
+
+        final Object value = getValueNoUnicode();
+
+        next();
+
+        return value;
+    }
+
+    /**
+     * Get the value of the current token. If the current token contains an Unicode sequence, the method
+     * does not attempt to convert it.
      *
      * @return JavaScript value of the token.
      */

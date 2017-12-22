@@ -5587,7 +5587,7 @@ loop:
         assert type == MUL;
         next();
         long asToken = token;
-        String as = (String) expectValue(IDENT);
+        String as = (String) expectValueNoUnicode(IDENT);
         if (!"as".equals(as)) {
             throw error(AbstractParser.message("expected.as"), asToken);
         }
@@ -5618,7 +5618,7 @@ loop:
             boolean bindingIdentifier = isBindingIdentifier();
             long nameToken = token;
             IdentNode importName = getIdentifierName();
-            if (type == IDENT && "as".equals(getValue())) {
+            if (type == IDENT && "as".equals(getValueNoUnicode())) {
                 next();
                 IdentNode localName = bindingIdentifier("ImportedBinding");
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
@@ -5828,7 +5828,7 @@ loop:
             } else {
                 throw error(expectMessage(IDENT));
             }
-            if (type == IDENT && "as".equals(getValue())) {
+            if (type == IDENT && "as".equals(getValueNoUnicode())) {
                 next();
                 IdentNode exportName = getIdentifierName();
                 exports.add(new ExportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, exportName));
