@@ -5648,7 +5648,7 @@ loop:
     private FromNode fromClause() {
         int fromStart = start;
         long fromToken = token;
-        String name = (String) expectValue(IDENT);
+        String name = (String) expectValueNoUnicode(IDENT);
         if (!"from".equals(name)) {
             throw error(AbstractParser.message("expected.from"), fromToken);
         }
@@ -5692,7 +5692,7 @@ loop:
             }
             case LBRACE: {
                 ExportClauseNode exportClause = exportClause();
-                if (type == IDENT && "from".equals(getValue())) {
+                if (type == IDENT && "from".equals(getValueNoUnicode())) {
                     FromNode from = fromClause();
                     module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from));
                     String moduleRequest = from.getModuleSpecifier().getValue();
@@ -5845,7 +5845,7 @@ loop:
         }
         expect(RBRACE);
 
-        if (reservedWordToken != 0L && !(type == IDENT && "from".equals(getValue()))) {
+        if (reservedWordToken != 0L && !(type == IDENT && "from".equals(getValueNoUnicode()))) {
             throw error(AbstractParser.message("expected", IDENT.getNameOrType(), Token.toString(source, reservedWordToken)), reservedWordToken);
         }
 
