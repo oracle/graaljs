@@ -3335,7 +3335,7 @@ loop:
         final boolean computed = type == LBRACKET;
         if (type == IDENT) {
             // Get IDENT.
-            final String ident = (String)expectValue(IDENT);
+            final String ident = (String)expectValueNoUnicode(IDENT);
 
             if (type != COLON && type != COMMARIGHT && type != RBRACE && ((type != ASSIGN && type != LPAREN) || !isES6())) {
                 final long getSetToken = propertyToken;
