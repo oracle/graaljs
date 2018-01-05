@@ -1,0 +1,76 @@
+/*
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ */
+package com.oracle.truffle.js.nodes.binary;
+
+import java.util.Objects;
+
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.Truncatable;
+import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
+import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
+import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
+import com.oracle.truffle.js.runtime.LargeInteger;
+
+/**
+ * The Left Shift Operator ( << ), special-cased for the step to be a constant integer value.
+ */
+@NodeInfo(shortName = "<<")
+@NodeField(name = "shiftValue", type = int.class)
+public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
+
+    public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
+        assert right instanceof JSConstantIntegerNode;
+        int shiftValue = ((JSConstantIntegerNode) right).executeInt(null);
+        if (left instanceof JSConstantIntegerNode) {
+            int leftValue = ((JSConstantIntegerNode) left).executeInt(null);
+            return JSConstantNode.createInt(leftValue << shiftValue);
+        }
+        Truncatable.truncate(left);
+        return JSLeftShiftConstantNodeGen.create(left, shiftValue);
+    }
+
+    public abstract int executeInt(int a);
+
+    public abstract int getShiftValue();
+
+    @Specialization
+    protected int doInteger(int a) {
+        return a << getShiftValue();
+    }
+
+    @Specialization
+    protected int doLargeInteger(LargeInteger a) {
+        return a.intValue() << getShiftValue();
+    }
+
+    @Specialization(replaces = "doInteger")
+    protected int doGeneric(Object a,
+                    @Cached("create()") JSToInt32Node leftInt32) {
+        return leftInt32.executeInt(a) << getShiftValue();
+    }
+
+    @Override
+    public boolean isResultAlwaysOfType(Class<?> clazz) {
+        return clazz == int.class;
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized() {
+        return JSLeftShiftConstantNodeGen.create(cloneUninitialized(getOperand()), getShiftValue());
+    }
+
+    @Override
+    public String expressionToString() {
+        if (getOperand() != null) {
+            return "(" + Objects.toString(getOperand().expressionToString(), INTERMEDIATE_VALUE) + " << " + getShiftValue() + ")";
+        }
+        return null;
+    }
+}

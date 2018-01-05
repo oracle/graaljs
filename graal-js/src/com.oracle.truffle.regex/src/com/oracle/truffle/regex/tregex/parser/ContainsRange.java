@@ -1,0 +1,10 @@
+/*
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ */
+package com.oracle.truffle.regex.tregex.parser;
+
+public interface ContainsRange {
+
+    CodePointRange getRange();
+}

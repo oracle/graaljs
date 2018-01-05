@@ -1,0 +1,124 @@
+/*
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ */
+package com.oracle.truffle.js.builtins.math;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.SlowPathException;
+import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.SuppressFBWarnings;
+
+public abstract class PowNode extends MathOperation {
+
+    public PowNode(JSContext context, JSBuiltin builtin) {
+        super(context, builtin);
+    }
+
+    public abstract double execute(Object a, Object b);
+
+    protected PowNode create(JSContext context) {
+        return PowNodeGen.create(context, null, null);
+    }
+
+    @CompilationFinal private boolean hasSeenOne = false;
+    @CompilationFinal private boolean hasSeenTwo = false;
+    @CompilationFinal private boolean hasSeenThree = false;
+    @CompilationFinal private boolean hasSeenZeroPointFive = false;
+    @CompilationFinal private boolean hasSeenOnePointFive = false;
+    @CompilationFinal private boolean hasSeenTwoPointFive = false;
+
+    @Specialization(rewriteOn = SlowPathException.class)
+    protected double pow(double a, double b) throws SlowPathException {
+        if (hasSeenOne && b == 1) {
+            return a;
+        } else if (hasSeenTwo && b == 2) {
+            return a * a;
+        } else if (hasSeenThree && b == 3) {
+            return a * a * a;
+        } else if ((hasSeenZeroPointFive || hasSeenOnePointFive || hasSeenTwoPointFive) && (a < 0.0 || a == -0.0)) {
+            // sqrt behaves differently, counter example is Math.pow(-Infinity,0.5)
+            return powIntl(a, b);
+        } else if (hasSeenZeroPointFive && b == 0.5) {
+            return Math.sqrt(a);
+        } else if (hasSeenOnePointFive && b == 1.5) {
+            return a * Math.sqrt(a);
+        } else if (hasSeenTwoPointFive && b == 2.5) {
+            return a * a * Math.sqrt(a);
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (b == 1) {
+                hasSeenOne = true;
+            } else if (b == 2) {
+                hasSeenTwo = true;
+            } else if (b == 3) {
+                hasSeenThree = true;
+            } else if (b == 0.5) {
+                hasSeenZeroPointFive = true;
+            } else if (b == 1.5) {
+                hasSeenOnePointFive = true;
+            } else if (b == 2.5) {
+                hasSeenTwoPointFive = true;
+            } else {
+                throw new SlowPathException();
+            }
+            return pow(a, b);
+        }
+    }
+
+    private static double positivePow(double operand, int castExponent) {
+        int exponent = castExponent;
+        double result = 1;
+        double base = operand;
+        while (exponent > 0) {
+            if ((exponent & 1) == 1) {
+                result *= base;
+            }
+            exponent >>= 1;
+            base *= base;
+        }
+        return result;
+    }
+
+    @Specialization(rewriteOn = SlowPathException.class)
+    protected double pow2(double a, double b) throws SlowPathException {
+        if (JSRuntime.doubleIsRepresentableAsInt(b, true) && b > 0) {
+            return positivePow(a, (int) b);
+        } else {
+            throw new SlowPathException();
+        }
+    }
+
+    @SuppressFBWarnings(value = "FE_FLOATING_POINT_EQUALITY", justification = "not necessary in this case")
+    @Specialization
+    protected double pow3(double a, double b,
+                    @Cached("createBinaryProfile()") ConditionProfile branch1,
+                    @Cached("createBinaryProfile()") ConditionProfile branch2) {
+        int ib = (int) b;
+        if (branch1.profile(JSRuntime.doubleIsRepresentableAsInt(b, true) && b > 0)) {
+            return positivePow(a, ib);
+        } else if (branch2.profile(ib + 0.5 == b && b > 0 && a > 0 && a != -0.0)) {
+            return positivePow(a, ib) * Math.sqrt(a);
+        } else {
+            return powIntl(a, b);
+        }
+    }
+
+    @Specialization
+    protected Object pow(Object a, Object b,
+                    @Cached("create(getContext())") PowNode powNode) {
+        return JSRuntime.doubleToNarrowestNumber(powNode.execute(toDouble(a), toDouble(b)));
+    }
+
+    @TruffleBoundary
+    private static double powIntl(double a, double b) {
+        return Math.pow(a, b);
+    }
+}
