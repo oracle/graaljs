@@ -5,6 +5,7 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -17,6 +18,7 @@ import com.oracle.truffle.js.runtime.Symbol;
  * Basically ECMAScript ToInteger, but incorrect for very large values, which we don't care about in
  * array length or index conversion. Returns long.
  */
+@ImportStatic(Double.class)
 public abstract class JSToIntegerSpecialNode extends JavaScriptBaseNode {
 
     public static JSToIntegerSpecialNode create() {
@@ -35,12 +37,12 @@ public abstract class JSToIntegerSpecialNode extends JavaScriptBaseNode {
         return JSRuntime.booleanToNumber(value);
     }
 
-    @Specialization(guards = "!isDoubleInfinite(value)")
+    @Specialization(guards = "!isInfinite(value)")
     protected static long doDouble(double value) {
         return (long) value;
     }
 
-    @Specialization(guards = "isDoubleInfinite(value)")
+    @Specialization(guards = "isInfinite(value)")
     protected static long doDoubleInfinite(double value) {
         return value > 0 ? Long.MAX_VALUE : Long.MIN_VALUE;
     }

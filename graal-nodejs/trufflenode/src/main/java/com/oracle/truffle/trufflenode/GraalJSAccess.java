@@ -715,8 +715,7 @@ public final class GraalJSAccess {
     }
 
     public boolean objectSetPrototype(Object object, Object prototype) {
-        JSObjectUtil.setPrototype((DynamicObject) object, (DynamicObject) prototype);
-        return true;
+        return JSObject.setPrototype((DynamicObject) object, (DynamicObject) prototype);
     }
 
     public Object objectGetPrototype(Object object) {

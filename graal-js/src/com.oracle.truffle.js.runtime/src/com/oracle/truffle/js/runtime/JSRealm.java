@@ -1287,7 +1287,7 @@ public class JSRealm implements ShapeContext {
     }
 
     public final MaterializedFrame getGlobalScope() {
-        return globalScope;
+        return JSFrameUtil.castMaterializedFrame(globalScope);
     }
 
     /**

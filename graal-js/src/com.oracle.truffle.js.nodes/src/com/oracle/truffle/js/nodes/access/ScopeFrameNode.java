@@ -104,7 +104,7 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
         public Frame executeFrame(Frame frame) {
             Frame retFrame = frame;
             for (int i = 0; i < frameLevel; i++) {
-                retFrame = JSArguments.getEnclosingFrame(retFrame.getArguments());
+                retFrame = JSFrameUtil.castMaterializedFrame(JSArguments.getEnclosingFrame(retFrame.getArguments()));
             }
             for (int i = 0; i < scopeLevel; i++) {
                 retFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(retFrame, parentSlot));
@@ -116,7 +116,7 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
     private static final class EnclosingFunctionFrameNodeLevel1 extends ScopeFrameNode {
         @Override
         public Frame executeFrame(Frame frame) {
-            return JSArguments.getEnclosingFrame(frame.getArguments());
+            return JSFrameUtil.castMaterializedFrame(JSArguments.getEnclosingFrame(frame.getArguments()));
         }
     }
 

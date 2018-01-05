@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.trufflenode;
@@ -14,10 +14,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
-/**
- *
- * @author Jan Stola
- */
 public final class JSExternalObject extends JSBuiltinObject {
 
     public static final String CLASS_NAME = "external";
@@ -31,7 +27,7 @@ public final class JSExternalObject extends JSBuiltinObject {
 
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        POINTER_PROPERTY = JSObjectUtil.makeHiddenProperty(POINTER_KEY, allocator.locationForType(Long.class));
+        POINTER_PROPERTY = JSObjectUtil.makeHiddenProperty(POINTER_KEY, allocator.locationForType(long.class));
     }
 
     public static DynamicObject create(JSContext context, long pointer) {

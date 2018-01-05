@@ -119,7 +119,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 })
 
 @TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, mimeType = {
-                JavaScriptLanguage.TEXT_MIME_TYPE, JavaScriptLanguage.APPLICATION_MIME_TYPE})
+                JavaScriptLanguage.APPLICATION_MIME_TYPE, JavaScriptLanguage.TEXT_MIME_TYPE})
 public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private static final HiddenKey META_OBJECT_KEY = new HiddenKey("meta object");
 
@@ -157,11 +157,11 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @TruffleBoundary
     @Override
-    @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "instruction limit is exceeded when String.equals() or comparison based on URIs is used")
+    @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "intentional comparison of strings using ==")
     public CallTarget parse(ParsingRequest parsingRequest) {
         Source source = parsingRequest.getSource();
-        // use the globalScope of JS (there is also one for NodeJS)
         if (source.getName() == AbstractJavaScriptLanguage.GET_JSCONTEXT_NAME) {
+            // special CallTarget for internal JSContext access
             return getJSContextCallTarget();
         } else {
             final RootNode rootNode;

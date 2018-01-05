@@ -30,10 +30,6 @@ public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSConte
         return Source.newBuilder(new File(fileName)).name(fileName).mimeType(APPLICATION_MIME_TYPE).build();
     }
 
-    public static org.graalvm.polyglot.Source newSourceFromFileName(String fileName) throws IOException {
-        return org.graalvm.polyglot.Source.newBuilder(ID, new File(fileName)).build();
-    }
-
     public static JSContext getJSContext(Context context) {
         org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder("js", "", GET_JSCONTEXT_NAME).buildLiteral();
         context.eval(source);

@@ -69,7 +69,7 @@ public abstract class TestRunnable implements Runnable {
         String harnessLocation = getConfig().getSuiteHarnessLoc();
         return HARNESS_SOURCES.computeIfAbsent(ecmaVersion, k -> Arrays.stream(suite.getPrequelFiles(k)).map(pfn -> {
             try {
-                return AbstractJavaScriptLanguage.newSourceFromFileName(Paths.get(harnessLocation, pfn).toString());
+                return Source.newBuilder(AbstractJavaScriptLanguage.ID, Paths.get(harnessLocation, pfn).toFile()).build();
             } catch (IOException e) {
                 e.printStackTrace();
                 throw new RuntimeException(e);
