@@ -1,0 +1,31 @@
+/*
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ */
+
+#include "arguments.cc"
+#include "array.cc"
+#include "boolean.cc"
+#include "bootstrap.cc"
+#include "cast.cc"
+#include "context.cc"
+#include "exception.cc"
+#include "external.cc"
+#include "function.cc"
+#include "function_template.cc"
+#include "gc.cc"
+#include "local.cc"
+#include "integer.cc"
+#include "isolate.cc"
+#include "message.cc"
+#include "null.cc"
+#include "object.cc"
+#include "object_template.cc"
+#include "persistent.cc"
+#include "script.cc"
+#include "stacktrace.cc"
+#include "string.cc"
+#include "try_catch.cc"
+#include "undefined.cc"
+#include "value.cc"
+#include "v8obj.cc"

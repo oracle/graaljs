@@ -20,6 +20,10 @@
     'node_shared_openssl%': 'false',
     'node_v8_options%': '',
     'node_enable_v8_vtunejit%': 'false',
+    'node_target_type%': 'executable',
+    'node_enable_threading%': 'false',
+    'node_production%': 'false',
+    'node_build_only_native%': 'false',
     'node_core_target_name%': 'node',
     'library_files': [
       'lib/internal/bootstrap_node.js',
@@ -88,6 +92,9 @@
       'lib/internal/errors.js',
       'lib/internal/freelist.js',
       'lib/internal/fs.js',
+      'lib/internal/graal/buffer.js',
+      'lib/internal/graal/thread_process_wrap.js',
+      'lib/internal/graal/thread_pipe_wrap.js',
       'lib/internal/http.js',
       'lib/internal/inspector_async_hook.js',
       'lib/internal/linkedlist.js',
@@ -173,6 +180,9 @@
         'src',
         'tools/msvs/genfiles',
         '<(SHARED_INTERMEDIATE_DIR)', # for node_natives.h
+        'deps/v8/include/',
+        'deps/v8/', # include/v8_platform.h
+        'deps/v8/src/graal/',
         'deps/nghttp2/lib/includes'
       ],
 
@@ -183,6 +193,7 @@
         'src/connect_wrap.cc',
         'src/env.cc',
         'src/fs_event_wrap.cc',
+        'src/graal/graal_threading.cc',
         'src/handle_wrap.cc',
         'src/js_stream.cc',
         'src/module_wrap.cc',
@@ -286,7 +297,39 @@
         'common.gypi',
         '<(SHARED_INTERMEDIATE_DIR)/node_javascript.cc',
       ],
-
+      'conditions': [
+        # Production build
+        [ 'node_production=="true"', {
+          'defines': [ 'NDEBUG' ],
+        }],
+        # Threading
+        [ 'node_enable_threading=="true"', {
+          'defines': [ 'GRAAL_ENABLE_THREADING' ],
+        }],
+        # No threading
+        [ 'node_enable_threading=="false"', {
+          'sources!': [
+            'src/graal/graal_threading.cc',
+          ],
+          'library_files!': [
+            'lib/internal/graal/thread_process_wrap.js',
+            'lib/internal/graal/thread_pipe_wrap.js',
+          ],          
+        }],
+        [ 'OS=="mac"', {
+          'conditions': [
+            # --force_flat_namespace is not applicable for the dynamic library
+            [ 'node_target_type=="executable"', {
+              'xcode_settings': {
+                'OTHER_LDFLAGS': [
+                  '-force_flat_namespace',
+                  '-headerpad_max_install_names',
+                ],
+              },
+            }],
+          ],
+        }],
+     ],
       'defines': [
         'NODE_ARCH="<(target_arch)"',
         'NODE_PLATFORM="<(OS)"',
@@ -349,17 +392,39 @@
       'target_name': 'node_etw',
       'type': 'none',
       'conditions': [
-        [ 'node_use_etw=="true"', {
+        [ 'node_build_only_native!="true"', {
           'actions': [
             {
-              'action_name': 'node_etw',
-              'inputs': [ 'src/res/node_etw_provider.man' ],
+              'action_name': 'trufflenode',
+              'inputs': [ 'trufflenode/pom.xml' ],
               'outputs': [
-                'tools/msvs/genfiles/node_etw_provider.rc',
-                'tools/msvs/genfiles/node_etw_provider.h',
-                'tools/msvs/genfiles/node_etw_providerTEMP.BIN',
+                'trufflenode/target/trufflenode-1.0-SNAPSHOT.jar',
               ],
-              'action': [ 'mc <@(_inputs) -h tools/msvs/genfiles -r tools/msvs/genfiles' ]
+              'action': [ 'mvn', '-f', 'trufflenode/pom.xml', 'package', '-Dtrufflejs.jar=<(trufflejs)' ]
+            },
+            {
+              'action_name': 'trufflenode-to-release',
+              'inputs': [ 'trufflenode/target/trufflenode-1.0-SNAPSHOT.jar' ],
+              'outputs': [
+                'out/Release/trufflenode.jar',
+              ],
+              'action': [ 'cp', 'trufflenode/target/trufflenode-1.0-SNAPSHOT.jar', 'out/Release/trufflenode.jar' ]
+            },
+            {
+              'action_name': 'trufflenode-to-debug',
+              'inputs': [ 'trufflenode/target/trufflenode-1.0-SNAPSHOT.jar' ],
+              'outputs': [
+                'out/Debug/trufflenode.jar',
+              ],
+              'action': [ 'cp', 'trufflenode/target/trufflenode-1.0-SNAPSHOT.jar', 'out/Debug/trufflenode.jar' ]
+            },
+            {
+              'action_name': 'trufflenode-to-symlink',
+              'inputs': [ 'trufflenode/target/trufflenode-1.0-SNAPSHOT.jar' ],
+              'outputs': [
+                'trufflenode.jar',
+              ],
+              'action': [ 'ln', '-sf', 'trufflenode/target/trufflenode-1.0-SNAPSHOT.jar', 'trufflenode.jar' ]
             }
           ]
         } ]
@@ -556,7 +621,10 @@
                     '-C', '-G', '-s', 'src/v8ustack.d', '-o', '<@(_outputs)',
                   ]
                 } ],
-              ]
+                [ 'target_arch=="sparcv9"', {
+                  'action': []
+                } ],
+              ],
             },
           ]
         } ],

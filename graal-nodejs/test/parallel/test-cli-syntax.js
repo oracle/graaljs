@@ -13,7 +13,7 @@ const syntaxArgs = [
   ['--check']
 ];
 
-const syntaxErrorRE = /^SyntaxError: Unexpected identifier$/m;
+const syntaxErrorRE = /^SyntaxError: .*$/m;
 const notFoundRE = /^Error: Cannot find module/m;
 
 // test good syntax with and without shebang

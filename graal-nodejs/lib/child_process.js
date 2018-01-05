@@ -31,7 +31,12 @@ const debug = util.debuglog('child_process');
 const uv = process.binding('uv');
 const spawn_sync = process.binding('spawn_sync');
 const { Buffer } = require('buffer');
-const { Pipe } = process.binding('pipe_wrap');
+if (process.__node_cluster_threading) {
+  var vPipe = require('internal/graal/thread_pipe_wrap').Pipe;
+} else {
+  var vPipe = process.binding('pipe_wrap').Pipe;
+}
+const Pipe = vPipe;
 const child_process = require('internal/child_process');
 const {
   _validateStdio,
@@ -479,6 +484,16 @@ function normalizeSpawnArguments(file, args, options) {
 
   for (var key in env) {
     envPairs.push(key + '=' + env[key]);
+  }
+
+  if (!env.LD_LIBRARY_PATH) {
+    var graalNodeKeys = ['LD_LIBRARY_PATH', 'JAVA_HOME', 'GRAAL_SDK_JAR_PATH', 'TRUFFLE_JAR_PATH', 'GRAALJS_JAR_PATH', 'TRUFFLEOM_JAR_PATH', 'TRUFFLENODE_JAR_PATH', 'NODE_JVM_OPTIONS', 'NODE_JVM_LIB', 'NODE_STACK_SIZE', 'NODE_JVM_CLASSPATH', 'NODE_JVM_BOOTCLASSPATH'];
+    graalNodeKeys.forEach(function(key) {
+      var origValue = process.env[key];
+      if (origValue && !env[key]) {
+        envPairs.push(key + '=' + origValue);
+      }
+    });
   }
 
   _convertCustomFds(options);

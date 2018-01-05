@@ -21,4 +21,4 @@ const errMessage = /^TypeError: Parameter "url" must be a string, not (?:undefin
 });
 
 assert.throws(() => { url.parse('http://%E0%A4%A@fail'); },
-              /^URIError: URI malformed$/);
+              /^URIError: .*$/);

@@ -62,7 +62,7 @@ assert.throws(() => {
 assert.throws(() => {
   const outgoingMessage = new OutgoingMessage();
   outgoingMessage.addTrailers();
-}, /^TypeError: Cannot convert undefined or null to object$/);
+}, /^TypeError: Cannot convert undefined or null to object.*$/);
 
 assert.throws(() => {
   const outgoingMessage = new OutgoingMessage();

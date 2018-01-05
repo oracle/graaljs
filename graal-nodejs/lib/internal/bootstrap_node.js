@@ -20,6 +20,18 @@
 
     setupProcessObject();
 
+    if (typeof Packages !== 'undefined') {
+      Packages[Symbol.toStringTag] = 'Packages'; // breaking isRhino check of acorn package
+
+      // Keep track of thread-based execution
+      if (Packages.java.lang.System.getProperty("node.cluster.threading") === 'true') {
+        process.__node_cluster_threading = true;
+      }
+    }
+    if (typeof Debug === 'undefined') {
+        Object.defineProperty(global, 'Debug', { configurable: true, writable: true });
+    }
+
     // do this good and early, since it handles errors.
     setupProcessFatal();
 
@@ -145,6 +157,14 @@
         perf.markMilestone(NODE_PERFORMANCE_MILESTONE_CLUSTER_SETUP_END);
         // Make sure it's not accidentally inherited by child processes.
         delete process.env.NODE_UNIQUE_ID;
+      } else {
+        if (process.__node_cluster_threading) {
+          // When using threads, we need to init JNI bindings and extra classes
+          if (!process._graalThreadingInit) {
+            console.log("cannot init threading support. build with --enable-threading");
+          }
+          process._graalThreadingInit();
+        }
       }
 
       if (process._eval != null && !process._forceRepl) {

@@ -8,9 +8,17 @@ const dgram = require('dgram');
 const util = require('util');
 const assert = require('assert');
 const uv = process.binding('uv');
-const { Process } = process.binding('process_wrap');
+const defaultProcess = process.binding('process_wrap').Process;
+if (process.__node_cluster_threading) {
+  var vProcess = require('internal/graal/thread_process_wrap').Process;
+  var vPipe = require('internal/graal/thread_pipe_wrap').Pipe;
+} else {
+  var vProcess = defaultProcess;
+  var vPipe = process.binding('pipe_wrap').Pipe;
+}
+const Process = vProcess;
+const Pipe = vPipe;
 const { WriteWrap } = process.binding('stream_wrap');
-const { Pipe } = process.binding('pipe_wrap');
 const { TTY } = process.binding('tty_wrap');
 const { TCP } = process.binding('tcp_wrap');
 const { UDP } = process.binding('udp_wrap');
@@ -281,6 +289,12 @@ ChildProcess.prototype.spawn = function(options) {
       throw new TypeError('"envPairs" must be an array');
 
     options.envPairs.push('NODE_CHANNEL_FD=' + ipcFd);
+  } else if (process.__node_cluster_threading) {
+    // If no IPC channel was created, we are about to spawn a non-node process.
+    var oldHandle = this._handle;
+    this._handle = new defaultProcess();
+    this._handle.owner = oldHandle.owner;
+    this._handle.onexit = oldHandle.onexit;
   }
 
   if (typeof options.file === 'string')
@@ -294,6 +308,10 @@ ChildProcess.prototype.spawn = function(options) {
     this.spawnargs = [];
   else
     throw new TypeError('"args" must be an array');
+
+  // (db) we extend 'options' with info for thread-based spawn
+  options.ipc = ipc;
+  options.ipcFd = ipcFd;
 
   var err = this._handle.spawn(options);
 
@@ -858,7 +876,8 @@ function _validateStdio(stdio, sync) {
           throw new errors.Error('ERR_IPC_SYNC_FORK');
       }
 
-      ipc = new Pipe(true);
+      // (db) the extra arg to start server-side pipe endpoint for threads
+      ipc = new Pipe(true, /* is server? */ true);
       ipcFd = i;
 
       acc.push({

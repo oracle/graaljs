@@ -6,6 +6,26 @@ prefix sequential
 
 [true] # This section applies to all platforms
 
+### Graal-specific start ###
+
+# Error message from JSON.parse() differs between V8 and graal.js
+test-module-loading         : FAIL
+
+# missing multiline support in REPL
+test-repl-timeout-throw     : FAIL
+
+[$system==solaris]
+
+# runs out of memory
+test-child-process-pass-fd  : SKIP
+
+[$system==macos]
+
+# fails randomly
+test-timers-blocking-callback : SKIP
+
+### Graal-specific end ###
+
 [$system==win32]
 test-inspector-async-call-stack       : PASS, FLAKY
 test-inspector-bindings               : PASS, FLAKY

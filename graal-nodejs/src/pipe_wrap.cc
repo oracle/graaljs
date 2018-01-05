@@ -118,6 +118,10 @@ void PipeWrap::New(const FunctionCallbackInfo<Value>& args) {
   // normal function.
   CHECK(args.IsConstructCall());
   Environment* env = Environment::GetCurrent(args);
+  // TODO(db) by default, we allow IPC between pipes. In this way, cluster can use threads
+  // we should use a config flag instead
+  // (js) following line breaks some tests (like test-child-process-fork-getconnections)
+  //new PipeWrap(env, args.This(), false);
   new PipeWrap(env, args.This(), args[0]->IsTrue());
 }
 

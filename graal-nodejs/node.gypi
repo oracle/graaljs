@@ -317,7 +317,7 @@
       ],
     }],
     [ '(OS=="freebsd" or OS=="linux") and node_shared=="false" and coverage=="false"', {
-      'ldflags': [ '-Wl,-z,noexecstack',
+      'ldflags': [ '-Wl,-z,noexecstack,--allow-multiple-definition',
                    '-Wl,--whole-archive <(V8_BASE)',
                    '-Wl,--no-whole-archive' ]
     }],

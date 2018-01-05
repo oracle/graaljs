@@ -1,7 +1,7 @@
 'use strict';
 
 const common = require('../common.js');
-const icu = process.binding('icu');
+let icu;
 const punycode = require('punycode');
 
 const bench = common.createBenchmark(main, {
@@ -69,6 +69,7 @@ function main(conf) {
       runPunycode(n, val);
       break;
     case 'icu':
+      icu = process.binding('icu');
       runICU(n, val);
       break;
     default:

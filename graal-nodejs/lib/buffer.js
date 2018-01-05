@@ -21,6 +21,7 @@
 
 'use strict';
 
+const graalBuffer = require('internal/graal/buffer');
 const binding = process.binding('buffer');
 const config = process.binding('config');
 const { compare: compare_, compareOffset } = binding;
@@ -78,6 +79,7 @@ var poolSize, poolOffset, allocPool;
 
 
 binding.setupBufferJS(Buffer.prototype, bindingObj);
+graalBuffer.install(Buffer.prototype);
 
 // |binding.zeroFill| can be undefined when running inside an isolate where we
 // do not own the ArrayBuffer allocator.  Zero fill is always on in that case.

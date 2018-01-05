@@ -24,6 +24,7 @@
 
 #include "v8-version.h"  // NOLINT(build/include)
 #include "v8config.h"    // NOLINT(build/include)
+#include "../src/graal/graal_handle_content.h"
 
 // We reserve the V8_* prefix for macros defined in V8 public API and
 // assume there are no name conflicts with the embedder's code.
@@ -205,6 +206,32 @@ class Local {
      * Local<Number>.
      */
     TYPE_CHECK(T, S);
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    }
+  }
+
+  V8_INLINE Local(const Local& local) : val_(local.val_) {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    };
+  }
+
+  V8_INLINE ~Local() {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceRemoved();
+    }
+  }
+
+  V8_INLINE Local<T>& operator=(const Local<T>& val) {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceRemoved();
+    }
+    val_ = val.val_;
+    if (val_) {
+        reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    }
+    return *this;
   }
 
   /**
@@ -215,7 +242,12 @@ class Local {
   /**
    * Sets the handle to be empty. IsEmpty() will then return true.
    */
-  V8_INLINE void Clear() { val_ = 0; }
+  V8_INLINE void Clear() {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceRemoved();
+    }
+    val_ = 0;
+  }
 
   V8_INLINE T* operator->() const { return val_; }
 
@@ -229,20 +261,20 @@ class Local {
    */
   template <class S>
   V8_INLINE bool operator==(const Local<S>& that) const {
-    internal::Object** a = reinterpret_cast<internal::Object**>(this->val_);
-    internal::Object** b = reinterpret_cast<internal::Object**>(that.val_);
+    GraalHandleContent* a = reinterpret_cast<GraalHandleContent*>(this->val_);
+    GraalHandleContent* b = reinterpret_cast<GraalHandleContent*>(that.val_);
     if (a == 0) return b == 0;
     if (b == 0) return false;
-    return *a == *b;
+    return GraalHandleContent::SameData(a, b);
   }
 
   template <class S> V8_INLINE bool operator==(
       const PersistentBase<S>& that) const {
-    internal::Object** a = reinterpret_cast<internal::Object**>(this->val_);
-    internal::Object** b = reinterpret_cast<internal::Object**>(that.val_);
+    GraalHandleContent* a = reinterpret_cast<GraalHandleContent*>(this->val_);
+    GraalHandleContent* b = reinterpret_cast<GraalHandleContent*>(that.val_);
     if (a == 0) return b == 0;
     if (b == 0) return false;
-    return *a == *b;
+    return GraalHandleContent::SameData(a, b);
   }
 
   /**
@@ -318,10 +350,15 @@ class Local {
   template <class F1, class F2, class F3>
   friend class PersistentValueMapBase;
   template<class F1, class F2> friend class PersistentValueVector;
-  template <class F>
-  friend class ReturnValue;
-
-  explicit V8_INLINE Local(T* that) : val_(that) {}
+public:
+  template <class S>
+  V8_INLINE Local(S* that)
+      : val_(that) {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    }
+  }
+private:
   V8_INLINE static Local<T> New(Isolate* isolate, T* that);
   T* val_;
 };
@@ -352,6 +389,32 @@ class MaybeLocal {
   V8_INLINE MaybeLocal(Local<S> that)
       : val_(reinterpret_cast<T*>(*that)) {
     TYPE_CHECK(T, S);
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    }
+  }
+
+  V8_INLINE MaybeLocal(const MaybeLocal& local) : val_(local.val_) {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    };
+  }
+
+  V8_INLINE ~MaybeLocal() {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceRemoved();
+    }
+  }
+
+  V8_INLINE MaybeLocal<T>& operator=(const MaybeLocal<T>& val) {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceRemoved();
+    }
+    val_ = val.val_;
+    if (val_) {
+        reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    }
+    return *this;
   }
 
   V8_INLINE bool IsEmpty() const { return val_ == nullptr; }
@@ -362,7 +425,13 @@ class MaybeLocal {
    */
   template <class S>
   V8_WARN_UNUSED_RESULT V8_INLINE bool ToLocal(Local<S>* out) const {
+    if (out->val_) {
+      reinterpret_cast<GraalHandleContent*> (out->val_)->ReferenceRemoved();
+    }
     out->val_ = IsEmpty() ? nullptr : this->val_;
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    }
     return !IsEmpty();
   }
 
@@ -507,20 +576,20 @@ template <class T> class PersistentBase {
 
   template <class S>
   V8_INLINE bool operator==(const PersistentBase<S>& that) const {
-    internal::Object** a = reinterpret_cast<internal::Object**>(this->val_);
-    internal::Object** b = reinterpret_cast<internal::Object**>(that.val_);
+    GraalHandleContent* a = reinterpret_cast<GraalHandleContent*>(this->val_);
+    GraalHandleContent* b = reinterpret_cast<GraalHandleContent*>(that.val_);
     if (a == NULL) return b == NULL;
     if (b == NULL) return false;
-    return *a == *b;
+    return GraalHandleContent::SameData(a, b);
   }
 
   template <class S>
   V8_INLINE bool operator==(const Local<S>& that) const {
-    internal::Object** a = reinterpret_cast<internal::Object**>(this->val_);
-    internal::Object** b = reinterpret_cast<internal::Object**>(that.val_);
+    GraalHandleContent* a = reinterpret_cast<GraalHandleContent*>(this->val_);
+    GraalHandleContent* b = reinterpret_cast<GraalHandleContent*>(that.val_);
     if (a == NULL) return b == NULL;
     if (b == NULL) return false;
-    return *a == *b;
+    return GraalHandleContent::SameData(a, b);
   }
 
   template <class S>
@@ -2774,6 +2843,8 @@ class V8_EXPORT String : public Name {
    private:
     char* str_;
     int length_;
+    void* java_string_;
+    v8::Isolate* isolate_;
   };
 
   /**
@@ -2797,6 +2868,8 @@ class V8_EXPORT String : public Name {
    private:
     uint16_t* str_;
     int length_;
+    void* java_string_;
+    v8::Isolate* isolate_;
   };
 
  private:
@@ -3589,7 +3662,7 @@ class ReturnValue {
   template <class S> V8_INLINE ReturnValue(const ReturnValue<S>& that)
       : value_(that.value_) {
     TYPE_CHECK(T, S);
-  }
+    }
   // Local setters
   template <typename S>
   V8_INLINE V8_DEPRECATE_SOON("Use Global<> instead",
@@ -3625,7 +3698,15 @@ class ReturnValue {
   template<class F> friend class PropertyCallbackInfo;
   template <class F, class G, class H>
   friend class PersistentValueMapBase;
-  V8_INLINE void SetInternal(internal::Object* value) { *value_ = value; }
+  V8_INLINE void SetInternal(internal::Object* value) {
+    if (*value_) {
+      reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceRemoved();
+    }      
+    *value_ = value;
+    if (*value_) {
+      reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceAdded();
+    }
+  }
   V8_INLINE internal::Object* GetDefaultValue();
   V8_INLINE explicit ReturnValue(internal::Object** slot);
   internal::Object** value_;
@@ -6990,6 +7071,7 @@ class V8_EXPORT Isolate {
    * thread to be disposable.
    */
   void Dispose();
+  void Dispose(bool exit, int status); // graal-node.js extension
 
   /**
    * Dumps activated low-level V8 internal stats. This can be used instead
@@ -7636,6 +7718,11 @@ class V8_EXPORT Isolate {
    * pending activity for the handle.
    */
   void VisitWeakHandles(PersistentHandleVisitor* visitor);
+
+  // graal-node.js extensions
+  void SaveReturnValue(double value);
+  Local<Value> CorrectReturnValue(internal::Object* value);
+  void EnterPolyglotEngine(void* param1, void* param2, int argc, void* argv, int exec_argc, void* exec_argv, void (*callback) (void* isolate, void* param1, void* param2, int argc, void* argv, int exec_argc, void* exec_argv));
 
   /**
    * Check if this isolate is in use.
@@ -8924,6 +9011,9 @@ class Internals {
   static const int kTrueValueRootIndex = 7;
   static const int kFalseValueRootIndex = 8;
   static const int kEmptyStringRootIndex = 9;
+  static const int kInt32ReturnValuePlaceholderIndex = 10;
+  static const int kUint32ReturnValuePlaceholderIndex = 11;
+  static const int kDoubleReturnValuePlaceholderIndex = 12;
 
   static const int kNodeClassIdOffset = 1 * kApiPointerSize;
   static const int kNodeFlagsOffset = 1 * kApiPointerSize + 3;
@@ -9028,7 +9118,7 @@ class Internals {
   V8_INLINE static internal::Object** GetRoot(v8::Isolate* isolate,
                                               int index) {
     uint8_t* addr = reinterpret_cast<uint8_t*>(isolate) + kIsolateRootsOffset;
-    return reinterpret_cast<internal::Object**>(addr + index * kApiPointerSize);
+    return *reinterpret_cast<internal::Object***>(addr + index * kApiPointerSize);
   }
 
   template <typename T>
@@ -9070,9 +9160,9 @@ template <class T>
 Local<T> Local<T>::New(Isolate* isolate, T* that) {
   if (that == NULL) return Local<T>();
   T* that_ptr = that;
-  internal::Object** p = reinterpret_cast<internal::Object**>(that_ptr);
+  internal::Object* p = reinterpret_cast<internal::Object*>(that_ptr);
   return Local<T>(reinterpret_cast<T*>(HandleScope::CreateHandle(
-      reinterpret_cast<internal::Isolate*>(isolate), *p)));
+      reinterpret_cast<internal::Isolate*>(isolate), p)));
 }
 
 
@@ -9134,30 +9224,32 @@ void Persistent<T, M>::Copy(const Persistent<S, M2>& that) {
 
 template <class T>
 bool PersistentBase<T>::IsIndependent() const {
-  typedef internal::Internals I;
-  if (this->IsEmpty()) return false;
-  return I::GetNodeFlag(reinterpret_cast<internal::Object**>(this->val_),
-                        I::kNodeIsIndependentShift);
+  printf("PersistentBase::IsIndependent not implemented yet!\n");
+//  typedef internal::Internals I;
+//  if (this->IsEmpty()) return false;
+//  return I::GetNodeFlag(reinterpret_cast<internal::Object**>(this->val_),
+//                        I::kNodeIsIndependentShift);
+  return false;
 }
 
 
 template <class T>
 bool PersistentBase<T>::IsNearDeath() const {
-  typedef internal::Internals I;
+//  typedef internal::Internals I;
   if (this->IsEmpty()) return false;
-  uint8_t node_state =
-      I::GetNodeState(reinterpret_cast<internal::Object**>(this->val_));
-  return node_state == I::kNodeStateIsNearDeathValue ||
-      node_state == I::kNodeStateIsPendingValue;
+//  uint8_t node_state =
+//      I::GetNodeState(reinterpret_cast<internal::Object**>(this->val_));
+//  return node_state == I::kNodeStateIsNearDeathValue ||
+//      node_state == I::kNodeStateIsPendingValue;
+  return true;
 }
 
 
 template <class T>
 bool PersistentBase<T>::IsWeak() const {
-  typedef internal::Internals I;
-  if (this->IsEmpty()) return false;
-  return I::GetNodeState(reinterpret_cast<internal::Object**>(this->val_)) ==
-      I::kNodeStateIsWeakValue;
+    if (this->IsEmpty()) return false;
+    GraalHandleContent* handle = reinterpret_cast<GraalHandleContent*>(this->val_);
+    return handle->IsWeak();
 }
 
 
@@ -9222,11 +9314,11 @@ void PersistentBase<T>::RegisterExternalReference(Isolate* isolate) const {
 
 template <class T>
 void PersistentBase<T>::MarkIndependent() {
-  typedef internal::Internals I;
-  if (this->IsEmpty()) return;
-  I::UpdateNodeFlag(reinterpret_cast<internal::Object**>(this->val_),
-                    true,
-                    I::kNodeIsIndependentShift);
+//  typedef internal::Internals I;
+//  if (this->IsEmpty()) return;
+//  I::UpdateNodeFlag(reinterpret_cast<internal::Object**>(this->val_),
+//                    true,
+//                    I::kNodeIsIndependentShift);
 }
 
 template <class T>
@@ -9240,21 +9332,23 @@ void PersistentBase<T>::MarkActive() {
 
 template <class T>
 void PersistentBase<T>::SetWrapperClassId(uint16_t class_id) {
-  typedef internal::Internals I;
-  if (this->IsEmpty()) return;
-  internal::Object** obj = reinterpret_cast<internal::Object**>(this->val_);
-  uint8_t* addr = reinterpret_cast<uint8_t*>(obj) + I::kNodeClassIdOffset;
-  *reinterpret_cast<uint16_t*>(addr) = class_id;
+//  typedef internal::Internals I;
+//  if (this->IsEmpty()) return;
+//  internal::Object** obj = reinterpret_cast<internal::Object**>(this->val_);
+//  uint8_t* addr = reinterpret_cast<uint8_t*>(obj) + I::kNodeClassIdOffset;
+//  *reinterpret_cast<uint16_t*>(addr) = class_id;
 }
 
 
 template <class T>
 uint16_t PersistentBase<T>::WrapperClassId() const {
-  typedef internal::Internals I;
-  if (this->IsEmpty()) return 0;
-  internal::Object** obj = reinterpret_cast<internal::Object**>(this->val_);
-  uint8_t* addr = reinterpret_cast<uint8_t*>(obj) + I::kNodeClassIdOffset;
-  return *reinterpret_cast<uint16_t*>(addr);
+    printf("PersistentBase::WrapperClassId not implemented yet!\n");
+//  typedef internal::Internals I;
+//  if (this->IsEmpty()) return 0;
+//  internal::Object** obj = reinterpret_cast<internal::Object**>(this->val_);
+//  uint8_t* addr = reinterpret_cast<uint8_t*>(obj) + I::kNodeClassIdOffset;
+//  return *reinterpret_cast<uint16_t*>(addr);
+    return 0;
 }
 
 
@@ -9265,10 +9359,16 @@ template<typename T>
 template<typename S>
 void ReturnValue<T>::Set(const Persistent<S>& handle) {
   TYPE_CHECK(T, S);
+  if (*value_) {
+    reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceRemoved();
+  }
   if (V8_UNLIKELY(handle.IsEmpty())) {
     *value_ = GetDefaultValue();
   } else {
-    *value_ = *reinterpret_cast<internal::Object**>(*handle);
+    *value_ = reinterpret_cast<internal::Object*>(*handle);
+  }
+  if (*value_) {
+    reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceAdded();
   }
 }
 
@@ -9276,10 +9376,16 @@ template <typename T>
 template <typename S>
 void ReturnValue<T>::Set(const Global<S>& handle) {
   TYPE_CHECK(T, S);
+  if (*value_) {
+    reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceRemoved();
+  }
   if (V8_UNLIKELY(handle.IsEmpty())) {
     *value_ = GetDefaultValue();
   } else {
-    *value_ = *reinterpret_cast<internal::Object**>(*handle);
+    *value_ = reinterpret_cast<internal::Object*>(*handle);
+  }
+  if (*value_) {
+    reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceAdded();
   }
 }
 
@@ -9287,28 +9393,33 @@ template <typename T>
 template <typename S>
 void ReturnValue<T>::Set(const Local<S> handle) {
   TYPE_CHECK(T, S);
+  if (*value_) {
+    reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceRemoved();
+  }
   if (V8_UNLIKELY(handle.IsEmpty())) {
     *value_ = GetDefaultValue();
   } else {
-    *value_ = *reinterpret_cast<internal::Object**>(*handle);
+    *value_ = reinterpret_cast<internal::Object*>(*handle);
+  }
+  if (*value_) {
+    reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceAdded();
   }
 }
 
 template<typename T>
 void ReturnValue<T>::Set(double i) {
   TYPE_CHECK(T, Number);
-  Set(Number::New(GetIsolate(), i));
+  typedef internal::Internals I;
+  GetIsolate()->SaveReturnValue(i);
+  Set(Local<T>(reinterpret_cast<T*> (I::GetRoot(GetIsolate(), I::kDoubleReturnValuePlaceholderIndex))));
 }
 
 template<typename T>
 void ReturnValue<T>::Set(int32_t i) {
   TYPE_CHECK(T, Integer);
   typedef internal::Internals I;
-  if (V8_LIKELY(I::IsValidSmi(i))) {
-    *value_ = I::IntToSmi(i);
-    return;
-  }
-  Set(Integer::New(GetIsolate(), i));
+  GetIsolate()->SaveReturnValue(i);
+  Set(Local<T>(reinterpret_cast<T*> (I::GetRoot(GetIsolate(), I::kInt32ReturnValuePlaceholderIndex))));
 }
 
 template<typename T>
@@ -9320,41 +9431,33 @@ void ReturnValue<T>::Set(uint32_t i) {
     Set(static_cast<int32_t>(i));
     return;
   }
-  Set(Integer::NewFromUnsigned(GetIsolate(), i));
+  typedef internal::Internals I;
+  GetIsolate()->SaveReturnValue(i);
+  Set(Local<T>(reinterpret_cast<T*> (I::GetRoot(GetIsolate(), I::kUint32ReturnValuePlaceholderIndex))));
 }
 
 template<typename T>
 void ReturnValue<T>::Set(bool value) {
   TYPE_CHECK(T, Boolean);
-  typedef internal::Internals I;
-  int root_index;
-  if (value) {
-    root_index = I::kTrueValueRootIndex;
-  } else {
-    root_index = I::kFalseValueRootIndex;
-  }
-  *value_ = *I::GetRoot(GetIsolate(), root_index);
+  Set(value ? True(GetIsolate()) : False(GetIsolate()));
 }
 
 template<typename T>
 void ReturnValue<T>::SetNull() {
   TYPE_CHECK(T, Primitive);
-  typedef internal::Internals I;
-  *value_ = *I::GetRoot(GetIsolate(), I::kNullValueRootIndex);
+  Set(Null(GetIsolate()));
 }
 
 template<typename T>
 void ReturnValue<T>::SetUndefined() {
   TYPE_CHECK(T, Primitive);
-  typedef internal::Internals I;
-  *value_ = *I::GetRoot(GetIsolate(), I::kUndefinedValueRootIndex);
+  Set(Undefined(GetIsolate()));
 }
 
 template<typename T>
 void ReturnValue<T>::SetEmptyString() {
   TYPE_CHECK(T, String);
-  typedef internal::Internals I;
-  *value_ = *I::GetRoot(GetIsolate(), I::kEmptyStringRootIndex);
+  Set(String::Empty(GetIsolate()));
 }
 
 template <typename T>
@@ -9365,10 +9468,10 @@ Isolate* ReturnValue<T>::GetIsolate() const {
 
 template <typename T>
 Local<Value> ReturnValue<T>::Get() const {
-  typedef internal::Internals I;
-  if (*value_ == *I::GetRoot(GetIsolate(), I::kTheHoleValueRootIndex))
-    return Local<Value>(*Undefined(GetIsolate()));
-  return Local<Value>::New(GetIsolate(), reinterpret_cast<Value*>(value_));
+  //typedef internal::Internals I;
+  //if (*value_ == *I::GetRoot(GetIsolate(), I::kTheHoleValueRootIndex))
+  //  return Local<Value>(*Undefined(GetIsolate()));
+  return GetIsolate()->CorrectReturnValue(*value_);
 }
 
 template <typename T>
@@ -9380,8 +9483,7 @@ void ReturnValue<T>::Set(S* whatever) {
 
 template<typename T>
 internal::Object* ReturnValue<T>::GetDefaultValue() {
-  // Default value is always the pointer below value_ on the stack.
-  return value_[-1];
+  return nullptr;
 }
 
 template <typename T>
@@ -9393,7 +9495,7 @@ FunctionCallbackInfo<T>::FunctionCallbackInfo(internal::Object** implicit_args,
 template<typename T>
 Local<Value> FunctionCallbackInfo<T>::operator[](int i) const {
   if (i < 0 || length_ <= i) return Local<Value>(*Undefined(GetIsolate()));
-  return Local<Value>(reinterpret_cast<Value*>(values_ - i));
+  return Local<Value>(*reinterpret_cast<Value**>(values_ - i));
 }
 
 
@@ -9406,25 +9508,25 @@ Local<Function> FunctionCallbackInfo<T>::Callee() const {
 
 template<typename T>
 Local<Object> FunctionCallbackInfo<T>::This() const {
-  return Local<Object>(reinterpret_cast<Object*>(values_ + 1));
+  return Local<Object>(*reinterpret_cast<Object**>(values_ + 1));
 }
 
 
 template<typename T>
 Local<Object> FunctionCallbackInfo<T>::Holder() const {
   return Local<Object>(reinterpret_cast<Object*>(
-      &implicit_args_[kHolderIndex]));
+      implicit_args_[kHolderIndex]));
 }
 
 template <typename T>
 Local<Value> FunctionCallbackInfo<T>::NewTarget() const {
   return Local<Value>(
-      reinterpret_cast<Value*>(&implicit_args_[kNewTargetIndex]));
+      reinterpret_cast<Value*>(implicit_args_[kNewTargetIndex]));
 }
 
 template <typename T>
 Local<Value> FunctionCallbackInfo<T>::Data() const {
-  return Local<Value>(reinterpret_cast<Value*>(&implicit_args_[kDataIndex]));
+  return Local<Value>(reinterpret_cast<Value*>(implicit_args_[kDataIndex]));
 }
 
 
@@ -9531,47 +9633,15 @@ void Template::Set(Isolate* isolate, const char* name, Local<Data> value) {
 
 
 Local<Value> Object::GetInternalField(int index) {
-#ifndef V8_ENABLE_CHECKS
-  typedef internal::Object O;
-  typedef internal::HeapObject HO;
-  typedef internal::Internals I;
-  O* obj = *reinterpret_cast<O**>(this);
-  // Fast path: If the object is a plain JSObject, which is the common case, we
-  // know where to find the internal fields and can return the value directly.
-  auto instance_type = I::GetInstanceType(obj);
-  if (instance_type == I::kJSObjectType ||
-      instance_type == I::kJSApiObjectType) {
-    int offset = I::kJSObjectHeaderSize + (internal::kApiPointerSize * index);
-    O* value = I::ReadField<O*>(obj, offset);
-    O** result = HandleScope::CreateHandle(reinterpret_cast<HO*>(obj), value);
-    return Local<Value>(reinterpret_cast<Value*>(result));
-  }
-#endif
   return SlowGetInternalField(index);
 }
 
 
 void* Object::GetAlignedPointerFromInternalField(int index) {
-#ifndef V8_ENABLE_CHECKS
-  typedef internal::Object O;
-  typedef internal::Internals I;
-  O* obj = *reinterpret_cast<O**>(this);
-  // Fast path: If the object is a plain JSObject, which is the common case, we
-  // know where to find the internal fields and can return the value directly.
-  auto instance_type = I::GetInstanceType(obj);
-  if (V8_LIKELY(instance_type == I::kJSObjectType ||
-                instance_type == I::kJSApiObjectType)) {
-    int offset = I::kJSObjectHeaderSize + (internal::kApiPointerSize * index);
-    return I::ReadField<void*>(obj, offset);
-  }
-#endif
   return SlowGetAlignedPointerFromInternalField(index);
 }
 
 String* String::Cast(v8::Value* value) {
-#ifdef V8_ENABLE_CHECKS
-  CheckCast(value);
-#endif
   return static_cast<String*>(value);
 }
 
@@ -9624,11 +9694,7 @@ String::ExternalStringResourceBase* String::GetExternalStringResourceBase(
 
 
 bool Value::IsUndefined() const {
-#ifdef V8_ENABLE_CHECKS
   return FullIsUndefined();
-#else
-  return QuickIsUndefined();
-#endif
 }
 
 bool Value::QuickIsUndefined() const {
@@ -9642,11 +9708,7 @@ bool Value::QuickIsUndefined() const {
 
 
 bool Value::IsNull() const {
-#ifdef V8_ENABLE_CHECKS
   return FullIsNull();
-#else
-  return QuickIsNull();
-#endif
 }
 
 bool Value::QuickIsNull() const {
@@ -9659,11 +9721,7 @@ bool Value::QuickIsNull() const {
 }
 
 bool Value::IsNullOrUndefined() const {
-#ifdef V8_ENABLE_CHECKS
   return FullIsNull() || FullIsUndefined();
-#else
-  return QuickIsNullOrUndefined();
-#endif
 }
 
 bool Value::QuickIsNullOrUndefined() const {
@@ -9677,11 +9735,7 @@ bool Value::QuickIsNullOrUndefined() const {
 }
 
 bool Value::IsString() const {
-#ifdef V8_ENABLE_CHECKS
   return FullIsString();
-#else
-  return QuickIsString();
-#endif
 }
 
 bool Value::QuickIsString() const {
@@ -10033,9 +10087,6 @@ Function* Function::Cast(v8::Value* value) {
 
 
 External* External::Cast(v8::Value* value) {
-#ifdef V8_ENABLE_CHECKS
-  CheckCast(value);
-#endif
   return static_cast<External*>(value);
 }
 
@@ -10048,19 +10099,19 @@ Isolate* PropertyCallbackInfo<T>::GetIsolate() const {
 
 template<typename T>
 Local<Value> PropertyCallbackInfo<T>::Data() const {
-  return Local<Value>(reinterpret_cast<Value*>(&args_[kDataIndex]));
+  return Local<Value>(reinterpret_cast<Value*>(args_[kDataIndex]));
 }
 
 
 template<typename T>
 Local<Object> PropertyCallbackInfo<T>::This() const {
-  return Local<Object>(reinterpret_cast<Object*>(&args_[kThisIndex]));
+  return Local<Object>(reinterpret_cast<Object*>(args_[kThisIndex]));
 }
 
 
 template<typename T>
 Local<Object> PropertyCallbackInfo<T>::Holder() const {
-  return Local<Object>(reinterpret_cast<Object*>(&args_[kHolderIndex]));
+  return Local<Object>(reinterpret_cast<Object*>(args_[kHolderIndex]));
 }
 
 
@@ -10146,27 +10197,12 @@ int64_t Isolate::AdjustAmountOfExternalAllocatedMemory(
 }
 
 Local<Value> Context::GetEmbedderData(int index) {
-#ifndef V8_ENABLE_CHECKS
-  typedef internal::Object O;
-  typedef internal::HeapObject HO;
-  typedef internal::Internals I;
-  HO* context = *reinterpret_cast<HO**>(this);
-  O** result =
-      HandleScope::CreateHandle(context, I::ReadEmbedderData<O*>(this, index));
-  return Local<Value>(reinterpret_cast<Value*>(result));
-#else
   return SlowGetEmbedderData(index);
-#endif
 }
 
 
 void* Context::GetAlignedPointerFromEmbedderData(int index) {
-#ifndef V8_ENABLE_CHECKS
-  typedef internal::Internals I;
-  return I::ReadEmbedderData<void*>(this, index);
-#else
   return SlowGetAlignedPointerFromEmbedderData(index);
-#endif
 }
 
 void V8::SetAllowCodeGenerationFromStringsCallback(

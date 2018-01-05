@@ -117,7 +117,11 @@ Domain.prototype._errorHandler = function _errorHandler(er) {
         process._emittingTopLevelDomainError = true;
         caught = this.emit('error', er);
       } finally {
-        process._emittingTopLevelDomainError = false;
+        // Give the late Node-Graal.js abort-on-uncaught-exception check
+        // a chance to see the value of _emittingTopLevelDomainError
+        process.nextTick(function() {
+          process._emittingTopLevelDomainError = false;
+        });
       }
     }
   } else {
