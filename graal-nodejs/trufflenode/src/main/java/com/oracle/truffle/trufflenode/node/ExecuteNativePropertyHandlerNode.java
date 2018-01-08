@@ -143,7 +143,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         } else {
             JSObject.set((DynamicObject) arguments[2], key, arguments[4]);
         }
-        return Undefined.instance;
+        return Boolean.TRUE;
     }
 
     @CompilerDirectives.TruffleBoundary
