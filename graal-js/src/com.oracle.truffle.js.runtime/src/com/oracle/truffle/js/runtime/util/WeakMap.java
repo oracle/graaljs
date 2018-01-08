@@ -46,7 +46,7 @@ public class WeakMap implements Map<DynamicObject, Object> {
 
     private static WeakHashMap<WeakMap, Object> putInvertedMap(DynamicObject k) {
         WeakHashMap<WeakMap, Object> invertedMap = new WeakHashMap<>();
-        boolean wasNotExtensible = !JSObject.isExtensible(k);
+        boolean wasNotExtensible = !JSShape.isExtensible(k.getShape());
         k.define(INVERTED_WEAK_MAP_KEY, invertedMap);
         if (wasNotExtensible && JSObject.isExtensible(k)) {
             // not-extensible marker property is expected to be the last property; ensure it is.
