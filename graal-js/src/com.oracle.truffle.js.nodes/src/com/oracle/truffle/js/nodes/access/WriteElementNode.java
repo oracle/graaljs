@@ -357,7 +357,7 @@ public class WriteElementNode extends JSTargetableNode {
         protected ProxyWriteElementNode(JSContext context, boolean isStrict, boolean writeOwn) {
             super(context, isStrict, writeOwn);
             if (!writeOwn) {
-                this.proxySet = JSProxyPropertySetNode.create(context, false);
+                this.proxySet = JSProxyPropertySetNode.create(context, false, isStrict);
             }
         }
 

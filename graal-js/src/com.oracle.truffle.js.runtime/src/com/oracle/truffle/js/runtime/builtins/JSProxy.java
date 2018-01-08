@@ -362,7 +362,7 @@ public final class JSProxy extends AbstractJSClass {
         boolean booleanTrapResult = JSRuntime.toBoolean(trapResult);
         if (!booleanTrapResult) {
             if (isStrict) {
-                throw Errors.createTypeError("cannot delete");
+                throw Errors.createTypeErrorTrapReturnedFalsish(JSProxy.DELETE_PROPERTY, propertyKey);
             }
             return false;
         }
@@ -400,7 +400,7 @@ public final class JSProxy extends AbstractJSClass {
         if (!trapResult) {
             if (doThrow) {
                 // path only hit in V8CompatibilityMode; see JSRuntime.definePropertyOrThrow
-                throw Errors.createTypeError("'defineProperty' on proxy: trap returned falsish for property '" + key + "'");
+                throw Errors.createTypeErrorTrapReturnedFalsish(JSProxy.DEFINE_PROPERTY, key);
             } else {
                 return false;
             }
