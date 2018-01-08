@@ -5,7 +5,6 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.Message;
@@ -93,17 +92,12 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
         boolean booleanTrapResult = toBoolean.executeBoolean(trapResult);
         if (!booleanTrapResult) {
             if (isStrict) {
-                throwTrapReturnedFalsishError(propertyKey);
+                throw Errors.createTypeErrorTrapReturnedFalsish(JSProxy.SET, propertyKey);
             } else {
                 return false;
             }
         }
         return JSProxy.checkProxySetTrapInvariants(proxy, propertyKey, value);
-    }
-
-    @TruffleBoundary
-    private static void throwTrapReturnedFalsishError(Object propertyKey) {
-        throw Errors.createTypeError("'set' on proxy: trap returned falsish for property '" + propertyKey + "'");
     }
 
     private Object truffleWrite(TruffleObject obj, Object key, Object value) {

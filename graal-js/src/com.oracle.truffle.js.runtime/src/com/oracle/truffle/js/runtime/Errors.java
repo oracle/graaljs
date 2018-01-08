@@ -328,4 +328,10 @@ public final class Errors {
     public static JSException createNotAnObjectError(Node origin) {
         return createTypeError("not an object", origin);
     }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorTrapReturnedFalsish(String trap, Object propertyKey) {
+        return createTypeError("'" + trap + "' on proxy: trap returned falsish for property '" + propertyKey + "'");
+    }
+
 }
