@@ -228,10 +228,16 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
             desc = JSObject.getOwnProperty((DynamicObject) arguments[2], arguments[3]);
             if (desc == null) {
                 Object value = executeGetter(holder, JSArguments.create(arguments[0], arguments[1], arguments[2], arguments[3], proxy));
-                desc = GraalJSAccess.propertyDescriptor(((Number) attributes).intValue(), value);
+                // target does not have a property with this key => the property
+                // cannot be non-configurable according to Proxy invariants
+                desc = GraalJSAccess.propertyDescriptor(makeConfigurable(((Number) attributes).intValue()), value);
             }
         }
         return desc;
+    }
+
+    private static int makeConfigurable(int attributes) {
+        return attributes & (~4); // v8::PropertyAttribute::DontDelete == 4
     }
 
     private static boolean arrayContains(DynamicObject array, Object item) {
