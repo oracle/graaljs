@@ -362,7 +362,7 @@ public final class JSProxy extends AbstractJSClass {
         boolean booleanTrapResult = JSRuntime.toBoolean(trapResult);
         if (!booleanTrapResult) {
             if (isStrict) {
-                throw Errors.createTypeError("cannot delete");
+                throw Errors.createTypeError("'deleteProperty' on proxy: trap returned falsish for property '" + propertyKey + "'");
             }
             return false;
         }
