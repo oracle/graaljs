@@ -5,6 +5,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.Message;
@@ -19,6 +20,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -31,6 +33,7 @@ import com.oracle.truffle.js.runtime.util.JSReflectUtils;
 public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
 
     protected final boolean isDeep;
+    private final boolean isStrict;
 
     @Child private JSFunctionCallNode call;
     @Child private JSToBooleanNode toBoolean;
@@ -38,11 +41,12 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
     @Child private JSToPropertyKeyNode toPropertyKeyNode;
     @Child private Node writeForeignNode;
 
-    protected JSProxyPropertySetNode(JSContext context, boolean isDeep) {
+    protected JSProxyPropertySetNode(JSContext context, boolean isDeep, boolean isStrict) {
         this.call = JSFunctionCallNode.createCall();
         this.trapGet = GetMethodNode.create(context, null, JSProxy.SET);
         this.toBoolean = JSToBooleanNode.create();
         this.isDeep = isDeep;
+        this.isStrict = isStrict;
     }
 
     public abstract boolean executeWithReceiverAndValue(Object proxy, Object value, Object key, boolean floatingCondition);
@@ -51,8 +55,8 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
 
     public abstract boolean executeWithReceiverAndValueIntKey(Object proxy, Object value, int key, boolean floatingCondition);
 
-    public static JSProxyPropertySetNode create(JSContext context, boolean isDeep) {
-        return JSProxyPropertySetNodeGen.create(context, isDeep);
+    public static JSProxyPropertySetNode create(JSContext context, boolean isDeep, boolean isStrict) {
+        return JSProxyPropertySetNodeGen.create(context, isDeep, isStrict);
     }
 
     @Specialization
@@ -88,9 +92,18 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
         Object trapResult = call.executeCall(JSArguments.create(handler, trapFun, target, propertyKey, value, obj));
         boolean booleanTrapResult = toBoolean.executeBoolean(trapResult);
         if (!booleanTrapResult) {
-            return false;
+            if (isStrict) {
+                throwTrapReturnedFalsishError(propertyKey);
+            } else {
+                return false;
+            }
         }
         return JSProxy.checkProxySetTrapInvariants(proxy, propertyKey, value);
+    }
+
+    @TruffleBoundary
+    private static void throwTrapReturnedFalsishError(Object propertyKey) {
+        throw Errors.createTypeError("'set' on proxy: trap returned falsish for property '" + propertyKey + "'");
     }
 
     private Object truffleWrite(TruffleObject obj, Object key, Object value) {

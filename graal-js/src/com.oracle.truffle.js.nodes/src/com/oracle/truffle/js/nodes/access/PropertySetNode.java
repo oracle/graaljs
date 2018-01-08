@@ -826,13 +826,9 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         @Child private JSProxyPropertySetNode proxySet;
         @Child private JSToPropertyKeyNode toPropertyKeyNode;
 
-        public JSProxyDispatcherPropertySetNode(JSContext context, Object key, ReceiverCheckNode receiverCheckNode) {
-            this(context, key, receiverCheckNode, false);
-        }
-
-        public JSProxyDispatcherPropertySetNode(JSContext context, Object key, ReceiverCheckNode receiverCheckNode, boolean isDeep) {
+        public JSProxyDispatcherPropertySetNode(JSContext context, Object key, ReceiverCheckNode receiverCheckNode, boolean isDeep, boolean isStrict) {
             super(key, receiverCheckNode);
-            this.proxySet = JSProxyPropertySetNode.create(context, isDeep);
+            this.proxySet = JSProxyPropertySetNode.create(context, isDeep, isStrict);
             this.toPropertyKeyNode = JSToPropertyKeyNode.create();
             this.propagateFloatingCondition = receiverCheck instanceof JSClassCheckNode;
         }
@@ -1229,7 +1225,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
             if (JSAdapter.isJSAdapter(store)) {
                 return new JSAdapterPropertySetNode(key, receiverCheck, isStrict());
             } else if (JSProxy.isProxy(store) && JSRuntime.isPropertyKey(key) && (!isStrict() || !isGlobal() || JSObject.hasOwnProperty(thisJSObj, key))) {
-                return new JSProxyDispatcherPropertySetNode(context, key, receiverCheck, depth > 0);
+                return new JSProxyDispatcherPropertySetNode(context, key, receiverCheck, depth > 0, isStrict());
             } else if (!JSRuntime.isObject(thisJSObj)) {
                 return new TypeErrorPropertySetNode(key, shapeCheck);
             } else if (isStrict() && isGlobal()) {
