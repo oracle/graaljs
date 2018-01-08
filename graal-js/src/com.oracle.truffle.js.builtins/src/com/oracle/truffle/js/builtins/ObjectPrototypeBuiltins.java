@@ -162,6 +162,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toObject(thisObj);
         }
 
+        @Specialization
+        protected DynamicObject valueOf(Symbol thisObj) {
+            return toObject(thisObj);
+        }
+
         @Specialization(guards = "!isTruffleObject(thisObj)")
         protected DynamicObject valueOf(Object thisObj) {
             return toObject(thisObj);
@@ -344,6 +349,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected boolean hasOwnPropertyPrimitive(Object thisObj, Object propName) {
             Object key = getToPropertyKeyNode().execute(propName); // ordering 15.2.4.5 Note2
             return JSObject.hasOwnProperty(toObject(thisObj), key, classProfile);
+        }
+
+        @Specialization
+        protected boolean hasOwnPropertySymbol(Symbol thisObj, Object propName) {
+            return hasOwnPropertyPrimitive(thisObj, propName);
         }
 
         @Specialization(guards = "isForeignObject(thisObj)")
