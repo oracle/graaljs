@@ -574,7 +574,7 @@ public final class RegexLexer {
     }
 
     private boolean isEscapeCharClass(char c) {
-        return isPredefCharClass(c) || (flags.isUnicode() && (c == 'p') || (c == 'P'));
+        return isPredefCharClass(c) || (flags.isUnicode() && (c == 'p' || c == 'P'));
     }
 
     private RegexSyntaxException syntaxError(String msg) {
