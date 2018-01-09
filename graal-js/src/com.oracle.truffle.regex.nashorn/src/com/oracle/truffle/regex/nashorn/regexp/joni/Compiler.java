@@ -33,6 +33,7 @@ import com.oracle.truffle.regex.nashorn.regexp.joni.ast.EncloseNode;
 import com.oracle.truffle.regex.nashorn.regexp.joni.ast.Node;
 import com.oracle.truffle.regex.nashorn.regexp.joni.ast.QuantifierNode;
 import com.oracle.truffle.regex.nashorn.regexp.joni.ast.StringNode;
+import com.oracle.truffle.regex.nashorn.regexp.joni.constants.EncloseType;
 import com.oracle.truffle.regex.nashorn.regexp.joni.constants.NodeType;
 import com.oracle.truffle.regex.nashorn.regexp.joni.exception.ErrorMessages;
 import com.oracle.truffle.regex.nashorn.regexp.joni.exception.InternalException;
@@ -166,5 +167,77 @@ public abstract class Compiler implements ErrorMessages {
 
     protected void newInternalException(final String message) {
         throw new InternalException(message);
+    }
+
+    protected Range findEnclosedCaptureGroups(final Node node) {
+        switch(node.getType()) {
+            case NodeType.LIST:
+            case NodeType.ALT:
+                ConsAltNode lin = (ConsAltNode)node;
+                Range ret = findEnclosedCaptureGroups(lin.car);
+                while ((lin = lin.cdr) != null) {
+                    ret = ret.union(findEnclosedCaptureGroups(lin.car));
+                }
+                return ret;
+            case NodeType.QTFR:
+                QuantifierNode quantifierNode = (QuantifierNode)node;
+                return findEnclosedCaptureGroups(quantifierNode.target);
+            case NodeType.ENCLOSE:
+                EncloseNode encloseNode = (EncloseNode)node;
+                Range inner = findEnclosedCaptureGroups(encloseNode.target);
+                if (encloseNode.type == EncloseType.MEMORY) {
+                    return new Range(encloseNode.regNum).union(inner);
+                } else {
+                    return inner;
+                }
+            case NodeType.STR:
+            case NodeType.CCLASS:
+            case NodeType.CANY:
+            case NodeType.BREF:
+            case NodeType.ANCHOR:
+                return Range.EMPTY;
+            default:
+                // undefined node type
+                throw new InternalException(ERR_PARSER_BUG);
+        }
+    }
+
+    /**
+     * Range represents a range of integers. The representation is an implementation
+     * of the variant type {@code Empty | NonEmpty of (from:int) * (to:int)}.
+     * The lower bound {@link #from} is inclusive, the upper bound {@link #to} is exclusive.
+     */
+    protected static class Range {
+        public boolean empty;
+        public int from;
+        public int to;
+
+        public static final Range EMPTY = new Range();
+
+        public Range() {
+            this.empty = true;
+        }
+
+        public Range(int singleton) {
+            this.empty = false;
+            this.from = singleton;
+            this.to = singleton + 1;
+        }
+
+        public Range(int from, int to) {
+            this.empty = false;
+            this.from = from;
+            this.to = to;
+        }
+
+        public Range union(Range other) {
+            if (this.empty) {
+                return other;
+            } else if (other.empty) {
+                return this;
+            } else {
+                return new Range(Math.min(this.from, other.from), Math.max(this.to, other.to));
+            }
+        }
     }
 }

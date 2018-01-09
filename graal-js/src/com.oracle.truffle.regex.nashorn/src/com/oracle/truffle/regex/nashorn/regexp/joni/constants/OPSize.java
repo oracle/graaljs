@@ -64,6 +64,7 @@ public interface OPSize {
     final int MEMORY_END_PUSH_REC           = (OPCODE + MEMNUM);
     final int MEMORY_END                    = (OPCODE + MEMNUM);
     final int MEMORY_END_REC                = (OPCODE + MEMNUM);
+    final int MEMORY_CLEAR                  = (OPCODE + MEMNUM + MEMNUM);
     final int PUSH_STOP_BT                  = OPCODE;
     final int POP_STOP_BT                   = OPCODE;
     final int NULL_CHECK_START              = (OPCODE + MEMNUM);

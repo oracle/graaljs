@@ -82,6 +82,7 @@ public interface OPCode {
     final int MEMORY_END_PUSH_REC           = 51;           /* push back-tracker to stack */
     final int MEMORY_END                    = 52;
     final int MEMORY_END_REC                = 53;           /* push marker to stack */
+    final int MEMORY_CLEAR                  = 88;
 
     final int FAIL                          = 54;           /* pop stack and move */
     final int JUMP                          = 55;

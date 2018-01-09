@@ -179,6 +179,7 @@ class ByteCodeMachine extends StackMachine {
                 case OPCode.MEMORY_END:                 opMemoryEnd();             continue;
                 case OPCode.MEMORY_END_PUSH_REC:        opMemoryEndPushRec();      continue;
                 case OPCode.MEMORY_END_REC:             opMemoryEndRec();          continue;
+                case OPCode.MEMORY_CLEAR:               opMemoryClear();           continue;
 
                 case OPCode.BACKREF1:                   opBackRef1();              continue;
                 case OPCode.BACKREF2:                   opBackRef2();              continue;
@@ -749,6 +750,23 @@ class ByteCodeMachine extends StackMachine {
         }
 
         pushMemEndMark(mem);
+    }
+
+    private void opMemoryClear() {
+        final int fromMem = code[ip++];
+        final int toMem = code[ip++];
+        for (int mem = fromMem; mem < toMem; mem++) {
+            if (bsAt(regex.btMemStart, mem)) {
+                pushMemStart(mem, INVALID_INDEX);
+            } else {
+                repeatStk[memStartStk + mem] = INVALID_INDEX;
+            }
+            if (bsAt(regex.btMemEnd, mem)) {
+                pushMemEnd(mem, INVALID_INDEX);
+            } else {
+                repeatStk[memEndStk + mem] = INVALID_INDEX;
+            }
+        }
     }
 
     private boolean backrefInvalid(final int mem) {
