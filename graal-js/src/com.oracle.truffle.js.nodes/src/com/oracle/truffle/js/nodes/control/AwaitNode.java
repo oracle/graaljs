@@ -18,11 +18,11 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AwaitNode extends JavaScriptNode implements ResumableNode {
 
-    @Child private JavaScriptNode expression;
-    @Child private JSReadFrameSlotNode readAsyncResultNode;
-    @Child private JSReadFrameSlotNode readAsyncContextNode;
-    @Child private JSFunctionCallNode awaitTrampolineCall;
-    @Child private PropertySetNode setAsyncContextNode;
+    @Child protected JavaScriptNode expression;
+    @Child protected JSReadFrameSlotNode readAsyncResultNode;
+    @Child protected JSReadFrameSlotNode readAsyncContextNode;
+    @Child protected JSFunctionCallNode awaitTrampolineCall;
+    @Child protected PropertySetNode setAsyncContextNode;
 
     protected AwaitNode(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode) {
         this.expression = expression;

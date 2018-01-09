@@ -194,6 +194,7 @@ public class Parser extends AbstractParser {
     private static final boolean ES8_TRAILING_COMMA = Options.getBooleanProperty("parser.trailing.comma", true);
     private static final boolean ES8_ASYNC_FUNCTION = Options.getBooleanProperty("parser.async.function", true);
     private static final boolean ES8_REST_SPREAD_PROPERTY = Options.getBooleanProperty("parser.rest.spread.property", false);
+    private static final boolean ES8_FOR_AWAIT_OF = Options.getBooleanProperty("parser.for.await.of", true);
 
     private static final int REPARSE_IS_PROPERTY_ACCESSOR = 1 << 0;
     private static final int REPARSE_IS_METHOD = 1 << 1;
@@ -2048,6 +2049,7 @@ loop:
 
         int flags = 0;
         boolean isForOf = false;
+        boolean isForAwaitOf = false;
 
         try {
             // FOR tested in caller.
@@ -2057,6 +2059,11 @@ loop:
             // iterate property values rather than property names.
             if (env.syntaxExtensions && type == IDENT && "each".equals(getValue())) {
                 flags |= ForNode.IS_FOR_EACH;
+                next();
+            }
+
+            if (ES8_FOR_AWAIT_OF && type == IDENT && "await".equals(getValue())) {
+                isForAwaitOf = true;
                 next();
             }
 
@@ -2125,7 +2132,10 @@ loop:
                 break;
 
             case IDENT:
-                if (ES6_FOR_OF && "of".equals(getValue())) {
+                boolean ofValue = "of".equals(getValueNoUnicode());
+                if (ES8_FOR_AWAIT_OF && isForAwaitOf && ofValue) {
+                    // fall through
+                } else if (ES6_FOR_OF && ofValue) {
                     isForOf = true;
                     // fall through
                 } else {
@@ -2133,19 +2143,23 @@ loop:
                     break;
                 }
             case IN:
-                flags |= isForOf ? ForNode.IS_FOR_OF : ForNode.IS_FOR_IN;
+                if (isForAwaitOf) {
+                     flags |= ForNode.IS_FOR_AWAIT_OF;
+                } else {
+                    flags |= isForOf ? ForNode.IS_FOR_OF : ForNode.IS_FOR_IN;
+                }
                 test = new JoinPredecessorExpression();
                 if (varDeclList != null) {
                     // for (var|let|const ForBinding in|of expression)
                     if (varDeclList.secondBinding != null) {
                         // for (var i, j in obj) is invalid
-                        throw error(AbstractParser.message("many.vars.in.for.in.loop", isForOf ? "of" : "in"), varDeclList.secondBinding.getToken());
+                        throw error(AbstractParser.message("many.vars.in.for.in.loop", isForOf || isForAwaitOf ? "of" : "in"), varDeclList.secondBinding.getToken());
                     }
                     if (varDeclList.declarationWithInitializerToken != 0 && (isStrictMode || type != TokenType.IN || varType != VAR || varDeclList.init != null)) {
                         // ES5 legacy: for (var i = AssignmentExpressionNoIn in Expression)
                         // Invalid in ES6, but allow it in non-strict mode if no ES6 features used,
                         // i.e., error if strict, for-of, let/const, or destructuring
-                        throw error(AbstractParser.message("for.in.loop.initializer", isForOf ? "of" : "in"), varDeclList.declarationWithInitializerToken);
+                        throw error(AbstractParser.message("for.in.loop.initializer", isForOf || isForAwaitOf ? "of" : "in"), varDeclList.declarationWithInitializerToken);
                     }
                     init = varDeclList.firstBinding;
                     assert init instanceof IdentNode || isDestructuringLhs(init);
@@ -2157,15 +2171,15 @@ loop:
                     assert init != null : "for..in/of init expression can not be null here";
 
                     // check if initial expression is a valid L-value
-                    if (!checkValidLValue(init, isForOf ? "for-of iterator" : "for-in iterator")) {
-                        throw error(AbstractParser.message("not.lvalue.for.in.loop", isForOf ? "of" : "in"), init.getToken());
+                    if (!checkValidLValue(init, isForOf || isForAwaitOf ? "for-of iterator" : "for-in iterator")) {
+                        throw error(AbstractParser.message("not.lvalue.for.in.loop", isForOf || isForAwaitOf ? "of" : "in"), init.getToken());
                     }
                 }
 
                 next();
 
                 // For-of only allows AssignmentExpression.
-                modify = isForOf ? new JoinPredecessorExpression(assignmentExpression(false)) : joinPredecessorExpression();
+                modify = isForOf || isForAwaitOf ? new JoinPredecessorExpression(assignmentExpression(false)) : joinPredecessorExpression();
                 break;
 
             default:
@@ -3321,7 +3335,7 @@ loop:
         final boolean computed = type == LBRACKET;
         if (type == IDENT) {
             // Get IDENT.
-            final String ident = (String)expectValue(IDENT);
+            final String ident = (String)expectValueNoUnicode(IDENT);
 
             if (type != COLON && type != COMMARIGHT && type != RBRACE && ((type != ASSIGN && type != LPAREN) || !isES6())) {
                 final long getSetToken = propertyToken;
@@ -3664,7 +3678,7 @@ loop:
 
         if (ES6_NEW_TARGET && type == PERIOD && isES6()) {
             next();
-            if (type == IDENT && "target".equals(getValue())) {
+            if (type == IDENT && "target".equals(getValueNoUnicode())) {
                 if (lc.getCurrentFunction().isProgram()) {
                     throw error(AbstractParser.message("new.target.in.function"), token);
                 }
@@ -5573,7 +5587,7 @@ loop:
         assert type == MUL;
         next();
         long asToken = token;
-        String as = (String) expectValue(IDENT);
+        String as = (String) expectValueNoUnicode(IDENT);
         if (!"as".equals(as)) {
             throw error(AbstractParser.message("expected.as"), asToken);
         }
@@ -5604,7 +5618,7 @@ loop:
             boolean bindingIdentifier = isBindingIdentifier();
             long nameToken = token;
             IdentNode importName = getIdentifierName();
-            if (type == IDENT && "as".equals(getValue())) {
+            if (type == IDENT && "as".equals(getValueNoUnicode())) {
                 next();
                 IdentNode localName = bindingIdentifier("ImportedBinding");
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
@@ -5634,7 +5648,7 @@ loop:
     private FromNode fromClause() {
         int fromStart = start;
         long fromToken = token;
-        String name = (String) expectValue(IDENT);
+        String name = (String) expectValueNoUnicode(IDENT);
         if (!"from".equals(name)) {
             throw error(AbstractParser.message("expected.from"), fromToken);
         }
@@ -5678,7 +5692,7 @@ loop:
             }
             case LBRACE: {
                 ExportClauseNode exportClause = exportClause();
-                if (type == IDENT && "from".equals(getValue())) {
+                if (type == IDENT && "from".equals(getValueNoUnicode())) {
                     FromNode from = fromClause();
                     module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from));
                     String moduleRequest = from.getModuleSpecifier().getValue();
@@ -5814,7 +5828,7 @@ loop:
             } else {
                 throw error(expectMessage(IDENT));
             }
-            if (type == IDENT && "as".equals(getValue())) {
+            if (type == IDENT && "as".equals(getValueNoUnicode())) {
                 next();
                 IdentNode exportName = getIdentifierName();
                 exports.add(new ExportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, exportName));
@@ -5831,7 +5845,7 @@ loop:
         }
         expect(RBRACE);
 
-        if (reservedWordToken != 0L && !(type == IDENT && "from".equals(getValue()))) {
+        if (reservedWordToken != 0L && !(type == IDENT && "from".equals(getValueNoUnicode()))) {
             throw error(AbstractParser.message("expected", IDENT.getNameOrType(), Token.toString(source, reservedWordToken)), reservedWordToken);
         }
 
@@ -5930,7 +5944,7 @@ loop:
     }
 
     private boolean isAsync() {
-        return ES8_ASYNC_FUNCTION && isES8() && type == IDENT && ASYNC_IDENT.equals(getValue(token));
+        return ES8_ASYNC_FUNCTION && isES8() && type == IDENT && ASYNC_IDENT.equals(getValueNoUnicode(token));
     }
 
     private boolean lookaheadIsAsyncArrowParameterListStart() {

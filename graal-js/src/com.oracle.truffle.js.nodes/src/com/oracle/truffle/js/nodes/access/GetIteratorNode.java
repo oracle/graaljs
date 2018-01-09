@@ -1,9 +1,10 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -24,15 +25,17 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
- * ES6 7.4.1 GetIterator(obj, method = @@iterator).
+ * ES8 7.4.1 GetIterator(obj, hint == false).
  */
 @ImportStatic(JSInteropUtil.class)
 @NodeChild(value = "iteratedObject", type = JavaScriptNode.class)
 public abstract class GetIteratorNode extends JavaScriptNode {
     @Child private GetMethodNode getIteratorMethodNode;
 
+    protected final JSContext context;
+
     protected GetIteratorNode(JSContext context) {
-        this.getIteratorMethodNode = GetMethodNode.create(context, null, Symbol.SYMBOL_ITERATOR);
+        this.context = context;
     }
 
     public static GetIteratorNode create(JSContext context) {
@@ -43,15 +46,19 @@ public abstract class GetIteratorNode extends JavaScriptNode {
         return GetIteratorNodeGen.create(context, iteratedObject);
     }
 
-    protected JSContext getContext() {
-        return getIteratorMethodNode.getContext();
+    public static GetIteratorNode createAsync(JSContext context, JavaScriptNode iteratedObject) {
+        return GetAsyncIteratorNodeGen.create(context, iteratedObject);
     }
 
-    @Specialization(guards = "!isForeignObject(iteratedObject)")
+    protected JSContext getContext() {
+        return context;
+    }
+
+    @Specialization(guards = {"!isForeignObject(iteratedObject)"})
     protected DynamicObject doGetIterator(Object iteratedObject,
                     @Cached("createCall()") JSFunctionCallNode methodCallNode,
                     @Cached("create()") IsObjectNode isObjectNode) {
-        Object method = getIteratorMethodNode.executeWithTarget(iteratedObject);
+        Object method = getIteratorMethodNode().executeWithTarget(iteratedObject);
         return getIterator(iteratedObject, method, methodCallNode, isObjectNode, this);
     }
 
@@ -79,7 +86,7 @@ public abstract class GetIteratorNode extends JavaScriptNode {
     }
 
     protected EnumerateNode createEnumerateValues() {
-        return EnumerateNode.create(getIteratorMethodNode.getContext(), null, true);
+        return EnumerateNode.create(getContext(), null, true);
     }
 
     @Override
@@ -91,6 +98,14 @@ public abstract class GetIteratorNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return GetIteratorNodeGen.create(getIteratorMethodNode.getContext(), cloneUninitialized(getIteratedObject()));
+        return GetIteratorNodeGen.create(getContext(), cloneUninitialized(getIteratedObject()));
+    }
+
+    protected GetMethodNode getIteratorMethodNode() {
+        if (getIteratorMethodNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            getIteratorMethodNode = insert(GetMethodNode.create(context, null, Symbol.SYMBOL_ITERATOR));
+        }
+        return getIteratorMethodNode;
     }
 }

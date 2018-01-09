@@ -262,7 +262,7 @@ final class InternalTranslator extends GraalJSTranslator {
                     case "GetIterator":
                         return GetIteratorNode.create(context, arguments[0]);
                     case "RegisterAsyncFunctionBuiltins":
-                        return InternalRegisterAsyncFunctionBuiltins.create(context, arguments[0], arguments[1]);
+                        return InternalRegisterAsyncFunctionBuiltins.create(context, arguments[0], arguments[1], arguments[2]);
                     case "ResumeContext":
                         return InternalResumeContext.create(context, arguments[0], arguments[1], (boolean) ((JSConstantNode) arguments[2]).getValue());
                     case "PromiseRejectionTracker":
@@ -576,19 +576,21 @@ final class InternalTranslator extends GraalJSTranslator {
 
     public static class InternalRegisterAsyncFunctionBuiltins extends JavaScriptNode {
 
+        @Child private JavaScriptNode performPromiseThen;
         @Child private JavaScriptNode asyncFunctionAwait;
         @Child private JavaScriptNode newDefaultCapability;
 
         private final JSContext context;
 
-        InternalRegisterAsyncFunctionBuiltins(JSContext context, JavaScriptNode asyncFunctionAwait, JavaScriptNode newDefaultCapability) {
+        InternalRegisterAsyncFunctionBuiltins(JSContext context, JavaScriptNode asyncFunctionAwait, JavaScriptNode newDefaultCapability, JavaScriptNode performPromiseThen) {
             this.context = context;
             this.asyncFunctionAwait = asyncFunctionAwait;
             this.newDefaultCapability = newDefaultCapability;
+            this.performPromiseThen = performPromiseThen;
         }
 
-        public static JavaScriptNode create(JSContext context, JavaScriptNode asyncFunctionAwait, JavaScriptNode newDefaultCapability) {
-            return new InternalRegisterAsyncFunctionBuiltins(context, asyncFunctionAwait, newDefaultCapability);
+        public static JavaScriptNode create(JSContext context, JavaScriptNode asyncFunctionAwait, JavaScriptNode newDefaultCapability, JavaScriptNode performPromiseThen) {
+            return new InternalRegisterAsyncFunctionBuiltins(context, asyncFunctionAwait, newDefaultCapability, performPromiseThen);
         }
 
         @Override
@@ -599,12 +601,15 @@ final class InternalTranslator extends GraalJSTranslator {
             DynamicObject constructor = (DynamicObject) newDefaultCapability.execute(frame);
             assert JSFunction.isJSFunction(constructor);
             context.setAsyncFunctionPromiseCapabilityConstructor(constructor);
+            DynamicObject promiseThen = (DynamicObject) performPromiseThen.execute(frame);
+            assert JSFunction.isJSFunction(promiseThen);
+            context.setPerformPromiseThen(promiseThen);
             return Undefined.instance;
         }
 
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return new InternalRegisterAsyncFunctionBuiltins(context, cloneUninitialized(asyncFunctionAwait), cloneUninitialized(newDefaultCapability));
+            return new InternalRegisterAsyncFunctionBuiltins(context, cloneUninitialized(asyncFunctionAwait), cloneUninitialized(newDefaultCapability), cloneUninitialized(performPromiseThen));
         }
     }
 

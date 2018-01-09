@@ -857,9 +857,10 @@ public class Lexer extends Scanner {
      *
      * @param start  Position in source content.
      * @param length Length of token.
+     * @param convertUnicode convert Unicode symbols in the Ident string.
      * @return Ident string or null if an error.
      */
-    private String valueOfIdent(final int start, final int length) throws RuntimeException {
+    private String valueOfIdent(final int start, final int length, final boolean convertUnicode) throws RuntimeException {
         // Save the current position.
         final int savePosition = position;
         // End of scan.
@@ -872,7 +873,7 @@ public class Lexer extends Scanner {
         // Scan until end of line or end of file.
         while (!atEOF() && position < end && !isEOL(ch0)) {
             // If escape character.
-            if (ch0 == '\\' && ch1 == 'u') {
+            if (convertUnicode && ch0 == '\\' && ch1 == 'u') {
                 skip(2);
                 final int ch = unicodeEscapeSequence(TokenType.IDENT);
                 if (Character.isBmpCodePoint(ch) && isWhitespace((char)ch)) {
@@ -1851,6 +1852,17 @@ public class Lexer extends Scanner {
      * @return JavaScript value.
      */
     Object getValueOf(final long token, final boolean strict) {
+        return getValueOf(token, strict, true);
+    }
+
+    /**
+     * Return value of token given its token descriptor.
+     *
+     * @param token  Token descriptor.
+     * @param convertUnicode Perform Unicode conversion.
+     * @return JavaScript value.
+     */
+    Object getValueOf(final long token, final boolean strict, final boolean convertUnicode) {
         final int start = Token.descPosition(token);
         final int len   = Token.descLength(token);
 
@@ -1888,7 +1900,7 @@ public class Lexer extends Scanner {
         case ESCSTRING:
             return valueOfString(start, len, strict); // String
         case IDENT:
-            return valueOfIdent(start, len); // String
+            return valueOfIdent(start, len, convertUnicode); // String
         case REGEX:
             return valueOfPattern(start, len); // RegexToken::LexerToken
         case TEMPLATE:
