@@ -93,9 +93,9 @@ class JSForeignAccessFactory {
                     }
                     if (asyncFunction && result != null && JSPromise.isJSPromise(result)) {
                         /*
-                         * Walnut-specific semantics: interop calls to async functions return the
-                         * async resolved value (if any). If the promise resolves, its value is made
-                         * available by flushing the queue of pending jobs.
+                         * InteropCompletePromises semantics: interop calls to async functions
+                         * return the async resolved value (if any). If the promise resolves, its
+                         * value is made available by flushing the queue of pending jobs.
                          */
                         DynamicObject promise = (DynamicObject) result;
                         if (rejected.profile(JSPromise.isRejected(promise))) {
@@ -113,7 +113,7 @@ class JSForeignAccessFactory {
             }
 
             private static boolean isAsyncFunction(DynamicObject target) {
-                if (JSTruffleOptions.WalnutExtensions) {
+                if (JSTruffleOptions.InteropCompletePromises) {
                     JSFunctionData functionData = JSRuntime.getFunctionData(target);
                     if (functionData != null) {
                         return functionData.isAsync();

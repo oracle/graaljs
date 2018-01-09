@@ -197,8 +197,8 @@ public class JSTruffleOptions {
 
     public static final boolean GraalBuiltin = booleanOption("GraalBuiltin", true, OPTION_SETUP);
 
-    /** Enable Walnut-specific builtins and embedding semantics. */
-    public static final boolean WalnutExtensions = booleanOption("WalnutExtensions", false, OPTION_SETUP);
+    /** ECMA Promises are automatically resolved or rejected when crossing an interop boundary. */
+    public static final boolean InteropCompletePromises = booleanOption("InteropCompletePromises", false, OPTION_SETUP);
 
     static {
         checkRestParams();
