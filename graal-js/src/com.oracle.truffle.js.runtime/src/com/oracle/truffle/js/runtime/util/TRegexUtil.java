@@ -466,9 +466,6 @@ public final class TRegexUtil {
             if (beginIndex == Constants.CAPTURE_GROUP_NO_MATCH) {
                 assert i > 0;
                 return Undefined.instance;
-            } else if (i > 0 && accessor.captureGroupStart(regexResult, i) < accessor.captureGroupStart(regexResult, i - 1)) {
-                // JS specific quirk, see ECMA 15.10.2.5 NOTE 3; starts before previous group
-                return Undefined.instance;
             } else {
                 return input.substring(beginIndex, accessor.captureGroupEnd(regexResult, i));
             }
