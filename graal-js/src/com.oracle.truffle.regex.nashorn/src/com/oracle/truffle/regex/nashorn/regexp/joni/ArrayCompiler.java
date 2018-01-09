@@ -917,8 +917,6 @@ final class ArrayCompiler extends Compiler {
         case OPCode.STATE_CHECK_ANYCHAR_ML_STAR:
         case OPCode.MEMORY_START_PUSH:
         case OPCode.MEMORY_END_PUSH:
-        case OPCode.MEMORY_END_PUSH_REC:
-        case OPCode.MEMORY_END_REC:
         case OPCode.NULL_CHECK_START:
         case OPCode.NULL_CHECK_END_MEMST_PUSH:
         case OPCode.PUSH:

@@ -78,11 +78,9 @@ public interface OPCode {
 
     final int MEMORY_START                  = 48;
     final int MEMORY_START_PUSH             = 49;           /* push back-tracker to stack */
-    final int MEMORY_END_PUSH               = 50;           /* push back-tracker to stack */
-    final int MEMORY_END_PUSH_REC           = 51;           /* push back-tracker to stack */
-    final int MEMORY_END                    = 52;
-    final int MEMORY_END_REC                = 53;           /* push marker to stack */
-    final int MEMORY_CLEAR                  = 88;
+    final int MEMORY_END                    = 50;
+    final int MEMORY_END_PUSH               = 51;           /* push back-tracker to stack */
+    final int MEMORY_CLEAR                  = 52;
 
     final int FAIL                          = 54;           /* pop stack and move */
     final int JUMP                          = 55;

@@ -186,32 +186,6 @@ abstract class StackMachine extends Matcher implements StackType {
         stk++;
     }
 
-    protected final void pushMemEndMark(final int mnum) {
-        final StackEntry e = ensure1();
-        e.type = MEM_END_MARK;
-        e.setMemNum(mnum);
-        stk++;
-    }
-
-    protected final int getMemStart(final int mnum) {
-        int level = 0;
-        int stkp = stk;
-
-        while (stkp > 0) {
-            stkp--;
-            final StackEntry e = stack[stkp];
-            if ((e.type & MASK_MEM_END_OR_MARK) != 0 && e.getMemNum() == mnum) {
-                level++;
-            } else if (e.type == MEM_START && e.getMemNum() == mnum) {
-                if (level == 0) {
-                    break;
-                }
-                level--;
-            }
-        }
-        return stkp;
-    }
-
     protected final void pushNullCheckStart(final int cnum, final int s) {
         final StackEntry e = ensure1();
         e.type = NULL_CHECK_START;

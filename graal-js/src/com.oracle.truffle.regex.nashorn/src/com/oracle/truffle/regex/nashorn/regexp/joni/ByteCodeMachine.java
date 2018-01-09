@@ -177,8 +177,6 @@ class ByteCodeMachine extends StackMachine {
                 case OPCode.MEMORY_START:               opMemoryStart();           continue;
                 case OPCode.MEMORY_END_PUSH:            opMemoryEndPush();         continue;
                 case OPCode.MEMORY_END:                 opMemoryEnd();             continue;
-                case OPCode.MEMORY_END_PUSH_REC:        opMemoryEndPushRec();      continue;
-                case OPCode.MEMORY_END_REC:             opMemoryEndRec();          continue;
                 case OPCode.MEMORY_CLEAR:               opMemoryClear();           continue;
 
                 case OPCode.BACKREF1:                   opBackRef1();              continue;
@@ -729,27 +727,6 @@ class ByteCodeMachine extends StackMachine {
     private void opMemoryEnd() {
         final int mem = code[ip++];
         repeatStk[memEndStk + mem] = s;
-    }
-
-    private void opMemoryEndPushRec() {
-        final int mem = code[ip++];
-        final int stkp = getMemStart(mem); /* should be before push mem-end. */
-        pushMemEnd(mem, s);
-        repeatStk[memStartStk + mem] = stkp;
-    }
-
-    private void opMemoryEndRec() {
-        final int mem = code[ip++];
-        repeatStk[memEndStk + mem] = s;
-        final int stkp = getMemStart(mem);
-
-        if (BitStatus.bsAt(regex.btMemStart, mem)) {
-            repeatStk[memStartStk + mem] = stkp;
-        } else {
-            repeatStk[memStartStk + mem] = stack[stkp].getMemPStr();
-        }
-
-        pushMemEndMark(mem);
     }
 
     private void opMemoryClear() {
