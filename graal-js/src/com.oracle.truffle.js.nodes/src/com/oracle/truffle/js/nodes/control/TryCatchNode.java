@@ -92,11 +92,20 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
             throw cfe;
         } catch (Throwable ex) {
             catchBranch.enter();
-            if (ex instanceof TruffleException || ex instanceof StackOverflowError) {
+            if (shouldCatch(ex)) {
                 return executeCatch(frame, ex);
             } else {
                 throw ex;
             }
+        }
+    }
+
+    private static boolean shouldCatch(Throwable ex) {
+        if (ex instanceof TruffleException) {
+            TruffleException truffleEx = (TruffleException) ex;
+            return !(truffleEx.isExit() || truffleEx.isCancelled() || truffleEx.isInternalError());
+        } else {
+            return (ex instanceof StackOverflowError);
         }
     }
 
