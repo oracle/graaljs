@@ -37,6 +37,7 @@ iojs_g
 icu_config.gypi
 .eslintcache
 node_trace.*.log
+coverage/
 
 /nbproject/private
 /out

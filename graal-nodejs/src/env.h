@@ -186,6 +186,7 @@ class ModuleWrap;
   V(kill_signal_string, "killSignal")                                         \
   V(length_string, "length")                                                  \
   V(mac_string, "mac")                                                        \
+  V(main_string, "main")                                                      \
   V(max_buffer_string, "maxBuffer")                                           \
   V(message_string, "message")                                                \
   V(minttl_string, "minttl")                                                  \
@@ -310,6 +311,8 @@ class ModuleWrap;
   V(context, v8::Context)                                                     \
   V(domain_array, v8::Array)                                                  \
   V(domains_stack_array, v8::Array)                                           \
+  V(http2ping_constructor_template, v8::ObjectTemplate)                       \
+  V(http2stream_constructor_template, v8::ObjectTemplate)                     \
   V(inspector_console_api_object, v8::Object)                                 \
   V(module_load_list_array, v8::Array)                                        \
   V(pbkdf2_constructor_template, v8::ObjectTemplate)                          \
@@ -610,7 +613,7 @@ class Environment {
   inline void set_http_parser_buffer(char* buffer);
 
   inline http2::http2_state* http2_state() const;
-  inline void set_http2_state(http2::http2_state * state);
+  inline void set_http2_state(std::unique_ptr<http2::http2_state> state);
 
   inline double* fs_stats_field_array() const;
   inline void set_fs_stats_field_array(double* fields);
@@ -670,7 +673,7 @@ class Environment {
 
 #if HAVE_INSPECTOR
   inline inspector::Agent* inspector_agent() const {
-    return inspector_agent_;
+    return inspector_agent_.get();
   }
 #endif
 
@@ -715,7 +718,7 @@ class Environment {
   std::map<std::string, uint64_t> performance_marks_;
 
 #if HAVE_INSPECTOR
-  inspector::Agent* const inspector_agent_;
+  std::unique_ptr<inspector::Agent> inspector_agent_;
 #endif
 
   HandleWrapQueue handle_wrap_queue_;
@@ -728,7 +731,7 @@ class Environment {
   double* heap_space_statistics_buffer_ = nullptr;
 
   char* http_parser_buffer_;
-  http2::http2_state* http2_state_ = nullptr;
+  std::unique_ptr<http2::http2_state> http2_state_;
 
   double* fs_stats_field_array_;
 

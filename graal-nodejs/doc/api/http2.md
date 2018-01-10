@@ -1,5 +1,7 @@
 # HTTP2
 
+<!--introduced_in=v8.4.0-->
+
 > Stability: 1 - Experimental
 
 The `http2` module provides an implementation of the [HTTP/2][] protocol. It
@@ -342,6 +344,44 @@ acknowledgement for a sent SETTINGS frame. Will be `true` after calling the
 `http2session.settings()` method. Will be `false` once all sent SETTINGS
 frames have been acknowledged.
 
+#### http2session.ping([payload, ]callback)
+<!-- YAML
+added: v8.9.3
+-->
+
+* `payload` {Buffer|TypedArray|DataView} Optional ping payload.
+* `callback` {Function}
+* Returns: {boolean}
+
+Sends a `PING` frame to the connected HTTP/2 peer. A `callback` function must
+be provided. The method will return `true` if the `PING` was sent, `false`
+otherwise.
+
+The maximum number of outstanding (unacknowledged) pings is determined by the
+`maxOutstandingPings` configuration option. The default maximum is 10.
+
+If provided, the `payload` must be a `Buffer`, `TypedArray`, or `DataView`
+containing 8 bytes of data that will be transmitted with the `PING` and
+returned with the ping acknowledgement.
+
+The callback will be invoked with three arguments: an error argument that will
+be `null` if the `PING` was successfully acknowledged, a `duration` argument
+that reports the number of milliseconds elapsed since the ping was sent and the
+acknowledgement was received, and a `Buffer` containing the 8-byte `PING`
+payload.
+
+```js
+session.ping(Buffer.from('abcdefgh'), (err, duration, payload) => {
+  if (!err) {
+    console.log(`Ping acknowledged in ${duration} milliseconds`);
+    console.log(`With payload '${payload.toString()}`);
+  }
+});
+```
+
+If the `payload` argument is not specified, the default payload will be the
+64-bit timestamp (little endian) marking the start of the `PING` duration.
+
 #### http2session.remoteSettings
 <!-- YAML
 added: v8.4.0
@@ -408,19 +448,6 @@ the trailing header fields to send to the peer.
 "pseudo-header" fields (e.g. `':method'`, `':path'`, etc). An `'error'` event
 will be emitted if the `getTrailers` callback attempts to set such header
 fields.
-
-#### http2session.rstStream(stream, code)
-<!-- YAML
-added: v8.4.0
--->
-
-* stream {Http2Stream}
-* code {number} Unsigned 32-bit integer identifying the error code. **Default:**
-  `http2.constant.NGHTTP2_NO_ERROR` (`0x00`)
-* Returns: {undefined}
-
-Sends an `RST_STREAM` frame to the connected HTTP/2 peer, causing the given
-`Http2Stream` to be closed on both sides using [error code][] `code`.
 
 #### http2session.setTimeout(msecs, callback)
 <!-- YAML
@@ -513,28 +540,6 @@ added: v8.4.0
 
 An object describing the current status of this `Http2Session`.
 
-#### http2session.priority(stream, options)
-<!-- YAML
-added: v8.4.0
--->
-
-* `stream` {Http2Stream}
-* `options` {Object}
-  * `exclusive` {boolean} When `true` and `parent` identifies a parent Stream,
-    the given stream is made the sole direct dependency of the parent, with
-    all other existing dependents made a dependent of the given stream. **Default:**
-    `false`
-  * `parent` {number} Specifies the numeric identifier of a stream the given
-    stream is dependent on.
-  * `weight` {number} Specifies the relative dependency of a stream in relation
-    to other streams with the same `parent`. The value is a number between `1`
-    and `256` (inclusive).
-  * `silent` {boolean} When `true`, changes the priority locally without
-    sending a `PRIORITY` frame to the connected peer.
-* Returns: {undefined}
-
-Updates the priority for the given `Http2Stream` instance.
-
 #### http2session.settings(settings)
 <!-- YAML
 added: v8.4.0
@@ -622,14 +627,13 @@ is not yet ready for use.
 All [`Http2Stream`][] instances are destroyed either when:
 
 * An `RST_STREAM` frame for the stream is received by the connected peer.
-* The `http2stream.rstStream()` or `http2session.rstStream()` methods are
-  called.
+* The `http2stream.rstStream()` methods is called.
 * The `http2stream.destroy()` or `http2session.destroy()` methods are called.
 
 When an `Http2Stream` instance is destroyed, an attempt will be made to send an
 `RST_STREAM` frame will be sent to the connected peer.
 
-Once the `Http2Stream` instance is destroyed, the `'streamClosed'` event will
+When the `Http2Stream` instance is destroyed, the `'close'` event will
 be emitted. Because `Http2Stream` is an instance of `stream.Duplex`, the
 `'end'` event will also be emitted if the stream data is currently flowing.
 The `'error'` event may also be emitted if `http2stream.destroy()` was called
@@ -651,6 +655,18 @@ abnormally aborted in mid-communication.
 *Note*: The `'aborted'` event will only be emitted if the `Http2Stream`
 writable side has not been ended.
 
+#### Event: 'close'
+<!-- YAML
+added: v8.4.0
+-->
+
+The `'close'` event is emitted when the `Http2Stream` is destroyed. Once
+this event is emitted, the `Http2Stream` instance is no longer usable.
+
+The listener callback is passed a single argument specifying the HTTP/2 error
+code specified when closing the stream. If the code is any value other than
+`NGHTTP2_NO_ERROR` (`0`), an `'error'` event will also be emitted.
+
 #### Event: 'error'
 <!-- YAML
 added: v8.4.0
@@ -669,18 +685,6 @@ send a frame. When invoked, the handler function will receive an integer
 argument identifying the frame type, and an integer argument identifying the
 error code. The `Http2Stream` instance will be destroyed immediately after the
 `'frameError'` event is emitted.
-
-#### Event: 'streamClosed'
-<!-- YAML
-added: v8.4.0
--->
-
-The `'streamClosed'` event is emitted when the `Http2Stream` is destroyed. Once
-this event is emitted, the `Http2Stream` instance is no longer usable.
-
-The listener callback is passed a single argument specifying the HTTP/2 error
-code specified when closing the stream. If the code is any value other than
-`NGHTTP2_NO_ERROR` (`0`), an `'error'` event will also be emitted.
 
 #### Event: 'timeout'
 <!-- YAML
@@ -821,7 +825,7 @@ Shortcut for `http2stream.rstStream()` using error code `0x02` (Internal Error).
 added: v8.4.0
 -->
 
-* Value: {Http2Sesssion}
+* Value: {Http2Session}
 
 A reference to the `Http2Session` instance that owns this `Http2Stream`. The
 value will be `undefined` after the `Http2Stream` instance is destroyed.
@@ -1260,7 +1264,7 @@ added: v8.4.0
 
 In `Http2Server`, there is no `'clientError'` event as there is in
 HTTP1. However, there are `'socketError'`, `'sessionError'`,  and
-`'streamError'`, for error happened on the socket, session or stream
+`'streamError'`, for error happened on the socket, session, or stream
 respectively.
 
 #### Event: 'socketError'
@@ -1470,11 +1474,24 @@ not be emitted.
 ### http2.createServer(options[, onRequestHandler])
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v8.9.3
+    pr-url: https://github.com/nodejs/node/pull/17105
+    description: Added the `maxOutstandingPings` option with a default limit of
+                 10.
+  - version: v8.9.3
+    pr-url: https://github.com/nodejs/node/pull/16676
+    description: Added the `maxHeaderListPairs` option with a default limit of
+                 128 header pairs.
 -->
 
 * `options` {Object}
   * `maxDeflateDynamicTableSize` {number} Sets the maximum dynamic table size
     for deflating header fields. **Default:** `4Kib`
+  * `maxHeaderListPairs` {number} Sets the maximum number of header entries.
+    **Default:** `128`. The minimum value is `4`.
+  * `maxOutstandingPings` {number} Sets the maximum number of outstanding,
+    unacknowledged pings. The default is `10`.
   * `maxSendHeaderBlockLength` {number} Sets the maximum allowed size for a
     serialized, compressed block of headers. Attempts to send headers that
     exceed this limit will result in a `'frameError'` event being emitted
@@ -1525,6 +1542,15 @@ server.listen(80);
 ### http2.createSecureServer(options[, onRequestHandler])
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v8.9.3
+    pr-url: https://github.com/nodejs/node/pull/17105
+    description: Added the `maxOutstandingPings` option with a default limit of
+                 10.
+  - version: v8.9.3
+    pr-url: https://github.com/nodejs/node/pull/16676
+    description: Added the `maxHeaderListPairs` option with a default limit of
+                 128 header pairs.
 -->
 
 * `options` {Object}
@@ -1533,6 +1559,10 @@ added: v8.4.0
     `false`. See the [`'unknownProtocol'`][] event. See [ALPN negotiation][].
   * `maxDeflateDynamicTableSize` {number} Sets the maximum dynamic table size
     for deflating header fields. **Default:** `4Kib`
+  * `maxHeaderListPairs` {number} Sets the maximum number of header entries.
+    **Default:** `128`. The minimum value is `4`.
+  * `maxOutstandingPings` {number} Sets the maximum number of outstanding,
+    unacknowledged pings. The default is `10`.
   * `maxSendHeaderBlockLength` {number} Sets the maximum allowed size for a
     serialized, compressed block of headers. Attempts to send headers that
     exceed this limit will result in a `'frameError'` event being emitted
@@ -1590,12 +1620,25 @@ server.listen(80);
 ### http2.connect(authority[, options][, listener])
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v8.9.3
+    pr-url: https://github.com/nodejs/node/pull/17105
+    description: Added the `maxOutstandingPings` option with a default limit of
+                 10.
+  - version: v8.9.3
+    pr-url: https://github.com/nodejs/node/pull/16676
+    description: Added the `maxHeaderListPairs` option with a default limit of
+                 128 header pairs.
 -->
 
 * `authority` {string|URL}
 * `options` {Object}
   * `maxDeflateDynamicTableSize` {number} Sets the maximum dynamic table size
     for deflating header fields. **Default:** `4Kib`
+  * `maxHeaderListPairs` {number} Sets the maximum number of header entries.
+    **Default:** `128`. The minimum value is `1`.
+  * `maxOutstandingPings` {number} Sets the maximum number of outstanding,
+    unacknowledged pings. The default is `10`.
   * `maxReservedRemoteStreams` {number} Sets the maximum number of reserved push
     streams the client will accept at any given time. Once the current number of
     currently reserved push streams exceeds reaches this limit, new push streams
@@ -1747,7 +1790,13 @@ server.on('stream', (stream, headers) => {
 ```
 
 ### Settings Object
-
+<!-- YAML
+added: v8.4.0
+changes:
+  - version: v8.9.3
+    pr-url: https://github.com/nodejs/node/pull/16676
+    description: The `maxHeaderListSize` setting is now strictly enforced.
+-->
 The `http2.getDefaultSettings()`, `http2.getPackedSettings()`,
 `http2.createServer()`, `http2.createSecureServer()`,
 `http2session.settings()`, `http2session.localSettings`, and
@@ -1773,15 +1822,15 @@ properties.
   concurrently at any given time in an `Http2Session`. The minimum value is
   0. The maximum allowed value is 2<sup>31</sup>-1.
 * `maxHeaderListSize` {number} Specifies the maximum size (uncompressed octets)
-  of header list that will be accepted. There is no default value. The minimum
-  allowed value is 0. The maximum allowed value is 2<sup>32</sup>-1.
+  of header list that will be accepted. The minimum allowed value is 0. The
+  maximum allowed value is 2<sup>32</sup>-1. **Default:** 65535.
 
 All additional properties on the settings object are ignored.
 
 ### Using `options.selectPadding`
 
 When `options.paddingStrategy` is equal to
-`http2.constants.PADDING_STRATEGY_CALLBACK`, the the HTTP/2 implementation will
+`http2.constants.PADDING_STRATEGY_CALLBACK`, the HTTP/2 implementation will
 consult the `options.selectPadding` callback function, if provided, to determine
 the specific amount of padding to use per HEADERS and DATA frame.
 
@@ -1808,7 +1857,7 @@ performance.
 There are several types of error conditions that may arise when using the
 `http2` module:
 
-Validation Errors occur when an incorrect argument, option or setting value is
+Validation Errors occur when an incorrect argument, option, or setting value is
 passed in. These will always be reported by a synchronous `throw`.
 
 State Errors occur when an action is attempted at an incorrect time (for
@@ -2078,6 +2127,18 @@ console.log(request.headers);
 
 See [Headers Object][].
 
+*Note*: In HTTP/2, the request path, host name, protocol, and method are
+represented as special headers prefixed with the `:` character (e.g. `':path'`).
+These special headers will be included in the `request.headers` object. Care
+must be taken not to inadvertently modify these special headers or errors may
+occur. For instance, removing all headers from the request will cause errors
+to occur:
+
+```js
+removeAllHeaders(request.headers);
+assert(request.url);   // Fails because the :path header has been removed
+```
+
 #### request.httpVersion
 <!-- YAML
 added: v8.4.0
@@ -2168,7 +2229,7 @@ added: v8.4.0
 * {net.Socket|tls.TLSSocket}
 
 Returns a Proxy object that acts as a `net.Socket` (or `tls.TLSSocket`) but
-applies getters, setters and methods based on HTTP/2 logic.
+applies getters, setters, and methods based on HTTP/2 logic.
 
 `destroyed`, `readable`, and `writable` properties will be retrieved from and
 set on `request.stream`.
@@ -2540,7 +2601,7 @@ added: v8.4.0
 * {net.Socket|tls.TLSSocket}
 
 Returns a Proxy object that acts as a `net.Socket` (or `tls.TLSSocket`) but
-applies getters, setters and methods based on HTTP/2 logic.
+applies getters, setters, and methods based on HTTP/2 logic.
 
 `destroyed`, `readable`, and `writable` properties will be retrieved from and
 set on `response.stream`.

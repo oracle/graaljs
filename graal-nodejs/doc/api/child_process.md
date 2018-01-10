@@ -264,6 +264,8 @@ changes:
   * `gid` {number} Sets the group identity of the process (see setgid(2)).
   * `windowsHide` {boolean} Hide the subprocess console window that would
     normally be created on Windows systems. **Default:** `false`.
+  * `windowsVerbatimArguments` {boolean} No quoting or escaping of arguments is
+    done on Windows. Ignored on Unix. **Default:** `false`.
 * `callback` {Function} Called with the output when process terminates.
   * `error` {Error}
   * `stdout` {string|Buffer}
@@ -338,6 +340,8 @@ changes:
     When this option is provided, it overrides `silent`. If the array variant
     is used, it must contain exactly one item with value `'ipc'` or an error
     will be thrown. For instance `[0, 1, 2, 'ipc']`.
+  * `windowsVerbatimArguments` {boolean} No quoting or escaping of arguments is
+    done on Windows. Ignored on Unix. **Default:** `false`.
   * `uid` {number} Sets the user identity of the process (see setuid(2)).
   * `gid` {number} Sets the group identity of the process (see setgid(2)).
 * Returns: {ChildProcess}
@@ -362,8 +366,7 @@ By default, `child_process.fork()` will spawn new Node.js instances using the
 
 Node.js processes launched with a custom `execPath` will communicate with the
 parent process using the file descriptor (fd) identified using the
-environment variable `NODE_CHANNEL_FD` on the child process. The input and
-output on this fd is expected to be line delimited JSON objects.
+environment variable `NODE_CHANNEL_FD` on the child process.
 
 *Note*: Unlike the fork(2) POSIX system call, `child_process.fork()` does
 not clone the current process.
@@ -404,6 +407,9 @@ changes:
     `'/bin/sh'` on UNIX, and `process.env.ComSpec` on Windows. A different
     shell can be specified as a string. See [Shell Requirements][] and
     [Default Windows Shell][]. **Default:** `false` (no shell).
+  * `windowsVerbatimArguments` {boolean} No quoting or escaping of arguments is
+    done on Windows. Ignored on Unix. This is set to `true` automatically
+    when `shell` is specified. **Default:** `false`.
   * `windowsHide` {boolean} Hide the subprocess console window that would
     normally be created on Windows systems. **Default:** `false`.
 * Returns: {ChildProcess}
@@ -602,9 +608,7 @@ pipes between the parent and child. The value is one of the following:
 2. `'ipc'` - Create an IPC channel for passing messages/file descriptors
    between parent and child. A [`ChildProcess`][] may have at most *one* IPC stdio
    file descriptor. Setting this option enables the [`subprocess.send()`][]
-   method. If the child writes JSON messages to this file descriptor, the
-   [`subprocess.on('message')`][`'message'`] event handler will be triggered in
-   the parent. If the child is a Node.js process, the presence of an IPC channel
+   method. If the child is a Node.js process, the presence of an IPC channel
    will enable [`process.send()`][], [`process.disconnect()`][],
    [`process.on('disconnect')`][], and [`process.on('message')`] within the
    child.
@@ -621,7 +625,7 @@ pipes between the parent and child. The value is one of the following:
 5. Positive integer - The integer value is interpreted as a file descriptor
    that is is currently open in the parent process. It is shared with the child
    process, similar to how {Stream} objects can be shared.
-6. `null`, `undefined` - Use default value. For stdio fds 0, 1 and 2 (in other
+6. `null`, `undefined` - Use default value. For stdio fds 0, 1, and 2 (in other
    words, stdin, stdout, and stderr) a pipe is created. For fd 3 and up, the
    default is `'ignore'`.
 
@@ -813,6 +817,9 @@ changes:
     `'/bin/sh'` on UNIX, and `process.env.ComSpec` on Windows. A different
     shell can be specified as a string. See [Shell Requirements][] and
     [Default Windows Shell][]. **Default:** `false` (no shell).
+  * `windowsVerbatimArguments` {boolean} No quoting or escaping of arguments is
+    done on Windows. Ignored on Unix. This is set to `true` automatically
+    when `shell` is specified. **Default:** `false`.
   * `windowsHide` {boolean} Hide the subprocess console window that would
     normally be created on Windows systems. **Default:** `false`.
 * Returns: {Object}
@@ -923,9 +930,8 @@ added: v0.5.9
 The `'message'` event is triggered when a child process uses [`process.send()`][]
 to send messages.
 
-*Note*: The message goes through JSON serialization and parsing. The resulting
-message might not be the same as what is originally sent. See notes in
-[the `JSON.stringify()` specification][`JSON.stringify` spec].
+*Note*: The message goes through serialization and parsing. The resulting
+message might not be the same as what is originally sent.
 
 <a name="child_process_child_channel"></a>
 ### subprocess.channel
@@ -1038,10 +1044,11 @@ added: v0.5.10
 -->
 
 * {boolean} Set to `true` after `subprocess.kill()` is used to successfully
-  terminate the child process.
+  send a signal to the child process.
 
-The `subprocess.killed` property indicates whether the child process was
-successfully terminated using `subprocess.kill()`.
+The `subprocess.killed` property indicates whether the child process
+successfully received a signal from `subprocess.kill()`. The `killed` property
+does not indicate that the child process has been terminated.
 
 <a name="child_process_child_pid"></a>
 ### subprocess.pid
@@ -1092,9 +1099,8 @@ be used to send messages to the child process. When the child process is a
 Node.js instance, these messages can be received via the
 [`process.on('message')`][] event.
 
-*Note*: The message goes through JSON serialization and parsing. The resulting
-message might not be the same as what is originally sent. See notes in
-[the `JSON.stringify()` specification][`JSON.stringify` spec].
+*Note*: The message goes through serialization and parsing. The resulting
+message might not be the same as what is originally sent.
 
 For example, in the parent script:
 
@@ -1367,11 +1373,9 @@ unavailable.
 
 [`'error'`]: #child_process_event_error
 [`'exit'`]: #child_process_event_exit
-[`'message'`]: #child_process_event_message
 [`ChildProcess`]: #child_process_child_process
 [`Error`]: errors.html#errors_class_error
 [`EventEmitter`]: events.html#events_class_eventemitter
-[`JSON.stringify` spec]: https://tc39.github.io/ecma262/#sec-json.stringify
 [`subprocess.connected`]: #child_process_subprocess_connected
 [`subprocess.disconnect()`]: #child_process_subprocess_disconnect
 [`subprocess.kill()`]: #child_process_subprocess_kill_signal

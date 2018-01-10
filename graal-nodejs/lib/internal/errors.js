@@ -150,13 +150,6 @@ E('ERR_ENCODING_INVALID_ENCODED_DATA',
 E('ERR_ENCODING_NOT_SUPPORTED',
   (enc) => `The "${enc}" encoding is not supported`);
 E('ERR_FALSY_VALUE_REJECTION', 'Promise was rejected with falsy value');
-E('ERR_HTTP_HEADERS_SENT',
-  'Cannot render headers after they are sent to the client');
-E('ERR_HTTP_INVALID_CHAR', 'Invalid character in statusMessage.');
-E('ERR_HTTP_INVALID_STATUS_CODE',
-  (originalStatusCode) => `Invalid status code: ${originalStatusCode}`);
-E('ERR_HTTP_TRAILER_INVALID',
-  'Trailers are invalid with this transfer encoding');
 E('ERR_HTTP2_CONNECT_AUTHORITY',
   ':authority header is required for CONNECT requests');
 E('ERR_HTTP2_CONNECT_PATH',
@@ -171,21 +164,21 @@ E('ERR_HTTP2_FRAME_ERROR',
     msg += ` with code ${code}`;
     return msg;
   });
-E('ERR_HTTP2_HEADER_REQUIRED',
-  (name) => `The ${name} header is required`);
-E('ERR_HTTP2_HEADER_SINGLE_VALUE',
-  (name) => `Header field "${name}" must have only a single value`);
 E('ERR_HTTP2_HEADERS_AFTER_RESPOND',
   'Cannot specify additional headers after response initiated');
 E('ERR_HTTP2_HEADERS_OBJECT', 'Headers must be an object');
 E('ERR_HTTP2_HEADERS_SENT', 'Response has already been initiated.');
+E('ERR_HTTP2_HEADER_REQUIRED',
+  (name) => `The ${name} header is required`);
+E('ERR_HTTP2_HEADER_SINGLE_VALUE',
+  (name) => `Header field "${name}" must have only a single value`);
 E('ERR_HTTP2_INFO_HEADERS_AFTER_RESPOND',
   'Cannot send informational headers after the HTTP message has been sent');
 E('ERR_HTTP2_INFO_STATUS_NOT_ALLOWED',
   'Informational status codes cannot be used');
 E('ERR_HTTP2_INVALID_CONNECTION_HEADERS',
   'HTTP/1 Connection specific headers are forbidden: "%s"');
-E('ERR_HTTP2_INVALID_HEADER_VALUE', 'Value must not be undefined or null');
+E('ERR_HTTP2_INVALID_HEADER_VALUE', 'Invalid value "%s" for header "%s"');
 E('ERR_HTTP2_INVALID_INFO_STATUS',
   (code) => `Invalid informational status code: ${code}`);
 E('ERR_HTTP2_INVALID_PACKED_SETTINGS_LENGTH',
@@ -204,6 +197,8 @@ E('ERR_HTTP2_OUT_OF_STREAMS',
   'No stream ID is available because maximum stream ID has been reached');
 E('ERR_HTTP2_PAYLOAD_FORBIDDEN',
   (code) => `Responses with ${code} status must not have a payload`);
+E('ERR_HTTP2_PING_CANCEL', 'HTTP2 ping cancelled');
+E('ERR_HTTP2_PING_LENGTH', 'HTTP2 ping payload must be 8 bytes');
 E('ERR_HTTP2_PSEUDOHEADER_NOT_ALLOWED', 'Cannot set HTTP/2 pseudo-headers');
 E('ERR_HTTP2_PUSH_DISABLED', 'HTTP/2 client has disabled push streams');
 E('ERR_HTTP2_SEND_FILE', 'Only regular files can be sent');
@@ -219,6 +214,13 @@ E('ERR_HTTP2_STREAM_ERROR',
 E('ERR_HTTP2_STREAM_SELF_DEPENDENCY', 'A stream cannot depend on itself');
 E('ERR_HTTP2_UNSUPPORTED_PROTOCOL',
   (protocol) => `protocol "${protocol}" is unsupported.`);
+E('ERR_HTTP_HEADERS_SENT',
+  'Cannot render headers after they are sent to the client');
+E('ERR_HTTP_INVALID_CHAR', 'Invalid character in statusMessage.');
+E('ERR_HTTP_INVALID_STATUS_CODE',
+  (originalStatusCode) => `Invalid status code: ${originalStatusCode}`);
+E('ERR_HTTP_TRAILER_INVALID',
+  'Trailers are invalid with this transfer encoding');
 E('ERR_INDEX_OUT_OF_RANGE', 'Index out of range');
 E('ERR_INVALID_ARG_TYPE', invalidArgType);
 E('ERR_INVALID_ARRAY_LENGTH',
