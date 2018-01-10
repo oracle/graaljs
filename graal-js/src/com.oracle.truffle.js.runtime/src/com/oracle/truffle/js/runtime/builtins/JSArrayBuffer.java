@@ -9,7 +9,6 @@ import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putFunctionsFro
 import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putHiddenProperty;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -29,6 +28,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
 public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstructorFactory.Default.WithFunctionsAndSpecies {
 
@@ -196,19 +196,6 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
             BYTE_BUFFER_PROPERTY.setSafe(arrayBuffer, null, null);
         } else {
             BYTE_ARRAY_PROPERTY.setSafe(arrayBuffer, null, null);
-        }
-    }
-
-    static class DirectByteBufferHelper {
-        private static final Class<? extends ByteBuffer> DIRECT_BYTE_BUFFER_CLASS = ByteBuffer.allocateDirect(0).getClass();
-
-        @TruffleBoundary
-        static ByteBuffer allocateDirect(int length) {
-            return ByteBuffer.allocateDirect(length).order(ByteOrder.nativeOrder());
-        }
-
-        static ByteBuffer cast(ByteBuffer buffer) {
-            return DIRECT_BYTE_BUFFER_CLASS.cast(buffer);
         }
     }
 }
