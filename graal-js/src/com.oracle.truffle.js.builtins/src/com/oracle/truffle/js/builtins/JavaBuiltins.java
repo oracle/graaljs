@@ -101,6 +101,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         isJavaObject(1),
         isType(1),
         typeName(1),
+        synchronized_(2),
 
         // Nashorn Java Interop only
         extend(-1),
@@ -109,7 +110,6 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         isJavaFunction(1),
         isScriptFunction(1),
         isScriptObject(1),
-        synchronized_(2),
         asJSONCompatible(1);
 
         private final int length;
@@ -125,7 +125,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Override
         public boolean isEnabled() {
-            return JSTruffleOptions.NashornJavaInterop || EnumSet.of(type, from, to, isJavaObject, isType, typeName).contains(this);
+            return JSTruffleOptions.NashornJavaInterop || EnumSet.of(type, from, to, isJavaObject, isType, typeName, synchronized_).contains(this);
         }
     }
 
@@ -753,25 +753,49 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             if (!JSFunction.isJSFunction(func)) {
                 throw Errors.createTypeErrorNotAFunction(func);
             }
+            if (lock != Undefined.instance) {
+                unwrapAndCheckLockObject(lock);
+            }
             JSRealm realm = realmNode.execute(frame);
-            JSFunctionData synchronizedWrapper = createSynchronizedWrapper((DynamicObject) func, lock);
-            return JSFunction.create(realm, synchronizedWrapper);
+            JSFunctionData synchronizedFunctionData = createSynchronizedWrapper((DynamicObject) func);
+            DynamicObject synchronizedFunction = JSFunction.create(realm, synchronizedFunctionData);
+            if (lock != Undefined.instance) {
+                return JSFunction.bind(realm, synchronizedFunction, lock, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+            }
+            return synchronizedFunction;
 
         }
 
         @TruffleBoundary
-        private JSFunctionData createSynchronizedWrapper(DynamicObject func, Object lock) {
+        private JSFunctionData createSynchronizedWrapper(DynamicObject func) {
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getContext().getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    Object sync = lock == Undefined.instance ? JSFrameUtil.getThisObj(frame) : lock;
-                    Object[] arguments = JSArguments.create(JSFrameUtil.getThisObj(frame), func, JSArguments.extractUserArguments(frame.getArguments()));
-                    synchronized (sync) {
+                    Object thisObj = JSFrameUtil.getThisObj(frame);
+                    Object lock = unwrapAndCheckLockObject(thisObj);
+                    Object[] arguments = JSArguments.create(thisObj, func, JSArguments.extractUserArguments(frame.getArguments()));
+                    synchronized (lock) {
                         return JSFunction.call(arguments);
                     }
                 }
             });
             return JSFunctionData.createCallOnly(getContext(), callTarget, 0, "synchronizedWrapper");
+        }
+
+        static Object unwrapJavaObject(Object object) {
+            if (JavaInterop.isJavaObject(object)) {
+                return JavaInterop.asJavaObject((TruffleObject) object);
+            }
+            return object;
+        }
+
+        static Object unwrapAndCheckLockObject(Object thisObj) {
+            Object lock = unwrapJavaObject(thisObj);
+            if (JSRuntime.isJSPrimitive(lock) || lock.getClass().isArray()) {
+                CompilerDirectives.transferToInterpreter();
+                throw Errors.createTypeError("Locking not supported on type: " + lock.getClass().getTypeName());
+            }
+            return lock;
         }
     }
 
