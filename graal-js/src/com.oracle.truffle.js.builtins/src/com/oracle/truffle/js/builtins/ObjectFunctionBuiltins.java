@@ -613,6 +613,12 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return a == b;
         }
 
+        @Specialization(guards = "isNumberNumber(a,b)") // GR-7577
+        protected boolean isNumberNumber(Number a, Number b,
+                        @Cached("createSameValue()") JSIdenticalNode doIdenticalNode) {
+            return doIdenticalNode.executeBoolean(a.doubleValue(), b.doubleValue());
+        }
+
         @Specialization(guards = "!isNumberNumber(a, b)")
         protected boolean isObject(Object a, Object b,
                         @Cached("createSameValue()") JSIdenticalNode doIdenticalNode) {
