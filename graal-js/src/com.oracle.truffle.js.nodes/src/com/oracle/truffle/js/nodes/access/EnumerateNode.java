@@ -6,6 +6,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -18,6 +19,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -128,7 +130,18 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return JSObject.create(context, context.getEnumerateIteratorFactory(), iterator);
     }
 
-    @Specialization(guards = {"isForeignObject(iteratedObject)"})
+    @Specialization(guards = "isMapJavaObject(iteratedObject)")
+    protected DynamicObject doEnumerateMap(TruffleObject iteratedObject) {
+        Map<?, ?> map = (Map<?, ?>) JavaInterop.asJavaObject(iteratedObject);
+        Iterator<?> iterator = values ? map.values().iterator() : map.keySet().iterator();
+        return JSObject.create(context, context.getEnumerateIteratorFactory(), iterator);
+    }
+
+    protected static boolean isMapJavaObject(TruffleObject object) {
+        return JavaInterop.isJavaObject(object) && JavaInterop.asJavaObject(object) instanceof Map;
+    }
+
+    @Specialization(guards = {"isForeignObject(iteratedObject)", "!isMapJavaObject(iteratedObject)"})
     protected DynamicObject doEnumerateTruffleObject(TruffleObject iteratedObject,
                     @Cached("createHasSize()") Node hasSizeNode,
                     @Cached("createGetSize()") Node getSizeNode,
