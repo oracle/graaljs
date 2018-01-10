@@ -451,6 +451,35 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     @Override
+    protected boolean patchContext(JSContext context, Env newEnv) {
+        if (!JSContextOptions.optionsAllowPreInitializedContext(context, newEnv)) {
+            return false;
+        }
+
+        assert context.getLanguage() == this;
+        context.setTruffleLanguageEnv(newEnv);
+
+        if (newEnv.out() != context.getWriterStream()) {
+            context.setWriter(null, newEnv.out());
+        }
+        if (newEnv.err() != context.getErrorWriterStream()) {
+            context.setErrorWriter(null, newEnv.err());
+        }
+
+        if (JSContextOptions.TIME_ZONE.hasBeenSet(newEnv.getOptions())) {
+            context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(newEnv.getOptions())).toZoneId());
+        }
+
+        context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryMRForeign.ACCESS, new TruffleGlobalScopeImpl(newEnv)));
+        context.getRealm().setArguments(newEnv.getApplicationArguments());
+
+        if (((GraalJSParserOptions) context.getParserOptions()).isScripting()) {
+            context.getRealm().addScriptingOptionsObject();
+        }
+        return true;
+    }
+
+    @Override
     protected OptionDescriptors getOptionDescriptors() {
         return OPTION_DESCRIPTORS;
     }
