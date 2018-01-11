@@ -39,6 +39,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
 public final class JSArrayBufferView extends JSBuiltinObject {
     public static final String CLASS_NAME = "ArrayBufferView";
@@ -129,7 +130,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     }
 
     public static ByteBuffer typedArrayGetByteBuffer(DynamicObject thisObj, boolean condition) {
-        return JSArrayBuffer.DirectByteBufferHelper.cast((ByteBuffer) BYTE_BUFFER_PROPERTY.get(thisObj, condition));
+        return DirectByteBufferHelper.cast((ByteBuffer) BYTE_BUFFER_PROPERTY.get(thisObj, condition));
     }
 
     private static String typedArrayGetName(DynamicObject thisObj) {

@@ -23,12 +23,12 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer.DirectByteBufferHelper;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
 public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSConstructorFactory.Default.WithFunctionsAndSpecies {
 

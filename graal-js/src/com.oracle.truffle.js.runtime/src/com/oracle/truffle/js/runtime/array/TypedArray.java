@@ -12,11 +12,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArra
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.CharBuffer;
-import java.nio.DoubleBuffer;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-import java.nio.ShortBuffer;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
@@ -99,8 +94,19 @@ public abstract class TypedArray extends ScriptArray {
         return typedArrayGetByteArray(object, condition);
     }
 
+    /**
+     * Use when byte order does not matter.
+     */
     protected static ByteBuffer getByteBuffer(DynamicObject object, boolean condition) {
         return typedArrayGetByteBuffer(object, condition);
+    }
+
+    /**
+     * Use when native byte order is required.
+     */
+    protected static ByteBuffer getByteBufferNativeOrder(DynamicObject object, boolean condition) {
+        ByteBuffer buffer = typedArrayGetByteBuffer(object, condition);
+        return buffer.duplicate().order(ByteOrder.nativeOrder());
     }
 
     protected final int getOffset(DynamicObject object, boolean condition) {
@@ -109,10 +115,6 @@ public abstract class TypedArray extends ScriptArray {
         } else {
             return 0;
         }
-    }
-
-    protected final ByteBuffer getByteBufferSlice(DynamicObject object, boolean floatingCondition) {
-        return ((ByteBuffer) getByteBuffer(object, floatingCondition).duplicate().position(getOffset(object, floatingCondition))).slice().order(ByteOrder.nativeOrder());
     }
 
     public abstract TypedArrayFactory getFactory();
@@ -232,7 +234,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int INT8_BYTES_PER_ELEMENT = 1;
-    private static final TypedArrayFactory INT8_FACTORY = new TypedArrayFactory(INT8_BYTES_PER_ELEMENT, "Int8Array",
+    public static final TypedArrayFactory INT8_FACTORY = new TypedArrayFactory(INT8_BYTES_PER_ELEMENT, "Int8Array",
                     new Int8Array(false), new Int8Array(true), new DirectInt8Array(false), new DirectInt8Array(true));
 
     public static final class Int8Array extends TypedIntArray {
@@ -277,13 +279,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public int getInt(DynamicObject object, int index, boolean floatingCondition) {
-            return getByteBufferSlice(object, floatingCondition).get(index);
+        public int getInt(DynamicObject object, int index, boolean condition) {
+            return getByteBuffer(object, condition).get(getOffset(object, condition) + index * INT8_BYTES_PER_ELEMENT);
         }
 
         @Override
         public void setInt(DynamicObject object, int index, int value, boolean condition) {
-            getByteBufferSlice(object, condition).put(index, (byte) value);
+            getByteBuffer(object, condition).put(getOffset(object, condition) + index * INT8_BYTES_PER_ELEMENT, (byte) value);
         }
 
         @Override
@@ -303,7 +305,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int UINT8_BYTES_PER_ELEMENT = 1;
-    private static final TypedArrayFactory UINT8_FACTORY = new TypedArrayFactory(UINT8_BYTES_PER_ELEMENT, "Uint8Array",
+    public static final TypedArrayFactory UINT8_FACTORY = new TypedArrayFactory(UINT8_BYTES_PER_ELEMENT, "Uint8Array",
                     new Uint8Array(false), new Uint8Array(true), new DirectUint8Array(false), new DirectUint8Array(true));
 
     public static final class Uint8Array extends TypedIntArray {
@@ -348,13 +350,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public int getInt(DynamicObject object, int index, boolean floatingCondition) {
-            return getByteBufferSlice(object, floatingCondition).get(index) & 0xff;
+        public int getInt(DynamicObject object, int index, boolean condition) {
+            return getByteBuffer(object, condition).get(getOffset(object, condition) + index * UINT8_BYTES_PER_ELEMENT) & 0xff;
         }
 
         @Override
         public void setInt(DynamicObject object, int index, int value, boolean condition) {
-            getByteBufferSlice(object, condition).put(index, (byte) value);
+            getByteBuffer(object, condition).put(getOffset(object, condition) + index * UINT8_BYTES_PER_ELEMENT, (byte) value);
         }
 
         @Override
@@ -374,7 +376,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int UINT8_CLAMPED_BYTES_PER_ELEMENT = 1;
-    private static final TypedArrayFactory UINT8_CLAMPED_FACTORY = new TypedArrayFactory(UINT8_CLAMPED_BYTES_PER_ELEMENT, "Uint8ClampedArray",
+    public static final TypedArrayFactory UINT8_CLAMPED_FACTORY = new TypedArrayFactory(UINT8_CLAMPED_BYTES_PER_ELEMENT, "Uint8ClampedArray",
                     new Uint8ClampedArray(false), new Uint8ClampedArray(true), new DirectUint8ClampedArray(false), new DirectUint8ClampedArray(true));
 
     public abstract static class AbstractUint8ClampedArray extends TypedIntArray {
@@ -446,13 +448,13 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public int getInt(DynamicObject object, int index, boolean floatingCondition) {
-            return getByteBufferSlice(object, floatingCondition).get(index) & 0xff;
+        public int getInt(DynamicObject object, int index, boolean condition) {
+            return getByteBuffer(object, condition).get(getOffset(object, condition) + index * UINT8_CLAMPED_BYTES_PER_ELEMENT) & 0xff;
         }
 
         @Override
         public void setInt(DynamicObject object, int index, int value, boolean condition) {
-            getByteBufferSlice(object, condition).put(index, (byte) clamp(value));
+            getByteBuffer(object, condition).put(getOffset(object, condition) + index * UINT8_CLAMPED_BYTES_PER_ELEMENT, (byte) clamp(value));
         }
 
         @Override
@@ -462,7 +464,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int INT16_BYTES_PER_ELEMENT = 2;
-    private static final TypedArrayFactory INT16_FACTORY = new TypedArrayFactory(INT16_BYTES_PER_ELEMENT, "Int16Array",
+    public static final TypedArrayFactory INT16_FACTORY = new TypedArrayFactory(INT16_BYTES_PER_ELEMENT, "Int16Array",
                     new Int16Array(false), new Int16Array(true), new DirectInt16Array(false), new DirectInt16Array(true));
 
     public static final class Int16Array extends TypedIntArray {
@@ -506,18 +508,14 @@ public abstract class TypedArray extends ScriptArray {
             return INT16_FACTORY;
         }
 
-        private ShortBuffer getShortBufferSlice(DynamicObject object, boolean floatingCondition) {
-            return getByteBufferSlice(object, floatingCondition).asShortBuffer();
-        }
-
         @Override
-        public int getInt(DynamicObject object, int index, boolean floatingCondition) {
-            return getShortBufferSlice(object, floatingCondition).get(index);
+        public int getInt(DynamicObject object, int index, boolean condition) {
+            return getByteBufferNativeOrder(object, condition).getShort(getOffset(object, condition) + index * INT16_BYTES_PER_ELEMENT);
         }
 
         @Override
         public void setInt(DynamicObject object, int index, int value, boolean condition) {
-            getShortBufferSlice(object, condition).put(index, (short) value);
+            getByteBufferNativeOrder(object, condition).putShort(getOffset(object, condition) + index * INT16_BYTES_PER_ELEMENT, (short) value);
         }
 
         @Override
@@ -537,7 +535,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int UINT16_BYTES_PER_ELEMENT = 2;
-    private static final TypedArrayFactory UINT16_FACTORY = new TypedArrayFactory(UINT16_BYTES_PER_ELEMENT, "Uint16Array",
+    public static final TypedArrayFactory UINT16_FACTORY = new TypedArrayFactory(UINT16_BYTES_PER_ELEMENT, "Uint16Array",
                     new Uint16Array(false), new Uint16Array(true), new DirectUint16Array(false), new DirectUint16Array(true));
 
     public static final class Uint16Array extends TypedIntArray {
@@ -581,18 +579,14 @@ public abstract class TypedArray extends ScriptArray {
             return UINT16_FACTORY;
         }
 
-        private CharBuffer getCharBufferSlice(DynamicObject object, boolean floatingCondition) {
-            return getByteBufferSlice(object, floatingCondition).asCharBuffer();
-        }
-
         @Override
-        public int getInt(DynamicObject object, int index, boolean floatingCondition) {
-            return getCharBufferSlice(object, floatingCondition).get(index);
+        public int getInt(DynamicObject object, int index, boolean condition) {
+            return getByteBufferNativeOrder(object, condition).getChar(getOffset(object, condition) + index * UINT16_BYTES_PER_ELEMENT);
         }
 
         @Override
         public void setInt(DynamicObject object, int index, int value, boolean condition) {
-            getCharBufferSlice(object, condition).put(index, (char) value);
+            getByteBufferNativeOrder(object, condition).putChar(getOffset(object, condition) + index * UINT16_BYTES_PER_ELEMENT, (char) value);
         }
 
         @Override
@@ -612,7 +606,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int INT32_BYTES_PER_ELEMENT = 4;
-    private static final TypedArrayFactory INT32_FACTORY = new TypedArrayFactory(INT32_BYTES_PER_ELEMENT, "Int32Array",
+    public static final TypedArrayFactory INT32_FACTORY = new TypedArrayFactory(INT32_BYTES_PER_ELEMENT, "Int32Array",
                     new Int32Array(false), new Int32Array(true), new DirectInt32Array(false), new DirectInt32Array(true));
 
     public static final class Int32Array extends TypedIntArray {
@@ -656,18 +650,14 @@ public abstract class TypedArray extends ScriptArray {
             return INT32_FACTORY;
         }
 
-        private IntBuffer getIntBufferSlice(DynamicObject object, boolean floatingCondition) {
-            return getByteBufferSlice(object, floatingCondition).asIntBuffer();
-        }
-
         @Override
-        public int getInt(DynamicObject object, int index, boolean floatingCondition) {
-            return getIntBufferSlice(object, floatingCondition).get(index);
+        public int getInt(DynamicObject object, int index, boolean condition) {
+            return getByteBufferNativeOrder(object, condition).getInt(getOffset(object, condition) + index * INT32_BYTES_PER_ELEMENT);
         }
 
         @Override
         public void setInt(DynamicObject object, int index, int value, boolean condition) {
-            getIntBufferSlice(object, condition).put(index, value);
+            getByteBufferNativeOrder(object, condition).putInt(getOffset(object, condition) + index * INT32_BYTES_PER_ELEMENT, value);
         }
 
         @Override
@@ -687,7 +677,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int UINT32_BYTES_PER_ELEMENT = 4;
-    private static final TypedArrayFactory UINT32_FACTORY = new TypedArrayFactory(UINT32_BYTES_PER_ELEMENT, "Uint32Array",
+    public static final TypedArrayFactory UINT32_FACTORY = new TypedArrayFactory(UINT32_BYTES_PER_ELEMENT, "Uint32Array",
                     new Uint32Array(false), new Uint32Array(true), new DirectUint32Array(false), new DirectUint32Array(true));
 
     public abstract static class AbstractUint32Array extends TypedIntArray {
@@ -761,18 +751,14 @@ public abstract class TypedArray extends ScriptArray {
             return UINT32_FACTORY;
         }
 
-        private IntBuffer getIntBufferSlice(DynamicObject object, boolean floatingCondition) {
-            return getByteBufferSlice(object, floatingCondition).asIntBuffer();
-        }
-
         @Override
-        public int getInt(DynamicObject object, int index, boolean floatingCondition) {
-            return getIntBufferSlice(object, floatingCondition).get(index);
+        public int getInt(DynamicObject object, int index, boolean condition) {
+            return getByteBufferNativeOrder(object, condition).getInt(getOffset(object, condition) + index * UINT32_BYTES_PER_ELEMENT);
         }
 
         @Override
         public void setInt(DynamicObject object, int index, int value, boolean condition) {
-            getIntBufferSlice(object, condition).put(index, value);
+            getByteBufferNativeOrder(object, condition).putInt(getOffset(object, condition) + index * UINT32_BYTES_PER_ELEMENT, value);
         }
 
         @Override
@@ -825,7 +811,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int FLOAT32_BYTES_PER_ELEMENT = 4;
-    private static final TypedArrayFactory FLOAT32_FACTORY = new TypedArrayFactory(FLOAT32_BYTES_PER_ELEMENT, "Float32Array",
+    public static final TypedArrayFactory FLOAT32_FACTORY = new TypedArrayFactory(FLOAT32_BYTES_PER_ELEMENT, "Float32Array",
                     new Float32Array(false), new Float32Array(true), new DirectFloat32Array(false), new DirectFloat32Array(true));
 
     public static final class Float32Array extends TypedFloatArray {
@@ -869,18 +855,14 @@ public abstract class TypedArray extends ScriptArray {
             return FLOAT32_FACTORY;
         }
 
-        private FloatBuffer getFloatBufferSlice(DynamicObject object, boolean floatingCondition) {
-            return getByteBufferSlice(object, floatingCondition).asFloatBuffer();
-        }
-
         @Override
-        public double getDouble(DynamicObject object, int index, boolean floatingCondition) {
-            return getFloatBufferSlice(object, floatingCondition).get(index);
+        public double getDouble(DynamicObject object, int index, boolean condition) {
+            return getByteBufferNativeOrder(object, condition).getFloat(getOffset(object, condition) + index * FLOAT32_BYTES_PER_ELEMENT);
         }
 
         @Override
         public void setDouble(DynamicObject object, int index, double value, boolean condition) {
-            getFloatBufferSlice(object, condition).put(index, (float) value);
+            getByteBufferNativeOrder(object, condition).putFloat(getOffset(object, condition) + index * FLOAT32_BYTES_PER_ELEMENT, (float) value);
         }
 
         @Override
@@ -900,7 +882,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int FLOAT64_BYTES_PER_ELEMENT = 8;
-    private static final TypedArrayFactory FLOAT64_FACTORY = new TypedArrayFactory(FLOAT64_BYTES_PER_ELEMENT, "Float64Array",
+    public static final TypedArrayFactory FLOAT64_FACTORY = new TypedArrayFactory(FLOAT64_BYTES_PER_ELEMENT, "Float64Array",
                     new Float64Array(false), new Float64Array(true), new DirectFloat64Array(false), new DirectFloat64Array(true));
 
     public static final class Float64Array extends TypedFloatArray {
@@ -944,18 +926,14 @@ public abstract class TypedArray extends ScriptArray {
             return FLOAT64_FACTORY;
         }
 
-        private DoubleBuffer getDoubleBufferSlice(DynamicObject object, boolean floatingCondition) {
-            return getByteBufferSlice(object, floatingCondition).asDoubleBuffer();
-        }
-
         @Override
-        public double getDouble(DynamicObject object, int index, boolean floatingCondition) {
-            return getDoubleBufferSlice(object, floatingCondition).get(index);
+        public double getDouble(DynamicObject object, int index, boolean condition) {
+            return getByteBufferNativeOrder(object, condition).getDouble(getOffset(object, condition) + index * FLOAT64_BYTES_PER_ELEMENT);
         }
 
         @Override
         public void setDouble(DynamicObject object, int index, double value, boolean condition) {
-            getDoubleBufferSlice(object, condition).put(index, value);
+            getByteBufferNativeOrder(object, condition).putDouble(getOffset(object, condition) + index * FLOAT64_BYTES_PER_ELEMENT, value);
         }
 
         @Override

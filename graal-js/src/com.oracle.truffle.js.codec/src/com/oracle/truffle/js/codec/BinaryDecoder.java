@@ -17,7 +17,7 @@ public class BinaryDecoder {
     private ByteBuffer buffer;
 
     public BinaryDecoder(ByteBuffer buffer) {
-        this.buffer = buffer.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+        this.buffer = buffer.duplicate().order(ByteOrder.LITTLE_ENDIAN);
     }
 
     private int getU1() {

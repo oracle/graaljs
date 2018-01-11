@@ -9,8 +9,8 @@ import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_FALSE;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_TRUE;
-import static com.oracle.truffle.trufflenode.ValueType.DATE_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.DATA_VIEW_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DATE_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.EXTERNAL_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.FLOAT32ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.FLOAT64ARRAY_OBJECT;
@@ -818,52 +818,47 @@ public final class GraalJSAccess {
         return JSArrayBufferView.typedArrayGetLength((DynamicObject) typedArray);
     }
 
-    private Object typedArrayNew(Object arrayBuffer, int offset, int length, String type) {
-        for (TypedArray.TypedArrayFactory factory : TypedArray.FACTORIES) {
-            if (type.equals(factory.getName())) {
-                TypedArray arrayType = factory.createArrayType(true, offset != 0);
-                DynamicObject dynamicObject = (DynamicObject) arrayBuffer;
-                JSContext context = JSObject.getJSContext(dynamicObject);
-                return JSArrayBufferView.createArrayBufferView(context, dynamicObject, arrayType, offset, length);
-            }
-        }
-        return null;
+    private Object typedArrayNew(Object arrayBuffer, int offset, int length, TypedArray.TypedArrayFactory factory) {
+        TypedArray arrayType = factory.createArrayType(true, offset != 0);
+        DynamicObject dynamicObject = (DynamicObject) arrayBuffer;
+        JSContext context = JSObject.getJSContext(dynamicObject);
+        return JSArrayBufferView.createArrayBufferView(context, dynamicObject, arrayType, offset, length);
     }
 
     public Object uint8ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, "Uint8Array");
+        return typedArrayNew(arrayBuffer, offset, length, TypedArray.UINT8_FACTORY);
     }
 
     public Object uint8ClampedArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, "Uint8ClampedArray");
+        return typedArrayNew(arrayBuffer, offset, length, TypedArray.UINT8_CLAMPED_FACTORY);
     }
 
     public Object int8ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, "Int8Array");
+        return typedArrayNew(arrayBuffer, offset, length, TypedArray.INT8_FACTORY);
     }
 
     public Object uint16ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, "Uint16Array");
+        return typedArrayNew(arrayBuffer, offset, length, TypedArray.UINT16_FACTORY);
     }
 
     public Object int16ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, "Int16Array");
+        return typedArrayNew(arrayBuffer, offset, length, TypedArray.INT16_FACTORY);
     }
 
     public Object uint32ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, "Uint32Array");
+        return typedArrayNew(arrayBuffer, offset, length, TypedArray.UINT32_FACTORY);
     }
 
     public Object int32ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, "Int32Array");
+        return typedArrayNew(arrayBuffer, offset, length, TypedArray.INT32_FACTORY);
     }
 
     public Object float32ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, "Float32Array");
+        return typedArrayNew(arrayBuffer, offset, length, TypedArray.FLOAT32_FACTORY);
     }
 
     public Object float64ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, "Float64Array");
+        return typedArrayNew(arrayBuffer, offset, length, TypedArray.FLOAT64_FACTORY);
     }
 
     public Object dataViewNew(Object arrayBuffer, int offset, int length) {
@@ -2218,7 +2213,7 @@ public final class GraalJSAccess {
     public Object[] findDynamicObjectFields(Object context) {
         if (!JSTruffleOptions.SubstrateVM) {
             Object arrayBuffer = arrayBufferNew(context, 4);
-            Object typedArray = typedArrayNew(arrayBuffer, 2, 1, "Uint8Array");
+            Object typedArray = uint8ArrayNew(arrayBuffer, 2, 1);
 
             String byteBuffer = findObjectFieldName(arrayBuffer, JSArrayBuffer.getDirectByteBuffer((DynamicObject) arrayBuffer));
             String buffer = findObjectFieldName(typedArray, arrayBuffer);

@@ -5,7 +5,6 @@
 package com.oracle.truffle.js.builtins;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -98,7 +97,9 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Lamb
 
         @TruffleBoundary
         protected static void sliceDirectIntl(ByteBuffer byteBuffer, int clampedBegin, int clampedEnd, ByteBuffer resBuffer) {
-            resBuffer.put(((ByteBuffer) byteBuffer.duplicate().position(clampedBegin).limit(clampedEnd)).order(ByteOrder.nativeOrder()));
+            ByteBuffer slice = ((ByteBuffer) byteBuffer.duplicate().position(clampedBegin).limit(clampedEnd));
+            assert resBuffer.position() == 0;
+            resBuffer.duplicate().put(slice);
         }
 
     }
