@@ -19,6 +19,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCloneable;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.runtime.Errors;
@@ -375,6 +376,15 @@ public abstract class ScriptArray {
     public final ScriptArray removeRange(DynamicObject object, long start, long end) {
         assert start >= 0 && start <= end;
         if (isSealed()) {
+            throw Errors.createTypeError("Cannot delete property \"%d\" of sealed array", start);
+        }
+        return removeRangeImpl(object, start, end);
+    }
+
+    public final ScriptArray removeRange(DynamicObject object, long start, long end, BranchProfile errorBranch) {
+        assert start >= 0 && start <= end;
+        if (isSealed()) {
+            errorBranch.enter();
             throw Errors.createTypeError("Cannot delete property \"%d\" of sealed array", start);
         }
         return removeRangeImpl(object, start, end);
