@@ -2213,6 +2213,11 @@ namespace v8 {
         TRACE
     }
 
+    ArrayBuffer::Allocator* ArrayBuffer::Allocator::NewDefaultAllocator() {
+        TRACE
+        return nullptr;
+    }
+
     namespace internal {
 
     class PropertyDescriptor {

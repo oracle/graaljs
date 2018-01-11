@@ -172,7 +172,9 @@ const IDX_OPTIONS_MAX_RESERVED_REMOTE_STREAMS = 1;
 const IDX_OPTIONS_MAX_SEND_HEADER_BLOCK_LENGTH = 2;
 const IDX_OPTIONS_PEER_MAX_CONCURRENT_STREAMS = 3;
 const IDX_OPTIONS_PADDING_STRATEGY = 4;
-const IDX_OPTIONS_FLAGS = 5;
+const IDX_OPTIONS_MAX_HEADER_LIST_PAIRS = 5;
+const IDX_OPTIONS_MAX_OUTSTANDING_PINGS = 6;
+const IDX_OPTIONS_FLAGS = 7;
 
 function updateOptionsBuffer(options) {
   var flags = 0;
@@ -200,6 +202,16 @@ function updateOptionsBuffer(options) {
     flags |= (1 << IDX_OPTIONS_PADDING_STRATEGY);
     optionsBuffer[IDX_OPTIONS_PADDING_STRATEGY] =
       options.paddingStrategy;
+  }
+  if (typeof options.maxHeaderListPairs === 'number') {
+    flags |= (1 << IDX_OPTIONS_MAX_HEADER_LIST_PAIRS);
+    optionsBuffer[IDX_OPTIONS_MAX_HEADER_LIST_PAIRS] =
+      options.maxHeaderListPairs;
+  }
+  if (typeof options.maxOutstandingPings === 'number') {
+    flags |= (1 << IDX_OPTIONS_MAX_OUTSTANDING_PINGS);
+    optionsBuffer[IDX_OPTIONS_MAX_OUTSTANDING_PINGS] =
+      options.maxOutstandingPings;
   }
   optionsBuffer[IDX_OPTIONS_FLAGS] = flags;
 }
@@ -253,25 +265,19 @@ function getDefaultSettings() {
 // remote is a boolean. true to fetch remote settings, false to fetch local.
 // this is only called internally
 function getSettings(session, remote) {
-  const holder = Object.create(null);
   if (remote)
-    binding.refreshRemoteSettings(session);
+    session.remoteSettings();
   else
-    binding.refreshLocalSettings(session);
+    session.localSettings();
 
-  holder.headerTableSize =
-    settingsBuffer[IDX_SETTINGS_HEADER_TABLE_SIZE];
-  holder.enablePush =
-    !!settingsBuffer[IDX_SETTINGS_ENABLE_PUSH];
-  holder.initialWindowSize =
-    settingsBuffer[IDX_SETTINGS_INITIAL_WINDOW_SIZE];
-  holder.maxFrameSize =
-    settingsBuffer[IDX_SETTINGS_MAX_FRAME_SIZE];
-  holder.maxConcurrentStreams =
-    settingsBuffer[IDX_SETTINGS_MAX_CONCURRENT_STREAMS];
-  holder.maxHeaderListSize =
-    settingsBuffer[IDX_SETTINGS_MAX_HEADER_LIST_SIZE];
-  return holder;
+  return {
+    headerTableSize: settingsBuffer[IDX_SETTINGS_HEADER_TABLE_SIZE],
+    enablePush: !!settingsBuffer[IDX_SETTINGS_ENABLE_PUSH],
+    initialWindowSize: settingsBuffer[IDX_SETTINGS_INITIAL_WINDOW_SIZE],
+    maxFrameSize: settingsBuffer[IDX_SETTINGS_MAX_FRAME_SIZE],
+    maxConcurrentStreams: settingsBuffer[IDX_SETTINGS_MAX_CONCURRENT_STREAMS],
+    maxHeaderListSize: settingsBuffer[IDX_SETTINGS_MAX_HEADER_LIST_SIZE]
+  };
 }
 
 function updateSettingsBuffer(settings) {
@@ -310,45 +316,39 @@ function updateSettingsBuffer(settings) {
 }
 
 function getSessionState(session) {
-  const holder = Object.create(null);
-  binding.refreshSessionState(session);
-  holder.effectiveLocalWindowSize =
-    sessionState[IDX_SESSION_STATE_EFFECTIVE_LOCAL_WINDOW_SIZE];
-  holder.effectiveRecvDataLength =
-    sessionState[IDX_SESSION_STATE_EFFECTIVE_RECV_DATA_LENGTH];
-  holder.nextStreamID =
-    sessionState[IDX_SESSION_STATE_NEXT_STREAM_ID];
-  holder.localWindowSize =
-    sessionState[IDX_SESSION_STATE_LOCAL_WINDOW_SIZE];
-  holder.lastProcStreamID =
-    sessionState[IDX_SESSION_STATE_LAST_PROC_STREAM_ID];
-  holder.remoteWindowSize =
-    sessionState[IDX_SESSION_STATE_REMOTE_WINDOW_SIZE];
-  holder.outboundQueueSize =
-    sessionState[IDX_SESSION_STATE_OUTBOUND_QUEUE_SIZE];
-  holder.deflateDynamicTableSize =
-    sessionState[IDX_SESSION_STATE_HD_DEFLATE_DYNAMIC_TABLE_SIZE];
-  holder.inflateDynamicTableSize =
-    sessionState[IDX_SESSION_STATE_HD_INFLATE_DYNAMIC_TABLE_SIZE];
-  return holder;
+  session.refreshState();
+  return {
+    effectiveLocalWindowSize:
+      sessionState[IDX_SESSION_STATE_EFFECTIVE_LOCAL_WINDOW_SIZE],
+    effectiveRecvDataLength:
+      sessionState[IDX_SESSION_STATE_EFFECTIVE_RECV_DATA_LENGTH],
+    nextStreamID:
+      sessionState[IDX_SESSION_STATE_NEXT_STREAM_ID],
+    localWindowSize:
+      sessionState[IDX_SESSION_STATE_LOCAL_WINDOW_SIZE],
+    lastProcStreamID:
+      sessionState[IDX_SESSION_STATE_LAST_PROC_STREAM_ID],
+    remoteWindowSize:
+      sessionState[IDX_SESSION_STATE_REMOTE_WINDOW_SIZE],
+    outboundQueueSize:
+      sessionState[IDX_SESSION_STATE_OUTBOUND_QUEUE_SIZE],
+    deflateDynamicTableSize:
+      sessionState[IDX_SESSION_STATE_HD_DEFLATE_DYNAMIC_TABLE_SIZE],
+    inflateDynamicTableSize:
+      sessionState[IDX_SESSION_STATE_HD_INFLATE_DYNAMIC_TABLE_SIZE]
+  };
 }
 
-function getStreamState(session, stream) {
-  const holder = Object.create(null);
-  binding.refreshStreamState(session, stream);
-  holder.state =
-    streamState[IDX_STREAM_STATE];
-  holder.weight =
-    streamState[IDX_STREAM_STATE_WEIGHT];
-  holder.sumDependencyWeight =
-    streamState[IDX_STREAM_STATE_SUM_DEPENDENCY_WEIGHT];
-  holder.localClose =
-    streamState[IDX_STREAM_STATE_LOCAL_CLOSE];
-  holder.remoteClose =
-    streamState[IDX_STREAM_STATE_REMOTE_CLOSE];
-  holder.localWindowSize =
-    streamState[IDX_STREAM_STATE_LOCAL_WINDOW_SIZE];
-  return holder;
+function getStreamState(stream) {
+  stream.refreshState();
+  return {
+    state: streamState[IDX_STREAM_STATE],
+    weight: streamState[IDX_STREAM_STATE_WEIGHT],
+    sumDependencyWeight: streamState[IDX_STREAM_STATE_SUM_DEPENDENCY_WEIGHT],
+    localClose: streamState[IDX_STREAM_STATE_LOCAL_CLOSE],
+    remoteClose: streamState[IDX_STREAM_STATE_REMOTE_CLOSE],
+    localWindowSize: streamState[IDX_STREAM_STATE_LOCAL_WINDOW_SIZE]
+  };
 }
 
 function isIllegalConnectionSpecificHeader(name, value) {

@@ -101,7 +101,7 @@ function rethrow() {
     var backtrace = new Error();
     return function(err) {
       if (err) {
-        backtrace.stack = err.name + ': ' + err.message +
+        backtrace.stack = `${err.name}: ${err.message}` +
                           backtrace.stack.substr(backtrace.name.length);
         throw backtrace;
       }
@@ -1843,7 +1843,7 @@ fs.mkdtemp = function(prefix, options, callback) {
   var req = new FSReqWrap();
   req.oncomplete = callback;
 
-  binding.mkdtemp(prefix + 'XXXXXX', options.encoding, req);
+  binding.mkdtemp(`${prefix}XXXXXX`, options.encoding, req);
 };
 
 
@@ -1852,7 +1852,7 @@ fs.mkdtempSync = function(prefix, options) {
     throw new TypeError('filename prefix is required');
   options = getOptions(options, {});
   nullCheck(prefix);
-  return binding.mkdtemp(prefix + 'XXXXXX', options.encoding);
+  return binding.mkdtemp(`${prefix}XXXXXX`, options.encoding);
 };
 
 
@@ -2026,30 +2026,27 @@ ReadStream.prototype._read = function(n) {
     return this.push(null);
 
   // the actual read.
-  var self = this;
-  fs.read(this.fd, pool, pool.used, toRead, this.pos, onread);
+  fs.read(this.fd, pool, pool.used, toRead, this.pos, (er, bytesRead) => {
+    if (er) {
+      if (this.autoClose) {
+        this.destroy();
+      }
+      this.emit('error', er);
+    } else {
+      var b = null;
+      if (bytesRead > 0) {
+        this.bytesRead += bytesRead;
+        b = thisPool.slice(start, start + bytesRead);
+      }
+
+      this.push(b);
+    }
+  });
 
   // move the pool positions, and internal position for reading.
   if (this.pos !== undefined)
     this.pos += toRead;
   pool.used += toRead;
-
-  function onread(er, bytesRead) {
-    if (er) {
-      if (self.autoClose) {
-        self.destroy();
-      }
-      self.emit('error', er);
-    } else {
-      var b = null;
-      if (bytesRead > 0) {
-        self.bytesRead += bytesRead;
-        b = thisPool.slice(start, start + bytesRead);
-      }
-
-      self.push(b);
-    }
-  }
 };
 
 
@@ -2143,7 +2140,7 @@ fs.FileWriteStream = fs.WriteStream; // support the legacy name
 
 
 WriteStream.prototype.open = function() {
-  fs.open(this.path, this.flags, this.mode, function(er, fd) {
+  fs.open(this.path, this.flags, this.mode, (er, fd) => {
     if (er) {
       if (this.autoClose) {
         this.destroy();
@@ -2154,7 +2151,7 @@ WriteStream.prototype.open = function() {
 
     this.fd = fd;
     this.emit('open', fd);
-  }.bind(this));
+  });
 };
 
 
@@ -2168,15 +2165,14 @@ WriteStream.prototype._write = function(data, encoding, cb) {
     });
   }
 
-  var self = this;
-  fs.write(this.fd, data, 0, data.length, this.pos, function(er, bytes) {
+  fs.write(this.fd, data, 0, data.length, this.pos, (er, bytes) => {
     if (er) {
-      if (self.autoClose) {
-        self.destroy();
+      if (this.autoClose) {
+        this.destroy();
       }
       return cb(er);
     }
-    self.bytesWritten += bytes;
+    this.bytesWritten += bytes;
     cb();
   });
 

@@ -41,6 +41,7 @@
 
     const _process = NativeModule.require('internal/process');
     _process.setupConfig(NativeModule._source);
+    _process.setupSignalHandlers();
     NativeModule.require('internal/process/warning').setup();
     NativeModule.require('internal/process/next_tick').setup();
     NativeModule.require('internal/process/stdio').setup();
@@ -63,7 +64,6 @@
     _process.setup_cpuUsage();
     _process.setupMemoryUsage();
     _process.setupKillAndExit();
-    _process.setupSignalHandlers();
     if (global.__coverage__)
       NativeModule.require('internal/process/write-coverage').setup();
 
@@ -339,10 +339,10 @@
   }
 
   function setupInspector(originalConsole, wrappedConsole, Module) {
-    const { addCommandLineAPI, consoleCall } = process.binding('inspector');
-    if (!consoleCall) {
+    if (!process.config.variables.v8_enable_inspector) {
       return;
     }
+    const { addCommandLineAPI, consoleCall } = process.binding('inspector');
     // Setup inspector command line API
     const { makeRequireFunction } = NativeModule.require('internal/module');
     const path = NativeModule.require('path');

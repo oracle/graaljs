@@ -5,3 +5,10 @@ prefix es-module
 # sample-test                        : PASS,FLAKY
 
 [true] # This section applies to all platforms
+
+### Graal.js-specific ###
+
+# unclassified failures
+test-esm-namespace     : FAIL
+test-esm-require-cache : FAIL
+test-esm-snapshot      : FAIL

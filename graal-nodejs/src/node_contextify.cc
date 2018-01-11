@@ -21,7 +21,6 @@
 
 #include "node_internals.h"
 #include "node_watchdog.h"
-#include "base-object.h"
 #include "base-object-inl.h"
 #include "v8-debug.h"
 
@@ -220,7 +219,6 @@ class ContextifyContext {
     EscapableHandleScope scope(env->isolate());
     Local<FunctionTemplate> function_template =
         FunctionTemplate::New(env->isolate());
-    function_template->SetHiddenPrototype(true);
 
     function_template->SetClassName(sandbox_obj->GetConstructorName());
 

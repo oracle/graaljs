@@ -30,7 +30,7 @@ test-timers-blocking-callback : SKIP
 test-inspector-async-call-stack       : PASS, FLAKY
 test-inspector-bindings               : PASS, FLAKY
 test-inspector-debug-end              : PASS, FLAKY
-test-inspector-stop-profile-after-done: PASS, FLAKY
+test-inspector-async-hook-setup-at-signal:  PASS, FLAKY
 
 [$system==linux]
 
@@ -41,4 +41,3 @@ test-inspector-stop-profile-after-done: PASS, FLAKY
 [$system==freebsd]
 
 [$system==aix]
-test-inspector-stop-profile-after-done: PASS, FLAKY

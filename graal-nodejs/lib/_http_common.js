@@ -21,8 +21,7 @@
 
 'use strict';
 
-const binding = process.binding('http_parser');
-const { methods, HTTPParser } = binding;
+const { methods, HTTPParser } = process.binding('http_parser');
 
 const FreeList = require('internal/freelist');
 const { ondrain } = require('internal/http');
@@ -78,7 +77,7 @@ function parserOnHeadersComplete(versionMajor, versionMinor, headers, method,
   parser.incoming = new IncomingMessage(parser.socket);
   parser.incoming.httpVersionMajor = versionMajor;
   parser.incoming.httpVersionMinor = versionMinor;
-  parser.incoming.httpVersion = versionMajor + '.' + versionMinor;
+  parser.incoming.httpVersion = `${versionMajor}.${versionMinor}`;
   parser.incoming.url = url;
 
   var n = headers.length;
