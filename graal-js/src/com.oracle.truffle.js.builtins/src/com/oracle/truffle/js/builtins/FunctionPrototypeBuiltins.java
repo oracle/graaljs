@@ -11,6 +11,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.HasInstanceNodeGen;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSApplyNodeGen;
@@ -123,6 +124,9 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Child private HasPropertyCacheNode hasFunctionLengthNode;
         @Child private PropertyGetNode getFunctionLengthNode;
         @Child private PropertyGetNode getFunctionNameNode;
+        private final ConditionProfile mustSetLengthProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile setNameProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile hasFunctionLengthProfile = ConditionProfile.createBinaryProfile();
 
         public JSBindNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -142,14 +146,14 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             int length = 0;
             boolean mustSetLength = true;
-            if (hasFunctionLengthNode.hasProperty(thisFnObj)) {
+            if (hasFunctionLengthProfile.profile(hasFunctionLengthNode.hasProperty(thisFnObj))) {
                 int targetLen = getFunctionLength(thisFnObj);
                 length = Math.max(0, targetLen - args.length);
                 if (targetLen == JSFunction.getLength(thisFnObj)) {
                     mustSetLength = false;
                 }
             }
-            if (mustSetLength) {
+            if (mustSetLengthProfile.profile(mustSetLength)) {
                 JSFunction.setFunctionLength(boundFunction, length);
             }
 
@@ -157,7 +161,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             if (!JSRuntime.isString(targetName)) {
                 targetName = "";
             }
-            if (targetName != JSFunction.getName(thisFnObj)) {
+            if (setNameProfile.profile(targetName != JSFunction.getName(thisFnObj))) {
                 JSFunction.setBoundFunctionName(boundFunction, (String) targetName);
             }
 
@@ -169,7 +173,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             if (len instanceof Integer) {
                 return (int) len;
             } else if (JSRuntime.isNumber(len)) {
-                return (int) JSRuntime.toInteger(len);
+                return (int) JSRuntime.toInteger((Number) len);
             }
             return 0;
         }

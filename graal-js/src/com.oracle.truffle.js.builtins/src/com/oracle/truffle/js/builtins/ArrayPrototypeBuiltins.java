@@ -908,7 +908,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (lengthIsZero.profile(len > 0)) {
                 Object firstElement = read(thisObj, 0);
                 ScriptArray array = arrayTypeProfile.profile(arrayGetArrayType(thisObj));
-                arraySetArrayType(thisObj, array.removeRange(thisObj, 0, 1));
+                arraySetArrayType(thisObj, array.removeRange(thisObj, 0, 1, errorBranch));
                 setLength(thisObj, len - 1);
                 return firstElement;
             } else {
@@ -1704,7 +1704,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             ScriptArray array = arrayGetArrayType(thisObj);
             if (itemCount < actualDeleteCount) {
                 branchA.enter();
-                arraySetArrayType(thisObj, array.removeRange(thisObj, actualStart + itemCount, actualStart + actualDeleteCount));
+                arraySetArrayType(thisObj, array.removeRange(thisObj, actualStart + itemCount, actualStart + actualDeleteCount, errorBranch));
             } else if (itemCount > actualDeleteCount) {
                 branchB.enter();
                 arraySetArrayType(thisObj, array.addRange(thisObj, actualStart, (int) (itemCount - actualDeleteCount)));

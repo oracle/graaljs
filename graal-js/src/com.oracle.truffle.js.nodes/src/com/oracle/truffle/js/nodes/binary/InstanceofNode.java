@@ -82,6 +82,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
                     @Cached("create()") BranchProfile errorBranch,
                     @Cached("create()") BranchProfile proxyBranch) {
         if (!isObjectNode.executeBoolean(target)) {
+            errorBranch.enter();
             throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
         }
         Object hasInstance = getMethodHasInstanceNode.executeWithTarget(target);
@@ -229,7 +230,8 @@ public abstract class InstanceofNode extends JSBinaryNode {
                         @Cached("create()") BranchProfile firstTrue,
                         @Cached("create()") BranchProfile firstFalse,
                         @Cached("create()") BranchProfile need2Hops,
-                        @Cached("create()") BranchProfile need3Hops) {
+                        @Cached("create()") BranchProfile need3Hops,
+                        @Cached("create()") BranchProfile errorBranch) {
             DynamicObject ctorPrototype = getConstructorPrototype(right);
             if (lessThan4) {
                 DynamicObject proto = getPrototype1Node.executeJSObject(left);
@@ -255,7 +257,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 lessThan4 = false;
             }
-            return doJSObject4(left, ctorPrototype, getPrototype3Node);
+            return doJSObject4(left, ctorPrototype, getPrototype3Node, errorBranch);
         }
 
         @Specialization(guards = {"isObjectLocal(left)", "isJSProxy(right)", "isCallableProxy(right)"})
@@ -266,16 +268,18 @@ public abstract class InstanceofNode extends JSBinaryNode {
                         @Cached("create()") BranchProfile firstTrue,
                         @Cached("create()") BranchProfile firstFalse,
                         @Cached("create()") BranchProfile need2Hops,
-                        @Cached("create()") BranchProfile need3Hops) {
-            return doJSObject(left, right, getPrototype1Node, getPrototype2Node, getPrototype3Node, firstTrue, firstFalse, need2Hops, need3Hops);
+                        @Cached("create()") BranchProfile need3Hops,
+                        @Cached("create()") BranchProfile errorBranch) {
+            return doJSObject(left, right, getPrototype1Node, getPrototype2Node, getPrototype3Node, firstTrue, firstFalse, need2Hops, need3Hops, errorBranch);
         }
 
-        private static boolean doJSObject4(DynamicObject obj, DynamicObject check, GetPrototypeNode getPrototypeNode) {
+        private static boolean doJSObject4(DynamicObject obj, DynamicObject check, GetPrototypeNode getPrototypeNode, BranchProfile errorBranch) {
             DynamicObject proto = obj;
             int counter = 0;
             while ((proto = getPrototypeNode.executeJSObject(proto)) != Null.instance) {
                 counter++;
                 if (counter > JSTruffleOptions.MaxExpectedPrototypeChainLength) {
+                    errorBranch.enter();
                     throw Errors.createRangeError("prototype chain length exceeded");
                 }
                 if (proto == check) {
