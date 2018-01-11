@@ -173,7 +173,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             if (len instanceof Integer) {
                 return (int) len;
             } else if (JSRuntime.isNumber(len)) {
-                return (int) JSRuntime.toInteger(len);
+                return (int) JSRuntime.toInteger((Number) len);
             }
             return 0;
         }
