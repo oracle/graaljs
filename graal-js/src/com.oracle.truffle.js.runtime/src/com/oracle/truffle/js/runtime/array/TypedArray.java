@@ -234,7 +234,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int INT8_BYTES_PER_ELEMENT = 1;
-    private static final TypedArrayFactory INT8_FACTORY = new TypedArrayFactory(INT8_BYTES_PER_ELEMENT, "Int8Array",
+    public static final TypedArrayFactory INT8_FACTORY = new TypedArrayFactory(INT8_BYTES_PER_ELEMENT, "Int8Array",
                     new Int8Array(false), new Int8Array(true), new DirectInt8Array(false), new DirectInt8Array(true));
 
     public static final class Int8Array extends TypedIntArray {
@@ -305,7 +305,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int UINT8_BYTES_PER_ELEMENT = 1;
-    private static final TypedArrayFactory UINT8_FACTORY = new TypedArrayFactory(UINT8_BYTES_PER_ELEMENT, "Uint8Array",
+    public static final TypedArrayFactory UINT8_FACTORY = new TypedArrayFactory(UINT8_BYTES_PER_ELEMENT, "Uint8Array",
                     new Uint8Array(false), new Uint8Array(true), new DirectUint8Array(false), new DirectUint8Array(true));
 
     public static final class Uint8Array extends TypedIntArray {
@@ -376,7 +376,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int UINT8_CLAMPED_BYTES_PER_ELEMENT = 1;
-    private static final TypedArrayFactory UINT8_CLAMPED_FACTORY = new TypedArrayFactory(UINT8_CLAMPED_BYTES_PER_ELEMENT, "Uint8ClampedArray",
+    public static final TypedArrayFactory UINT8_CLAMPED_FACTORY = new TypedArrayFactory(UINT8_CLAMPED_BYTES_PER_ELEMENT, "Uint8ClampedArray",
                     new Uint8ClampedArray(false), new Uint8ClampedArray(true), new DirectUint8ClampedArray(false), new DirectUint8ClampedArray(true));
 
     public abstract static class AbstractUint8ClampedArray extends TypedIntArray {
@@ -464,7 +464,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int INT16_BYTES_PER_ELEMENT = 2;
-    private static final TypedArrayFactory INT16_FACTORY = new TypedArrayFactory(INT16_BYTES_PER_ELEMENT, "Int16Array",
+    public static final TypedArrayFactory INT16_FACTORY = new TypedArrayFactory(INT16_BYTES_PER_ELEMENT, "Int16Array",
                     new Int16Array(false), new Int16Array(true), new DirectInt16Array(false), new DirectInt16Array(true));
 
     public static final class Int16Array extends TypedIntArray {
@@ -535,7 +535,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int UINT16_BYTES_PER_ELEMENT = 2;
-    private static final TypedArrayFactory UINT16_FACTORY = new TypedArrayFactory(UINT16_BYTES_PER_ELEMENT, "Uint16Array",
+    public static final TypedArrayFactory UINT16_FACTORY = new TypedArrayFactory(UINT16_BYTES_PER_ELEMENT, "Uint16Array",
                     new Uint16Array(false), new Uint16Array(true), new DirectUint16Array(false), new DirectUint16Array(true));
 
     public static final class Uint16Array extends TypedIntArray {
@@ -606,7 +606,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int INT32_BYTES_PER_ELEMENT = 4;
-    private static final TypedArrayFactory INT32_FACTORY = new TypedArrayFactory(INT32_BYTES_PER_ELEMENT, "Int32Array",
+    public static final TypedArrayFactory INT32_FACTORY = new TypedArrayFactory(INT32_BYTES_PER_ELEMENT, "Int32Array",
                     new Int32Array(false), new Int32Array(true), new DirectInt32Array(false), new DirectInt32Array(true));
 
     public static final class Int32Array extends TypedIntArray {
@@ -677,7 +677,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int UINT32_BYTES_PER_ELEMENT = 4;
-    private static final TypedArrayFactory UINT32_FACTORY = new TypedArrayFactory(UINT32_BYTES_PER_ELEMENT, "Uint32Array",
+    public static final TypedArrayFactory UINT32_FACTORY = new TypedArrayFactory(UINT32_BYTES_PER_ELEMENT, "Uint32Array",
                     new Uint32Array(false), new Uint32Array(true), new DirectUint32Array(false), new DirectUint32Array(true));
 
     public abstract static class AbstractUint32Array extends TypedIntArray {
@@ -811,7 +811,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int FLOAT32_BYTES_PER_ELEMENT = 4;
-    private static final TypedArrayFactory FLOAT32_FACTORY = new TypedArrayFactory(FLOAT32_BYTES_PER_ELEMENT, "Float32Array",
+    public static final TypedArrayFactory FLOAT32_FACTORY = new TypedArrayFactory(FLOAT32_BYTES_PER_ELEMENT, "Float32Array",
                     new Float32Array(false), new Float32Array(true), new DirectFloat32Array(false), new DirectFloat32Array(true));
 
     public static final class Float32Array extends TypedFloatArray {
@@ -882,7 +882,7 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     private static final int FLOAT64_BYTES_PER_ELEMENT = 8;
-    private static final TypedArrayFactory FLOAT64_FACTORY = new TypedArrayFactory(FLOAT64_BYTES_PER_ELEMENT, "Float64Array",
+    public static final TypedArrayFactory FLOAT64_FACTORY = new TypedArrayFactory(FLOAT64_BYTES_PER_ELEMENT, "Float64Array",
                     new Float64Array(false), new Float64Array(true), new DirectFloat64Array(false), new DirectFloat64Array(true));
 
     public static final class Float64Array extends TypedFloatArray {
