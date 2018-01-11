@@ -94,8 +94,6 @@
       'lib/internal/freelist.js',
       'lib/internal/fs.js',
       'lib/internal/graal/buffer.js',
-      'lib/internal/graal/thread_process_wrap.js',
-      'lib/internal/graal/thread_pipe_wrap.js',
       'lib/internal/http.js',
       'lib/internal/inspector_async_hook.js',
       'lib/internal/linkedlist.js',
@@ -192,7 +190,6 @@
         'src/connect_wrap.cc',
         'src/env.cc',
         'src/fs_event_wrap.cc',
-        'src/graal/graal_threading.cc',
         'src/handle_wrap.cc',
         'src/js_stream.cc',
         'src/module_wrap.cc',
@@ -302,13 +299,10 @@
         # Threading
         [ 'node_enable_threading=="true"', {
           'defines': [ 'GRAAL_ENABLE_THREADING' ],
-        }],
-        # No threading
-        [ 'node_enable_threading=="false"', {
-          'sources!': [
+          'sources': [
             'src/graal/graal_threading.cc',
           ],
-          'library_files!': [
+          'library_files': [
             'lib/internal/graal/thread_process_wrap.js',
             'lib/internal/graal/thread_pipe_wrap.js',
           ],          
