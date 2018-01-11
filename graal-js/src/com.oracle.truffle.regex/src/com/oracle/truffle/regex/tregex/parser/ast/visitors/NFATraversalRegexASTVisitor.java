@@ -75,6 +75,10 @@ public abstract class NFATraversalRegexASTVisitor {
 
         private final RegexASTNode node;
         private byte flags = 0;
+        // Since the same group can appear multiple times on the path, we cannot reuse Group's
+        // implementation of RegexASTVisitorIterable. Therefore, every occurrence of a group on the
+        // path has its own index for iterating and back-tracking over its alternatives.
+        private int groupAlternativeIndex = 0;
 
         private PathElement(RegexASTNode node) {
             this.node = node;
@@ -82,6 +86,16 @@ public abstract class NFATraversalRegexASTVisitor {
 
         public RegexASTNode getNode() {
             return node;
+        }
+
+        public boolean groupHasNextAlternative() {
+            assert node instanceof Group;
+            return groupAlternativeIndex < ((Group) node).getAlternatives().size();
+        }
+
+        public Sequence groupGetNextAlternative() {
+            assert node instanceof Group;
+            return ((Group) node).getAlternatives().get(groupAlternativeIndex++);
         }
 
         private boolean isFlagSet(byte flag) {
@@ -127,7 +141,17 @@ public abstract class NFATraversalRegexASTVisitor {
 
     protected final RegexAST ast;
     private final ArrayList<PathElement> curPath = new ArrayList<>();
-    private final ASTNodeSet<RegexASTNode> visited;
+    // insideLoops is the set of looping groups that we are currently inside of. We need to maintain
+    // this in order to detect infinite loops in the NFA traversal. If we enter a looping group,
+    // traverse it without encountering a CharacterClass node or a MatchFound node and arrive back
+    // at the same group, then we are bound to loop like this forever. Using insideLoops, we can
+    // detect this situation and proceed with the search using another alternative.
+    // For example, in the RegexAST ((|[a])*|)*, which corresponds to the regex /(a*?)*/, we can
+    // traverse the inner loop, (|[a])*, without hitting any CharacterClass node by choosing the
+    // first alternative and we will then arrive back at the outer loop. There, we detect an
+    // infinite loop, which causes us to backtrack and choose the second alternative in the inner
+    // loop, leading us to the CharacterClass node [a].
+    private final ASTNodeSet<Group> insideLoops;
     private RegexASTNode cur;
     private Set<LookBehindAssertion> traversableLookBehindAssertions;
     private boolean canTraverseCaret = false;
@@ -137,7 +161,7 @@ public abstract class NFATraversalRegexASTVisitor {
 
     protected NFATraversalRegexASTVisitor(RegexAST ast) {
         this.ast = ast;
-        this.visited = new ASTNodeSet<>(ast);
+        this.insideLoops = new ASTNodeSet<>(ast);
     }
 
     public void setTraversableLookBehindAssertions(Set<LookBehindAssertion> traversableLookBehindAssertions) {
@@ -177,7 +201,7 @@ public abstract class NFATraversalRegexASTVisitor {
 
     /**
      * Visit the next successor found.
-     * 
+     *
      * @param path Path to the successor. Do not modify this list, it will be reused by the visitor
      *            for finding the next successor!
      */
@@ -188,7 +212,7 @@ public abstract class NFATraversalRegexASTVisitor {
     protected abstract void leaveLookAhead(LookAheadAssertion assertion);
 
     private boolean doAdvance() {
-        if (cur.isDead() || !visited.add(cur)) {
+        if (cur.isDead() || insideLoops.contains(cur)) {
             return retreat();
         }
         final PathElement curPathElement = new PathElement(cur);
@@ -196,16 +220,23 @@ public abstract class NFATraversalRegexASTVisitor {
         if (cur instanceof Group) {
             curPathElement.setGroupEnter();
             final Group group = (Group) cur;
+            if (group.isLoop()) {
+                insideLoops.add(group);
+            }
             // This path will only be hit when visiting a group for the first time. All groups must
             // have at least one child sequence, so no check is needed here.
-            assert group.visitorHasNext();
-            cur = group.visitorGetNext(reverse);
+            assert curPathElement.groupHasNextAlternative();
+            cur = curPathElement.groupGetNextAlternative();
             return true;
         } else if (cur instanceof Sequence) {
             final Sequence sequence = (Sequence) cur;
             if (sequence.isEmpty()) {
-                pushGroupExit(sequence.getParent());
-                return advanceTerm(sequence.getParent());
+                Group parent = sequence.getParent();
+                pushGroupExit(parent);
+                if (parent.isLoop()) {
+                    insideLoops.remove(parent);
+                }
+                return advanceTerm(parent);
             } else {
                 cur = reverse ? sequence.getLastTerm() : sequence.getFirstTerm();
                 return true;
@@ -314,20 +345,23 @@ public abstract class NFATraversalRegexASTVisitor {
                                 break;
                             }
                         }
+                        if (group.isLoop()) {
+                            insideLoops.add(group);
+                        }
                     }
                 } else {
                     assert lastVisited.isGroupEnter();
-                    if (group.visitorHasNext()) {
+                    if (lastVisited.groupHasNextAlternative()) {
                         curPath.add(lastVisited);
-                        cur = group.visitorGetNext(reverse);
+                        cur = lastVisited.groupGetNextAlternative();
                         return true;
                     } else {
-                        visited.remove(group);
-                        group.resetVisitorIterator();
+                        if (group.isLoop()) {
+                            insideLoops.remove(group);
+                        }
                     }
                 }
             } else {
-                visited.remove(lastVisited.getNode());
                 if (lastVisited.getNode() instanceof LookAheadAssertion) {
                     leaveLookAhead((LookAheadAssertion) lastVisited.getNode());
                 } else if (lastVisited.getNode() instanceof PositionAssertion) {

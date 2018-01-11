@@ -345,7 +345,7 @@ final class ArrayCompiler extends Compiler {
 
         entryRepeatRange(numRepeat, qn.lower, qn.upper);
 
-        compileTreeEmptyCheck(qn.target, emptyInfo);
+        compileTreeEmptyCheckWithMemoryClear(qn.target, emptyInfo);
 
         if (qn.isInRepeat()) {
             addOpcode(qn.greedy ? OPCode.REPEAT_INC_SG : OPCode.REPEAT_INC_NG_SG);
@@ -363,11 +363,46 @@ final class ArrayCompiler extends Compiler {
         return ckn > 0;
     }
 
+    private void addMemoryClear(final Range clearCaptureGroups) {
+        if (!clearCaptureGroups.empty) {
+            addOpcode(OPCode.MEMORY_CLEAR);
+            addMemNum(clearCaptureGroups.from);
+            addMemNum(clearCaptureGroups.to);
+        }
+    }
+
+    private void compileTreeWithMemoryClear(final Node node) {
+        addMemoryClear(findEnclosedCaptureGroups(node));
+        compileTree(node);
+    }
+
+    private void compileTreeEmptyCheckWithMemoryClear(final Node node, final int emptyInfo) {
+        addMemoryClear(findEnclosedCaptureGroups(node));
+        compileTreeEmptyCheck(node, emptyInfo);
+    }
+
+    private void compileTreeNTimesWithMemoryClear(final Node node, final int n) {
+        Range enclosedCaptureGroups = findEnclosedCaptureGroups(node);
+        for (int i=0; i<n; i++) {
+            addMemoryClear(enclosedCaptureGroups);
+            compileTree(node);
+        }
+    }
+
+    private int compileLengthTreeWithMemoryClear(final Node node) {
+        final Range enclosedCaptureGroups = findEnclosedCaptureGroups(node);
+        if (enclosedCaptureGroups.empty) {
+            return compileLengthTree(node);
+        } else {
+            return compileLengthTree(node) + OPSize.MEMORY_CLEAR;
+        }
+    }
+
     private int compileNonCECLengthQuantifierNode(final QuantifierNode qn) {
         final boolean infinite = isRepeatInfinite(qn.upper);
         final int emptyInfo = qn.targetEmptyInfo;
 
-        final int tlen = compileLengthTree(qn.target);
+        final int tlen = compileLengthTreeWithMemoryClear(qn.target);
 
         /* anychar repeat */
         if (qn.target.getType() == NodeType.CANY) {
@@ -426,10 +461,10 @@ final class ArrayCompiler extends Compiler {
         final boolean infinite = isRepeatInfinite(qn.upper);
         final int emptyInfo = qn.targetEmptyInfo;
 
-        final int tlen = compileLengthTree(qn.target);
+        final int tlen = compileLengthTreeWithMemoryClear(qn.target);
 
         if (qn.isAnyCharStar()) {
-            compileTreeNTimes(qn.target, qn.lower);
+            compileTreeNTimesWithMemoryClear(qn.target, qn.lower);
             if (qn.nextHeadExact != null) {
                 if (isMultiline(regex.options)) {
                     addOpcode(OPCode.ANYCHAR_ML_STAR_PEEK_NEXT);
@@ -468,7 +503,7 @@ final class ArrayCompiler extends Compiler {
                     addOpcodeRelAddr(OPCode.JUMP, OPSize.JUMP);
                 }
             } else {
-                compileTreeNTimes(qn.target, qn.lower);
+                compileTreeNTimesWithMemoryClear(qn.target, qn.lower);
             }
 
             if (qn.greedy) {
@@ -476,45 +511,45 @@ final class ArrayCompiler extends Compiler {
                     addOpcodeRelAddr(OPCode.PUSH_OR_JUMP_EXACT1, modTLen + OPSize.JUMP);
                     final StringNode sn = (StringNode)qn.headExact;
                     addChars(sn.chars, sn.p, 1);
-                    compileTreeEmptyCheck(qn.target, emptyInfo);
+                    compileTreeEmptyCheckWithMemoryClear(qn.target, emptyInfo);
                     addOpcodeRelAddr(OPCode.JUMP, -(modTLen + OPSize.JUMP + OPSize.PUSH_OR_JUMP_EXACT1));
                 } else if (qn.nextHeadExact != null) {
                     addOpcodeRelAddr(OPCode.PUSH_IF_PEEK_NEXT, modTLen + OPSize.JUMP);
                     final StringNode sn = (StringNode)qn.nextHeadExact;
                     addChars(sn.chars, sn.p, 1);
-                    compileTreeEmptyCheck(qn.target, emptyInfo);
+                    compileTreeEmptyCheckWithMemoryClear(qn.target, emptyInfo);
                     addOpcodeRelAddr(OPCode.JUMP, -(modTLen + OPSize.JUMP + OPSize.PUSH_IF_PEEK_NEXT));
                 } else {
                     addOpcodeRelAddr(OPCode.PUSH, modTLen + OPSize.JUMP);
-                    compileTreeEmptyCheck(qn.target, emptyInfo);
+                    compileTreeEmptyCheckWithMemoryClear(qn.target, emptyInfo);
                     addOpcodeRelAddr(OPCode.JUMP, -(modTLen + OPSize.JUMP + OPSize.PUSH));
                 }
             } else {
                 addOpcodeRelAddr(OPCode.JUMP, modTLen);
-                compileTreeEmptyCheck(qn.target, emptyInfo);
+                compileTreeEmptyCheckWithMemoryClear(qn.target, emptyInfo);
                 addOpcodeRelAddr(OPCode.PUSH, -(modTLen + OPSize.PUSH));
             }
         } else if (qn.upper == 0 && qn.isRefered) { /* /(?<n>..){0}/ */
             addOpcodeRelAddr(OPCode.JUMP, tlen);
-            compileTree(qn.target);
+            compileTreeWithMemoryClear(qn.target);
         } else if (!infinite && qn.greedy &&
                   (qn.upper == 1 || (tlen + OPSize.PUSH) * qn.upper <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
             final int n = qn.upper - qn.lower;
-            compileTreeNTimes(qn.target, qn.lower);
+            compileTreeNTimesWithMemoryClear(qn.target, qn.lower);
 
             boolean enclose = (qn.target.getType() == NodeType.ENCLOSE);
             for (int i=0; i<n; i++) {
                 addOpcodeRelAddr(OPCode.PUSH, (n - i) * (enclose ? modTLen : tlen) + (n - i - 1) * OPSize.PUSH);
                 if (enclose) {
-                    compileTreeEmptyCheck(qn.target, emptyInfo);
+                    compileTreeEmptyCheckWithMemoryClear(qn.target, emptyInfo);
                 } else {
-                    compileTree(qn.target);
+                    compileTreeWithMemoryClear(qn.target);
                 }
             }
         } else if (!qn.greedy && qn.upper == 1 && qn.lower == 0) { /* '??' */
             addOpcodeRelAddr(OPCode.PUSH, OPSize.JUMP);
             addOpcodeRelAddr(OPCode.JUMP, tlen);
-            compileTree(qn.target);
+            compileTreeWithMemoryClear(qn.target);
         } else {
             compileRangeRepeatNode(qn, modTLen, emptyInfo);
         }
@@ -882,8 +917,6 @@ final class ArrayCompiler extends Compiler {
         case OPCode.STATE_CHECK_ANYCHAR_ML_STAR:
         case OPCode.MEMORY_START_PUSH:
         case OPCode.MEMORY_END_PUSH:
-        case OPCode.MEMORY_END_PUSH_REC:
-        case OPCode.MEMORY_END_REC:
         case OPCode.NULL_CHECK_START:
         case OPCode.NULL_CHECK_END_MEMST_PUSH:
         case OPCode.PUSH:

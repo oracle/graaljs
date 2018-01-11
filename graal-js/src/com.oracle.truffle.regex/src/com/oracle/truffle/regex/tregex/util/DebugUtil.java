@@ -80,15 +80,15 @@ public class DebugUtil {
         private long startTime = 0;
 
         public void start() {
-            startTime = System.currentTimeMillis();
+            startTime = System.nanoTime();
         }
 
         public long getElapsed() {
-            return System.currentTimeMillis() - startTime;
+            return System.nanoTime() - startTime;
         }
 
         public String elapsedToString() {
-            return String.format("elapsed: %dms", getElapsed());
+            return String.format("elapsed: %fms", getElapsed() / 1e6);
         }
     }
 

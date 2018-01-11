@@ -42,7 +42,6 @@ public interface StackType {
     /* avoided by normal-POP */
     final int NULL_CHECK_START              = 0x3000;
     final int NULL_CHECK_END                = 0x5000;  /* for recursive call */
-    final int MEM_END_MARK                  = 0x8400;
     final int POS                           = 0x0500;  /* used when POP-POS */
     final int STOP_BT                       = 0x0600;  /* mark for "(?>...)" */
     final int REPEAT                        = 0x0700;
@@ -53,5 +52,4 @@ public interface StackType {
     /* stack type check mask */
     final int MASK_POP_USED                 = 0x00ff;
     final int MASK_TO_VOID_TARGET           = 0x10ff;
-    final int MASK_MEM_END_OR_MARK          = 0x8000;  /* MEM_END or MEM_END_MARK */
 }
