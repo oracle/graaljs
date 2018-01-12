@@ -90,6 +90,7 @@ public final class JSError extends JSBuiltinObject {
             return value;
         }
 
+        @TruffleBoundary
         private JSContext currentContext(DynamicObject store) {
             FrameInstance frameInstance = Truffle.getRuntime().getCurrentFrame();
             if (frameInstance != null) {
