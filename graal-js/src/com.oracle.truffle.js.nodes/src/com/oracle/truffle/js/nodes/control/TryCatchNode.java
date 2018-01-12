@@ -14,6 +14,7 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -34,10 +35,9 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
-import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
  * 12.14 The try Statement.
@@ -225,7 +225,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
                     realm = context.getRealm();
                 }
                 errorObj = createErrorFromJSException(exception, realm);
-                initErrorObjectNode.execute(errorObj, exception, realm);
+                initErrorObjectNode.execute(errorObj, exception);
                 exception.setErrorObject(errorObj);
             }
             return errorObj;
@@ -244,7 +244,6 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         @Child private CreateMethodPropertyNode setColumnNumber;
         @Child private PropertySetNode setException;
         @Child private PropertySetNode setFormattedStack;
-        private final JSClassProfile classProfile = JSClassProfile.create();
         private final boolean defaultColumnNumber;
 
         private InitErrorObjectNode(JSContext context, boolean defaultColumnNumber) {
@@ -259,22 +258,22 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
             return new InitErrorObjectNode(context, defaultColumnNumber);
         }
 
-        public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, JSRealm realm) {
+        public DynamicObject execute(DynamicObject errorObj, GraalJSException exception) {
             setException.setValue(errorObj, exception);
             // stack is not formatted until it is accessed
             setFormattedStack.setValue(errorObj, null);
-            PropertyDescriptor desc = JSObject.getOwnProperty(errorObj, JSError.STACK_NAME, classProfile);
+            Property stackProperty = errorObj.getShape().getProperty(JSError.STACK_NAME);
             int attrs = JSAttributes.getDefaultNotEnumerable();
-            if (desc != null) {
-                if (!desc.getConfigurable()) {
+            if (stackProperty != null) {
+                if (!JSProperty.isConfigurable(stackProperty)) {
                     throw Errors.createTypeErrorCannotRedefineProperty(JSError.STACK_NAME);
                 }
-                if (desc.getEnumerable()) {
+                if (JSProperty.isEnumerable(stackProperty)) {
                     attrs = JSAttributes.getDefault();
                 }
             }
             /// use nodes (GR-1989)
-            errorObj.define(JSError.STACK_NAME, realm.getErrorStackAccessor(), attrs | JSProperty.ACCESSOR);
+            JSObjectUtil.defineProxyProperty(errorObj, JSError.STACK_NAME, JSError.STACK_PROXY, attrs | JSProperty.PROXY);
             if (JSTruffleOptions.NashornCompatibilityMode && exception.getJSStackTrace().length > 0) {
                 JSStackTraceElement topStackTraceElement = exception.getJSStackTrace()[0];
                 setLineNumber.executeVoid(errorObj, topStackTraceElement.getLineNumber());

@@ -7,6 +7,14 @@ var assert = require('assert');
 var vm = require('vm');
 
 describe('vm', function () {
+    it('should use the right Error.prepareStackTrace', function() {
+        Error.prepareStackTrace = function() { return 'outer'; };
+        var error = vm.runInNewContext('Error.prepareStackTrace = function() { return "inner"; }; new Error();');
+        assert.strictEqual(error.stack, 'outer');
+        var stack = vm.runInNewContext('Error.prepareStackTrace = function() { return "inner"; }; new Error().stack;');
+        assert.strictEqual(stack, 'inner');
+        delete Error.prepareStackTrace;
+    });
     it('should handle non-configurable properties of sandbox', function () {
         var sandbox = {};
         var value = 42;

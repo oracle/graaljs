@@ -31,6 +31,10 @@ test-memory-usage                                                  : FAIL
 # different error message ("illegal repeat count" x "Invalid string length")
 test-buffer-constants                                              : FAIL
 
+# different error message ("Expected ; but found y" x "Unexpected identifier")
+test-repl-pretty-custom-stack                                      : FAIL
+test-repl-pretty-stack                                             : FAIL
+
 # suspicious test - executes a memory intensive section and then
 # looks for a memory leak by checking whether rss was increased
 # It fails because JVM increases its heap size and does not decrease
@@ -71,8 +75,6 @@ test-domain-no-error-handler-abort-on-uncaught-9                   : FAIL
 test-domain-throw-error-then-throw-from-uncaught-exception-handler : FAIL
 test-http2-response-splitting                                      : FAIL
 test-repl                                                          : FAIL
-test-repl-pretty-custom-stack                                      : FAIL
-test-repl-pretty-stack                                             : FAIL
 test-repl-require-context                                          : FAIL
 test-repl-tab-complete                                             : FAIL
 test-repl-underscore                                               : FAIL

@@ -67,7 +67,6 @@ import com.oracle.truffle.js.runtime.builtins.SIMDType;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
-import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -144,7 +143,6 @@ public class JSRealm implements ShapeContext {
     @CompilationFinal(dimensions = 1) private final JSConstructor[] errorConstructors;
     @CompilationFinal(dimensions = 1) private final DynamicObjectFactory[] errorObjectFactories;
     @CompilationFinal(dimensions = 1) private final DynamicObjectFactory[] errorWithMessageObjectFactories;
-    private final Accessor errorStackAccessor;
     private final JSConstructor callSiteConstructor;
     private final DynamicObjectFactory callSiteFactory;
 
@@ -303,7 +301,6 @@ public class JSRealm implements ShapeContext {
         this.errorObjectFactories = new DynamicObjectFactory[JSErrorType.values().length];
         this.errorWithMessageObjectFactories = new DynamicObjectFactory[JSErrorType.values().length];
         initializeErrorConstructors();
-        this.errorStackAccessor = JSError.createStackAccessor(this);
         this.callSiteConstructor = JSError.createCallSiteConstructor(this);
         this.callSiteFactory = JSError.makeInitialCallSiteShape(context, callSiteConstructor.getPrototype()).createFactory();
 
@@ -452,10 +449,6 @@ public class JSRealm implements ShapeContext {
 
     public final DynamicObjectFactory getErrorWithMessageFactory(JSErrorType type) {
         return errorWithMessageObjectFactories[type.ordinal()];
-    }
-
-    public final Accessor getErrorStackAccessor() {
-        return errorStackAccessor;
     }
 
     public final DynamicObject getGlobalObject() {
