@@ -7,9 +7,13 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.util.EnumSet;
 import java.util.Objects;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
@@ -18,14 +22,13 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -33,6 +36,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSError extends JSBuiltinObject {
@@ -71,6 +75,43 @@ public final class JSError extends JSBuiltinObject {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
         STACK_TRACE_ELEMENT_PROPERTY = JSObjectUtil.makeHiddenProperty(STACK_TRACE_ELEMENT_PROPERTY_NAME, allocator.locationForType(Object.class));
     }
+
+    public static final PropertyProxy STACK_PROXY = new PropertyProxy() {
+        @Override
+        public Object get(DynamicObject store) {
+            Object value = store.get(FORMATTED_STACK_NAME);
+            if (value == null) {
+                // stack not prepared yet
+                JSContext context = currentContext(store);
+                GraalJSException truffleException = getException(store);
+                value = (truffleException == null) ? Undefined.instance : prepareStack(context.getRealm(), store, truffleException);
+                store.set(FORMATTED_STACK_NAME, value);
+            }
+            return value;
+        }
+
+        private JSContext currentContext(DynamicObject store) {
+            FrameInstance frameInstance = Truffle.getRuntime().getCurrentFrame();
+            if (frameInstance != null) {
+                CallTarget callTarget = frameInstance.getCallTarget();
+                if (callTarget instanceof RootCallTarget) {
+                    RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
+                    if (JSRuntime.isJSFunctionRootNode(rootNode)) {
+                        Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+                        DynamicObject function = JSFrameUtil.getFunctionObject(frame);
+                        return JSObject.getJSContext(function);
+                    }
+                }
+            }
+            return JSObject.getJSContext(store);
+        }
+
+        @Override
+        public boolean set(DynamicObject store, Object value) {
+            store.set(FORMATTED_STACK_NAME, value);
+            return true;
+        }
+    };
 
     private JSError() {
     }
@@ -192,42 +233,13 @@ public final class JSError extends JSBuiltinObject {
         }
     }
 
-    public static Accessor createStackAccessor(JSRealm realm) {
-        JSContext context = realm.getContext();
-        DynamicObject getStack = JSFunction.create(realm, JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                DynamicObject thisObj = JSRuntime.toObject(context, JSArguments.getThisObject(frame.getArguments()));
-                Object value = thisObj.get(FORMATTED_STACK_NAME);
-                if (value == null) {
-                    // stack not prepared yet
-                    GraalJSException truffleException = getException(thisObj);
-                    value = (truffleException == null) ? Undefined.instance : prepareStack(realm, thisObj, truffleException);
-                    thisObj.set(FORMATTED_STACK_NAME, value);
-                }
-                return value;
-            }
-        }), 0, "get " + STACK_NAME));
-        DynamicObject setStack = JSFunction.create(realm, JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object[] arguments = frame.getArguments();
-                DynamicObject thisObj = JSRuntime.toObject(context, JSArguments.getThisObject(arguments));
-                Object value = JSArguments.getUserArgument(arguments, 0);
-                thisObj.set(FORMATTED_STACK_NAME, value);
-                return Undefined.instance;
-            }
-        }), 1, "set " + STACK_NAME));
-        return new Accessor(getStack, setStack);
-    }
-
     private static void defineStackProperty(JSRealm realm, DynamicObject errorObj, GraalJSException exception) {
         JSContext context = realm.getContext();
         setErrorProperty(context, errorObj, EXCEPTION_PROPERTY_NAME, exception);
 
         // Error.stack is not formatted until it is accessed
         errorObj.define(FORMATTED_STACK_NAME, null);
-        errorObj.define(STACK_NAME, realm.getErrorStackAccessor(), JSAttributes.getDefaultNotEnumerable() | JSProperty.ACCESSOR);
+        JSObjectUtil.defineProxyProperty(errorObj, JSError.STACK_NAME, JSError.STACK_PROXY, JSAttributes.getDefaultNotEnumerable() | JSProperty.PROXY);
     }
 
     /**
@@ -402,4 +414,10 @@ public final class JSError extends JSBuiltinObject {
             return value;
         }
     }
+
+    @Override
+    public boolean hasOnlyShapeProperties(DynamicObject obj) {
+        return true;
+    }
+
 }
