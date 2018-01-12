@@ -54,6 +54,8 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugPrintSourceAttri
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugShapeNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugStringCompareNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugSystemGCNodeGen;
+import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugSystemPropertiesNodeGen;
+import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugSystemPropertyNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugToJavaStringNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugToLengthNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetachBufferNodeGen;
@@ -127,6 +129,8 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         createLargeInteger(1),
         typedArrayDetachBuffer(1),
         systemGC(0),
+        systemProperty(1),
+        systemProperties(0),
 
         objectSize(1) {
             @Override
@@ -201,6 +205,10 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
             case systemGC:
                 return DebugSystemGCNodeGen.create(context, builtin, args().createArgumentNodes(context));
+            case systemProperty:
+                return DebugSystemPropertyNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case systemProperties:
+                return DebugSystemPropertiesNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case printNodeCounters:
                 return DebugPrintNodeCountersNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case printNodeHistogram:
@@ -752,6 +760,42 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         protected static Object systemGC() {
             System.gc();
             return Undefined.instance;
+        }
+    }
+
+    public abstract static class DebugSystemProperties extends JSBuiltinNode {
+
+        public DebugSystemProperties(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @TruffleBoundary
+        @Specialization
+        protected Object systemProperties() {
+            DynamicObject result = JSUserObject.create(getContext());
+            for (Map.Entry<Object, Object> entry : System.getProperties().entrySet()) {
+                Object key = entry.getKey();
+                Object value = entry.getValue();
+                if (key instanceof String && value instanceof String) {
+                    JSObject.set(result, key, value);
+                }
+            }
+            return result;
+        }
+    }
+
+    public abstract static class DebugSystemProperty extends JSBuiltinNode {
+
+        public DebugSystemProperty(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @TruffleBoundary
+        @Specialization
+        protected static Object systemProperty(Object name) {
+            String key = JSRuntime.toString(name);
+            String value = System.getProperty(key);
+            return (value == null) ? Undefined.instance : value;
         }
     }
 
