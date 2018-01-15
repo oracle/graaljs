@@ -776,7 +776,7 @@ public final class JSProxy extends AbstractJSClass {
     }
 
     @TruffleBoundary
-    public static Object call(DynamicObject proxyObj, TruffleObject holder, Object[] arguments) {
+    public static Object call(DynamicObject proxyObj, Object holder, Object[] arguments) {
         DynamicObject handler = getHandlerChecked(proxyObj);
         TruffleObject target = getTarget(proxyObj);
         DynamicObject trap = getTrapFromObject(handler, APPLY);

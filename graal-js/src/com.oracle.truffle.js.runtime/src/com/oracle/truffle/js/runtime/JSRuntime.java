@@ -2123,7 +2123,7 @@ public final class JSRuntime {
     /**
      * ES2015 7.3.12 Call(F, V, arguments).
      */
-    public static Object call(Object fnObj, TruffleObject holder, Object[] arguments) {
+    public static Object call(Object fnObj, Object holder, Object[] arguments) {
         if (JSFunction.isJSFunction(fnObj)) {
             return JSFunction.call((DynamicObject) fnObj, holder, arguments);
         } else if (JSProxy.isProxy(fnObj)) {
