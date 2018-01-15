@@ -911,15 +911,7 @@ public final class GraalJSAccess {
     }
 
     public Object functionCall(Object function, Object receiver, Object[] arguments) {
-        if (JSFunction.isJSFunction(function)) {
-            return JSFunction.call((DynamicObject) function, receiver, arguments);
-        } else if (JSProxy.isProxy(function)) {
-            DynamicObject proxy = (DynamicObject) function;
-            if (JSRuntime.isCallableProxy(proxy)) {
-                return JSProxy.call(proxy, (TruffleObject) receiver, arguments);
-            }
-        }
-        throw Errors.createTypeErrorNotAFunction(function);
+        return JSRuntime.call(function, receiver, arguments);
     }
 
     private static SourceSection functionGetSourceSection(Object function) {
