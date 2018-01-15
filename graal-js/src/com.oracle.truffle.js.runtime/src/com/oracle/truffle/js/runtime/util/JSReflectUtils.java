@@ -35,7 +35,7 @@ public class JSReflectUtils {
         if (getter == Undefined.instance) {
             return Undefined.instance;
         }
-        return JSFunction.callDirect((DynamicObject) getter, (DynamicObject) receiver, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+        return JSRuntime.call(getter, receiver, JSArguments.EMPTY_ARGUMENTS_ARRAY);
     }
 
     // Implementation of OrdinarySet (O, P, V, Receiver)
