@@ -203,7 +203,7 @@ public class Lexer extends Scanner {
      * avoid reading ahead unnecessarily when we skip the function bodies.
      */
     public Lexer(final Source source, final int start, final int len, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean pauseOnFunctionBody) {
-        super(source.getContent(), 1, start, len);
+        super(source.getContent().toString().toCharArray(), 1, start, len);
         this.source      = source;
         this.stream      = stream;
         this.scripting   = scripting;
@@ -851,7 +851,7 @@ public class Lexer extends Scanner {
         }
         return value;
     }
-    
+
     public boolean checkIdentForKeyword(final long token, final String keyword) {
         final int len = Token.descLength(token);
         final int start = Token.descPosition(token);
@@ -860,7 +860,7 @@ public class Lexer extends Scanner {
         }
 
         for (int i = 0; i < len; ++i) {
-            if (content.charAt(start + i) != keyword.charAt(i)) {
+            if (content[start + i] != keyword.charAt(i)) {
                 return false;
             }
         }
@@ -887,7 +887,7 @@ public class Lexer extends Scanner {
         // Scan until end of line or end of file.
         while (pos < end) {
 
-            char curCh0 = content.charAt(pos);
+            char curCh0 = content[pos];
 
             // If escape character.
             if (convertUnicode && curCh0 == '\\' && charAt(pos + 1) == 'u') {
@@ -1494,7 +1494,7 @@ public class Lexer extends Scanner {
     private boolean identifierEqual(final int aStart, final int aLength, final int bStart, final int bLength) {
         if (aLength == bLength) {
             for (int i = 0; i < aLength; i++) {
-                if (content.charAt(aStart + i) != content.charAt(bStart + i)) {
+                if (content[aStart + i] != content[bStart + i]) {
                     return false;
                 }
             }
@@ -1751,12 +1751,12 @@ public class Lexer extends Scanner {
             // Remove last end of line if specified.
             if (excludeLastEOL) {
                 // Handles \n.
-                if (content.charAt(stringEnd - 1) == '\n') {
+                if (content[stringEnd - 1] == '\n') {
                     stringEnd--;
                 }
 
                 // Handles \r and \r\n.
-                if (content.charAt(stringEnd - 1) == '\r') {
+                if (content[stringEnd - 1] == '\r') {
                     stringEnd--;
                 }
 

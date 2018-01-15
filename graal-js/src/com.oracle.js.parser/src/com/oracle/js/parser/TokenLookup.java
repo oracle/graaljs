@@ -112,9 +112,9 @@ public final class TokenLookup {
      *
      * @return token type for keyword
      */
-    public static TokenType lookupKeyword(final CharSequence content, final int position, final int length) {
+    public static TokenType lookupKeyword(final char[] content, final int position, final int length) {
         // First character of keyword.
-        final char first = content.charAt(position);
+        final char first = content[position];
 
         // Must be lower case character.
         if ('a' <= first && first <= 'z') {
@@ -133,7 +133,7 @@ public final class TokenLookup {
                     final String name = tokenType.getName();
                     int i;
                     for (i = 0; i < length; i++) {
-                        if (content.charAt(position + i) != name.charAt(i)) {
+                        if (content[position + i] != name.charAt(i)) {
                             break;
                         }
                     }

@@ -32,7 +32,7 @@ package com.oracle.js.parser;
  */
 public class Scanner {
     /** Characters to scan. */
-    protected final CharSequence content;
+    protected final char[] content;
 
     /** Position in content. */
     protected int position;
@@ -60,7 +60,7 @@ public class Scanner {
      * @param start   position index in content where to start
      * @param length  length of input
      */
-    protected Scanner(final CharSequence content, final int line, final int start, final int length) {
+    protected Scanner(final char[] content, final int line, final int start, final int length) {
         this.content  = content;
         this.position = start;
         this.limit    = start + length;
@@ -150,7 +150,7 @@ public class Scanner {
      */
     protected final char charAt(final int i) {
         // Get a character from the content, '\0' if beyond the end of file.
-        return i < limit ? content.charAt(i) : '\0';
+        return i < limit ? content[i] : '\0';
     }
 
     /**

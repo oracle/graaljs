@@ -1599,9 +1599,9 @@ loop:
     private void verifyIdent(final IdentNode ident, final String contextString) {
         verifyStrictIdent(ident, contextString);
         if (isES6()) {
-            TokenType tokenType = TokenLookup.lookupKeyword(ident.getName(), 0, ident.getName().length());
+            TokenType tokenType = TokenLookup.lookupKeyword(ident.getName().toCharArray(), 0, ident.getName().length());
             if (tokenType != IDENT && tokenType.getKind() != TokenKind.FUTURESTRICT) {
-                throw error(expectMessage(IDENT));
+                throw error(expectMessage(IDENT), ident.getToken());
             }
             if (AWAIT_IDENT.equals(ident.getName()) && isModule) {
                 throw error(AbstractParser.message("strict.name", ident.getName(), contextString), ident.getToken());
