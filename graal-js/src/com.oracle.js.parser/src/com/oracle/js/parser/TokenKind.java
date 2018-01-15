@@ -46,5 +46,7 @@ public enum TokenKind {
     /** Token reserved for future usage. */
     FUTURE,
     /** Token reserved for future in strict mode. */
-    FUTURESTRICT
+    FUTURESTRICT,
+    /** Identifier or contextual keyword. */
+    CONTEXTUAL,
 }

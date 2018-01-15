@@ -26,8 +26,10 @@
 package com.oracle.js.parser;
 
 import static com.oracle.js.parser.TokenType.ARROW;
+import static com.oracle.js.parser.TokenType.AS;
 import static com.oracle.js.parser.TokenType.ASSIGN;
 import static com.oracle.js.parser.TokenType.ASSIGN_INIT;
+import static com.oracle.js.parser.TokenType.ASYNC;
 import static com.oracle.js.parser.TokenType.AWAIT;
 import static com.oracle.js.parser.TokenType.CASE;
 import static com.oracle.js.parser.TokenType.CATCH;
@@ -47,7 +49,9 @@ import static com.oracle.js.parser.TokenType.ESCSTRING;
 import static com.oracle.js.parser.TokenType.EXPORT;
 import static com.oracle.js.parser.TokenType.EXTENDS;
 import static com.oracle.js.parser.TokenType.FINALLY;
+import static com.oracle.js.parser.TokenType.FROM;
 import static com.oracle.js.parser.TokenType.FUNCTION;
+import static com.oracle.js.parser.TokenType.GET;
 import static com.oracle.js.parser.TokenType.IDENT;
 import static com.oracle.js.parser.TokenType.IF;
 import static com.oracle.js.parser.TokenType.IMPORT;
@@ -62,6 +66,7 @@ import static com.oracle.js.parser.TokenType.RBRACE;
 import static com.oracle.js.parser.TokenType.RBRACKET;
 import static com.oracle.js.parser.TokenType.RPAREN;
 import static com.oracle.js.parser.TokenType.SEMICOLON;
+import static com.oracle.js.parser.TokenType.SET;
 import static com.oracle.js.parser.TokenType.SPREAD_ARRAY;
 import static com.oracle.js.parser.TokenType.SPREAD_OBJECT;
 import static com.oracle.js.parser.TokenType.STATIC;
@@ -157,8 +162,6 @@ public class Parser extends AbstractParser {
     /** The eval function variable name. */
     private static final String EVAL_NAME = "eval";
     private static final String CONSTRUCTOR_NAME = "constructor";
-    private static final String GET_NAME = "get";
-    private static final String SET_NAME = "set";
     private static final String PROTO_NAME = "__proto__";
     private static final String NEW_TARGET_NAME = "new.target";
     private static final String PROTOTYPE_NAME = "prototype";
@@ -176,7 +179,6 @@ public class Parser extends AbstractParser {
     /** Function name for arrow functions. */
     private static final String ARROW_FUNCTION_NAME = ":=>";
 
-    private static final String ASYNC_IDENT = "async";
     private static final String AWAIT_IDENT = "await";
 
     private static final boolean ES6_FOR_OF = Options.getBooleanProperty("parser.for.of", true);
@@ -1203,11 +1205,11 @@ loop:
                 if (allowPropertyFunction) {
                     final long propertyToken = token;
                     final int propertyLine = line;
-                    if (lexer.checkIdentForKeyword(token, GET_NAME)) {
+                    if (type == GET) {
                         next();
                         addPropertyFunctionStatement(propertyGetterFunction(propertyToken, propertyLine));
                         return;
-                    } else if (lexer.checkIdentForKeyword(token, SET_NAME)) {
+                    } else if (type == SET) {
                         next();
                         addPropertyFunctionStatement(propertySetterFunction(propertyToken, propertyLine));
                         return;
@@ -1246,7 +1248,7 @@ loop:
         next();
 
         IdentNode className = null;
-        if (!isDefault || type == IDENT) {
+        if (!isDefault || isIdent()) {
             className = getIdent();
         }
 
@@ -1270,7 +1272,7 @@ loop:
         next();
 
         IdentNode className = null;
-        if (type == IDENT) {
+        if (isIdent()) {
             className = getIdent();
         }
 
@@ -1478,17 +1480,17 @@ loop:
     }
 
     private PropertyNode methodDefinition(boolean isStatic, boolean subclass, boolean generator, boolean async, long methodToken, int methodLine) {
-        final boolean computed = type == LBRACKET;
-        final boolean isIdent = type == IDENT;
+        final TokenType startTokenType = type;
+        final boolean computed = startTokenType == LBRACKET;
         Expression propertyName = propertyName();
         int flags = FunctionNode.IS_METHOD;
         if (!computed) {
             final String name = ((PropertyKey)propertyName).getPropertyName();
-            if (!generator && isIdent && type != LPAREN && name.equals(GET_NAME)) {
+            if (!generator && startTokenType == GET && type != LPAREN) {
                 PropertyFunction methodDefinition = propertyGetterFunction(methodToken, methodLine, flags);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true);
                 return new PropertyNode(methodToken, finish, methodDefinition.key, null, methodDefinition.functionNode, null, isStatic, methodDefinition.computed, false, false);
-            } else if (!generator && isIdent && type != LPAREN && name.equals(SET_NAME)) {
+            } else if (!generator && startTokenType == SET && type != LPAREN) {
                 PropertyFunction methodDefinition = propertySetterFunction(methodToken, methodLine, flags);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true);
                 return new PropertyNode(methodToken, finish, methodDefinition.key, null, null, methodDefinition.functionNode, isStatic, methodDefinition.computed, false, false);
@@ -1600,10 +1602,10 @@ loop:
         verifyStrictIdent(ident, contextString);
         if (isES6()) {
             TokenType tokenType = TokenLookup.lookupKeyword(ident.getName().toCharArray(), 0, ident.getName().length());
-            if (tokenType != IDENT && tokenType.getKind() != TokenKind.FUTURESTRICT) {
+            if (tokenType != IDENT && tokenType.getKind() != TokenKind.CONTEXTUAL && tokenType.getKind() != TokenKind.FUTURESTRICT) {
                 throw error(expectMessage(IDENT), ident.getToken());
             }
-            if (AWAIT_IDENT.equals(ident.getName()) && isModule) {
+            if (isModule && AWAIT_IDENT.equals(ident.getName())) {
                 throw error(AbstractParser.message("strict.name", ident.getName(), contextString), ident.getToken());
             }
         }
@@ -1767,7 +1769,7 @@ loop:
                 assert init != null || varType != CONST || !isStatement;
                 final IdentNode ident = (IdentNode)binding;
                 if (!isStatement) {
-                    if (ident.getName().equals("let")) {
+                    if (ident.getName().equals(LET.getName())) {
                         throw error("let is not a valid binding name in a for loop"); // ES6 13.7.5.1
                     }
                     if (init == null && varType == CONST) {
@@ -1806,8 +1808,12 @@ loop:
         return forResult;
     }
 
+    private boolean isIdent() {
+        return type == IDENT || type.isContextualKeyword();
+    }
+
     private boolean isBindingIdentifier() {
-        return type == IDENT || isNonStrictModeIdent();
+        return type == IDENT || type.isContextualKeyword() || isNonStrictModeIdent();
     }
 
     private IdentNode bindingIdentifier(String contextString) {
@@ -2059,9 +2065,7 @@ loop:
             if (env.syntaxExtensions && type == IDENT && lexer.checkIdentForKeyword(token, "each")) {
                 flags |= ForNode.IS_FOR_EACH;
                 next();
-            }
-
-            if (ES8_FOR_AWAIT_OF && type == IDENT && lexer.checkIdentForKeyword(token, "await")) {
+            } else if (ES8_FOR_AWAIT_OF && type == AWAIT) {
                 isForAwaitOf = true;
                 next();
             }
@@ -2130,11 +2134,10 @@ loop:
                 }
                 break;
 
-            case IDENT:
-                boolean ofValue = lexer.checkIdentForKeyword(token, "of");
-                if (ES8_FOR_AWAIT_OF && isForAwaitOf && ofValue) {
+            case OF:
+                if (ES8_FOR_AWAIT_OF && isForAwaitOf) {
                     // fall through
-                } else if (ES6_FOR_OF && ofValue) {
+                } else if (ES6_FOR_OF) {
                     isForOf = true;
                     // fall through
                 } else {
@@ -2143,7 +2146,7 @@ loop:
                 }
             case IN:
                 if (isForAwaitOf) {
-                     flags |= ForNode.IS_FOR_AWAIT_OF;
+                    flags |= ForNode.IS_FOR_AWAIT_OF;
                 } else {
                     flags |= isForOf ? ForNode.IS_FOR_OF : ForNode.IS_FOR_IN;
                 }
@@ -2239,17 +2242,18 @@ loop:
             case EOL:
             case COMMENT:
                 continue;
-            case IDENT:
-                if (ofContextualKeyword && ES6_FOR_OF && "of".equals(getValue(getToken(k + i)))) {
+            case OF:
+                if (ofContextualKeyword && ES6_FOR_OF) {
                     return false;
                 }
                 // fall through
+            case IDENT:
             case LBRACKET:
             case LBRACE:
                 return true;
             default:
                 // accept future strict tokens in non-strict mode (including LET)
-                if (!isStrictMode && t.getKind() == TokenKind.FUTURESTRICT) {
+                if (t.isContextualKeyword() || (!isStrictMode && t.getKind() == TokenKind.FUTURESTRICT)) {
                     return true;
                 }
                 return false;
@@ -2981,7 +2985,7 @@ loop:
                 next();
                 return getLiteral();
             }
-            if (isNonStrictModeIdent()) {
+            if (type.isContextualKeyword() || isNonStrictModeIdent()) {
                 return getIdent();
             }
             break;
@@ -3333,27 +3337,25 @@ loop:
 
         final boolean computed = type == LBRACKET;
         if (type == IDENT) {
-            // Get IDENT.
-            final String ident = (String)expectValueNoUnicode(IDENT);
+            isIdentifier = true;
+            propertyName = getIdent().setIsPropertyName();
+        } else if (type == GET || type == SET) {
+            final TokenType getOrSet = type;
+            next();
 
             if (type != COLON && type != COMMARIGHT && type != RBRACE && ((type != ASSIGN && type != LPAREN) || !isES6())) {
-                final long getSetToken = propertyToken;
-
-                switch (ident) {
-                case GET_NAME:
-                    final PropertyFunction getter = propertyGetterFunction(getSetToken, functionLine);
+                final long getOrSetToken = propertyToken;
+                if (getOrSet == GET) {
+                    final PropertyFunction getter = propertyGetterFunction(getOrSetToken, functionLine);
                     return new PropertyNode(propertyToken, finish, getter.key, null, getter.functionNode, null, false, getter.computed, false, false);
-
-                case SET_NAME:
-                    final PropertyFunction setter = propertySetterFunction(getSetToken, functionLine);
+                } else if (getOrSet == SET) {
+                    final PropertyFunction setter = propertySetterFunction(getOrSetToken, functionLine);
                     return new PropertyNode(propertyToken, finish, setter.key, null, null, setter.functionNode, false, setter.computed, false, false);
-                default:
-                    break;
                 }
             }
 
             isIdentifier = true;
-            propertyName = createIdentNode(propertyToken, finish, ident).setIsPropertyName();
+            propertyName = new IdentNode(propertyToken, finish, getOrSet.getName()).setIsPropertyName();
         } else if (type == ELLIPSIS && ES8_REST_SPREAD_PROPERTY && isES8() && !(generator || async)) {
             long spreadToken = Token.recast(propertyToken, TokenType.SPREAD_OBJECT);
             next();
@@ -3361,7 +3363,7 @@ loop:
             Expression spread = new UnaryNode(spreadToken, assignmentExpression);
             return new PropertyNode(propertyToken, finish, spread, null, null, null, false, false, false, false);
         } else {
-            isIdentifier = isNonStrictModeIdent();
+            isIdentifier = type.isContextualKeyword() || isNonStrictModeIdent();
             propertyName = propertyName();
         }
 
@@ -3593,7 +3595,7 @@ loop:
             if (lhs instanceof IdentNode) {
                 // async () => ...
                 // async ( ArgumentsList ) => ...
-                if (ES8_ASYNC_FUNCTION && isES8() && ASYNC_IDENT.equals(((IdentNode)lhs).getName()) && type == ARROW && checkNoLineTerminator()) {
+                if (ES8_ASYNC_FUNCTION && isES8() && lhs.isTokenType(ASYNC) && type == ARROW && checkNoLineTerminator()) {
                     return new ExpressionList(callToken, callLine, arguments);
                 }
 
@@ -4963,7 +4965,7 @@ loop:
         final int startLine = line;
         Expression exprLhs = conditionalExpression(noIn);
 
-        if (asyncArrow && exprLhs instanceof IdentNode && type == IDENT && lookaheadIsArrow()) {
+        if (asyncArrow && exprLhs instanceof IdentNode && isIdent() && lookaheadIsArrow()) {
             // async ident =>
             exprLhs = primaryExpression();
         }
@@ -5218,7 +5220,7 @@ loop:
             case COMMENT:
                 continue;
             default:
-                if (t.getKind() == TokenKind.FUTURESTRICT) {
+                if (t.getKind() == TokenKind.CONTEXTUAL || t.getKind() == TokenKind.FUTURESTRICT) {
                     return true;
                 }
                 return false;
@@ -5238,6 +5240,8 @@ loop:
         for (;;) {
             TokenType t = T(k + i++);
             if (t == IDENT) {
+                break;
+            } else if (t.isContextualKeyword()) {
                 break;
             } else if (t == EOL || t == COMMENT) {
                 continue;
@@ -5585,11 +5589,9 @@ loop:
         final long startToken = token;
         assert type == MUL;
         next();
-        long asToken = token;
-        String as = (String) expectValueNoUnicode(IDENT);
-        if (!"as".equals(as)) {
-            throw error(AbstractParser.message("expected.as"), asToken);
-        }
+
+        expect(AS);
+
         IdentNode localNameSpace = bindingIdentifier("ImportedBinding");
         return new NameSpaceImportNode(startToken, Token.descPosition(startToken), finish, localNameSpace);
     }
@@ -5617,7 +5619,7 @@ loop:
             boolean bindingIdentifier = isBindingIdentifier();
             long nameToken = token;
             IdentNode importName = getIdentifierName();
-            if (type == IDENT && lexer.checkIdentForKeyword(token, "as")) {
+            if (type == AS) {
                 next();
                 IdentNode localName = bindingIdentifier("ImportedBinding");
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
@@ -5647,10 +5649,8 @@ loop:
     private FromNode fromClause() {
         int fromStart = start;
         long fromToken = token;
-        String name = (String) expectValueNoUnicode(IDENT);
-        if (!"from".equals(name)) {
-            throw error(AbstractParser.message("expected.from"), fromToken);
-        }
+        expect(FROM);
+
         if (type == STRING || type == ESCSTRING) {
             String moduleSpecifier = (String) getValue();
             long specifierToken = token;
@@ -5691,7 +5691,7 @@ loop:
             }
             case LBRACE: {
                 ExportClauseNode exportClause = exportClause();
-                if (type == IDENT && lexer.checkIdentForKeyword(token, "from")) {
+                if (type == FROM) {
                     FromNode from = fromClause();
                     module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from));
                     String moduleRequest = from.getModuleSpecifier().getValue();
@@ -5815,7 +5815,7 @@ loop:
         while (type != RBRACE) {
             long nameToken = token;
             IdentNode localName;
-            if (type == IDENT) {
+            if (isIdent()) {
                 localName = getIdent();
             } else if (isReservedWord()) {
                 // Reserved words are allowed iff the ExportClause is followed by a FromClause.
@@ -5827,7 +5827,7 @@ loop:
             } else {
                 throw error(expectMessage(IDENT));
             }
-            if (type == IDENT && lexer.checkIdentForKeyword(token, "as")) {
+            if (type == AS) {
                 next();
                 IdentNode exportName = getIdentifierName();
                 exports.add(new ExportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, exportName));
@@ -5844,7 +5844,7 @@ loop:
         }
         expect(RBRACE);
 
-        if (reservedWordToken != 0L && !(type == IDENT && "from".equals(getValueNoUnicode()))) {
+        if (reservedWordToken != 0L && type != FROM) {
             throw error(AbstractParser.message("expected", IDENT.getNameOrType(), Token.toString(source, reservedWordToken)), reservedWordToken);
         }
 
@@ -5939,11 +5939,11 @@ loop:
     }
 
     private boolean isAwait() {
-        return ES8_ASYNC_FUNCTION && isES8() && type == IDENT && lexer.checkIdentForKeyword(token, AWAIT_IDENT);
+        return ES8_ASYNC_FUNCTION && isES8() && type == AWAIT;
     }
 
     private boolean isAsync() {
-        return ES8_ASYNC_FUNCTION && isES8() && type == IDENT && lexer.checkIdentForKeyword(token, ASYNC_IDENT);
+        return ES8_ASYNC_FUNCTION && isES8() && type == ASYNC;
     }
 
     private boolean lookaheadIsAsyncArrowParameterListStart() {
@@ -5955,6 +5955,8 @@ loop:
             if (t == LPAREN) {
                 break;
             } else if (t == IDENT) {
+                break;
+            } else if (t.isContextualKeyword()) {
                 break;
             } else if (t == COMMENT) {
                 continue;

@@ -2217,7 +2217,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode shortcutNode;
         JavaScriptNode prev = null;
         VarRef resultTemp = (shortcutOperation != null && returnOldValue) ? environment.createTempVar() : null;
-        switch (lhsExpression.tokenType()) {
+        TokenType tokenType = lhsExpression.tokenType();
+        if (tokenType != TokenType.IDENT && lhsExpression instanceof IdentNode) {
+            tokenType = TokenType.IDENT;
+        }
+        switch (tokenType) {
             case IDENT: {
                 setAnonymousFunctionName(assignedValue, ((IdentNode) lhsExpression).getName());
                 assignedNode = transformAssignmentIdent((IdentNode) lhsExpression, assignedValue, shortcutOperation, returnOldValue, convertRHSToNumber, resultTemp, initializationAssignment);

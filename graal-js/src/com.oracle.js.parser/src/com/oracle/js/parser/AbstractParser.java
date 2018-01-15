@@ -371,26 +371,6 @@ public abstract class AbstractParser {
     }
 
     /**
-     * Check next token, get its value and advance. If the current token contains an Unicode
-     * sequence, the method does not attempt to convert it.
-     *
-     * @param expected Expected tokenType.
-     * @return The JavaScript value of the token
-     * @throws ParserException on unexpected token type
-     */
-    protected final Object expectValueNoUnicode(final TokenType expected) throws ParserException {
-        if (type != expected) {
-            throw error(expectMessage(expected));
-        }
-
-        final Object value = getValueNoUnicode();
-
-        next();
-
-        return value;
-    }
-
-    /**
      * Get the value of the current token. If the current token contains an Unicode sequence, the
      * method does not attempt to convert it.
      *
@@ -432,16 +412,15 @@ public abstract class AbstractParser {
     }
 
     /**
-     * Get the value of a specific token. If the current token contains an Unicode sequence, the
+     * Get the value of a specific identifier token. If the token contains a Unicode sequence, the
      * method does not attempt to convert it.
      *
-     * @param valueToken the token
-     *
-     * @return JavaScript value of the token
+     * @param identToken the identifier token
+     * @return identifier string
      */
-    protected final Object getValueNoUnicode(final long valueToken) {
+    protected final String getValueIdent(final long identToken) {
         try {
-            return lexer.getValueOf(valueToken, isStrictMode, false);
+            return lexer.getValueOfIdent(identToken);
         } catch (final ParserException e) {
             errors.error(e);
         }
@@ -485,25 +464,22 @@ public abstract class AbstractParser {
         // Capture IDENT token.
         long identToken = token;
 
-        if (isNonStrictModeIdent()) {
-            // Fake out identifier.
-            identToken = Token.recast(token, IDENT);
-            // Get IDENT.
+        if (type == IDENT) {
             final String ident = (String) getValue(identToken);
 
             next();
 
-            // Create IDENT node.
-            return createIdentNode(identToken, finish, ident).setIsFutureStrictName();
-        }
+            return createIdentNode(identToken, finish, ident);
+        } else if (type.isContextualKeyword() || isNonStrictModeIdent()) {
+            final String ident = type.getName();
 
-        // Get IDENT.
-        final String ident = (String) expectValue(IDENT);
-        if (ident == null) {
-            return null;
+            next();
+
+            return new IdentNode(identToken, finish, ident);
+        } else {
+            // Not an IDENT.
+            throw error(expectMessage(IDENT));
         }
-        // Create IDENT node.
-        return createIdentNode(identToken, finish, ident);
     }
 
     /**
@@ -539,8 +515,9 @@ public abstract class AbstractParser {
      */
     protected final boolean isIdentifierName(long currentToken) {
         final TokenType currentType = Token.descType(currentToken);
+        assert currentType != IDENT; // handled before
         final TokenKind kind = currentType.getKind();
-        if (kind == TokenKind.KEYWORD || kind == TokenKind.FUTURE || kind == TokenKind.FUTURESTRICT) {
+        if (kind == TokenKind.KEYWORD || kind == TokenKind.FUTURE || kind == TokenKind.FUTURESTRICT || kind == TokenKind.CONTEXTUAL) {
             return true;
         }
 

@@ -876,7 +876,7 @@ public class Lexer extends Scanner {
      * @param convertUnicode convert Unicode symbols in the Ident string.
      * @return Ident string or null if an error.
      */
-    private String valueOfIdent(final int start, final int length, final boolean convertUnicode) throws RuntimeException {
+    private String valueOfIdent(final int start, final int length, final boolean convertUnicode) {
         // End of scan.
         final int end = start + length;
         // Buffer for recording characters.
