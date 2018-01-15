@@ -1440,7 +1440,7 @@ public final class JSRuntime {
         boolean hasGet = JSObject.hasProperty(obj, JSAttributes.GET);
         if (hasGet) {
             Object getter = JSObject.get(obj, JSAttributes.GET);
-            if (!JSFunction.isJSFunction(getter) && getter != Undefined.instance) {
+            if (!JSRuntime.isCallable(getter) && getter != Undefined.instance) {
                 throw Errors.createTypeError("Getter must be a function");
             }
             desc.setGet((DynamicObject) getter);
@@ -1449,7 +1449,7 @@ public final class JSRuntime {
         boolean hasSet = JSObject.hasProperty(obj, JSAttributes.SET);
         if (hasSet) {
             Object setter = JSObject.get(obj, JSAttributes.SET);
-            if (!JSFunction.isJSFunction(setter) && setter != Undefined.instance) {
+            if (!JSRuntime.isCallable(setter) && setter != Undefined.instance) {
                 throw Errors.createTypeError("Setter must be a function");
             }
             desc.setSet((DynamicObject) setter);
@@ -2123,7 +2123,7 @@ public final class JSRuntime {
     /**
      * ES2015 7.3.12 Call(F, V, arguments).
      */
-    public static Object call(Object fnObj, TruffleObject holder, Object[] arguments) {
+    public static Object call(Object fnObj, Object holder, Object[] arguments) {
         if (JSFunction.isJSFunction(fnObj)) {
             return JSFunction.call((DynamicObject) fnObj, holder, arguments);
         } else if (JSProxy.isProxy(fnObj)) {

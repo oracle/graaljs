@@ -371,9 +371,6 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             ensureObject(target);
             Object key = toPropertyKeyNode.execute(propertyKey);
             Object receiver = JSRuntime.getArg(args, 3, target);
-            if (!JSObject.isJSObject(receiver)) {
-                return false;
-            }
             return JSReflectUtils.performOrdinarySet((DynamicObject) target, key, value, receiver);
         }
     }

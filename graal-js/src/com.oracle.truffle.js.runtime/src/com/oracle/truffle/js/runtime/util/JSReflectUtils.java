@@ -8,7 +8,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -35,7 +34,7 @@ public class JSReflectUtils {
         if (getter == Undefined.instance) {
             return Undefined.instance;
         }
-        return JSFunction.callDirect((DynamicObject) getter, (DynamicObject) receiver, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+        return JSRuntime.call(getter, receiver, JSArguments.EMPTY_ARGUMENTS_ARRAY);
     }
 
     // Implementation of OrdinarySet (O, P, V, Receiver)
@@ -78,7 +77,7 @@ public class JSReflectUtils {
             if (setter == Undefined.instance || setter == null) {
                 return false;
             }
-            JSFunction.call(JSArguments.createOneArg(receiver, setter, value));
+            JSRuntime.call(setter, receiver, new Object[]{value});
             return true;
         }
     }
