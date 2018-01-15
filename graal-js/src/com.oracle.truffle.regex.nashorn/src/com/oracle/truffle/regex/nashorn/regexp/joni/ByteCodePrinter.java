@@ -89,10 +89,10 @@ class ByteCodePrinter {
             "backref_at_level", /*OP_BACKREF_AT_LEVEL*/
             "mem-start", /*OP_MEMORY_START*/
             "mem-start-push", /*OP_MEMORY_START_PUSH*/
-            "mem-end-push", /*OP_MEMORY_END_PUSH*/
-            "mem-end-push-rec", /*OP_MEMORY_END_PUSH_REC*/
             "mem-end", /*OP_MEMORY_END*/
-            "mem-end-rec", /*OP_MEMORY_END_REC*/
+            "mem-end-push", /*OP_MEMORY_END_PUSH*/
+            "mem-clear", /*OP_MEMORY_CLEAR*/
+            "", /*unused opcode 53*/
             "fail", /*OP_FAIL*/
             "jump", /*OP_JUMP*/
             "push", /*OP_PUSH*/
@@ -180,10 +180,10 @@ class ByteCodePrinter {
             Arguments.SPECIAL, /*OP_BACKREF_AT_LEVEL*/
             Arguments.MEMNUM, /*OP_MEMORY_START*/
             Arguments.MEMNUM, /*OP_MEMORY_START_PUSH*/
-            Arguments.MEMNUM, /*OP_MEMORY_END_PUSH*/
-            Arguments.MEMNUM, /*OP_MEMORY_END_PUSH_REC*/
             Arguments.MEMNUM, /*OP_MEMORY_END*/
-            Arguments.MEMNUM, /*OP_MEMORY_END_REC*/
+            Arguments.MEMNUM, /*OP_MEMORY_END_PUSH*/
+            Arguments.SPECIAL, /*OP_MEMORY_CLEAR*/
+            Arguments.SPECIAL, /*unused opcode 53*/
             Arguments.NON, /*OP_FAIL*/
             Arguments.RELADDR, /*OP_JUMP*/
             Arguments.RELADDR, /*OP_PUSH*/
@@ -445,6 +445,14 @@ class ByteCodePrinter {
                 }
                 break;
             }
+
+            case OPCode.MEMORY_CLEAR:
+                final int from = code[bp];
+                bp += OPSize.MEMNUM;
+                final int to = code[bp];
+                bp += OPSize.MEMNUM;
+                sb.append(":").append(from).append(":").append(to);
+                break;
 
             case OPCode.REPEAT:
             case OPCode.REPEAT_NG:
