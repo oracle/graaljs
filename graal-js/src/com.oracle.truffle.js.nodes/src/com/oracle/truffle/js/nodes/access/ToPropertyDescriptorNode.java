@@ -15,7 +15,6 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -106,7 +105,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         if (hasGet) {
             hasGetBranch.enter();
             Object getter = getGet(obj);
-            if (!JSFunction.isJSFunction(getter) && getter != Undefined.instance) {
+            if (!JSRuntime.isCallable(getter) && getter != Undefined.instance) {
                 throw Errors.createTypeError("Getter must be a function");
             }
             desc.setGet((DynamicObject) getter);
@@ -116,7 +115,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         if (hasSet) {
             hasSetBranch.enter();
             Object setter = getSet(obj);
-            if (!JSFunction.isJSFunction(setter) && setter != Undefined.instance) {
+            if (!JSRuntime.isCallable(setter) && setter != Undefined.instance) {
                 throw Errors.createTypeError("Setter must be a function");
             }
             desc.setSet((DynamicObject) setter);
