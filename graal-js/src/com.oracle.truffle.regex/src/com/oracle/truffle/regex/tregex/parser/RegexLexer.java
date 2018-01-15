@@ -255,71 +255,58 @@ public final class RegexLexer {
             if (c == ']') {
                 return charClass(curCharClass, invert);
             }
-            curCharClass = parseCharClassAtom(c, curCharClass);
+            parseCharClassRange(c, curCharClass);
         }
         throw syntaxError(ErrorMessages.UNMATCHED_LEFT_BRACKET);
     }
 
-    private CodePointSet parseCharClassAtom(char c, CodePointSet curCharClass) throws RegexSyntaxException {
-        int curChar;
+    private CodePointSet parseCharClassAtom(char c) throws RegexSyntaxException {
         if (c == '\\') {
             if (atEnd()) {
                 throw syntaxError(ErrorMessages.ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE);
             }
             if (isEscapeCharClass(curChar())) {
-                final char cc = consumeChar();
-                curCharClass.addSet(parseEscapeCharClass(cc));
-                // NOTE: Tolerating character classes to the left of the hyphen and then treating
-                // the hyphen literally is legacy and only permitted by Annex B.
-                if (flags.isUnicode() && lookahead("-") && !lookahead("-]")) {
-                    throw syntaxError(ErrorMessages.INVALID_CHARACTER_CLASS);
-                }
-                return curCharClass;
+                return parseEscapeCharClass(consumeChar());
+            } else {
+                return CodePointSet.create(parseEscapeChar(consumeChar(), true));
             }
-            curChar = parseEscapeChar(consumeChar(), true);
         } else if (flags.isUnicode() && Character.isHighSurrogate(c)) {
-            curChar = finishSurrogatePair(c);
+            return CodePointSet.create(finishSurrogatePair(c));
         } else {
-            curChar = c;
+            return CodePointSet.create(c);
         }
+    }
+
+    private void parseCharClassRange(char c, CodePointSet curCharClass) throws RegexSyntaxException {
+        CodePointSet firstAtom = parseCharClassAtom(c);
         if (consumingLookahead("-")) {
             if (atEnd() || lookahead("]")) {
-                curCharClass.addRange(new CodePointRange(curChar));
+                curCharClass.addSet(firstAtom);
                 curCharClass.addRange(new CodePointRange((int) '-'));
-                return curCharClass;
-            }
-            int nextChar;
-            if (consumingLookahead("\\")) {
-                if (atEnd()) {
-                    throw syntaxError(ErrorMessages.ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE);
-                }
-                if (isEscapeCharClass(curChar())) {
+            } else {
+                CodePointSet secondAtom = parseCharClassAtom(consumeChar());
+                // Runtime Semantics: CharacterRangeOrUnion(firstAtom, secondAtom)
+                if (!firstAtom.matchesSingleChar() || !secondAtom.matchesSingleChar()) {
                     if (flags.isUnicode()) {
                         throw syntaxError(ErrorMessages.INVALID_CHARACTER_CLASS);
+                    } else {
+                        curCharClass.addSet(firstAtom);
+                        curCharClass.addSet(secondAtom);
+                        curCharClass.addRange(new CodePointRange((int) '-'));
                     }
-                    curCharClass.addRange(new CodePointRange(curChar));
-                    curCharClass.addRange(new CodePointRange((int) '-'));
-                    curCharClass.addSet(parseEscapeCharClass(consumeChar()));
-                    return curCharClass;
-                }
-                nextChar = parseEscapeChar(consumeChar(), true);
-            } else {
-                char nextCodeUnit = consumeChar();
-                if (flags.isUnicode() && Character.isHighSurrogate(nextCodeUnit)) {
-                    nextChar = finishSurrogatePair(nextCodeUnit);
                 } else {
-                    nextChar = nextCodeUnit;
+                    int firstChar = firstAtom.getRanges().get(0).lo;
+                    int secondChar = secondAtom.getRanges().get(0).lo;
+                    if (secondChar < firstChar) {
+                        throw syntaxError(ErrorMessages.CHAR_CLASS_RANGE_OUT_OF_ORDER);
+                    } else {
+                        curCharClass.addRange(new CodePointRange(firstChar, secondChar));
+                    }
                 }
-            }
-            if (nextChar < curChar) {
-                throw syntaxError(ErrorMessages.CHAR_CLASS_RANGE_OUT_OF_ORDER);
-            } else {
-                curCharClass.addRange(new CodePointRange(curChar, nextChar));
             }
         } else {
-            curCharClass.addRange(new CodePointRange(curChar));
+            curCharClass.addSet(firstAtom);
         }
-        return curCharClass;
     }
 
     private CodePointSet parseEscapeCharClass(char c) throws RegexSyntaxException {
