@@ -11,13 +11,12 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
 
 /**
  * This node prepares the export of a value via Interop. It transforms values not allowed in Truffle
@@ -31,19 +30,14 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
 
     public abstract Object executeWithTarget(Object property, Object thiz);
 
-    @Specialization(guards = {"isJSFunction(property)", "!isBoundJSFunction(property)"})
-    public DynamicObject doUnboundFunction(DynamicObject property, Object thiz) {
-        return doJSFunctionBind(property, thiz);
+    @Specialization(guards = {"isJSFunction(function)", "!isBoundJSFunction(function)"})
+    public TruffleObject doUnboundFunction(DynamicObject function, Object thiz) {
+        return new InteropBoundFunction(function, thiz);
     }
 
-    @Specialization(guards = {"isJSFunction(property)", "isBoundJSFunction(property)"})
-    public DynamicObject doBoundFunction(DynamicObject property, @SuppressWarnings("unused") Object thiz) {
-        return property;
-    }
-
-    private static DynamicObject doJSFunctionBind(DynamicObject thisFnObj, Object thisArg) {
-        JSRealm realm = JSFunction.getRealm(thisFnObj);
-        return JSFunction.bind(realm, thisFnObj, thisArg, new Object[]{});
+    @Specialization(guards = {"isJSFunction(function)", "isBoundJSFunction(function)"})
+    public TruffleObject doBoundFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
+        return function;
     }
 
     @Specialization

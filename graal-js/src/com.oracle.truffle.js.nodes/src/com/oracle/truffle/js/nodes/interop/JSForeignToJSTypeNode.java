@@ -18,6 +18,7 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
 
 /**
  * This node prepares the import of a value from Interop. It transforms values allowed in Truffle,
@@ -96,6 +97,9 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
             } else {
                 return object;
             }
+        }
+        if (value instanceof InteropBoundFunction) {
+            return ((InteropBoundFunction) value).getFunction();
         }
         return value;
     }
