@@ -1603,10 +1603,10 @@ loop:
         if (isES6()) {
             TokenType tokenType = TokenLookup.lookupKeyword(ident.getName().toCharArray(), 0, ident.getName().length());
             if (tokenType != IDENT && tokenType.getKind() != TokenKind.CONTEXTUAL && tokenType.getKind() != TokenKind.FUTURESTRICT) {
-                throw error(expectMessage(IDENT), ident.getToken());
+                throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
             }
             if (isModule && AWAIT_IDENT.equals(ident.getName())) {
-                throw error(AbstractParser.message("strict.name", ident.getName(), contextString), ident.getToken());
+                throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
             }
         }
     }
@@ -1824,7 +1824,7 @@ loop:
     private void verifyIdentifier(final IdentNode ident) {
         // It is a Syntax Error if this production has an [Await] parameter and StringValue of Identifier is "await".
         if (ES8_ASYNC_FUNCTION && isES8() && inAsyncFunction() && AWAIT_IDENT.equals(ident.getName())) {
-            throw error(expectMessage(IDENT), ident.getToken());
+            throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
         }
     }
 
