@@ -30,13 +30,18 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
 
     public abstract Object executeWithTarget(Object property, Object thiz);
 
-    @Specialization(guards = {"isJSFunction(function)", "!isBoundJSFunction(function)"})
-    public TruffleObject doUnboundFunction(DynamicObject function, Object thiz) {
+    @Specialization(guards = {"isJSFunction(function)", "isUndefined(thiz)"})
+    protected static TruffleObject doFunctionUndefinedThis(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
+        return function;
+    }
+
+    @Specialization(guards = {"isJSFunction(function)", "!isUndefined(thiz)", "!isBoundJSFunction(function)"})
+    protected static TruffleObject doUnboundFunction(DynamicObject function, Object thiz) {
         return new InteropBoundFunction(function, thiz);
     }
 
-    @Specialization(guards = {"isJSFunction(function)", "isBoundJSFunction(function)"})
-    public TruffleObject doBoundFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
+    @Specialization(guards = {"isJSFunction(function)", "!isUndefined(thiz)", "isBoundJSFunction(function)"})
+    protected static TruffleObject doBoundFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
         return function;
     }
 
