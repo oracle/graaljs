@@ -1248,8 +1248,8 @@ loop:
         next();
 
         IdentNode className = null;
-        if (!isDefault || isIdent()) {
-            className = getIdent();
+        if (!isDefault || isBindingIdentifier()) {
+            className = bindingIdentifier("class name");
         }
 
         Expression classExpression = classTail(classLineNumber, classToken, className);
@@ -1272,8 +1272,8 @@ loop:
         next();
 
         IdentNode className = null;
-        if (isIdent()) {
-            className = getIdent();
+        if (isBindingIdentifier()) {
+            className = bindingIdentifier("class name");
         }
 
         return classTail(classLineNumber, classToken, className);
@@ -1808,8 +1808,24 @@ loop:
         return forResult;
     }
 
-    private boolean isIdent() {
+    private boolean isIdentifier() {
         return type == IDENT || type.isContextualKeyword();
+    }
+
+    /**
+     * IdentifierReference or LabelIdentifier.
+     */
+    private IdentNode identifier() {
+        final IdentNode ident = getIdent();
+        verifyIdentifier(ident);
+        return ident;
+    }
+
+    private void verifyIdentifier(final IdentNode ident) {
+        // It is a Syntax Error if this production has an [Await] parameter and StringValue of Identifier is "await".
+        if (ES8_ASYNC_FUNCTION && isES8() && inAsyncFunction() && AWAIT_IDENT.equals(ident.getName())) {
+            throw error(expectMessage(IDENT), ident.getToken());
+        }
     }
 
     private boolean isBindingIdentifier() {
@@ -1817,9 +1833,10 @@ loop:
     }
 
     private IdentNode bindingIdentifier(String contextString) {
-        final IdentNode name = getIdent();
-        verifyIdent(name, contextString);
-        return name;
+        final IdentNode ident = getIdent();
+        verifyIdent(ident, contextString);
+        verifyIdentifier(ident);
+        return ident;
     }
 
     private Expression bindingPattern() {
@@ -2367,7 +2384,7 @@ loop:
             break;
 
         default:
-            final IdentNode ident = getIdent();
+            final IdentNode ident = identifier();
             labelNode = lc.findLabel(ident.getName());
 
             if (labelNode == null) {
@@ -2415,7 +2432,7 @@ loop:
             break;
 
         default:
-            final IdentNode ident = getIdent();
+            final IdentNode ident = identifier();
             labelNode = lc.findLabel(ident.getName());
 
             if (labelNode == null) {
@@ -2710,7 +2727,7 @@ loop:
         // Capture label token.
         final long labelToken = token;
         // Get label ident.
-        final IdentNode ident = getIdent();
+        final IdentNode ident = identifier();
 
         expect(COLON);
 
@@ -2938,7 +2955,7 @@ loop:
             markThis(lc);
             return new IdentNode(primaryToken, finish, name).setIsThis();
         case IDENT:
-            final IdentNode ident = getIdent();
+            final IdentNode ident = identifier();
             if (ident == null) {
                 break;
             }
@@ -3338,7 +3355,7 @@ loop:
         final boolean computed = type == LBRACKET;
         if (type == IDENT) {
             isIdentifier = true;
-            propertyName = getIdent().setIsPropertyName();
+            propertyName = identifier().setIsPropertyName();
         } else if (type == GET || type == SET) {
             final TokenType getOrSet = type;
             next();
@@ -3462,8 +3479,7 @@ loop:
         // spec does not permit it!
         final IdentNode argIdent;
         if (isBindingIdentifier()) {
-            argIdent = getIdent();
-            verifyIdent(argIdent, "setter argument");
+            argIdent = bindingIdentifier("setter argument");
         } else {
             argIdent = null;
         }
@@ -4001,8 +4017,7 @@ loop:
                 // 12.1.1, as above.
                 throw error(expectMessage(IDENT));
             }
-            name = getIdent();
-            verifyIdent(name, "function name");
+            name = bindingIdentifier("function name");
         } else if (isStatement) {
             // Nashorn extension: anonymous function statements.
             // Do not allow anonymous function statement if extensions
@@ -4965,7 +4980,7 @@ loop:
         final int startLine = line;
         Expression exprLhs = conditionalExpression(noIn);
 
-        if (asyncArrow && exprLhs instanceof IdentNode && isIdent() && lookaheadIsArrow()) {
+        if (asyncArrow && exprLhs instanceof IdentNode && isIdentifier() && lookaheadIsArrow()) {
             // async ident =>
             exprLhs = primaryExpression();
         }
@@ -5815,8 +5830,8 @@ loop:
         while (type != RBRACE) {
             long nameToken = token;
             IdentNode localName;
-            if (isIdent()) {
-                localName = getIdent();
+            if (isIdentifier()) {
+                localName = identifier();
             } else if (isReservedWord()) {
                 // Reserved words are allowed iff the ExportClause is followed by a FromClause.
                 // Remember the first reserved word and throw an error if this is not the case.
@@ -5931,11 +5946,13 @@ loop:
     }
 
     private boolean inGeneratorFunction() {
-        return lc.getCurrentFunction().getKind() == FunctionNode.Kind.GENERATOR;
+        ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
+        return currentFunction != null && currentFunction.getKind() == FunctionNode.Kind.GENERATOR;
     }
 
     private boolean inAsyncFunction() {
-        return lc.getCurrentFunction().isAsync();
+        ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
+        return currentFunction != null && currentFunction.isAsync();
     }
 
     private boolean isAwait() {
