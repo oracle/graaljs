@@ -40,6 +40,10 @@ public final class RunnableInvoker implements TruffleObject {
         return runnable;
     }
 
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof RunnableInvoker;
+    }
+
     @Override
     public ForeignAccess getForeignAccess() {
         return RunnableInvokerMessageResolutionForeign.ACCESS;

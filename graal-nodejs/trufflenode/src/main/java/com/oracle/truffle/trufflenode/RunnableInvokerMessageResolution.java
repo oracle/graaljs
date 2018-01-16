@@ -26,10 +26,8 @@
 package com.oracle.truffle.trufflenode;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -47,14 +45,6 @@ public class RunnableInvokerMessageResolution {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise(identifier);
             }
-        }
-    }
-
-    @CanResolve
-    abstract static class CanResolveRunnableInvoker extends Node {
-
-        boolean test(TruffleObject object) {
-            return object instanceof RunnableInvoker;
         }
     }
 }
