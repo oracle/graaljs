@@ -1599,14 +1599,32 @@ loop:
     private void verifyIdent(final IdentNode ident, final String contextString) {
         verifyStrictIdent(ident, contextString);
         if (isES6()) {
-            TokenType tokenType = TokenLookup.lookupKeyword(ident.getName().toCharArray(), 0, ident.getName().length());
-            if (tokenType != IDENT && !tokenType.isContextualKeyword() && !tokenType.isFutureStrict()) {
-                throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
+            if (isEscapedIdent(ident)) {
+                if (isReservedWordSequence(ident.getName())) {
+                    throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
+                }
+            } else {
+                assert !isReservedWordSequence(ident.getName()) : ident.getName();
             }
-            if (isModule && AWAIT.getName().equals(ident.getName())) {
-                throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
+
+            if (isModule) {
+                // in module mode, "await" is not an allowed identifier name
+                if (ident.isTokenType(AWAIT)) {
+                    throw error(AbstractParser.message("strict.name", ident.getName(), contextString), ident.getToken());
+                } else if (AWAIT.getName().equals(ident.getName())) {
+                    throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
+                }
             }
         }
+    }
+
+    private static boolean isEscapedIdent(final IdentNode ident) {
+        return ident.getName().length() != Token.descLength(ident.getToken());
+    }
+
+    private static boolean isReservedWordSequence(final String name) {
+        TokenType tokenType = TokenLookup.lookupKeyword(name.toCharArray(), 0, name.length());
+        return (tokenType != IDENT && !tokenType.isContextualKeyword() && !tokenType.isFutureStrict());
     }
 
     /**
