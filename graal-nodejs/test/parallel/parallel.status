@@ -59,6 +59,9 @@ test-buffer-bindingobj-no-zerofill                                 : SKIP
 # tracing is not supported
 test-trace-event                                                   : FAIL
 
+# WebAssembly is not supported
+test-wasm-simple                                                   : FAIL
+
 # unclassified
 test-buffer-slow                                                   : FAIL
 test-crypto-fips                                                   : FAIL
@@ -79,14 +82,12 @@ test-repl-require-context                                          : FAIL
 test-repl-tab-complete                                             : FAIL
 test-repl-underscore                                               : FAIL
 test-repl-unexpected-token-recoverable                             : FAIL
-test-stream-base-prototype-accessors                               : FAIL
 test-vm-create-context-accessors                                   : FAIL
 test-vm-global-define-property                                     : FAIL
 test-vm-low-stack-space                                            : SKIP
 test-vm-new-script-new-context                                     : FAIL
 test-vm-run-in-new-context                                         : FAIL
 test-vm-syntax-error-stderr                                        : FAIL
-test-wasm-simple                                                   : FAIL
 
 # fails randomly
 test-http2-server-rst-stream                                       : SKIP

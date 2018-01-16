@@ -55,13 +55,18 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
                 Object instancePrototype = getPrototypeNode.executeJSObject(arguments[0]);
                 if (functionPrototype != instancePrototype) {
                     errorBranch.enter();
-                    throw Errors.createTypeError("incompatible receiver");
+                    throw Errors.createTypeError(incompatibleReceiverMessage());
                 }
             }
         }
         long functionPointer = getter ? accessor.getGetterPtr() : accessor.getSetterPtr();
         Object holder = holderPropertyGetNode.getValue(arguments[1]);
         return executeAccessorMethod(functionPointer, holder, arguments);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private String incompatibleReceiverMessage() {
+        return "Method " + accessor.getName() + " called on incompatible receiver";
     }
 
     @CompilerDirectives.TruffleBoundary
