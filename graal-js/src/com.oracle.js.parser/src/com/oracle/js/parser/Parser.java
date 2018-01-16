@@ -1201,14 +1201,13 @@ loop:
                 final boolean allowPropertyFunction = (reparseFlags & REPARSE_IS_PROPERTY_ACCESSOR) != 0;
                 final boolean isES6Method = (reparseFlags & REPARSE_IS_METHOD) != 0;
                 if (allowPropertyFunction) {
-                    final String ident = (String)getValue();
                     final long propertyToken = token;
                     final int propertyLine = line;
-                    if (GET_NAME.equals(ident)) {
+                    if (lexer.checkIdentForKeyword(token, GET_NAME)) {
                         next();
                         addPropertyFunctionStatement(propertyGetterFunction(propertyToken, propertyLine));
                         return;
-                    } else if (SET_NAME.equals(ident)) {
+                    } else if (lexer.checkIdentForKeyword(token, SET_NAME)) {
                         next();
                         addPropertyFunctionStatement(propertySetterFunction(propertyToken, propertyLine));
                         return;
@@ -2057,12 +2056,12 @@ loop:
 
             // Nashorn extension: for each expression.
             // iterate property values rather than property names.
-            if (env.syntaxExtensions && type == IDENT && "each".equals(getValue())) {
+            if (env.syntaxExtensions && type == IDENT && lexer.checkIdentForKeyword(token, "each")) {
                 flags |= ForNode.IS_FOR_EACH;
                 next();
             }
 
-            if (ES8_FOR_AWAIT_OF && type == IDENT && "await".equals(getValue())) {
+            if (ES8_FOR_AWAIT_OF && type == IDENT && lexer.checkIdentForKeyword(token, "await")) {
                 isForAwaitOf = true;
                 next();
             }
@@ -2132,7 +2131,7 @@ loop:
                 break;
 
             case IDENT:
-                boolean ofValue = "of".equals(getValueNoUnicode());
+                boolean ofValue = lexer.checkIdentForKeyword(token, "of");
                 if (ES8_FOR_AWAIT_OF && isForAwaitOf && ofValue) {
                     // fall through
                 } else if (ES6_FOR_OF && ofValue) {
@@ -5618,7 +5617,7 @@ loop:
             boolean bindingIdentifier = isBindingIdentifier();
             long nameToken = token;
             IdentNode importName = getIdentifierName();
-            if (type == IDENT && "as".equals(getValueNoUnicode())) {
+            if (type == IDENT && lexer.checkIdentForKeyword(token, "as")) {
                 next();
                 IdentNode localName = bindingIdentifier("ImportedBinding");
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
@@ -5692,7 +5691,7 @@ loop:
             }
             case LBRACE: {
                 ExportClauseNode exportClause = exportClause();
-                if (type == IDENT && "from".equals(getValueNoUnicode())) {
+                if (type == IDENT && lexer.checkIdentForKeyword(token, "from")) {
                     FromNode from = fromClause();
                     module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from));
                     String moduleRequest = from.getModuleSpecifier().getValue();
@@ -5828,7 +5827,7 @@ loop:
             } else {
                 throw error(expectMessage(IDENT));
             }
-            if (type == IDENT && "as".equals(getValueNoUnicode())) {
+            if (type == IDENT && lexer.checkIdentForKeyword(token, "as")) {
                 next();
                 IdentNode exportName = getIdentifierName();
                 exports.add(new ExportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, exportName));
@@ -5940,11 +5939,11 @@ loop:
     }
 
     private boolean isAwait() {
-        return ES8_ASYNC_FUNCTION && isES8() && type == IDENT && AWAIT_IDENT.equals(getValue(token));
+        return ES8_ASYNC_FUNCTION && isES8() && type == IDENT && lexer.checkIdentForKeyword(token, AWAIT_IDENT);
     }
 
     private boolean isAsync() {
-        return ES8_ASYNC_FUNCTION && isES8() && type == IDENT && ASYNC_IDENT.equals(getValueNoUnicode(token));
+        return ES8_ASYNC_FUNCTION && isES8() && type == IDENT && lexer.checkIdentForKeyword(token, ASYNC_IDENT);
     }
 
     private boolean lookaheadIsAsyncArrowParameterListStart() {

@@ -851,6 +851,22 @@ public class Lexer extends Scanner {
         }
         return value;
     }
+    
+    public boolean checkIdentForKeyword(final long token, final String keyword) {
+        final int len = Token.descLength(token);
+        final int start = Token.descPosition(token);
+        if (len != keyword.length()) {
+            return false;
+        }
+
+        for (int i = 0; i < len; ++i) {
+            if (content.charAt(start + i) != keyword.charAt(i)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     /**
      * Convert a string to a JavaScript identifier.
@@ -861,20 +877,23 @@ public class Lexer extends Scanner {
      * @return Ident string or null if an error.
      */
     private String valueOfIdent(final int start, final int length, final boolean convertUnicode) throws RuntimeException {
-        // Save the current position.
-        final int savePosition = position;
         // End of scan.
         final int end = start + length;
-        // Reset to beginning of content.
-        reset(start);
         // Buffer for recording characters.
         final StringBuilder sb = new StringBuilder(length);
 
+        int pos = start;
+
         // Scan until end of line or end of file.
-        while (!atEOF() && position < end && !isEOL(ch0)) {
+        while (pos < end) {
+
+            char curCh0 = content.charAt(pos);
+
             // If escape character.
-            if (convertUnicode && ch0 == '\\' && ch1 == 'u') {
-                skip(2);
+            if (convertUnicode && curCh0 == '\\' && charAt(pos + 1) == 'u') {
+                // Save the current position.
+                final int savePosition = position;
+                reset(pos + 2);
                 final int ch = unicodeEscapeSequence(TokenType.IDENT);
                 if (Character.isBmpCodePoint(ch) && isWhitespace((char)ch)) {
                     return null;
@@ -885,15 +904,14 @@ public class Lexer extends Scanner {
                 } else {
                     sb.appendCodePoint(ch);
                 }
+                pos = position;
+                reset(savePosition);
             } else {
                 // Add regular character.
-                sb.append(ch0);
-                skip(1);
+                sb.append(curCh0);
+                pos++;
             }
         }
-
-        // Restore position.
-        reset(savePosition);
 
         return stringIntern(sb.toString());
     }
