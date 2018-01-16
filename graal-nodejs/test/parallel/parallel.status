@@ -82,7 +82,6 @@ test-repl-require-context                                          : FAIL
 test-repl-tab-complete                                             : FAIL
 test-repl-underscore                                               : FAIL
 test-repl-unexpected-token-recoverable                             : FAIL
-test-stream-base-prototype-accessors                               : FAIL
 test-vm-create-context-accessors                                   : FAIL
 test-vm-global-define-property                                     : FAIL
 test-vm-low-stack-space                                            : SKIP
