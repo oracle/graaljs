@@ -791,7 +791,7 @@ loop:
                 if (ident.isNewTarget()) {
                     return referenceError(lhs, rhs, true);
                 }
-                verifyIdent(ident, "assignment");
+                verifyStrictIdent(ident, "assignment");
                 break;
             } else if (lhs instanceof AccessNode || lhs instanceof IndexNode) {
                 break;
@@ -829,7 +829,7 @@ loop:
 
             @Override
             public boolean enterIdentNode(IdentNode identNode) {
-                verifyIdent(identNode, contextString);
+                verifyStrictIdent(identNode, contextString);
                 if (!checkIdentLValue(identNode)) {
                     referenceError(identNode, null, true);
                     return false;
@@ -1025,9 +1025,9 @@ loop:
 
                                     // verify that function name as well as parameter names
                                     // satisfy strict mode restrictions.
-                                    verifyIdent(function.getIdent(), "function name");
+                                    verifyStrictIdent(function.getIdent(), "function name");
                                     for (final IdentNode param : function.getParameters()) {
-                                        verifyIdent(param, "function parameter");
+                                        verifyStrictIdent(param, "function parameter");
                                     }
                                 }
                             }
@@ -1593,11 +1593,9 @@ loop:
     /**
      * Make sure that the identifier name used is allowed.
      *
-     * @param ident         Identifier that is verified
-     * @param contextString String used in error message to give context to the user
+     * @param ident the identifier that is verified
      */
-    private void verifyIdent(final IdentNode ident, final String contextString) {
-        verifyStrictIdent(ident, contextString);
+    private void verifyIdent(final IdentNode ident) {
         if (isES6()) {
             if (isEscapedIdent(ident)) {
                 if (isReservedWordSequence(ident.getName())) {
@@ -1610,11 +1608,15 @@ loop:
             if (isModule) {
                 // in module mode, "await" is not an allowed identifier name
                 if (ident.isTokenType(AWAIT)) {
-                    throw error(AbstractParser.message("strict.name", ident.getName(), contextString), ident.getToken());
+                    throw error(AbstractParser.message("strict.name", ident.getName(), "Identifier"), ident.getToken());
                 } else if (AWAIT.getName().equals(ident.getName())) {
                     throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
                 }
             }
+        }
+        // It is a Syntax Error if this production has an [Await] parameter and StringValue of Identifier is "await".
+        if (ES8_ASYNC_FUNCTION && isES8() && inAsyncFunction() && AWAIT.getName().equals(ident.getName())) {
+            throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
         }
     }
 
@@ -1744,7 +1746,7 @@ loop:
                 verifyDestructuringBindingPattern(binding, new Consumer<IdentNode>() {
                     @Override
                     public void accept(IdentNode identNode) {
-                        verifyIdent(identNode, contextString);
+                        verifyStrictIdent(identNode, contextString);
                         final VarNode var = new VarNode(varLine, varToken, sourceOrder, identNode.getFinish(), identNode.setIsDeclaredHere(), null, finalVarFlags);
                         appendStatement(var);
                     }
@@ -1833,15 +1835,8 @@ loop:
      */
     private IdentNode identifier() {
         final IdentNode ident = getIdent();
-        verifyIdentifier(ident);
+        verifyIdent(ident);
         return ident;
-    }
-
-    private void verifyIdentifier(final IdentNode ident) {
-        // It is a Syntax Error if this production has an [Await] parameter and StringValue of Identifier is "await".
-        if (ES8_ASYNC_FUNCTION && isES8() && inAsyncFunction() && AWAIT.getName().equals(ident.getName())) {
-            throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
-        }
     }
 
     private boolean isBindingIdentifier() {
@@ -1850,8 +1845,8 @@ loop:
 
     private IdentNode bindingIdentifier(String contextString) {
         final IdentNode ident = getIdent();
-        verifyIdent(ident, contextString);
-        verifyIdentifier(ident);
+        verifyIdent(ident);
+        verifyStrictIdent(ident, contextString);
         return ident;
     }
 
@@ -2255,7 +2250,7 @@ loop:
             if (ident.isNewTarget()) {
                 return false;
             }
-            verifyIdent(ident, contextString);
+            verifyStrictIdent(ident, contextString);
             return true;
         } else if (init instanceof AccessNode || init instanceof IndexNode) {
             return true;
@@ -2873,7 +2868,7 @@ loop:
                         verifyDestructuringBindingPattern(pattern, new Consumer<IdentNode>() {
                             @Override
                             public void accept(IdentNode identNode) {
-                                verifyIdent(identNode, contextString);
+                                verifyStrictIdent(identNode, contextString);
                                 final int varFlags = VarNode.IS_LET | VarNode.IS_DESTRUCTURING;
                                 final VarNode var = new VarNode(catchLine, Token.recast(identNode.getToken(), LET), identNode.getFinish(), identNode.setIsDeclaredHere(), null, varFlags);
                                 appendStatement(var);
@@ -3019,7 +3014,7 @@ loop:
                 return getLiteral();
             }
             if (type.isContextualKeyword() || isNonStrictModeIdent()) {
-                return getIdent();
+                return identifier();
             }
             break;
         }
@@ -4353,7 +4348,7 @@ loop:
         verifyDestructuringBindingPattern(pattern, new Consumer<IdentNode>() {
             @Override
             public void accept(IdentNode identNode) {
-                verifyIdent(identNode, contextString);
+                verifyStrictIdent(identNode, contextString);
 
                 ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
                 if (currentFunction != null) {
@@ -4716,7 +4711,7 @@ loop:
             }
             assert opType == TokenType.INCPREFIX || opType == TokenType.DECPREFIX;
             String contextString = opType == TokenType.INCPREFIX ? "operand for ++ operator" : "operand for -- operator";
-            verifyIdent((IdentNode)lhs, contextString);
+            verifyStrictIdent((IdentNode)lhs, contextString);
         }
 
         return incDecExpression(unaryToken, opType, lhs, isPostfix);
@@ -5656,7 +5651,7 @@ loop:
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
                 //importEntries.add(ImportEntry.importSpecifier(importName.getName(), localName.getName()));
             } else if (bindingIdentifier) {
-                verifyIdent(importName, "ImportedBinding");
+                verifyStrictIdent(importName, "ImportedBinding");
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, importName, null));
                 //importEntries.add(ImportEntry.importSpecifier(importName.getName()));
             } else {
