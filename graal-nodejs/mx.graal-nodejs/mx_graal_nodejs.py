@@ -330,6 +330,9 @@ def setupNodeEnvironment(args):
     _setEnvVar('TRUFFLENODE_JAR_PATH', mx.distribution('TRUFFLENODE').path)
     setLibraryPath()
 
+    prevPATH = os.environ['PATH']
+    _setEnvVar('PATH', "%s:%s" % (join(_suite.mxDir, 'fake_launchers'), prevPATH))
+
     args = args if args else []
     mode, vmArgs, progArgs = _parseArgs(args)
 
