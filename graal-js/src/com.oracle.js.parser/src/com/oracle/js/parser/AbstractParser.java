@@ -371,12 +371,12 @@ public abstract class AbstractParser {
     }
 
     /**
-     * Get the value of the current token. If the current token contains an Unicode sequence, the
+     * Get the value of the current token. If the current token contains an escape sequence, the
      * method does not attempt to convert it.
      *
      * @return JavaScript value of the token.
      */
-    protected final Object getValueNoUnicode() {
+    protected final Object getValueNoEscape() {
         try {
             return lexer.getValueOf(token, isStrictMode, false);
         } catch (final ParserException e) {
@@ -404,40 +404,6 @@ public abstract class AbstractParser {
     protected final Object getValue(final long valueToken) {
         try {
             return lexer.getValueOf(valueToken, isStrictMode);
-        } catch (final ParserException e) {
-            errors.error(e);
-        }
-
-        return null;
-    }
-
-    /**
-     * Get the value of a specific identifier token. If the token contains a Unicode sequence, the
-     * method does not attempt to convert it.
-     *
-     * @param identToken the identifier token
-     * @return identifier string
-     */
-    protected final String getValueIdent(final long identToken) {
-        try {
-            return lexer.getValueOfIdent(identToken);
-        } catch (final ParserException e) {
-            errors.error(e);
-        }
-
-        return null;
-    }
-
-    /**
-     * Get the value of a specific token
-     *
-     * @param valueToken the token
-     *
-     * @return JavaScript value of the token
-     */
-    protected final Object getValue(final long valueToken, boolean skipUnicode) {
-        try {
-            return lexer.getValueOf(valueToken, isStrictMode, skipUnicode);
         } catch (final ParserException e) {
             errors.error(e);
         }
@@ -509,7 +475,7 @@ public abstract class AbstractParser {
     }
 
     /**
-     * Check if token is in identifier name
+     * Check if token is an identifier name
      *
      * @return true if token is an identifier name
      */

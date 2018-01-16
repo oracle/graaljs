@@ -179,8 +179,6 @@ public class Parser extends AbstractParser {
     /** Function name for arrow functions. */
     private static final String ARROW_FUNCTION_NAME = ":=>";
 
-    private static final String AWAIT_IDENT = "await";
-
     private static final boolean ES6_FOR_OF = Options.getBooleanProperty("parser.for.of", true);
     private static final boolean ES6_CLASS = Options.getBooleanProperty("parser.class", true);
     private static final boolean ES6_ARROW_FUNCTION = Options.getBooleanProperty("parser.arrow.function", true);
@@ -1602,10 +1600,10 @@ loop:
         verifyStrictIdent(ident, contextString);
         if (isES6()) {
             TokenType tokenType = TokenLookup.lookupKeyword(ident.getName().toCharArray(), 0, ident.getName().length());
-            if (tokenType != IDENT && tokenType.getKind() != TokenKind.CONTEXTUAL && tokenType.getKind() != TokenKind.FUTURESTRICT) {
+            if (tokenType != IDENT && !tokenType.isContextualKeyword() && !tokenType.isFutureStrict()) {
                 throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
             }
-            if (isModule && AWAIT_IDENT.equals(ident.getName())) {
+            if (isModule && AWAIT.getName().equals(ident.getName())) {
                 throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
             }
         }
@@ -1823,7 +1821,7 @@ loop:
 
     private void verifyIdentifier(final IdentNode ident) {
         // It is a Syntax Error if this production has an [Await] parameter and StringValue of Identifier is "await".
-        if (ES8_ASYNC_FUNCTION && isES8() && inAsyncFunction() && AWAIT_IDENT.equals(ident.getName())) {
+        if (ES8_ASYNC_FUNCTION && isES8() && inAsyncFunction() && AWAIT.getName().equals(ident.getName())) {
             throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
         }
     }
@@ -2270,7 +2268,7 @@ loop:
                 return true;
             default:
                 // accept future strict tokens in non-strict mode (including LET)
-                if (t.isContextualKeyword() || (!isStrictMode && t.getKind() == TokenKind.FUTURESTRICT)) {
+                if (t.isContextualKeyword() || (!isStrictMode && t.isFutureStrict())) {
                     return true;
                 }
                 return false;
@@ -3695,7 +3693,7 @@ loop:
 
         if (ES6_NEW_TARGET && type == PERIOD && isES6()) {
             next();
-            if (type == IDENT && "target".equals(getValueNoUnicode())) {
+            if (type == IDENT && "target".equals(getValueNoEscape())) {
                 if (lc.getCurrentFunction().isProgram()) {
                     throw error(AbstractParser.message("new.target.in.function"), token);
                 }
@@ -5150,7 +5148,7 @@ loop:
             IdentNode ident = (IdentNode)param;
             verifyStrictIdent(ident, contextString);
             ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
-            if (currentFunction != null && currentFunction.isAsync() && AWAIT_IDENT.equals(ident.getName())) {
+            if (currentFunction != null && currentFunction.isAsync() && AWAIT.getName().equals(ident.getName())) {
                 throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
             }
             if (currentFunction != null) {
@@ -5164,7 +5162,7 @@ loop:
             long paramToken = lhs.getToken();
             Expression initializer = ((BinaryNode) param).rhs();
             if (initializer instanceof IdentNode) {
-                if (((IdentNode) initializer).getName().equals(AWAIT_IDENT)) {
+                if (((IdentNode) initializer).getName().equals(AWAIT.getName())) {
                     throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
                 }
             }
@@ -5235,7 +5233,7 @@ loop:
             case COMMENT:
                 continue;
             default:
-                if (t.getKind() == TokenKind.CONTEXTUAL || t.getKind() == TokenKind.FUTURESTRICT) {
+                if (t.isContextualKeyword() || t.isFutureStrict()) {
                     return true;
                 }
                 return false;
