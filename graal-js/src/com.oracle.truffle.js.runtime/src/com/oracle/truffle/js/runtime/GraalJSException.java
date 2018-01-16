@@ -25,7 +25,6 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -391,11 +390,11 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             if (JSTruffleOptions.NashornCompatibilityMode) {
                 return "<" + fileName + ">";
             } else {
-                if (global && JSGlobalObject.isJSGlobalObject(getThisOrGlobal())) {
+                if (global && isGlobalObject(getThisOrGlobal())) {
                     return "global";
                 }
                 Object thisObject = getThis();
-                if (!JSRuntime.isNullOrUndefined(thisObject) && !JSGlobalObject.isJSGlobalObject(thisObject)) {
+                if (!JSRuntime.isNullOrUndefined(thisObject) && !isGlobalObject(thisObject)) {
                     if (JSObject.isDynamicObject(thisObject)) {
                         return JSRuntime.getConstructorName((DynamicObject) thisObject);
                     } else if (JSRuntime.isJSPrimitive(thisObject)) {
@@ -404,6 +403,14 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                 }
                 return null;
             }
+        }
+
+        private static boolean isGlobalObject(Object object) {
+            if (JSObject.isJSObject(object)) {
+                JSContext context = JSObject.getJSContext((DynamicObject) object);
+                return (context != null) && (context.getRealm().getGlobalObject() == object);
+            }
+            return false;
         }
 
         public String getFunctionName() {
