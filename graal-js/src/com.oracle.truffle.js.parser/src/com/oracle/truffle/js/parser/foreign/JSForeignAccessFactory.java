@@ -11,7 +11,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
@@ -23,19 +22,18 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.cast.JSDoubleToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSDoubleToStringNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
-import com.oracle.truffle.js.nodes.interop.JSInteropExecuteAfterReadNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
-import com.oracle.truffle.js.nodes.interop.JSInteropWrite;
+import com.oracle.truffle.js.nodes.interop.JSInteropInvokeNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -61,16 +59,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @MessageResolution(receiverType = DynamicObject.class)
 public class JSForeignAccessFactory {
 
-    static JSContext interopCallEnter(DynamicObject target) {
-        JSContext context = JSObject.getJSContext(target);
-        context.interopBoundaryEnter();
-        return context;
-    }
-
-    static void interopCallExit(JSContext context) {
-        context.interopBoundaryExit();
-    }
-
     @Resolve(message = "EXECUTE")
     abstract static class ExecuteNode extends Node {
 
@@ -79,15 +67,16 @@ public class JSForeignAccessFactory {
         @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createExecute();
         @Child private ExportValueNode export = ExportValueNode.create();
 
-        public Object access(VirtualFrame frame, DynamicObject target, Object[] args) {
+        public Object access(DynamicObject target, Object[] args) {
             if (JSRuntime.isCallable(target)) {
                 Object result = null;
-                JSContext context = interopCallEnter(target);
+                JSContext context = JSObject.getJSContext(target);
+                context.interopBoundaryEnter();
                 boolean asyncFunction = isAsyncFunction(target);
                 try {
-                    result = export.executeWithTarget(callNode.executeInterop(frame, target, args), Undefined.instance);
+                    result = export.executeWithTarget(callNode.executeInterop(target, args), Undefined.instance);
                 } finally {
-                    interopCallExit(context);
+                    context.interopBoundaryExit();
                 }
                 if (asyncFunction && result != null && JSPromise.isJSPromise(result)) {
                     /*
@@ -124,19 +113,20 @@ public class JSForeignAccessFactory {
     @Resolve(message = "INVOKE")
     abstract static class InvokeNode extends Node {
 
-        @Child private JSInteropExecuteAfterReadNode callNode;
+        @Child private JSInteropInvokeNode callNode;
         @Child private ExportValueNode export = ExportValueNode.create();
 
-        public Object access(VirtualFrame frame, DynamicObject target, @SuppressWarnings("unused") String id, Object[] args) {
+        public Object access(DynamicObject target, String id, Object[] args) {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                callNode = insert(new JSInteropExecuteAfterReadNode(args.length, JSObject.getJSContext(target)));
+                callNode = insert(new JSInteropInvokeNode(JSObject.getJSContext(target)));
             }
-            JSContext context = interopCallEnter(target);
+            JSContext context = JSObject.getJSContext(target);
+            context.interopBoundaryEnter();
             try {
-                return export.executeWithTarget(callNode.execute(frame), ForeignAccess.getReceiver(frame));
+                return export.executeWithTarget(callNode.execute(target, id, args), target);
             } finally {
-                interopCallExit(context);
+                context.interopBoundaryExit();
             }
         }
     }
@@ -147,12 +137,13 @@ public class JSForeignAccessFactory {
         @Child private ExportValueNode export = ExportValueNode.create();
         @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createNew();
 
-        public Object access(VirtualFrame frame, DynamicObject target, Object[] args) {
-            JSContext context = interopCallEnter(target);
+        public Object access(DynamicObject target, Object[] args) {
+            JSContext context = JSObject.getJSContext(target);
+            context.interopBoundaryEnter();
             try {
-                return export.executeWithTarget(callNode.executeInterop(frame, target, args), Undefined.instance);
+                return export.executeWithTarget(callNode.executeInterop(target, args), Undefined.instance);
             } finally {
-                interopCallExit(context);
+                context.interopBoundaryExit();
             }
         }
     }
@@ -163,7 +154,7 @@ public class JSForeignAccessFactory {
         @Child private ReadElementNode readNode;
         @Child private ExportValueNode export = ExportValueNode.create();
 
-        public Object access(@SuppressWarnings("unused") VirtualFrame frame, DynamicObject target, Object key) {
+        public Object access(DynamicObject target, Object key) {
             if (readNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 readNode = insert(ReadElementNode.create(JSObject.getJSContext(target)));
@@ -176,16 +167,18 @@ public class JSForeignAccessFactory {
     @Resolve(message = "WRITE")
     abstract static class WriteNode extends Node {
 
-        @Child private JavaScriptNode writeNode;
-        @Child private ExportValueNode export = ExportValueNode.create();
+        @Child private WriteElementNode writeNode;
+        @Child private JSForeignToJSTypeNode castKey = JSForeignToJSTypeNode.create();
+        @Child private JSForeignToJSTypeNode castValue = JSForeignToJSTypeNode.create();
 
-        @SuppressWarnings("unused")
-        public Object access(VirtualFrame frame, DynamicObject target, Object key, Object value) {
+        public Object access(DynamicObject target, Object key, Object value) {
             if (writeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                writeNode = insert(JSInteropWrite.create(JSObject.getJSContext(target), Message.WRITE));
+                JSContext context = JSObject.getJSContext(target);
+                writeNode = insert(WriteElementNode.create(context, false));
             }
-            return export.executeWithTarget(writeNode.execute(frame), target);
+            writeNode.executeWithTargetAndIndexAndValue(target, castKey.executeWithTarget(key), castValue.executeWithTarget(value));
+            return value;
         }
     }
 

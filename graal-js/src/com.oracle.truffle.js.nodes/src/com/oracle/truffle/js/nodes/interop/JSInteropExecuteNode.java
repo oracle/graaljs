@@ -8,8 +8,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSProxyCallNode;
@@ -32,7 +30,7 @@ public abstract class JSInteropExecuteNode extends JavaScriptBaseNode {
         return JSInteropDispatchCallNodeGen.create(true);
     }
 
-    public abstract Object executeInterop(VirtualFrame frame, Object target, Object[] args);
+    public abstract Object executeInterop(Object target, Object[] args);
 
     abstract static class JSInteropDispatchCall extends JSInteropExecuteNode {
 
@@ -48,10 +46,9 @@ public abstract class JSInteropExecuteNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = {"cachedTarget==target", "isBound"})
-        public Object doCachedBound(VirtualFrame frame, DynamicObject target, Object[] args,
+        public Object doCachedBound(@SuppressWarnings("unused") DynamicObject target, Object[] args,
                         @Cached("target") DynamicObject cachedTarget,
                         @SuppressWarnings("unused") @Cached("isBoundFunction(target)") boolean isBound) {
-            assert target == ForeignAccess.getReceiver(frame);
             return call.executeCall(JSArguments.create(Null.instance, cachedTarget, prepare(args)));
         }
 
@@ -64,18 +61,16 @@ public abstract class JSInteropExecuteNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = {"cachedTarget==target", "!isBound", "!isJSProxy(target)"})
-        public Object doCachedUnbound(VirtualFrame frame, DynamicObject target, Object[] args,
+        public Object doCachedUnbound(@SuppressWarnings("unused") DynamicObject target, Object[] args,
                         @Cached("target") DynamicObject cachedTarget,
                         @SuppressWarnings("unused") @Cached("isBoundFunction(target)") boolean isBound) {
-            assert target == ForeignAccess.getReceiver(frame);
             Object[] shifted = new Object[args.length - 1];
             System.arraycopy(args, 1, shifted, 0, shifted.length);
             return call.executeCall(JSArguments.create(prepareReceiver(args[0]), cachedTarget, prepare(shifted)));
         }
 
         @Specialization
-        public Object doGeneric(VirtualFrame frame, DynamicObject target, Object[] args) {
-            assert target == ForeignAccess.getReceiver(frame);
+        public Object doGeneric(DynamicObject target, Object[] args) {
             if (JSFunction.isBoundFunction(target)) {
                 return call.executeCall(JSArguments.create(Null.instance, target, prepare(args)));
             } else {
