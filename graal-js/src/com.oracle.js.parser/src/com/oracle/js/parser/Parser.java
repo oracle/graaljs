@@ -3180,7 +3180,7 @@ loop:
 
                     commaSeen = false;
                     // Get and add the next property.
-                    final PropertyNode property = propertyAssignment();
+                    final PropertyNode property = propertyDefinition();
                     hasCoverInitializedName = hasCoverInitializedName || property.isCoverInitializedName() || hasCoverInitializedName(property.getValue());
 
                     if (property.isComputed() || property.getKey().isTokenType(SPREAD_OBJECT)) {
@@ -3326,25 +3326,20 @@ loop:
     }
 
     /**
-     * PropertyAssignment :
+     * Parse an object literal property definition.
+     *
+     * PropertyDefinition :
+     *      IdentifierReference
+     *      CoverInitializedName
      *      PropertyName : AssignmentExpression
-     *      get PropertyName ( ) { FunctionBody }
-     *      set PropertyName ( PropertySetParameterList ) { FunctionBody }
+     *      MethodDefinition
      *
-     * PropertySetParameterList :
-     *      Identifier
+     * CoverInitializedName :
+     *      IdentifierReference = AssignmentExpression
      *
-     * PropertyName :
-     *      IdentifierName
-     *      StringLiteral
-     *      NumericLiteral
-     *
-     * See 11.1.5
-     *
-     * Parse an object literal property.
      * @return Property or reference node.
      */
-    private PropertyNode propertyAssignment() {
+    private PropertyNode propertyDefinition() {
         // Capture firstToken.
         final long propertyToken = token;
         final int  functionLine  = line;
@@ -3366,7 +3361,7 @@ loop:
         final boolean computed = type == LBRACKET;
         if (type == IDENT) {
             isIdentifier = true;
-            propertyName = identifier().setIsPropertyName();
+            propertyName = getIdent().setIsPropertyName();
         } else if (type == GET || type == SET) {
             final TokenType getOrSet = type;
             next();
@@ -3406,7 +3401,9 @@ loop:
         if (type == LPAREN && isES6()) {
             propertyValue = propertyMethodFunction(propertyName, propertyToken, functionLine, generator, FunctionNode.IS_METHOD, computed, async).functionNode;
         } else if (isIdentifier && (type == COMMARIGHT || type == RBRACE || type == ASSIGN) && isES6()) {
-            propertyValue = createIdentNode(propertyToken, finish, ((IdentNode) propertyName).getPropertyName());
+            IdentNode ident = (IdentNode) propertyName;
+            verifyIdent(ident);
+            propertyValue = createIdentNode(propertyToken, finish, ident.getPropertyName());
             if (type == ASSIGN && ES6_DESTRUCTURING) {
                 // If not destructuring, this is a SyntaxError
                 long assignToken = token;
