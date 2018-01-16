@@ -84,7 +84,6 @@ test-vm-create-context-accessors                                   : FAIL
 test-vm-global-define-property                                     : FAIL
 test-vm-low-stack-space                                            : SKIP
 test-vm-new-script-new-context                                     : FAIL
-test-vm-run-in-new-context                                         : FAIL
 test-vm-syntax-error-stderr                                        : FAIL
 test-wasm-simple                                                   : FAIL
 
