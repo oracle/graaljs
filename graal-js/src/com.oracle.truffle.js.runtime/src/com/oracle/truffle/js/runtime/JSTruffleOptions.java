@@ -40,7 +40,7 @@ public class JSTruffleOptions {
     /*
      * Used with AOT compilation: prepare one JSContext ahead of time to save time during startup.
      */
-    public static final boolean PrepareFirstContext = booleanOption("PrepareFirstContext", TruffleOptions.AOT, OPTION_PERFORMANCE);
+    public static final boolean PrepareFirstContext = booleanOption("PrepareFirstContext", false, OPTION_PERFORMANCE);
 
     /** Parser options. */
     public static final boolean ReturnOptimizer = booleanOption("ReturnOptimizer", true, OPTION_PERFORMANCE);

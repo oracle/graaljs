@@ -79,6 +79,19 @@ public final class JSContextOptions {
     private static final String TIME_ZONE_HELP = "Set custom timezone.";
     public static final OptionKey<String> TIME_ZONE = new OptionKey<>("");
 
+    private static final OptionKey<?>[] PREINIT_CONTEXT_OPTION_KEYS = {
+                    ECMASCRIPT_VERSION,
+                    ANNEX_B,
+                    INTL_402,
+                    REGEXP_STATIC_RESULT,
+                    SHARED_ARRAY_BUFFER,
+                    ATOMICS,
+                    V8_COMPATIBILITY_MODE,
+                    DEBUG_BUILTIN,
+                    PARSE_ONLY,
+                    TIME_ZONE,
+    };
+
     public JSContextOptions(ParserOptions parserOptions) {
         this.parserOptions = parserOptions;
         cacheOptions();
@@ -162,20 +175,21 @@ public final class JSContextOptions {
     // check for options that are not on their default value.
     // in such case, we cannot use the pre-initialized context for faster startup
     public static boolean optionsAllowPreInitializedContext(Env env) {
-        return isOptionDefault(ECMASCRIPT_VERSION, env) &&
-                        isOptionDefault(ANNEX_B, env) &&
-                        isOptionDefault(INTL_402, env) &&
-                        isOptionDefault(REGEXP_STATIC_RESULT, env) &&
-                        isOptionDefault(SHARED_ARRAY_BUFFER, env) &&
-                        isOptionDefault(ATOMICS, env) &&
-                        isOptionDefault(V8_COMPATIBILITY_MODE, env) &&
-                        isOptionDefault(DEBUG_BUILTIN, env) &&
-                        isOptionDefault(PARSE_ONLY, env) &&
-                        isOptionDefault(TIME_ZONE, env);
+        for (OptionKey<?> key : PREINIT_CONTEXT_OPTION_KEYS) {
+            if (!env.getOptions().get(key).equals(key.getDefaultValue())) {
+                return false;
+            }
+        }
+        return true;
     }
 
-    private static boolean isOptionDefault(OptionKey<?> key, Env env) {
-        return env.getOptions().get(key).equals(key.getDefaultValue());
+    public static boolean optionsAllowPreInitializedContext(JSContext context, Env env) {
+        for (OptionKey<?> key : PREINIT_CONTEXT_OPTION_KEYS) {
+            if (!context.getOptionValues().get(key).equals(env.getOptions().get(key))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public int getEcmaScriptVersion() {

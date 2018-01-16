@@ -512,15 +512,17 @@ def buildSvmImage(args):
             '-Dtruffle.js.DirectByteBuffer=true',
             '-Dpolyglot.js.v8-compatibility-mode=true',
             '-Dpolyglot.js.syntax-extensions=false',
-            '-Dtruffle.js.U180EWhitespace=true'] + javaArgs + [
-            '--',
+            '-Dtruffle.js.U180EWhitespace=true',
+            '-Dpolyglot.engine.PreinitializeContexts=js',
+            ] + javaArgs + ['--',
             '-js',
             '-H:Kind=SHARED_LIBRARY',
             '-H:Name={}'.format(_svmNodeLibName),
             '-H:Projects=com.oracle.truffle.trufflenode',
             '-H:JNIConfigurationFiles=svmnodejs.jniconfig',
             '-H:+MultiThreaded',
-            '-H:+JNICreateJavaVM'] + svmArgs
+            '-H:+JNICreateJavaVM',
+            ] + svmArgs
         )
 
 def preparesvmenv():
