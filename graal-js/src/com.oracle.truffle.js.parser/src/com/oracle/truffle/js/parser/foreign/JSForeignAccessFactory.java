@@ -58,387 +58,376 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-class JSForeignAccessFactory {
+@MessageResolution(receiverType = DynamicObject.class)
+public class JSForeignAccessFactory {
 
-    private static JSContext interopCallEnter(DynamicObject target) {
+    static JSContext interopCallEnter(DynamicObject target) {
         JSContext context = JSObject.getJSContext(target);
         context.interopBoundaryEnter();
         return context;
     }
 
-    private static void interopCallExit(JSContext context) {
+    static void interopCallExit(JSContext context) {
         context.interopBoundaryExit();
     }
 
-    @MessageResolution(receiverType = DynamicObject.class)
-    public static class JSForeignAccessFactoryMR {
+    @Resolve(message = "EXECUTE")
+    abstract static class ExecuteNode extends Node {
 
-        @Resolve(message = "EXECUTE")
-        abstract static class JSInteropExecuteMR extends Node {
+        private final ConditionProfile rejected = ConditionProfile.createBinaryProfile();
 
-            private final ConditionProfile rejected = ConditionProfile.createBinaryProfile();
+        @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createExecute();
+        @Child private ExportValueNode export = ExportValueNode.create();
 
-            @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createExecute();
-            @Child private ExportValueNode export = ExportValueNode.create();
-
-            public Object access(VirtualFrame frame, DynamicObject target, Object[] args) {
-                if (JSRuntime.isCallable(target)) {
-                    Object result = null;
-                    JSContext context = interopCallEnter(target);
-                    boolean asyncFunction = isAsyncFunction(target);
-                    try {
-                        result = export.executeWithTarget(callNode.executeInterop(frame, target, args), Undefined.instance);
-                    } finally {
-                        interopCallExit(context);
+        public Object access(VirtualFrame frame, DynamicObject target, Object[] args) {
+            if (JSRuntime.isCallable(target)) {
+                Object result = null;
+                JSContext context = interopCallEnter(target);
+                boolean asyncFunction = isAsyncFunction(target);
+                try {
+                    result = export.executeWithTarget(callNode.executeInterop(frame, target, args), Undefined.instance);
+                } finally {
+                    interopCallExit(context);
+                }
+                if (asyncFunction && result != null && JSPromise.isJSPromise(result)) {
+                    /*
+                     * InteropCompletePromises semantics: interop calls to async functions return
+                     * the async resolved value (if any). If the promise resolves, its value is made
+                     * available by flushing the queue of pending jobs.
+                     */
+                    DynamicObject promise = (DynamicObject) result;
+                    if (rejected.profile(JSPromise.isRejected(promise))) {
+                        Object rejectReason = promise.get(JSPromise.PROMISE_RESULT);
+                        throw UserScriptException.create(rejectReason);
+                    } else {
+                        assert JSPromise.isFulfilled(promise);
+                        return promise.get(JSPromise.PROMISE_RESULT);
                     }
-                    if (asyncFunction && result != null && JSPromise.isJSPromise(result)) {
-                        /*
-                         * InteropCompletePromises semantics: interop calls to async functions
-                         * return the async resolved value (if any). If the promise resolves, its
-                         * value is made available by flushing the queue of pending jobs.
-                         */
-                        DynamicObject promise = (DynamicObject) result;
-                        if (rejected.profile(JSPromise.isRejected(promise))) {
-                            Object rejectReason = promise.get(JSPromise.PROMISE_RESULT);
-                            throw UserScriptException.create(rejectReason);
-                        } else {
-                            assert JSPromise.isFulfilled(promise);
-                            return promise.get(JSPromise.PROMISE_RESULT);
-                        }
-                    }
-                    return result;
+                }
+                return result;
+            } else {
+                throw UnsupportedTypeException.raise(new Object[]{target});
+            }
+        }
+
+        private static boolean isAsyncFunction(DynamicObject target) {
+            if (JSTruffleOptions.InteropCompletePromises) {
+                JSFunctionData functionData = JSRuntime.getFunctionData(target);
+                if (functionData != null) {
+                    return functionData.isAsync();
+                }
+            }
+            return false;
+        }
+    }
+
+    @Resolve(message = "INVOKE")
+    abstract static class InvokeNode extends Node {
+
+        @Child private JSInteropExecuteAfterReadNode callNode;
+        @Child private ExportValueNode export = ExportValueNode.create();
+
+        public Object access(VirtualFrame frame, DynamicObject target, @SuppressWarnings("unused") String id, Object[] args) {
+            if (callNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callNode = insert(new JSInteropExecuteAfterReadNode(args.length, JSObject.getJSContext(target)));
+            }
+            JSContext context = interopCallEnter(target);
+            try {
+                return export.executeWithTarget(callNode.execute(frame), ForeignAccess.getReceiver(frame));
+            } finally {
+                interopCallExit(context);
+            }
+        }
+    }
+
+    @Resolve(message = "NEW")
+    abstract static class NewNode extends Node {
+
+        @Child private ExportValueNode export = ExportValueNode.create();
+        @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createNew();
+
+        public Object access(VirtualFrame frame, DynamicObject target, Object[] args) {
+            JSContext context = interopCallEnter(target);
+            try {
+                return export.executeWithTarget(callNode.executeInterop(frame, target, args), Undefined.instance);
+            } finally {
+                interopCallExit(context);
+            }
+        }
+    }
+
+    @Resolve(message = "READ")
+    abstract static class ReadNode extends Node {
+
+        @Child private ReadElementNode readNode;
+        @Child private ExportValueNode export = ExportValueNode.create();
+
+        public Object access(@SuppressWarnings("unused") VirtualFrame frame, DynamicObject target, Object key) {
+            if (readNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                readNode = insert(ReadElementNode.create(JSObject.getJSContext(target)));
+            }
+            return export.executeWithTarget(readNode.executeWithTargetAndIndex(target, key), target);
+        }
+
+    }
+
+    @Resolve(message = "WRITE")
+    abstract static class WriteNode extends Node {
+
+        @Child private JavaScriptNode writeNode;
+        @Child private ExportValueNode export = ExportValueNode.create();
+
+        @SuppressWarnings("unused")
+        public Object access(VirtualFrame frame, DynamicObject target, Object key, Object value) {
+            if (writeNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                writeNode = insert(JSInteropWrite.create(JSObject.getJSContext(target), Message.WRITE));
+            }
+            return export.executeWithTarget(writeNode.execute(frame), target);
+        }
+    }
+
+    @Resolve(message = "GET_SIZE")
+    abstract static class GetSizeNode extends Node {
+
+        public int access(DynamicObject target) {
+            if (JSArray.isJSArray(target)) {
+                long size = JSArray.arrayGetLength(target);
+                if (size < Integer.MAX_VALUE) {
+                    return (int) size;
                 } else {
-                    throw UnsupportedTypeException.raise(new Object[]{target});
+                    throw UnsupportedMessageException.raise(Message.GET_SIZE);
                 }
-            }
-
-            private static boolean isAsyncFunction(DynamicObject target) {
-                if (JSTruffleOptions.InteropCompletePromises) {
-                    JSFunctionData functionData = JSRuntime.getFunctionData(target);
-                    if (functionData != null) {
-                        return functionData.isAsync();
-                    }
-                }
-                return false;
+            } else if (JSArrayBufferView.isJSArrayBufferView(target)) {
+                return JSArrayBufferView.typedArrayGetLength(target);
+            } else if (JSString.isJSString(target)) {
+                return JSString.getStringLength(target);
+            } else {
+                throw UnsupportedMessageException.raise(Message.GET_SIZE);
             }
         }
+    }
 
-        @Resolve(message = "INVOKE")
-        abstract static class JSInteropInvokeMR extends Node {
+    @Resolve(message = "UNBOX")
+    abstract static class UnboxNode extends Node {
 
-            @Child private JSInteropExecuteAfterReadNode callNode;
-            @Child private ExportValueNode export = ExportValueNode.create();
-
-            public Object access(VirtualFrame frame, DynamicObject target, @SuppressWarnings("unused") String id, Object[] args) {
-                if (callNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    callNode = insert(new JSInteropExecuteAfterReadNode(args.length, JSObject.getJSContext(target)));
-                }
-                JSContext context = interopCallEnter(target);
-                try {
-                    return export.executeWithTarget(callNode.execute(frame), ForeignAccess.getReceiver(frame));
-                } finally {
-                    interopCallExit(context);
-                }
+        public Object access(DynamicObject target) {
+            JSClass builtinClass = JSObject.getJSClass(target);
+            if (builtinClass == JSNumber.INSTANCE) {
+                return JSRuntime.toNumber(target);
+            } else if (builtinClass == JSString.INSTANCE) {
+                return JSRuntime.toString(target);
+            } else if (builtinClass == JSBoolean.INSTANCE) {
+                return JSBoolean.valueOf(target);
             }
+            throw UnsupportedMessageException.raise(Message.UNBOX);
+        }
+    }
+
+    @Resolve(message = "IS_BOXED")
+    abstract static class IsBoxedNode extends Node {
+
+        public Object access(DynamicObject target) {
+            JSClass builtinClass = JSObject.getJSClass(target);
+            if (builtinClass == JSNumber.INSTANCE) {
+                return true;
+            } else if (builtinClass == JSString.INSTANCE) {
+                return true;
+            } else if (builtinClass == JSBoolean.INSTANCE) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    @Resolve(message = "IS_EXECUTABLE")
+    abstract static class IsExecutableNode extends Node {
+
+        public Object access(DynamicObject target) {
+            return JSFunction.isJSFunction(target);
+        }
+    }
+
+    @Resolve(message = "IS_NULL")
+    abstract static class IsNullNode extends Node {
+
+        public Object access(DynamicObject target) {
+            return target.getShape().getObjectType() == Null.NULL_CLASS;
+        }
+    }
+
+    @Resolve(message = "IS_INSTANTIABLE")
+    abstract static class IsInstantiableNode extends Node {
+
+        public Object access(DynamicObject target) {
+            return JSRuntime.isConstructor(target);
+        }
+    }
+
+    @Resolve(message = "HAS_SIZE")
+    abstract static class HasSizeNode extends Node {
+
+        public Object access(DynamicObject target) {
+            ObjectType objectType = target.getShape().getObjectType();
+            return objectType instanceof JSArray || objectType instanceof JSArrayBufferView || objectType instanceof JSString;
+        }
+    }
+
+    @Resolve(message = "HAS_KEYS")
+    abstract static class HasKeysNode extends Node {
+
+        public Object access(Object target) {
+            return JSObject.isJSObject(target);
+        }
+    }
+
+    @Resolve(message = "KEYS")
+    abstract static class KeysNode extends Node {
+
+        @TruffleBoundary // due to toArray()
+        public Object access(DynamicObject target, @SuppressWarnings("unused") boolean internal) {
+            Object[] keys = JSObject.enumerableOwnNames(target).toArray();
+            JSContext context = JSObject.getJSContext(target);
+            return JSArray.createConstant(context, keys);
+        }
+    }
+
+    @Resolve(message = "KEY_INFO")
+    abstract static class KeyInfoNode extends Node {
+
+        @Child protected JSToPropertyKeyNode toKey = JSToPropertyKeyNode.create();
+        @Child protected JSForeignToJSTypeNode cast = JSForeignToJSTypeNode.create();
+
+        @TruffleBoundary
+        public Object access(DynamicObject target, Object key) {
+            PropertyDescriptor desc = JSObject.getOwnProperty(target, toKey.execute(cast.executeWithTarget(key)));
+            if (desc == null) {
+                return 0;
+            }
+            boolean readable = true;
+            boolean writable = desc.getIfHasWritable(true);
+            boolean invocable = desc.isDataDescriptor() & JSRuntime.isCallable(desc.getValue());
+
+            return KeyInfo.newBuilder().setInternal(false).setInvocable(invocable).setWritable(writable).setReadable(readable).build();
+        }
+    }
+
+    // ##### Extra, non-standard interop messages
+
+    @Resolve(message = "com.oracle.truffle.js.parser.foreign.JSForeignAccessExtraMessages.AllocateTypedArrayMessage")
+    abstract static class AllocateTypedArrayMR extends Node {
+        public Object access(@SuppressWarnings("unused") VirtualFrame frame, Object target, Object buffer) {
+            assert buffer instanceof ByteBuffer;
+            assert target instanceof DynamicObject;
+            JSContext context = JSObject.getJSContext((DynamicObject) target);
+            return createArray((ByteBuffer) buffer, context);
         }
 
-        @Resolve(message = "NEW")
-        abstract static class JSInteropNewMR extends Node {
+        @TruffleBoundary
+        private static DynamicObject createArray(ByteBuffer buffer, JSContext context) {
+            return JSArrayBuffer.createDirectArrayBuffer(context, buffer);
+        }
+    }
 
-            @Child private ExportValueNode export = ExportValueNode.create();
-            @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createNew();
+    @Resolve(message = "com.oracle.truffle.js.parser.foreign.JSForeignAccessExtraMessages.IsStringifiableMessage")
+    abstract static class IsStringifiableMR extends Node {
 
-            public Object access(VirtualFrame frame, DynamicObject target, Object[] args) {
-                JSContext context = interopCallEnter(target);
-                try {
-                    return export.executeWithTarget(callNode.executeInterop(frame, target, args), Undefined.instance);
-                } finally {
-                    interopCallExit(context);
-                }
+        public boolean access(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") Object target, Object value) {
+            return value != Undefined.instance && !JSFunction.isJSFunction(value) && !(value instanceof Symbol);
+        }
+    }
+
+    @Resolve(message = "com.oracle.truffle.js.parser.foreign.JSForeignAccessExtraMessages.IsArrayMessage")
+    abstract static class IsArrayMR extends Node {
+
+        public boolean access(@SuppressWarnings("unused") VirtualFrame frame, DynamicObject target, @SuppressWarnings("unused") Object arg) {
+            return target.getShape().getObjectType() instanceof JSArray;
+        }
+    }
+
+    @Resolve(message = "com.oracle.truffle.js.parser.foreign.JSForeignAccessExtraMessages.DoubleToStringMessage")
+    abstract static class DoubleToStringMR extends Node {
+
+        @Child protected JSDoubleToStringNode toStringNode = JSDoubleToStringNodeGen.create();
+
+        public String access(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") DynamicObject target, double value) {
+            return toStringNode.executeString(value);
+        }
+    }
+
+    @Resolve(message = "com.oracle.truffle.js.parser.foreign.JSForeignAccessExtraMessages.HasPropertyMessage")
+    abstract static class HasPropertyMR extends Node {
+
+        @Child private JSHasPropertyNode has = JSHasPropertyNode.create();
+
+        public boolean access(@SuppressWarnings("unused") VirtualFrame frame, DynamicObject target, Object key) {
+            return has.executeBoolean(target, key);
+        }
+    }
+
+    @Resolve(message = "com.oracle.truffle.js.parser.foreign.JSForeignAccessExtraMessages.TryConvertMessage")
+    abstract static class TryConvertMR extends Node {
+        public Object access(@SuppressWarnings("unused") VirtualFrame frame, Object target) {
+            assert target instanceof DynamicObject && JSArrayBufferView.isJSArrayBufferView(target);
+            DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer((DynamicObject) target);
+            if (JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer)) {
+                return extractByteBuffer(target, arrayBuffer);
             }
+            return createZeroLengthBuffer(target);
         }
 
-        @Resolve(message = "READ")
-        abstract static class JSInteropReadMR extends Node {
+        @TruffleBoundary
+        private static Object createZeroLengthBuffer(Object target) {
+            JSContext context = JSObject.getJSContext((DynamicObject) target);
+            return JSArray.createEmptyZeroLength(context);
+        }
 
-            @Child private ReadElementNode readNode;
-            @Child private ExportValueNode export = ExportValueNode.create();
+        @TruffleBoundary
+        private static Object extractByteBuffer(Object target, DynamicObject arrayBuffer) {
+            int byteOffset = JSArrayBufferView.getByteOffset((DynamicObject) target, true, JSObject.getJSContext(arrayBuffer));
+            ByteBuffer buffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
+            Object byteBuffer = ((ByteBuffer) buffer.duplicate().position(byteOffset)).slice().order(ByteOrder.nativeOrder());
+            JSContext context = JSObject.getJSContext((DynamicObject) target);
+            return JSArray.createConstant(context, new Object[]{byteBuffer});
+        }
+    }
 
-            public Object access(@SuppressWarnings("unused") VirtualFrame frame, DynamicObject target, Object key) {
+    @Resolve(message = "com.oracle.truffle.js.parser.foreign.JSForeignAccessExtraMessages.GetJSONConvertedMessage")
+    abstract static class GetJSONConvertedMR extends Node {
+
+        private static final String KEY = "toJSON";
+
+        @Child private ReadElementNode readNode;
+        @Child private JSFunctionCallNode callToJSONFunction;
+
+        public Object access(@SuppressWarnings("unused") VirtualFrame frame, DynamicObject target, @SuppressWarnings("unused") Object arg) {
+            if (JSDate.isJSDate(target)) {
                 if (readNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     readNode = insert(ReadElementNode.create(JSObject.getJSContext(target)));
                 }
-                return export.executeWithTarget(readNode.executeWithTargetAndIndex(target, key), target);
-            }
-
-        }
-
-        @Resolve(message = "WRITE")
-        abstract static class JSInteropWriteMR extends Node {
-
-            @Child private JavaScriptNode writeNode;
-            @Child private ExportValueNode export = ExportValueNode.create();
-
-            @SuppressWarnings("unused")
-            public Object access(VirtualFrame frame, DynamicObject target, Object key, Object value) {
-                if (writeNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    writeNode = insert(JSInteropWrite.create(JSObject.getJSContext(target), Message.WRITE));
-                }
-                return export.executeWithTarget(writeNode.execute(frame), target);
-            }
-        }
-
-        @Resolve(message = "GET_SIZE")
-        abstract static class JSInteropGetSizeMR extends Node {
-
-            public int access(DynamicObject target) {
-                if (JSArray.isJSArray(target)) {
-                    long size = JSArray.arrayGetLength(target);
-                    if (size < Integer.MAX_VALUE) {
-                        return (int) size;
-                    } else {
-                        throw UnsupportedMessageException.raise(Message.GET_SIZE);
-                    }
-                } else if (JSArrayBufferView.isJSArrayBufferView(target)) {
-                    return JSArrayBufferView.typedArrayGetLength(target);
-                } else if (JSString.isJSString(target)) {
-                    return JSString.getStringLength(target);
-                } else {
-                    throw UnsupportedMessageException.raise(Message.GET_SIZE);
-                }
-            }
-        }
-
-        @Resolve(message = "UNBOX")
-        abstract static class JSInteropUnboxMR extends Node {
-
-            public Object access(DynamicObject target) {
-                JSClass builtinClass = JSObject.getJSClass(target);
-                if (builtinClass == JSNumber.INSTANCE) {
-                    return JSRuntime.toNumber(target);
-                } else if (builtinClass == JSString.INSTANCE) {
-                    return JSRuntime.toString(target);
-                } else if (builtinClass == JSBoolean.INSTANCE) {
-                    return JSBoolean.valueOf(target);
-                }
-                throw UnsupportedMessageException.raise(Message.UNBOX);
-            }
-        }
-
-        @Resolve(message = "IS_BOXED")
-        abstract static class JSInteropIsBoxedMR extends Node {
-
-            public Object access(DynamicObject target) {
-                JSClass builtinClass = JSObject.getJSClass(target);
-                if (builtinClass == JSNumber.INSTANCE) {
-                    return true;
-                } else if (builtinClass == JSString.INSTANCE) {
-                    return true;
-                } else if (builtinClass == JSBoolean.INSTANCE) {
-                    return true;
-                }
-                return false;
-            }
-        }
-
-        @Resolve(message = "IS_EXECUTABLE")
-        abstract static class JSInteropIsExecutableMR extends Node {
-
-            public Object access(DynamicObject target) {
-                return JSFunction.isJSFunction(target);
-            }
-        }
-
-        @Resolve(message = "IS_NULL")
-        abstract static class JSInteropIsNullMR extends Node {
-
-            public Object access(DynamicObject target) {
-                return target.getShape().getObjectType() == Null.NULL_CLASS;
-            }
-        }
-
-        @Resolve(message = "IS_POINTER")
-        abstract static class JSInteropIsPointerMR extends Node {
-
-            public Object access(@SuppressWarnings("unused") DynamicObject target) {
-                return false;
-            }
-        }
-
-        @Resolve(message = "IS_INSTANTIABLE")
-        abstract static class JSInteropIsInstantiableMR extends Node {
-
-            public Object access(DynamicObject target) {
-                return JSRuntime.isConstructor(target);
-            }
-        }
-
-        @Resolve(message = "HAS_SIZE")
-        abstract static class JSInteropHasSizeMR extends Node {
-
-            public Object access(DynamicObject target) {
-                ObjectType objectType = target.getShape().getObjectType();
-                return objectType instanceof JSArray || objectType instanceof JSArrayBufferView || objectType instanceof JSString;
-            }
-        }
-
-        @Resolve(message = "HAS_KEYS")
-        abstract static class JSInteropHasKeysMR extends Node {
-
-            public Object access(Object target) {
-                return JSObject.isJSObject(target);
-            }
-        }
-
-        @Resolve(message = "KEYS")
-        abstract static class JSInteropKeysMR extends Node {
-
-            @TruffleBoundary // due to toArray()
-            public Object access(DynamicObject target, @SuppressWarnings("unused") boolean internal) {
-                Object[] keys = JSObject.enumerableOwnNames(target).toArray();
-                JSContext context = JSObject.getJSContext(target);
-                return JSArray.createConstant(context, keys);
-            }
-        }
-
-        @Resolve(message = "KEY_INFO")
-        abstract static class JSInteropKeyInfoMR extends Node {
-
-            @Child protected JSToPropertyKeyNode toKey = JSToPropertyKeyNode.create();
-            @Child protected JSForeignToJSTypeNode cast = JSForeignToJSTypeNode.create();
-
-            @TruffleBoundary
-            public Object access(DynamicObject target, Object key) {
-                PropertyDescriptor desc = JSObject.getOwnProperty(target, toKey.execute(cast.executeWithTarget(key)));
-                if (desc == null) {
-                    return 0;
-                }
-                boolean readable = true;
-                boolean writable = desc.getIfHasWritable(true);
-                boolean invocable = desc.isDataDescriptor() & JSRuntime.isCallable(desc.getValue());
-
-                return KeyInfo.newBuilder().setInternal(false).setInvocable(invocable).setWritable(writable).setReadable(readable).build();
-            }
-        }
-
-        // ##### Extra, non-standard interop messages
-
-        @Resolve(message = "com.oracle.truffle.js.parser.foreign.JSForeignAccessExtraMessages.AllocateTypedArrayMessage")
-        abstract static class JSInteropAllocateTypedArray extends Node {
-            public Object access(@SuppressWarnings("unused") VirtualFrame frame, Object target, Object buffer) {
-                assert buffer instanceof ByteBuffer;
-                assert target instanceof DynamicObject;
-                JSContext context = JSObject.getJSContext((DynamicObject) target);
-                return createArray((ByteBuffer) buffer, context);
-            }
-
-            @TruffleBoundary
-            private static DynamicObject createArray(ByteBuffer buffer, JSContext context) {
-                return JSArrayBuffer.createDirectArrayBuffer(context, buffer);
-            }
-        }
-
-        @Resolve(message = "com.oracle.truffle.js.parser.foreign.JSForeignAccessExtraMessages.IsStringifiableMessage")
-        abstract static class JSInteropIsStringifiableMessageMR extends Node {
-
-            public boolean access(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") Object target, Object value) {
-                return value != Undefined.instance && !JSFunction.isJSFunction(value) && !(value instanceof Symbol);
-            }
-        }
-
-        @Resolve(message = "com.oracle.truffle.js.parser.foreign.JSForeignAccessExtraMessages.IsArrayMessage")
-        abstract static class JSInteropIsArrayMR extends Node {
-
-            public boolean access(@SuppressWarnings("unused") VirtualFrame frame, DynamicObject target, @SuppressWarnings("unused") Object arg) {
-                return target.getShape().getObjectType() instanceof JSArray;
-            }
-        }
-
-        @Resolve(message = "com.oracle.truffle.js.parser.foreign.JSForeignAccessExtraMessages.DoubleToStringMessage")
-        abstract static class JSInteropToDoubleMR extends Node {
-
-            @Child protected JSDoubleToStringNode toStringNode = JSDoubleToStringNodeGen.create();
-
-            public String access(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") DynamicObject target, double value) {
-                return toStringNode.executeString(value);
-            }
-        }
-
-        @Resolve(message = "com.oracle.truffle.js.parser.foreign.JSForeignAccessExtraMessages.HasPropertyMessage")
-        abstract static class JSInteropHasPropertyMR extends Node {
-
-            @Child private JSHasPropertyNode has = JSHasPropertyNode.create();
-
-            public boolean access(@SuppressWarnings("unused") VirtualFrame frame, DynamicObject target, Object key) {
-                return has.executeBoolean(target, key);
-            }
-        }
-
-        @Resolve(message = "com.oracle.truffle.js.parser.foreign.JSForeignAccessExtraMessages.TryConvertMessage")
-        abstract static class JSInteropTryConvertTypeMR extends Node {
-            public Object access(@SuppressWarnings("unused") VirtualFrame frame, Object target) {
-                assert target instanceof DynamicObject && JSArrayBufferView.isJSArrayBufferView(target);
-                DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer((DynamicObject) target);
-                if (JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer)) {
-                    return extractByteBuffer(target, arrayBuffer);
-                }
-                return createZeroLenghtBuffer(target);
-            }
-
-            @TruffleBoundary
-            private static Object createZeroLenghtBuffer(Object target) {
-                JSContext context = JSObject.getJSContext((DynamicObject) target);
-                return JSArray.createEmptyZeroLength(context);
-            }
-
-            @TruffleBoundary
-            private static Object extractByteBuffer(Object target, DynamicObject arrayBuffer) {
-                int byteOffset = JSArrayBufferView.getByteOffset((DynamicObject) target, true, JSObject.getJSContext(arrayBuffer));
-                ByteBuffer buffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
-                Object byteBuffer = ((ByteBuffer) buffer.duplicate().position(byteOffset)).slice().order(ByteOrder.nativeOrder());
-                JSContext context = JSObject.getJSContext((DynamicObject) target);
-                return JSArray.createConstant(context, new Object[]{byteBuffer});
-            }
-        }
-
-        @Resolve(message = "com.oracle.truffle.js.parser.foreign.JSForeignAccessExtraMessages.GetJSONConvertedMessage")
-        abstract static class GetJSONConvertedMessageMR extends Node {
-
-            private static final String KEY = "toJSON";
-
-            @Child private ReadElementNode readNode;
-            @Child private JSFunctionCallNode callToJSONFunction;
-
-            public Object access(@SuppressWarnings("unused") VirtualFrame frame, DynamicObject target, @SuppressWarnings("unused") Object arg) {
-                if (JSDate.isJSDate(target)) {
-                    if (readNode == null) {
+                Object toJSON = readNode.executeWithTargetAndIndex(target, KEY);
+                if (JSFunction.isJSFunction(toJSON)) {
+                    if (callToJSONFunction == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        readNode = insert(ReadElementNode.create(JSObject.getJSContext(target)));
+                        callToJSONFunction = insert(JSFunctionCallNode.createCall());
                     }
-                    Object toJSON = readNode.executeWithTargetAndIndex(target, KEY);
-                    if (JSFunction.isJSFunction(toJSON)) {
-                        if (callToJSONFunction == null) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            callToJSONFunction = insert(JSFunctionCallNode.createCall());
-                        }
-                        return callToJSONFunction.executeCall(JSArguments.createZeroArg(target, toJSON));
-                    }
+                    return callToJSONFunction.executeCall(JSArguments.createZeroArg(target, toJSON));
                 }
-                return false;
             }
+            return false;
         }
+    }
 
-        @CanResolve
-        public abstract static class CanResolveNode extends Node {
+    @CanResolve
+    public abstract static class CanResolveNode extends Node {
 
-            @Child private IsJSObjectNode isJSObjectNode = IsJSObjectNode.create();
+        @Child private IsJSObjectNode isJSObjectNode = IsJSObjectNode.create();
 
-            protected boolean test(TruffleObject receiver) {
-                return isJSObjectNode.executeBoolean(receiver);
-            }
+        protected boolean test(TruffleObject receiver) {
+            return isJSObjectNode.executeBoolean(receiver);
         }
     }
 }

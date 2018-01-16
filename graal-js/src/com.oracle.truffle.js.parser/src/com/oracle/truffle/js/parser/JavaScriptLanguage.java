@@ -52,7 +52,7 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.unary.FlattenNode;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
-import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryMRForeign;
+import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -427,7 +427,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(env.getOptions())).toZoneId());
         }
 
-        context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryMRForeign.ACCESS, new TruffleGlobalScopeImpl(env)));
+        context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, new TruffleGlobalScopeImpl(env)));
         context.activateAllocationReporter();
         return context;
     }
