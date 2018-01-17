@@ -40,7 +40,7 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
         return new InteropBoundFunction(function, thiz);
     }
 
-    @Specialization(guards = {"isJSFunction(function)", "!isUndefined(thiz)", "isBoundJSFunction(function)"})
+    @Specialization(guards = {"isJSFunction(function)", "isBoundJSFunction(function)"})
     protected static TruffleObject doBoundFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
         return function;
     }

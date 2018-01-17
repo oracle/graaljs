@@ -4,47 +4,58 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
-public class JSInteropInvokeNode extends JavaScriptBaseNode {
-    private final JSContext context;
+public abstract class JSInteropInvokeNode extends JavaScriptBaseNode {
+    final JSContext context;
+    @Child private JSFunctionCallNode callNode;
 
-    @CompilationFinal private String cachedName;
-
-    @Child private JSFunctionCallNode call;
-    @Child private PropertyGetNode functionPropertyGetNode;
-
-    public JSInteropInvokeNode(JSContext context) {
+    JSInteropInvokeNode(JSContext context) {
         this.context = context;
+        this.callNode = JSFunctionCallNode.createCall();
     }
 
-    public Object execute(DynamicObject receiver, String name, Object[] arguments) {
-        if (call == null || cachedName == null || functionPropertyGetNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            cachedName = name;
-            functionPropertyGetNode = insert(PropertyGetNode.create(cachedName, false, context));
-            call = insert(JSFunctionCallNode.createCall());
-        }
+    public static JSInteropInvokeNode create(JSContext context) {
+        return JSInteropInvokeNodeGen.create(context);
+    }
 
-        if (cachedName.equals(name)) {
-            Object function = functionPropertyGetNode.getValue(receiver);
-            if (JSFunction.isJSFunction(function)) {
-                return call.executeCall(JSArguments.create(receiver, function, arguments));
-            } else {
-                throw UnknownIdentifierException.raise(cachedName);
-            }
+    public abstract Object execute(DynamicObject receiver, String name, Object[] arguments);
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"cachedName.equals(name)"}, limit = "1")
+    Object doCached(DynamicObject receiver, String name, Object[] arguments,
+                    @Cached("name") String cachedName,
+                    @Cached("createGetProperty(cachedName)") PropertyGetNode functionPropertyGetNode) {
+        Object function = functionPropertyGetNode.getValue(receiver);
+        if (JSFunction.isJSFunction(function)) {
+            return callNode.executeCall(JSArguments.create(receiver, function, arguments));
         } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Name changed");
+            throw UnknownIdentifierException.raise(cachedName);
         }
+    }
+
+    @Specialization(replaces = "doCached")
+    Object doUncached(DynamicObject receiver, String name, Object[] arguments,
+                    @Cached("create(context)") ReadElementNode readNode) {
+        Object function = readNode.executeWithTargetAndIndex(receiver, name);
+        if (JSFunction.isJSFunction(function)) {
+            return callNode.executeCall(JSArguments.create(receiver, function, arguments));
+        } else {
+            throw UnknownIdentifierException.raise(name);
+        }
+    }
+
+    PropertyGetNode createGetProperty(String name) {
+        return PropertyGetNode.create(name, false, context);
     }
 }

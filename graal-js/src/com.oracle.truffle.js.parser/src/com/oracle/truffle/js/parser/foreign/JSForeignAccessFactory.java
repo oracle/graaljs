@@ -119,12 +119,12 @@ public class JSForeignAccessFactory {
         public Object access(DynamicObject target, String id, Object[] args) {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                callNode = insert(new JSInteropInvokeNode(JSObject.getJSContext(target)));
+                callNode = insert(JSInteropInvokeNode.create(JSObject.getJSContext(target)));
             }
             JSContext context = JSObject.getJSContext(target);
             context.interopBoundaryEnter();
             try {
-                return export.executeWithTarget(callNode.execute(target, id, args), target);
+                return export.executeWithTarget(callNode.execute(target, id, args), Undefined.instance);
             } finally {
                 context.interopBoundaryExit();
             }
@@ -153,13 +153,14 @@ public class JSForeignAccessFactory {
 
         @Child private ReadElementNode readNode;
         @Child private ExportValueNode export = ExportValueNode.create();
+        @Child private JSForeignToJSTypeNode castKey = JSForeignToJSTypeNode.create();
 
         public Object access(DynamicObject target, Object key) {
             if (readNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 readNode = insert(ReadElementNode.create(JSObject.getJSContext(target)));
             }
-            return export.executeWithTarget(readNode.executeWithTargetAndIndex(target, key), target);
+            return export.executeWithTarget(readNode.executeWithTargetAndIndex(target, castKey.executeWithTarget(key)), target);
         }
 
     }
