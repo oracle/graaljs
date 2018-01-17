@@ -7,8 +7,12 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
+import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.LiteralTag;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.RegexCompiler;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
@@ -19,6 +23,21 @@ public class RegExpLiteralNode extends JavaScriptNode {
     private final String flags;
 
     @CompilationFinal private TruffleObject regex;
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == JSSpecificTags.LiteralTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
+        descriptor.addProperty("type", LiteralTag.Type.RegExpLiteral.name());
+        return descriptor;
+    }
 
     RegExpLiteralNode(JSContext context, String pattern, String flags) {
         this.context = context;

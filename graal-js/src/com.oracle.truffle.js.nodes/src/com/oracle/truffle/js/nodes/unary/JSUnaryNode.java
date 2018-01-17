@@ -8,9 +8,12 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 
+@GenerateWrapper
 @NodeChild(value = "operand")
 public abstract class JSUnaryNode extends JavaScriptNode {
 
@@ -30,5 +33,10 @@ public abstract class JSUnaryNode extends JavaScriptNode {
             }
         }
         return null;
+    }
+
+    @Override
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new JSUnaryNodeWrapper(this, probe);
     }
 }

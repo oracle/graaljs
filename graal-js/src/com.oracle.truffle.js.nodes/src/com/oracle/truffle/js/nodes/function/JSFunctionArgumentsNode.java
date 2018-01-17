@@ -95,6 +95,14 @@ class JSFunctionOneArgumentNode extends AbstractFunctionArgumentsNode {
         }
     }
 
+    public static AbstractFunctionArgumentsNode create(JavaScriptNode child, boolean optimizeConstantArguments) {
+        if (optimizeConstantArguments) {
+            return create(child);
+        } else {
+            return new JSFunctionOneArgumentNode(child);
+        }
+    }
+
     @Override
     public int getCount(VirtualFrame frame) {
         return 1;
@@ -127,13 +135,17 @@ class JSFunctionOneConstantArgumentNode extends AbstractFunctionArgumentsNode {
 
     @Override
     public Object[] executeFillObjectArray(VirtualFrame frame, Object[] arguments, int delta) {
-        arguments[delta] = value;
+        arguments[delta] = getValue();
         return arguments;
     }
 
     @Override
     protected AbstractFunctionArgumentsNode copyUninitialized() {
-        return new JSFunctionOneConstantArgumentNode(value);
+        return new JSFunctionOneConstantArgumentNode(getValue());
+    }
+
+    public Object getValue() {
+        return value;
     }
 }
 

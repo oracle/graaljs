@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 import com.oracle.truffle.api.CallTarget;
@@ -21,6 +22,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -40,8 +43,13 @@ import com.oracle.truffle.js.nodes.access.JSProxyCallNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
+import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.FunctionCallTag;
 import com.oracle.truffle.js.nodes.unary.FlattenNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
@@ -126,6 +134,30 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         return (flags & NEW) != 0;
     }
 
+    public static final boolean isNew(JSFunctionCallNode node) {
+        return isNew(node.flags);
+    }
+
+    public static final boolean isInvoke(JSFunctionCallNode node) {
+        return node instanceof InvokeNode;
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == JSSpecificTags.FunctionCallTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
+        descriptor.addProperty("isNew", isNew(this));
+        descriptor.addProperty("isInvoke", isInvoke(this));
+        return descriptor;
+    }
+
     /**
      * @param arguments function, this, ...rest
      */
@@ -139,6 +171,19 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             cacheNode = insert(createUninitializedCache());
         }
         return cacheNode.executeCall(arguments);
+    }
+
+    protected AbstractFunctionArgumentsNode materializeArgumentsNode(AbstractFunctionArgumentsNode argumentsNode) {
+        AbstractFunctionArgumentsNode materializedArgumentsNode;
+        if (argumentsNode instanceof JSFunctionOneConstantArgumentNode) {
+            Object val = ((JSFunctionOneConstantArgumentNode) argumentsNode).getValue();
+            JSConstantNode constantNode = JSConstantNode.create(val);
+            constantNode.setSourceSection(getSourceSection());
+            materializedArgumentsNode = JSFunctionOneArgumentNode.create(constantNode, false);
+        } else {
+            materializedArgumentsNode = argumentsNode;
+        }
+        return materializedArgumentsNode;
     }
 
     static class CallNode extends JSFunctionCallNode {
@@ -177,6 +222,25 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             Object function = functionNode.execute(frame);
             // Note that the arguments must not be evaluated before the target.
             return executeCall(createArguments(frame, receiver, function));
+        }
+
+        @Override
+        public InstrumentableNode materializeSyntaxNodes(Set<Class<? extends Tag>> materializedTags) {
+            if (materializedTags.contains(FunctionCallTag.class)) {
+                if (targetNode != null) {
+                    // if we have a target, no de-sugaring needed
+                    return this;
+                } else {
+                    JavaScriptNode materializedTargetNode = JSConstantUndefinedNode.createUndefined();
+                    AbstractFunctionArgumentsNode materializedArgumentsNode = materializeArgumentsNode(argumentsNode);
+                    JavaScriptNode call = CallNode.create(functionNode, materializedTargetNode, materializedArgumentsNode, isNew(flags), isNewTarget(flags));
+                    call.setSourceSection(getSourceSection());
+                    materializedTargetNode.setSourceSection(getSourceSection());
+                    return call;
+                }
+            } else {
+                return this;
+            }
         }
 
         final Object executeTarget(VirtualFrame frame) {
@@ -242,7 +306,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             return executeCall(createArguments(frame, receiver, function));
         }
 
-        final Object executeTarget(VirtualFrame frame) {
+        protected Object executeTarget(VirtualFrame frame) {
             return functionTargetNode.evaluateTarget(frame);
         }
 
@@ -269,6 +333,43 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         public String expressionToString() {
             return Objects.toString(functionTargetNode.expressionToString(), INTERMEDIATE_VALUE) + "(...)";
         }
+
+        @Override
+        public InstrumentableNode materializeSyntaxNodes(Set<Class<? extends Tag>> materializedTags) {
+            if (materializedTags.contains(FunctionCallTag.class)) {
+                AbstractFunctionArgumentsNode materializedArgumentsNode = materializeArgumentsNode(argumentsNode);
+                JavaScriptNode call = new MaterializedInvokeNode(functionTargetNode, materializedArgumentsNode, flags);
+                call.setSourceSection(getSourceSection());
+                return call;
+            } else {
+                return this;
+            }
+        }
+    }
+
+    /**
+     * Materialized version of {@link InvokeNode}. Used by the instrumentation framework when invoke
+     * calls are instrumented.
+     */
+    static final class MaterializedInvokeNode extends InvokeNode {
+
+        @Child protected JavaScriptNode target;
+
+        protected MaterializedInvokeNode(JSTargetableNode functionTargetNode, AbstractFunctionArgumentsNode argumentsNode, byte flags) {
+            super(functionTargetNode, argumentsNode, flags);
+            this.target = cloneUninitialized(functionTargetNode.getTarget());
+        }
+
+        @Override
+        protected Object executeTarget(VirtualFrame frame) {
+            return target.execute(frame);
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized() {
+            return new InvokeNode(cloneUninitialized(functionTargetNode), AbstractFunctionArgumentsNode.cloneUninitialized(argumentsNode), flags);
+        }
+
     }
 
     static class ExecuteCallNode extends JSFunctionCallNode {
@@ -341,7 +442,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         return null;
     }
 
-    abstract static class JSDirectCallNode extends JavaScriptBaseNode {
+    public abstract static class JSDirectCallNode extends JavaScriptBaseNode {
         protected JSDirectCallNode() {
         }
 

@@ -9,13 +9,31 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
+import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
 public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements WriteNode {
     protected JSWriteFrameSlotNode(FrameSlot frameSlot) {
         super(frameSlot);
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == JSSpecificTags.VariableWriteTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
+        descriptor.addProperty("name", getIdentifier());
+        return descriptor;
     }
 
     @Override

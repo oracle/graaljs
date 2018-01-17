@@ -26,16 +26,16 @@ public final class JSNodeUtil {
     static String formatTags(JavaScriptNode node) {
         CompilerAsserts.neverPartOfCompilation();
         StringBuilder sb = new StringBuilder(4);
-        if (node.isTaggedWith(StandardTags.StatementTag.class)) {
+        if (node.hasTag(StandardTags.StatementTag.class)) {
             sb.append('S');
         }
-        if (node.isTaggedWith(StandardTags.CallTag.class)) {
+        if (node.hasTag(StandardTags.CallTag.class)) {
             sb.append('C');
         }
-        if (node.isTaggedWith(StandardTags.RootTag.class)) {
+        if (node.hasTag(StandardTags.RootTag.class)) {
             sb.append('R');
         }
-        if (node.isTaggedWith(DebuggerTags.AlwaysHalt.class)) {
+        if (node.hasTag(DebuggerTags.AlwaysHalt.class)) {
             sb.append('H');
         }
         return sb.toString();

@@ -13,6 +13,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -26,6 +27,10 @@ import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.function.JSNewNodeGen.CachedPrototypeShapeNodeGen;
 import com.oracle.truffle.js.nodes.function.JSNewNodeGen.SpecializedNewObjectNodeGen;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.FunctionCallTag;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.ObjectAllocationTag;
+import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -62,6 +67,24 @@ public abstract class JSNewNode extends JavaScriptNode {
     protected JSNewNode(AbstractFunctionArgumentsNode arguments, JSFunctionCallNode callNew) {
         this.callNew = callNew;
         this.arguments = arguments;
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == ObjectAllocationTag.class) {
+            return true;
+        } else if (tag == FunctionCallTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
+        descriptor.addProperty("isNew", true);
+        descriptor.addProperty("isInvoke", false);
+        return descriptor;
     }
 
     public static JSNewNode create(JavaScriptNode function, AbstractFunctionArgumentsNode arguments) {

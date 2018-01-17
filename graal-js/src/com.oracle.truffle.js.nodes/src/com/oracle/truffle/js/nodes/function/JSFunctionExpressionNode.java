@@ -6,7 +6,11 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
+import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.LiteralTag;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -36,6 +40,21 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
 
     public static JSFunctionExpressionNode createEmpty(JSContext context, int length, String sourceName) {
         return new AutonomousFunctionExpressionNode(JSFunctionData.create(context, context.getEmptyFunctionCallTarget(), length, sourceName), null);
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == LiteralTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
+        descriptor.addProperty("type", LiteralTag.Type.FunctionLiteral.name());
+        return descriptor;
     }
 
     public JSFunctionData getFunctionData() {

@@ -270,6 +270,20 @@ suite = {
       "workingSets" : "Truffle,JavaScript",
     },
 
+    "com.oracle.truffle.js.jalangilike" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.js.shell",
+        "mx:JUNIT",        
+        "graaljs",
+      ],
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.js.runtime",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,JavaScript",
+    },    
+
     "com.oracle.truffle.js.scriptengine" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -351,7 +365,7 @@ suite = {
 
     "GRAALJS_LAUNCHER" : {
       "subDir" : "src",
-      "dependencies" : ["com.oracle.truffle.js.shell"],
+      "dependencies" : ["com.oracle.truffle.js.shell", "com.oracle.truffle.js.jalangilike"],
       "mainClass" : "com.oracle.truffle.js.shell.JSLauncher",
       "distDependencies" : ["sdk:LAUNCHER_COMMON"],
       "description" : "Graal JavaScript Launcher",

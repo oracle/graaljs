@@ -9,6 +9,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -17,6 +18,10 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
+import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.BinaryOperationTag;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -52,6 +57,22 @@ public abstract class TypeOfNode extends JSUnaryNode {
     }
 
     public abstract String executeString(Object operand);
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == UnaryOperationTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
+        NodeInfo annotation = getClass().getAnnotation(NodeInfo.class);
+        descriptor.addProperty("operator", annotation.shortName());
+        return descriptor;
+    }
 
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {

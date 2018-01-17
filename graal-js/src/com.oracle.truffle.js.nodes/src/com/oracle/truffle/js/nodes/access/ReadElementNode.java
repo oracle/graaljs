@@ -13,6 +13,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -35,6 +37,7 @@ import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNodeGen;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.ElementReadTag;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -72,7 +75,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
-public class ReadElementNode extends JSTargetableNode implements ReadNode {
+public class ReadElementNode extends JSTargetableNode implements ReadNode, InstrumentableNode {
     @Child protected JavaScriptNode targetNode;
     @Child protected JavaScriptNode indexNode;
     @Child protected ReadElementTypeCacheNode typeCacheNode;
@@ -1481,4 +1484,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
         return null;
     }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == ElementReadTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
 }

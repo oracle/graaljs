@@ -7,9 +7,11 @@ package com.oracle.truffle.js.nodes;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
-import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -18,11 +20,12 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
-@Instrumentable(factory = JavaScriptNodeWrapper.class)
-public abstract class JavaScriptNode extends JavaScriptBaseNode {
+@GenerateWrapper
+public abstract class JavaScriptNode extends JavaScriptBaseNode implements InstrumentableNode {
     /** Source or SourceSection. */
     private Object source;
     private int charIndex;
@@ -34,7 +37,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode {
 
     private static final int ROOT_TAG_BIT = 1 << 31;
     private static final int ALWAYS_HALT_TAG_BIT = 1 << 30;
-    private static final int CHAR_INDEX_MASK = ~(ROOT_TAG_BIT | ALWAYS_HALT_TAG_BIT);
+    private static final int CONDITION_EXPRESSION_TAG_BIT = 1 << 29;
+    private static final int CHAR_INDEX_MASK = ~(ROOT_TAG_BIT | ALWAYS_HALT_TAG_BIT | CONDITION_EXPRESSION_TAG_BIT);
 
     protected static final String INTERMEDIATE_VALUE = "(intermediate value)";
 
@@ -43,6 +47,16 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode {
 
     protected JavaScriptNode(SourceSection sourceSection) {
         setSourceSection(sourceSection);
+    }
+
+    @Override
+    public boolean isInstrumentable() {
+        return hasSourceSection();
+    }
+
+    @Override
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new JavaScriptNodeWrapper(this, probe);
     }
 
     /**
@@ -268,7 +282,7 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode {
     }
 
     @Override
-    public boolean isTaggedWith(Class<?> tag) {
+    public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == StandardTags.StatementTag.class) {
             return (charLength & STATEMENT_TAG_BIT) != 0;
         } else if (tag == StandardTags.CallTag.class) {
@@ -277,9 +291,19 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode {
             return (charIndex & ROOT_TAG_BIT) != 0;
         } else if (tag == DebuggerTags.AlwaysHalt.class) {
             return (charIndex & ALWAYS_HALT_TAG_BIT) != 0;
+        } else if (tag == JSSpecificTags.ConditionalExpressionTag.class) {
+            return (charIndex & CONDITION_EXPRESSION_TAG_BIT) != 0;
+        } else if (tag == StandardTags.ExpressionTag.class) {
+            // TODO(db) double-check this
+            return true;
         } else {
             return false;
         }
+    }
+
+    @Override
+    public boolean isTaggedWith(Class<?> tag) {
+        throw new AssertionError("This is deprecated");
     }
 
     public final void addStatementTag() {
@@ -296,6 +320,10 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode {
 
     public final void addAlwaysHaltTag() {
         charIndex |= ALWAYS_HALT_TAG_BIT;
+    }
+
+    public final void addConditionExpressionTag() {
+        charIndex |= CONDITION_EXPRESSION_TAG_BIT;
     }
 
     protected JavaScriptNode copyUninitialized() {
@@ -335,4 +363,5 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode {
     public String expressionToString() {
         return null;
     }
+
 }

@@ -4,12 +4,18 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
+import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
@@ -35,8 +41,31 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
                 return new GlobalConstantNode(ctx, propertyName, new GlobalConstantNode.DirNameNode());
             }
         }
-
         return new GlobalPropertyNode(ctx, propertyName);
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == JSSpecificTags.PropertyReadTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
+        descriptor.addProperty("key", getPropertyKey());
+        return descriptor;
+    }
+
+    @Override
+    public InstrumentableNode materializeSyntaxNodes(Set<Class<? extends Tag>> materializedTags) {
+        GlobalObjectNode globalObject = GlobalObjectNode.create(context);
+        PropertyNode propertyNode = PropertyNode.createProperty(context, globalObject, getPropertyKey());
+        propertyNode.setSourceSection(getSourceSection());
+        globalObject.setSourceSection(getSourceSection());
+        return propertyNode;
     }
 
     @Override

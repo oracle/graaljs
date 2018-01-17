@@ -6,11 +6,13 @@ package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -33,6 +35,14 @@ public final class IfNode extends StatementNode implements ResumableNode {
             return new IfNode(operand, elsePart, thenPart);
         }
         return new IfNode(condition, thenPart, elsePart);
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == JSSpecificTags.ConditionalExpressionTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
     }
 
     private IfNode(JavaScriptNode condition, JavaScriptNode thenPart, JavaScriptNode elsePart) {

@@ -51,6 +51,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -1967,7 +1968,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode enterUnaryDefaultNode(UnaryNode unaryNode) {
         assert unaryNode.tokenType() != TokenType.TYPEOF;
         JavaScriptNode operand = transform(unaryNode.getExpression());
-        return result(factory.createUnary(tokenTypeToUnaryOperation(unaryNode.tokenType()), operand));
+        return inheritSourceSectionFrom(result(factory.createUnary(tokenTypeToUnaryOperation(unaryNode.tokenType()), operand)), unaryNode);
     }
 
     private JavaScriptNode enterTypeofNode(UnaryNode unaryNode) {
@@ -1987,7 +1988,24 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             operand = transform(unaryNode.getExpression());
         }
 
-        return result(factory.createUnary(tokenTypeToUnaryOperation(unaryNode.tokenType()), operand));
+        return inheritSourceSectionFrom(result(factory.createUnary(tokenTypeToUnaryOperation(unaryNode.tokenType()), operand)), unaryNode);
+    }
+
+    private JavaScriptNode inheritSourceSectionFrom(JavaScriptNode node, UnaryNode unaryNode) {
+        node.accept(new NodeVisitor() {
+
+            @Override
+            public boolean visit(Node n) {
+                if (n instanceof JavaScriptNode && !((JavaScriptNode) n).hasSourceSection()) {
+                    assignSourceSection((JavaScriptNode) n, unaryNode);
+                }
+                return true;
+            }
+        });
+        if (!node.hasSourceSection()) {
+            assignSourceSection(node, unaryNode);
+        }
+        return node;
     }
 
     private JavaScriptNode enterUnaryIncDecNode(UnaryNode unaryNode) {
@@ -1999,11 +2017,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 // we know this is going to throw. do the read and throw TypeError.
                 return checkMutableBinding(operand, frameSlot);
             }
-            return result(createUnaryIncDecLocalNode(unaryNode, operand));
+            return inheritSourceSectionFrom(result(createUnaryIncDecLocalNode(unaryNode, operand)), unaryNode);
         } else {
             BinaryOperation operation = unaryNode.tokenType() == TokenType.INCPREFIX || unaryNode.tokenType() == TokenType.INCPOSTFIX ? BinaryOperation.ADD : BinaryOperation.SUBTRACT;
             boolean isPostfix = unaryNode.tokenType() == TokenType.INCPOSTFIX || unaryNode.tokenType() == TokenType.DECPOSTFIX;
-            return result(transformAssignment(unaryNode.getExpression(), factory.createConstantInteger(1), operation, isPostfix, true, false));
+            return inheritSourceSectionFrom(result(transformAssignment(unaryNode.getExpression(), factory.createConstantInteger(1), operation, isPostfix, true, false)), unaryNode);
         }
     }
 

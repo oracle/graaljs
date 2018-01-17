@@ -8,9 +8,13 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
+import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.PropertyReadTag;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public class PropertyNode extends JSTargetableNode implements ReadNode {
@@ -18,13 +22,29 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
     @Child private JavaScriptNode target;
     @Child private PropertyGetNode cache;
 
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == PropertyReadTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
+        descriptor.addProperty("key", getPropertyKey());
+        return descriptor;
+    }
+
     protected PropertyNode(JSContext context, JavaScriptNode target, Object propertyKey) {
         this.target = target;
         this.cache = PropertyGetNode.create(propertyKey, false, context);
     }
 
     public static PropertyNode createProperty(JSContext ctx, JavaScriptNode target, Object propertyKey) {
-        return new PropertyNode(ctx, target, propertyKey);
+        PropertyNode node = new PropertyNode(ctx, target, propertyKey);
+        return node;
     }
 
     public static PropertyNode createMethod(JSContext ctx, JavaScriptNode target, Object propertyKey) {

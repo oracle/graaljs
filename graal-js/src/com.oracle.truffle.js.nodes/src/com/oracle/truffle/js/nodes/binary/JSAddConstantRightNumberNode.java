@@ -7,17 +7,26 @@ package com.oracle.truffle.js.nodes.binary;
 import static com.oracle.truffle.js.nodes.JSGuards.isString;
 
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
+import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantDoubleNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.BinaryOperationTag;
+import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
@@ -41,9 +50,38 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
         }
     }
 
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == BinaryOperationTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
+        NodeInfo annotation = getClass().getAnnotation(NodeInfo.class);
+        descriptor.addProperty("operator", annotation.shortName());
+        return descriptor;
+    }
+
+    @Override
+    public InstrumentableNode materializeSyntaxNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(BinaryOperationTag.class)) {
+            JSConstantNode constantNode = isInt ? JSConstantIntegerNode.create(rightInt) : JSConstantDoubleNode.create(rightDouble);
+            JavaScriptNode node = JSAddNodeGen.create(truncate, getOperand(), constantNode);
+            node.setSourceSection(getSourceSection());
+            constantNode.setSourceSection(getSourceSection());
+            return node;
+        } else {
+            return this;
+        }
+    }
+
     public abstract Object execute(Object a);
 
-    protected Number getRightValue() {
+    public Number getRightValue() {
         return isInt ? rightInt : rightDouble;
     }
 

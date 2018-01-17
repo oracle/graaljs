@@ -4,12 +4,19 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
+import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.PropertyWriteTag;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public class WritePropertyNode extends JSTargetableNode implements WriteNode {
@@ -38,6 +45,38 @@ public class WritePropertyNode extends JSTargetableNode implements WriteNode {
     }
 
     @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == JSSpecificTags.PropertyWriteTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
+        descriptor.addProperty("key", getKey());
+        return descriptor;
+    }
+
+    @Override
+    public InstrumentableNode materializeSyntaxNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(PropertyWriteTag.class)) {
+            // if we have no source section, we must assign one to be discoverable at
+            // instrumentation time.
+            if (targetNode.getSourceSection() == null) {
+                JavaScriptNode clonedTarget = (JavaScriptNode) targetNode.materializeSyntaxNodes(materializedTags);
+                JavaScriptNode clonedRhs = (JavaScriptNode) rhsNode.materializeSyntaxNodes(materializedTags);
+                WritePropertyNode cloneUninitialized = WritePropertyNode.create(clonedTarget, cache.getKey(), clonedRhs, cache.getContext(), cache.isStrict());
+                cloneUninitialized.setSourceSection(getSourceSection());
+                cloneUninitialized.targetNode.setSourceSection(getSourceSection());
+                return cloneUninitialized;
+            }
+        }
+        return this;
+    }
+
+    @Override
     public final JavaScriptNode getTarget() {
         return targetNode;
     }
@@ -45,6 +84,14 @@ public class WritePropertyNode extends JSTargetableNode implements WriteNode {
     @Override
     public final JavaScriptNode getRhs() {
         return rhsNode;
+    }
+
+    public final Object getKey() {
+        return cache.getKey();
+    }
+
+    public final boolean isGlobal() {
+        return cache.isGlobal();
     }
 
     public final Object executeWithValue(Object obj, Object value) {

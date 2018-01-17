@@ -5,13 +5,13 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
-import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 
-@Instrumentable(factory = JSTargetableNodeWrapper.class)
+@GenerateWrapper
 public abstract class JSTargetableNode extends JavaScriptNode {
 
     public abstract Object executeWithTarget(VirtualFrame frame, Object target);
@@ -46,5 +46,10 @@ public abstract class JSTargetableNode extends JavaScriptNode {
             return ((JSTargetableNode) ((WrapperNode) this).getDelegateNode()).getTarget();
         }
         throw Errors.notYetImplemented();
+    }
+
+    @Override
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new JSTargetableNodeWrapper(this, probe);
     }
 }

@@ -48,6 +48,21 @@ import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.BinaryOperationTag;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.BuiltinRootTag;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.ConditionalExpressionTag;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.ElementReadTag;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.ElementWriteTag;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.EvalCallTag;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.FunctionCallTag;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.LiteralTag;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.ObjectAllocationTag;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.PropertyReadTag;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.PropertyWriteTag;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.UnaryOperationTag;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.VariableReadTag;
+import com.oracle.truffle.js.nodes.tags.JSSpecificTags.VariableWriteTag;
+import com.oracle.truffle.js.nodes.unary.FlattenNode;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.foreign.InteropBoundFunctionMRForeign;
@@ -77,7 +92,27 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 
-@ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, DebuggerTags.AlwaysHalt.class, StandardTags.RootTag.class})
+@ProvidedTags({StandardTags.CallTag.class,
+                StandardTags.StatementTag.class,
+                DebuggerTags.AlwaysHalt.class,
+                StandardTags.RootTag.class,
+                StandardTags.ExpressionTag.class,
+                // JSSpecificTags
+                ObjectAllocationTag.class,
+                BinaryOperationTag.class,
+                UnaryOperationTag.class,
+                ConditionalExpressionTag.class,
+                VariableWriteTag.class,
+                ElementReadTag.class,
+                ElementWriteTag.class,
+                PropertyReadTag.class,
+                PropertyWriteTag.class,
+                VariableReadTag.class,
+                LiteralTag.class,
+                FunctionCallTag.class,
+                BuiltinRootTag.class,
+                EvalCallTag.class
+})
 @TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, mimeType = {
                 JavaScriptLanguage.TEXT_MIME_TYPE, JavaScriptLanguage.APPLICATION_MIME_TYPE})
 public class JavaScriptLanguage extends AbstractJavaScriptLanguage {

@@ -38,6 +38,11 @@ public abstract class AbstractBlockNode extends StatementNode implements Sequenc
         }
     }
 
+    @Override
+    public boolean isInstrumentable() {
+        return false;
+    }
+
     /**
      * Filter out empty statements, unwrap void nodes, and inline block nodes.
      *
