@@ -17,6 +17,13 @@ suite = {
     ],
   },
 
+  "repositories" : {
+    "graaljs-binary-snapshots" : {
+      "url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
+      "licenses" : ["Oracle Proprietary"]
+    },
+  },
+
   "licenses" : {
     "Oracle Proprietary" : {
       "name" : "ORACLE PROPRIETARY/CONFIDENTIAL",

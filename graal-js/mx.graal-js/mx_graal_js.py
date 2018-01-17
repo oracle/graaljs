@@ -233,7 +233,20 @@ def unpackIcuData(args):
             shutil.rmtree(join(icu4jDataDir, "com"))
             mx.log('Use the following parameters when invoking svm version of js to make ICU4J localization data available for the runtime:\n-Dpolyglot.js.intl-402=true -Dcom.ibm.icu.impl.ICUBinary.dataPath=%s' % icu4jDataPath)
 
+def deploy_binary_if_master(args):
+    """If the active branch is 'master', deploy binaries for the primary suite to remote maven repository."""
+    primary_branch = 'master'
+    _, vc_root = mx.VC.get_vc_root(_suite.dir)
+    active_branch = mx.VC.get_vc(vc_root).active_branch(_suite.dir)
+    deploy_binary = mx.command_function('deploy-binary')
+    if active_branch == primary_branch:
+        return deploy_binary(args)
+    else:
+        mx.warn('The active branch is "%s". Binaries are deployed only if the active branch is "%s".' % (active_branch, primary_branch))
+        return 0
+
 mx.update_commands(_suite, {
+    'deploy-binary-if-master' : [deploy_binary_if_master, ''],
     'js' : [js, '[JS args|VM options]'],
     'nashorn' : [nashorn, '[JS args|VM options]'],
     'unpackIcuData': [unpackIcuData, ''],
