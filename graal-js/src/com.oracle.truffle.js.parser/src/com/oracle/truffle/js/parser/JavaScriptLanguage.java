@@ -101,7 +101,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     public boolean isObjectOfLanguage(Object o) {
-        return JSObject.isJSObject(o) || o instanceof InteropBoundFunction;
+        return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof InteropBoundFunction;
     }
 
     private abstract class ContextRootNode extends RootNode {
