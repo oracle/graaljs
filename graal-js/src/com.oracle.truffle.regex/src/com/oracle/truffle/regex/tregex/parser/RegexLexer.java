@@ -10,8 +10,10 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 import com.oracle.truffle.regex.util.Constants;
+import java.math.BigInteger;
 
 import java.util.EnumSet;
+import java.util.regex.Pattern;
 
 public final class RegexLexer {
 
@@ -25,6 +27,7 @@ public final class RegexLexer {
     private Token lastToken;
     private int index = 0;
     private int nGroups = 1;
+    private boolean countedAllGroups = false;
 
     public RegexLexer(RegexSource source) {
         this.pattern = source.getPattern();
@@ -73,10 +76,6 @@ public final class RegexLexer {
         return pattern.regionMatches(index, match, 0, match.length());
     }
 
-    private boolean lookaheadFindChar(char c) {
-        return pattern.indexOf(c, index) >= 0;
-    }
-
     private boolean consumingLookahead(String match) {
         final boolean matches = lookahead(match);
         if (matches) {
@@ -87,6 +86,53 @@ public final class RegexLexer {
 
     private boolean atEnd() {
         return index >= pattern.length();
+    }
+
+    private int numberOfCaptureGroups() {
+        if (!countedAllGroups) {
+            countCaptureGroups();
+            countedAllGroups = true;
+        }
+        return nGroups;
+    }
+
+    private void registerCaptureGroup() {
+        if (!countedAllGroups) {
+            nGroups++;
+        }
+    }
+
+    private void countCaptureGroups() {
+        // We are counting capture groups, so we only care about '(' characters and special
+        // characters which can cancel the meaning of '(' - those include '\' for escapes, '[' for
+        // character classes (where '(' stands for a literal '(') and any characters after the '('
+        // which might turn into a non-capturing group or a look-around assertion.
+        boolean insideCharClass = false;
+        Pattern nonCapturingGroup = Pattern.compile("\\((?:\\?[:=!]|\\<[=!])");
+        int i = index;
+        while (i < pattern.length()) {
+            switch (pattern.charAt(i)) {
+                case '\\':
+                    // skip escaped char
+                    i++;
+                    break;
+                case '[':
+                    insideCharClass = true;
+                    break;
+                case ']':
+                    insideCharClass = false;
+                    break;
+                case '(':
+                    if (!insideCharClass && !nonCapturingGroup.matcher(pattern.substring(i)).matches()) {
+                        nGroups++;
+                    }
+                    break;
+                default:
+                    break;
+            }
+            // advance
+            i++;
+        }
     }
 
     private Token charClass(CodePointSet codePointSet) {
@@ -155,9 +201,11 @@ public final class RegexLexer {
         final char c = consumeChar();
         if ('1' <= c && c <= '9') {
             final int restoreIndex = index;
-            final int backRefNumber = parseDecimal(c - '0');
-            if (backRefNumber < nGroups || lookaheadFindChar('(')) {
-                return Token.createBackReference(backRefNumber);
+            final BigInteger backRefNumber = parseDecimal(BigInteger.valueOf(c - '0'));
+            if (backRefNumber.compareTo(BigInteger.valueOf(numberOfCaptureGroups())) < 0) {
+                return Token.createBackReference(backRefNumber.intValue());
+            } else if (flags.isUnicode()) {
+                throw syntaxError("missing capture group for back-reference");
             }
             index = restoreIndex;
         }
@@ -192,7 +240,7 @@ public final class RegexLexer {
         } else if (consumingLookahead("?:")) {
             return Token.create(Token.Kind.nonCaptureGroupBegin);
         } else {
-            nGroups++;
+            registerCaptureGroup();
             return Token.create(Token.Kind.captureGroupBegin);
         }
     }
@@ -205,7 +253,7 @@ public final class RegexLexer {
         boolean greedy;
         if (c == '{') {
             final int resetIndex = index;
-            min = parseDecimal();
+            min = parseDecimal().intValueExact();
             if (min < 0) {
                 return countedRepetitionSyntaxError(resetIndex);
             }
@@ -215,7 +263,7 @@ public final class RegexLexer {
                 max = min;
                 greedy = !consumingLookahead("?");
             } else {
-                if (!consumingLookahead(",") || (max = parseDecimal()) < 0 || !consumingLookahead("}")) {
+                if (!consumingLookahead(",") || (max = parseDecimal().intValueExact()) < 0 || !consumingLookahead("}")) {
                     return countedRepetitionSyntaxError(resetIndex);
                 }
                 greedy = !consumingLookahead("?");
@@ -482,18 +530,18 @@ public final class RegexLexer {
         return c;
     }
 
-    private int parseDecimal() {
+    private BigInteger parseDecimal() {
         if (atEnd() || !isDecimal(curChar())) {
-            return -1;
+            return BigInteger.valueOf(-1);
         }
-        return parseDecimal(0);
+        return parseDecimal(BigInteger.ZERO);
     }
 
-    private int parseDecimal(int firstDigit) {
-        int ret = firstDigit;
+    private BigInteger parseDecimal(BigInteger firstDigit) {
+        BigInteger ret = firstDigit;
         while (!atEnd() && isDecimal(curChar())) {
-            ret *= 10;
-            ret += consumeChar() - '0';
+            ret = ret.multiply(BigInteger.TEN);
+            ret = ret.add(BigInteger.valueOf(consumeChar() - '0'));
         }
         return ret;
     }
