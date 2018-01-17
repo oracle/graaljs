@@ -58,7 +58,8 @@ local common = import '../common.jsonnet';
       ['mx', 'build', '--force-javac'],
     ],
     run+: [
-      ['mx', 'deploy-binary-if-master', '--all-suites', '--skip-existing', 'graalnodejs-binary-snapshots'],
+      ['mx', '-p', '../graal-js', 'deploy-binary-if-master', '--skip-existing', 'graaljs-binary-snapshots'],
+      ['mx', 'deploy-binary-if-master', '--skip-existing', 'graalnodejs-binary-snapshots'],
     ],
     timelimit: '10:00',
   },
@@ -77,8 +78,5 @@ local common = import '../common.jsonnet';
     graalNodeJsCommon + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'parallel', PART: '-r2,5'}}    + common.gate + common.linux + {name: 'nodejs-gate-parallel-3-graal-tip-jdk8-linux-amd64'},
     graalNodeJsCommon + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'parallel', PART: '-r3,5'}}    + common.gate + common.linux + {name: 'nodejs-gate-parallel-4-graal-tip-jdk8-linux-amd64'},
     graalNodeJsCommon + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'parallel', PART: '-r4,5'}}    + common.gate + common.linux + {name: 'nodejs-gate-parallel-5-graal-tip-jdk8-linux-amd64'},
-
-    // post-merges
-    graalNodeJsCommon + common.jdk8 + deployBinary + common.deploy + common.postMerge + common.ol65 + {name: 'nodejs-deploybinary-ol65-amd64'},
   ],
 }

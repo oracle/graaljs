@@ -540,18 +540,6 @@ def svmnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     preparesvmenv()
     return mx.run([join(_suite.dir, 'node')] + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
-def deploy_binary_if_master(args):
-    """If the active branch is 'master', deploy binaries for the primary suite to remote maven repository."""
-    primary_branch = 'master'
-    _, vc_root = mx.VC.get_vc_root(_suite.dir)
-    active_branch = mx.VC.get_vc(vc_root).active_branch(_suite.dir)
-    deploy_binary = mx.command_function('deploy-binary')
-    if active_branch == primary_branch:
-        return deploy_binary(args)
-    else:
-        mx.warn('The active branch is "%s". Binaries are deployed only if the active branch is "%s".' % (active_branch, primary_branch))
-        return 0
-
 mx.update_commands(_suite, {
     'node' : [node, ''],
     'npm' : [npm, ''],
@@ -562,5 +550,4 @@ mx.update_commands(_suite, {
     'buildsvmimage' : [buildSvmImage, ''],
     'svmnode' : [svmnode, ''],
     'testsvmnode' : [testsvmnode, ''],
-    'deploy-binary-if-master' : [deploy_binary_if_master, ''],
 })
