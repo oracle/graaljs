@@ -52,7 +52,8 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.unary.FlattenNode;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
-import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryMRForeign;
+import com.oracle.truffle.js.parser.foreign.InteropBoundFunctionMRForeign;
+import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -65,7 +66,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.TruffleGlobalScopeImpl;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -75,6 +75,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 
 @ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, DebuggerTags.AlwaysHalt.class, StandardTags.RootTag.class})
@@ -100,7 +101,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     public boolean isObjectOfLanguage(Object o) {
-        return JSObject.isJSObject(o);
+        return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof InteropBoundFunction;
     }
 
     private abstract class ContextRootNode extends RootNode {
@@ -427,7 +428,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(env.getOptions())).toZoneId());
         }
 
-        context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryMRForeign.ACCESS, new TruffleGlobalScopeImpl(env)));
+        context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionMRForeign.ACCESS, env));
         context.activateAllocationReporter();
         return context;
     }
@@ -470,7 +471,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(newEnv.getOptions())).toZoneId());
         }
 
-        context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryMRForeign.ACCESS, new TruffleGlobalScopeImpl(newEnv)));
+        context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionMRForeign.ACCESS, newEnv));
         context.getRealm().setArguments(newEnv.getApplicationArguments());
 
         if (((GraalJSParserOptions) context.getParserOptions()).isScripting()) {
@@ -543,6 +544,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 return findMetaObject(context, JSInteropNodeUtil.unbox(truffleObject));
             } else if (JavaInterop.isJavaObject(Symbol.class, truffleObject)) {
                 return findMetaObject(context, JavaInterop.asJavaObject(truffleObject));
+            } else if (value instanceof InteropBoundFunction) {
+                return findMetaObject(context, ((InteropBoundFunction) value).getFunction());
             }
             type = "object";
             className = "Foreign";

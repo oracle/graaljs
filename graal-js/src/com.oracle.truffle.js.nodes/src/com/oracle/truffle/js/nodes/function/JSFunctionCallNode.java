@@ -37,7 +37,6 @@ import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSProxyCallNode;
-import com.oracle.truffle.js.nodes.access.JSProxyCallNodeGen;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
@@ -1179,7 +1178,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 if (proxyCall == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     JSContext context = JSShape.getJSContext(((DynamicObject) function).getShape());
-                    proxyCall = insert(JSProxyCallNodeGen.create(context, isNew, isNewTarget));
+                    proxyCall = insert(JSProxyCallNode.create(context, isNew, isNewTarget));
                 }
                 return proxyCall.execute(arguments);
             } else {

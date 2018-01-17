@@ -6,12 +6,14 @@ package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 
 /**
  * @see JSSymbol
  */
+@MessageResolution(receiverType = Symbol.class)
 public final class Symbol implements TruffleObject {
     // Predefined symbols, as per ES6 6.1.5.1 Well-Known Symbols (in alphabetical order)
     /**
@@ -110,8 +112,12 @@ public final class Symbol implements TruffleObject {
         return super.hashCode();
     }
 
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof Symbol;
+    }
+
     @Override
     public ForeignAccess getForeignAccess() {
-        return SymbolMessageResolutionForeign.ACCESS;
+        return SymbolForeign.ACCESS;
     }
 }
