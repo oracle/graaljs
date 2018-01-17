@@ -33,7 +33,6 @@ import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropCreateForeig
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropEvalNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropExecuteNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropExportNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropExportUnboundNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropGetSizeNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropHasKeysNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropHasSizePropertyNodeGen;
@@ -85,7 +84,6 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         getSize(1),
         // import and export
         export(2),
-        exportUnbound(2),
         import_(1),
         eval(2),
         parse(2),
@@ -150,8 +148,6 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
                 return InteropGetSizeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case export:
                 return InteropExportNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
-            case exportUnbound:
-                return InteropExportUnboundNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case import_:
                 return InteropImportNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case eval:
@@ -188,37 +184,6 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
             TruffleObject result = (TruffleObject) export.executeWithTarget(value, Undefined.instance);
             getContext().getInteropRuntime().getMultilanguageGlobal().exportTruffleObject(identifier, result);
             return result;
-        }
-
-        @Specialization(guards = "!isTruffleObject(value)")
-        @TruffleBoundary
-        protected TruffleObject execute(@SuppressWarnings("unused") String identifier, Object value) {
-            throw Errors.createTypeError("Cannot export " + value);
-        }
-
-        @Specialization(guards = "!isJavaLangString(identifier)")
-        @TruffleBoundary
-        protected TruffleObject execute(Object identifier, @SuppressWarnings("unused") TruffleObject value) {
-            throw Errors.createTypeError("Invalid identifier " + identifier);
-        }
-
-        @Specialization(guards = {"!isTruffleObject(value)", "!isJavaLangString(identifier)"})
-        @TruffleBoundary
-        protected TruffleObject execute(Object identifier, Object value) {
-            throw Errors.createTypeError("Invalid identifier " + identifier + " and value " + value);
-        }
-
-    }
-
-    abstract static class InteropExportUnboundNode extends JSBuiltinNode {
-        InteropExportUnboundNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected TruffleObject execute(String identifier, TruffleObject value) {
-            getContext().getInteropRuntime().getMultilanguageGlobal().exportTruffleObject(identifier, value);
-            return value;
         }
 
         @Specialization(guards = "!isTruffleObject(value)")
