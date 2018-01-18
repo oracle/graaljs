@@ -405,13 +405,11 @@ final class ArrayCompiler extends Compiler {
         final int tlen = compileLengthTreeWithMemoryClear(qn.target);
 
         /* anychar repeat */
-        if (qn.target.getType() == NodeType.CANY) {
-            if (qn.greedy && infinite) {
-                if (qn.nextHeadExact != null) {
-                    return OPSize.ANYCHAR_STAR_PEEK_NEXT + tlen * qn.lower;
-                }
-                return OPSize.ANYCHAR_STAR + tlen * qn.lower;
+        if (qn.isAnyCharStar() && tlen * (long)qn.lower <= QUANTIFIER_EXPAND_LIMIT_SIZE) {
+            if (qn.nextHeadExact != null) {
+                return OPSize.ANYCHAR_STAR_PEEK_NEXT + tlen * qn.lower;
             }
+            return OPSize.ANYCHAR_STAR + tlen * qn.lower;
         }
 
         int modTLen = 0;
@@ -422,7 +420,7 @@ final class ArrayCompiler extends Compiler {
         }
 
         int len;
-        if (infinite && (qn.lower <= 1 || tlen * qn.lower <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
+        if (infinite && (qn.lower <= 1 || tlen * (long)qn.lower <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
             if (qn.lower == 1 && tlen > QUANTIFIER_EXPAND_LIMIT_SIZE) {
                 len = OPSize.JUMP;
             } else {
@@ -463,7 +461,7 @@ final class ArrayCompiler extends Compiler {
 
         final int tlen = compileLengthTreeWithMemoryClear(qn.target);
 
-        if (qn.isAnyCharStar()) {
+        if (qn.isAnyCharStar() && tlen * (long)qn.lower <= QUANTIFIER_EXPAND_LIMIT_SIZE) {
             compileTreeNTimesWithMemoryClear(qn.target, qn.lower);
             if (qn.nextHeadExact != null) {
                 if (isMultiline(regex.options)) {
@@ -489,7 +487,7 @@ final class ArrayCompiler extends Compiler {
         } else {
             modTLen = tlen;
         }
-        if (infinite && (qn.lower <= 1 || tlen * qn.lower <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
+        if (infinite && (qn.lower <= 1 || tlen * (long)qn.lower <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
             if (qn.lower == 1 && tlen > QUANTIFIER_EXPAND_LIMIT_SIZE) {
                 if (qn.greedy) {
                     if (qn.headExact != null) {
@@ -533,7 +531,7 @@ final class ArrayCompiler extends Compiler {
             addOpcodeRelAddr(OPCode.JUMP, tlen);
             compileTreeWithMemoryClear(qn.target);
         } else if (!infinite && qn.greedy &&
-                  (qn.upper == 1 || (tlen + OPSize.PUSH) * qn.upper <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
+                  (qn.upper == 1 || (tlen + OPSize.PUSH) * (long)qn.upper <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
             final int n = qn.upper - qn.lower;
             compileTreeNTimesWithMemoryClear(qn.target, qn.lower);
 
@@ -613,6 +611,8 @@ final class ArrayCompiler extends Compiler {
             if (node.isStopBtSimpleRepeat()) {
                 final QuantifierNode qn = (QuantifierNode)node.target;
                 tlen = compileLengthTree(qn.target);
+                // The following is safe w.r.t. to numerical overflow given the argument in the
+                // companion method #compileEncloseNode.
                 len = tlen * qn.lower + OPSize.PUSH + tlen + OPSize.POP + OPSize.JUMP;
             } else {
                 len = OPSize.PUSH_STOP_BT + tlen + OPSize.POP_STOP_BT;
@@ -652,6 +652,14 @@ final class ArrayCompiler extends Compiler {
             if (node.isStopBtSimpleRepeat()) {
                 final QuantifierNode qn = (QuantifierNode)node.target;
 
+                // The following is safe w.r.t. running out of memory since STOP_BACKTRACK nodes
+                // can appear in the AST only in the three following cases:
+                //   1) As part of the (?>...) committed choice expression.
+                //   2) As part of a possessive quantifier (++, ?+, {n,m}+...).
+                //   3) As an optimization introduced by Analyser#nextSetup.
+                // Cases 1 and 2 are not supported in ECMAScript's regular expressions. The use of
+                // Case 3 is guarded by qn.lower <= 1 and so qn.lower cannot have dangerously high
+                // values.
                 compileTreeNTimes(qn.target, qn.lower);
 
                 len = compileLengthTree(qn.target);
