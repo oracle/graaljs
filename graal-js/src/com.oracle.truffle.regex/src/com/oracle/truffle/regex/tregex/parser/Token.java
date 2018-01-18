@@ -70,6 +70,12 @@ public class Token {
             return getMax() == -1;
         }
 
+        /**
+         * The minimum number of times the quantified element must appear. Can be -1 to represent a
+         * virtually infinite number of occurrences are necessary (e.g. as in
+         * <code>a{1111111111111111111,}</code>). Any number which is larger than the maximum size
+         * of the platform's String data type is considered "virtually infinite".
+         */
         public int getMin() {
             return min;
         }

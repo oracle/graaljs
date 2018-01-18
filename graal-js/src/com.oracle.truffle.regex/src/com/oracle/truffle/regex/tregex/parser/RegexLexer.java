@@ -253,20 +253,26 @@ public final class RegexLexer {
         boolean greedy;
         if (c == '{') {
             final int resetIndex = index;
-            min = parseDecimal().intValueExact();
-            if (min < 0) {
+            BigInteger literalMin = parseDecimal();
+            if (literalMin.compareTo(BigInteger.ZERO) < 0) {
                 return countedRepetitionSyntaxError(resetIndex);
             }
+            min = literalMin.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) <= 0 ? literalMin.intValue() : -1;
             if (consumingLookahead(",}")) {
                 greedy = !consumingLookahead("?");
             } else if (consumingLookahead("}")) {
                 max = min;
                 greedy = !consumingLookahead("?");
             } else {
-                if (!consumingLookahead(",") || (max = parseDecimal().intValueExact()) < 0 || !consumingLookahead("}")) {
+                BigInteger literalMax;
+                if (!consumingLookahead(",") || (literalMax = parseDecimal()).compareTo(BigInteger.ZERO) < 0 || !consumingLookahead("}")) {
                     return countedRepetitionSyntaxError(resetIndex);
                 }
+                max = literalMax.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) <= 0 ? literalMax.intValue() : -1;
                 greedy = !consumingLookahead("?");
+                if (literalMin.compareTo(literalMax) > 0) {
+                    throw syntaxError(ErrorMessages.QUANTIFIER_OUT_OF_ORDER);
+                }
             }
         } else {
             greedy = !consumingLookahead("?");
