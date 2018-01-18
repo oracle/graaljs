@@ -64,8 +64,8 @@ class ByteCodeMachine extends StackMachine {
         final int end1 = s1 + mbLen;
 
         while (s1 < end1) {
-            final char c1 = EncodingHelper.toLowerCase(charAt(s1++));
-            final char c2 = EncodingHelper.toLowerCase(charAt(s2++));
+            final char c1 = EncodingHelper.toUpperCase(charAt(s1++));
+            final char c2 = EncodingHelper.toUpperCase(charAt(s2++));
 
             if (c1 != c2) {
                 return false;
