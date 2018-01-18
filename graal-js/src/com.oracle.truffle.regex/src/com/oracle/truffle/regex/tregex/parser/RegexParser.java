@@ -455,12 +455,9 @@ public final class RegexParser {
         if (curTerm == null) {
             throw syntaxError(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
         }
-        final boolean onAssertion = curTerm instanceof RegexASTSubtreeRootNode || curTerm instanceof PositionAssertion;
-        if (onAssertion && source.getFlags().isUnicode()) {
-            if (curTerm instanceof RegexASTSubtreeRootNode) {
-                throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKAROUND_ASSERTION);
-            }
-            throw syntaxError(ErrorMessages.QUANTIFIER_ON_POSITION_ASSERTION);
+        final boolean onAssertion = curTerm instanceof RegexASTSubtreeRootNode;
+        if (source.getFlags().isUnicode() && onAssertion) {
+            throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKAROUND_ASSERTION);
         }
         assert curTerm == curSequence.getLastTerm();
         if (quantifier.getMin() == -1) {
