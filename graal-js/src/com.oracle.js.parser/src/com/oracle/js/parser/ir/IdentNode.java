@@ -25,6 +25,8 @@
 
 package com.oracle.js.parser.ir;
 
+import java.util.Objects;
+
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
@@ -36,7 +38,6 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     private static final int PROPERTY_NAME     = 1 << 0;
     private static final int INITIALIZED_HERE  = 1 << 1;
     private static final int FUNCTION          = 1 << 2;
-    private static final int FUTURESTRICT_NAME = 1 << 3;
     private static final int IS_DECLARED_HERE  = 1 << 4;
     private static final int THIS              = 1 << 5;
     private static final int SUPER             = 1 << 6;
@@ -64,7 +65,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
      */
     public IdentNode(final long token, final int finish, final String name) {
         super(token, finish);
-        this.name = name;
+        this.name = Objects.requireNonNull(name);
         this.flags = 0;
     }
 
@@ -146,18 +147,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
      * @return true if this is a future strict name
      */
     public boolean isFutureStrictName() {
-        return (flags & FUTURESTRICT_NAME) == FUTURESTRICT_NAME;
-    }
-
-    /**
-     * Flag this IdentNode as a future strict name
-     * @return a node equivalent to this one except for the requested change.
-     */
-    public IdentNode setIsFutureStrictName() {
-        if (isFutureStrictName()) {
-            return this;
-        }
-        return new IdentNode(this, name, flags | FUTURESTRICT_NAME);
+        return tokenType().isFutureStrict();
     }
 
     /**

@@ -26,8 +26,10 @@
 package com.oracle.js.parser;
 
 import static com.oracle.js.parser.TokenType.ARROW;
+import static com.oracle.js.parser.TokenType.AS;
 import static com.oracle.js.parser.TokenType.ASSIGN;
 import static com.oracle.js.parser.TokenType.ASSIGN_INIT;
+import static com.oracle.js.parser.TokenType.ASYNC;
 import static com.oracle.js.parser.TokenType.AWAIT;
 import static com.oracle.js.parser.TokenType.CASE;
 import static com.oracle.js.parser.TokenType.CATCH;
@@ -47,7 +49,9 @@ import static com.oracle.js.parser.TokenType.ESCSTRING;
 import static com.oracle.js.parser.TokenType.EXPORT;
 import static com.oracle.js.parser.TokenType.EXTENDS;
 import static com.oracle.js.parser.TokenType.FINALLY;
+import static com.oracle.js.parser.TokenType.FROM;
 import static com.oracle.js.parser.TokenType.FUNCTION;
+import static com.oracle.js.parser.TokenType.GET;
 import static com.oracle.js.parser.TokenType.IDENT;
 import static com.oracle.js.parser.TokenType.IF;
 import static com.oracle.js.parser.TokenType.IMPORT;
@@ -62,6 +66,7 @@ import static com.oracle.js.parser.TokenType.RBRACE;
 import static com.oracle.js.parser.TokenType.RBRACKET;
 import static com.oracle.js.parser.TokenType.RPAREN;
 import static com.oracle.js.parser.TokenType.SEMICOLON;
+import static com.oracle.js.parser.TokenType.SET;
 import static com.oracle.js.parser.TokenType.SPREAD_ARRAY;
 import static com.oracle.js.parser.TokenType.SPREAD_OBJECT;
 import static com.oracle.js.parser.TokenType.STATIC;
@@ -157,8 +162,6 @@ public class Parser extends AbstractParser {
     /** The eval function variable name. */
     private static final String EVAL_NAME = "eval";
     private static final String CONSTRUCTOR_NAME = "constructor";
-    private static final String GET_NAME = "get";
-    private static final String SET_NAME = "set";
     private static final String PROTO_NAME = "__proto__";
     private static final String NEW_TARGET_NAME = "new.target";
     private static final String PROTOTYPE_NAME = "prototype";
@@ -175,9 +178,6 @@ public class Parser extends AbstractParser {
     private static final String SWITCH_BINDING_NAME = ":switch";
     /** Function name for arrow functions. */
     private static final String ARROW_FUNCTION_NAME = ":=>";
-
-    private static final String ASYNC_IDENT = "async";
-    private static final String AWAIT_IDENT = "await";
 
     private static final boolean ES6_FOR_OF = Options.getBooleanProperty("parser.for.of", true);
     private static final boolean ES6_CLASS = Options.getBooleanProperty("parser.class", true);
@@ -791,7 +791,7 @@ loop:
                 if (ident.isNewTarget()) {
                     return referenceError(lhs, rhs, true);
                 }
-                verifyIdent(ident, "assignment");
+                verifyStrictIdent(ident, "assignment");
                 break;
             } else if (lhs instanceof AccessNode || lhs instanceof IndexNode) {
                 break;
@@ -829,7 +829,7 @@ loop:
 
             @Override
             public boolean enterIdentNode(IdentNode identNode) {
-                verifyIdent(identNode, contextString);
+                verifyStrictIdent(identNode, contextString);
                 if (!checkIdentLValue(identNode)) {
                     referenceError(identNode, null, true);
                     return false;
@@ -1025,9 +1025,9 @@ loop:
 
                                     // verify that function name as well as parameter names
                                     // satisfy strict mode restrictions.
-                                    verifyIdent(function.getIdent(), "function name");
+                                    verifyStrictIdent(function.getIdent(), "function name");
                                     for (final IdentNode param : function.getParameters()) {
-                                        verifyIdent(param, "function parameter");
+                                        verifyStrictIdent(param, "function parameter");
                                     }
                                 }
                             }
@@ -1201,14 +1201,13 @@ loop:
                 final boolean allowPropertyFunction = (reparseFlags & REPARSE_IS_PROPERTY_ACCESSOR) != 0;
                 final boolean isES6Method = (reparseFlags & REPARSE_IS_METHOD) != 0;
                 if (allowPropertyFunction) {
-                    final String ident = (String)getValue();
                     final long propertyToken = token;
                     final int propertyLine = line;
-                    if (GET_NAME.equals(ident)) {
+                    if (type == GET) {
                         next();
                         addPropertyFunctionStatement(propertyGetterFunction(propertyToken, propertyLine));
                         return;
-                    } else if (SET_NAME.equals(ident)) {
+                    } else if (type == SET) {
                         next();
                         addPropertyFunctionStatement(propertySetterFunction(propertyToken, propertyLine));
                         return;
@@ -1247,8 +1246,8 @@ loop:
         next();
 
         IdentNode className = null;
-        if (!isDefault || type == IDENT) {
-            className = getIdent();
+        if (!isDefault || isBindingIdentifier()) {
+            className = bindingIdentifier("class name");
         }
 
         Expression classExpression = classTail(classLineNumber, classToken, className);
@@ -1271,8 +1270,8 @@ loop:
         next();
 
         IdentNode className = null;
-        if (type == IDENT) {
-            className = getIdent();
+        if (isBindingIdentifier()) {
+            className = bindingIdentifier("class name");
         }
 
         return classTail(classLineNumber, classToken, className);
@@ -1479,17 +1478,17 @@ loop:
     }
 
     private PropertyNode methodDefinition(boolean isStatic, boolean subclass, boolean generator, boolean async, long methodToken, int methodLine) {
-        final boolean computed = type == LBRACKET;
-        final boolean isIdent = type == IDENT;
+        final TokenType startTokenType = type;
+        final boolean computed = startTokenType == LBRACKET;
         Expression propertyName = propertyName();
         int flags = FunctionNode.IS_METHOD;
         if (!computed) {
             final String name = ((PropertyKey)propertyName).getPropertyName();
-            if (!generator && isIdent && type != LPAREN && name.equals(GET_NAME)) {
+            if (!generator && startTokenType == GET && type != LPAREN) {
                 PropertyFunction methodDefinition = propertyGetterFunction(methodToken, methodLine, flags);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true);
                 return new PropertyNode(methodToken, finish, methodDefinition.key, null, methodDefinition.functionNode, null, isStatic, methodDefinition.computed, false, false);
-            } else if (!generator && isIdent && type != LPAREN && name.equals(SET_NAME)) {
+            } else if (!generator && startTokenType == SET && type != LPAREN) {
                 PropertyFunction methodDefinition = propertySetterFunction(methodToken, methodLine, flags);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true);
                 return new PropertyNode(methodToken, finish, methodDefinition.key, null, null, methodDefinition.functionNode, isStatic, methodDefinition.computed, false, false);
@@ -1594,20 +1593,40 @@ loop:
     /**
      * Make sure that the identifier name used is allowed.
      *
-     * @param ident         Identifier that is verified
-     * @param contextString String used in error message to give context to the user
+     * @param ident the identifier that is verified
      */
-    private void verifyIdent(final IdentNode ident, final String contextString) {
-        verifyStrictIdent(ident, contextString);
+    private void verifyIdent(final IdentNode ident) {
         if (isES6()) {
-            TokenType tokenType = TokenLookup.lookupKeyword(ident.getName(), 0, ident.getName().length());
-            if (tokenType != IDENT && tokenType.getKind() != TokenKind.FUTURESTRICT) {
-                throw error(expectMessage(IDENT));
+            if (isEscapedIdent(ident)) {
+                if (isReservedWordSequence(ident.getName())) {
+                    throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
+                }
+            } else {
+                assert !isReservedWordSequence(ident.getName()) : ident.getName();
             }
-            if (AWAIT_IDENT.equals(ident.getName()) && isModule) {
-                throw error(AbstractParser.message("strict.name", ident.getName(), contextString), ident.getToken());
+
+            if (isModule) {
+                // in module mode, "await" is not an allowed identifier name
+                if (ident.isTokenType(AWAIT)) {
+                    throw error(AbstractParser.message("strict.name", ident.getName(), "Identifier"), ident.getToken());
+                } else if (AWAIT.getName().equals(ident.getName())) {
+                    throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
+                }
             }
         }
+        // It is a Syntax Error if this production has an [Await] parameter and StringValue of Identifier is "await".
+        if (ES8_ASYNC_FUNCTION && isES8() && inAsyncFunction() && AWAIT.getName().equals(ident.getName())) {
+            throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
+        }
+    }
+
+    private static boolean isEscapedIdent(final IdentNode ident) {
+        return ident.getName().length() != Token.descLength(ident.getToken());
+    }
+
+    private static boolean isReservedWordSequence(final String name) {
+        TokenType tokenType = TokenLookup.lookupKeyword(name.toCharArray(), 0, name.length());
+        return (tokenType != IDENT && !tokenType.isContextualKeyword() && !tokenType.isFutureStrict());
     }
 
     /**
@@ -1727,7 +1746,7 @@ loop:
                 verifyDestructuringBindingPattern(binding, new Consumer<IdentNode>() {
                     @Override
                     public void accept(IdentNode identNode) {
-                        verifyIdent(identNode, contextString);
+                        verifyStrictIdent(identNode, contextString);
                         final VarNode var = new VarNode(varLine, varToken, sourceOrder, identNode.getFinish(), identNode.setIsDeclaredHere(), null, finalVarFlags);
                         appendStatement(var);
                     }
@@ -1768,7 +1787,7 @@ loop:
                 assert init != null || varType != CONST || !isStatement;
                 final IdentNode ident = (IdentNode)binding;
                 if (!isStatement) {
-                    if (ident.getName().equals("let")) {
+                    if (ident.getName().equals(LET.getName())) {
                         throw error("let is not a valid binding name in a for loop"); // ES6 13.7.5.1
                     }
                     if (init == null && varType == CONST) {
@@ -1807,14 +1826,28 @@ loop:
         return forResult;
     }
 
+    private boolean isIdentifier() {
+        return type == IDENT || type.isContextualKeyword();
+    }
+
+    /**
+     * IdentifierReference or LabelIdentifier.
+     */
+    private IdentNode identifier() {
+        final IdentNode ident = getIdent();
+        verifyIdent(ident);
+        return ident;
+    }
+
     private boolean isBindingIdentifier() {
-        return type == IDENT || isNonStrictModeIdent();
+        return type == IDENT || type.isContextualKeyword() || isNonStrictModeIdent();
     }
 
     private IdentNode bindingIdentifier(String contextString) {
-        final IdentNode name = getIdent();
-        verifyIdent(name, contextString);
-        return name;
+        final IdentNode ident = getIdent();
+        verifyIdent(ident);
+        verifyStrictIdent(ident, contextString);
+        return ident;
     }
 
     private Expression bindingPattern() {
@@ -2057,12 +2090,10 @@ loop:
 
             // Nashorn extension: for each expression.
             // iterate property values rather than property names.
-            if (env.syntaxExtensions && type == IDENT && "each".equals(getValue())) {
+            if (env.syntaxExtensions && type == IDENT && lexer.checkIdentForKeyword(token, "each")) {
                 flags |= ForNode.IS_FOR_EACH;
                 next();
-            }
-
-            if (ES8_FOR_AWAIT_OF && type == IDENT && "await".equals(getValue())) {
+            } else if (ES8_FOR_AWAIT_OF && type == AWAIT) {
                 isForAwaitOf = true;
                 next();
             }
@@ -2131,11 +2162,10 @@ loop:
                 }
                 break;
 
-            case IDENT:
-                boolean ofValue = "of".equals(getValueNoUnicode());
-                if (ES8_FOR_AWAIT_OF && isForAwaitOf && ofValue) {
+            case OF:
+                if (ES8_FOR_AWAIT_OF && isForAwaitOf) {
                     // fall through
-                } else if (ES6_FOR_OF && ofValue) {
+                } else if (ES6_FOR_OF) {
                     isForOf = true;
                     // fall through
                 } else {
@@ -2144,7 +2174,7 @@ loop:
                 }
             case IN:
                 if (isForAwaitOf) {
-                     flags |= ForNode.IS_FOR_AWAIT_OF;
+                    flags |= ForNode.IS_FOR_AWAIT_OF;
                 } else {
                     flags |= isForOf ? ForNode.IS_FOR_OF : ForNode.IS_FOR_IN;
                 }
@@ -2220,7 +2250,7 @@ loop:
             if (ident.isNewTarget()) {
                 return false;
             }
-            verifyIdent(ident, contextString);
+            verifyStrictIdent(ident, contextString);
             return true;
         } else if (init instanceof AccessNode || init instanceof IndexNode) {
             return true;
@@ -2240,17 +2270,18 @@ loop:
             case EOL:
             case COMMENT:
                 continue;
-            case IDENT:
-                if (ofContextualKeyword && ES6_FOR_OF && "of".equals(getValue(getToken(k + i)))) {
+            case OF:
+                if (ofContextualKeyword && ES6_FOR_OF) {
                     return false;
                 }
                 // fall through
+            case IDENT:
             case LBRACKET:
             case LBRACE:
                 return true;
             default:
                 // accept future strict tokens in non-strict mode (including LET)
-                if (!isStrictMode && t.getKind() == TokenKind.FUTURESTRICT) {
+                if (t.isContextualKeyword() || (!isStrictMode && t.isFutureStrict())) {
                     return true;
                 }
                 return false;
@@ -2364,7 +2395,7 @@ loop:
             break;
 
         default:
-            final IdentNode ident = getIdent();
+            final IdentNode ident = identifier();
             labelNode = lc.findLabel(ident.getName());
 
             if (labelNode == null) {
@@ -2412,7 +2443,7 @@ loop:
             break;
 
         default:
-            final IdentNode ident = getIdent();
+            final IdentNode ident = identifier();
             labelNode = lc.findLabel(ident.getName());
 
             if (labelNode == null) {
@@ -2707,7 +2738,7 @@ loop:
         // Capture label token.
         final long labelToken = token;
         // Get label ident.
-        final IdentNode ident = getIdent();
+        final IdentNode ident = identifier();
 
         expect(COLON);
 
@@ -2837,7 +2868,7 @@ loop:
                         verifyDestructuringBindingPattern(pattern, new Consumer<IdentNode>() {
                             @Override
                             public void accept(IdentNode identNode) {
-                                verifyIdent(identNode, contextString);
+                                verifyStrictIdent(identNode, contextString);
                                 final int varFlags = VarNode.IS_LET | VarNode.IS_DESTRUCTURING;
                                 final VarNode var = new VarNode(catchLine, Token.recast(identNode.getToken(), LET), identNode.getFinish(), identNode.setIsDeclaredHere(), null, varFlags);
                                 appendStatement(var);
@@ -2935,7 +2966,7 @@ loop:
             markThis(lc);
             return new IdentNode(primaryToken, finish, name).setIsThis();
         case IDENT:
-            final IdentNode ident = getIdent();
+            final IdentNode ident = identifier();
             if (ident == null) {
                 break;
             }
@@ -2982,8 +3013,8 @@ loop:
                 next();
                 return getLiteral();
             }
-            if (isNonStrictModeIdent()) {
-                return getIdent();
+            if (type.isContextualKeyword() || isNonStrictModeIdent()) {
+                return identifier();
             }
             break;
         }
@@ -3149,7 +3180,7 @@ loop:
 
                     commaSeen = false;
                     // Get and add the next property.
-                    final PropertyNode property = propertyAssignment();
+                    final PropertyNode property = propertyDefinition();
                     hasCoverInitializedName = hasCoverInitializedName || property.isCoverInitializedName() || hasCoverInitializedName(property.getValue());
 
                     if (property.isComputed() || property.getKey().isTokenType(SPREAD_OBJECT)) {
@@ -3295,25 +3326,20 @@ loop:
     }
 
     /**
-     * PropertyAssignment :
+     * Parse an object literal property definition.
+     *
+     * PropertyDefinition :
+     *      IdentifierReference
+     *      CoverInitializedName
      *      PropertyName : AssignmentExpression
-     *      get PropertyName ( ) { FunctionBody }
-     *      set PropertyName ( PropertySetParameterList ) { FunctionBody }
+     *      MethodDefinition
      *
-     * PropertySetParameterList :
-     *      Identifier
+     * CoverInitializedName :
+     *      IdentifierReference = AssignmentExpression
      *
-     * PropertyName :
-     *      IdentifierName
-     *      StringLiteral
-     *      NumericLiteral
-     *
-     * See 11.1.5
-     *
-     * Parse an object literal property.
      * @return Property or reference node.
      */
-    private PropertyNode propertyAssignment() {
+    private PropertyNode propertyDefinition() {
         // Capture firstToken.
         final long propertyToken = token;
         final int  functionLine  = line;
@@ -3334,27 +3360,25 @@ loop:
 
         final boolean computed = type == LBRACKET;
         if (type == IDENT) {
-            // Get IDENT.
-            final String ident = (String)expectValueNoUnicode(IDENT);
+            isIdentifier = true;
+            propertyName = getIdent().setIsPropertyName();
+        } else if (type == GET || type == SET) {
+            final TokenType getOrSet = type;
+            next();
 
             if (type != COLON && type != COMMARIGHT && type != RBRACE && ((type != ASSIGN && type != LPAREN) || !isES6())) {
-                final long getSetToken = propertyToken;
-
-                switch (ident) {
-                case GET_NAME:
-                    final PropertyFunction getter = propertyGetterFunction(getSetToken, functionLine);
+                final long getOrSetToken = propertyToken;
+                if (getOrSet == GET) {
+                    final PropertyFunction getter = propertyGetterFunction(getOrSetToken, functionLine);
                     return new PropertyNode(propertyToken, finish, getter.key, null, getter.functionNode, null, false, getter.computed, false, false);
-
-                case SET_NAME:
-                    final PropertyFunction setter = propertySetterFunction(getSetToken, functionLine);
+                } else if (getOrSet == SET) {
+                    final PropertyFunction setter = propertySetterFunction(getOrSetToken, functionLine);
                     return new PropertyNode(propertyToken, finish, setter.key, null, null, setter.functionNode, false, setter.computed, false, false);
-                default:
-                    break;
                 }
             }
 
             isIdentifier = true;
-            propertyName = createIdentNode(propertyToken, finish, ident).setIsPropertyName();
+            propertyName = new IdentNode(propertyToken, finish, getOrSet.getName()).setIsPropertyName();
         } else if (type == ELLIPSIS && ES8_REST_SPREAD_PROPERTY && isES8() && !(generator || async)) {
             long spreadToken = Token.recast(propertyToken, TokenType.SPREAD_OBJECT);
             next();
@@ -3362,7 +3386,7 @@ loop:
             Expression spread = new UnaryNode(spreadToken, assignmentExpression);
             return new PropertyNode(propertyToken, finish, spread, null, null, null, false, false, false, false);
         } else {
-            isIdentifier = isNonStrictModeIdent();
+            isIdentifier = type.isContextualKeyword() || isNonStrictModeIdent();
             propertyName = propertyName();
         }
 
@@ -3377,7 +3401,9 @@ loop:
         if (type == LPAREN && isES6()) {
             propertyValue = propertyMethodFunction(propertyName, propertyToken, functionLine, generator, FunctionNode.IS_METHOD, computed, async).functionNode;
         } else if (isIdentifier && (type == COMMARIGHT || type == RBRACE || type == ASSIGN) && isES6()) {
-            propertyValue = createIdentNode(propertyToken, finish, ((IdentNode) propertyName).getPropertyName());
+            IdentNode ident = (IdentNode) propertyName;
+            verifyIdent(ident);
+            propertyValue = createIdentNode(propertyToken, finish, ident.getPropertyName());
             if (type == ASSIGN && ES6_DESTRUCTURING) {
                 // If not destructuring, this is a SyntaxError
                 long assignToken = token;
@@ -3461,8 +3487,7 @@ loop:
         // spec does not permit it!
         final IdentNode argIdent;
         if (isBindingIdentifier()) {
-            argIdent = getIdent();
-            verifyIdent(argIdent, "setter argument");
+            argIdent = bindingIdentifier("setter argument");
         } else {
             argIdent = null;
         }
@@ -3594,7 +3619,7 @@ loop:
             if (lhs instanceof IdentNode) {
                 // async () => ...
                 // async ( ArgumentsList ) => ...
-                if (ES8_ASYNC_FUNCTION && isES8() && ASYNC_IDENT.equals(((IdentNode)lhs).getName()) && type == ARROW && checkNoLineTerminator()) {
+                if (ES8_ASYNC_FUNCTION && isES8() && lhs.isTokenType(ASYNC) && type == ARROW && checkNoLineTerminator()) {
                     return new ExpressionList(callToken, callLine, arguments);
                 }
 
@@ -3678,7 +3703,7 @@ loop:
 
         if (ES6_NEW_TARGET && type == PERIOD && isES6()) {
             next();
-            if (type == IDENT && "target".equals(getValueNoUnicode())) {
+            if (type == IDENT && "target".equals(getValueNoEscape())) {
                 if (lc.getCurrentFunction().isProgram()) {
                     throw error(AbstractParser.message("new.target.in.function"), token);
                 }
@@ -4000,8 +4025,7 @@ loop:
                 // 12.1.1, as above.
                 throw error(expectMessage(IDENT));
             }
-            name = getIdent();
-            verifyIdent(name, "function name");
+            name = bindingIdentifier("function name");
         } else if (isStatement) {
             // Nashorn extension: anonymous function statements.
             // Do not allow anonymous function statement if extensions
@@ -4321,7 +4345,7 @@ loop:
         verifyDestructuringBindingPattern(pattern, new Consumer<IdentNode>() {
             @Override
             public void accept(IdentNode identNode) {
-                verifyIdent(identNode, contextString);
+                verifyStrictIdent(identNode, contextString);
 
                 ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
                 if (currentFunction != null) {
@@ -4684,7 +4708,7 @@ loop:
             }
             assert opType == TokenType.INCPREFIX || opType == TokenType.DECPREFIX;
             String contextString = opType == TokenType.INCPREFIX ? "operand for ++ operator" : "operand for -- operator";
-            verifyIdent((IdentNode)lhs, contextString);
+            verifyStrictIdent((IdentNode)lhs, contextString);
         }
 
         return incDecExpression(unaryToken, opType, lhs, isPostfix);
@@ -4964,7 +4988,7 @@ loop:
         final int startLine = line;
         Expression exprLhs = conditionalExpression(noIn);
 
-        if (asyncArrow && exprLhs instanceof IdentNode && type == IDENT && lookaheadIsArrow()) {
+        if (asyncArrow && exprLhs instanceof IdentNode && isIdentifier() && lookaheadIsArrow()) {
             // async ident =>
             exprLhs = primaryExpression();
         }
@@ -5134,7 +5158,7 @@ loop:
             IdentNode ident = (IdentNode)param;
             verifyStrictIdent(ident, contextString);
             ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
-            if (currentFunction != null && currentFunction.isAsync() && AWAIT_IDENT.equals(ident.getName())) {
+            if (currentFunction != null && currentFunction.isAsync() && AWAIT.getName().equals(ident.getName())) {
                 throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
             }
             if (currentFunction != null) {
@@ -5148,7 +5172,7 @@ loop:
             long paramToken = lhs.getToken();
             Expression initializer = ((BinaryNode) param).rhs();
             if (initializer instanceof IdentNode) {
-                if (((IdentNode) initializer).getName().equals(AWAIT_IDENT)) {
+                if (((IdentNode) initializer).getName().equals(AWAIT.getName())) {
                     throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
                 }
             }
@@ -5219,7 +5243,7 @@ loop:
             case COMMENT:
                 continue;
             default:
-                if (t.getKind() == TokenKind.FUTURESTRICT) {
+                if (t.isContextualKeyword() || t.isFutureStrict()) {
                     return true;
                 }
                 return false;
@@ -5239,6 +5263,8 @@ loop:
         for (;;) {
             TokenType t = T(k + i++);
             if (t == IDENT) {
+                break;
+            } else if (t.isContextualKeyword()) {
                 break;
             } else if (t == EOL || t == COMMENT) {
                 continue;
@@ -5586,11 +5612,9 @@ loop:
         final long startToken = token;
         assert type == MUL;
         next();
-        long asToken = token;
-        String as = (String) expectValueNoUnicode(IDENT);
-        if (!"as".equals(as)) {
-            throw error(AbstractParser.message("expected.as"), asToken);
-        }
+
+        expect(AS);
+
         IdentNode localNameSpace = bindingIdentifier("ImportedBinding");
         return new NameSpaceImportNode(startToken, Token.descPosition(startToken), finish, localNameSpace);
     }
@@ -5618,13 +5642,13 @@ loop:
             boolean bindingIdentifier = isBindingIdentifier();
             long nameToken = token;
             IdentNode importName = getIdentifierName();
-            if (type == IDENT && "as".equals(getValueNoUnicode())) {
+            if (type == AS) {
                 next();
                 IdentNode localName = bindingIdentifier("ImportedBinding");
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
                 //importEntries.add(ImportEntry.importSpecifier(importName.getName(), localName.getName()));
             } else if (bindingIdentifier) {
-                verifyIdent(importName, "ImportedBinding");
+                verifyStrictIdent(importName, "ImportedBinding");
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, importName, null));
                 //importEntries.add(ImportEntry.importSpecifier(importName.getName()));
             } else {
@@ -5648,10 +5672,8 @@ loop:
     private FromNode fromClause() {
         int fromStart = start;
         long fromToken = token;
-        String name = (String) expectValueNoUnicode(IDENT);
-        if (!"from".equals(name)) {
-            throw error(AbstractParser.message("expected.from"), fromToken);
-        }
+        expect(FROM);
+
         if (type == STRING || type == ESCSTRING) {
             String moduleSpecifier = (String) getValue();
             long specifierToken = token;
@@ -5692,7 +5714,7 @@ loop:
             }
             case LBRACE: {
                 ExportClauseNode exportClause = exportClause();
-                if (type == IDENT && "from".equals(getValueNoUnicode())) {
+                if (type == FROM) {
                     FromNode from = fromClause();
                     module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from));
                     String moduleRequest = from.getModuleSpecifier().getValue();
@@ -5816,8 +5838,8 @@ loop:
         while (type != RBRACE) {
             long nameToken = token;
             IdentNode localName;
-            if (type == IDENT) {
-                localName = getIdent();
+            if (isIdentifier()) {
+                localName = identifier();
             } else if (isReservedWord()) {
                 // Reserved words are allowed iff the ExportClause is followed by a FromClause.
                 // Remember the first reserved word and throw an error if this is not the case.
@@ -5828,7 +5850,7 @@ loop:
             } else {
                 throw error(expectMessage(IDENT));
             }
-            if (type == IDENT && "as".equals(getValueNoUnicode())) {
+            if (type == AS) {
                 next();
                 IdentNode exportName = getIdentifierName();
                 exports.add(new ExportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, exportName));
@@ -5845,7 +5867,7 @@ loop:
         }
         expect(RBRACE);
 
-        if (reservedWordToken != 0L && !(type == IDENT && "from".equals(getValueNoUnicode()))) {
+        if (reservedWordToken != 0L && type != FROM) {
             throw error(AbstractParser.message("expected", IDENT.getNameOrType(), Token.toString(source, reservedWordToken)), reservedWordToken);
         }
 
@@ -5932,19 +5954,21 @@ loop:
     }
 
     private boolean inGeneratorFunction() {
-        return lc.getCurrentFunction().getKind() == FunctionNode.Kind.GENERATOR;
+        ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
+        return currentFunction != null && currentFunction.getKind() == FunctionNode.Kind.GENERATOR;
     }
 
     private boolean inAsyncFunction() {
-        return lc.getCurrentFunction().isAsync();
+        ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
+        return currentFunction != null && currentFunction.isAsync();
     }
 
     private boolean isAwait() {
-        return ES8_ASYNC_FUNCTION && isES8() && type == IDENT && AWAIT_IDENT.equals(getValue(token));
+        return ES8_ASYNC_FUNCTION && isES8() && type == AWAIT;
     }
 
     private boolean isAsync() {
-        return ES8_ASYNC_FUNCTION && isES8() && type == IDENT && ASYNC_IDENT.equals(getValueNoUnicode(token));
+        return ES8_ASYNC_FUNCTION && isES8() && type == ASYNC;
     }
 
     private boolean lookaheadIsAsyncArrowParameterListStart() {
@@ -5956,6 +5980,8 @@ loop:
             if (t == LPAREN) {
                 break;
             } else if (t == IDENT) {
+                break;
+            } else if (t.isContextualKeyword()) {
                 break;
             } else if (t == COMMENT) {
                 continue;

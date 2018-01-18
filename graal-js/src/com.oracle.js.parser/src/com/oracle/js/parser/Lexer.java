@@ -203,7 +203,7 @@ public class Lexer extends Scanner {
      * avoid reading ahead unnecessarily when we skip the function bodies.
      */
     public Lexer(final Source source, final int start, final int len, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean pauseOnFunctionBody) {
-        super(source.getContent(), 1, start, len);
+        super(source.getContent().toString().toCharArray(), 1, start, len);
         this.source      = source;
         this.stream      = stream;
         this.scripting   = scripting;
@@ -852,6 +852,22 @@ public class Lexer extends Scanner {
         return value;
     }
 
+    public boolean checkIdentForKeyword(final long token, final String keyword) {
+        final int len = Token.descLength(token);
+        final int start = Token.descPosition(token);
+        if (len != keyword.length()) {
+            return false;
+        }
+
+        for (int i = 0; i < len; ++i) {
+            if (content[start + i] != keyword.charAt(i)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /**
      * Convert a string to a JavaScript identifier.
      *
@@ -860,21 +876,24 @@ public class Lexer extends Scanner {
      * @param convertUnicode convert Unicode symbols in the Ident string.
      * @return Ident string or null if an error.
      */
-    private String valueOfIdent(final int start, final int length, final boolean convertUnicode) throws RuntimeException {
-        // Save the current position.
-        final int savePosition = position;
+    private String valueOfIdent(final int start, final int length, final boolean convertUnicode) {
         // End of scan.
         final int end = start + length;
-        // Reset to beginning of content.
-        reset(start);
         // Buffer for recording characters.
         final StringBuilder sb = new StringBuilder(length);
 
+        int pos = start;
+
         // Scan until end of line or end of file.
-        while (!atEOF() && position < end && !isEOL(ch0)) {
+        while (pos < end) {
+
+            char curCh0 = content[pos];
+
             // If escape character.
-            if (convertUnicode && ch0 == '\\' && ch1 == 'u') {
-                skip(2);
+            if (convertUnicode && curCh0 == '\\' && charAt(pos + 1) == 'u') {
+                // Save the current position.
+                final int savePosition = position;
+                reset(pos + 2);
                 final int ch = unicodeEscapeSequence(TokenType.IDENT);
                 if (Character.isBmpCodePoint(ch) && isWhitespace((char)ch)) {
                     return null;
@@ -885,15 +904,14 @@ public class Lexer extends Scanner {
                 } else {
                     sb.appendCodePoint(ch);
                 }
+                pos = position;
+                reset(savePosition);
             } else {
                 // Add regular character.
-                sb.append(ch0);
-                skip(1);
+                sb.append(curCh0);
+                pos++;
             }
         }
-
-        // Restore position.
-        reset(savePosition);
 
         return stringIntern(sb.toString());
     }
@@ -1476,7 +1494,7 @@ public class Lexer extends Scanner {
     private boolean identifierEqual(final int aStart, final int aLength, final int bStart, final int bLength) {
         if (aLength == bLength) {
             for (int i = 0; i < aLength; i++) {
-                if (content.charAt(aStart + i) != content.charAt(bStart + i)) {
+                if (content[aStart + i] != content[bStart + i]) {
                     return false;
                 }
             }
@@ -1733,12 +1751,12 @@ public class Lexer extends Scanner {
             // Remove last end of line if specified.
             if (excludeLastEOL) {
                 // Handles \n.
-                if (content.charAt(stringEnd - 1) == '\n') {
+                if (content[stringEnd - 1] == '\n') {
                     stringEnd--;
                 }
 
                 // Handles \r and \r\n.
-                if (content.charAt(stringEnd - 1) == '\r') {
+                if (content[stringEnd - 1] == '\r') {
                     stringEnd--;
                 }
 
