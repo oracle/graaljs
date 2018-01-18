@@ -144,6 +144,8 @@ public class JSTruffleOptions {
     public static final boolean TestV8Mode = booleanOption("TestV8Mode", false, OPTION_SETUP);
     public static final boolean TestNashornMode = booleanOption("TestNashornMode", false, OPTION_SETUP);
 
+    public static final boolean ValidateRegExpLiterals = booleanOption("ValidateRegExpLiterals", !TestV8Mode, OPTION_LANGUAGE_FEATURE);
+
     // JSON options
     public static final boolean TruffleJSONParser = booleanOption("TruffleJSONParser", true, OPTION_LANGUAGE_FEATURE);
 
