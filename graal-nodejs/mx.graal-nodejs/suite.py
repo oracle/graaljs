@@ -129,31 +129,9 @@ suite = {
     "TRUFFLENODE_NATIVE" : {
       "dependencies" : ["trufflenodeNative"],
       "native" : True,
+      "platformDependent" : True,
       "relpath" : True,
-      "os_arch" : {
-        "linux" : {
-          "amd64" : {
-            "path" : "build/linux/amd64/graal-nodejs-native.tar",
-          },
-          "sparcv9" : {
-            "path" : "build/solaris/sparcv9/graal-nodejs-native.tar",
-          }
-        },
-        "darwin" : {
-          "amd64" : {
-            "path" : "build/darwin/amd64/graal-nodejs-native.tar",
-          }
-        },
-        "solaris" : {
-          "sparcv9" : {
-            "path" : "build/solaris/sparcv9/graal-nodejs-native.tar",
-          }
-        },
-      },
       "description" : "Graal Node.js native components",
-      "maven" : {
-        "artifactId" : "graal-nodejs-native",
-      }
     },
     "TRUFFLENODE_JNICONFIG" : {
       "dependencies" : ["trufflenodeJNIConfig"],
