@@ -16,6 +16,7 @@ local common = import 'common.jsonnet';
   },
 
   builds: graalJs.builds + graalNodeJs.builds + [
-    common.common + common.jdk8 + deployBinary + common.deploy + common.postMerge + common.ol65 + {name: 'js-deploybinary-ol65-amd64'},
+    common.jdk8 + deployBinary + common.deploy + common.postMerge + common.ol65 + {name: 'js-deploybinary-ol65-amd64'},
+    common.jdk8 + deployBinary + common.deploy + common.postMerge + common.darwin + {name: 'js-deploybinary-darwin-amd64'},
   ],
 }
