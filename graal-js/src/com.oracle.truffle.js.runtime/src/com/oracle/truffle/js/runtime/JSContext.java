@@ -64,6 +64,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
+import java.util.Objects;
 
 public class JSContext implements ShapeContext {
     private final Evaluator evaluator;
@@ -494,10 +495,20 @@ public class JSContext implements ShapeContext {
     public void setTruffleLanguageEnv(TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
         if (env != null && truffleLanguageEnv == null) {
-            truffleLanguageEnv = env;
-            activateAllocationReporter();
-            this.contextOptions.setEnv(env);
+            setTruffleLanguageEnvImpl(env);
         }
+    }
+
+    public void patchTruffleLanguageEnv(TruffleLanguage.Env env) {
+        CompilerAsserts.neverPartOfCompilation();
+        Objects.requireNonNull("env", "New env cannot be null.");
+        setTruffleLanguageEnvImpl(env);
+    }
+
+    private void setTruffleLanguageEnvImpl(TruffleLanguage.Env env) {
+        truffleLanguageEnv = env;
+        activateAllocationReporter();
+        this.contextOptions.setEnv(env);
     }
 
     public void activateAllocationReporter() {

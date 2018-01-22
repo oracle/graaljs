@@ -457,7 +457,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
 
         assert context.getLanguage() == this;
-        context.setTruffleLanguageEnv(newEnv);
+        context.patchTruffleLanguageEnv(newEnv);
 
         if (newEnv.out() != context.getWriterStream()) {
             context.setWriter(null, newEnv.out());
