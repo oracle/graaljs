@@ -273,7 +273,7 @@ public final class JSError extends JSBuiltinObject {
         }
         DynamicObject structuredStackTrace = JSArray.createConstant(realm.getContext(), elements);
         try {
-            return JSFunction.callDirect(prepareStackTraceFun, errorObj, new Object[]{errorObj, structuredStackTrace});
+            return JSFunction.call(prepareStackTraceFun, errorObj, new Object[]{errorObj, structuredStackTrace});
         } catch (Exception ex) {
             return formatStackTrace(stackTrace, errorObj, realm);
         }

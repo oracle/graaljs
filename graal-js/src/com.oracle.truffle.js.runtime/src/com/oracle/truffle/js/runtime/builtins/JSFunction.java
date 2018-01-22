@@ -275,31 +275,17 @@ public final class JSFunction extends JSBuiltinObject {
         return getFunctionData(obj).getName();
     }
 
-    public static Object call(DynamicObject thisFnObj, Object thisObject, Object[] argumentValues) {
-        assert JSFunction.isJSFunction(thisFnObj);
+    public static Object call(DynamicObject functionObject, Object thisObject, Object[] argumentValues) {
+        assert JSFunction.isJSFunction(functionObject);
         assert thisObject != null;
-        return callIntl(thisFnObj, thisObject, argumentValues);
+        Object[] arguments = JSArguments.create(thisObject, functionObject, argumentValues);
+        return getCallTarget(functionObject).call(arguments);
     }
 
     public static Object call(Object[] jsArguments) {
         assert JSFunction.isJSFunction(JSArguments.getFunctionObject(jsArguments));
         assert JSArguments.getThisObject(jsArguments) != null;
         return getCallTarget((DynamicObject) JSArguments.getFunctionObject(jsArguments)).call(jsArguments);
-    }
-
-    /**
-     * This calls the function. Unlike call(), this does not manipulate the thisObject as it is
-     * guaranteed to be a valid JSObject.
-     */
-    public static Object callDirect(DynamicObject functionObj, DynamicObject thisObject, Object[] argumentValues) {
-        assert JSFunction.isJSFunction(functionObj);
-        assert JSRuntime.isObject(thisObject) : "use call() if 'this' is not guaranteed to be a regular object";
-        return callIntl(functionObj, thisObject, argumentValues);
-    }
-
-    private static Object callIntl(DynamicObject functionObject, Object thisObject, Object[] argumentValues) {
-        Object[] arguments = JSArguments.create(thisObject, functionObject, argumentValues);
-        return getCallTarget(functionObject).call(arguments);
     }
 
     public static Object indirectCall(IndirectCallNode indirectCallNode, Object[] jsArguments) {

@@ -87,7 +87,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         Object newFunction = JSObject.get(JSAdapter.getAdaptee(target), JSAdapter.NEW);
         if (JSFunction.isJSFunction(newFunction)) {
             Object[] args = getAbstractFunctionArguments(frame);
-            return JSFunction.callDirect((DynamicObject) newFunction, target, args);
+            return JSFunction.call((DynamicObject) newFunction, target, args);
         } else {
             return Undefined.instance;
         }
@@ -117,7 +117,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         }
         Object[] args = getAbstractFunctionArguments(frame);
         Object[] trapArgs = new Object[]{target, JSArray.createConstantObjectArray(JSShape.getJSContext(proxy.getShape()), args), proxy};
-        Object result = JSFunction.callDirect(trap, handler, trapArgs);
+        Object result = JSFunction.call(trap, handler, trapArgs);
         if (!JSRuntime.isObject(result)) {
             throw Errors.createTypeErrorObjectExpected();
         }

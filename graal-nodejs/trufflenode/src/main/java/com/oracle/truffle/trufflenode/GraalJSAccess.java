@@ -2243,7 +2243,7 @@ public final class GraalJSAccess {
     public String jsonStringify(Object context, Object object, String gap) {
         JSContext jsContext = (JSContext) context;
         DynamicObject stringify = jsContext.getRealm().lookupFunction(JSON.CLASS_NAME, "stringify");
-        return (String) JSFunction.callDirect(stringify, Undefined.instance, new Object[]{
+        return (String) JSFunction.call(stringify, Undefined.instance, new Object[]{
                         object,
                         Undefined.instance, // replacer
                         (gap == null) ? Undefined.instance : gap

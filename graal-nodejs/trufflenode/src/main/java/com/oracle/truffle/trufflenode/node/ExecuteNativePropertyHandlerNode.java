@@ -261,7 +261,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
             array = concatArrays(array, array2);
         }
         Object fn = JSObject.get(array, "values");
-        return JSFunction.callDirect((DynamicObject) fn, array, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+        return JSFunction.call((DynamicObject) fn, array, JSArguments.EMPTY_ARGUMENTS_ARRAY);
     }
 
     @CompilerDirectives.TruffleBoundary
