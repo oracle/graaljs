@@ -1533,6 +1533,7 @@ loop:
         switch (currentType) {
         case IDENT:
             return true;
+        case NON_OCTAL_DECIMAL:
         case OCTAL_LEGACY:
             if (isStrictMode) {
                 return false;
@@ -2972,6 +2973,10 @@ loop:
             }
             detectSpecialProperty(ident);
             return ident;
+        case NON_OCTAL_DECIMAL:
+            if (isStrictMode) {
+                throw error(AbstractParser.message("strict.no.nonoctaldecimal"), token);
+            }
         case OCTAL_LEGACY:
             if (isStrictMode) {
                throw error(AbstractParser.message("strict.no.octal"), token);
@@ -3280,6 +3285,10 @@ loop:
         switch (type) {
         case IDENT:
             return getIdent().setIsPropertyName();
+        case NON_OCTAL_DECIMAL:
+            if (isStrictMode) {
+                throw error(AbstractParser.message("strict.no.nonoctaldecimal"), token);
+            }
         case OCTAL_LEGACY:
             if (isStrictMode) {
                 throw error(AbstractParser.message("strict.no.octal"), token);
