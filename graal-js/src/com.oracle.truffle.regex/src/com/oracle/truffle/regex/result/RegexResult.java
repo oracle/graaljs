@@ -6,7 +6,7 @@ package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.regex.RegexCompiledRegex;
+import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.RegexLanguageObject;
 import com.oracle.truffle.regex.runtime.RegexResultEndArrayObject;
 import com.oracle.truffle.regex.runtime.RegexResultMessageResolutionForeign;
@@ -17,13 +17,13 @@ public abstract class RegexResult implements TruffleObject, RegexLanguageObject 
     public static final RegexResult NO_MATCH = new RegexResult(null, "NULL", 0) {
     };
 
-    private final RegexCompiledRegex regex;
+    private final RegexObject regex;
     private final Object input;
     private final int groupCount;
     private final RegexResultStartArrayObject startArrayObject;
     private final RegexResultEndArrayObject endArrayObject;
 
-    public RegexResult(RegexCompiledRegex regex, Object input, int groupCount) {
+    public RegexResult(RegexObject regex, Object input, int groupCount) {
         this.regex = regex;
         this.input = input;
         this.groupCount = groupCount;
@@ -31,7 +31,7 @@ public abstract class RegexResult implements TruffleObject, RegexLanguageObject 
         endArrayObject = new RegexResultEndArrayObject(this);
     }
 
-    public final RegexCompiledRegex getCompiledRegex() {
+    public final RegexObject getCompiledRegex() {
         return regex;
     }
 

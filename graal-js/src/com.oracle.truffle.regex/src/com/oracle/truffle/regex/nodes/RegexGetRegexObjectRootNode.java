@@ -4,20 +4,19 @@
  */
 package com.oracle.truffle.regex.nodes;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.regex.RegexCompiledRegex;
+import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.RegexLanguage;
 
 @NodeInfo(language = "REGEX", description = "REGEX RootNode responsible for providing access to a RegexCompiledRegex")
-public class RegexGetCompiledRegexRootNode extends RootNode {
+public class RegexGetRegexObjectRootNode extends RootNode {
 
-    private final RegexCompiledRegex regex;
+    private final RegexObject regex;
 
-    public RegexGetCompiledRegexRootNode(RegexLanguage language, FrameDescriptor frameDescriptor, RegexCompiledRegex regex) {
-        super(language, frameDescriptor);
+    public RegexGetRegexObjectRootNode(RegexLanguage language, RegexObject regex) {
+        super(language, null);
         this.regex = regex;
     }
 

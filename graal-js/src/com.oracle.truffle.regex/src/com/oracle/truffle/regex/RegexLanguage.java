@@ -12,7 +12,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.joni.JoniRegexEngine;
-import com.oracle.truffle.regex.nodes.RegexGetCompiledRegexRootNode;
+import com.oracle.truffle.regex.nodes.RegexGetRegexObjectRootNode;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.TRegexEngine;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
@@ -27,9 +27,9 @@ import java.util.Map;
  * <p>
  * This language represents classic regular expressions, currently in JavaScript flavor only.
  * Accepted sources are single-line regular expressions in the form "/regex/flags". If the provided
- * source is a valid expression, it will return a {@link RegexCompiledRegex}, which is executable.
+ * source is a valid expression, it will return a {@link RegexObject}, which is executable.
  * <p>
- * {@link RegexCompiledRegex} accepts two parameters:
+ * {@link RegexObject} accepts two parameters:
  * <ol>
  * <li>{@link Object} {@code input}: the character sequence to search in. This may either be a
  * {@link String} or a {@link TruffleObject} that responds to {@link Message#GET_SIZE} and returns
@@ -82,11 +82,15 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     public static final String ID = "regex";
     public static final String MIME_TYPE = "application/js-regex";
 
-    private final TRegexEngine tRegexEngine = new TRegexEngine();
-    private final JoniRegexEngine fallbackEngine = new JoniRegexEngine();
+    private final TRegexEngine tRegexEngine = new TRegexEngine(this);
+    private final JoniRegexEngine fallbackEngine = new JoniRegexEngine(this);
     static final String NO_MATCH_RESULT_IDENTIFIER = "T_REGEX_NO_MATCH_RESULT";
     public static final RegexResult EXPORT_NO_MATCH_RESULT = RegexResult.NO_MATCH;
     private static final Iterable<Scope> NO_MATCH_RESULT_SCOPE = Collections.singleton(Scope.newBuilder("global", new NoMatchResultObject()).build());
+
+    public TRegexEngine getTRegexEngine() {
+        return tRegexEngine;
+    }
 
     /**
      * Trying to parse and compile a regular expression using can produce one of two results. This
@@ -129,8 +133,13 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
 
     private ParsingResult compileCallTarget(RegexSource regexSource) {
         try {
-            RegexCompiledRegex regex = compileRegex(regexSource);
-            RegexGetCompiledRegexRootNode rootNode = new RegexGetCompiledRegexRootNode(this, null, regex);
+            RegexObject regex = new RegexObject(this, regexSource);
+            try {
+                RegexParser.validate(regexSource);
+            } catch (UnsupportedRegexException e) {
+                regex.setCompiledRegex(fallbackEngine.compile(regexSource));
+            }
+            RegexGetRegexObjectRootNode rootNode = new RegexGetRegexObjectRootNode(this, regex);
             return new ParsingResult(Truffle.getRuntime().createCallTarget(rootNode), null);
         } catch (RegexSyntaxException e) {
             return new ParsingResult(null, e);
@@ -160,8 +169,8 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
         return new RegexSource(patternString, RegexFlags.parseFlags(flagsString), RegexOptions.parse(optionsString));
     }
 
-    private RegexCompiledRegex compileRegex(RegexSource regexSource) throws RegexSyntaxException {
-        RegexCompiledRegex regex = null;
+    public CompiledRegex compileRegex(RegexSource regexSource) throws RegexSyntaxException {
+        CompiledRegex regex = null;
         if (!regexSource.getOptions().useJoniEngine()) {
             regex = tRegexEngine.compile(regexSource);
         }

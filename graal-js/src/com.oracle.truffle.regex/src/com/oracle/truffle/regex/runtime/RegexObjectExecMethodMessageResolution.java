@@ -11,19 +11,19 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.runtime.nodes.ExecuteRegexDispatchNode;
 
-@MessageResolution(receiverType = RegexCompiledRegexExec.class)
-class RegexCompiledRegexExecMessageResolution {
+@MessageResolution(receiverType = RegexObjectExecMethod.class)
+class RegexObjectExecMethodMessageResolution {
 
     @Resolve(message = "EXECUTE")
     abstract static class ExecuteRegexExecNode extends Node {
 
         @Child ExecuteRegexDispatchNode executeRegexDispatchNode = ExecuteRegexDispatchNode.create();
 
-        public RegexResult access(RegexCompiledRegexExec receiver, Object[] args) {
+        public RegexResult access(RegexObjectExecMethod receiver, Object[] args) {
             if (args.length != 2) {
                 throw ArityException.raise(2, args.length);
             }
-            return executeRegexDispatchNode.execute(receiver.getRegexCompiledRegex(), args[0], args[1]);
+            return executeRegexDispatchNode.execute(receiver.getRegexObject(), args[0], args[1]);
         }
     }
 
@@ -31,7 +31,7 @@ class RegexCompiledRegexExecMessageResolution {
     abstract static class IsExecutableRegexExecNode extends Node {
 
         @SuppressWarnings("unused")
-        public boolean access(RegexCompiledRegexExec receiver) {
+        public boolean access(RegexObjectExecMethod receiver) {
             return true;
         }
     }

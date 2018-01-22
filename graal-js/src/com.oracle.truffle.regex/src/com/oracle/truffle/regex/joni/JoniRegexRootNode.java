@@ -5,8 +5,11 @@
 package com.oracle.truffle.regex.joni;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.RegexCompiledRegex;
-import com.oracle.truffle.regex.RegexNode;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexObject;
+import com.oracle.truffle.regex.RegexRootNode;
+import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Matcher;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Regex;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Region;
@@ -19,22 +22,23 @@ import com.oracle.truffle.regex.tregex.nodes.input.InputToStringNode;
  * These nodes are instantiated only once and used for all Joni-RegExp. Therefore, we do not gain
  * anything from using ConditionProfiles.
  */
-public abstract class JoniRegexNode extends RegexNode {
+public abstract class JoniRegexRootNode extends RegexRootNode {
 
-    @Child InputToStringNode toStringNode = InputToStringNode.create();
+    @Child private InputToStringNode toStringNode = InputToStringNode.create();
 
     private final boolean sticky;
 
-    public JoniRegexNode(boolean sticky) {
+    public JoniRegexRootNode(RegexLanguage language, RegexSource source, boolean sticky) {
+        super(language, source);
         this.sticky = sticky;
     }
 
     @Override
-    protected RegexResult execute(RegexCompiledRegex regex, Object input, int fromIndex) {
-        Regex impl = ((JoniRegexCompiledRegex) regex).implementation;
+    public RegexResult execute(VirtualFrame frame, RegexObject regexObject, Object input, int fromIndex) {
+        Regex impl = ((JoniCompiledRegex) regexObject.getCompiledRegex()).getJoniRegex();
         Matcher matcher = sticky ? match(impl, toStringNode.execute(input), fromIndex) : search(impl, toStringNode.execute(input), fromIndex);
 
-        return (matcher != null) ? getMatchResult(regex, input, matcher) : RegexResult.NO_MATCH;
+        return (matcher != null) ? getMatchResult(regexObject, input, matcher) : RegexResult.NO_MATCH;
     }
 
     @TruffleBoundary
@@ -55,43 +59,33 @@ public abstract class JoniRegexNode extends RegexNode {
         return isMatch ? matcher : null;
     }
 
-    protected abstract RegexResult getMatchResult(RegexCompiledRegex regex, Object input, Matcher matcher);
+    protected abstract RegexResult getMatchResult(RegexObject regex, Object input, Matcher matcher);
 
     @Override
     protected String getEngineLabel() {
         return "joni";
     }
 
-    public static class Simple extends JoniRegexNode {
-        public Simple(boolean sticky) {
-            super(sticky);
+    public static class Simple extends JoniRegexRootNode {
+        public Simple(RegexLanguage language, boolean sticky) {
+            super(language, null, sticky);
         }
 
         @Override
-        protected RegexResult getMatchResult(RegexCompiledRegex regex, Object input, Matcher matcher) {
+        protected RegexResult getMatchResult(RegexObject regex, Object input, Matcher matcher) {
             return new SingleResult(regex, input, matcher.getBegin(), matcher.getEnd());
-        }
-
-        @Override
-        protected String getPatternSource() {
-            return "";
         }
     }
 
-    public static class Groups extends JoniRegexNode {
-        public Groups(boolean sticky) {
-            super(sticky);
+    public static class Groups extends JoniRegexRootNode {
+        public Groups(RegexLanguage language, boolean sticky) {
+            super(language, null, sticky);
         }
 
         @Override
-        protected RegexResult getMatchResult(RegexCompiledRegex regex, Object input, Matcher matcher) {
+        protected RegexResult getMatchResult(RegexObject regex, Object input, Matcher matcher) {
             Region reg = matcher.getRegion();
             return new StartsEndsIndexArrayResult(regex, input, reg.beg, reg.end);
-        }
-
-        @Override
-        protected String getPatternSource() {
-            return "(group match)";
         }
     }
 }

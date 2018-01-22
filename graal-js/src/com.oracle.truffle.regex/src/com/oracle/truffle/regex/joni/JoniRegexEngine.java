@@ -7,9 +7,10 @@ package com.oracle.truffle.regex.joni;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.regex.RegexCompiledRegex;
 import com.oracle.truffle.regex.RegexEngine;
 import com.oracle.truffle.regex.RegexFlags;
+import com.oracle.truffle.regex.CompiledRegex;
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.nashorn.regexp.RegExpScanner;
@@ -21,43 +22,49 @@ import com.oracle.truffle.regex.nashorn.regexp.joni.exception.JOniException;
 import java.util.regex.PatternSyntaxException;
 
 public final class JoniRegexEngine implements RegexEngine {
+
+    private final RegexLanguage language;
     // For Joni, we want to share call targets to avoid excessive splitting.
     private CallTarget searchSimpleCallTarget;
     private CallTarget searchGroupCallTarget;
     private CallTarget matchSimpleCallTarget;
     private CallTarget matchGroupCallTarget;
 
+    public JoniRegexEngine(RegexLanguage language) {
+        this.language = language;
+    }
+
     private CallTarget searchSimpleCallTarget() {
         if (searchSimpleCallTarget == null) {
-            searchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexNode.Simple(false));
+            searchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexRootNode.Simple(language, false));
         }
         return searchSimpleCallTarget;
     }
 
     private CallTarget searchGroupCallTarget() {
         if (searchGroupCallTarget == null) {
-            searchGroupCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexNode.Groups(false));
+            searchGroupCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexRootNode.Groups(language, false));
         }
         return searchGroupCallTarget;
     }
 
     private CallTarget matchSimpleCallTarget() {
         if (matchSimpleCallTarget == null) {
-            matchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexNode.Simple(true));
+            matchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexRootNode.Simple(language, true));
         }
         return matchSimpleCallTarget;
     }
 
     private CallTarget matchGroupCallTarget() {
         if (matchGroupCallTarget == null) {
-            matchGroupCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexNode.Groups(true));
+            matchGroupCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexRootNode.Groups(language, true));
         }
         return matchGroupCallTarget;
     }
 
     @CompilerDirectives.TruffleBoundary
     @Override
-    public RegexCompiledRegex compile(RegexSource source) throws RegexSyntaxException {
+    public CompiledRegex compile(RegexSource source) throws RegexSyntaxException {
         Regex implementation = createJoniRegex(source.getPattern(), source.getFlags());
         CallTarget callTarget;
         boolean group = PatternAnalyzer.containsGroup(source.getPattern());
@@ -66,7 +73,7 @@ public final class JoniRegexEngine implements RegexEngine {
         } else {
             callTarget = group ? searchGroupCallTarget() : searchSimpleCallTarget();
         }
-        return new JoniRegexCompiledRegex(source, callTarget, implementation);
+        return new JoniCompiledRegex(implementation, callTarget);
     }
 
     @CompilerDirectives.TruffleBoundary
