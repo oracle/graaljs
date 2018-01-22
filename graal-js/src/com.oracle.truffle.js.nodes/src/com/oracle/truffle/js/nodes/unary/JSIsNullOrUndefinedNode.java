@@ -19,8 +19,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSEqualNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.Null;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
@@ -35,13 +33,13 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     protected static final int MAX_CLASSES = 3;
 
     @Specialization(guards = "isJSNull(operand)")
-    protected static boolean doNull(Object operand) {
-        return operand == Null.instance;
+    protected static boolean doNull(@SuppressWarnings("unused") Object operand) {
+        return true;
     }
 
     @Specialization(guards = "isUndefined(operand)")
-    protected static boolean doUndefined(Object operand) {
-        return operand == Undefined.instance;
+    protected static boolean doUndefined(@SuppressWarnings("unused") Object operand) {
+        return true;
     }
 
     @Specialization
