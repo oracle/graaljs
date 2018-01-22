@@ -120,6 +120,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSON;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
@@ -2237,6 +2238,16 @@ public final class GraalJSAccess {
 
     public Object jsonParse(Object context, Object string) {
         return GraalJSParserHelper.parseJSON((String) string, (JSContext) context);
+    }
+
+    public String jsonStringify(Object context, Object object, String gap) {
+        JSContext jsContext = (JSContext) context;
+        DynamicObject stringify = jsContext.getRealm().lookupFunction(JSON.CLASS_NAME, "stringify");
+        return (String) JSFunction.callDirect(stringify, Undefined.instance, new Object[]{
+                        object,
+                        Undefined.instance, // replacer
+                        (gap == null) ? Undefined.instance : gap
+        });
     }
 
     public Object promiseResult(Object promise) {

@@ -76,6 +76,7 @@
       { "name": "isolateThrowException" },
       { "name": "isolateThrowStackOverflowError" },
       { "name": "jsonParse" },
+      { "name": "jsonStringify" },
       { "name": "makeWeak" },
       { "name": "messageGetLineNumber" },
       { "name": "messageGetScriptResourceName" },

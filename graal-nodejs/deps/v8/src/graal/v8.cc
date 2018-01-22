@@ -2054,6 +2054,21 @@ namespace v8 {
         return Parse(context->GetIsolate(), json_string);
     }
 
+    MaybeLocal<String> JSON::Stringify(Local<Context> context, Local<Object> json_object, Local<String> gap) {
+        GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
+        GraalIsolate* graal_isolate = graal_context->Isolate();
+        jobject java_context = graal_context->GetJavaObject();
+        jobject java_object = reinterpret_cast<GraalObject*> (*json_object)->GetJavaObject();
+        jstring java_gap = gap.IsEmpty() ? nullptr : (jstring) reinterpret_cast<GraalString*> (*gap)->GetJavaObject();
+        JNI_CALL(jobject, java_result, graal_isolate, GraalAccessMethod::json_stringify, Object, java_context, java_object, java_gap);
+        if (java_result == nullptr) {
+            return Local<String>();
+        } else {
+            GraalString* graal_string = new GraalString(graal_isolate, (jstring) java_result);
+            return Local<String>(reinterpret_cast<String*> (graal_string));
+        }
+    }
+
     void Isolate::AddGCEpilogueCallback(GCCallbackWithData callback, void* data, GCType gc_type_filter) {
         reinterpret_cast<GraalIsolate*> (this)->AddGCEpilogueCallback(GraalIsolate::kIsolateGCCallbackWithDataType, (void*) callback, data);
     }

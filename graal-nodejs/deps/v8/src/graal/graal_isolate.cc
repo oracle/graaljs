@@ -624,6 +624,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::object_slow_get_aligned_pointer_from_internal_field, "objectSlowGetAlignedPointerFromInternalField", "(Ljava/lang/Object;)J")
     ACCESS_METHOD(GraalAccessMethod::object_set_aligned_pointer_in_internal_field, "objectSetAlignedPointerInInternalField", "(Ljava/lang/Object;J)V")
     ACCESS_METHOD(GraalAccessMethod::json_parse, "jsonParse", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::json_stringify, "jsonStringify", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/String;")
     ACCESS_METHOD(GraalAccessMethod::symbol_new, "symbolNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::promise_result, "promiseResult", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::promise_state, "promiseState", "(Ljava/lang/Object;)I")

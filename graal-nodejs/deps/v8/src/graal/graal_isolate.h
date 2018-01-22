@@ -207,6 +207,7 @@ enum GraalAccessMethod {
     object_slow_get_aligned_pointer_from_internal_field,
     object_set_aligned_pointer_in_internal_field,
     json_parse,
+    json_stringify,
     symbol_new,
     promise_result,
     promise_state,
