@@ -40,6 +40,7 @@ import static com.oracle.js.parser.TokenType.FUNCTION;
 import static com.oracle.js.parser.TokenType.HEXADECIMAL;
 import static com.oracle.js.parser.TokenType.LBRACE;
 import static com.oracle.js.parser.TokenType.LPAREN;
+import static com.oracle.js.parser.TokenType.NON_OCTAL_DECIMAL;
 import static com.oracle.js.parser.TokenType.OCTAL;
 import static com.oracle.js.parser.TokenType.OCTAL_LEGACY;
 import static com.oracle.js.parser.TokenType.RBRACE;
@@ -1323,7 +1324,10 @@ public class Lexer extends Scanner {
             // Skip remaining digits.
             while ((digit = convertDigit(ch0, 10)) != -1) {
                 // Check octal only digits.
-                octal = octal && digit < 8;
+                if (octal && digit >= 8) {
+                    octal = false;
+                    type = NON_OCTAL_DECIMAL;
+                }
                 // Skip digit.
                 skip(1);
             }
@@ -1886,6 +1890,7 @@ public class Lexer extends Scanner {
 
         switch (Token.descType(token)) {
         case DECIMAL:
+        case NON_OCTAL_DECIMAL:
             return Lexer.valueOf(source.getString(start, len), 10); // number
         case HEXADECIMAL:
             return Lexer.valueOf(source.getString(start + 2, len - 2), 16); // number
