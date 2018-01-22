@@ -3,6 +3,15 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
 local common = import 'common.jsonnet';
 
 {
+  // Used to run fewer jobs
+  local debug = false,
+
+  local overlay = '760f8ba86a68a6ecba2f7b286c81ab18c0ef96c2',
+
+  local no_overlay = 'cb733e564850cd37b685fcef6f3c16b59802b22c',
+
+  overlay: if debug then no_overlay else overlay,
+
   local deployBinary = {
     setup+: [
       ['mx', '-p', 'graal-nodejs', 'sversions'],
