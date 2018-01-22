@@ -38,6 +38,8 @@ public final class RegexCompiler {
     @TruffleBoundary
     public static TruffleObject compile(String pattern, String flags, JSContext context) {
         try {
+            // RegexLanguage does its own validation of the flags. This call to validateFlags only
+            // serves the purpose of mimicking the error messages of Nashorn and V8.
             validateFlags(flags, context.getEcmaScriptVersion());
             final Source source = createRegexLanguageSource(pattern, flags);
             return (TruffleObject) context.getEnv().parse(source).call();
@@ -77,9 +79,9 @@ public final class RegexCompiler {
             } catch (final PatternSyntaxException e) {
                 throw Errors.createSyntaxError(e.getMessage());
             }
-        }
-        if (!flags.isEmpty()) {
-            validateFlags(flags, ecmaScriptVersion);
+            if (!flags.isEmpty()) {
+                validateFlags(flags, ecmaScriptVersion);
+            }
         }
     }
 
