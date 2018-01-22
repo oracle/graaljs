@@ -32,9 +32,9 @@ import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
-import com.oracle.truffle.regex.dead.DeadRegexRootNode;
+import com.oracle.truffle.regex.dead.DeadRegexExecRootNode;
 import com.oracle.truffle.regex.literal.LiteralRegexEngine;
-import com.oracle.truffle.regex.literal.LiteralRegexRootNode;
+import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
@@ -43,7 +43,7 @@ import com.oracle.truffle.regex.tregex.nfa.NFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.NFATraceFinderGenerator;
 import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorProperties;
-import com.oracle.truffle.regex.tregex.nodes.TRegexForwardSearchRootNode;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -83,9 +83,9 @@ public final class TRegexEngine implements RegexEngine {
                 return null;
             }
             if (ast.getRoot().isDead()) {
-                return new DeadRegexRootNode(language, source);
+                return new DeadRegexExecRootNode(language, source);
             }
-            LiteralRegexRootNode literal = LiteralRegexEngine.createNode(language, ast);
+            LiteralRegexExecRootNode literal = LiteralRegexEngine.createNode(language, ast);
             if (literal != null) {
                 logSizes.log(String.format("\"/%s/\", \"%s\", %d, %d, %d, %d, %d, \"literal\"", source.getPattern(), source.getFlags(), 0, 0, 0, 0, 0));
                 return literal;
@@ -130,7 +130,7 @@ public final class TRegexEngine implements RegexEngine {
                             (preCalculatedResults != null && preCalculatedResults.length > 1) ? traceFinder : nfa,
                             createExecutorProperties(false, false, false, nCG), compilationBuffer);
             phaseEnd("Backward DFA");
-            TRegexForwardSearchRootNode tRegexRootNode = new TRegexForwardSearchRootNode(
+            TRegexExecRootNode tRegexRootNode = new TRegexExecRootNode(
                             language, source, preCalculatedResults, executorNode, executorNodeB, captureGroupExecutor);
             if (DebugUtil.LOG_AUTOMATON_SIZES) {
                 logAutomatonSizes(source, ast, nfa, traceFinder, captureGroupExecutor, executorNode, executorNodeB);

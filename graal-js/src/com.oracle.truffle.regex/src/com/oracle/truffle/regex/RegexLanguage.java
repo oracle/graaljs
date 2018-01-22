@@ -8,6 +8,8 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
@@ -76,6 +78,7 @@ import java.util.Map;
  */
 
 @TruffleLanguage.Registration(name = RegexLanguage.NAME, id = RegexLanguage.ID, mimeType = RegexLanguage.MIME_TYPE, version = "0.1", internal = true)
+@ProvidedTags(StandardTags.RootTag.class)
 public final class RegexLanguage extends TruffleLanguage<Void> {
 
     public static final String NAME = "REGEX";
@@ -166,7 +169,7 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
         final String optionsString = code.substring(0, firstSlash);
         final String patternString = code.substring(firstSlash + 1, lastSlash);
         final String flagsString = code.substring(lastSlash + 1);
-        return new RegexSource(patternString, RegexFlags.parseFlags(flagsString), RegexOptions.parse(optionsString));
+        return new RegexSource(source.createSection(firstSlash, code.length() - firstSlash), patternString, RegexFlags.parseFlags(flagsString), RegexOptions.parse(optionsString));
     }
 
     public CompiledRegex compileRegex(RegexSource regexSource) throws RegexSyntaxException {

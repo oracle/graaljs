@@ -6,9 +6,12 @@ package com.oracle.truffle.regex.joni;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexObject;
-import com.oracle.truffle.regex.RegexRootNode;
+import com.oracle.truffle.regex.RegexOptions;
+import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Matcher;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Regex;
@@ -22,15 +25,20 @@ import com.oracle.truffle.regex.tregex.nodes.input.InputToStringNode;
  * These nodes are instantiated only once and used for all Joni-RegExp. Therefore, we do not gain
  * anything from using ConditionProfiles.
  */
-public abstract class JoniRegexRootNode extends RegexRootNode {
+public abstract class JoniRegexExecRootNode extends RegexExecRootNode {
 
     @Child private InputToStringNode toStringNode = InputToStringNode.create();
 
     private final boolean sticky;
 
-    public JoniRegexRootNode(RegexLanguage language, RegexSource source, boolean sticky) {
+    public JoniRegexExecRootNode(RegexLanguage language, RegexSource source, boolean sticky) {
         super(language, source);
         this.sticky = sticky;
+    }
+
+    @Override
+    protected boolean sourceIsUnicode(RegexObject regex) {
+        return regex.getSource().getFlags().isUnicode();
     }
 
     @Override
@@ -66,9 +74,18 @@ public abstract class JoniRegexRootNode extends RegexRootNode {
         return "joni";
     }
 
-    public static class Simple extends JoniRegexRootNode {
+    private static RegexSource createPseudoSource(String name) {
+        String pattern = "/[" + name + "]/";
+        return new RegexSource(
+                        Source.newBuilder(pattern).name(name).mimeType("application/js-regex").build().createSection(0, pattern.length()),
+                        pattern,
+                        RegexFlags.DEFAULT,
+                        RegexOptions.DEFAULT);
+    }
+
+    public static class Simple extends JoniRegexExecRootNode {
         public Simple(RegexLanguage language, boolean sticky) {
-            super(language, null, sticky);
+            super(language, createPseudoSource("JONI_SINGLETON_ROOT_NODE_" + (sticky ? "STICKY_" : "") + "SIMPLE"), sticky);
         }
 
         @Override
@@ -77,9 +94,9 @@ public abstract class JoniRegexRootNode extends RegexRootNode {
         }
     }
 
-    public static class Groups extends JoniRegexRootNode {
+    public static class Groups extends JoniRegexExecRootNode {
         public Groups(RegexLanguage language, boolean sticky) {
-            super(language, null, sticky);
+            super(language, createPseudoSource("JONI_SINGLETON_ROOT_NODE_" + (sticky ? "STICKY_" : "") + "GROUPS"), sticky);
         }
 
         @Override

@@ -13,7 +13,7 @@ import com.oracle.truffle.regex.CompiledRegex;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.RegexProfile;
-import com.oracle.truffle.regex.RegexRootNode;
+import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.result.LazyCaptureGroupsResult;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
@@ -25,7 +25,7 @@ import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 
 import java.util.Objects;
 
-public class TRegexForwardSearchRootNode extends RegexRootNode implements CompiledRegex {
+public class TRegexExecRootNode extends RegexExecRootNode implements CompiledRegex {
 
     private static final EagerCaptureGroupRegexSearchNode EAGER_SEARCH_BAILED_OUT = new EagerCaptureGroupRegexSearchNode(null);
 
@@ -35,7 +35,7 @@ public class TRegexForwardSearchRootNode extends RegexRootNode implements Compil
 
     @Child private RunRegexSearchNode runRegexSearchNode;
 
-    public TRegexForwardSearchRootNode(RegexLanguage language, RegexSource source,
+    public TRegexExecRootNode(RegexLanguage language, RegexSource source,
                     PreCalculatedResultFactory[] preCalculatedResults,
                     TRegexDFAExecutorNode forwardExecutor,
                     TRegexDFAExecutorNode backwardExecutor,

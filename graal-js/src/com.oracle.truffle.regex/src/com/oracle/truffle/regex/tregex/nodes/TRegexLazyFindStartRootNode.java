@@ -4,21 +4,18 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 
-public class TRegexLazyFindStartRootNode extends RootNode {
+public class TRegexLazyFindStartRootNode extends RegexRootNode {
 
-    private final RegexSource source;
     private final int prefixLength;
     @Child private TRegexDFAExecutorNode executorNode;
 
     public TRegexLazyFindStartRootNode(RegexLanguage language, RegexSource source, int prefixLength, TRegexDFAExecutorNode backwardNode) {
-        super(language, backwardNode.getProperties().getFrameDescriptor());
-        this.source = source;
+        super(language, backwardNode.getProperties().getFrameDescriptor(), source);
         this.prefixLength = prefixLength;
         this.executorNode = backwardNode;
     }
@@ -39,8 +36,7 @@ public class TRegexLazyFindStartRootNode extends RootNode {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
-    public final String toString() {
-        return "TRegex bck " + source;
+    public String getEngineLabel() {
+        return "TRegex bck";
     }
 }

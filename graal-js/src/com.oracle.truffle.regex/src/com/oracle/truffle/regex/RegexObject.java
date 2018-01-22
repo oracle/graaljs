@@ -46,8 +46,8 @@ public class RegexObject implements TruffleObject, RegexLanguageObject {
     }
 
     /**
-     * A call target to the underlying {@link RegexRootNode} which will return a {@link RegexResult}
-     * object. The signature of this operation corresponds to:
+     * A call target to the underlying {@link RegexExecRootNode} which will return a
+     * {@link RegexResult} object. The signature of this operation corresponds to:
      * <code>{@link RegexResult} find(String input, int fromIndex);</code>
      */
     public CallTarget getCallTarget() {

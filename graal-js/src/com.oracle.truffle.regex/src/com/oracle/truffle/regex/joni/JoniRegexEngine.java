@@ -36,28 +36,28 @@ public final class JoniRegexEngine implements RegexEngine {
 
     private CallTarget searchSimpleCallTarget() {
         if (searchSimpleCallTarget == null) {
-            searchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexRootNode.Simple(language, false));
+            searchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexExecRootNode.Simple(language, false));
         }
         return searchSimpleCallTarget;
     }
 
     private CallTarget searchGroupCallTarget() {
         if (searchGroupCallTarget == null) {
-            searchGroupCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexRootNode.Groups(language, false));
+            searchGroupCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexExecRootNode.Groups(language, false));
         }
         return searchGroupCallTarget;
     }
 
     private CallTarget matchSimpleCallTarget() {
         if (matchSimpleCallTarget == null) {
-            matchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexRootNode.Simple(language, true));
+            matchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexExecRootNode.Simple(language, true));
         }
         return matchSimpleCallTarget;
     }
 
     private CallTarget matchGroupCallTarget() {
         if (matchGroupCallTarget == null) {
-            matchGroupCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexRootNode.Groups(language, true));
+            matchGroupCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexExecRootNode.Groups(language, true));
         }
         return matchGroupCallTarget;
     }

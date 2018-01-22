@@ -9,17 +9,16 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexProfile;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.result.LazyCaptureGroupsResult;
 
-public class TRegexLazyCaptureGroupsRootNode extends RootNode {
+public class TRegexLazyCaptureGroupsRootNode extends RegexRootNode {
 
-    private final RegexSource source;
     @Child private TRegexDFAExecutorNode executorNode;
 
     public TRegexLazyCaptureGroupsRootNode(RegexLanguage language, RegexSource source, TRegexDFAExecutorNode captureGroupNode) {
-        super(language, captureGroupNode.getProperties().getFrameDescriptor());
-        this.source = source;
+        super(language, captureGroupNode.getProperties().getFrameDescriptor(), source);
         this.executorNode = captureGroupNode;
     }
 
@@ -46,8 +45,7 @@ public class TRegexLazyCaptureGroupsRootNode extends RootNode {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
-    public final String toString() {
-        return "TRegex cg " + source;
+    protected String getEngineLabel() {
+        return "TRegex cg";
     }
 }

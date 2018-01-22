@@ -8,9 +8,9 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.CompiledRegex;
+import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexObject;
-import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.result.RegexResult;
@@ -23,13 +23,13 @@ import com.oracle.truffle.regex.tregex.nodes.input.InputStartsWithNode;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
-public abstract class LiteralRegexRootNode extends RegexRootNode implements CompiledRegex {
+public abstract class LiteralRegexExecRootNode extends RegexExecRootNode implements CompiledRegex {
 
     protected final String literal;
     protected final PreCalculatedResultFactory resultFactory;
     private final CallTarget regexCallTarget;
 
-    public LiteralRegexRootNode(RegexLanguage language, RegexSource source, PreCalcResultVisitor preCalcResultVisitor) {
+    public LiteralRegexExecRootNode(RegexLanguage language, RegexSource source, PreCalcResultVisitor preCalcResultVisitor) {
         super(language, source);
         this.literal = preCalcResultVisitor.getLiteral();
         this.resultFactory = preCalcResultVisitor.getResultFactory();
@@ -55,7 +55,7 @@ public abstract class LiteralRegexRootNode extends RegexRootNode implements Comp
 
     protected abstract String getImplName();
 
-    public static final class EmptyIndexOf extends LiteralRegexRootNode {
+    public static final class EmptyIndexOf extends LiteralRegexExecRootNode {
 
         public EmptyIndexOf(RegexLanguage language, RegexSource source, PreCalcResultVisitor preCalcResultVisitor) {
             super(language, source, preCalcResultVisitor);
@@ -72,7 +72,7 @@ public abstract class LiteralRegexRootNode extends RegexRootNode implements Comp
         }
     }
 
-    public static final class EmptyStartsWith extends LiteralRegexRootNode {
+    public static final class EmptyStartsWith extends LiteralRegexExecRootNode {
 
         public EmptyStartsWith(RegexLanguage language, RegexSource source, PreCalcResultVisitor preCalcResultVisitor) {
             super(language, source, preCalcResultVisitor);
@@ -89,7 +89,7 @@ public abstract class LiteralRegexRootNode extends RegexRootNode implements Comp
         }
     }
 
-    public static final class EmptyEndsWith extends LiteralRegexRootNode {
+    public static final class EmptyEndsWith extends LiteralRegexExecRootNode {
 
         @Child InputLengthNode lengthNode = InputLengthNode.create();
 
@@ -109,7 +109,7 @@ public abstract class LiteralRegexRootNode extends RegexRootNode implements Comp
         }
     }
 
-    public static final class EmptyEquals extends LiteralRegexRootNode {
+    public static final class EmptyEquals extends LiteralRegexExecRootNode {
 
         @Child InputLengthNode lengthNode = InputLengthNode.create();
 
@@ -129,7 +129,7 @@ public abstract class LiteralRegexRootNode extends RegexRootNode implements Comp
         }
     }
 
-    public static final class IndexOfChar extends LiteralRegexRootNode {
+    public static final class IndexOfChar extends LiteralRegexExecRootNode {
 
         private final char c;
         @Child InputIndexOfNode indexOfNode = InputIndexOfNode.create();
@@ -156,7 +156,7 @@ public abstract class LiteralRegexRootNode extends RegexRootNode implements Comp
         }
     }
 
-    public static final class StartsWith extends LiteralRegexRootNode {
+    public static final class StartsWith extends LiteralRegexExecRootNode {
 
         @Child InputStartsWithNode startsWithNode = InputStartsWithNode.create();
 
@@ -175,7 +175,7 @@ public abstract class LiteralRegexRootNode extends RegexRootNode implements Comp
         }
     }
 
-    public static final class EndsWith extends LiteralRegexRootNode {
+    public static final class EndsWith extends LiteralRegexExecRootNode {
 
         @Child InputLengthNode lengthNode = InputLengthNode.create();
         @Child InputEndsWithNode endsWithNode = InputEndsWithNode.create();
@@ -196,7 +196,7 @@ public abstract class LiteralRegexRootNode extends RegexRootNode implements Comp
         }
     }
 
-    public static final class Equals extends LiteralRegexRootNode {
+    public static final class Equals extends LiteralRegexExecRootNode {
 
         @Child InputEqualsNode equalsNode = InputEqualsNode.create();
 
@@ -215,7 +215,7 @@ public abstract class LiteralRegexRootNode extends RegexRootNode implements Comp
         }
     }
 
-    public static final class RegionMatches extends LiteralRegexRootNode {
+    public static final class RegionMatches extends LiteralRegexExecRootNode {
 
         @Child InputRegionMatchesNode regionMatchesNode = InputRegionMatchesNode.create();
 
