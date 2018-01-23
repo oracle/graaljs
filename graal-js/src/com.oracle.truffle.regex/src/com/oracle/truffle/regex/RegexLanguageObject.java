@@ -4,5 +4,7 @@
  */
 package com.oracle.truffle.regex;
 
-public interface RegexLanguageObject {
+import com.oracle.truffle.api.interop.TruffleObject;
+
+public interface RegexLanguageObject extends TruffleObject {
 }

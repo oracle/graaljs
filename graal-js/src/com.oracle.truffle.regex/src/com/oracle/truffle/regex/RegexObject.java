@@ -11,7 +11,7 @@ import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.runtime.RegexObjectExecMethod;
 import com.oracle.truffle.regex.runtime.RegexObjectMessageResolutionForeign;
 
-public class RegexObject implements TruffleObject, RegexLanguageObject {
+public class RegexObject implements RegexLanguageObject {
 
     private final RegexLanguage language;
     private final RegexSource source;

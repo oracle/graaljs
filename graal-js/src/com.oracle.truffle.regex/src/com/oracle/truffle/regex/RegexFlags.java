@@ -9,7 +9,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.runtime.RegexFlagsMessageResolutionForeign;
 
-public final class RegexFlags implements TruffleObject, RegexLanguageObject {
+public final class RegexFlags implements RegexLanguageObject {
 
     private static final int NONE = 0;
     private static final int IGNORE_CASE = 1;

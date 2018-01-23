@@ -6,6 +6,9 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives;
 
+/**
+ * This profile tracks how
+ */
 public final class RegexProfile {
 
     private int calls = 0;

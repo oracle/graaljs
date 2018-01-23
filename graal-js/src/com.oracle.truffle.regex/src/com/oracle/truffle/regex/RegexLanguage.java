@@ -216,4 +216,20 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     protected boolean isObjectOfLanguage(Object object) {
         return object instanceof RegexLanguageObject;
     }
+
+    /**
+     * {@link RegexLanguage} is thread-safe - it supports parallel parsing requests as well as
+     * parallel access to all {@link RegexLanguageObject}s. Parallel access to
+     * {@link com.oracle.truffle.regex.result.LazyCaptureGroupsResult} objects may lead to duplicate
+     * execution of code, but no wrong results.
+     * 
+     * @param thread the thread that accesses the context for the first time.
+     * @param singleThreaded <code>true</code> if the access is considered single-threaded,
+     *            <code>false</code> if more than one thread is active at the same time.
+     * @return always <code>true</code>
+     */
+    @Override
+    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+        return true;
+    }
 }

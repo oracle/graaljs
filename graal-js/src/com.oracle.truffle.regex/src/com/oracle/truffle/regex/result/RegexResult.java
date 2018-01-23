@@ -12,7 +12,7 @@ import com.oracle.truffle.regex.runtime.RegexResultEndArrayObject;
 import com.oracle.truffle.regex.runtime.RegexResultMessageResolutionForeign;
 import com.oracle.truffle.regex.runtime.RegexResultStartArrayObject;
 
-public abstract class RegexResult implements TruffleObject, RegexLanguageObject {
+public abstract class RegexResult implements RegexLanguageObject {
 
     public static final RegexResult NO_MATCH = new RegexResult(null, "NULL", 0) {
     };
