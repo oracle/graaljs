@@ -101,9 +101,7 @@ suite = {
 
   "distributions" : {
     "TRUFFLENODE" : {
-      "path" : "build/trufflenode.jar",
       "subdir" : "mx.graal-nodejs",
-      "sourcesPath" : "build/trufflenode.src.zip",
       "dependencies" : ["com.oracle.truffle.trufflenode"],
       "distDependencies" : [
         "graal-js:GRAALJS"
@@ -114,9 +112,7 @@ suite = {
       }
     },
     "TRUFFLENODE_JNI_BOUNDARY_PROFILER" : {
-      "path" : "build/trufflenode-jniboundaryprofiler.jar",
       "subdir" : "mx.graal-nodejs",
-      "sourcesPath" : "build/trufflenode-jniboundaryprofiler.src.zip",
       "dependencies" : ["com.oracle.truffle.trufflenode.jniboundaryprofiler"],
       "distDependencies" : [
         "TRUFFLENODE"
