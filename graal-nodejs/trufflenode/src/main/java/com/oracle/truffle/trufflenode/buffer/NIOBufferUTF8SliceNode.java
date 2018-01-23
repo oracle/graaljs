@@ -54,7 +54,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
 
     @Specialization
     public Object sliceDefault(DynamicObject target, Object start, Object end) {
-        return JSFunction.callDirect(nativeUtf8Slice, target, new Object[]{start, end});
+        return JSFunction.call(nativeUtf8Slice, target, new Object[]{start, end});
     }
 
     @SuppressWarnings("unused")
@@ -65,7 +65,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
 
     private Object doNativeFallback(DynamicObject target, Object start, Object end) {
         nativePath.enter();
-        return JSFunction.callDirect(nativeUtf8Slice, target, new Object[]{start, end});
+        return JSFunction.call(nativeUtf8Slice, target, new Object[]{start, end});
     }
 
     private Object doSlice(DynamicObject target, int start, int end) throws CharacterCodingException {

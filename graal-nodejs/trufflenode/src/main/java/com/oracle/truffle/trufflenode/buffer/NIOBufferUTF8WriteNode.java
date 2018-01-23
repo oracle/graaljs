@@ -76,7 +76,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
     @Specialization
     public Object writeDefault(DynamicObject target, Object str, Object destOffset, Object bytes) {
-        return JSFunction.callDirect(nativeUtf8Write, target, new Object[]{str, destOffset, bytes});
+        return JSFunction.call(nativeUtf8Write, target, new Object[]{str, destOffset, bytes});
     }
 
     @Specialization
@@ -87,7 +87,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
     private Object doNativeFallback(DynamicObject target, String str, Object destOffset, Object bytes) {
         nativePath.enter();
-        return JSFunction.callDirect(nativeUtf8Write, target, new Object[]{str, destOffset, bytes});
+        return JSFunction.call(nativeUtf8Write, target, new Object[]{str, destOffset, bytes});
     }
 
     private int doWrite(DynamicObject target, String str, int destOffset, int bytes) throws CharacterCodingException {

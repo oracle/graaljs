@@ -22,7 +22,7 @@ function parse(code, name, location) {
     var jsonStr = TestNashorn.parseToJSON(code, name, location);
     return JSON.parse(jsonStr,
         function (prop, value) {
-            if (typeof(value) == 'string' && prop == "value") {
+            if (typeof value === "string" && prop === "value") {
                 // handle regexps and strings - both are encoded as strings but strings
                 // do not start with '/'. If regexp, then eval it to make RegExp object
                 return value.startsWith('/') ? eval(value) : value.substring(1);

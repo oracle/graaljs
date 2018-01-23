@@ -97,13 +97,13 @@ Internal.ObjectDefineProperty(ArrayIterator.prototype, Symbol.toStringTag, {valu
 
 var arrayKeys = function keys() {
   return CreateArrayIterator(Internal.ToObject(this), ITERATION_KIND_KEY);
-}
+};
 var arrayValues = function values() {
   return CreateArrayIterator(Internal.ToObject(this), ITERATION_KIND_VALUE);
-}
+};
 var arrayEntries = function entries() {
   return CreateArrayIterator(Internal.ToObject(this), ITERATION_KIND_KEY_PLUS_VALUE);
-}
+};
 
 Internal.CreateMethodProperty(Array.prototype, "keys", arrayKeys);
 Internal.CreateMethodProperty(Array.prototype, "values", arrayValues);
@@ -119,13 +119,13 @@ function ValidateTypedArray(obj) {
 
 var typedArrayKeys = function keys() {
   return CreateArrayIterator(ValidateTypedArray(this), ITERATION_KIND_KEY);
-}
+};
 var typedArrayValues = function values() {
   return CreateArrayIterator(ValidateTypedArray(this), ITERATION_KIND_VALUE);
-}
+};
 var typedArrayEntries = function entries() {
   return CreateArrayIterator(ValidateTypedArray(this), ITERATION_KIND_KEY_PLUS_VALUE);
-}
+};
 
 Internal.CreateMethodProperty(TypedArray.prototype, "keys", typedArrayKeys);
 Internal.CreateMethodProperty(TypedArray.prototype, "values", typedArrayValues);
@@ -195,10 +195,10 @@ Internal.ObjectDefineProperty(SetIterator.prototype, Symbol.toStringTag, {value:
 
 var setValues = function values() {
   return CreateSetIterator(this, ITERATION_KIND_VALUE);
-}
+};
 var setEntries = function entries() {
   return CreateSetIterator(this, ITERATION_KIND_KEY_PLUS_VALUE);
-}
+};
 
 // The initial value of the keys property is the same function object as the initial value of the values property.
 Internal.CreateMethodProperty(Set.prototype, "keys", setValues);
@@ -271,13 +271,13 @@ Internal.ObjectDefineProperty(MapIterator.prototype, Symbol.toStringTag, {value:
 
 var mapKeys = function keys() {
   return CreateMapIterator(this, ITERATION_KIND_KEY);
-}
+};
 var mapValues = function values() {
   return CreateMapIterator(this, ITERATION_KIND_VALUE);
-}
+};
 var mapEntries = function entries() {
   return CreateMapIterator(this, ITERATION_KIND_KEY_PLUS_VALUE);
-}
+};
 
 Internal.CreateMethodProperty(Map.prototype, "keys", mapKeys);
 Internal.CreateMethodProperty(Map.prototype, "values", mapValues);
@@ -329,7 +329,7 @@ function StringIteratorNext() {
   }
   var first = Internal.CallFunction(charCodeAt, string, position);
   var resultString;
-  if (first < 0xD800 || first > 0xDBFF || position + 1 == length) {
+  if (first < 0xD800 || first > 0xDBFF || position + 1 === length) {
     resultString = fromCharCode(first);
   } else {
     var second = Internal.CallFunction(charCodeAt, string, position + 1);

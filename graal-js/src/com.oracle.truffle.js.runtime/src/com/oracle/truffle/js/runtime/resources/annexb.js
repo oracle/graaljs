@@ -13,30 +13,19 @@
 
 (function(){
 
-function DefineOwnPropertyNoThrow(o, p, d) {
-  try {
-    Object.defineProperty(o, p, d);
-  } catch (e) {
-    // swallow TypeError to emulate [[DefineOwnProperty]] with Throw=false
-    if (!(e instanceof TypeError)) {
-      throw e;
-    }
-  }
-}
-
 function DefineOwnPropertyOrThrow(o, p, d) {
   Object.defineProperty(o, p, d);
 }
 
 function __defineGetter__(prop, func) {
-  if (typeof func != 'function') {
+  if (typeof func !== "function") {
     throw new TypeError("Object.prototype.__defineGetter__: Expecting function");
   }
   DefineOwnPropertyOrThrow(Internal.ToObject(this), prop, { get: func, enumerable: true, configurable: true });
 }
 
 function __defineSetter__(prop, func) {
-  if (typeof func != 'function') {
+  if (typeof func !== "function") {
     throw new TypeError("Object.prototype.__defineSetter__: Expecting function");
   }
   DefineOwnPropertyOrThrow(Internal.ToObject(this), prop, { set: func, enumerable: true, configurable: true });

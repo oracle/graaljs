@@ -91,7 +91,7 @@ function CreatePromiseRejectFunction(promise, alreadyResolved) {
         }
         alreadyResolved.value = true;
         return RejectPromise(promise, reason);
-    }
+    };
 }
 
 /**
@@ -125,7 +125,7 @@ function CreatePromiseResolveFunction(promise, alreadyResolved) {
         }
         EnqueueJob(PromiseResolveThenableJob(promise, resolution, thenAction));
         return undefined;
-    }
+    };
 }
 
 /**
@@ -169,7 +169,7 @@ function GetCapabilitiesExecutor(capability) {
         capability.resolve = resolve;
         capability.reject = reject;
         return undefined;
-    }
+    };
 }
 
 function IsPromiseCapabilityRecord(cap) {
@@ -307,7 +307,7 @@ var promAll = function all(iterable) {
     try {
         var iterator = Internal.GetIterator(iterable);
     } catch (e) {
-        var result = Internal.CallFunction(promiseCapability.reject, undefined, e);
+        Internal.CallFunction(promiseCapability.reject, undefined, e);
         return promiseCapability.promise;
     }
 
@@ -319,7 +319,7 @@ var promAll = function all(iterable) {
             if (iteratorRecord.iterator.return) {
                 iteratorRecord.iterator.return();
             }
-            var result = promiseCapability.reject(result);
+            promiseCapability.reject(result);
             return promiseCapability.promise;
         }
     }
@@ -402,7 +402,7 @@ var promRace = function race(iterable) {
     try {
         var iterator = Internal.GetIterator(iterable);
     } catch (e) {
-        var result = Internal.CallFunction(promiseCapability.reject, undefined, e);
+        Internal.CallFunction(promiseCapability.reject, undefined, e);
         return promiseCapability.promise;
     }
 
@@ -414,7 +414,7 @@ var promRace = function race(iterable) {
             if (iteratorRecord.iterator.return) {
                 iteratorRecord.iterator.return();
             }
-            var result = promiseCapability.reject(result);
+            promiseCapability.reject(result);
             return promiseCapability.promise;
         }
     }

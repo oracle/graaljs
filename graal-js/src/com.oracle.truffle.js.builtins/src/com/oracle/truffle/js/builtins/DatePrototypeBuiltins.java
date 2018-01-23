@@ -861,7 +861,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
             Object toISO = getToISOStringFn(o);
             JSFunction.checkIsFunction(toISO);
-            return JSFunction.callDirect((DynamicObject) toISO, o, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+            return JSFunction.call((DynamicObject) toISO, o, JSArguments.EMPTY_ARGUMENTS_ARRAY);
         }
 
         private Object getToISOStringFn(Object obj) {
