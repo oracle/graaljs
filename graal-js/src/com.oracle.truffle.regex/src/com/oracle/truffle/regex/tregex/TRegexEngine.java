@@ -70,7 +70,7 @@ public final class TRegexEngine implements RegexEngine {
     public CompiledRegex compile(RegexSource source) throws RegexSyntaxException {
         try {
             CompilationBuffer compilationBuffer = new CompilationBuffer();
-            // System.out.println(source);
+            // System.out.println("TRegex compiling " + DebugUtil.jsStringEscape(source.toString()));
             // System.out.println(new RegexUnifier(pattern, flags).getUnifiedPattern());
             phaseStart("Parser");
             RegexAST ast = new RegexParser(source).parse();
@@ -243,7 +243,7 @@ public final class TRegexEngine implements RegexEngine {
 
     private void phaseEnd(String phase) {
         if (DebugUtil.LOG_PHASES) {
-            logPhases.log(phase + " End, " + timer.elapsedToString());
+            logPhases.log(phase + " End, elapsed: " + timer.elapsedToString());
         }
     }
 

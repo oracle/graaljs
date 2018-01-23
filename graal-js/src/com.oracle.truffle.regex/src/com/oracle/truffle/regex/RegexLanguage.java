@@ -19,6 +19,7 @@ import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.TRegexEngine;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.util.LRUCache;
 
 import java.util.Collections;
@@ -94,6 +95,8 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     public static final RegexResult EXPORT_NO_MATCH_RESULT = RegexResult.NO_MATCH;
     private static final Iterable<Scope> NO_MATCH_RESULT_SCOPE = Collections.singleton(Scope.newBuilder("global", new NoMatchResultObject()).build());
 
+    private final DebugUtil.Timer timer = DebugUtil.LOG_TOTAL_COMPILATION_TIME ? new DebugUtil.Timer() : null;
+
     public TRegexEngine getTRegexEngine() {
         return tRegexEngine;
     }
@@ -143,7 +146,13 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
             try {
                 RegexParser.validate(regexSource);
             } catch (UnsupportedRegexException e) {
+                if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+                    timer.start();
+                }
                 regex.setCompiledRegex(fallbackEngine.compile(regexSource));
+                if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+                    logCompilationTime(regexSource, 0, timer.getElapsed());
+                }
             }
             RegexGetRegexObjectRootNode rootNode = new RegexGetRegexObjectRootNode(this, regex);
             return new ParsingResult(Truffle.getRuntime().createCallTarget(rootNode), null);
@@ -177,11 +186,28 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
 
     public CompiledRegex compileRegex(RegexSource regexSource) throws RegexSyntaxException {
         CompiledRegex regex = null;
+        long elapsedTimeTRegex = 0;
+        long elapsedTimeJoni = 0;
         if (!regexSource.getOptions().useJoniEngine()) {
+            if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+                timer.start();
+            }
             regex = tRegexEngine.compile(regexSource);
+            if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+                elapsedTimeTRegex = timer.getElapsed();
+            }
         }
         if (regex == null) {
+            if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+                timer.start();
+            }
             regex = fallbackEngine.compile(regexSource);
+            if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+                elapsedTimeJoni = timer.getElapsed();
+            }
+        }
+        if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+            logCompilationTime(regexSource, elapsedTimeTRegex, elapsedTimeJoni);
         }
         return regex;
     }
@@ -234,5 +260,13 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     @Override
     protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
         return true;
+    }
+
+    private static void logCompilationTime(RegexSource regexSource, long elapsedTimeTRegex, long elapsedTimeJoni) {
+        System.out.println(String.format("%s, %s, %s, %s",
+                        DebugUtil.Timer.elapsedToString(elapsedTimeTRegex + elapsedTimeJoni),
+                        DebugUtil.Timer.elapsedToString(elapsedTimeTRegex),
+                        DebugUtil.Timer.elapsedToString(elapsedTimeJoni),
+                        DebugUtil.jsStringEscape(regexSource.toString())));
     }
 }
