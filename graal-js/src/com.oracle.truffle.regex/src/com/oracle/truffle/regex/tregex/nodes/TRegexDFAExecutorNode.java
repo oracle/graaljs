@@ -10,6 +10,7 @@ import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.tregex.nodes.input.InputCharAtNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 
@@ -102,7 +103,7 @@ public final class TRegexDFAExecutorNode extends Node {
             final short[] successors = curState.getSuccessors();
             CompilerAsserts.partialEvaluationConstant(successors);
             CompilerAsserts.partialEvaluationConstant(successors.length);
-            curState.execute(frame, this);
+            curState.executeFindSuccessor(frame, this);
             if (getSuccessorIndex(frame) == -1) {
                 break;
             }
@@ -117,6 +118,12 @@ public final class TRegexDFAExecutorNode extends Node {
         }
     }
 
+    /**
+     * The index pointing into {@link #getInput(VirtualFrame)}.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @return the current index of {@link #getInput(VirtualFrame)} that is being processed.
+     */
     public int getIndex(VirtualFrame frame) {
         return FrameUtil.getIntSafe(frame, props.getIndexFS());
     }
@@ -125,6 +132,14 @@ public final class TRegexDFAExecutorNode extends Node {
         frame.setInt(props.getIndexFS(), i);
     }
 
+    /**
+     * The <code>fromIndex</code> argument given to
+     * {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @return the <code>fromIndex</code> argument given to
+     *         {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
+     */
     public int getFromIndex(VirtualFrame frame) {
         return FrameUtil.getIntSafe(frame, props.getFromIndexFS());
     }
@@ -133,6 +148,12 @@ public final class TRegexDFAExecutorNode extends Node {
         frame.setInt(props.getFromIndexFS(), fromIndex);
     }
 
+    /**
+     * The maximum index as given by the parent {@link TRegexExecRootNode}.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @return the maximum index as given by the parent {@link TRegexExecRootNode}.
+     */
     public int getMaxIndex(VirtualFrame frame) {
         return FrameUtil.getIntSafe(frame, props.getMaxIndexFS());
     }
@@ -141,6 +162,16 @@ public final class TRegexDFAExecutorNode extends Node {
         frame.setInt(props.getMaxIndexFS(), maxIndex);
     }
 
+    /**
+     * The maximum index as checked by {@link #hasNext(VirtualFrame)}. In most cases this value is
+     * equal to {@link #getMaxIndex(VirtualFrame)}, but backward matching nodes change this value
+     * while matching.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @return the maximum index as checked by {@link #hasNext(VirtualFrame)}.
+     *
+     * @see BackwardDFAStateNode
+     */
     public int getCurMaxIndex(VirtualFrame frame) {
         return FrameUtil.getIntSafe(frame, props.getCurMaxIndexFS());
     }
@@ -149,6 +180,14 @@ public final class TRegexDFAExecutorNode extends Node {
         frame.setInt(props.getCurMaxIndexFS(), value);
     }
 
+    /**
+     * The <code>input</code> argument given to
+     * {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @return the <code>input</code> argument given to
+     *         {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
+     */
     public Object getInput(VirtualFrame frame) {
         return FrameUtil.getObjectSafe(frame, props.getInputFS());
     }
@@ -157,6 +196,14 @@ public final class TRegexDFAExecutorNode extends Node {
         frame.setObject(props.getInputFS(), input);
     }
 
+    /**
+     * The length of the <code>input</code> argument given to
+     * {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @return the length of the <code>input</code> argument given to
+     *         {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
+     */
     public int getInputLength(VirtualFrame frame) {
         return lengthNode.execute(getInput(frame));
     }

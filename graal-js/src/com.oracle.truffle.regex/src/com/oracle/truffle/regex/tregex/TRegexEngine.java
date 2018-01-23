@@ -70,7 +70,8 @@ public final class TRegexEngine implements RegexEngine {
     public CompiledRegex compile(RegexSource source) throws RegexSyntaxException {
         try {
             CompilationBuffer compilationBuffer = new CompilationBuffer();
-            // System.out.println("TRegex compiling " + DebugUtil.jsStringEscape(source.toString()));
+            // System.out.println("TRegex compiling " +
+            // DebugUtil.jsStringEscape(source.toString()));
             // System.out.println(new RegexUnifier(pattern, flags).getUnifiedPattern());
             phaseStart("Parser");
             RegexAST ast = new RegexParser(source).parse();

@@ -89,8 +89,17 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return loopToSelf != -1;
     }
 
+    /**
+     * Calculates this state's successor by finding a transition that matches the current input. If
+     * the successor is the state itself, this method continues consuming input characters until a
+     * different successor is found. This special handling allows for partial loop unrolling inside
+     * the DFA, as well as some optimizations in {@link CGTrackingDFAStateNode}.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     */
     @Override
-    public void execute(VirtualFrame frame, TRegexDFAExecutorNode executor) {
+    public void executeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         beforeFindSuccessor(frame, executor);
         if (!executor.hasNext(frame)) {
@@ -127,6 +136,16 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
     }
 
+    /**
+     * Finds the first matching transition and returns its index. If a transition matches,
+     * {@link #successorFound1(VirtualFrame, TRegexDFAExecutorNode, int)} is called.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     * @return the index of the element of {@link #getMatchers()} that matched the current input
+     *         character ({@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or
+     *         {@link #FS_RESULT_NO_SUCCESSOR}.
+     */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private int checkMatch1(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         final char c = executor.getChar(frame);
@@ -141,6 +160,19 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return FS_RESULT_NO_SUCCESSOR;
     }
 
+    /**
+     * Finds the first matching transition and returns its index. This method is called only if the
+     * transition found by {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode)} was a loop back
+     * to this state (indicated by {@link #loopToSelf}). If a transition <i>other than</i> the
+     * looping transition matches,
+     * {@link #successorFound2(VirtualFrame, TRegexDFAExecutorNode, int)} is called.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     * @return the index of the element of {@link #getMatchers()} that matched the current input
+     *         character ({@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or
+     *         {@link #FS_RESULT_NO_SUCCESSOR}.
+     */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private int checkMatch2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         final char c = executor.getChar(frame);
@@ -157,6 +189,24 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return FS_RESULT_NO_SUCCESSOR;
     }
 
+    /**
+     * Finds the first matching transition and returns its index. This method is called only if the
+     * transitions found by {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode)} AND
+     * {@link #checkMatch2(VirtualFrame, TRegexDFAExecutorNode)} both were a loop back to this state
+     * (indicated by {@link #loopToSelf}), and will be called in a loop until a transition other
+     * than the loop back transition matches. If a transition <i>other than</i> the looping
+     * transition matches, {@link #successorFound3(VirtualFrame, TRegexDFAExecutorNode, int, int)}
+     * is called.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     * @param preLoopIndex the index pointed to by
+     *            {@link TRegexDFAExecutorNode#getIndex(VirtualFrame)} <i>before</i> this method is
+     *            called for the first time.
+     * @return the index of the element of {@link #getMatchers()} that matched the current input
+     *         character ({@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or
+     *         {@link #FS_RESULT_NO_SUCCESSOR}.
+     */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private int checkMatch3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {
         final char c = executor.getChar(frame);
@@ -173,6 +223,13 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return FS_RESULT_NO_SUCCESSOR;
     }
 
+    /**
+     * Gets called at the very beginning of
+     * {@link #executeFindSuccessor(VirtualFrame, TRegexDFAExecutorNode)}.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     */
     protected void beforeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (isFinalState()) {
@@ -180,11 +237,29 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * Gets called when {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode)} finds a successor.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     * @param i the index of the matching transition (corresponds to an entry in
+     *            {@link #getMatchers()} and {@link #getSuccessors()}).
+     */
     protected void successorFound1(VirtualFrame frame, TRegexDFAExecutorNode executor, int i) {
         CompilerAsserts.partialEvaluationConstant(this);
     }
 
+    /**
+     * Gets called if the end of the input is reached (!
+     * {@link TRegexDFAExecutorNode#hasNext(VirtualFrame)}) before
+     * {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode)} is called. In
+     * {@link BackwardDFAStateNode}, execution may still continue here, which is why this method can
+     * return a successor index.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     * @return a successor index.
+     */
     protected int atEnd1(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (isAnchoredFinalState() && executor.atEnd(frame)) {
@@ -193,7 +268,15 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return FS_RESULT_NO_SUCCESSOR;
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * Gets called when {@link #checkMatch2(VirtualFrame, TRegexDFAExecutorNode)} finds a successor
+     * <i>other than</i> the looping transition indicated by {@link #loopToSelf}.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     * @param i the index of the matching transition (corresponds to an entry in
+     *            {@link #getMatchers()} and {@link #getSuccessors()}).
+     */
     protected void successorFound2(VirtualFrame frame, TRegexDFAExecutorNode executor, int i) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (isFinalState()) {
@@ -201,6 +284,13 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
     }
 
+    /**
+     * Gets called if {@link #checkMatch2(VirtualFrame, TRegexDFAExecutorNode)} does not find a
+     * successor.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     */
     protected void noSuccessor2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (isFinalState()) {
@@ -208,6 +298,17 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
     }
 
+    /**
+     * Gets called if the end of the input is reached (!
+     * {@link TRegexDFAExecutorNode#hasNext(VirtualFrame)}) directly after
+     * {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode)} is called. In
+     * {@link BackwardDFAStateNode}, execution may still continue here, which is why this method can
+     * return a successor index.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     * @return a successor index.
+     */
     protected int atEnd2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         boolean anchored = isAnchoredFinalState() && executor.atEnd(frame);
@@ -217,7 +318,19 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return FS_RESULT_NO_SUCCESSOR;
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * Gets called when {@link #checkMatch2(VirtualFrame, TRegexDFAExecutorNode)} finds a successor
+     * <i>other than</i> the looping transition indicated by {@link #loopToSelf}.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     * @param i the index of the matching transition (corresponds to an entry in
+     *            {@link #getMatchers()} and {@link #getSuccessors()}).
+     * @param preLoopIndex the index pointed to by
+     *            {@link TRegexDFAExecutorNode#getIndex(VirtualFrame)} <i>before</i>
+     *            {@link #checkMatch3(VirtualFrame, TRegexDFAExecutorNode, int)} is called for the
+     *            first time.
+     */
     protected void successorFound3(VirtualFrame frame, TRegexDFAExecutorNode executor, int i, int preLoopIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (isFinalState()) {
@@ -225,7 +338,17 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * Gets called if {@link #checkMatch3(VirtualFrame, TRegexDFAExecutorNode, int)} does not find a
+     * successor.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     * @param preLoopIndex the index pointed to by
+     *            {@link TRegexDFAExecutorNode#getIndex(VirtualFrame)} <i>before</i>
+     *            {@link #checkMatch3(VirtualFrame, TRegexDFAExecutorNode, int)} is called for the
+     *            first time.
+     */
     protected void noSuccessor3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (isFinalState()) {
@@ -233,7 +356,21 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * Gets called if the end of the input is reached (!
+     * {@link TRegexDFAExecutorNode#hasNext(VirtualFrame)}) in the loop that calls
+     * {@link #checkMatch3(VirtualFrame, TRegexDFAExecutorNode, int)}. In
+     * {@link BackwardDFAStateNode}, execution may still continue here, which is why this method can
+     * return a successor index.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     * @param preLoopIndex the index pointed to by
+     *            {@link TRegexDFAExecutorNode#getIndex(VirtualFrame)} <i>before</i>
+     *            {@link #checkMatch3(VirtualFrame, TRegexDFAExecutorNode, int)} is called for the
+     *            first time.
+     * @return a successor index.
+     */
     protected int atEnd3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
         boolean anchored = isAnchoredFinalState() && executor.atEnd(frame);

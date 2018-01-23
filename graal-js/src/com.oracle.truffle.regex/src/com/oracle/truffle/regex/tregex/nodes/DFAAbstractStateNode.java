@@ -22,7 +22,7 @@ public abstract class DFAAbstractStateNode extends Node {
     /**
      * Creates a copy of this state node, where all attributes are copied shallowly, except for the
      * {@link #successors} array, which is deep-copied, and the node ID, which is replaced by the
-     * parameter copyID.
+     * parameter copyID. Used by {@link com.oracle.truffle.regex.tregex.util.DFANodeSplit}.
      *
      * @param copyID new ID for the copy.
      * @return an "almost shallow" copy of this node.
@@ -35,7 +35,16 @@ public abstract class DFAAbstractStateNode extends Node {
         return successors;
     }
 
-    public abstract void execute(VirtualFrame frame, TRegexDFAExecutorNode executor);
+    /**
+     * Calculates this state's successor and returns its ID ({@link DFAStateNode#getId()}) via
+     * {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}. This return value is
+     * called "successor index" and may either be an index of the successors array (between 0 and
+     * <code>{@link #getSuccessors()}.length</code>) or {@link #FS_RESULT_NO_SUCCESSOR}.
+     * 
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     */
+    public abstract void executeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor);
 
     public abstract DebugUtil.Table toTable();
 }

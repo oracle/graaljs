@@ -62,7 +62,7 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
     }
 
     @Override
-    public void execute(VirtualFrame frame, TRegexDFAExecutorNode executor) {
+    public void executeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         if (searching) {
             executor.setSuccessorIndex(frame, executor.rewindUpTo(frame, getPrefixLength()));
         } else {
