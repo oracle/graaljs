@@ -464,6 +464,7 @@ public final class RegexParser {
             deleteVisitor.run(curSequence.getLastTerm());
             curSequence.removeLast();
             addCharClass(MatcherBuilder.createEmpty());
+            curSequence.markAsDead();
             return;
         }
         if (quantifier.getMin() == 0) {
