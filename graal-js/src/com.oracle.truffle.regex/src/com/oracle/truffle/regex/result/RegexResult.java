@@ -6,8 +6,8 @@ package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.RegexLanguageObject;
+import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.runtime.RegexResultEndArrayObject;
 import com.oracle.truffle.regex.runtime.RegexResultMessageResolutionForeign;
 import com.oracle.truffle.regex.runtime.RegexResultStartArrayObject;

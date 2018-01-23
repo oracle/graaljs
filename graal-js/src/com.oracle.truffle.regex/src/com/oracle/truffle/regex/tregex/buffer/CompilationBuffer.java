@@ -6,8 +6,8 @@ package com.oracle.truffle.regex.tregex.buffer;
 
 public class CompilationBuffer {
 
-    private ObjectBuffer objectBuffer1;
-    private ObjectBuffer objectBuffer2;
+    private ObjectArrayBuffer objectBuffer1;
+    private ObjectArrayBuffer objectBuffer2;
     private ByteArrayBuffer byteArrayBuffer;
     private RangesArrayBuffer rangesArrayBuffer1;
     private RangesArrayBuffer rangesArrayBuffer2;
@@ -37,17 +37,17 @@ public class CompilationBuffer {
         return rangesArrayBuffer3;
     }
 
-    public ObjectBuffer getObjectBuffer1() {
+    public ObjectArrayBuffer getObjectBuffer1() {
         if (objectBuffer1 == null) {
-            objectBuffer1 = new ObjectBuffer();
+            objectBuffer1 = new ObjectArrayBuffer();
         }
         objectBuffer1.clear();
         return objectBuffer1;
     }
 
-    public ObjectBuffer getObjectBuffer2() {
+    public ObjectArrayBuffer getObjectBuffer2() {
         if (objectBuffer2 == null) {
-            objectBuffer2 = new ObjectBuffer();
+            objectBuffer2 = new ObjectArrayBuffer();
         }
         objectBuffer2.clear();
         return objectBuffer2;

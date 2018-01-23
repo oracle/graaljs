@@ -6,7 +6,7 @@ package com.oracle.truffle.regex.tregex.dfa;
 
 import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.buffer.ObjectBuffer;
+import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAAbstractFinalState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
@@ -48,8 +48,8 @@ public class DFACaptureGroupTransitionBuilder {
         Arrays.fill(newOrder, -1);
         boolean[] used = new boolean[newOrder.length];
         int[] copySource = new int[getRequiredStates().size()];
-        ObjectBuffer indexUpdates = compilationBuffer.getObjectBuffer1();
-        ObjectBuffer indexClears = compilationBuffer.getObjectBuffer2();
+        ObjectArrayBuffer indexUpdates = compilationBuffer.getObjectBuffer1();
+        ObjectArrayBuffer indexClears = compilationBuffer.getObjectBuffer2();
         ByteArrayBuffer arrayCopies = compilationBuffer.getByteArrayBuffer();
         for (NFAStateTransition nfaTransition : transitionBuilder.getTargetState()) {
             if (targetStates.contains(nfaTransition.getTarget())) {

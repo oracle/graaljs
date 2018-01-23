@@ -59,22 +59,25 @@ import java.util.Map;
  * </ol>
  * </li>
  * </ol>
- * <p>
- * Usage example in JavaScript: {@code
+ * 
+ * <pre>
+ * Usage example in JavaScript:
+ * {@code
  * var pattern = Interop.eval("application/js-regex", "/(a|(b))c/i");
  * var result = pattern.exec("xacy", 0);
- * print(result.isMatch); // true
- * print(result.input); // "xacy"
+ * print(result.isMatch);    // true
+ * print(result.input);      // "xacy"
  * print(result.groupCount); // 3
  * print(result.start[0] + ", " + result.end[0]); // "1, 3"
  * print(result.start[1] + ", " + result.end[1]); // "1, 2"
  * print(result.start[2] + ", " + result.end[2]); // "-1, -1"
  * var result2 = pattern.exec("xxx", 0);
- * print(result.isMatch); // false
- * print(result.input); // null
+ * print(result.isMatch);    // false
+ * print(result.input);      // null
  * print(result.groupCount); // 0
  * print(result.start[0] + ", " + result.end[0]); // throws IndexOutOfBoundsException
  * }
+ * </pre>
  */
 
 @TruffleLanguage.Registration(name = RegexLanguage.NAME, id = RegexLanguage.ID, mimeType = RegexLanguage.MIME_TYPE, version = "0.1", internal = true)

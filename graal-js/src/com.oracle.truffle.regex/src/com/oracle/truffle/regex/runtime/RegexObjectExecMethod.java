@@ -6,8 +6,8 @@ package com.oracle.truffle.regex.runtime;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.RegexLanguageObject;
+import com.oracle.truffle.regex.RegexObject;
 
 public final class RegexObjectExecMethod implements RegexLanguageObject {
 

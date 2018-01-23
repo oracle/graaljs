@@ -6,6 +6,25 @@ package com.oracle.truffle.regex.tregex.buffer;
 
 import java.util.Arrays;
 
+/**
+ * This class is designed as a "scratchpad" for generating many byte arrays of unknown size. It will
+ * never shrink its internal buffer, so it should be disposed as soon as it is no longer needed.
+ * <p>
+ * Usage Example:
+ * </p>
+ * 
+ * <pre>
+ * ByteArrayBuffer buf = new ByteArrayBuffer();
+ * List<byte[]> results = new ArrayList<>();
+ * for (Object obj : listOfThingsToProcess) {
+ *     for (Object x : obj.thingsThatShouldBecomeBytes()) {
+ *         buf.add(someCalculation(x));
+ *     }
+ *     results.add(buf.toArray());
+ *     buf.clear();
+ * }
+ * </pre>
+ */
 public class ByteArrayBuffer {
 
     private byte[] buf;

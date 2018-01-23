@@ -8,12 +8,11 @@ import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.Counter;
+import org.graalvm.collections.EconomicMap;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Used for pre-calculating and finding the result of tree-like regular expressions. A regular
@@ -50,7 +49,7 @@ public final class NFATraceFinderGenerator {
     /**
      * Equal results are consolidated using this map.
      */
-    private final Map<PreCalculatedResultFactory, PreCalculatedResultFactory> resultDeDuplicationMap = new HashMap<>();
+    private final EconomicMap<PreCalculatedResultFactory, PreCalculatedResultFactory> resultDeDuplicationMap = EconomicMap.create();
 
     private final Counter.ThresholdCounter stateID = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNFASize, "TraceFinder NFA explosion");
     private final Counter.ThresholdCounter transitionID = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNFASize, "TraceFinder NFA transition explosion");
@@ -213,8 +212,10 @@ public final class NFATraceFinderGenerator {
                         assert treeNode instanceof NFAAbstractFinalState;
                         treeNode.addPossibleResult(resultID);
                         result.setLength(i);
-                        PreCalculatedResultFactory existingResult = resultDeDuplicationMap.putIfAbsent(result, result);
-                        if (existingResult != null) {
+                        PreCalculatedResultFactory existingResult = resultDeDuplicationMap.get(result);
+                        if (existingResult == null) {
+                            resultDeDuplicationMap.put(result, result);
+                        } else {
                             result = existingResult;
                         }
                         resultList.add(result);

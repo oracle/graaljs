@@ -7,8 +7,8 @@ package com.oracle.truffle.regex.nodes;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexObject;
 
 @NodeInfo(language = "REGEX", description = "REGEX RootNode responsible for providing access to a RegexCompiledRegex")
 public class RegexGetRegexObjectRootNode extends RootNode {

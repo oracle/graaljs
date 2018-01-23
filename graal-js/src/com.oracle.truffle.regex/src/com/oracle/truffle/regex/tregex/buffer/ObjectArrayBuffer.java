@@ -8,16 +8,37 @@ package com.oracle.truffle.regex.tregex.buffer;
 import java.util.Arrays;
 import java.util.Iterator;
 
-public final class ObjectBuffer implements Iterable<Object> {
+/**
+ * This class is designed as a "scratchpad" for generating many Object arrays of unknown size. It
+ * will never shrink its internal buffer, so it should be disposed as soon as it is no longer
+ * needed.
+ * <p>
+ * Usage Example:
+ * </p>
+ * 
+ * <pre>
+ * SomeClass[] typedArray = new SomeClass[0];
+ * ObjectArrayBuffer buf = new ObjectArrayBuffer();
+ * List<SomeClass[]> results = new ArrayList<>();
+ * for (Object obj : listOfThingsToProcess) {
+ *     for (Object x : obj.thingsThatShouldBecomeSomeClass()) {
+ *         buf.add(someCalculation(x));
+ *     }
+ *     results.add(buf.toArray(typedArray));
+ *     buf.clear();
+ * }
+ * </pre>
+ */
+public final class ObjectArrayBuffer implements Iterable<Object> {
 
     private Object[] buf;
     private int size = 0;
 
-    public ObjectBuffer() {
+    public ObjectArrayBuffer() {
         this(16);
     }
 
-    public ObjectBuffer(int initialSize) {
+    public ObjectArrayBuffer(int initialSize) {
         buf = new Object[initialSize];
     }
 

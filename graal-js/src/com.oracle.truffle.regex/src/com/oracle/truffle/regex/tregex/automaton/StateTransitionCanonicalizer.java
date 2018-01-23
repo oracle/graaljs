@@ -5,26 +5,25 @@
 package com.oracle.truffle.regex.tregex.automaton;
 
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.buffer.ObjectBuffer;
+import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
+import org.graalvm.collections.EconomicMap;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public abstract class StateTransitionCanonicalizer<SS, TB extends TransitionBuilder<SS>> {
 
     private final MatcherBuilder[] intersectionResult = new MatcherBuilder[3];
-    private final Map<SS, TB> mergeSameTargetsMap = new HashMap<>();
+    private final EconomicMap<SS, TB> mergeSameTargetsMap = EconomicMap.create();
 
     public TB[] run(List<TB> transitions, CompilationBuffer compilationBuffer) {
-        ObjectBuffer disjointTransitions = calcDisjointTransitions(transitions, compilationBuffer);
+        ObjectArrayBuffer disjointTransitions = calcDisjointTransitions(transitions, compilationBuffer);
         return mergeSameTargets(compilationBuffer, disjointTransitions);
     }
 
     @SuppressWarnings("unchecked")
-    private ObjectBuffer calcDisjointTransitions(List<TB> transitions, CompilationBuffer compilationBuffer) {
-        ObjectBuffer disjointTransitions = compilationBuffer.getObjectBuffer1();
+    private ObjectArrayBuffer calcDisjointTransitions(List<TB> transitions, CompilationBuffer compilationBuffer) {
+        ObjectArrayBuffer disjointTransitions = compilationBuffer.getObjectBuffer1();
         for (TB t : transitions) {
             for (int i = 0; i < disjointTransitions.size(); i++) {
                 TB dt = (TB) disjointTransitions.get(i);
@@ -53,7 +52,7 @@ public abstract class StateTransitionCanonicalizer<SS, TB extends TransitionBuil
     }
 
     @SuppressWarnings("unchecked")
-    private TB[] mergeSameTargets(CompilationBuffer compilationBuffer, ObjectBuffer disjointTransitions) {
+    private TB[] mergeSameTargets(CompilationBuffer compilationBuffer, ObjectArrayBuffer disjointTransitions) {
         int resultSize = 0;
         for (Object o : disjointTransitions) {
             TB tb = (TB) o;
@@ -84,7 +83,7 @@ public abstract class StateTransitionCanonicalizer<SS, TB extends TransitionBuil
         }
         TB[] resultArray = createResultArray(resultSize);
         int i = 0;
-        for (TB list : mergeSameTargetsMap.values()) {
+        for (TB list : mergeSameTargetsMap.getValues()) {
             TB tb = list;
             do {
                 resultArray[i++] = tb;
