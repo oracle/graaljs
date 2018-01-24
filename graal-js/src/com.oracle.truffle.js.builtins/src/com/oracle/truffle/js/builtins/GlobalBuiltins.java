@@ -550,7 +550,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 needsNaN.enter();
                 return Double.NaN;
             }
-            if ((radix <= 10 && len >= 18) || (radix <= 16 && len >= 15) || (radix > 16 && len >= 12)) {
+            if ((radix <= 10 && len >= 18) || (10 < radix && radix <= 16 && len >= 15) || (radix > 16 && len >= 12)) {
                 needsDontFitLong.enter();
                 if (radix == 10) {
                     // parseRawDontFitLong() can produce an incorrect result
