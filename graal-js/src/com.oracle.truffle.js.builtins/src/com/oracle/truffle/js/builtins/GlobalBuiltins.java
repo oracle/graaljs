@@ -484,11 +484,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         // that use a scientific notation when stringified
         // (parseInt(1e21) === parseInt('1e21') === 1)
         protected static boolean hasRegularToString(double value) {
-            return (-1e21 < value && value <= -1e-6) || (value == 0) || (1e-6 <= value && value < 1e21);
+            return (-1e21 < value && value <= -1e-6) || (1e-6 <= value && value < 1e21);
         }
 
         protected static boolean hasRegularToStringInInt32Range(double value) {
-            return (Integer.MIN_VALUE - 1.0 < value && value <= -1e-6) || (value == 0) || (1e-6 <= value && value < Integer.MAX_VALUE + 1.0);
+            return (Integer.MIN_VALUE - 1.0 < value && value <= -1) || (value == 0) || (1e-6 <= value && value < Integer.MAX_VALUE + 1.0);
         }
 
         @Specialization(guards = "hasRegularToString(thing)")
