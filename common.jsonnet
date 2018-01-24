@@ -17,7 +17,11 @@
     },
   },
 
-  common: {
+  deploy:    {targets: ['deploy']},
+  gate:      {targets: ['gate']},
+  postMerge: {targets: ['post-merge']},
+
+  local common = {
     packages: {
       'apache/ab': '==2.3',
       gcc: '==4.9.1',
@@ -28,18 +32,35 @@
       'pip:astroid': '==1.1.0',
       'pip:pylint': '==1.1.0',
     },
-    catch_files: [
+    catch_files+: [
       'Graal diagnostic output saved in (?P<filename>.+.zip)',
       'npm-debug.log', // created on npm errors
     ],
-    timelimit: '30:00',
   },
 
-  deploy:    {targets: ['deploy']},
-  gate:      {targets: ['gate']},
-  postMerge: {targets: ['post-merge']},
+  linux: common + {
+    capabilities: ['linux', 'amd64']
+  },
 
-  linux: {capabilities: ['linux', 'amd64']},
-  ol65:  {capabilities: ['ol65', 'amd64']},
-  sparc: {capabilities: ['solaris', 'sparcv9']},
+  ol65:  common + {
+    capabilities: ['ol65', 'amd64']
+  },
+
+  sparc: common + {
+    capabilities: ['solaris', 'sparcv9']
+  },
+
+  darwin: common + {
+    packages: {
+      'pip:astroid': '==1.1.0',
+      'pip:pylint': '==1.1.0',
+    },
+    environment+: {
+      HTTP_PROXY: "${http_proxy}",
+      HTTPS_PROXY: "${https_proxy}",
+      // for compatibility with macOS El Capitan
+      MACOSX_DEPLOYMENT_TARGET: '10.11',
+    },
+    capabilities: ['darwin_sierra', 'amd64']
+  },
 }

@@ -1,8 +1,8 @@
 local common = import '../common.jsonnet';
 
 {
-  local graalJsCommon = common.common + {
-    setup+: [
+  local graalJs = {
+    setup: [
       ['cd', 'graal-js'],
     ],
   },
@@ -33,14 +33,15 @@ local common = import '../common.jsonnet';
     run+: [
       ['mx', 'build', '--force-javac'],
     ],
+    timelimit: '30:00',
   },
 
   builds: [
     // gates
-    graalJsCommon + common.jdk8 + gateGraalImport + common.gate + common.linux + {name: 'js-gate-graal-import-jdk8-linux-amd64'},
-    graalJsCommon + common.jdk9 + gateGraalImport + common.gate + common.linux + {name: 'js-gate-graal-import-jdk9-linux-amd64'},
-    graalJsCommon + common.jdk8 + gateGraalTip    + common.gate + common.linux + {name: 'js-gate-graal-tip-jdk8-linux-amd64'},
-    graalJsCommon + common.jdk8 + gateGraalTip    + common.gate + common.sparc + {name: 'js-gate-graal-tip-jdk8-solaris-sparcv9'},
-    graalJsCommon + common.jdk9 + gateGraalTip    + common.gate + common.linux + {name: 'js-gate-graal-tip-jdk9-linux-amd64'},
+    graalJs + common.jdk8 + gateGraalImport + common.gate + common.linux + {name: 'js-gate-graal-import-jdk8-linux-amd64'},
+    graalJs + common.jdk9 + gateGraalImport + common.gate + common.linux + {name: 'js-gate-graal-import-jdk9-linux-amd64'},
+    graalJs + common.jdk8 + gateGraalTip    + common.gate + common.linux + {name: 'js-gate-graal-tip-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + gateGraalTip    + common.gate + common.sparc + {name: 'js-gate-graal-tip-jdk8-solaris-sparcv9'},
+    graalJs + common.jdk9 + gateGraalTip    + common.gate + common.linux + {name: 'js-gate-graal-tip-jdk9-linux-amd64'},
   ],
 }
