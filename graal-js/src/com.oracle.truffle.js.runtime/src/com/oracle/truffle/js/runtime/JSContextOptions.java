@@ -47,7 +47,7 @@ public final class JSContextOptions {
 
     public static final String SHARED_ARRAY_BUFFER_NAME = JS_OPTION_PREFIX + "shared-array-buffer";
     private static final String SHARED_ARRAY_BUFFER_HELP = "ES2017 SharedArrayBuffer";
-    private static final OptionKey<Boolean> SHARED_ARRAY_BUFFER = new OptionKey<>(true);
+    private static final OptionKey<Boolean> SHARED_ARRAY_BUFFER = new OptionKey<>(false);
     @CompilationFinal private boolean sharedArrayBuffer;
 
     public static final String ATOMICS_NAME = JS_OPTION_PREFIX + "atomics";
