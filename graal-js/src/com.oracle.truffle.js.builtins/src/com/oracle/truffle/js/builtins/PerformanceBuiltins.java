@@ -9,6 +9,7 @@ import com.oracle.truffle.js.builtins.PerformanceBuiltinsFactory.JSPerformanceNo
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSPerformance;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 
@@ -27,7 +28,12 @@ public final class PerformanceBuiltins extends JSBuiltinsContainer.Lambda {
 
         @Specialization
         protected double now() {
-            return System.nanoTime() / NANOSECONDS_PER_MILLISECOND;
+            long ns = System.nanoTime();
+            long resolution = JSTruffleOptions.TimestampResolution;
+            if (resolution > 0) {
+                ns = (ns / resolution) * resolution;
+            }
+            return ns / NANOSECONDS_PER_MILLISECOND;
         }
     }
 }
