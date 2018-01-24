@@ -637,13 +637,24 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private static int validStringLength(String thing, int radix) {
+            boolean hasSign = false;
             int pos = 0;
+            if (!thing.isEmpty()) {
+                char c = thing.charAt(0);
+                if (c == '+' || c == '-') {
+                    hasSign = true;
+                    pos++;
+                }
+            }
             while (pos < thing.length()) {
                 char c = thing.charAt(pos);
-                if (!(JSRuntime.valueInRadix(c, radix) >= 0 || c == '+' || c == '-')) {
+                if (JSRuntime.valueInRadix(c, radix) == -1) {
                     break;
                 }
                 pos++;
+            }
+            if (pos == 1 && hasSign) {
+                pos = 0; // sign only
             }
             return pos;
         }
