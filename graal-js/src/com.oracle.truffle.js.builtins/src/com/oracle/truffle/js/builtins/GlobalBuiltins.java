@@ -484,11 +484,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         // that use a scientific notation when stringified
         // (parseInt(1e21) === parseInt('1e21') === 1)
         protected static boolean hasRegularToString(double value) {
-            return (-1e21 < value && value <= -1e-6) || (value == 0) || (1e-6 <= value && value < 1e21);
+            return (-1e21 < value && value <= -1e-6) || (1e-6 <= value && value < 1e21);
         }
 
         protected static boolean hasRegularToStringInInt32Range(double value) {
-            return (Integer.MIN_VALUE - 1.0 < value && value <= -1e-6) || (value == 0) || (1e-6 <= value && value < Integer.MAX_VALUE + 1.0);
+            return (Integer.MIN_VALUE - 1.0 < value && value <= -1) || (value == 0) || (1e-6 <= value && value < Integer.MAX_VALUE + 1.0);
         }
 
         @Specialization(guards = "hasRegularToString(thing)")
@@ -550,7 +550,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 needsNaN.enter();
                 return Double.NaN;
             }
-            if ((radix <= 10 && len >= 18) || (radix <= 16 && len >= 15) || (radix > 16 && len >= 12)) {
+            if ((radix <= 10 && len >= 18) || (10 < radix && radix <= 16 && len >= 15) || (radix > 16 && len >= 12)) {
                 needsDontFitLong.enter();
                 if (radix == 10) {
                     // parseRawDontFitLong() can produce an incorrect result
@@ -637,13 +637,24 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private static int validStringLength(String thing, int radix) {
+            boolean hasSign = false;
             int pos = 0;
+            if (!thing.isEmpty()) {
+                char c = thing.charAt(0);
+                if (c == '+' || c == '-') {
+                    hasSign = true;
+                    pos++;
+                }
+            }
             while (pos < thing.length()) {
                 char c = thing.charAt(pos);
-                if (!(JSRuntime.valueInRadix(c, radix) >= 0 || c == '+' || c == '-')) {
+                if (JSRuntime.valueInRadix(c, radix) == -1) {
                     break;
                 }
                 pos++;
+            }
+            if (pos == 1 && hasSign) {
+                pos = 0; // sign only
             }
             return pos;
         }
