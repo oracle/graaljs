@@ -109,8 +109,13 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
             this.source = source;
             this.preCalculatedResults = preCalculatedResults;
             this.backwardExecutorNode = backwardNode;
-            backwardCallTarget = Truffle.getRuntime().createCallTarget(
-                            new TRegexLazyFindStartRootNode(language, source, forwardNode.getPrefixLength(), backwardNode));
+            if (backwardNode == null) {
+                assert singlePreCalcResult();
+                backwardCallTarget = null;
+            } else {
+                backwardCallTarget = Truffle.getRuntime().createCallTarget(
+                                new TRegexLazyFindStartRootNode(language, source, forwardNode.getPrefixLength(), backwardNode));
+            }
             this.captureGroupExecutorNode = captureGroupExecutor;
             if (captureGroupExecutor == null) {
                 captureGroupCallTarget = null;
@@ -122,7 +127,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
 
         @Override
         RegexResult run(VirtualFrame frame, RegexObject regex, Object input, int fromIndexArg) {
-            if (backwardExecutorNode.isAnchored()) {
+            if (backwardExecutorNode != null && backwardExecutorNode.isAnchored()) {
                 return executeBackwardAnchored(frame, regex, input, fromIndexArg);
             } else {
                 return executeForward(frame, regex, input, fromIndexArg);

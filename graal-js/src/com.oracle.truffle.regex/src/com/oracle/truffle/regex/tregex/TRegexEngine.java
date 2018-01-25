@@ -126,11 +126,16 @@ public final class TRegexEngine implements RegexEngine {
                 captureGroupExecutor = DFAGenerator.createForwardDFAExecutor(nfa, createExecutorProperties(true, false, true, nCG), compilationBuffer);
                 phaseEnd("CG DFA");
             }
-            phaseStart("Backward DFA");
-            TRegexDFAExecutorNode executorNodeB = DFAGenerator.createBackwardDFAExecutor(
-                            (preCalculatedResults != null && preCalculatedResults.length > 1) ? traceFinder : nfa,
-                            createExecutorProperties(false, false, false, nCG), compilationBuffer);
-            phaseEnd("Backward DFA");
+            TRegexDFAExecutorNode executorNodeB = null;
+            if (preCalculatedResults != null && preCalculatedResults.length > 1) {
+                phaseStart("Backward DFA");
+                executorNodeB = DFAGenerator.createBackwardDFAExecutor(traceFinder, createExecutorProperties(false, false, false, nCG), compilationBuffer);
+                phaseEnd("Backward DFA");
+            } else if (preCalculatedResults == null || !nfa.hasReverseUnAnchoredEntry()) {
+                phaseStart("Backward DFA");
+                executorNodeB = DFAGenerator.createBackwardDFAExecutor(nfa, createExecutorProperties(false, false, false, nCG), compilationBuffer);
+                phaseEnd("Backward DFA");
+            }
             TRegexExecRootNode tRegexRootNode = new TRegexExecRootNode(
                             language, source, preCalculatedResults, executorNode, executorNodeB, captureGroupExecutor);
             if (DebugUtil.LOG_AUTOMATON_SIZES) {
