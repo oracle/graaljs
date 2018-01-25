@@ -42,4 +42,9 @@ public abstract class JavaScriptRootNode extends RootNode {
     public boolean isFunction() {
         return false;
     }
+
+    @Override
+    public boolean isCaptureFramesForTrace() {
+        return isFunction();
+    }
 }
