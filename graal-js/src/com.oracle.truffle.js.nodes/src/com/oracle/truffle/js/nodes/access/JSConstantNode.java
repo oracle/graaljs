@@ -24,7 +24,12 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
         if (value instanceof Integer) {
             return createInt((Integer) value);
         } else if (value instanceof Double) {
-            return createDouble((Double) value);
+            double doubleValue = (Double) value;
+            if (JSRuntime.doubleIsRepresentableAsInt(doubleValue)) {
+                return createInt((int) doubleValue);
+            } else {
+                return createDouble(doubleValue);
+            }
         } else if (value instanceof Boolean) {
             return createBoolean((Boolean) value);
         } else if (value instanceof String) {
