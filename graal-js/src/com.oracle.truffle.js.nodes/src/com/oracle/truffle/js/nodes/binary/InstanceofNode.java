@@ -302,7 +302,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
             } else {
                 name = obj.toString();
             }
-            throw Errors.createTypeError("\"prototype\" of " + name + " is not an Object, it is " + JSRuntime.objectToString(proto));
+            throw Errors.createTypeError("\"prototype\" of " + name + " is not an Object, it is " + JSRuntime.safeToString(proto));
         }
     }
 

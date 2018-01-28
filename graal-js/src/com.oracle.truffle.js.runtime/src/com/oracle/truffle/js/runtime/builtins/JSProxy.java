@@ -533,7 +533,7 @@ public final class JSProxy extends AbstractJSClass {
             } else if (JSObject.isJSObject(target)) {
                 return JSRuntime.objectToConsoleString(target, "Proxy");
             } else {
-                return JSRuntime.toStringForConsole(target); // eg. foreign TruffleObject
+                return JSRuntime.safeToString(target); // eg. foreign TruffleObject
             }
         }
     }

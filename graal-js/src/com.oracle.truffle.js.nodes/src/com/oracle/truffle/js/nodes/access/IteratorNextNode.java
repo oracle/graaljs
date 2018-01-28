@@ -47,7 +47,7 @@ public abstract class IteratorNextNode extends JavaScriptBaseNode {
 
     @TruffleBoundary
     private JSException iteratorResultNotObject(Object value) {
-        return Errors.createTypeError("Iterator result " + JSRuntime.objectToString(value) + " is not an object", this);
+        return Errors.createTypeError("Iterator result " + JSRuntime.safeToString(value) + " is not an object", this);
     }
 
     public abstract DynamicObject execute(DynamicObject iterator, Object value);

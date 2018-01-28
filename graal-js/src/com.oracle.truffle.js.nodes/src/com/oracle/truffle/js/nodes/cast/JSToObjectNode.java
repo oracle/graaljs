@@ -89,7 +89,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     @TruffleBoundary
     private JSException createTypeError(DynamicObject value) {
         if (fromWith) {
-            return Errors.createTypeError("Cannot apply \"with\" to " + JSRuntime.objectToString(value));
+            return Errors.createTypeError("Cannot apply \"with\" to " + JSRuntime.safeToString(value));
         }
         return Errors.createTypeErrorNotObjectCoercible(value);
     }
