@@ -350,7 +350,7 @@ public final class JSRuntime {
             return (Number) value; // BigDecimal, BigInteger
         }
         assert false : "coerceToNumber: should never reach here, type " + value.getClass().getSimpleName() + " not handled.";
-        throw Errors.createTypeErrorCannotConvertToNumber(objectToStringIntl(value));
+        throw Errors.createTypeErrorCannotConvertToNumber(safeToString(value));
     }
 
     public static int booleanToNumber(boolean value) {
@@ -808,7 +808,7 @@ public final class JSRuntime {
      * trigger side-effects!
      */
     @TruffleBoundary
-    public static String toStringForConsole(Object value) {
+    public static String safeToString(Object value) {
         if (value == Undefined.instance) {
             return Undefined.NAME;
         } else if (value == Null.instance) {
@@ -988,7 +988,7 @@ public final class JSRuntime {
             }
             return valueStr;
         } else {
-            return toStringForConsole(value);
+            return safeToString(value);
         }
     }
 
@@ -1072,15 +1072,6 @@ public final class JSRuntime {
             return Null.NAME;
         }
         return toString(JSObject.toPrimitive(value, HINT_STRING));
-    }
-
-    @TruffleBoundary
-    public static String objectToString(Object value) {
-        return value == Undefined.instance ? Undefined.NAME : value == Null.instance ? Null.NAME : objectToStringIntl(value);
-    }
-
-    private static String objectToStringIntl(Object obj) {
-        return JSObject.isDynamicObject(obj) ? JSObject.safeToString((DynamicObject) obj) : Boundaries.stringValueOf(obj);
     }
 
     public static String numberToString(Number number) {

@@ -23,7 +23,7 @@ public abstract class AbstractJSClass extends JSClass {
 
     @TruffleBoundary
     private static JSException cannotDoPropertyOf(String doWhat, Object index, Object thisObj) {
-        return Errors.createTypeError("Cannot %s property \"%s\" of %s", doWhat, index, JSRuntime.objectToString(thisObj));
+        return Errors.createTypeError("Cannot %s property \"%s\" of %s", doWhat, index, JSRuntime.safeToString(thisObj));
     }
 
     @TruffleBoundary

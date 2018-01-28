@@ -64,7 +64,7 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorNotAFunction(Object functionObj, Node originatingNode) {
         assert !JSFunction.isJSFunction(functionObj); // don't lie to me
-        return JSException.create(JSErrorType.TypeError, String.format("%s is not a function", JSRuntime.objectToString(functionObj)), originatingNode);
+        return JSException.create(JSErrorType.TypeError, String.format("%s is not a function", JSRuntime.safeToString(functionObj)), originatingNode);
     }
 
     @TruffleBoundary
@@ -107,12 +107,12 @@ public final class Errors {
         if (JSTruffleOptions.NashornCompatibilityMode) {
             return Errors.createTypeErrorNotAnObject(value);
         }
-        return Errors.createTypeError("Cannot convert undefined or null to object: " + JSRuntime.objectToString(value));
+        return Errors.createTypeError("Cannot convert undefined or null to object: " + JSRuntime.safeToString(value));
     }
 
     @TruffleBoundary
     public static JSException createTypeErrorNotAnObject(Object value) {
-        return Errors.createTypeError(JSRuntime.objectToString(value) + " is not an Object");
+        return Errors.createTypeError(JSRuntime.safeToString(value) + " is not an Object");
     }
 
     @TruffleBoundary
@@ -152,7 +152,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorIncompatibleReceiver(Object what) {
-        return Errors.createTypeError("incompatible receiver: " + JSRuntime.objectToString(what));
+        return Errors.createTypeError("incompatible receiver: " + JSRuntime.safeToString(what));
     }
 
     @TruffleBoundary
@@ -162,7 +162,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorNotWritableProperty(Object key, Object thisObj) {
-        return Errors.createTypeError(keyToString(key) + " is not a writable property of " + JSRuntime.objectToString(thisObj));
+        return Errors.createTypeError(keyToString(key) + " is not a writable property of " + JSRuntime.safeToString(thisObj));
     }
 
     @TruffleBoundary
@@ -211,7 +211,7 @@ public final class Errors {
     public static JSException createTypeErrorCannotSetPropertyOf(Object key, Object object) {
         assert JSRuntime.isPropertyKey(key);
         if (JSTruffleOptions.NashornCompatibilityMode) {
-            return Errors.createTypeError("Cannot set property \"%s\" of %s", key, JSRuntime.objectToString(object));
+            return Errors.createTypeError("Cannot set property \"%s\" of %s", key, JSRuntime.safeToString(object));
         } else {
             return Errors.createTypeErrorCannotRedefineProperty(key);
         }
@@ -233,16 +233,16 @@ public final class Errors {
         String errorMessage;
         if (JSTruffleOptions.NashornCompatibilityMode) {
             if (isGetMethod) {
-                errorMessage = JSRuntime.objectToString(object) + " has no such function \"" + key + "\"";
+                errorMessage = JSRuntime.safeToString(object) + " has no such function \"" + key + "\"";
             } else {
                 if (object == Null.instance) {
                     errorMessage = "Cannot get property \"" + key + "\" of " + Null.NAME;
                 } else {
-                    errorMessage = "Cannot read property \"" + key + "\" from " + JSRuntime.objectToString(object);
+                    errorMessage = "Cannot read property \"" + key + "\" from " + JSRuntime.safeToString(object);
                 }
             }
         } else {
-            errorMessage = "Cannot read property \'" + key + "\' of " + JSRuntime.objectToString(object);
+            errorMessage = "Cannot read property \'" + key + "\' of " + JSRuntime.safeToString(object);
         }
         return createTypeError(errorMessage, originatingNode);
     }
@@ -318,7 +318,7 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorCannotDeletePropertyOf(Object propertyKey, Object object) {
         assert JSRuntime.isPropertyKey(propertyKey);
-        return createTypeError("Cannot delete property " + JSRuntime.quote(JSRuntime.javaToString(propertyKey)) + " of " + JSRuntime.objectToString(object));
+        return createTypeError("Cannot delete property " + JSRuntime.quote(JSRuntime.javaToString(propertyKey)) + " of " + JSRuntime.safeToString(object));
     }
 
     public static JSException createTypeErrorJSObjectExpected() {

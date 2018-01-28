@@ -350,7 +350,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 return "Object";
             }
         }
-        return JSRuntime.toStringForConsole(value);
+        return JSRuntime.safeToString(value);
     }
 
     @TruffleBoundary

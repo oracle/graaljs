@@ -964,7 +964,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @TruffleBoundary
         private static JSException cannotLoadScript(Object script) {
-            return Errors.createTypeError("Cannot load script: " + JSRuntime.objectToString(script));
+            return Errors.createTypeError("Cannot load script: " + JSRuntime.safeToString(script));
         }
     }
 

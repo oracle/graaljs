@@ -318,7 +318,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"!isJSNull(prototype)", "!isJSObject(prototype)"})
         protected DynamicObject createInvalidPrototype(Object prototype, Object properties) {
             assert prototype != null;
-            throw Errors.createTypeError("Object prototype may only be an Object or null: " + JSRuntime.objectToString(prototype));
+            throw Errors.createTypeError("Object prototype may only be an Object or null: " + JSRuntime.safeToString(prototype));
         }
 
         @Specialization(guards = {"isJSObject(prototype)", "isJSObject(properties)"})
