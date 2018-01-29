@@ -16,8 +16,7 @@ public abstract class LazyCaptureGroupGetResultNode extends Node {
     @Specialization(guards = {"receiver.getResult() == null", "receiver.getFindStartCallTarget() == null"})
     int[] doLazyCaptureGroupsCalc(LazyCaptureGroupsResult receiver,
                     @Cached("create()") CalcResultNode calcResult) {
-        receiver.setResult((int[]) calcResult.execute(receiver.getCaptureGroupCallTarget(),
-                        new Object[]{receiver.getInput(), receiver.getFromIndex(), receiver.getFromIndex(), receiver.getEnd()}));
+        calcResult.execute(receiver.getCaptureGroupCallTarget(), new Object[]{receiver, receiver.getFromIndex(), receiver.getEnd()});
         return receiver.getResult();
     }
 
@@ -27,8 +26,7 @@ public abstract class LazyCaptureGroupGetResultNode extends Node {
                     @Cached("create()") CalcResultNode calcResult) {
         final int start = (int) calcStart.execute(receiver.getFindStartCallTarget(),
                         new Object[]{receiver.getInput(), receiver.getEnd() - 1, receiver.getFromIndex()}) + 1;
-        receiver.setResult((int[]) calcResult.execute(receiver.getCaptureGroupCallTarget(),
-                        new Object[]{receiver.getInput(), receiver.getFromIndex(), start, receiver.getEnd()}));
+        calcResult.execute(receiver.getCaptureGroupCallTarget(), new Object[]{receiver, start, receiver.getEnd()});
         return receiver.getResult();
     }
 

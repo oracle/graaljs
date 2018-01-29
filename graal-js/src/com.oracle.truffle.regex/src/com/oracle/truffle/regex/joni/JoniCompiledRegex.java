@@ -1,19 +1,29 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.regex.joni;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.regex.CompiledRegex;
-import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Regex;
 
-public final class JoniCompiledRegex extends CompiledRegex {
-    public final Regex implementation;
+public class JoniCompiledRegex implements CompiledRegex {
 
-    public JoniCompiledRegex(RegexSource source, CallTarget callTarget, Regex implementation) {
-        super(source, callTarget);
-        this.implementation = implementation;
+    private final Regex joniRegex;
+    private final CallTarget regexCallTarget;
+
+    public JoniCompiledRegex(Regex joniRegex, CallTarget regexCallTarget) {
+        this.joniRegex = joniRegex;
+        this.regexCallTarget = regexCallTarget;
+    }
+
+    public Regex getJoniRegex() {
+        return joniRegex;
+    }
+
+    @Override
+    public CallTarget getRegexCallTarget() {
+        return regexCallTarget;
     }
 }

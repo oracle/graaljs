@@ -6,11 +6,18 @@ package com.oracle.truffle.regex.tregex.util;
 
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
-import com.oracle.truffle.regex.tregex.nodes.DFAStateNode;
+import com.oracle.truffle.regex.tregex.automaton.IndexedState;
+import com.oracle.truffle.regex.tregex.automaton.StateIndex;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
+import com.oracle.truffle.regex.tregex.buffer.ShortArrayBuffer;
+import com.oracle.truffle.regex.tregex.nodes.DFAAbstractStateNode;
+import com.oracle.truffle.regex.tregex.nodes.DFAInitialStateNode;
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -21,24 +28,30 @@ import java.util.TreeSet;
  * with the dominance algorithm by Keith D. Cooper, Timothy J. Harvey, and Ken Kennedy presented in
  * "A Simple, Fast Dominance Algorithm"
  */
-public final class DFANodeSplit {
+public final class DFANodeSplit implements StateIndex<DFANodeSplit.GraphNode> {
 
     public static class DFANodeSplitBailoutException extends SlowPathException {
 
         private static final long serialVersionUID = 29374928364982L;
     }
 
-    private static class GraphNode implements Comparable<GraphNode> {
+    public static class GraphNode implements Comparable<GraphNode>, IndexedState {
 
-        private final DFAStateNode dfaNode;
+        private static final short[] NO_DOM_CHILDREN = new short[0];
 
-        Set<GraphNode> backEdges = new TreeSet<>();
-        Set<GraphNode> preds = new TreeSet<>();
-        Set<GraphNode> succs = new TreeSet<>();
-        Set<GraphNode> succsDom = new TreeSet<>();
-        GraphNode idom;
+        private DFAAbstractStateNode dfaNode;
+        boolean dfaNodeCopied = false;
+        private final short[] successorSet;
+
+        private short[] predecessorSet;
+        private int nPredecessors = 0;
+
+        StateSet<GraphNode> backEdges;
+
+        private short[] domChildren;
+        private int nDomChildren;
+
         GraphNode header;
-        GraphNode copy;
         int postOrderIndex;
         int level;
         int weight;
@@ -46,31 +59,42 @@ public final class DFANodeSplit {
         boolean done;
         boolean traversed;
 
-        GraphNode() {
-            dfaNode = null;
+        GraphNode copy;
+
+        GraphNode(DFANodeSplit graph, DFAAbstractStateNode dfaNode, short[] successorSet) {
+            this.dfaNode = dfaNode;
+            this.successorSet = successorSet;
+            predecessorSet = new short[10];
+            backEdges = new StateSet<>(graph);
+            domChildren = NO_DOM_CHILDREN;
         }
 
-        GraphNode(DFAStateNode dfaNode) {
-            this(dfaNode, dfaNode.getId());
+        GraphNode(GraphNode cpy, short dfaNodeId) {
+            this.dfaNode = cpy.dfaNode.createNodeSplitCopy(dfaNodeId);
+            this.dfaNodeCopied = true;
+            this.successorSet = cpy.successorSet;
+
+            this.predecessorSet = Arrays.copyOf(cpy.predecessorSet, cpy.predecessorSet.length);
+            this.nPredecessors = cpy.nPredecessors;
+
+            this.backEdges = cpy.backEdges.copy();
+            this.domChildren = cpy.domChildren == NO_DOM_CHILDREN ? NO_DOM_CHILDREN : Arrays.copyOf(cpy.domChildren, cpy.domChildren.length);
+            this.header = cpy.header;
+            this.postOrderIndex = cpy.postOrderIndex;
+            this.level = cpy.level;
+            this.weight = cpy.weight;
+            this.active = cpy.active;
+            this.done = cpy.done;
+            this.traversed = cpy.traversed;
         }
 
-        GraphNode(DFAStateNode dfaNode, short dfaNodeId) {
-            this.dfaNode = dfaNode.createNodeSplitCopy(dfaNodeId);
-        }
-
-        void createCopy(short dfaNodeId) {
-            GraphNode cpy = new GraphNode(dfaNode, dfaNodeId);
-            cpy.backEdges = new TreeSet<>(backEdges);
-            cpy.preds = new TreeSet<>(preds);
-            cpy.succs = new TreeSet<>(succs);
-            cpy.succsDom = new TreeSet<>(succsDom);
-            cpy.idom = idom;
-            cpy.header = header;
-            cpy.level = level;
-            cpy.weight = weight;
-            cpy.active = active;
-            cpy.done = done;
-            this.copy = cpy;
+        void createCopy(DFANodeSplit graph, short dfaNodeId) {
+            if (getId() == 0) {
+                assert dfaNode instanceof DFAInitialStateNode;
+                throw new UnsupportedOperationException();
+            }
+            this.copy = new GraphNode(this, dfaNodeId);
+            graph.addGraphNode(copy);
         }
 
         @Override
@@ -78,7 +102,8 @@ public final class DFANodeSplit {
             return getId() - o.getId();
         }
 
-        int getId() {
+        @Override
+        public short getId() {
             return dfaNode.getId();
         }
 
@@ -98,11 +123,11 @@ public final class DFANodeSplit {
             return dfaNode.getSuccessors().length;
         }
 
-        void setWeightAndHeaders(GraphNode headerNode, Set<GraphNode> scc) {
+        void setWeightAndHeaders(StateIndex<GraphNode> index, GraphNode headerNode, Set<GraphNode> scc) {
             weight = nodeWeight();
-            for (GraphNode child : succsDom) {
+            for (GraphNode child : domChildren(index)) {
                 if (scc.contains(child)) {
-                    child.setWeightAndHeaders(headerNode, scc);
+                    child.setWeightAndHeaders(index, headerNode, scc);
                     weight += child.weight;
                 }
             }
@@ -110,43 +135,150 @@ public final class DFANodeSplit {
         }
 
         void replaceSuccessor(GraphNode suc) {
+            if (!dfaNodeCopied) {
+                dfaNode = dfaNode.createNodeSplitCopy(dfaNode.getId());
+                dfaNodeCopied = true;
+            }
             short[] dfaSuccessors = dfaNode.getSuccessors();
             for (int i = 0; i < dfaSuccessors.length; i++) {
                 if (dfaSuccessors[i] == suc.dfaNode.getId()) {
                     dfaSuccessors[i] = suc.copy.dfaNode.getId();
-                    break;
                 }
             }
-            succs.remove(suc);
-            succs.add(suc.copy);
+        }
+
+        int findPredecessor(GraphNode pre) {
+            return Arrays.binarySearch(predecessorSet, 0, nPredecessors, pre.getId());
+        }
+
+        boolean hasPredecessor(GraphNode pre) {
+            return findPredecessor(pre) >= 0;
+        }
+
+        private void checkGrowPredecessors() {
+            if (predecessorSet.length == nPredecessors) {
+                predecessorSet = Arrays.copyOf(predecessorSet, predecessorSet.length * 2);
+            }
+        }
+
+        void addPredecessorUnsorted(GraphNode pre) {
+            checkGrowPredecessors();
+            predecessorSet[nPredecessors++] = pre.getId();
+        }
+
+        void sortPredecessors() {
+            Arrays.sort(predecessorSet, 0, nPredecessors);
+        }
+
+        void addPredecessor(GraphNode pre) {
+            checkGrowPredecessors();
+            int searchResult = findPredecessor(pre);
+            assert searchResult < 0;
+            int insertionPoint = (searchResult + 1) * (-1);
+            System.arraycopy(predecessorSet, insertionPoint, predecessorSet, insertionPoint + 1, nPredecessors - insertionPoint);
+            nPredecessors++;
+            predecessorSet[insertionPoint] = pre.getId();
+        }
+
+        void replacePredecessor(GraphNode pre) {
+            int searchResult = findPredecessor(pre.copy);
+            assert searchResult < 0;
+            int insertionPoint = (searchResult + 1) * (-1);
+            int deletionPoint = findPredecessor(pre);
+            assert deletionPoint >= 0;
+            if (insertionPoint < deletionPoint) {
+                System.arraycopy(predecessorSet, insertionPoint, predecessorSet, insertionPoint + 1, deletionPoint - insertionPoint);
+            } else if (insertionPoint > deletionPoint) {
+                insertionPoint--;
+                System.arraycopy(predecessorSet, deletionPoint + 1, predecessorSet, deletionPoint, insertionPoint - deletionPoint);
+            }
+            predecessorSet[insertionPoint] = pre.copy.getId();
+        }
+
+        void removePredecessor(GraphNode pre) {
+            removePredecessor(findPredecessor(pre));
+        }
+
+        private void removePredecessor(int i) {
+            assert i >= 0;
+            System.arraycopy(predecessorSet, i + 1, predecessorSet, i, nPredecessors - (i + 1));
+            nPredecessors--;
+        }
+
+        void addDomChild(GraphNode child) {
+            if (nDomChildren == domChildren.length) {
+                if (domChildren == NO_DOM_CHILDREN) {
+                    domChildren = new short[10];
+                } else {
+                    domChildren = Arrays.copyOf(domChildren, domChildren.length * 2);
+                }
+            }
+            domChildren[nDomChildren++] = child.getId();
+        }
+
+        void clearDomChildren() {
+            nDomChildren = 0;
         }
 
         void markUndone() {
             this.done = false;
             this.active = false;
         }
-    }
 
-    private static class EntryNode extends GraphNode {
+        Iterable<GraphNode> successors(StateIndex<GraphNode> index) {
+            return () -> new Iterator<GraphNode>() {
 
-        @Override
-        int getId() {
-            return -1;
+                private int i = 0;
+
+                @Override
+                public boolean hasNext() {
+                    return i < successorSet.length;
+                }
+
+                @Override
+                public GraphNode next() {
+                    return index.getState(dfaNode.getSuccessors()[successorSet[i++]]);
+                }
+            };
         }
 
-        @Override
-        int nodeWeight() {
-            return 0;
+        Iterable<GraphNode> predecessors(StateIndex<GraphNode> index) {
+            return () -> new Iterator<GraphNode>() {
+
+                private int i = 0;
+
+                @Override
+                public boolean hasNext() {
+                    return i < nPredecessors;
+                }
+
+                @Override
+                public GraphNode next() {
+                    return index.getState(predecessorSet[i++]);
+                }
+
+                @Override
+                public void remove() {
+                    removePredecessor(--i);
+                }
+            };
         }
 
-        @Override
-        void createCopy(short dfaNodeId) {
-            throw new UnsupportedOperationException();
-        }
+        Iterable<GraphNode> domChildren(StateIndex<GraphNode> index) {
+            return () -> new Iterator<GraphNode>() {
 
-        @Override
-        void replaceSuccessor(GraphNode suc) {
-            throw new UnsupportedOperationException();
+                private int i = 0;
+
+                @Override
+                public boolean hasNext() {
+                    return i < nDomChildren;
+                }
+
+                @Override
+                public GraphNode next() {
+                    return index.getState(domChildren[i++]);
+                }
+            };
         }
     }
 
@@ -158,76 +290,83 @@ public final class DFANodeSplit {
     private GraphNode[] postOrder;
     private int[] doms;
 
-    private DFANodeSplit(short[] anchoredEntries, short[] unAnchoredEntries, DFAStateNode[] dfa) {
+    private DFANodeSplit(DFAAbstractStateNode[] dfa) {
         nodes = new ArrayList<>(dfa.length);
-        for (DFAStateNode n : dfa) {
-            assert n.getId() == nodes.size();
-            nodes.add(new GraphNode(n));
+        CompilationFinalBitSet successorBitSet = new CompilationFinalBitSet(dfa.length);
+        ShortArrayBuffer successorBuffer = new ShortArrayBuffer();
+        for (DFAAbstractStateNode n : dfa) {
+            for (int i = 0; i < n.getSuccessors().length; i++) {
+                if (n.getSuccessors()[i] == -1) {
+                    assert n instanceof DFAInitialStateNode;
+                } else {
+                    if (!successorBitSet.get(n.getSuccessors()[i])) {
+                        successorBuffer.add((short) i);
+                    }
+                    successorBitSet.set(n.getSuccessors()[i]);
+                }
+            }
+            GraphNode graphNode = new GraphNode(this, n, successorBuffer.toArray());
+            successorBitSet.clear();
+            successorBuffer.clear();
+            addGraphNode(graphNode);
         }
         nextId = (short) nodes.size();
         for (GraphNode graphNode : nodes) {
-            for (int successor : graphNode.dfaNode.getSuccessors()) {
-                graphNode.succs.add(nodes.get(successor));
-                nodes.get(successor).preds.add(graphNode);
+            for (GraphNode successor : graphNode.successors(this)) {
+                successor.addPredecessorUnsorted(graphNode);
             }
         }
-        start = new EntryNode();
-        for (short i : anchoredEntries) {
-            if (i != -1) {
-                start.succs.add(nodes.get(i));
-                nodes.get(i).preds.add(start);
-            }
+        for (GraphNode n : nodes) {
+            n.sortPredecessors();
         }
-        for (short i : unAnchoredEntries) {
-            if (i != -1) {
-                start.succs.add(nodes.get(i));
-                nodes.get(i).preds.add(start);
-            }
-        }
+        start = nodes.get(0);
     }
 
-    public static DFAStateNode[] createReducibleGraph(short[] anchoredEntries, short[] unAnchoredEntries, DFAStateNode[] nodes) throws DFANodeSplitBailoutException {
-        return new DFANodeSplit(anchoredEntries, unAnchoredEntries, nodes).process();
+    private void addGraphNode(GraphNode graphNode) {
+        assert graphNode.getId() == nodes.size();
+        nodes.add(graphNode);
+        assert graphNode == nodes.get(graphNode.getId());
     }
 
-    private DFAStateNode[] process() throws DFANodeSplitBailoutException {
-        buildPostOrder();
-        if (!allNodesTraversed()) {
-            throw new DFANodeSplitBailoutException();
-        }
-        buildDominatorTree();
-        setLevel(start, 1);
-        markUndone();
+    public static DFAAbstractStateNode[] createReducibleGraph(DFAAbstractStateNode[] nodes) throws DFANodeSplitBailoutException {
+        return new DFANodeSplit(nodes).process();
+    }
+
+    @Override
+    public int getNumberOfStates() {
+        return nodes.size();
+    }
+
+    @Override
+    public GraphNode getState(int id) {
+        return nodes.get(id);
+    }
+
+    private DFAAbstractStateNode[] process() throws DFANodeSplitBailoutException {
+        createDomTree();
         searchBackEdges(start);
         markUndone();
         splitLoops(start, new TreeSet<>());
-        DFAStateNode[] ret = new DFAStateNode[nodes.size()];
+        DFAAbstractStateNode[] ret = new DFAAbstractStateNode[nodes.size()];
         for (GraphNode node : nodes) {
             ret[node.dfaNode.getId()] = node.dfaNode;
         }
         return ret;
     }
 
-    private boolean graphIsConsistent() {
-        for (GraphNode n : nodes) {
-            for (GraphNode p : n.preds) {
-                if (!p.succs.contains(n)) {
-                    return false;
-                }
-            }
-            for (GraphNode s : n.succs) {
-                if (!s.preds.contains(n)) {
-                    return false;
-                }
-            }
-        }
-        return true;
+    private void createDomTree() {
+        buildPostOrder();
+        buildDominatorTree();
+        setLevel(start, 1);
+        markUndone();
     }
 
-    private boolean allNodesTraversed() {
+    private boolean graphIsConsistent() {
         for (GraphNode n : nodes) {
-            if (!n.traversed) {
-                return false;
+            for (GraphNode s : n.successors(this)) {
+                if (!s.hasPredecessor(n)) {
+                    return false;
+                }
             }
         }
         return true;
@@ -239,13 +378,14 @@ public final class DFANodeSplit {
             n.traversed = false;
         }
         nextPostOrderIndex = 0;
-        postOrder = new GraphNode[nodes.size() + 1];
+        postOrder = new GraphNode[nodes.size()];
         traversePostOrder(start);
+        assert allNodesTraversed();
     }
 
     private void traversePostOrder(GraphNode cur) {
         cur.traversed = true;
-        for (GraphNode n : cur.succs) {
+        for (GraphNode n : cur.successors(this)) {
             if (!n.traversed) {
                 traversePostOrder(n);
             }
@@ -254,8 +394,17 @@ public final class DFANodeSplit {
         postOrder[cur.postOrderIndex] = cur;
     }
 
+    private boolean allNodesTraversed() {
+        for (GraphNode n : nodes) {
+            if (!n.traversed) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private void buildDominatorTree() {
-        doms = new int[nodes.size() + 1];
+        doms = new int[nodes.size()];
         Arrays.fill(doms, -1);
         doms[start.postOrderIndex] = start.postOrderIndex;
         boolean changed = true;
@@ -268,7 +417,7 @@ public final class DFANodeSplit {
                 }
                 // find a predecessor that was already processed
                 GraphNode selectedPredecessor = null;
-                for (GraphNode p : b.preds) {
+                for (GraphNode p : b.predecessors(this)) {
                     if (p.postOrderIndex > i) {
                         selectedPredecessor = p;
                         break;
@@ -278,9 +427,10 @@ public final class DFANodeSplit {
                     throw new IllegalStateException();
                 }
                 int newIDom = selectedPredecessor.postOrderIndex;
-                Set<GraphNode> predsWithoutIDom = new TreeSet<>(b.preds);
-                predsWithoutIDom.remove(selectedPredecessor);
-                for (GraphNode p : predsWithoutIDom) {
+                for (GraphNode p : b.predecessors(this)) {
+                    if (p == selectedPredecessor) {
+                        continue;
+                    }
                     if (doms[p.postOrderIndex] != -1) {
                         newIDom = intersect(p.postOrderIndex, newIDom);
                     }
@@ -292,14 +442,13 @@ public final class DFANodeSplit {
             }
         }
         for (GraphNode n : nodes) {
-            n.succsDom.clear();
+            n.clearDomChildren();
         }
         for (int i = 0; i < doms.length; i++) {
             GraphNode dominator = postOrder[doms[i]];
-            GraphNode successor = postOrder[i];
-            successor.idom = dominator;
-            if (dominator != successor) {
-                dominator.succsDom.add(successor);
+            GraphNode child = postOrder[i];
+            if (dominator != child) {
+                dominator.addDomChild(child);
             }
         }
     }
@@ -318,6 +467,10 @@ public final class DFANodeSplit {
         return finger1;
     }
 
+    private GraphNode idom(GraphNode n) {
+        return postOrder[doms[n.postOrderIndex]];
+    }
+
     private boolean dom(GraphNode a, GraphNode b) {
         int dom = doms[b.postOrderIndex];
         while (true) {
@@ -333,7 +486,7 @@ public final class DFANodeSplit {
 
     private boolean splitLoops(GraphNode topNode, Set<GraphNode> set) throws DFANodeSplitBailoutException {
         boolean crossEdge = false;
-        for (GraphNode child : new TreeSet<>(topNode.succsDom)) {
+        for (GraphNode child : topNode.domChildren(this)) {
             if (set.isEmpty() || set.contains(child)) {
                 if (splitLoops(child, set)) {
                     crossEdge = true;
@@ -343,7 +496,7 @@ public final class DFANodeSplit {
         if (crossEdge) {
             handleIrChildren(topNode, set);
         }
-        for (GraphNode pred : topNode.preds) {
+        for (GraphNode pred : topNode.predecessors(this)) {
             if (pred.isBackEdge(topNode) && !dom(topNode, pred)) {
                 return true;
             }
@@ -354,7 +507,7 @@ public final class DFANodeSplit {
     private void handleIrChildren(GraphNode topNode, Set<GraphNode> set) throws DFANodeSplitBailoutException {
         ArrayDeque<GraphNode> dfsList = new ArrayDeque<>();
         ArrayList<Set<GraphNode>> sccList = new ArrayList<>();
-        for (GraphNode child : topNode.succsDom) {
+        for (GraphNode child : topNode.domChildren(this)) {
             if (!child.done && (set.isEmpty() || set.contains(child))) {
                 scc1(dfsList, child, set, topNode.level);
             }
@@ -375,7 +528,7 @@ public final class DFANodeSplit {
 
     private void scc1(ArrayDeque<GraphNode> dfsList, GraphNode curNode, Set<GraphNode> set, int level) {
         curNode.done = true;
-        for (GraphNode child : curNode.succs) {
+        for (GraphNode child : curNode.successors(this)) {
             if (!child.done && child.level > level && (set.isEmpty() || set.contains(child))) {
                 scc1(dfsList, child, set, level);
             }
@@ -385,7 +538,7 @@ public final class DFANodeSplit {
 
     private void scc2(Set<GraphNode> scc, GraphNode curNode, int level) {
         curNode.done = false;
-        for (GraphNode pred : curNode.preds) {
+        for (GraphNode pred : curNode.predecessors(this)) {
             if (pred.done && pred.level > level) {
                 scc2(scc, pred, level);
             }
@@ -397,7 +550,7 @@ public final class DFANodeSplit {
         Set<GraphNode> msed = new TreeSet<>();
         for (GraphNode n : scc) {
             if (n.level == graphNode.level + 1) {
-                n.setWeightAndHeaders(n, scc);
+                n.setWeightAndHeaders(this, n, scc);
                 msed.add(n);
             }
         }
@@ -406,10 +559,7 @@ public final class DFANodeSplit {
         }
         splitSCC(chooseNode(msed), scc);
 
-        buildPostOrder();
-        buildDominatorTree();
-        setLevel(start, 1);
-        markUndone();
+        createDomTree();
         searchBackEdges(start);
         markUndone();
         for (GraphNode tmp : findTopNodes(scc)) {
@@ -423,32 +573,31 @@ public final class DFANodeSplit {
                 if (nextId == TRegexOptions.TRegexMaxDFASizeAfterNodeSplitting) {
                     throw new DFANodeSplitBailoutException();
                 }
-                n.createCopy(nextId++);
-                assert n.copy.dfaNode.getId() == nodes.size();
-                nodes.add(n.copy);
+                n.createCopy(this, nextId++);
             }
         }
         for (GraphNode cur : scc) {
             if (cur.header != headerNode) {
-                for (GraphNode suc : cur.succs) {
+                for (GraphNode suc : cur.successors(this)) {
                     if (suc.copy == null) {
-                        suc.preds.add(cur.copy);
+                        suc.addPredecessor(cur.copy);
                     } else {
                         cur.copy.replaceSuccessor(suc);
-                        suc.copy.preds.remove(cur);
-                        suc.copy.preds.add(cur.copy);
+                        suc.copy.replacePredecessor(cur);
                     }
                 }
-                for (GraphNode pred : cur.preds) {
+                Iterator<GraphNode> curPredecessors = cur.predecessors(this).iterator();
+                while (curPredecessors.hasNext()) {
+                    GraphNode pred = curPredecessors.next();
                     if (pred.copy == null) {
                         if (scc.contains(pred)) {
                             pred.replaceSuccessor(cur);
+                            curPredecessors.remove();
                         } else {
-                            cur.copy.preds.remove(pred);
+                            cur.copy.removePredecessor(pred);
                         }
                     }
                 }
-                cur.preds.removeIf(pred -> pred.copy == null && scc.contains(pred));
             }
         }
         for (GraphNode g : new TreeSet<>(scc)) {
@@ -459,12 +608,12 @@ public final class DFANodeSplit {
         }
     }
 
-    private static Set<GraphNode> findTopNodes(Set<GraphNode> scc) {
+    private Set<GraphNode> findTopNodes(Set<GraphNode> scc) {
         Set<GraphNode> tops = new TreeSet<>();
         for (GraphNode tmp : scc) {
-            GraphNode top = tmp.idom;
+            GraphNode top = idom(tmp);
             while (scc.contains(top)) {
-                top = top.idom;
+                top = idom(top);
             }
             if (!tops.contains(top)) {
                 tops.add(top);
@@ -489,7 +638,7 @@ public final class DFANodeSplit {
         cnode.done = true;
         cnode.active = true;
         cnode.clearBackEdges();
-        for (GraphNode child : cnode.succs) {
+        for (GraphNode child : cnode.successors(this)) {
             if (child.active) {
                 cnode.markBackEdge(child);
             } else if (!child.done) {
@@ -501,12 +650,14 @@ public final class DFANodeSplit {
 
     private void setLevel(GraphNode curNode, int level) {
         curNode.level = level;
-        for (GraphNode child : curNode.succsDom) {
+        for (GraphNode child : curNode.domChildren(this)) {
             setLevel(child, level + 1);
         }
     }
 
     private void markUndone() {
-        nodes.forEach(GraphNode::markUndone);
+        for (GraphNode node : nodes) {
+            node.markUndone();
+        }
     }
 }

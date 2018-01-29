@@ -5,7 +5,7 @@
 package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.regex.CompiledRegex;
+import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 import java.util.Arrays;
@@ -18,12 +18,23 @@ public final class LazyCaptureGroupsResult extends RegexResult {
     private final CallTarget findStartCallTarget;
     private final CallTarget captureGroupCallTarget;
 
-    public LazyCaptureGroupsResult(CompiledRegex regex, Object input, int fromIndex, int end, int numberOfCaptureGroups, CallTarget findStartCallTarget, CallTarget captureGroupCallTarget) {
+    public LazyCaptureGroupsResult(RegexObject regex,
+                    Object input,
+                    int fromIndex,
+                    int end,
+                    int numberOfCaptureGroups,
+                    CallTarget findStartCallTarget,
+                    CallTarget captureGroupCallTarget) {
         super(regex, input, numberOfCaptureGroups);
         this.fromIndex = fromIndex;
         this.end = end;
         this.findStartCallTarget = findStartCallTarget;
         this.captureGroupCallTarget = captureGroupCallTarget;
+    }
+
+    public LazyCaptureGroupsResult(RegexObject regex, Object input, int[] result) {
+        this(regex, input, -1, -1, result.length / 2, null, null);
+        this.result = result;
     }
 
     public int getFromIndex() {

@@ -5,7 +5,6 @@
 package com.oracle.truffle.regex.tregex.dfa;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
@@ -21,11 +20,13 @@ import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.BackwardDFAStateNode;
 import com.oracle.truffle.regex.tregex.nodes.CGTrackingDFAStateNode;
+import com.oracle.truffle.regex.tregex.nodes.DFAAbstractStateNode;
 import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupLazyTransitionNode;
+import com.oracle.truffle.regex.tregex.nodes.DFAInitialStateNode;
 import com.oracle.truffle.regex.tregex.nodes.DFAStateNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorNode;
+import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorProperties;
 import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
-import com.oracle.truffle.regex.tregex.nodes.input.InputIterator;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.util.DFAExport;
 import com.oracle.truffle.regex.tregex.util.DFANodeSplit;
@@ -51,7 +52,7 @@ public final class DFAGenerator {
     private final boolean trackCaptureGroups;
     private final boolean pruneUnambiguousPaths;
 
-    private short nextID = 0;
+    private short nextID = 1;
     private final Counter cgTransitionIDCounter = new Counter.ThresholdCounter(Short.MAX_VALUE, "too many capture group transitions");
     private int maxNumberOfNfaStates = 0;
 
@@ -78,23 +79,21 @@ public final class DFAGenerator {
     }
 
     @TruffleBoundary
-    public static TRegexDFAExecutorNode createForwardDFAExecutor(NFA nfa, InputIterator inputIterator, FrameSlot result, FrameSlot lastTransition, boolean trackCaptureGroups,
-                    CompilationBuffer compilationBuffer) {
+    public static TRegexDFAExecutorNode createForwardDFAExecutor(NFA nfa, TRegexDFAExecutorProperties executorProperties, CompilationBuffer compilationBuffer) {
+        final boolean trackCaptureGroups = executorProperties.isTrackCaptureGroups();
         DFAGenerator gen = new DFAGenerator(nfa, true, trackCaptureGroups, false, compilationBuffer);
         final int numberOfEntryPoints = nfa.getAnchoredEntry().size();
-        short[] anchoredEntries = new short[numberOfEntryPoints];
-        short[] unAnchoredEntries = new short[numberOfEntryPoints];
-        short[] unAnchoredInitCaptureGroups = trackCaptureGroups ? new short[numberOfEntryPoints] : null;
-        short[] anchoredInitCaptureGroups = trackCaptureGroups ? new short[numberOfEntryPoints] : null;
+        short[] entryStates = new short[numberOfEntryPoints * 2];
+        short[] initCaptureGroups = trackCaptureGroups ? new short[numberOfEntryPoints * 2] : null;
         NFAState loopBackMatcher = null;
         DFACaptureGroupTransitionBuilder[] anchoredInitialCGBuilder = trackCaptureGroups ? new DFACaptureGroupTransitionBuilder[numberOfEntryPoints] : null;
         DFACaptureGroupTransitionBuilder[] unAnchoredInitialCGBuilder = trackCaptureGroups ? new DFACaptureGroupTransitionBuilder[numberOfEntryPoints] : null;
         for (int i = 0; i < numberOfEntryPoints; i++) {
             NFATransitionSet anchoredEntryStateSet = NFATransitionSet.create(nfa, true, true, nfa.getAnchoredEntry().get(i).getNext());
             if (nfa.getUnAnchoredEntry().get(i).getNext().isEmpty()) {
-                unAnchoredEntries[i] = -1;
+                entryStates[numberOfEntryPoints + i] = -1;
             } else {
-                final boolean createLoopBack = !trackCaptureGroups && !nfa.getAst().getSource().getFlags().isSticky();
+                final boolean createLoopBack = executorProperties.isSearching() && !nfa.getAst().getSource().getFlags().isSticky();
                 NFATransitionSet unAnchoredEntryStateSet = NFATransitionSet.create(nfa, true, true, nfa.getUnAnchoredEntry().get(i).getNext());
                 if (createLoopBack) {
                     if (i == 0) {
@@ -109,7 +108,7 @@ public final class DFAGenerator {
                 anchoredEntryStateSet.addAll(unAnchoredEntryStateSet);
                 DFAStateTransitionBuilder unAnchoredEntryConnection = new DFAStateTransitionBuilder(null, unAnchoredEntryStateSet);
                 DFAStateNodeBuilder unAnchoredEntryState = gen.lookupOrCreateState(unAnchoredEntryConnection);
-                unAnchoredEntries[i] = unAnchoredEntryState.getId();
+                entryStates[numberOfEntryPoints + i] = unAnchoredEntryState.getId();
                 if (trackCaptureGroups) {
                     unAnchoredInitialCGBuilder[i] = new DFACaptureGroupTransitionBuilder(nfa, unAnchoredEntryConnection, unAnchoredEntryState, true);
                     unAnchoredEntryState.addPrecedingTransition(unAnchoredInitialCGBuilder[i]);
@@ -117,22 +116,22 @@ public final class DFAGenerator {
             }
             DFAStateTransitionBuilder anchoredEntryConnection = new DFAStateTransitionBuilder(null, anchoredEntryStateSet);
             DFAStateNodeBuilder anchoredEntryState = gen.lookupOrCreateState(anchoredEntryConnection);
-            anchoredEntries[i] = anchoredEntryState.getId();
+            entryStates[i] = anchoredEntryState.getId();
             if (trackCaptureGroups) {
                 anchoredInitialCGBuilder[i] = new DFACaptureGroupTransitionBuilder(nfa, anchoredEntryConnection, anchoredEntryState, true);
                 anchoredEntryState.addPrecedingTransition(anchoredInitialCGBuilder[i]);
             }
         }
-        DFAStateNode[] states = gen.createFullDFA();
+        DFAAbstractStateNode[] states = gen.createFullDFA();
         DFACaptureGroupLazyTransitionNode[] transitionsArray = null;
         if (trackCaptureGroups) {
             for (int i = 0; i < numberOfEntryPoints; i++) {
                 DFACaptureGroupLazyTransitionNode ti = anchoredInitialCGBuilder[i].toLazyTransition(gen.cgTransitionIDCounter, compilationBuffer);
-                anchoredInitCaptureGroups[i] = ti.getId();
+                initCaptureGroups[i] = ti.getId();
                 gen.registerTransition(ti);
                 if (unAnchoredInitialCGBuilder[i] != null) {
                     ti = unAnchoredInitialCGBuilder[i].toLazyTransition(gen.cgTransitionIDCounter, compilationBuffer);
-                    unAnchoredInitCaptureGroups[i] = ti.getId();
+                    initCaptureGroups[numberOfEntryPoints + i] = ti.getId();
                     gen.registerTransition(ti);
                 }
             }
@@ -143,91 +142,62 @@ public final class DFAGenerator {
             }
             assert Arrays.stream(transitionsArray).noneMatch(Objects::isNull);
         }
+        assert states[0] == null;
+        states[0] = new DFAInitialStateNode(entryStates, initCaptureGroups, executorProperties.isSearching(), trackCaptureGroups);
         if (DebugUtil.DEBUG) {
-            DFAExport.exportDot(gen.stateMap, anchoredEntries, unAnchoredEntries, trackCaptureGroups ? "./dfa_cg.gv" : "./dfa.gv", false);
+            DFAExport.exportDot(gen.stateMap, entryStates, trackCaptureGroups ? "./dfa_cg.gv" : "./dfa.gv", false);
             gen.dumpDFA();
             if (trackCaptureGroups) {
-                for (int i = 0; i < numberOfEntryPoints; i++) {
-                    System.out.println(anchoredInitialCGBuilder[i].toTable());
-                    System.out.println(transitionsArray[anchoredInitCaptureGroups[i]].toTable("AnchoredInitTransition " + i));
-                    if (unAnchoredInitialCGBuilder[i] != null) {
-                        System.out.println(unAnchoredInitialCGBuilder[i].toTable());
-                        System.out.println(transitionsArray[unAnchoredInitCaptureGroups[i]].toTable("UnAnchoredInitTransition " + i));
-                    }
-                }
-                for (DFAStateNode s : states) {
+                for (DFAAbstractStateNode s : states) {
                     System.out.println(s.toTable());
                 }
             }
         }
         if (TRegexOptions.TRegexEnableNodeSplitter) {
-            states = tryMakeReducible(anchoredEntries, unAnchoredEntries, states);
+            states = tryMakeReducible(states);
         }
-        return new TRegexDFAExecutorNode(
-                        inputIterator,
-                        result,
-                        lastTransition,
-                        anchoredEntries,
-                        unAnchoredEntries,
-                        states,
-                        transitionsArray,
-                        trackCaptureGroups,
-                        gen.maxNumberOfNfaStates,
-                        nfa.getAst().getNumberOfCaptureGroups(),
-                        anchoredInitCaptureGroups,
-                        unAnchoredInitCaptureGroups);
+        return new TRegexDFAExecutorNode(executorProperties, gen.maxNumberOfNfaStates, states, transitionsArray);
     }
 
     @TruffleBoundary
-    public static TRegexDFAExecutorNode createBackwardDFAExecutor(NFA nfa, InputIterator inputIterator, FrameSlot result, CompilationBuffer compilationBuffer) {
+    public static TRegexDFAExecutorNode createBackwardDFAExecutor(NFA nfa, TRegexDFAExecutorProperties executorProperties, CompilationBuffer compilationBuffer) {
         final boolean prune = nfa.isTraceFinderNFA() && nfa.hasReverseUnAnchoredEntry();
         DFAGenerator gen = new DFAGenerator(nfa, false, false, prune, compilationBuffer);
         NFATransitionSet anchoredEntry = NFATransitionSet.create(nfa, false, false, nfa.getReverseAnchoredEntry().getPrev());
-        short[] unAnchoredEntries = {-1};
+        short[] entryStates = {-1, -1};
         if (nfa.hasReverseUnAnchoredEntry()) {
             anchoredEntry.addAll(nfa.getReverseUnAnchoredEntry().getPrev());
             NFATransitionSet unAnchoredEntry = NFATransitionSet.create(nfa, false, false, nfa.getReverseUnAnchoredEntry().getPrev());
-            unAnchoredEntries[0] = gen.lookupOrCreateState(new DFAStateTransitionBuilder(null, unAnchoredEntry)).getId();
+            entryStates[1] = gen.lookupOrCreateState(new DFAStateTransitionBuilder(null, unAnchoredEntry)).getId();
         }
-        short[] anchoredEntries = {gen.lookupOrCreateState(new DFAStateTransitionBuilder(null, anchoredEntry)).getId()};
-        DFAStateNode[] states = gen.createFullDFA();
+        entryStates[0] = gen.lookupOrCreateState(new DFAStateTransitionBuilder(null, anchoredEntry)).getId();
+        DFAAbstractStateNode[] states = gen.createFullDFA();
         if (DebugUtil.DEBUG) {
-            DFAExport.exportDot(gen.stateMap, anchoredEntries, unAnchoredEntries, "./dfa_reverse.gv", false);
+            DFAExport.exportDot(gen.stateMap, entryStates, "./dfa_reverse.gv", false);
             System.out.println("REVERSE");
             gen.dumpDFA();
         }
-        // TODO: adapt DFANodeSplit for multiple entry points
+        assert states[0] == null;
+        states[0] = new DFAInitialStateNode(entryStates, null, false, false);
         if (TRegexOptions.TRegexEnableNodeSplitter) {
-            states = tryMakeReducible(anchoredEntries, unAnchoredEntries, states);
+            states = tryMakeReducible(states);
         }
-        return new TRegexDFAExecutorNode(
-                        inputIterator,
-                        result,
-                        null,
-                        anchoredEntries,
-                        unAnchoredEntries,
-                        states,
-                        null,
-                        false,
-                        0,
-                        0,
-                        null,
-                        null);
+        return new TRegexDFAExecutorNode(executorProperties, 0, states, null);
     }
 
-    private static DFAStateNode[] tryMakeReducible(short[] anchoredEntries, short[] unAnchoredEntries, DFAStateNode[] states) {
+    private static DFAAbstractStateNode[] tryMakeReducible(DFAAbstractStateNode[] states) {
         try {
-            return DFANodeSplit.createReducibleGraph(anchoredEntries, unAnchoredEntries, states);
+            return DFANodeSplit.createReducibleGraph(states);
         } catch (DFANodeSplit.DFANodeSplitBailoutException e) {
             return states;
         }
     }
 
-    private DFAStateNode[] createFullDFA() {
+    private DFAAbstractStateNode[] createFullDFA() {
         while (!expansionQueue.isEmpty()) {
             expandDFA(expansionQueue.pop());
         }
-        DFAStateNode[] ret = new DFAStateNode[stateMap.values().size()];
+        DFAAbstractStateNode[] ret = new DFAAbstractStateNode[stateMap.values().size() + 1];
         for (DFAStateNodeBuilder s : stateMap.values()) {
             CharMatcher[] matchers = (s.getMatcherBuilders().length > 0) ? new CharMatcher[s.getMatcherBuilders().length] : CharMatcher.EMPTY;
             MatcherBuilder acc = MatcherBuilder.createEmpty();
@@ -245,7 +215,7 @@ public final class DFAGenerator {
             if (matchers.length == 1 && matchers[0] == AnyMatcher.INSTANCE) {
                 matchers = AnyMatcher.INSTANCE_ARRAY;
             }
-            short[] successors = s.getSuccessors().length > 0 ? new short[s.getSuccessors().length] : EMPTY_SHORT_ARRAY;
+            short[] successors = s.getNumberOfSuccessors() > 0 ? new short[s.getNumberOfSuccessors()] : EMPTY_SHORT_ARRAY;
             short[] cgTransitions = null;
             short[] cgPrecedingTransitions = null;
             if (trackCaptureGroups) {
@@ -258,11 +228,11 @@ public final class DFAGenerator {
                     cgPrecedingTransitions[i] = transitionBuilder.toLazyTransition(cgTransitionIDCounter, compilationBuffer).getId();
                 }
             }
-            boolean loopToSelf = false;
-            for (int i = 0; i < successors.length; i++) {
+            short loopToSelf = -1;
+            for (int i = 0; i < successors.length - (s.hasBackwardPrefixState() ? 1 : 0); i++) {
                 successors[i] = s.getSuccessors()[i].getId();
                 if (successors[i] == s.getId()) {
-                    loopToSelf = true;
+                    loopToSelf = (short) i;
                 }
                 assert successors[i] >= 0 && successors[i] < ret.length;
                 if (trackCaptureGroups) {
@@ -271,20 +241,23 @@ public final class DFAGenerator {
                     registerTransition(transition);
                 }
             }
+            if (s.hasBackwardPrefixState()) {
+                successors[successors.length - 1] = s.getBackwardPrefixState();
+            }
             boolean findSingleChar = matchers.length == 2 &&
                             matchers[0] instanceof SingleCharMatcher &&
                             matchers[1] instanceof AnyMatcher &&
                             successors[1] == s.getId();
             if (trackCaptureGroups) {
-                ret[s.getId()] = new CGTrackingDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), loopToSelf, findSingleChar, successors, matchers,
+                ret[s.getId()] = new CGTrackingDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, loopToSelf, successors, matchers,
                                 cgTransitions, cgPrecedingTransitions);
             } else if (nfa.isTraceFinderNFA()) {
-                ret[s.getId()] = new TraceFinderDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), loopToSelf, findSingleChar, successors, matchers,
-                                s.getBackwardPrefixState(), s.getUnAnchoredResult(), s.getAnchoredResult());
+                ret[s.getId()] = new TraceFinderDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, loopToSelf, successors, matchers,
+                                s.getUnAnchoredResult(), s.getAnchoredResult());
             } else if (forward) {
-                ret[s.getId()] = new DFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), loopToSelf, findSingleChar, successors, matchers);
+                ret[s.getId()] = new DFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, loopToSelf, successors, matchers);
             } else {
-                ret[s.getId()] = new BackwardDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), loopToSelf, findSingleChar, successors, matchers, s.getBackwardPrefixState());
+                ret[s.getId()] = new BackwardDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, loopToSelf, successors, matchers);
             }
         }
         return ret;

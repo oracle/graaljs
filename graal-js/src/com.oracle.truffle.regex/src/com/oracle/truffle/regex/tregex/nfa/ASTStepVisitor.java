@@ -16,14 +16,13 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import org.graalvm.collections.EconomicMap;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Regex AST visitor that will find convert all NFA successors of a given {@link Term} to
@@ -39,8 +38,8 @@ import java.util.Map;
 public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
 
     private ASTStep stepCur;
-    private final Map<LookAheadAssertion, ASTStep> lookAheadMap = new HashMap<>();
-    private final Map<LookAheadAssertion, ASTStep> lookAheadMapWithCaret = new HashMap<>();
+    private final EconomicMap<LookAheadAssertion, ASTStep> lookAheadMap = EconomicMap.create();
+    private final EconomicMap<LookAheadAssertion, ASTStep> lookAheadMapWithCaret = EconomicMap.create();
     private final List<ASTStep> curLookAheads = new ArrayList<>();
     private final List<ASTStep> curLookBehinds = new ArrayList<>();
     private final Deque<ASTStep> lookAroundExpansionQueue = new ArrayDeque<>();
@@ -183,11 +182,14 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
 
     @Override
     protected void enterLookAhead(LookAheadAssertion assertion) {
-        curLookAheads.add((canTraverseCaret() ? lookAheadMapWithCaret : lookAheadMap).computeIfAbsent(assertion, x -> {
-            ASTStep laStep = new ASTStep(assertion.getGroup());
+        EconomicMap<LookAheadAssertion, ASTStep> laMap = canTraverseCaret() ? lookAheadMapWithCaret : lookAheadMap;
+        ASTStep laStep = laMap.get(assertion);
+        if (laStep == null) {
+            laStep = new ASTStep(assertion.getGroup());
             lookAroundExpansionQueue.push(laStep);
-            return laStep;
-        }));
+            laMap.put(assertion, laStep);
+        }
+        curLookAheads.add(laStep);
     }
 
     @Override

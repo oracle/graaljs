@@ -9,7 +9,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.RegexLanguageObject;
 import com.oracle.truffle.regex.result.RegexResult;
 
-public final class RegexResultStartArrayObject implements TruffleObject, RegexLanguageObject {
+public final class RegexResultStartArrayObject implements RegexLanguageObject {
 
     private final RegexResult result;
 

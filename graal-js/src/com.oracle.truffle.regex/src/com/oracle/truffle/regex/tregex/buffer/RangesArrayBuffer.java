@@ -5,60 +5,27 @@
 
 package com.oracle.truffle.regex.tregex.buffer;
 
-import java.util.Arrays;
-
-public class RangesArrayBuffer {
-
-    private char[] ranges;
-    private int size = 0;
+/**
+ * Extension of {@link CharArrayBuffer} that adds convenience functions for arrays of character
+ * ranges in the form:
+ * 
+ * <pre>
+ * [
+ *     inclusive lower bound of range 1, exclusive upper bound of range 1,
+ *     inclusive lower bound of range 2, exclusive upper bound of range 2,
+ *     inclusive lower bound of range 3, exclusive upper bound of range 3,
+ *     ...
+ * ]
+ * </pre>
+ */
+public class RangesArrayBuffer extends CharArrayBuffer {
 
     public RangesArrayBuffer(int initialSize) {
-        ranges = new char[initialSize];
-    }
-
-    public void clear() {
-        size = 0;
-    }
-
-    public boolean isEmpty() {
-        return size == 0;
-    }
-
-    public int size() {
-        return size;
-    }
-
-    public void setSize(int size) {
-        this.size = size;
-    }
-
-    public char[] getBuffer() {
-        return ranges;
+        super(initialSize);
     }
 
     public void addRange(int rLo, int rHi) {
-        if (size == ranges.length) {
-            grow(size * 2);
-        }
-        ranges[size++] = (char) rLo;
-        ranges[size++] = (char) rHi;
-    }
-
-    public void ensureCapacity(int newSize) {
-        if (ranges.length < newSize) {
-            int newBufferSize = ranges.length * 2;
-            while (newBufferSize < newSize) {
-                newBufferSize *= 2;
-            }
-            grow(newBufferSize);
-        }
-    }
-
-    private void grow(int newSize) {
-        ranges = Arrays.copyOf(ranges, newSize);
-    }
-
-    public char[] toArray() {
-        return Arrays.copyOf(ranges, size);
+        add((char) rLo);
+        add((char) rHi);
     }
 }

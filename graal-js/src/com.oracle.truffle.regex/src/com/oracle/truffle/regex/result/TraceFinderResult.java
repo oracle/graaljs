@@ -6,7 +6,7 @@ package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.regex.CompiledRegex;
+import com.oracle.truffle.regex.RegexObject;
 
 public final class TraceFinderResult extends RegexResult {
 
@@ -17,7 +17,7 @@ public final class TraceFinderResult extends RegexResult {
     @CompilationFinal(dimensions = 1) private final PreCalculatedResultFactory[] preCalculatedResults;
     private boolean resultCalculated = false;
 
-    public TraceFinderResult(CompiledRegex regex, Object input, int fromIndex, int end, CallTarget traceFinderCallTarget, PreCalculatedResultFactory[] preCalculatedResults) {
+    public TraceFinderResult(RegexObject regex, Object input, int fromIndex, int end, CallTarget traceFinderCallTarget, PreCalculatedResultFactory[] preCalculatedResults) {
         super(regex, input, preCalculatedResults[0].getNumberOfGroups());
         this.fromIndex = fromIndex;
         this.end = end;

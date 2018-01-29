@@ -4,14 +4,14 @@
  */
 package com.oracle.truffle.regex.result;
 
-import com.oracle.truffle.regex.CompiledRegex;
+import com.oracle.truffle.regex.RegexObject;
 
 public final class StartsEndsIndexArrayResult extends RegexResult {
 
     private final int[] starts;
     private final int[] ends;
 
-    public StartsEndsIndexArrayResult(CompiledRegex regex, Object input, int[] starts, int[] ends) {
+    public StartsEndsIndexArrayResult(RegexObject regex, Object input, int[] starts, int[] ends) {
         super(regex, input, starts.length);
         this.starts = starts;
         this.ends = ends;

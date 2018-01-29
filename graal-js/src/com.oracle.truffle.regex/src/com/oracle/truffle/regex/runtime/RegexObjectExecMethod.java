@@ -7,26 +7,26 @@ package com.oracle.truffle.regex.runtime;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.RegexLanguageObject;
-import com.oracle.truffle.regex.result.RegexResult;
+import com.oracle.truffle.regex.RegexObject;
 
-public final class RegexResultObject implements TruffleObject, RegexLanguageObject {
+public final class RegexObjectExecMethod implements RegexLanguageObject {
 
-    private final RegexResult result;
+    private final RegexObject regex;
 
-    public RegexResultObject(RegexResult result) {
-        this.result = result;
+    public RegexObjectExecMethod(RegexObject regex) {
+        this.regex = regex;
     }
 
-    public RegexResult getResult() {
-        return result;
+    public RegexObject getRegexObject() {
+        return regex;
     }
 
     public static boolean isInstance(TruffleObject object) {
-        return object instanceof RegexResultObject;
+        return object instanceof RegexObjectExecMethod;
     }
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return RegexResultObjectMessageResolutionForeign.ACCESS;
+        return RegexObjectExecMethodMessageResolutionForeign.ACCESS;
     }
 }

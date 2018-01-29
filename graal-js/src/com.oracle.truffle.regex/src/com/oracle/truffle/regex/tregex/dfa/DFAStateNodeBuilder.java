@@ -56,6 +56,14 @@ public final class DFAStateNodeBuilder {
         return successors;
     }
 
+    public int getNumberOfSuccessors() {
+        return successors.length + (hasBackwardPrefixState() ? 1 : 0);
+    }
+
+    public boolean hasBackwardPrefixState() {
+        return backwardPrefixState >= 0;
+    }
+
     public void setSuccessors(DFAStateNodeBuilder[] successors) {
         this.successors = successors;
     }

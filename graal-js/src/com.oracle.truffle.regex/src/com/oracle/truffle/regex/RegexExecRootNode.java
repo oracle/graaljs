@@ -4,54 +4,48 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.nodes.input.InputCharAtNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 import com.oracle.truffle.regex.util.NumberConversion;
 
-public abstract class RegexNode extends RootNode {
-
-    private static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = new FrameDescriptor();
+public abstract class RegexExecRootNode extends RegexRootNode {
 
     @Child private InputLengthNode inputLengthNode = InputLengthNode.create();
     @Child private InputCharAtNode inputCharAtNode = InputCharAtNode.create();
 
-    public RegexNode() {
-        super(null, SHARED_EMPTY_FRAMEDESCRIPTOR);
+    public RegexExecRootNode(RegexLanguage language, FrameDescriptor frameDescriptor, RegexSource source) {
+        super(language, frameDescriptor, source);
+    }
+
+    public RegexExecRootNode(RegexLanguage language, RegexSource source) {
+        super(language, source);
     }
 
     @Override
-    public final Object execute(VirtualFrame frame) {
+    public final RegexResult execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         assert args.length == 3;
 
-        CompiledRegex regex = (CompiledRegex) args[0];
+        RegexObject regex = (RegexObject) args[0];
         Object input = args[1];
         int fromIndex = NumberConversion.intValue((Number) args[2]);
-
-        if (regex.getSource().getFlags().isUnicode() && fromIndex > 0 && fromIndex < inputLengthNode.execute(input)) {
+        if (sourceIsUnicode(regex) && fromIndex > 0 && fromIndex < inputLengthNode.execute(input)) {
             if (Character.isLowSurrogate(inputCharAtNode.execute(input, fromIndex)) &&
                             Character.isHighSurrogate(inputCharAtNode.execute(input, fromIndex - 1))) {
                 fromIndex = fromIndex - 1;
             }
         }
 
-        return execute(regex, input, fromIndex);
+        return execute(frame, regex, input, fromIndex);
     }
 
-    protected abstract RegexResult execute(CompiledRegex regex, Object input, int fromIndex);
+    protected abstract RegexResult execute(VirtualFrame frame, RegexObject regex, Object input, int fromIndex);
 
-    @Override
-    @TruffleBoundary
-    public final String toString() {
-        return getEngineLabel() + ": " + getPatternSource();
+    @SuppressWarnings("unused")
+    protected boolean sourceIsUnicode(RegexObject regex) {
+        return getSource().getFlags().isUnicode();
     }
-
-    protected abstract String getEngineLabel();
-
-    protected abstract String getPatternSource();
 }

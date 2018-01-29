@@ -104,17 +104,25 @@ public class NFA implements StateIndex<NFAState> {
     }
 
     @Override
-    public NFAState[] getIndex() {
-        return getStates();
+    public int getNumberOfStates() {
+        return states.length;
+    }
+
+    @Override
+    public NFAState getState(int id) {
+        return states[id];
     }
 
     public NFAMatcherState createLoopBackMatcher() {
+        if (states[states.length - 1] != null) {
+            return (NFAMatcherState) states[states.length - 1];
+        }
         ASTNodeSet<RegexASTNode> cc = new ASTNodeSet<>(ast);
         CharacterClass loopBackCC = ast.createLoopBackMatcher();
         cc.add(loopBackCC);
-        NFAMatcherState ret = new NFAMatcherState(stateIDCounter.inc(), cc, MatcherBuilder.createFull(), Collections.emptySet(), false);
+        NFAMatcherState ret = new NFAMatcherState((short) stateIDCounter.inc(), cc, MatcherBuilder.createFull(), Collections.emptySet(), false);
         for (NFAStateTransition t : getUnAnchoredEntry().get(0).getNext()) {
-            NFAStateTransition loopBackTransition = new NFAStateTransition((short) transitionIDCounter.inc(), ret, t.getTarget(), new GroupBoundaries());
+            NFAStateTransition loopBackTransition = new NFAStateTransition((short) transitionIDCounter.inc(), ret, t.getTarget(), t.getGroupBoundaries());
             assert transitions[loopBackTransition.getId()] == null;
             transitions[loopBackTransition.getId()] = loopBackTransition;
             ret.addLoopBackNext(loopBackTransition);

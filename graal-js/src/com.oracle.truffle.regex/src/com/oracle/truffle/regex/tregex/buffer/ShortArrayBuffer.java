@@ -7,17 +7,18 @@ package com.oracle.truffle.regex.tregex.buffer;
 import java.util.Arrays;
 
 /**
- * This class is designed as a "scratchpad" for generating many byte arrays of unknown size. It will
- * never shrink its internal buffer, so it should be disposed as soon as it is no longer needed.
+ * This class is designed as a "scratchpad" for generating many short arrays of unknown size. It
+ * will never shrink its internal buffer, so it should be disposed as soon as it is no longer
+ * needed.
  * <p>
  * Usage Example:
  * </p>
  * 
  * <pre>
- * ByteArrayBuffer buf = new ByteArrayBuffer();
- * List<byte[]> results = new ArrayList<>();
+ * ShortArrayBuffer buf = new ShortArrayBuffer();
+ * List<short[]> results = new ArrayList<>();
  * for (Object obj : listOfThingsToProcess) {
- *     for (Object x : obj.thingsThatShouldBecomeBytes()) {
+ *     for (Object x : obj.thingsThatShouldBecomeShorts()) {
  *         buf.add(someCalculation(x));
  *     }
  *     results.add(buf.toArray());
@@ -25,17 +26,17 @@ import java.util.Arrays;
  * }
  * </pre>
  */
-public class ByteArrayBuffer {
+public class ShortArrayBuffer {
 
-    private byte[] buf;
+    private short[] buf;
     private int size = 0;
 
-    public ByteArrayBuffer() {
+    public ShortArrayBuffer() {
         this(16);
     }
 
-    public ByteArrayBuffer(int initialSize) {
-        buf = new byte[initialSize];
+    public ShortArrayBuffer(int initialSize) {
+        buf = new short[initialSize];
     }
 
     public void clear() {
@@ -46,15 +47,15 @@ public class ByteArrayBuffer {
         return size;
     }
 
-    public byte get(int i) {
+    public short get(int i) {
         return buf[i];
     }
 
-    public void add(byte b) {
+    public void add(short s) {
         if (size == buf.length) {
             grow(size * 2);
         }
-        buf[size] = b;
+        buf[size] = s;
         size++;
     }
 
@@ -62,7 +63,7 @@ public class ByteArrayBuffer {
         buf = Arrays.copyOf(buf, newSize);
     }
 
-    public byte[] toArray() {
+    public short[] toArray() {
         return Arrays.copyOf(buf, size);
     }
 }

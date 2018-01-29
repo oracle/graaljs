@@ -5,6 +5,7 @@
 package com.oracle.truffle.regex.tregex.parser;
 
 import com.oracle.truffle.regex.UnsupportedRegexException;
+import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 public class Counter {
 
@@ -46,6 +47,9 @@ public class Counter {
         public int inc(int i) {
             final int ret = super.inc(i);
             if (getCount() > max) {
+                if (DebugUtil.LOG_BAILOUT_MESSAGES) {
+                    System.out.println("TRegex Bailout: " + errorMsg);
+                }
                 throw new UnsupportedRegexException(errorMsg);
             }
             return ret;

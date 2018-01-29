@@ -4,20 +4,27 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 public final class RegexSource {
 
+    private final SourceSection sourceSection;
     private final String pattern;
     private final RegexFlags flags;
     private final RegexOptions options;
     private boolean hashComputed = false;
     private int cachedHash;
 
-    public RegexSource(String pattern, RegexFlags flags, RegexOptions options) {
+    public RegexSource(SourceSection sourceSection, String pattern, RegexFlags flags, RegexOptions options) {
+        this.sourceSection = sourceSection;
         this.pattern = pattern;
         this.flags = flags;
         this.options = options;
+    }
+
+    public SourceSection getSourceSection() {
+        return sourceSection;
     }
 
     public String getPattern() {

@@ -19,7 +19,7 @@ public class NFAMatcherState extends NFAState {
     private final MatcherBuilder matcherBuilder;
     private final Set<LookBehindAssertion> finishedLookBehinds;
 
-    public NFAMatcherState(int id,
+    public NFAMatcherState(short id,
                     ASTNodeSet<? extends RegexASTNode> stateSet,
                     MatcherBuilder matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds,
@@ -28,7 +28,7 @@ public class NFAMatcherState extends NFAState {
     }
 
     private NFAMatcherState(
-                    int id,
+                    short id,
                     ASTNodeSet<? extends RegexASTNode> stateSet,
                     List<NFAStateTransition> next,
                     List<NFAStateTransition> prev,

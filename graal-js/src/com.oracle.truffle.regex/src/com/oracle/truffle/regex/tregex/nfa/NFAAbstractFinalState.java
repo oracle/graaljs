@@ -8,12 +8,12 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 
 public abstract class NFAAbstractFinalState extends NFAState {
 
-    protected NFAAbstractFinalState(int id, ASTNodeSet<? extends RegexASTNode> stateSet, int preCalculatedResultIndex) {
+    protected NFAAbstractFinalState(short id, ASTNodeSet<? extends RegexASTNode> stateSet, int preCalculatedResultIndex) {
         super(id, stateSet);
         addPossibleResult(preCalculatedResultIndex);
     }
 
-    protected NFAAbstractFinalState(int id, ASTNodeSet<? extends RegexASTNode> stateSet) {
+    protected NFAAbstractFinalState(short id, ASTNodeSet<? extends RegexASTNode> stateSet) {
         super(id, stateSet);
     }
 }

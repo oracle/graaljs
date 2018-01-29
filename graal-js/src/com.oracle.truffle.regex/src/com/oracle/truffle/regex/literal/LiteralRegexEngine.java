@@ -4,7 +4,8 @@
  */
 package com.oracle.truffle.regex.literal;
 
-import com.oracle.truffle.regex.RegexNode;
+import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
@@ -12,7 +13,7 @@ import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 public final class LiteralRegexEngine {
 
-    public static RegexNode createNode(RegexAST ast) {
+    public static LiteralRegexExecRootNode createNode(RegexLanguage language, RegexAST ast) {
         RegexProperties p = ast.getProperties();
         if (p.hasAlternations() || p.hasCharClasses() || p.hasLookAroundAssertions() || p.hasLoops()) {
             return null;
@@ -23,7 +24,7 @@ public final class LiteralRegexEngine {
         if ((caret || dollar) && ast.getSource().getFlags().isMultiline()) {
             return null;
         }
-        final LiteralRegexNode literalNode = createLiteralNode(ast, caret, dollar, preCalcResultVisitor);
+        final LiteralRegexExecRootNode literalNode = createLiteralNode(language, ast, caret, dollar, preCalcResultVisitor);
         if (DebugUtil.DEBUG) {
             if (literalNode != null) {
                 System.out.println(literalNode.toTable());
@@ -32,34 +33,34 @@ public final class LiteralRegexEngine {
         return literalNode;
     }
 
-    private static LiteralRegexNode createLiteralNode(RegexAST ast, boolean caret, boolean dollar, PreCalcResultVisitor preCalcResultVisitor) {
-        String pattern = ast.getSource().getPattern();
+    private static LiteralRegexExecRootNode createLiteralNode(RegexLanguage language, RegexAST ast, boolean caret, boolean dollar, PreCalcResultVisitor preCalcResultVisitor) {
+        RegexSource source = ast.getSource();
         if (preCalcResultVisitor.getLiteral().length() == 0) {
             if (caret) {
                 if (dollar) {
-                    return new LiteralRegexNode.EmptyEquals(pattern, preCalcResultVisitor);
+                    return new LiteralRegexExecRootNode.EmptyEquals(language, source, preCalcResultVisitor);
                 }
-                return new LiteralRegexNode.EmptyStartsWith(pattern, preCalcResultVisitor);
+                return new LiteralRegexExecRootNode.EmptyStartsWith(language, source, preCalcResultVisitor);
             }
             if (dollar) {
-                return new LiteralRegexNode.EmptyEndsWith(pattern, preCalcResultVisitor);
+                return new LiteralRegexExecRootNode.EmptyEndsWith(language, source, preCalcResultVisitor);
             }
-            return new LiteralRegexNode.EmptyIndexOf(pattern, preCalcResultVisitor);
+            return new LiteralRegexExecRootNode.EmptyIndexOf(language, source, preCalcResultVisitor);
         }
         if (caret) {
             if (dollar) {
-                return new LiteralRegexNode.Equals(pattern, preCalcResultVisitor);
+                return new LiteralRegexExecRootNode.Equals(language, source, preCalcResultVisitor);
             }
-            return new LiteralRegexNode.StartsWith(pattern, preCalcResultVisitor);
+            return new LiteralRegexExecRootNode.StartsWith(language, source, preCalcResultVisitor);
         }
         if (dollar) {
-            return new LiteralRegexNode.EndsWith(pattern, preCalcResultVisitor);
+            return new LiteralRegexExecRootNode.EndsWith(language, source, preCalcResultVisitor);
         }
-        if (ast.getSource().getFlags().isSticky()) {
-            return new LiteralRegexNode.RegionMatches(pattern, preCalcResultVisitor);
+        if (source.getFlags().isSticky()) {
+            return new LiteralRegexExecRootNode.RegionMatches(language, source, preCalcResultVisitor);
         }
         if (preCalcResultVisitor.getLiteral().length() == 1) {
-            return new LiteralRegexNode.IndexOfChar(pattern, preCalcResultVisitor);
+            return new LiteralRegexExecRootNode.IndexOfChar(language, source, preCalcResultVisitor);
         }
         return null;
     }

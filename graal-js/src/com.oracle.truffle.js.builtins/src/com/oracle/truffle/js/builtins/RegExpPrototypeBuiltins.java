@@ -705,7 +705,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     if (replaceRawProfile.profile(replaceRaw)) {
                         accumulatedResult.append(replaceString);
                     } else {
-                        appendSubstitution(accumulatedResult, result, s, position, replaceString);
+                        appendSubstitution(accumulatedResult, result, matchLength, s, position, replaceString);
                     }
                 }
                 return position + matchLength;
@@ -740,10 +740,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return nextSourcePosition;
         }
 
-        @TruffleBoundary
-        private void appendSubstitution(DelimitedStringBuilder accumulatedResult, DynamicObject result, String str, int position, String replacement) {
+        private void appendSubstitution(DelimitedStringBuilder accumulatedResult, DynamicObject result, int matchLength, String str, int position, String replacement) {
             int dollarPos = Boundaries.stringIndexOf(replacement, '$');
-            int tailPos = position + ((String) read(result, 0)).length();
+            int tailPos = position + matchLength;
             accumulatedResult.append(replacement, 0, dollarPos);
             int pos = dollarPos;
             while (pos != -1) {

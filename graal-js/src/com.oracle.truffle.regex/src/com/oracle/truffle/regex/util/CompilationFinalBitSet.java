@@ -31,7 +31,7 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
         return bs;
     }
 
-    @CompilationFinal(dimensions = 1) private final long[] words;
+    @CompilationFinal(dimensions = 1) private long[] words;
 
     public CompilationFinalBitSet(int nbits) {
         this.words = new long[wordIndex(nbits - 1) + 1];
@@ -71,15 +71,19 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
     }
 
     public boolean get(int b) {
-        return wordIndex(b) < words.length && getWithoutBoundsCheck(b);
+        return wordIndex(b) < words.length && (words[wordIndex(b)] & (1L << b)) != 0;
     }
 
-    public boolean getWithoutBoundsCheck(int b) {
-        return (words[wordIndex(b)] & (1L << b)) != 0;
+    private void ensureCapacity(int nWords) {
+        if (nWords >= words.length) {
+            words = Arrays.copyOf(words, Math.max(2 * words.length, nWords));
+        }
     }
 
     public void set(int b) {
-        words[wordIndex(b)] |= 1L << b;
+        final int wordIndex = wordIndex(b);
+        ensureCapacity(wordIndex + 1);
+        words[wordIndex] |= 1L << b;
     }
 
     public void setRange(int lo, int hi) {
@@ -93,7 +97,9 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
     }
 
     public void clear(int b) {
-        words[wordIndex(b)] &= ~(1L << b);
+        final int wordIndex = wordIndex(b);
+        ensureCapacity(wordIndex + 1);
+        words[wordIndex] &= ~(1L << b);
     }
 
     public void invert() {

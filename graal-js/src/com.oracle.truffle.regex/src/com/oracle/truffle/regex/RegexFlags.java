@@ -5,8 +5,12 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.regex.runtime.RegexFlagsMessageResolutionForeign;
 
-public final class RegexFlags {
+public final class RegexFlags implements RegexLanguageObject {
+
     private static final int NONE = 0;
     private static final int IGNORE_CASE = 1;
     private static final int MULTILINE = 1 << 1;
@@ -125,4 +129,14 @@ public final class RegexFlags {
     public boolean equals(Object obj) {
         return obj == this || obj != null && obj instanceof RegexFlags && value == ((RegexFlags) obj).value;
     }
+
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof RegexFlags;
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return RegexFlagsMessageResolutionForeign.ACCESS;
+    }
+
 }

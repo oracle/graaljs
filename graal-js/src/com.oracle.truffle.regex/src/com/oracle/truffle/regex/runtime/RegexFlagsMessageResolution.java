@@ -10,91 +10,92 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.runtime.RegexFlagsObjectMessageResolutionFactory.ReadCacheNodeGen;
+import com.oracle.truffle.regex.RegexFlags;
+import com.oracle.truffle.regex.runtime.RegexFlagsMessageResolutionFactory.ReadCacheNodeGen;
 
-@MessageResolution(receiverType = RegexFlagsObject.class)
-class RegexFlagsObjectMessageResolution {
+@MessageResolution(receiverType = RegexFlags.class)
+public class RegexFlagsMessageResolution {
 
-    abstract static class RegexFlagsObjectPropertyNode extends Node {
+    abstract static class RegexFlagsPropertyNode extends Node {
 
-        abstract Object execute(RegexFlagsObject receiver);
+        abstract Object execute(RegexFlags receiver);
     }
 
-    static class RegexFlagsGetSourceNode extends RegexFlagsObjectPropertyNode {
+    static class RegexFlagsGetSourceNode extends RegexFlagsPropertyNode {
 
         @Override
-        Object execute(RegexFlagsObject receiver) {
-            return receiver.getFlags().getSource();
+        Object execute(RegexFlags receiver) {
+            return receiver.getSource();
         }
     }
 
-    static class RegexFlagsGetIgnoreCaseNode extends RegexFlagsObjectPropertyNode {
+    static class RegexFlagsGetIgnoreCaseNode extends RegexFlagsPropertyNode {
 
         @Override
-        Object execute(RegexFlagsObject receiver) {
-            return receiver.getFlags().isIgnoreCase();
+        Object execute(RegexFlags receiver) {
+            return receiver.isIgnoreCase();
         }
     }
 
-    static class RegexFlagsGetMultilineNode extends RegexFlagsObjectPropertyNode {
+    static class RegexFlagsGetMultilineNode extends RegexFlagsPropertyNode {
 
         @Override
-        Object execute(RegexFlagsObject receiver) {
-            return receiver.getFlags().isMultiline();
+        Object execute(RegexFlags receiver) {
+            return receiver.isMultiline();
         }
     }
 
-    static class RegexFlagsGetStickyNode extends RegexFlagsObjectPropertyNode {
+    static class RegexFlagsGetStickyNode extends RegexFlagsPropertyNode {
 
         @Override
-        Object execute(RegexFlagsObject receiver) {
-            return receiver.getFlags().isSticky();
+        Object execute(RegexFlags receiver) {
+            return receiver.isSticky();
         }
     }
 
-    static class RegexFlagsGetGlobalNode extends RegexFlagsObjectPropertyNode {
+    static class RegexFlagsGetGlobalNode extends RegexFlagsPropertyNode {
 
         @Override
-        Object execute(RegexFlagsObject receiver) {
-            return receiver.getFlags().isGlobal();
+        Object execute(RegexFlags receiver) {
+            return receiver.isGlobal();
         }
     }
 
-    static class RegexFlagsGetUnicodeNode extends RegexFlagsObjectPropertyNode {
+    static class RegexFlagsGetUnicodeNode extends RegexFlagsPropertyNode {
 
         @Override
-        Object execute(RegexFlagsObject receiver) {
-            return receiver.getFlags().isUnicode();
+        Object execute(RegexFlags receiver) {
+            return receiver.isUnicode();
         }
     }
 
-    static class RegexFlagsGetDotAllNode extends RegexFlagsObjectPropertyNode {
+    static class RegexFlagsGetDotAllNode extends RegexFlagsPropertyNode {
 
         @Override
-        Object execute(RegexFlagsObject receiver) {
-            return receiver.getFlags().isDotAll();
+        Object execute(RegexFlags receiver) {
+            return receiver.isDotAll();
         }
     }
 
     abstract static class ReadCacheNode extends Node {
 
-        abstract Object execute(RegexFlagsObject receiver, String symbol);
+        abstract Object execute(RegexFlags receiver, String symbol);
 
         @Specialization(guards = "symbol == cachedSymbol", limit = "7")
-        public Object readIdentity(RegexFlagsObject receiver, @SuppressWarnings("unused") String symbol,
+        public Object readIdentity(RegexFlags receiver, @SuppressWarnings("unused") String symbol,
                         @Cached("symbol") @SuppressWarnings("unused") String cachedSymbol,
-                        @Cached("getResultProperty(symbol)") RegexFlagsObjectPropertyNode propertyNode) {
+                        @Cached("getResultProperty(symbol)") RegexFlagsPropertyNode propertyNode) {
             return propertyNode.execute(receiver);
         }
 
         @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "7", replaces = "readIdentity")
-        public Object readEquals(RegexFlagsObject receiver, @SuppressWarnings("unused") String symbol,
+        public Object readEquals(RegexFlags receiver, @SuppressWarnings("unused") String symbol,
                         @Cached("symbol") @SuppressWarnings("unused") String cachedSymbol,
-                        @Cached("getResultProperty(symbol)") RegexFlagsObjectPropertyNode propertyNode) {
+                        @Cached("getResultProperty(symbol)") RegexFlagsPropertyNode propertyNode) {
             return propertyNode.execute(receiver);
         }
 
-        static RegexFlagsObjectPropertyNode getResultProperty(String symbol) {
+        static RegexFlagsPropertyNode getResultProperty(String symbol) {
             switch (symbol) {
                 case "source":
                     return new RegexFlagsGetSourceNode();
@@ -121,7 +122,7 @@ class RegexFlagsObjectMessageResolution {
 
         @Child ReadCacheNode cache = ReadCacheNodeGen.create();
 
-        public Object access(RegexFlagsObject receiver, String symbol) {
+        public Object access(RegexFlags receiver, String symbol) {
             return cache.execute(receiver, symbol);
         }
     }

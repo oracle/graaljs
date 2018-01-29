@@ -17,6 +17,7 @@ import java.util.stream.Stream;
 public class DebugUtil {
 
     public static final boolean DEBUG = false;
+    public static final boolean LOG_TOTAL_COMPILATION_TIME = false;
     public static final boolean LOG_PHASES = false;
     public static final boolean LOG_BAILOUT_MESSAGES = false;
     public static final boolean LOG_AUTOMATON_SIZES = false;
@@ -88,7 +89,11 @@ public class DebugUtil {
         }
 
         public String elapsedToString() {
-            return String.format("elapsed: %fms", getElapsed() / 1e6);
+            return elapsedToString(getElapsed());
+        }
+
+        public static String elapsedToString(long elapsed) {
+            return String.format("%fms", elapsed / 1e6);
         }
     }
 
