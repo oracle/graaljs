@@ -13,6 +13,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
@@ -36,26 +37,32 @@ public abstract class GraalJSException extends RuntimeException implements Truff
     private static final JSStackTraceElement[] EMPTY_STACK_TRACE = new JSStackTraceElement[0];
     private JSStackTraceElement[] jsStackTrace;
     private Node originatingNode;
+    private int stackTraceLimit;
 
-    public GraalJSException(String message, Throwable cause) {
+    protected GraalJSException(String message, Throwable cause, Node node, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean capture) {
         super(message, cause);
-    }
-
-    public GraalJSException(String message) {
-        super(message);
-    }
-
-    protected void init(Node node) {
-        init(node, JSTruffleOptions.StackTraceLimit, Undefined.instance);
-    }
-
-    protected void init(Node node, int stackTraceLimit, DynamicObject skipFramesUpTo) {
-        if (stackTraceLimit != 0) {
-            jsStackTrace = getJSStackTrace(node, stackTraceLimit, skipFramesUpTo);
-        } else {
-            jsStackTrace = EMPTY_STACK_TRACE;
-        }
         this.originatingNode = node;
+        this.stackTraceLimit = stackTraceLimit;
+        this.jsStackTrace = initStackTrace(node, stackTraceLimit, skipFramesUpTo, capture);
+    }
+
+    protected GraalJSException(String message, Node node, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean capture) {
+        super(message);
+        this.originatingNode = node;
+        this.stackTraceLimit = stackTraceLimit;
+        this.jsStackTrace = initStackTrace(node, stackTraceLimit, skipFramesUpTo, capture);
+    }
+
+    private static JSStackTraceElement[] initStackTrace(Node node, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean capture) {
+        // We can only skip frames when capturing eagerly.
+        assert capture || skipFramesUpTo == Undefined.instance;
+        if (stackTraceLimit == 0) {
+            return EMPTY_STACK_TRACE;
+        } else if (capture || JSTruffleOptions.EagerStackTrace) {
+            return getJSStackTrace(node, stackTraceLimit, skipFramesUpTo);
+        } else {
+            return null;
+        }
     }
 
     @Override
@@ -71,7 +78,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
 
     @Override
     public int getStackTraceElementLimit() {
-        return JSTruffleOptions.StackTraceLimit;
+        return stackTraceLimit;
     }
 
     /** Could still be null due to lazy initialization. */
@@ -98,7 +105,39 @@ public abstract class GraalJSException extends RuntimeException implements Truff
     }
 
     public JSStackTraceElement[] getJSStackTrace() {
-        return jsStackTrace;
+        if (jsStackTrace != null) {
+            return jsStackTrace;
+        }
+        return jsStackTrace = materializeJSStackTrace();
+    }
+
+    @TruffleBoundary
+    private JSStackTraceElement[] materializeJSStackTrace() {
+        List<TruffleStackTraceElement> stackTrace = TruffleStackTraceElement.getStackTrace(this);
+        if (stackTrace != null) {
+            FrameVisitorImpl visitor = new FrameVisitorImpl(originatingNode, stackTraceLimit, Undefined.instance);
+            for (TruffleStackTraceElement element : stackTrace) {
+                if (visitor.visitFrame(element) != null) {
+                    break;
+                }
+            }
+            return visitor.getStackTrace().toArray(EMPTY_STACK_TRACE);
+        } else {
+            return EMPTY_STACK_TRACE;
+        }
+    }
+
+    @TruffleBoundary
+    private static JSStackTraceElement[] getJSStackTrace(Node originatingNode, int stackTraceLimit, DynamicObject skipUpTo) {
+        if (stackTraceLimit > 0) {
+            // Nashorn does not support skipping of frames
+            DynamicObject skipFramesUpTo = JSTruffleOptions.NashornCompatibilityMode ? Undefined.instance : skipUpTo;
+            FrameVisitorImpl visitor = new FrameVisitorImpl(originatingNode, stackTraceLimit, skipFramesUpTo);
+            Truffle.getRuntime().iterateFrames(visitor);
+            return visitor.getStackTrace().toArray(EMPTY_STACK_TRACE);
+        }
+
+        return EMPTY_STACK_TRACE;
     }
 
     public void setJSStackTrace(JSStackTraceElement[] jsStackTrace) {
@@ -110,108 +149,136 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         return getJSStackTrace(originatingNode, JSTruffleOptions.StackTraceLimit, Undefined.instance);
     }
 
-    private static final int STACK_FRAME_SKIP = 0;
-    private static final int STACK_FRAME_JS = 1;
-    private static final int STACK_FRAME_FOREIGN = 2;
+    private static final class FrameVisitorImpl implements FrameInstanceVisitor<List<JSStackTraceElement>> {
+        private static final int STACK_FRAME_SKIP = 0;
+        private static final int STACK_FRAME_JS = 1;
+        private static final int STACK_FRAME_FOREIGN = 2;
 
-    private static int stackFrameType(Node callNode) {
-        if (callNode == null) {
-            return STACK_FRAME_SKIP;
+        private final List<JSStackTraceElement> stackTrace = new ArrayList<>();
+        private final Node originatingNode;
+        private final int stackTraceLimit;
+        private final DynamicObject skipFramesUpTo;
+
+        private boolean inStrictMode;
+        private boolean skippingFrames;
+        private boolean first = true;
+
+        FrameVisitorImpl(Node originatingNode, int stackTraceLimit, DynamicObject skipFramesUpTo) {
+            this.originatingNode = originatingNode;
+            this.stackTraceLimit = stackTraceLimit;
+            this.skipFramesUpTo = skipFramesUpTo;
+            this.skippingFrames = (skipFramesUpTo != Undefined.instance);
         }
-        SourceSection sourceSection = callNode.getEncapsulatingSourceSection();
-        if (sourceSection == null) {
-            return STACK_FRAME_SKIP;
-        }
-        if (JSFunction.isBuiltinSourceSection(sourceSection)) {
-            return JSTruffleOptions.NashornCompatibilityMode ? STACK_FRAME_SKIP : STACK_FRAME_JS;
-        }
-        if (sourceSection.getSource().isInternal() || !sourceSection.isAvailable()) {
-            return STACK_FRAME_SKIP;
-        }
-        if (JSRuntime.isJSRootNode(callNode.getRootNode())) {
-            String sourceName = sourceSection.getSource().getName();
-            if (sourceName.startsWith(JSRealm.INTERNAL_JS_FILE_NAME_PREFIX) || sourceName.equals(Evaluator.FUNCTION_SOURCE_NAME)) {
+
+        private static int stackFrameType(Node callNode) {
+            if (callNode == null) {
                 return STACK_FRAME_SKIP;
-            } else {
-                return STACK_FRAME_JS;
             }
-        } else {
-            return STACK_FRAME_FOREIGN;
+            SourceSection sourceSection = callNode.getEncapsulatingSourceSection();
+            if (sourceSection == null) {
+                return STACK_FRAME_SKIP;
+            }
+            if (JSFunction.isBuiltinSourceSection(sourceSection)) {
+                return JSTruffleOptions.NashornCompatibilityMode ? STACK_FRAME_SKIP : STACK_FRAME_JS;
+            }
+            if (sourceSection.getSource().isInternal() || !sourceSection.isAvailable()) {
+                return STACK_FRAME_SKIP;
+            }
+            if (JSRuntime.isJSRootNode(callNode.getRootNode())) {
+                String sourceName = sourceSection.getSource().getName();
+                if (sourceName.startsWith(JSRealm.INTERNAL_JS_FILE_NAME_PREFIX) || sourceName.equals(Evaluator.FUNCTION_SOURCE_NAME)) {
+                    return STACK_FRAME_SKIP;
+                } else {
+                    return STACK_FRAME_JS;
+                }
+            } else {
+                return STACK_FRAME_FOREIGN;
+            }
         }
-    }
 
-    @TruffleBoundary
-    private static JSStackTraceElement[] getJSStackTrace(Node originatingNode, int stackTraceLimit, DynamicObject skipUpTo) {
-        // Nashorn does not support skipping of frames
-        DynamicObject skipFramesUpTo = JSTruffleOptions.NashornCompatibilityMode ? Undefined.instance : skipUpTo;
-        if (stackTraceLimit > 0) {
-            List<JSStackTraceElement> stackTrace = new ArrayList<>();
-            Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<List<JSStackTraceElement>>() {
-                private boolean inStrictMode;
-                private boolean skippingFrames = (skipFramesUpTo != Undefined.instance);
-                private boolean first = true;
-
-                @Override
-                public List<JSStackTraceElement> visitFrame(FrameInstance frameInstance) {
-                    Node callNode = frameInstance.getCallNode();
-                    if (first) {
-                        assert callNode == null;
-                        first = false;
-                        callNode = originatingNode;
-                    }
-                    if (callNode == null) {
-                        CallTarget callTarget = frameInstance.getCallTarget();
-                        if (callTarget instanceof RootCallTarget) {
-                            callNode = ((RootCallTarget) callTarget).getRootNode();
+        @Override
+        public List<JSStackTraceElement> visitFrame(FrameInstance frameInstance) {
+            Node callNode = frameInstance.getCallNode();
+            if (first) {
+                first = false;
+                callNode = originatingNode;
+            }
+            if (callNode == null) {
+                CallTarget callTarget = frameInstance.getCallTarget();
+                if (callTarget instanceof RootCallTarget) {
+                    callNode = ((RootCallTarget) callTarget).getRootNode();
+                }
+            }
+            switch (stackFrameType(callNode)) {
+                case STACK_FRAME_JS:
+                    if (JSRuntime.isJSFunctionRootNode(callNode.getRootNode())) {
+                        Frame frame = frameInstance.getFrame(FrameAccess.READ_ONLY);
+                        Object thisObj = JSArguments.getThisObject(frame.getArguments());
+                        Object functionObj = JSArguments.getFunctionObject(frame.getArguments());
+                        if (JSFunction.isJSFunction(functionObj)) {
+                            JSFunctionData functionData = JSFunction.getFunctionData((DynamicObject) functionObj);
+                            if (functionData.isStrict()) {
+                                inStrictMode = true;
+                            } else if (functionData.isBuiltin() && JSFunction.isStrictBuiltin((DynamicObject) functionObj)) {
+                                inStrictMode = true;
+                            }
+                            if (skippingFrames && functionObj == skipFramesUpTo) {
+                                skippingFrames = false;
+                                return null; // skip this frame as well
+                            }
+                            JSRealm realm = functionData.getContext().getRealm();
+                            if (functionObj == realm.getApplyFunctionObject() || functionObj == realm.getCallFunctionObject()) {
+                                return null; // skip Function.apply and Function.call
+                            }
+                        }
+                        if (!skippingFrames) {
+                            stackTrace.add(processJSFrame(callNode, thisObj, (DynamicObject) functionObj, inStrictMode));
                         }
                     }
-                    switch (stackFrameType(callNode)) {
-                        case STACK_FRAME_JS:
-                            if (JSRuntime.isJSFunctionRootNode(callNode.getRootNode())) {
-                                Frame frame = frameInstance.getFrame(FrameAccess.READ_ONLY);
-                                Object thisObj = JSArguments.getThisObject(frame.getArguments());
-                                Object functionObj = JSArguments.getFunctionObject(frame.getArguments());
-                                if (JSFunction.isJSFunction(functionObj)) {
-                                    JSFunctionData functionData = JSFunction.getFunctionData((DynamicObject) functionObj);
-                                    if (functionData.isStrict()) {
-                                        inStrictMode = true;
-                                    } else if (functionData.isBuiltin() && JSFunction.isStrictBuiltin((DynamicObject) functionObj)) {
-                                        inStrictMode = true;
-                                    }
-                                    if (skippingFrames && functionObj == skipFramesUpTo) {
-                                        skippingFrames = false;
-                                        return null; // skip this frame as well
-                                    }
-                                    JSRealm realm = functionData.getContext().getRealm();
-                                    if (functionObj == realm.getApplyFunctionObject() || functionObj == realm.getCallFunctionObject()) {
-                                        return null; // skip Function.apply and Function.call
-                                    }
-                                }
-                                if (!skippingFrames) {
-                                    stackTrace.add(processJSFrame(callNode, thisObj, (DynamicObject) functionObj, inStrictMode));
-                                }
-                            }
-                            break;
-                        case STACK_FRAME_FOREIGN:
-                            if (!skippingFrames) {
-                                JSStackTraceElement elem = processForeignFrame(callNode, inStrictMode);
-                                if (elem != null) {
-                                    stackTrace.add(elem);
-                                }
-                            }
-                            break;
+                    break;
+                case STACK_FRAME_FOREIGN:
+                    if (!skippingFrames) {
+                        JSStackTraceElement elem = processForeignFrame(callNode, inStrictMode);
+                        if (elem != null) {
+                            stackTrace.add(elem);
+                        }
                     }
-                    if (stackTrace.size() < stackTraceLimit) {
-                        return null;
-                    } else {
-                        return stackTrace;
-                    }
-                }
-            });
-            return stackTrace.toArray(EMPTY_STACK_TRACE);
+                    break;
+            }
+            if (stackTrace.size() < stackTraceLimit) {
+                return null;
+            } else {
+                return stackTrace;
+            }
         }
 
-        return EMPTY_STACK_TRACE;
+        public List<JSStackTraceElement> visitFrame(TruffleStackTraceElement element) {
+            return visitFrame(new FrameInstance() {
+                @Override
+                public CallTarget getCallTarget() {
+                    return element.getTarget();
+                }
+
+                @Override
+                public Node getCallNode() {
+                    return element.getLocation();
+                }
+
+                @Override
+                public Frame getFrame(FrameAccess access) {
+                    return element.getFrame();
+                }
+
+                @Override
+                public boolean isVirtualFrame() {
+                    return false;
+                }
+            });
+        }
+
+        public List<JSStackTraceElement> getStackTrace() {
+            return stackTrace;
+        }
     }
 
     private static JSStackTraceElement processJSFrame(Node node, Object thisObj, DynamicObject functionObj, boolean inStrictMode) {

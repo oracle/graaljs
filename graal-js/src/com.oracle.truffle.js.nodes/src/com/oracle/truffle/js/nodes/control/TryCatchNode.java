@@ -9,6 +9,7 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -240,18 +241,20 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
     }
 
     public static final class InitErrorObjectNode extends JavaScriptBaseNode {
-        @Child private CreateMethodPropertyNode setLineNumber;
-        @Child private CreateMethodPropertyNode setColumnNumber;
         @Child private PropertySetNode setException;
         @Child private PropertySetNode setFormattedStack;
         private final boolean defaultColumnNumber;
+        @Child private CreateMethodPropertyNode setLineNumber;
+        @Child private CreateMethodPropertyNode setColumnNumber;
 
         private InitErrorObjectNode(JSContext context, boolean defaultColumnNumber) {
-            this.setLineNumber = CreateMethodPropertyNode.create(context, JSError.LINE_NUMBER_PROPERTY_NAME);
-            this.setColumnNumber = CreateMethodPropertyNode.create(context, JSError.COLUMN_NUMBER_PROPERTY_NAME);
             this.setException = PropertySetNode.create(JSError.EXCEPTION_PROPERTY_NAME, false, context, false);
             this.setFormattedStack = PropertySetNode.create(JSError.FORMATTED_STACK_NAME, false, context, false);
             this.defaultColumnNumber = defaultColumnNumber;
+            if (JSTruffleOptions.NashornCompatibilityMode) {
+                this.setLineNumber = CreateMethodPropertyNode.create(context, JSError.LINE_NUMBER_PROPERTY_NAME);
+                this.setColumnNumber = CreateMethodPropertyNode.create(context, JSError.COLUMN_NUMBER_PROPERTY_NAME);
+            }
         }
 
         public static InitErrorObjectNode create(JSContext context, boolean defaultColumnNumber) {
@@ -259,6 +262,9 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         }
 
         public DynamicObject execute(DynamicObject errorObj, GraalJSException exception) {
+            // fill in any missing stack trace elements
+            TruffleStackTraceElement.fillIn(exception);
+
             setException.setValue(errorObj, exception);
             // stack is not formatted until it is accessed
             setFormattedStack.setValue(errorObj, null);

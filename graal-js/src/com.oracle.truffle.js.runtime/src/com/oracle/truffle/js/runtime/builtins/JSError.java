@@ -129,7 +129,7 @@ public final class JSError extends JSBuiltinObject {
             obj = JSObject.create(context, context.getErrorFactory(errorType, true), message);
             msg = (String) message; // can only be String or undefined
         }
-        setException(realm, obj, JSException.create(errorType, msg, obj), false);
+        setException(realm, obj, JSException.createCapture(errorType, msg, obj), false);
         return obj;
     }
 
@@ -251,19 +251,20 @@ public final class JSError extends JSBuiltinObject {
     public static Object prepareStack(JSRealm realm, DynamicObject errorObj, GraalJSException exception) {
         DynamicObject error = realm.getErrorConstructor(JSErrorType.Error).getFunctionObject();
         Object prepareStackTrace = JSObject.get(error, PREPARE_STACK_TRACE_NAME);
+        JSStackTraceElement[] jsStackTrace = exception.getJSStackTrace();
         if (JSFunction.isJSFunction(prepareStackTrace)) {
             // Do not call Error.prepareStackTrace for errors that occur during its invocation
             Object preparingStackTrace = error.get(PREPARING_STACK_TRACE_NAME);
             if (preparingStackTrace != Boolean.TRUE) {
                 try {
                     error.set(PREPARING_STACK_TRACE_NAME, true);
-                    return prepareStackWithUserFunction(realm, (DynamicObject) prepareStackTrace, errorObj, exception.getJSStackTrace());
+                    return prepareStackWithUserFunction(realm, (DynamicObject) prepareStackTrace, errorObj, jsStackTrace);
                 } finally {
                     error.set(PREPARING_STACK_TRACE_NAME, false);
                 }
             }
         }
-        return formatStackTrace(exception.getJSStackTrace(), errorObj, realm);
+        return formatStackTrace(jsStackTrace, errorObj, realm);
     }
 
     private static Object prepareStackWithUserFunction(JSRealm realm, DynamicObject prepareStackTraceFun, DynamicObject errorObj, JSStackTraceElement[] stackTrace) {

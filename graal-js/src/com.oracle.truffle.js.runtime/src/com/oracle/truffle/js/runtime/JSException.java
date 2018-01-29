@@ -19,54 +19,40 @@ public final class JSException extends GraalJSException {
     private JSRealm realm;
     private boolean useCallerRealm;
 
-    private static final String NO_FASTPATH_JSEXCEPTION_CREATION_MESSAGE = "do not create JSExceptions in compiled code";
-
-    private JSException(JSErrorType type, String message, Throwable cause, Node originatingNode) {
-        super(message, cause);
+    private JSException(JSErrorType type, String message, Throwable cause, Node originatingNode, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean capture) {
+        super(message, cause, originatingNode, stackTraceLimit, skipFramesUpTo, capture);
+        CompilerAsserts.neverPartOfCompilation("JSException constructor");
         this.type = type;
-        exceptionObj = null;
-        init(originatingNode);
+        this.exceptionObj = null;
     }
 
-    private JSException(JSErrorType type, String message, Node originatingNode) {
-        this(type, message, originatingNode, null, JSTruffleOptions.StackTraceLimit, Undefined.instance);
-    }
-
-    private JSException(JSErrorType type, String message, Node originatingNode, DynamicObject exceptionObj) {
-        this(type, message, originatingNode, exceptionObj, JSTruffleOptions.StackTraceLimit, Undefined.instance);
-
-    }
-
-    private JSException(JSErrorType type, String message, Node originatingNode, DynamicObject exceptionObj, int stackTraceLimit, DynamicObject skipFramesUpTo) {
-        super(message);
+    private JSException(JSErrorType type, String message, Node originatingNode, DynamicObject exceptionObj, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean capture) {
+        super(message, originatingNode, stackTraceLimit, skipFramesUpTo, capture);
+        CompilerAsserts.neverPartOfCompilation("JSException constructor");
         this.type = type;
         this.exceptionObj = exceptionObj;
-        init(originatingNode, stackTraceLimit, skipFramesUpTo);
     }
 
     @TruffleBoundary
-    public static JSException create(JSErrorType type, String message, DynamicObject exceptionObj, int stackTraceLimit, DynamicObject skipFramesUpTo) {
-        return new JSException(type, message, null, exceptionObj, stackTraceLimit, skipFramesUpTo);
+    public static JSException createCapture(JSErrorType type, String message, DynamicObject exceptionObj, int stackTraceLimit, DynamicObject skipFramesUpTo) {
+        return new JSException(type, message, null, exceptionObj, stackTraceLimit, skipFramesUpTo, true);
     }
 
     @TruffleBoundary
-    public static JSException create(JSErrorType type, String message, DynamicObject exceptionObj) {
-        return new JSException(type, message, null, exceptionObj);
+    public static JSException createCapture(JSErrorType type, String message, DynamicObject exceptionObj) {
+        return new JSException(type, message, null, exceptionObj, JSTruffleOptions.StackTraceLimit, Undefined.instance, true);
     }
 
     public static JSException create(JSErrorType type, String message) {
-        CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_JSEXCEPTION_CREATION_MESSAGE);
-        return new JSException(type, message, null);
+        return create(type, message, (Node) null);
     }
 
     public static JSException create(JSErrorType type, String message, Node originatingNode) {
-        CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_JSEXCEPTION_CREATION_MESSAGE);
-        return new JSException(type, message, originatingNode);
+        return new JSException(type, message, originatingNode, null, JSTruffleOptions.StackTraceLimit, Undefined.instance, false);
     }
 
     public static JSException create(JSErrorType type, String message, Throwable cause, Node originatingNode) {
-        CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_JSEXCEPTION_CREATION_MESSAGE);
-        return new JSException(type, message, cause, originatingNode);
+        return new JSException(type, message, cause, originatingNode, JSTruffleOptions.StackTraceLimit, Undefined.instance, false);
     }
 
     @Override

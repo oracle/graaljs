@@ -55,7 +55,7 @@ public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.Lambda {
             }
             int stackTraceLimit = stackTraceLimitNode.executeInt(frame);
             Object skipFramesUpTo = JSFunction.isJSFunction(skipUpTo) ? skipUpTo : JSArguments.getFunctionObject(frame.getArguments());
-            UserScriptException ex = UserScriptException.create(obj, JSTruffleOptions.NashornCompatibilityMode ? this : null, stackTraceLimit, (DynamicObject) skipFramesUpTo);
+            UserScriptException ex = UserScriptException.createCapture(obj, JSTruffleOptions.NashornCompatibilityMode ? this : null, stackTraceLimit, (DynamicObject) skipFramesUpTo);
             initErrorObjectNode.execute(obj, ex);
             return Undefined.instance;
         }

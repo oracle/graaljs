@@ -89,7 +89,9 @@ public class JSTruffleOptions {
     // should Graal.js Exceptions use the default Exception.fillInStackTrace? Turning it off might
     // hide Java frames (causing problems with interop, debugger), but increase performance around
     // fast-path exceptions.
-    public static final boolean FillExceptionStack = booleanOption("FillExceptionStack", true, OPTION_PERFORMANCE | OPTION_LANGUAGE_FEATURE);
+    public static final boolean FillExceptionStack = booleanOption("FillExceptionStack", true, OPTION_PERFORMANCE);
+    /** Always capture stack trace eagerly. */
+    public static final boolean EagerStackTrace = booleanOption("EagerStackTrace", false, OPTION_PERFORMANCE);
 
     // Array options
     public static final int InitialArraySize = integerOption("array.InitialArraySize", 8, OPTION_LIMIT);
