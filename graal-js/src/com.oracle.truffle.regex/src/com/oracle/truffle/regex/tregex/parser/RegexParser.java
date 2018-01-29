@@ -332,7 +332,6 @@ public final class RegexParser {
         }
         properties.setAlternations();
         createGroup();
-        curGroup.setExpandedQuantifier(true);
         if (term instanceof Group) {
             curGroup.setEnclosedCaptureGroupsLow(((Group) term).getEnclosedCaptureGroupsLow());
             curGroup.setEnclosedCaptureGroupsHigh(((Group) term).getEnclosedCaptureGroupsHigh());
