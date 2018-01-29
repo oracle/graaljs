@@ -201,9 +201,9 @@ public final class RegexLexer {
         final char c = consumeChar();
         if ('1' <= c && c <= '9') {
             final int restoreIndex = index;
-            final BigInteger backRefNumber = parseDecimal(BigInteger.valueOf(c - '0'));
-            if (backRefNumber.compareTo(BigInteger.valueOf(numberOfCaptureGroups())) < 0) {
-                return Token.createBackReference(backRefNumber.intValue());
+            final int backRefNumber = parseInteger(c - '0');
+            if (backRefNumber < numberOfCaptureGroups()) {
+                return Token.createBackReference(backRefNumber);
             } else if (flags.isUnicode()) {
                 throw syntaxError("missing capture group for back-reference");
             }
@@ -548,6 +548,37 @@ public final class RegexLexer {
         while (!atEnd() && isDecimal(curChar())) {
             ret = ret.multiply(BigInteger.TEN);
             ret = ret.add(BigInteger.valueOf(consumeChar() - '0'));
+        }
+        return ret;
+    }
+
+    /**
+     * Parses a non-negative decimal integer. The value of the integer is clamped to
+     * {@link Integer#MAX_VALUE}. For all {@code i} in {0,1,..,9}, {@code parseInteger(i)} is
+     * equivalent to
+     * {@code parseDecimal(BigInteger.valueOf(i)).max(BigInteger.valueOf(Integer.MAX_VALUE)}.
+     * {@link #parseInteger(int)} should be faster than {@link #parseDecimal(java.math.BigInteger)}
+     * because it does not have to go through {@link BigInteger}s.
+     */
+    private int parseInteger(int firstDigit) {
+        int ret = firstDigit;
+        // First, we consume all of the decimal digits that make up the integer.
+        final int initialIndex = index;
+        while (!atEnd() && isDecimal(curChar())) {
+            advance();
+        }
+        final int terminalIndex = index;
+        // Then, we parse the integer, stopping once we reach the limit Integer.MAX_VALUE.
+        for (int i = initialIndex; i < terminalIndex; i++) {
+            int nextDigit = pattern.charAt(i) - '0';
+            if (ret > Integer.MAX_VALUE / 10) {
+                return Integer.MAX_VALUE;
+            }
+            ret *= 10;
+            if (ret > Integer.MAX_VALUE - nextDigit) {
+                return Integer.MAX_VALUE;
+            }
+            ret += nextDigit;
         }
         return ret;
     }
