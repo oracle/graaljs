@@ -47,7 +47,7 @@ public final class JSContextOptions {
 
     public static final String SHARED_ARRAY_BUFFER_NAME = JS_OPTION_PREFIX + "shared-array-buffer";
     private static final String SHARED_ARRAY_BUFFER_HELP = "ES2017 SharedArrayBuffer";
-    private static final OptionKey<Boolean> SHARED_ARRAY_BUFFER = new OptionKey<>(true);
+    private static final OptionKey<Boolean> SHARED_ARRAY_BUFFER = new OptionKey<>(false);
     @CompilationFinal private boolean sharedArrayBuffer;
 
     public static final String ATOMICS_NAME = JS_OPTION_PREFIX + "atomics";
@@ -78,6 +78,11 @@ public final class JSContextOptions {
     public static final String TIME_ZONE_NAME = JS_OPTION_PREFIX + "timezone";
     private static final String TIME_ZONE_HELP = "Set custom timezone.";
     public static final OptionKey<String> TIME_ZONE = new OptionKey<>("");
+
+    public static final String PRECISE_TIME_NAME = JS_OPTION_PREFIX + "precise-time";
+    private static final String PRECISE_TIME_HELP = "High-resolution timestamps via performance.now()";
+    private static final OptionKey<Boolean> PRECISE_TIME = new OptionKey<>(false);
+    @CompilationFinal private boolean preciseTime;
 
     private static final OptionKey<?>[] PREINIT_CONTEXT_OPTION_KEYS = {
                     ECMASCRIPT_VERSION,
@@ -127,6 +132,7 @@ public final class JSContextOptions {
         this.directByteBuffer = readBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME);
         this.parseOnly = readBooleanOption(PARSE_ONLY, PARSE_ONLY_NAME);
         this.debug = readBooleanOption(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME);
+        this.preciseTime = readBooleanOption(PRECISE_TIME, PRECISE_TIME_NAME);
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key, String name) {
@@ -170,6 +176,7 @@ public final class JSContextOptions {
         options.add(OptionDescriptor.newBuilder(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME).category(OptionCategory.USER).help(DIRECT_BYTE_BUFFER_HELP).build());
         options.add(OptionDescriptor.newBuilder(PARSE_ONLY, PARSE_ONLY_NAME).category(OptionCategory.USER).help(PARSE_ONLY_HELP).build());
         options.add(OptionDescriptor.newBuilder(TIME_ZONE, TIME_ZONE_NAME).category(OptionCategory.USER).help(TIME_ZONE_HELP).build());
+        options.add(OptionDescriptor.newBuilder(PRECISE_TIME, PRECISE_TIME_NAME).category(OptionCategory.USER).help(PRECISE_TIME_HELP).build());
     }
 
     // check for options that are not on their default value.
@@ -240,5 +247,9 @@ public final class JSContextOptions {
 
     public boolean isParseOnly() {
         return parseOnly;
+    }
+
+    public boolean isPreciseTime() {
+        return preciseTime;
     }
 }

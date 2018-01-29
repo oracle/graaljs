@@ -1102,6 +1102,10 @@ public class JSContext implements ShapeContext {
         return contextOptions.isParseOnly();
     }
 
+    public boolean isOptionPreciseTime() {
+        return contextOptions.isPreciseTime();
+    }
+
     /**
      * Creation of PrintWriter is expensive, this is why we change just the delegate writer in this
      * wrapper class.
