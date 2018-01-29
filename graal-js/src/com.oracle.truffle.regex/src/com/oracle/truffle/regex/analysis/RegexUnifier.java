@@ -57,7 +57,8 @@ public final class RegexUnifier {
                     } else if (quantifier.getMin() == 1 && quantifier.isInfiniteLoop()) {
                         dump.append("+");
                     } else {
-                        dump.append("{").append(quantifier.getMin());
+                        String lowerBound = quantifier.getMin() == -1 ? "Inf" : Integer.toString(quantifier.getMin());
+                        dump.append("{").append(lowerBound);
                         if (quantifier.getMax() != quantifier.getMin()) {
                             dump.append(",");
                             if (!quantifier.isInfiniteLoop()) {

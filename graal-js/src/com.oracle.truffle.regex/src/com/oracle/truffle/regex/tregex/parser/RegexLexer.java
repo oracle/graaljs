@@ -10,8 +10,10 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 import com.oracle.truffle.regex.util.Constants;
+import java.math.BigInteger;
 
 import java.util.EnumSet;
+import java.util.regex.Pattern;
 
 public final class RegexLexer {
 
@@ -25,6 +27,7 @@ public final class RegexLexer {
     private Token lastToken;
     private int index = 0;
     private int nGroups = 1;
+    private boolean countedAllGroups = false;
 
     public RegexLexer(RegexSource source) {
         this.pattern = source.getPattern();
@@ -73,10 +76,6 @@ public final class RegexLexer {
         return pattern.regionMatches(index, match, 0, match.length());
     }
 
-    private boolean lookaheadFindChar(char c) {
-        return pattern.indexOf(c, index) >= 0;
-    }
-
     private boolean consumingLookahead(String match) {
         final boolean matches = lookahead(match);
         if (matches) {
@@ -87,6 +86,53 @@ public final class RegexLexer {
 
     private boolean atEnd() {
         return index >= pattern.length();
+    }
+
+    private int numberOfCaptureGroups() {
+        if (!countedAllGroups) {
+            countCaptureGroups();
+            countedAllGroups = true;
+        }
+        return nGroups;
+    }
+
+    private void registerCaptureGroup() {
+        if (!countedAllGroups) {
+            nGroups++;
+        }
+    }
+
+    private void countCaptureGroups() {
+        // We are counting capture groups, so we only care about '(' characters and special
+        // characters which can cancel the meaning of '(' - those include '\' for escapes, '[' for
+        // character classes (where '(' stands for a literal '(') and any characters after the '('
+        // which might turn into a non-capturing group or a look-around assertion.
+        boolean insideCharClass = false;
+        Pattern nonCapturingGroup = Pattern.compile("\\((?:\\?[:=!]|\\<[=!])");
+        int i = index;
+        while (i < pattern.length()) {
+            switch (pattern.charAt(i)) {
+                case '\\':
+                    // skip escaped char
+                    i++;
+                    break;
+                case '[':
+                    insideCharClass = true;
+                    break;
+                case ']':
+                    insideCharClass = false;
+                    break;
+                case '(':
+                    if (!insideCharClass && !nonCapturingGroup.matcher(pattern.substring(i)).matches()) {
+                        nGroups++;
+                    }
+                    break;
+                default:
+                    break;
+            }
+            // advance
+            i++;
+        }
     }
 
     private Token charClass(CodePointSet codePointSet) {
@@ -155,9 +201,11 @@ public final class RegexLexer {
         final char c = consumeChar();
         if ('1' <= c && c <= '9') {
             final int restoreIndex = index;
-            final int backRefNumber = parseDecimal(c - '0');
-            if (backRefNumber < nGroups || lookaheadFindChar('(')) {
+            final int backRefNumber = parseInteger(c - '0');
+            if (backRefNumber < numberOfCaptureGroups()) {
                 return Token.createBackReference(backRefNumber);
+            } else if (flags.isUnicode()) {
+                throw syntaxError("missing capture group for back-reference");
             }
             index = restoreIndex;
         }
@@ -192,7 +240,7 @@ public final class RegexLexer {
         } else if (consumingLookahead("?:")) {
             return Token.create(Token.Kind.nonCaptureGroupBegin);
         } else {
-            nGroups++;
+            registerCaptureGroup();
             return Token.create(Token.Kind.captureGroupBegin);
         }
     }
@@ -205,20 +253,26 @@ public final class RegexLexer {
         boolean greedy;
         if (c == '{') {
             final int resetIndex = index;
-            min = parseDecimal();
-            if (min < 0) {
+            BigInteger literalMin = parseDecimal();
+            if (literalMin.compareTo(BigInteger.ZERO) < 0) {
                 return countedRepetitionSyntaxError(resetIndex);
             }
+            min = literalMin.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) <= 0 ? literalMin.intValue() : -1;
             if (consumingLookahead(",}")) {
                 greedy = !consumingLookahead("?");
             } else if (consumingLookahead("}")) {
                 max = min;
                 greedy = !consumingLookahead("?");
             } else {
-                if (!consumingLookahead(",") || (max = parseDecimal()) < 0 || !consumingLookahead("}")) {
+                BigInteger literalMax;
+                if (!consumingLookahead(",") || (literalMax = parseDecimal()).compareTo(BigInteger.ZERO) < 0 || !consumingLookahead("}")) {
                     return countedRepetitionSyntaxError(resetIndex);
                 }
+                max = literalMax.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) <= 0 ? literalMax.intValue() : -1;
                 greedy = !consumingLookahead("?");
+                if (literalMin.compareTo(literalMax) > 0) {
+                    throw syntaxError(ErrorMessages.QUANTIFIER_OUT_OF_ORDER);
+                }
             }
         } else {
             greedy = !consumingLookahead("?");
@@ -255,71 +309,58 @@ public final class RegexLexer {
             if (c == ']') {
                 return charClass(curCharClass, invert);
             }
-            curCharClass = parseCharClassAtom(c, curCharClass);
+            parseCharClassRange(c, curCharClass);
         }
         throw syntaxError(ErrorMessages.UNMATCHED_LEFT_BRACKET);
     }
 
-    private CodePointSet parseCharClassAtom(char c, CodePointSet curCharClass) throws RegexSyntaxException {
-        int curChar;
+    private CodePointSet parseCharClassAtom(char c) throws RegexSyntaxException {
         if (c == '\\') {
             if (atEnd()) {
                 throw syntaxError(ErrorMessages.ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE);
             }
             if (isEscapeCharClass(curChar())) {
-                final char cc = consumeChar();
-                curCharClass.addSet(parseEscapeCharClass(cc));
-                // NOTE: Tolerating character classes to the left of the hyphen and then treating
-                // the hyphen literally is legacy and only permitted by Annex B.
-                if (flags.isUnicode() && lookahead("-") && !lookahead("-]")) {
-                    throw syntaxError(ErrorMessages.INVALID_CHARACTER_CLASS);
-                }
-                return curCharClass;
+                return parseEscapeCharClass(consumeChar());
+            } else {
+                return CodePointSet.create(parseEscapeChar(consumeChar(), true));
             }
-            curChar = parseEscapeChar(consumeChar(), true);
         } else if (flags.isUnicode() && Character.isHighSurrogate(c)) {
-            curChar = finishSurrogatePair(c);
+            return CodePointSet.create(finishSurrogatePair(c));
         } else {
-            curChar = c;
+            return CodePointSet.create(c);
         }
+    }
+
+    private void parseCharClassRange(char c, CodePointSet curCharClass) throws RegexSyntaxException {
+        CodePointSet firstAtom = parseCharClassAtom(c);
         if (consumingLookahead("-")) {
             if (atEnd() || lookahead("]")) {
-                curCharClass.addRange(new CodePointRange(curChar));
+                curCharClass.addSet(firstAtom);
                 curCharClass.addRange(new CodePointRange((int) '-'));
-                return curCharClass;
-            }
-            int nextChar;
-            if (consumingLookahead("\\")) {
-                if (atEnd()) {
-                    throw syntaxError(ErrorMessages.ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE);
-                }
-                if (isEscapeCharClass(curChar())) {
+            } else {
+                CodePointSet secondAtom = parseCharClassAtom(consumeChar());
+                // Runtime Semantics: CharacterRangeOrUnion(firstAtom, secondAtom)
+                if (!firstAtom.matchesSingleChar() || !secondAtom.matchesSingleChar()) {
                     if (flags.isUnicode()) {
                         throw syntaxError(ErrorMessages.INVALID_CHARACTER_CLASS);
+                    } else {
+                        curCharClass.addSet(firstAtom);
+                        curCharClass.addSet(secondAtom);
+                        curCharClass.addRange(new CodePointRange((int) '-'));
                     }
-                    curCharClass.addRange(new CodePointRange(curChar));
-                    curCharClass.addRange(new CodePointRange((int) '-'));
-                    curCharClass.addSet(parseEscapeCharClass(consumeChar()));
-                    return curCharClass;
-                }
-                nextChar = parseEscapeChar(consumeChar(), true);
-            } else {
-                char nextCodeUnit = consumeChar();
-                if (flags.isUnicode() && Character.isHighSurrogate(nextCodeUnit)) {
-                    nextChar = finishSurrogatePair(nextCodeUnit);
                 } else {
-                    nextChar = nextCodeUnit;
+                    int firstChar = firstAtom.getRanges().get(0).lo;
+                    int secondChar = secondAtom.getRanges().get(0).lo;
+                    if (secondChar < firstChar) {
+                        throw syntaxError(ErrorMessages.CHAR_CLASS_RANGE_OUT_OF_ORDER);
+                    } else {
+                        curCharClass.addRange(new CodePointRange(firstChar, secondChar));
+                    }
                 }
-            }
-            if (nextChar < curChar) {
-                throw syntaxError(ErrorMessages.CHAR_CLASS_RANGE_OUT_OF_ORDER);
-            } else {
-                curCharClass.addRange(new CodePointRange(curChar, nextChar));
             }
         } else {
-            curCharClass.addRange(new CodePointRange(curChar));
+            curCharClass.addSet(firstAtom);
         }
-        return curCharClass;
     }
 
     private CodePointSet parseEscapeCharClass(char c) throws RegexSyntaxException {
@@ -495,18 +536,49 @@ public final class RegexLexer {
         return c;
     }
 
-    private int parseDecimal() {
+    private BigInteger parseDecimal() {
         if (atEnd() || !isDecimal(curChar())) {
-            return -1;
+            return BigInteger.valueOf(-1);
         }
-        return parseDecimal(0);
+        return parseDecimal(BigInteger.ZERO);
     }
 
-    private int parseDecimal(int firstDigit) {
-        int ret = firstDigit;
+    private BigInteger parseDecimal(BigInteger firstDigit) {
+        BigInteger ret = firstDigit;
         while (!atEnd() && isDecimal(curChar())) {
+            ret = ret.multiply(BigInteger.TEN);
+            ret = ret.add(BigInteger.valueOf(consumeChar() - '0'));
+        }
+        return ret;
+    }
+
+    /**
+     * Parses a non-negative decimal integer. The value of the integer is clamped to
+     * {@link Integer#MAX_VALUE}. For all {@code i} in {0,1,..,9}, {@code parseInteger(i)} is
+     * equivalent to
+     * {@code parseDecimal(BigInteger.valueOf(i)).max(BigInteger.valueOf(Integer.MAX_VALUE)}.
+     * {@link #parseInteger(int)} should be faster than {@link #parseDecimal(java.math.BigInteger)}
+     * because it does not have to go through {@link BigInteger}s.
+     */
+    private int parseInteger(int firstDigit) {
+        int ret = firstDigit;
+        // First, we consume all of the decimal digits that make up the integer.
+        final int initialIndex = index;
+        while (!atEnd() && isDecimal(curChar())) {
+            advance();
+        }
+        final int terminalIndex = index;
+        // Then, we parse the integer, stopping once we reach the limit Integer.MAX_VALUE.
+        for (int i = initialIndex; i < terminalIndex; i++) {
+            int nextDigit = pattern.charAt(i) - '0';
+            if (ret > Integer.MAX_VALUE / 10) {
+                return Integer.MAX_VALUE;
+            }
             ret *= 10;
-            ret += consumeChar() - '0';
+            if (ret > Integer.MAX_VALUE - nextDigit) {
+                return Integer.MAX_VALUE;
+            }
+            ret += nextDigit;
         }
         return ret;
     }

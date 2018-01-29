@@ -16,7 +16,6 @@ interface ErrorMessages {
     String INVALID_UNICODE_ESCAPE = "Invalid Unicode escape";
     String INVALID_UNICODE_PROPERTY = "Invalid Unicode property escape";
     String QUANTIFIER_ON_LOOKAROUND_ASSERTION = "Quantifier on lookaround assertion";
-    String QUANTIFIER_ON_POSITION_ASSERTION = "Quantifier on position assertion";
     String QUANTIFIER_ON_QUANTIFIER = "Quantifier on quantifier";
     String QUANTIFIER_OUT_OF_ORDER = "Numbers out of order in {} quantifier";
     String QUANTIFIER_WITHOUT_TARGET = "Quantifier without target";

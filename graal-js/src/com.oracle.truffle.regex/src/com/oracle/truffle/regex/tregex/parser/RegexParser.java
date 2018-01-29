@@ -455,14 +455,18 @@ public final class RegexParser {
         if (curTerm == null) {
             throw syntaxError(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
         }
-        final boolean onAssertion = curTerm instanceof RegexASTSubtreeRootNode || curTerm instanceof PositionAssertion;
-        if (onAssertion && source.getFlags().isUnicode()) {
-            if (curTerm instanceof RegexASTSubtreeRootNode) {
-                throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKAROUND_ASSERTION);
-            }
-            throw syntaxError(ErrorMessages.QUANTIFIER_ON_POSITION_ASSERTION);
+        final boolean onAssertion = curTerm instanceof RegexASTSubtreeRootNode;
+        if (source.getFlags().isUnicode() && onAssertion) {
+            throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKAROUND_ASSERTION);
         }
         assert curTerm == curSequence.getLastTerm();
+        if (quantifier.getMin() == -1) {
+            deleteVisitor.run(curSequence.getLastTerm());
+            curSequence.removeLast();
+            addCharClass(MatcherBuilder.createEmpty());
+            curSequence.markAsDead();
+            return;
+        }
         if (quantifier.getMin() == 0) {
             deleteVisitor.run(curSequence.getLastTerm());
             curSequence.removeLast();
@@ -484,9 +488,6 @@ public final class RegexParser {
                 createOptional(t, quantifier.isGreedy(), 0);
                 setLoop();
             } else {
-                if (quantifier.getMin() > quantifier.getMax()) {
-                    throw syntaxError(ErrorMessages.QUANTIFIER_OUT_OF_ORDER);
-                }
                 createOptional(t, quantifier.isGreedy(), (quantifier.getMax() - quantifier.getMin()) - 1);
             }
         }

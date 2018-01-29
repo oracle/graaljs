@@ -64,8 +64,8 @@ class ByteCodeMachine extends StackMachine {
         final int end1 = s1 + mbLen;
 
         while (s1 < end1) {
-            final char c1 = EncodingHelper.toLowerCase(charAt(s1++));
-            final char c2 = EncodingHelper.toLowerCase(charAt(s2++));
+            final char c1 = EncodingHelper.toUpperCase(charAt(s1++));
+            final char c2 = EncodingHelper.toUpperCase(charAt(s2++));
 
             if (c1 != c2) {
                 return false;
@@ -758,7 +758,7 @@ class ByteCodeMachine extends StackMachine {
         return bsAt(regex.btMemEnd, mem) ? stack[repeatStk[memEndStk + mem]].getMemPStr() : repeatStk[memEndStk + mem];
     }
 
-    private void backref(final int mem) {
+    private void backref(final int mem, boolean ignoreCase) {
         /* if you want to remove following line,
         you should check in parse and compile time. (numMem) */
         if (mem > regex.numMem) {opFail(); return;}
@@ -776,9 +776,15 @@ class ByteCodeMachine extends StackMachine {
         if (s + n > range) {opFail(); return;}
         sprev = s;
 
-        // STRING_CMP
-        while(n-- > 0) {
-            if (charAt(pstart++) != charAt(s++)) {opFail(); return;}
+        if (ignoreCase) {
+            value = s;
+            if (!stringCmpIC(regex.caseFoldFlag, pstart, this, n, end)) {opFail(); return;}
+            s = value;
+        } else {
+            // STRING_CMP
+            while(n-- > 0) {
+                if (charAt(pstart++) != charAt(s++)) {opFail(); return;}
+            }
         }
 
         // beyond string check
@@ -790,38 +796,19 @@ class ByteCodeMachine extends StackMachine {
     }
 
     private void opBackRef1() {
-        backref(1);
+        backref(1, false);
     }
 
     private void opBackRef2() {
-        backref(2);
+        backref(2, false);
     }
 
     private void opBackRefN() {
-        backref(code[ip++]);
+        backref(code[ip++], false);
     }
 
     private void opBackRefNIC() {
-        final int mem = code[ip++];
-        /* if you want to remove following line,
-        you should check in parse and compile time. (numMem) */
-        if (mem > regex.numMem || backrefInvalid(mem)) {opFail(); return;}
-
-        final int pstart = backrefStart(mem);
-        final int pend = backrefEnd(mem);
-
-        final int n = pend - pstart;
-        if (s + n > range) {opFail(); return;}
-        sprev = s;
-
-        value = s;
-        if (!stringCmpIC(regex.caseFoldFlag, pstart, this, n, end)) {opFail(); return;}
-        s = value;
-
-        // if (sprev < chars.length)
-        while (sprev + 1 < s) {
-            sprev++;
-        }
+        backref(code[ip++], true);
     }
 
     private void opBackRefMulti() {
