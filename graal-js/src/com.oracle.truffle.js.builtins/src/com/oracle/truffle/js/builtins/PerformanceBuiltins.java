@@ -29,9 +29,11 @@ public final class PerformanceBuiltins extends JSBuiltinsContainer.Lambda {
         @Specialization
         protected double now() {
             long ns = System.nanoTime();
-            long resolution = JSTruffleOptions.TimestampResolution;
-            if (resolution > 0) {
-                ns = (ns / resolution) * resolution;
+            if (!getContext().isOptionPreciseTime()) {
+                long resolution = JSTruffleOptions.TimestampResolution;
+                if (resolution > 0) {
+                    ns = (ns / resolution) * resolution;
+                }
             }
             return ns / NANOSECONDS_PER_MILLISECOND;
         }
