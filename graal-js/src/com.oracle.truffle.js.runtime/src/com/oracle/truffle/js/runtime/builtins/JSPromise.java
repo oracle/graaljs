@@ -9,8 +9,10 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSPromise extends JSBuiltinObject {
     public static final String CLASS_NAME = "Promise";
@@ -66,6 +68,29 @@ public final class JSPromise extends JSBuiltinObject {
     public static boolean isFulfilled(DynamicObject promise) {
         assert isJSPromise(promise);
         return FULFILLED.equals(promise.get(JSPromise.PROMISE_STATE));
+    }
+
+    @Override
+    public String safeToString(DynamicObject obj) {
+        return JSRuntime.objectToConsoleString(obj, CLASS_NAME,
+                        new String[]{"PromiseStatus", "PromiseValue"},
+                        new Object[]{getStatus(obj), getValue(obj)});
+    }
+
+    private static String getStatus(DynamicObject obj) {
+        if (isPending(obj)) {
+            return "pending";
+        } else if (isFulfilled(obj)) {
+            return "resolved";
+        } else {
+            assert isRejected(obj);
+            return "rejected";
+        }
+    }
+
+    private static Object getValue(DynamicObject obj) {
+        Object result = obj.get(PROMISE_RESULT);
+        return (result == null) ? Undefined.instance : result;
     }
 
 }

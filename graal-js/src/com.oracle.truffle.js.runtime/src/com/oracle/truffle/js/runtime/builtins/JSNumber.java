@@ -125,7 +125,9 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
         if (JSTruffleOptions.NashornCompatibilityMode) {
             return super.safeToString(obj);
         } else {
-            return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj), String.valueOf(JSNumber.valueOf(obj)));
+            Number primitiveValue = JSNumber.valueOf(obj);
+            return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj),
+                            new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
         }
     }
 }
