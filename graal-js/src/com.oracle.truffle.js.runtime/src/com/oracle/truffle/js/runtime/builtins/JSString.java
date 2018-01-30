@@ -222,8 +222,9 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
         if (JSTruffleOptions.NashornCompatibilityMode) {
             return "[" + CLASS_NAME + " " + getCharSequence(obj) + "]";
         } else {
-            String primitiveValueString = "\"" + JSString.getString(obj) + "\"";
-            return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj), primitiveValueString);
+            String primitiveValue = JSString.getString(obj);
+            return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj),
+                            new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
         }
     }
 

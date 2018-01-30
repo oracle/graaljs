@@ -106,7 +106,9 @@ public final class JSBoolean extends JSPrimitiveObject implements JSConstructorF
         if (JSTruffleOptions.NashornCompatibilityMode) {
             return "[Boolean " + valueOf(obj) + "]";
         } else {
-            return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj), String.valueOf(JSBoolean.valueOf(obj)));
+            boolean primitiveValue = JSBoolean.valueOf(obj);
+            return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj),
+                            new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
         }
     }
 }

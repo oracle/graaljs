@@ -85,6 +85,8 @@ public final class JSRuntime {
     public static final String HINT_NUMBER = "number";
     public static final String HINT_DEFAULT = "default";
 
+    public static final String PRIMITIVE_VALUE = "PrimitiveValue";
+
     public static final HiddenKey ITERATED_OBJECT_ID = new HiddenKey("IteratedObject");
     public static final HiddenKey ITERATOR_NEXT_INDEX = new HiddenKey("IteratorNextIndex");
     public static final HiddenKey ENUMERATE_ITERATOR_ID = new HiddenKey("EnumerateIterator");
@@ -824,11 +826,11 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static String objectToConsoleString(TruffleObject obj, String name) {
-        return objectToConsoleString(obj, name, null);
+        return objectToConsoleString(obj, name, null, null);
     }
 
     @TruffleBoundary
-    public static String objectToConsoleString(TruffleObject obj, String name, String primitiveAppend) {
+    public static String objectToConsoleString(TruffleObject obj, String name, String[] internalKeys, Object[] internalValues) {
         assert !JSFunction.isJSFunction(obj) && !JSProxy.isProxy(obj);
         StringBuilder sb = new StringBuilder();
 
@@ -926,9 +928,9 @@ public final class JSRuntime {
             }
             prevArrayIndex = Math.max(prevArrayIndex, length);
         }
-        if (primitiveAppend != null) {
-            appendPrimitiveValue(sb, propertyCount <= 0);
-            sb.append(primitiveAppend);
+        if (internalKeys != null) {
+            assert internalValues != null;
+            appendInternalFields(sb, internalKeys, internalValues, propertyCount <= 0);
         }
         sb.append(isAnyArray ? ']' : '}');
         return sb.toString();
@@ -1048,11 +1050,16 @@ public final class JSRuntime {
         }
     }
 
-    private static void appendPrimitiveValue(StringBuilder sb, boolean first) {
-        if (!first) {
-            sb.append(", ");
+    private static void appendInternalFields(StringBuilder sb, String[] internalKeys, Object[] internalValues, boolean first) {
+        assert internalKeys.length == internalValues.length;
+        boolean seenProperty = !first;
+        for (int i = 0; i < internalKeys.length; i++) {
+            if (seenProperty) {
+                sb.append(", ");
+            }
+            sb.append("[[").append(internalKeys[i]).append("]]: ").append(toPrintableValue(internalValues[i]));
+            seenProperty = true;
         }
-        sb.append("[[PrimitiveValue]]: ");
     }
 
     @TruffleBoundary
