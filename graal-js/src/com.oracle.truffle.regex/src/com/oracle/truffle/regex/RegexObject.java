@@ -5,6 +5,7 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.result.RegexResult;
@@ -32,13 +33,18 @@ public class RegexObject implements RegexLanguageObject {
 
     public CompiledRegex getCompiledRegex() {
         if (compiledRegex == null) {
-            try {
-                compiledRegex = language.compileRegex(source);
-            } catch (RegexSyntaxException e) {
-                throw new RuntimeException(e);
-            }
+            compiledRegex = compileRegex();
         }
         return compiledRegex;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private CompiledRegex compileRegex() {
+        try {
+            return language.compileRegex(source);
+        } catch (RegexSyntaxException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void setCompiledRegex(CompiledRegex compiledRegex) {
