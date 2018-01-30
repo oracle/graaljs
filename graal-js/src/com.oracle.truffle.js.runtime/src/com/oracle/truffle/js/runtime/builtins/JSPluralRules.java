@@ -19,10 +19,12 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
-
+import com.ibm.icu.text.DecimalFormat;
+import com.ibm.icu.text.NumberFormat;
 import com.ibm.icu.text.PluralRules;
 import com.ibm.icu.text.PluralRules.PluralType;
 
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -422,6 +424,16 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
                 break;
         }
         state.pluralCategories.addAll(state.pluralRules.getKeywords());
+        state.numberFormat = NumberFormat.getInstance(state.javaLocale);
+    }
+
+    @TruffleBoundary
+    public static void setSignificantDigits(InternalState state) {
+        if (state.numberFormat instanceof DecimalFormat) {
+            DecimalFormat df = (DecimalFormat) state.numberFormat;
+            df.setMinimumSignificantDigits(state.minimumSignificantDigits.intValue());
+            df.setMaximumSignificantDigits(state.maximumSignificantDigits.intValue());
+        }
     }
 
     public static PluralRules getPluralRulesProperty(DynamicObject obj) {
@@ -429,17 +441,29 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
         return getInternalState(obj).pluralRules;
     }
 
+    public static NumberFormat getNumberFormatProperty(DynamicObject obj) {
+        return getInternalState(obj).numberFormat;
+    }
+
     @TruffleBoundary
     public static String select(DynamicObject pluralRulesObj, Object n) {
         PluralRules pluralRules = getPluralRulesProperty(pluralRulesObj);
+        NumberFormat numberFormat = getNumberFormatProperty(pluralRulesObj);
         Number x = JSRuntime.toNumber(n);
-        return pluralRules.select(x.doubleValue());
+        String s = numberFormat.format(x);
+        try {
+            Number toSelect = numberFormat.parse(s);
+            return pluralRules.select(toSelect.doubleValue());
+        } catch (ParseException pe) {
+            return pluralRules.select(x.doubleValue());
+        }
     }
 
     public static class InternalState {
 
         public boolean initialized = false;
         public PluralRules pluralRules;
+        public NumberFormat numberFormat;
         public Locale javaLocale;
 
         public List<String> pluralCategories = new LinkedList<>();

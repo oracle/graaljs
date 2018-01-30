@@ -12,6 +12,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.intl.CreateOptionsObjectNodeGen;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 
 /*
@@ -84,6 +85,9 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
         state.minimumIntegerDigits = mnid.intValue();
         state.minimumFractionDigits = mnfd.intValue();
         state.maximumFractionDigits = mxfd.intValue();
+        state.numberFormat.setMinimumIntegerDigits(state.minimumIntegerDigits.intValue());
+        state.numberFormat.setMinimumFractionDigits(state.minimumFractionDigits.intValue());
+        state.numberFormat.setMaximumFractionDigits(state.maximumFractionDigits.intValue());
         Object mnsd = getMinSignificantDigitsOption.getValue(options);
         Object mxsd = getMaxSignificantDigitsOption.getValue(options);
         if (!JSGuards.isUndefined(mnsd) || !JSGuards.isUndefined(mxsd)) {
@@ -91,6 +95,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
             Number mxsdNumber = getMxsdDNO.executeValue(mxsd, mnsdNumber.intValue());
             state.minimumSignificantDigits = mnsdNumber.intValue();
             state.maximumSignificantDigits = mxsdNumber.intValue();
+            JSPluralRules.setSignificantDigits(state);
         }
     }
 }
