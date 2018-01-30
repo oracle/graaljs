@@ -56,6 +56,8 @@ public interface ShapeContext {
 
     DynamicObjectFactory getNumberFormatFactory();
 
+    DynamicObjectFactory getPluralRulesFactory();
+
     DynamicObjectFactory getDateTimeFormatFactory();
 
     DynamicObjectFactory getWeakSetFactory();

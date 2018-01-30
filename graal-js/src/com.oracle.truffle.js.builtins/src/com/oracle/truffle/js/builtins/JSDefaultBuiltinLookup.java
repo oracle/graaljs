@@ -147,6 +147,8 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         defineBuiltins(new NumberFormatFunctionBuiltins());
         defineBuiltins(new DateTimeFormatPrototypeBuiltins());
         defineBuiltins(new DateTimeFormatFunctionBuiltins());
+        defineBuiltins(new PluralRulesPrototypeBuiltins());
+        defineBuiltins(new PluralRulesFunctionBuiltins());
         defineBuiltins(new IntlBuiltins());
     }
 

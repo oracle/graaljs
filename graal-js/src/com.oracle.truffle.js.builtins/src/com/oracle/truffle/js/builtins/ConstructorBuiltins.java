@@ -37,6 +37,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallCollatorNod
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberFormatNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallPluralRulesNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallRequiresNewNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallStringNodeGen;
@@ -57,6 +58,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJavaIn
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumberNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumberFormatNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructPluralRulesNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructObjectNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
@@ -92,6 +94,7 @@ import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.intl.InitializeCollatorNode;
 import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
+import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.control.TryCatchNode.InitErrorObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -125,6 +128,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
+import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
@@ -160,6 +164,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         ArrayBuffer(1),
         Collator(0),
         NumberFormat(0),
+        PluralRules(0),
         DateTimeFormat(0),
 
         Error(1),
@@ -285,6 +290,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 ? ConstructNumberFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
                                 : ConstructNumberFormatNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
                                 : CallNumberFormatNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+            case PluralRules:
+                return construct ? (newTarget
+                                ? ConstructPluralRulesNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
+                                : ConstructPluralRulesNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                                : CallPluralRulesNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case DateTimeFormat:
                 return construct ? (newTarget
                                 ? ConstructDateTimeFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
@@ -1005,6 +1015,38 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getNumberFormatConstructor().getPrototype();
         }
 
+    }
+
+    public abstract static class CallPluralRulesNode extends JSBuiltinNode {
+
+        @Child InitializePluralRulesNode initializePluralRulesNode;
+
+        public CallPluralRulesNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            initializePluralRulesNode = InitializePluralRulesNode.createInitalizePluralRulesNode(context);
+        }
+
+        @Specialization
+        protected DynamicObject callPluralRules(Object locales, Object options) {
+            DynamicObject pluralRules = JSPluralRules.create(getContext());
+            return initializePluralRulesNode.executeInit(pluralRules, locales, options);
+        }
+    }
+
+    public abstract static class ConstructPluralRulesNode extends ConstructWithNewTargetNode {
+
+        @Child InitializePluralRulesNode initializePluralRulesNode;
+
+        public ConstructPluralRulesNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
+            super(context, builtin, newTargetCase);
+            initializePluralRulesNode = InitializePluralRulesNode.createInitalizePluralRulesNode(context);
+        }
+
+        @Specialization
+        protected DynamicObject constructPluralRules(DynamicObject newTarget, Object locales, Object options) {
+            DynamicObject pluralRules = swapPrototype(JSPluralRules.create(getContextFromNewTarget(newTarget)), newTarget);
+            return initializePluralRulesNode.executeInit(pluralRules, locales, options);
+        }
     }
 
     public abstract static class CallDateTimeFormatNode extends JSBuiltinNode {
