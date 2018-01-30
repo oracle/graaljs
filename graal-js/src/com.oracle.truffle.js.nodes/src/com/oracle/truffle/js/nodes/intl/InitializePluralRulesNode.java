@@ -11,10 +11,8 @@ import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.intl.CreateOptionsObjectNodeGen;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
-import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
  * https://tc39.github.io/ecma402/#sec-initializepluralrules
@@ -68,9 +66,9 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
 
         state.initialized = true;
 
-        JSPluralRules.setLocaleAndNumberingSystem(state, locales);
-
         state.type = optType;
+        JSPluralRules.setLocaleAndType(state, locales);
+
         int mnfdDefault = 0;
         int mxfdDefault = 3;
         setPluralRulesDigitOptions(state, options, mnfdDefault, mxfdDefault);

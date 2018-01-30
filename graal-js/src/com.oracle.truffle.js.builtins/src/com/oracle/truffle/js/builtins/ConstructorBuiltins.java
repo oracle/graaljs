@@ -37,7 +37,6 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallCollatorNod
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberFormatNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallPluralRulesNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallRequiresNewNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallStringNodeGen;
@@ -294,7 +293,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return construct ? (newTarget
                                 ? ConstructPluralRulesNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
                                 : ConstructPluralRulesNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
-                                : CallPluralRulesNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+                                : createCallRequiresNew(context, builtin);
             case DateTimeFormat:
                 return construct ? (newTarget
                                 ? ConstructDateTimeFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
@@ -1015,22 +1014,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getNumberFormatConstructor().getPrototype();
         }
 
-    }
-
-    public abstract static class CallPluralRulesNode extends JSBuiltinNode {
-
-        @Child InitializePluralRulesNode initializePluralRulesNode;
-
-        public CallPluralRulesNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-            initializePluralRulesNode = InitializePluralRulesNode.createInitalizePluralRulesNode(context);
-        }
-
-        @Specialization
-        protected DynamicObject callPluralRules(Object locales, Object options) {
-            DynamicObject pluralRules = JSPluralRules.create(getContext());
-            return initializePluralRulesNode.executeInit(pluralRules, locales, options);
-        }
     }
 
     public abstract static class ConstructPluralRulesNode extends ConstructWithNewTargetNode {

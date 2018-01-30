@@ -21,6 +21,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 import com.ibm.icu.text.PluralRules;
+import com.ibm.icu.text.PluralRules.PluralType;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -403,25 +404,26 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
     }
 
     @TruffleBoundary
-    public static void setLocaleAndNumberingSystem(InternalState state, String[] locales) {
+    public static void setLocaleAndType(InternalState state, String[] locales) {
         String selectedTag = IntlUtil.selectedLocale(locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
-        if (selectedLocale.getUnicodeLocaleKeys().contains("nu")) {
-            String unicodeLocaleType = selectedLocale.getUnicodeLocaleType("nu");
-            if (IntlUtil.isSupportedNumberSystemKey(unicodeLocaleType)) {
-                state.numberingSystem = unicodeLocaleType;
-            } else {
-                selectedLocale = IntlUtil.withoutUnicodeExtension(selectedLocale, "nu");
-            }
-        }
         state.locale = strippedLocale.toLanguageTag();
         // see https://tc39.github.io/ecma402/#sec-intl.numberformat-internal-slots (NOTE 1)
         state.javaLocale = IntlUtil.withoutUnicodeExtension(selectedLocale, "cu");
-        state.pluralRules = PluralRules.forLocale(state.javaLocale);
+        switch (state.type) {
+            case "ordinal":
+                state.pluralRules = PluralRules.forLocale(state.javaLocale, PluralType.ORDINAL);
+                break;
+            case "cardinal":
+            default:
+                state.pluralRules = PluralRules.forLocale(state.javaLocale, PluralType.CARDINAL);
+                break;
+        }
     }
 
     public static PluralRules getPluralRulesProperty(DynamicObject obj) {
+        ensureIsPluralRules(obj);
         return getInternalState(obj).pluralRules;
     }
 
@@ -441,7 +443,6 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
         DynamicObject boundFormatFunction = null;
 
         public String locale;
-        public String numberingSystem = "latn";
         public String type = "cardinal";
         public Number minimumIntegerDigits = 1;
         public Number minimumFractionDigits = 0;
@@ -454,7 +455,6 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);
             JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "numberingSystem", numberingSystem, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, "type", type, JSAttributes.getDefault());
             if (minimumIntegerDigits != null) {
                 JSObjectUtil.defineDataProperty(result, "minimumIntegerDigits", minimumIntegerDigits, JSAttributes.getDefault());
