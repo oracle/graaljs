@@ -125,20 +125,6 @@ suite = {
       "workingSets" : "Truffle,JavaScript",
     },
 
-    "com.oracle.truffle.js.engine" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.js.parser",
-      ],
-      "checkstyle" : "com.oracle.truffle.js.runtime",
-      "annotationProcessors" : [
-        "truffle:TRUFFLE_DSL_PROCESSOR",
-      ],
-      "javaCompliance" : "1.8",
-      "workingSets" : "Truffle,JavaScript",
-    },
-
     "com.oracle.truffle.js.annotations" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -259,7 +245,7 @@ suite = {
 
     "graaljs" : {
       "dependencies" : [
-        "com.oracle.truffle.js.engine",
+        "com.oracle.truffle.js.parser",
       ],
       "buildDependencies" : ["com.oracle.truffle.js.snapshot"],
       "class" : "GraalJsProject",
@@ -351,6 +337,18 @@ suite = {
       "dependencies" : ["com.oracle.truffle.js.scriptengine"],
       "distDependencies" : [
         "sdk:GRAAL_SDK"
+      ],
+      "maven" : False,
+    },
+
+    "GRAALJS_SCRIPTENGINE_TESTS" : {
+      "subDir" : "src",
+      "dependencies" : ["com.oracle.truffle.js.scriptengine.test"],
+      "distDependencies" : [
+        "mx:JUNIT",
+        "sdk:GRAAL_SDK",
+        "GRAALJS",
+        "GRAALJS_SCRIPTENGINE",
       ],
       "maven" : False,
     },

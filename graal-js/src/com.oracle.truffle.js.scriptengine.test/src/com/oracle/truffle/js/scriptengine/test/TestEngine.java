@@ -11,6 +11,7 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
@@ -54,6 +55,7 @@ public class TestEngine {
     }
 
     @Test
+    @Ignore("We do not support `engine.class.static.getProperty`")
     public void getProperty() throws ScriptException {
         // @formatter:off
         assertEquals(true, getEngine().eval(
