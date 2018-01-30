@@ -107,7 +107,7 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
     }
 
     @Override
-    public ScriptEngine getScriptEngine() {
+    public GraalJSScriptEngine getScriptEngine() {
         return new GraalJSScriptEngine(this);
     }
 

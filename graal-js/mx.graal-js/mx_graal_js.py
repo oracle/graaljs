@@ -29,6 +29,7 @@ from os.path import join, exists, isdir, getmtime
 
 import mx
 from mx_gate import Task, add_gate_runner
+from mx_unittest import unittest
 
 _suite = mx.suite('graal-js')
 
@@ -40,6 +41,10 @@ def _graal_js_gate_runner(args, tasks):
     with Task('TestJSCommand', tasks, tags=[GraalJsDefaultTags.basic_tests, GraalJsDefaultTags.all_tests]) as t:
         if t:
             js(['-Dtruffle.js.ProfileTime=true', '-e', '""'])
+
+    with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.all_tests]) as t:
+        if t:
+            unittest(['-Dtruffle.js.NashornJavaInterop=true', '--enable-timing', '--very-verbose', 'com.oracle.truffle.js.scriptengine.test'])
 
 add_gate_runner(_suite, _graal_js_gate_runner)
 
