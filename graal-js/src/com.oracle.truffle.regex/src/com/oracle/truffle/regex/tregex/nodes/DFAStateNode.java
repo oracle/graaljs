@@ -106,15 +106,9 @@ public class DFAStateNode extends DFAAbstractStateNode {
             executor.setSuccessorIndex(frame, atEnd1(frame, executor));
             return;
         }
-        executor.setSuccessorIndex(frame, checkMatch1(frame, executor));
-        if (isLoopToSelf() && executor.getSuccessorIndex(frame) == loopToSelf) {
+        if (checkMatch1(frame, executor)) {
             if (executor.hasNext(frame)) {
-                executor.setSuccessorIndex(frame, checkMatch2(frame, executor));
-                if (executor.getSuccessorIndex(frame) == FS_RESULT_NO_SUCCESSOR) {
-                    noSuccessor2(frame, executor);
-                    return;
-                }
-                if (executor.getSuccessorIndex(frame) != loopToSelf) {
+                if (!checkMatch2(frame, executor)) {
                     return;
                 }
             } else {
@@ -123,12 +117,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
             }
             final int preLoopIndex = executor.getIndex(frame);
             while (executor.hasNext(frame)) {
-                executor.setSuccessorIndex(frame, checkMatch3(frame, executor, preLoopIndex));
-                if (executor.getSuccessorIndex(frame) == FS_RESULT_NO_SUCCESSOR) {
-                    noSuccessor3(frame, executor, preLoopIndex);
-                    return;
-                }
-                if (executor.getSuccessorIndex(frame) != loopToSelf) {
+                if (!checkMatch3(frame, executor, preLoopIndex)) {
                     return;
                 }
             }
@@ -137,90 +126,107 @@ public class DFAStateNode extends DFAAbstractStateNode {
     }
 
     /**
-     * Finds the first matching transition and returns its index. If a transition matches,
-     * {@link #successorFound1(VirtualFrame, TRegexDFAExecutorNode, int)} is called.
+     * Finds the first matching transition. If a transition matches,
+     * {@link #successorFound1(VirtualFrame, TRegexDFAExecutorNode, int)} is called. The index of
+     * the element of {@link #getMatchers()} that matched the current input character (
+     * {@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or {@link #FS_RESULT_NO_SUCCESSOR} is
+     * stored via {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}.
      * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
-     * @return the index of the element of {@link #getMatchers()} that matched the current input
-     *         character ({@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or
-     *         {@link #FS_RESULT_NO_SUCCESSOR}.
+     * @return <code>true</code> if the matching transition loops back to this state,
+     *         <code>false</code> otherwise.
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    private int checkMatch1(VirtualFrame frame, TRegexDFAExecutorNode executor) {
+    private boolean checkMatch1(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         final char c = executor.getChar(frame);
         executor.advance(frame);
         for (int i = 0; i < matchers.length; i++) {
             if (matchers[i].match(c)) {
                 CompilerAsserts.partialEvaluationConstant(i);
                 successorFound1(frame, executor, i);
-                return i;
+                executor.setSuccessorIndex(frame, i);
+                return isLoopToSelf() && i == loopToSelf;
             }
         }
-        return FS_RESULT_NO_SUCCESSOR;
+        executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
+        return false;
     }
 
     /**
-     * Finds the first matching transition and returns its index. This method is called only if the
-     * transition found by {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode)} was a loop back
-     * to this state (indicated by {@link #loopToSelf}). If a transition <i>other than</i> the
-     * looping transition matches,
-     * {@link #successorFound2(VirtualFrame, TRegexDFAExecutorNode, int)} is called.
+     * Finds the first matching transition. This method is called only if the transition found by
+     * {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode)} was a loop back to this state
+     * (indicated by {@link #loopToSelf}). If a transition <i>other than</i> the looping transition
+     * matches, {@link #successorFound2(VirtualFrame, TRegexDFAExecutorNode, int)} is called. The
+     * index of the element of {@link #getMatchers()} that matched the current input character (
+     * {@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or {@link #FS_RESULT_NO_SUCCESSOR} is
+     * stored via {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}. If no
+     * transition matches, {@link #noSuccessor2(VirtualFrame, TRegexDFAExecutorNode)} is called.
      * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
-     * @return the index of the element of {@link #getMatchers()} that matched the current input
-     *         character ({@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or
-     *         {@link #FS_RESULT_NO_SUCCESSOR}.
+     * @return <code>true</code> if the matching transition loops back to this state,
+     *         <code>false</code> otherwise.
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    private int checkMatch2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
+    private boolean checkMatch2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         final char c = executor.getChar(frame);
         executor.advance(frame);
         for (int i = 0; i < matchers.length; i++) {
             if (matchers[i].match(c)) {
+                executor.setSuccessorIndex(frame, i);
                 if (i != loopToSelf) {
                     CompilerAsserts.partialEvaluationConstant(i);
                     successorFound2(frame, executor, i);
+                    return false;
                 }
-                return i;
+                return true;
             }
         }
-        return FS_RESULT_NO_SUCCESSOR;
+        executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
+        noSuccessor2(frame, executor);
+        return false;
     }
 
     /**
-     * Finds the first matching transition and returns its index. This method is called only if the
-     * transitions found by {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode)} AND
+     * Finds the first matching transition. This method is called only if the transitions found by
+     * {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode)} AND
      * {@link #checkMatch2(VirtualFrame, TRegexDFAExecutorNode)} both were a loop back to this state
      * (indicated by {@link #loopToSelf}), and will be called in a loop until a transition other
      * than the loop back transition matches. If a transition <i>other than</i> the looping
      * transition matches, {@link #successorFound3(VirtualFrame, TRegexDFAExecutorNode, int, int)}
-     * is called.
+     * is called. The index of the element of {@link #getMatchers()} that matched the current input
+     * character ({@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or
+     * {@link #FS_RESULT_NO_SUCCESSOR} is stored via
+     * {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}. If no transition matches,
+     * {@link #noSuccessor3(VirtualFrame, TRegexDFAExecutorNode, int)} is called.
      * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      * @param preLoopIndex the index pointed to by
      *            {@link TRegexDFAExecutorNode#getIndex(VirtualFrame)} <i>before</i> this method is
      *            called for the first time.
-     * @return the index of the element of {@link #getMatchers()} that matched the current input
-     *         character ({@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or
-     *         {@link #FS_RESULT_NO_SUCCESSOR}.
+     * @return <code>true</code> if the matching transition loops back to this state,
+     *         <code>false</code> otherwise.
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    private int checkMatch3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {
+    private boolean checkMatch3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {
         final char c = executor.getChar(frame);
         executor.advance(frame);
         for (int i = 0; i < matchers.length; i++) {
             if (matchers[i].match(c)) {
+                executor.setSuccessorIndex(frame, i);
                 if (i != loopToSelf) {
                     CompilerAsserts.partialEvaluationConstant(i);
                     successorFound3(frame, executor, i, preLoopIndex);
+                    return false;
                 }
-                return i;
+                return true;
             }
         }
-        return FS_RESULT_NO_SUCCESSOR;
+        executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
+        noSuccessor3(frame, executor, preLoopIndex);
+        return false;
     }
 
     /**

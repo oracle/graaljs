@@ -104,17 +104,14 @@ public final class TRegexDFAExecutorNode extends Node {
             CompilerAsserts.partialEvaluationConstant(successors);
             CompilerAsserts.partialEvaluationConstant(successors.length);
             curState.executeFindSuccessor(frame, this);
-            if (getSuccessorIndex(frame) == -1) {
-                break;
-            }
             for (int i = 0; i < successors.length; i++) {
                 if (i == getSuccessorIndex(frame)) {
                     ip = successors[i];
                     continue outer;
                 }
             }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalStateException();
+            assert getSuccessorIndex(frame) == -1;
+            break;
         }
     }
 
