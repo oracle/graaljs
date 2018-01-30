@@ -26,6 +26,7 @@ import com.ibm.icu.text.PluralRules.PluralType;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.LinkedList;
 import java.util.Locale;
 
 public final class JSPluralRules extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions {
@@ -420,6 +421,7 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
                 state.pluralRules = PluralRules.forLocale(state.javaLocale, PluralType.CARDINAL);
                 break;
         }
+        state.pluralCategories.addAll(state.pluralRules.getKeywords());
     }
 
     public static PluralRules getPluralRulesProperty(DynamicObject obj) {
@@ -439,6 +441,8 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
         public boolean initialized = false;
         public PluralRules pluralRules;
         public Locale javaLocale;
+
+        public List<String> pluralCategories = new LinkedList<>();
 
         DynamicObject boundFormatFunction = null;
 
@@ -471,6 +475,7 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
             if (maximumSignificantDigits != null) {
                 JSObjectUtil.defineDataProperty(result, "maximumSignificantDigits", maximumSignificantDigits, JSAttributes.getDefault());
             }
+            JSObjectUtil.defineDataProperty(result, "pluralCategories", pluralCategories, JSAttributes.getDefault());
             return result;
         }
     }
