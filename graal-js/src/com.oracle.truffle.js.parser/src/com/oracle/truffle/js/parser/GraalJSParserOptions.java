@@ -37,7 +37,7 @@ public final class GraalJSParserOptions implements ParserOptions {
 
     public static final String CONST_AS_VAR_NAME = JS_OPTION_PREFIX + "const-as-var";
     private static final String CONST_AS_VAR_HELP = "parse const declarations as a var";
-    private static final OptionKey<Boolean> CONST_AS_VAR = new OptionKey<>(true);
+    private static final OptionKey<Boolean> CONST_AS_VAR = new OptionKey<>(false);
 
     public static final String FUNCTION_STATEMENT_ERROR_NAME = JS_OPTION_PREFIX + "function-statement-error";
     private static final String FUNCTION_STATEMENT_ERROR_HELP = "Treat hoistable function statements in blocks as an error (in ES5 mode)";
