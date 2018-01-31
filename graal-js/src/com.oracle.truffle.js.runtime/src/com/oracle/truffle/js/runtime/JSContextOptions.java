@@ -113,7 +113,7 @@ public final class JSContextOptions {
 
     public void setEnv(Env newEnv) {
         CompilerAsserts.neverPartOfCompilation();
-        if (newEnv != null && this.env == null) {
+        if (newEnv != null) {
             this.env = newEnv;
             cacheOptions();
             parserOptions = parserOptions.putOptions(env.getOptions());
