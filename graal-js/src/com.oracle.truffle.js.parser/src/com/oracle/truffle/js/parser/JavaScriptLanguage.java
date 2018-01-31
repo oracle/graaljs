@@ -189,10 +189,11 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
                     @TruffleBoundary
                     private ScriptNode parse(JSContext context) {
+                        ScriptNode program = parseInContext(source, context);
                         if (context.isOptionParseOnly()) {
                             return createEmptyScript(context);
                         }
-                        return parseInContext(source, context);
+                        return program;
                     }
 
                     @TruffleBoundary

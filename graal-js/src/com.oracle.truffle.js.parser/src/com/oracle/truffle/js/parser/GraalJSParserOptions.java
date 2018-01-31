@@ -37,7 +37,7 @@ public final class GraalJSParserOptions implements ParserOptions {
 
     public static final String CONST_AS_VAR_NAME = JS_OPTION_PREFIX + "const-as-var";
     private static final String CONST_AS_VAR_HELP = "parse const declarations as a var";
-    private static final OptionKey<Boolean> CONST_AS_VAR = new OptionKey<>(true);
+    private static final OptionKey<Boolean> CONST_AS_VAR = new OptionKey<>(false);
 
     public static final String FUNCTION_STATEMENT_ERROR_NAME = JS_OPTION_PREFIX + "function-statement-error";
     private static final String FUNCTION_STATEMENT_ERROR_HELP = "Treat hoistable function statements in blocks as an error (in ES5 mode)";
@@ -63,7 +63,7 @@ public final class GraalJSParserOptions implements ParserOptions {
         this.scripting = false;
         this.shebang = false;
         this.ecmaScriptVersion = JSTruffleOptions.MaxECMAScriptVersion;
-        this.syntaxExtensions = readSyntaxExtension();
+        this.syntaxExtensions = false;
         this.constAsVar = false;
         this.functionStatementError = false;
         this.functionStatementWarning = false;
@@ -247,9 +247,5 @@ public final class GraalJSParserOptions implements ParserOptions {
                             dumpOnError, emptyStatements, annexB);
         }
         return this;
-    }
-
-    private static boolean readSyntaxExtension() {
-        return Boolean.getBoolean("polyglot." + SYNTAX_EXTENSIONS_NAME);
     }
 }

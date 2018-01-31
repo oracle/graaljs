@@ -11,6 +11,8 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -52,6 +54,12 @@ public class DebugJSAgent extends JSAgent {
             @Override
             public void run() {
                 Context.Builder contextBuilder = Context.newBuilder(AbstractJavaScriptLanguage.ID);
+                OptionValues optionValues = parentContext.getOptionValues();
+                for (OptionDescriptor optionDescriptor : optionValues.getDescriptors()) {
+                    if (optionDescriptor.getKey().hasBeenSet(optionValues)) {
+                        contextBuilder.option(optionDescriptor.getName(), String.valueOf(optionDescriptor.getKey().getValue(optionValues)));
+                    }
+                }
                 Context polyglotContext = contextBuilder.build();
 
                 String init = "var $262 = { agent : {} };" +
