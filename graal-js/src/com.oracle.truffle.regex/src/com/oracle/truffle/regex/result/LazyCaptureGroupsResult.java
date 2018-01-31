@@ -65,29 +65,34 @@ public final class LazyCaptureGroupsResult extends RegexResult {
 
     /**
      * Creates an arguments array suitable for the lazy calculation of this result's starting index.
-     * @return an arguments array suitable for calling the {@link TRegexLazyFindStartRootNode} contained in
-     * {@link #getFindStartCallTarget()}.
+     * 
+     * @return an arguments array suitable for calling the {@link TRegexLazyFindStartRootNode}
+     *         contained in {@link #getFindStartCallTarget()}.
      */
     public Object[] createArgsFindStart() {
         return new Object[]{getInput(), getEnd() - 1, getFromIndex()};
     }
 
     /**
-     * Creates an arguments array suitable for the lazy calculation of this result's capture group boundaries.
-     * @param start The value returned by the call to the {@link TRegexLazyFindStartRootNode} contained in
-     *              {@link #getFindStartCallTarget()}.
-     * @return an arguments array suitable for calling the {@link TRegexLazyCaptureGroupsRootNode} contained in
-     * {@link #getCaptureGroupCallTarget()}.
+     * Creates an arguments array suitable for the lazy calculation of this result's capture group
+     * boundaries.
+     * 
+     * @param start The value returned by the call to the {@link TRegexLazyFindStartRootNode}
+     *            contained in {@link #getFindStartCallTarget()}.
+     * @return an arguments array suitable for calling the {@link TRegexLazyCaptureGroupsRootNode}
+     *         contained in {@link #getCaptureGroupCallTarget()}.
      */
     public Object[] createArgsCG(int start) {
         return new Object[]{this, start + 1, getEnd()};
     }
 
     /**
-     * Creates an arguments array suitable for the lazy calculation of this result's capture group boundaries if there is
-     * no find-start call target (this is the case when the expression is sticky or starts with "^").
-     * @return an arguments array suitable for calling the {@link TRegexLazyCaptureGroupsRootNode} contained in
-     * {@link #getCaptureGroupCallTarget()}.
+     * Creates an arguments array suitable for the lazy calculation of this result's capture group
+     * boundaries if there is no find-start call target (this is the case when the expression is
+     * sticky or starts with "^").
+     * 
+     * @return an arguments array suitable for calling the {@link TRegexLazyCaptureGroupsRootNode}
+     *         contained in {@link #getCaptureGroupCallTarget()}.
      */
     public Object[] createArgsCGNoFindStart() {
         assert findStartCallTarget == null;

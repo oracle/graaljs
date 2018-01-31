@@ -77,7 +77,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         RegexResult lazyResult;
         RegexResult eagerResult;
         if (runRegexSearchNode == lazySearchNode) {
-            lazyResult =  resultOfCurrentSearchNode;
+            lazyResult = resultOfCurrentSearchNode;
             eagerResult = eagerSearchNode.run(frame, regex, input, fromIndex);
         } else {
             lazyResult = lazySearchNode.run(frame, regex, input, fromIndex);
