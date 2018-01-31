@@ -62,8 +62,8 @@ public final class RegexProfile {
      *         divisible by 4096.
      */
     public boolean atEvaluationTripPoint() {
-        // evaluate profile after every 4096 calls
-        return calls.getCount() > 0 && (calls.getCount() & 0xfff) == 0;
+        // evaluate profile after every 800 calls
+        return calls.getCount() > 0 && (calls.getCount() % 800) == 0;
     }
 
     private double matchRatio() {
