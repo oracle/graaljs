@@ -18,13 +18,16 @@ public class RegexObject implements RegexLanguageObject {
     private final RegexSource source;
     private CompiledRegex compiledRegex;
     private final RegexObjectExecMethod execMethod;
-    private final RegexProfile regexProfile;
+    private RegexProfile regexProfile;
 
     public RegexObject(RegexLanguage language, RegexSource source) {
         this.language = language;
         this.source = source;
         execMethod = new RegexObjectExecMethod(this);
-        regexProfile = new RegexProfile();
+        if (source.getOptions().isRegressionTestMode()) {
+            // compile expression eagerly in regression test mode
+            getCompiledRegex();
+        }
     }
 
     public RegexSource getSource() {
@@ -65,6 +68,9 @@ public class RegexObject implements RegexLanguageObject {
     }
 
     public RegexProfile getRegexProfile() {
+        if (regexProfile == null) {
+            regexProfile = new RegexProfile();
+        }
         return regexProfile;
     }
 

@@ -26,10 +26,16 @@ public final class RegexCompiler {
             src.append("U180EWhitespace=true");
         }
         if (JSTruffleOptions.RegexEngine.equals("joni") || JSTruffleOptions.RegexEngine.equals("tregex")) {
-            if (JSTruffleOptions.U180EWhitespace) {
+            if (src.length() > 0) {
                 src.append(",");
             }
             src.append("Engine=").append(JSTruffleOptions.RegexEngine);
+        }
+        if (JSTruffleOptions.RegexRegressionTestMode) {
+            if (src.length() > 0) {
+                src.append(",");
+            }
+            src.append("RegressionTestMode=true");
         }
         src.append("/").append(pattern).append("/").append(flags);
         return Source.newBuilder(src.toString()).name(pattern).mimeType("application/js-regex").build();
