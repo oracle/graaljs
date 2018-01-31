@@ -12,6 +12,7 @@ public final class RegexOptions {
 
     private static final int U180E_WHITESPACE = 1;
     private static final int USE_JONI = 1 << 1;
+    private static final int REGRESSION_TEST_MODE = 1 << 2;
 
     public static final RegexOptions DEFAULT = new RegexOptions(0);
 
@@ -36,11 +37,7 @@ public final class RegexOptions {
             String value = propValue.substring(eqlPos + 1);
             switch (key) {
                 case "U180EWhitespace":
-                    if (value.equals("true")) {
-                        options |= U180E_WHITESPACE;
-                    } else if (!value.equals("false")) {
-                        throw optionsSyntaxErrorUnexpectedValue(optionsString, key, value, "true", "false");
-                    }
+                    options = parseBooleanOption(optionsString, options, key, value, U180E_WHITESPACE);
                     break;
                 case "Engine":
                     switch (value) {
@@ -53,11 +50,23 @@ public final class RegexOptions {
                             throw optionsSyntaxErrorUnexpectedValue(optionsString, key, value, "joni");
                     }
                     break;
+                case "RegressionTestMode":
+                    options = parseBooleanOption(optionsString, options, key, value, REGRESSION_TEST_MODE);
+                    break;
                 default:
                     throw optionsSyntaxError(optionsString, "unexpected option " + key);
             }
         }
         return new RegexOptions(options);
+    }
+
+    private static int parseBooleanOption(String optionsString, int options, String key, String value, int flag) throws RegexSyntaxException {
+        if (value.equals("true")) {
+            return options | flag;
+        } else if (!value.equals("false")) {
+            throw optionsSyntaxErrorUnexpectedValue(optionsString, key, value, "true", "false");
+        }
+        return options;
     }
 
     private static RegexSyntaxException optionsSyntaxErrorUnexpectedValue(String optionsString, String key, String value, String... expectedValues) {
@@ -78,6 +87,10 @@ public final class RegexOptions {
 
     public boolean isU180EWhitespace() {
         return isBitSet(U180E_WHITESPACE);
+    }
+
+    public boolean isRegressionTestMode() {
+        return isBitSet(REGRESSION_TEST_MODE);
     }
 
     @Override

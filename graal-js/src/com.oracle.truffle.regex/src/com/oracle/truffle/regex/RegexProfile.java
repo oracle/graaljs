@@ -5,6 +5,7 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.tregex.parser.Counter;
 
 /**
  * This profile is used for tracking statistics about a compiled regular expression, such as the
@@ -17,45 +18,30 @@ import com.oracle.truffle.api.CompilerDirectives;
  */
 public final class RegexProfile {
 
-    private int calls = 0;
-    private int matches = 0;
-    private int captureGroupAccesses = 0;
+    private final Counter.ThreadSafeCounter calls = new Counter.ThreadSafeCounter();
+    private final Counter.ThreadSafeCounter matches = new Counter.ThreadSafeCounter();
+    private final Counter.ThreadSafeCounter captureGroupAccesses = new Counter.ThreadSafeCounter();
     private double avgMatchedPortionOfSearchSpace = 0;
-
-    private boolean atOverflow() {
-        return calls == Integer.MAX_VALUE;
-    }
 
     /**
      * Increase the number of times the regular expression was executed by one.
      */
     public void incCalls() {
-        if (atOverflow()) {
-            return;
-        }
-        calls++;
+        calls.inc();
     }
 
     /**
      * Increase the number of times a match for the regular expression was found by one.
      */
     public void incMatches() {
-        if (atOverflow()) {
-            return;
-        }
-        matches++;
-        assert matches <= calls;
+        matches.inc();
     }
 
     /**
      * Increase the number of times any capture groups of a match result were queried by one.
      */
     public void incCaptureGroupAccesses() {
-        if (atOverflow()) {
-            return;
-        }
-        captureGroupAccesses++;
-        assert captureGroupAccesses <= matches;
+        captureGroupAccesses.inc();
     }
 
     /**
@@ -65,11 +51,8 @@ public final class RegexProfile {
      *            the regular expression matcher traversed while searching for the match.
      */
     public void addMatchedPortionOfSearchSpace(double matchedPortion) {
-        if (atOverflow()) {
-            return;
-        }
-        assert captureGroupAccesses > 0;
-        avgMatchedPortionOfSearchSpace += (matchedPortion - avgMatchedPortionOfSearchSpace) / captureGroupAccesses;
+        assert captureGroupAccesses.getCount() > 0;
+        avgMatchedPortionOfSearchSpace += (matchedPortion - avgMatchedPortionOfSearchSpace) / captureGroupAccesses.getCount();
     }
 
     /**
@@ -79,16 +62,18 @@ public final class RegexProfile {
      *         divisible by 4096.
      */
     public boolean atEvaluationTripPoint() {
-        // evaluate profile after every 4096 calls
-        return calls > 0 && (calls & 0xfff) == 0;
+        // evaluate profile after every 800 calls
+        return calls.getCount() > 0 && (calls.getCount() % 800) == 0;
     }
 
     private double matchRatio() {
-        return (double) matches / calls;
+        assert calls.getCount() > 0;
+        return (double) matches.getCount() / calls.getCount();
     }
 
     private double cgAccessRatio() {
-        return (double) captureGroupAccesses / matches;
+        assert matches.getCount() > 0;
+        return (double) captureGroupAccesses.getCount() / matches.getCount();
     }
 
     /**
@@ -111,6 +96,6 @@ public final class RegexProfile {
     @Override
     public String toString() {
         return String.format("calls: %d, matches: %d (%.2f%%), cg accesses: %d (%.2f%%), avg matched portion of search space: %.2f%%",
-                        calls, matches, matchRatio() * 100, captureGroupAccesses, cgAccessRatio() * 100, avgMatchedPortionOfSearchSpace * 100);
+                        calls.getCount(), matches.getCount(), matchRatio() * 100, captureGroupAccesses.getCount(), cgAccessRatio() * 100, avgMatchedPortionOfSearchSpace * 100);
     }
 }

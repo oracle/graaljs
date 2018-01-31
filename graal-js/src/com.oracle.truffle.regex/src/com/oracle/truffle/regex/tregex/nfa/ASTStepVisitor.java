@@ -79,10 +79,27 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
             }
         }
         if (stepRoot == null) {
-            assert !curLookAheads.isEmpty();
-            stepRoot = curLookAheads.get(curLookAheads.size() - 1);
-            curLookAheads.remove(curLookAheads.size() - 1);
-            lookAroundExpansionQueue.remove(stepRoot);
+            if (curLookAheads.isEmpty()) {
+                assert !curLookBehinds.isEmpty();
+                // The state we want to expand contains look-behind assertions only. This can happen
+                // when compiling expressions like /(?<=aa)/:
+                // The parser will expand the expression with a prefix, resulting in the following:
+                // (?:[_any_][_any_](?:|[_any_](?:|[_any_])))(?<=aa)
+                // When we compile the NFA, some of the paths we explore in this expression will
+                // reach the second character of the look-behind assertion, while simultaneously
+                // reaching the end of the prefix. These states must not match and therefore have
+                // no valid successors.
+                // For this reason, we can simply return one of the look-behind ASTStep objects,
+                // whose successors have not been calculated at this point.
+                ASTStep noSuccessors = curLookBehinds.get(0);
+                curLookBehinds.clear();
+                lookAroundExpansionQueue.clear();
+                return noSuccessors;
+            } else {
+                stepRoot = curLookAheads.get(curLookAheads.size() - 1);
+                curLookAheads.remove(curLookAheads.size() - 1);
+                lookAroundExpansionQueue.remove(stepRoot);
+            }
         }
         stepCur = stepRoot;
         Term root = (Term) stepRoot.getRoot();

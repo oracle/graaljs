@@ -9,7 +9,7 @@ import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 public class Counter {
 
-    private int count = 0;
+    protected int count = 0;
 
     public int getCount() {
         return count;
@@ -53,6 +53,27 @@ public class Counter {
                 throw new UnsupportedRegexException(errorMsg);
             }
             return ret;
+        }
+    }
+
+    public static class ThreadSafeCounter extends Counter {
+
+        @Override
+        public int inc() {
+            int c = count;
+            if (c < Integer.MAX_VALUE) {
+                count = c + 1;
+            }
+            return count;
+        }
+
+        @Override
+        public int dec() {
+            int c = count;
+            if (c > Integer.MIN_VALUE) {
+                count = c - 1;
+            }
+            return count;
         }
     }
 }
