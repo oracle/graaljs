@@ -282,6 +282,22 @@ public abstract class NFATraversalRegexASTVisitor {
         }
     }
 
+    /**
+     * Checks whether we have already entered this node before and would therefore be passing
+     * through its contents without matching any input characters.
+     *
+     * @param node the node that we are about to leave
+     * @return true if we entered the node before
+     */
+    private boolean passingThrough(RegexASTNode node) {
+        for (PathElement elem : curPath) {
+            if (!elem.isGroupExit() && elem.getNode() == node) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean advanceTerm(Term term) {
         if (ast.isNFAInitialState(term)) {
             assert term instanceof PositionAssertion || term instanceof MatchFound;
@@ -294,8 +310,18 @@ public abstract class NFATraversalRegexASTVisitor {
         }
         Term curTerm = term;
         while (!(curTerm.getParent() instanceof RegexASTSubtreeRootNode)) {
+            // We are leaving curTerm. If curTerm has an empty guard and we have already entered
+            // curTerm during this step, then we stop and retreat. Otherwise, we would end up
+            // letting curTerm match the empty string, which is what the empty guard is meant to
+            // forbid.
+            if (curTerm.hasEmptyGuard() && passingThrough(curTerm)) {
+                return retreat();
+            }
             Sequence parentSeq = (Sequence) curTerm.getParent();
             if (curTerm == (reverse ? parentSeq.getFirstTerm() : parentSeq.getLastTerm())) {
+                if (parentSeq.hasEmptyGuard() && passingThrough(parentSeq)) {
+                    return retreat();
+                }
                 final Group parentGroup = parentSeq.getParent();
                 pushGroupExit(parentGroup);
                 if (parentGroup.isLoop()) {
@@ -310,6 +336,9 @@ public abstract class NFATraversalRegexASTVisitor {
         }
         assert curTerm instanceof Group;
         assert curTerm.getParent() instanceof RegexASTSubtreeRootNode;
+        if (curTerm.hasEmptyGuard() && passingThrough(curTerm)) {
+            return retreat();
+        }
         cur = curTerm.getSubTreeParent().getMatchFound();
         return true;
     }

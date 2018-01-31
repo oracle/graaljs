@@ -338,6 +338,10 @@ public final class RegexParser {
         }
         if (greedy) {
             addTerm(copyVisitor.copy(term));
+            // When translating a quantified expression that allows zero occurrences into a
+            // disjunction of the form (curTerm|), we must make sure that curTerm cannot match the
+            // empty string, as is specified in step 2a of RepeatMatcher from ECMAScript 21.2.2.5.1.
+            curTerm.setEmptyGuard(true);
             if (curTerm instanceof Group) {
                 ((Group) curTerm).setExpandedQuantifier(true);
             }
@@ -346,6 +350,7 @@ public final class RegexParser {
         } else {
             addSequence();
             addTerm(copyVisitor.copy(term));
+            curTerm.setEmptyGuard(true);
             if (curTerm instanceof Group) {
                 ((Group) curTerm).setExpandedQuantifier(true);
             }
