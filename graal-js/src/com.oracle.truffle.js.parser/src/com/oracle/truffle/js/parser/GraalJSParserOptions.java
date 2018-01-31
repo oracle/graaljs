@@ -63,7 +63,7 @@ public final class GraalJSParserOptions implements ParserOptions {
         this.scripting = false;
         this.shebang = false;
         this.ecmaScriptVersion = JSTruffleOptions.MaxECMAScriptVersion;
-        this.syntaxExtensions = readSyntaxExtension();
+        this.syntaxExtensions = false;
         this.constAsVar = false;
         this.functionStatementError = false;
         this.functionStatementWarning = false;
@@ -247,9 +247,5 @@ public final class GraalJSParserOptions implements ParserOptions {
                             dumpOnError, emptyStatements, annexB);
         }
         return this;
-    }
-
-    private static boolean readSyntaxExtension() {
-        return Boolean.getBoolean("polyglot." + SYNTAX_EXTENSIONS_NAME);
     }
 }
