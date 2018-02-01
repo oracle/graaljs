@@ -1644,6 +1644,14 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
     @Override
     protected LinkedPropertyGetNode createJavaPropertyNodeMaybe(Object thisObj, JSContext context) {
+        if (JSTruffleOptions.SubstrateVM) {
+            return null;
+        }
+        if (JSObject.isDynamicObject(thisObj)) {
+            if (JavaPackage.isJavaPackage(thisObj)) {
+                return new CachedJavaPackagePropertyGetNode(context, key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)), (DynamicObject) thisObj);
+            }
+        }
         if (!JSTruffleOptions.NashornJavaInterop) {
             return null;
         }

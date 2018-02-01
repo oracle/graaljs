@@ -37,7 +37,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 public final class JavaPackage extends JSBuiltinObject {
     public static final String TYPE_NAME = "object";
     public static final String CLASS_NAME = "JavaPackage";
-    public static final JavaPackage INSTANCE = JSTruffleOptions.NashornJavaInterop ? new JavaPackage() : null;
+    public static final JavaPackage INSTANCE = new JavaPackage();
     private static final Property PACKAGE_PROPERTY;
     private static final HiddenKey PACKAGE_NAME_ID = new HiddenKey("packageName");
 
@@ -47,10 +47,10 @@ public final class JavaPackage extends JSBuiltinObject {
     }
 
     private JavaPackage() {
+        assert !JSTruffleOptions.SubstrateVM;
     }
 
     public static DynamicObject create(JSContext context, String packageName) {
-        assert JSTruffleOptions.NashornJavaInterop;
         DynamicObject obj = JSObject.create(context, context.getRealm().getJavaPackageFactory(), packageName);
         JSObjectUtil.putDataProperty(obj, Symbol.SYMBOL_TO_PRIMITIVE, context.getRealm().getJavaPackageToPrimitiveFunction(), JSAttributes.notConfigurableNotEnumerableNotWritable());
         assert isJavaPackage(obj);
@@ -62,7 +62,7 @@ public final class JavaPackage extends JSBuiltinObject {
     }
 
     public static boolean isJavaPackage(DynamicObject obj) {
-        return JSTruffleOptions.NashornJavaInterop && isInstance(obj, INSTANCE);
+        return isInstance(obj, INSTANCE);
     }
 
     public static String getPackageName(DynamicObject obj) {
@@ -71,7 +71,7 @@ public final class JavaPackage extends JSBuiltinObject {
     }
 
     @TruffleBoundary
-    public static Class<?> getClass(DynamicObject thisObj, String className) {
+    public static <T> T getClass(DynamicObject thisObj, String className, Class<? extends T> returnType) {
         JSContext context = JSObject.getJSContext(thisObj);
         assert context.getEnv().isHostLookupAllowed();
         String qualifiedName = prependPackageName(thisObj, className);
@@ -84,7 +84,13 @@ public final class JavaPackage extends JSBuiltinObject {
         if (JavaInterop.isJavaObject(javaType)) {
             Object clazz = JavaInterop.asJavaObject((TruffleObject) javaType);
             if (clazz instanceof Class<?>) {
-                return (Class<?>) clazz;
+                if (returnType == Class.class) {
+                    return returnType.cast(clazz);
+                } else if (returnType == JavaClass.class) {
+                    return returnType.cast(JavaClass.forClass((Class<?>) clazz));
+                } else {
+                    return returnType.cast(javaType);
+                }
             }
         }
         return null;
@@ -95,14 +101,14 @@ public final class JavaPackage extends JSBuiltinObject {
     }
 
     public static Object getJavaClassOrConstructorOrSubPackage(JSContext context, DynamicObject thisObj, String name) {
-        if (Boundaries.stringEndsWith(name, ")")) {
+        if (JSTruffleOptions.NashornJavaInterop && Boundaries.stringEndsWith(name, ")")) {
             // constructor directly? e.g. java.awt["Color(int,int,int)"]
             int openParen = Boundaries.stringIndexOf(name, '(');
             if (openParen != -1) {
                 String className = Boundaries.substring(name, 0, openParen);
-                Class<?> clazz = getClass(thisObj, className);
-                if (clazz != null) {
-                    return JavaClass.forClass(clazz).getBestConstructor(Boundaries.substring(name, openParen + 1, name.length() - 1));
+                JavaClass javaClass = getClass(thisObj, className, JavaClass.class);
+                if (javaClass != null) {
+                    return javaClass.getBestConstructor(Boundaries.substring(name, openParen + 1, name.length() - 1));
                 } else {
                     throw Errors.createTypeError("No such Java class: %s", prependPackageName(thisObj, className));
                 }
@@ -112,8 +118,11 @@ public final class JavaPackage extends JSBuiltinObject {
     }
 
     private static Object getJavaClassOrSubPackage(JSContext context, DynamicObject thisObj, String name) {
-        Class<?> clazz = getClass(thisObj, name);
-        return clazz != null ? JavaClass.forClass(clazz) : subpackage(context, thisObj, name);
+        Object javaClass = getClass(thisObj, name, JSTruffleOptions.NashornJavaInterop ? JavaClass.class : Object.class);
+        if (javaClass != null) {
+            return javaClass;
+        }
+        return subpackage(context, thisObj, name);
     }
 
     @TruffleBoundary

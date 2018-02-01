@@ -104,9 +104,9 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
         if (name instanceof String) {
             DynamicObject[] packages = getPackages(store);
             for (DynamicObject pkg : packages) {
-                Class<?> found = JavaPackage.getClass(pkg, (String) name);
+                JavaClass found = JavaPackage.getClass(pkg, (String) name, JavaClass.class);
                 if (found != null) {
-                    return JavaClass.forClass(found);
+                    return found;
                 }
             }
         }
