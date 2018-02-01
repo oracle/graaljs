@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.js.runtime.builtins;
@@ -18,7 +18,6 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
-import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.ibm.icu.text.NumberFormat;
 import com.ibm.icu.text.PluralRules;
 import com.ibm.icu.text.PluralRules.PluralType;
@@ -27,7 +26,6 @@ import java.text.ParseException;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.LinkedList;
-import java.util.Locale;
 
 public final class JSPluralRules extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions {
 
@@ -98,22 +96,8 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
     }
 
     @TruffleBoundary
-    public static void setLocaleAndType(InternalState state, String[] locales) {
-        String selectedTag = IntlUtil.selectedLocale(locales);
-        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
-        Locale strippedLocale = selectedLocale.stripExtensions();
-        state.locale = strippedLocale.toLanguageTag();
-        // see https://tc39.github.io/ecma402/#sec-intl.numberformat-internal-slots (NOTE 1)
-        state.javaLocale = IntlUtil.withoutUnicodeExtension(selectedLocale, "cu");
-        switch (state.type) {
-            case "ordinal":
-                state.pluralRules = PluralRules.forLocale(state.javaLocale, PluralType.ORDINAL);
-                break;
-            case "cardinal":
-            default:
-                state.pluralRules = PluralRules.forLocale(state.javaLocale, PluralType.CARDINAL);
-                break;
-        }
+    public static void setupInternalPluralRulesAndNumberFormat(InternalState state) {
+        state.pluralRules = PluralRules.forLocale(state.javaLocale, state.type.equals("ordinal") ? PluralType.ORDINAL : PluralType.CARDINAL);
         state.pluralCategories.addAll(state.pluralRules.getKeywords());
         state.numberFormat = NumberFormat.getInstance(state.javaLocale);
     }

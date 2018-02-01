@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.js.runtime.builtins;
@@ -440,7 +440,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     }
 
     @TruffleBoundary
-    public static void setLocaleAndNumberingSystem(InternalState state, String[] locales) {
+    public static void setLocaleAndNumberingSystem(BasicInternalState state, String[] locales) {
         String selectedTag = IntlUtil.selectedLocale(locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
@@ -545,10 +545,14 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     public static class BasicInternalState {
 
         public boolean initialized = false;
-        public NumberFormat numberFormat;
-        public Locale javaLocale;
 
+        public NumberFormat numberFormat;
+
+        public Locale javaLocale;
         public String locale;
+
+        public String numberingSystem = "latn";
+
         public Number minimumIntegerDigits = 1;
         public Number minimumFractionDigits = 0;
         public Number maximumFractionDigits = 3;
@@ -580,7 +584,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     public static class InternalState extends BasicInternalState {
 
-        public String numberingSystem = "latn";
         public String style = "decimal";
         public String currency;
         public String currencyDisplay;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.js.nodes.intl;
@@ -70,7 +70,8 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
         state.initialized = true;
 
         state.type = optType;
-        JSPluralRules.setLocaleAndType(state, locales);
+        JSNumberFormat.setLocaleAndNumberingSystem(state, locales);
+        JSPluralRules.setupInternalPluralRulesAndNumberFormat(state);
 
         int mnfdDefault = 0;
         int mxfdDefault = 3;
