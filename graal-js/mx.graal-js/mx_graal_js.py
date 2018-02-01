@@ -203,7 +203,7 @@ def _js_cmd_line(args, main_class, default_cp=None, append_default_args=True):
     return _vm_args + [main_class] + _js_args
 
 def graaljs_cmd_line(args, append_default_args=True):
-    return _js_cmd_line(args + ['-Dtruffle.js.BindProgramResult=false'], main_class=mx.distribution('GRAALJS_LAUNCHER').mainClass, default_cp=[mx.classpath(['GRAALJS_LAUNCHER', 'GRAALJS'])], append_default_args=append_default_args)
+    return _js_cmd_line(args + ['-Dtruffle.js.BindProgramResult=false'], main_class=mx.distribution('GRAALJS_LAUNCHER').mainClass, default_cp=[mx.classpath(['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'GRAALJS_LAUNCHER', 'GRAALJS'])], append_default_args=append_default_args)
 
 def js(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     """Run the REPL or a JavaScript program with Graal.js"""
