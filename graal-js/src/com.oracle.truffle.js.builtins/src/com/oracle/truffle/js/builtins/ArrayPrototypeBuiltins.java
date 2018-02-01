@@ -1599,10 +1599,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 kPlusStart = nextElementIndex(thisObj, kPlusStart, length);
             }
             while (kPlusStart < (actualDeleteCount + actualStart)) {
-                if (hasProperty(thisObj, kPlusStart)) {
-                    Object fromValue = read(thisObj, kPlusStart);
-                    writeOwn(aObj, kPlusStart - actualStart, fromValue);
-                }
+                Object fromValue = read(thisObj, kPlusStart);
+                writeOwn(aObj, kPlusStart - actualStart, fromValue);
                 kPlusStart = nextElementIndex(thisObj, kPlusStart, length);
             }
         }
