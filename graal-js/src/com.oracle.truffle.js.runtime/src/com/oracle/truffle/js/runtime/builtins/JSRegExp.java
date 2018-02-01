@@ -535,67 +535,154 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         if (pattern.length() == 0) {
             return "(?:)";
         }
-        int unescaped = unescapedRegExpCharCount(pattern);
-        if (unescaped == 0) {
+        int extraChars = escapeRegExpExtraCharCount(pattern);
+        if (extraChars == 0) {
             return pattern;
         } else {
-            return escapeRegExpPattern(pattern, unescaped);
+            return escapeRegExpPattern(pattern, extraChars);
         }
     }
 
-    private static boolean isUnescapedRegExpCharAt(CharSequence pattern, int i) {
-        switch (pattern.charAt(i)) {
-            case '/':
-                return (i == 0 || pattern.charAt(i - 1) != '\\');
-            case '\n':
-            case '\r':
-            case '\u2028':
-            case '\u2029':
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private static int unescapedRegExpCharCount(CharSequence pattern) {
-        int unescaped = 0;
-        for (int i = 0; i < pattern.length(); i++) {
-            if (isUnescapedRegExpCharAt(pattern, i)) {
-                unescaped++;
-            }
-        }
-        return unescaped;
-    }
-
-    @TruffleBoundary
-    private static Object escapeRegExpPattern(CharSequence pattern, int unescaped) {
-        StringBuilder sb = new StringBuilder(pattern.length() + unescaped);
-        for (int i = 0; i < pattern.length(); i++) {
-            char c = pattern.charAt(i);
-            if (isUnescapedRegExpCharAt(pattern, i)) {
-                if (c != '/') {
-                    switch (c) {
+    /**
+     * Returns the number of extra characters that need to be inserted into {@code pattern} in order
+     * for it to be correctly escaped for use in a RegExp literal (according to the requirements of
+     * EscapeRegExpPattern).
+     * 
+     * This method satisfies the following property: if its return value is 0, the pattern does not
+     * need to be modified by EscapeRegExpPattern. In order to satisfy this property, this method
+     * can sometimes return a result that is 1 higher than the advertised value. This is the case
+     * when the pattern needs escaping but none of the escapes actually prolong the pattern, as in
+     * {@code "\\\n"}, which is escaped as {@code "\\n"} and where both the original and the escaped
+     * pattern are of length 2.
+     */
+    private static int escapeRegExpExtraCharCount(CharSequence pattern) {
+        // The body of this method mirrors that of escapeRegExpPattern. However, instead of actually
+        // allocating and filling a new StringBuilder, it only scans the input pattern and takes
+        // note of any characters that will need to be escaped.
+        int extraChars = 0;
+        boolean insideCharClass = false;
+        int i = 0;
+        while (i < pattern.length()) {
+            switch (pattern.charAt(i)) {
+                case '\\':
+                    assert i + 1 < pattern.length();
+                    i++;
+                    switch (pattern.charAt(i)) {
                         case '\n':
-                            sb.append("\\n");
-                            break;
                         case '\r':
-                            sb.append("\\r");
+                            // We are replacing "\\\n" with "\\n" or "\\\r" with "\\r". We are not
+                            // adding any extra characters but we are still modifying the pattern.
+                            // Therefore, we make sure that resulting value extraChars is at least
+                            // 1.
+                            extraChars = Math.max(extraChars, 1);
                             break;
                         case '\u2028':
-                            sb.append("\\u2028");
+                        case '\u2029':
+                            extraChars += 4;
+                            break;
+                    }
+                    break;
+                case '\n':
+                case '\r':
+                    extraChars += 1;
+                    break;
+                case '\u2028':
+                case '\u2029':
+                    extraChars += 5;
+                    break;
+                case '/':
+                    if (!insideCharClass) {
+                        extraChars += 1;
+                    }
+                    break;
+                case '[':
+                    insideCharClass = true;
+                    break;
+                case ']':
+                    insideCharClass = false;
+                    break;
+            }
+            i++;
+        }
+        return extraChars;
+    }
+
+    /**
+     * Implements the EscapeRegExpPattern abstract operation from the ECMAScript spec.
+     * 
+     * @param pattern the input pattern, which is assumed to be non-empty
+     * @param extraChars an estimate on the difference of sizes between the original pattern and the
+     *            escaped pattern
+     * @return the escaped pattern
+     */
+    @TruffleBoundary
+    private static Object escapeRegExpPattern(CharSequence pattern, int extraChars) {
+        StringBuilder sb = new StringBuilder(pattern.length() + extraChars);
+        boolean insideCharClass = false;
+        int i = 0;
+        while (i < pattern.length()) {
+            char c = pattern.charAt(i);
+            switch (c) {
+                case '\\':
+                    assert i + 1 < pattern.length();
+                    sb.append(c);
+                    i++;
+                    c = pattern.charAt(i);
+                    // The patterns used in RegExp objects can not only have literal LineTerminators
+                    // (e.g. RegExp("\n")), they can also have identity escapes of literal
+                    // LineTerminators (e.g. RegExp("\\\n")) (note that this is only valid when the
+                    // Unicode flag is not present). Since LineTerminators are not allowed in RegExp
+                    // literals, we have to replace these identity escapes with other escapes.
+                    switch (c) {
+                        case '\n':
+                            sb.append('n');
+                            break;
+                        case '\r':
+                            sb.append('r');
+                            break;
+                        case '\u2028':
+                            sb.append("u2028");
                             break;
                         case '\u2029':
-                            sb.append("\\u2029");
+                            sb.append("u2029");
                             break;
                         default:
-                            Errors.shouldNotReachHere();
+                            sb.append(c);
                     }
-                    continue;
-                } else {
-                    sb.append('\\');
-                }
+                    break;
+                case '\n':
+                    sb.append("\\n");
+                    break;
+                case '\r':
+                    sb.append("\\r");
+                    break;
+                case '\u2028':
+                    sb.append("\\u2028");
+                    break;
+                case '\u2029':
+                    sb.append("\\u2029");
+                    break;
+                case '/':
+                    // According to the syntax of RegularExpressionLiterals, forward slashes are
+                    // allowed inside character classes and therefore do not have to be escaped.
+                    if (!insideCharClass) {
+                        sb.append("\\/");
+                    } else {
+                        sb.append('/');
+                    }
+                    break;
+                case '[':
+                    insideCharClass = true;
+                    sb.append(c);
+                    break;
+                case ']':
+                    insideCharClass = false;
+                    sb.append(c);
+                    break;
+                default:
+                    sb.append(c);
             }
-            sb.append(c);
+            i++;
         }
         return sb.toString();
     }
