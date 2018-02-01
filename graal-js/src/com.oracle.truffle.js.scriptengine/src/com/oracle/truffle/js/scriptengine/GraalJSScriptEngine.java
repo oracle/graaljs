@@ -88,7 +88,8 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     /**
      * Returns the polyglot context associated with the default ScriptContext of the engine.
      *
-     * @see #getPolyglotContext(ScriptContext) to access the polyglot context of a particular context.
+     * @see #getPolyglotContext(ScriptContext) to access the polyglot context of a particular
+     *      context.
      */
     public Context getPolyglotContext() {
         return getPolyglotContext(context);
@@ -294,17 +295,18 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     }
 
     /**
-     * Creates a new GraalJS script engine from a polyglot Engine instance with a base configuration for
-     * new polyglot {@link Context} instances. Polyglot context instances can be accessed from
+     * Creates a new GraalJS script engine from a polyglot Engine instance with a base configuration
+     * for new polyglot {@link Context} instances. Polyglot context instances can be accessed from
      * {@link ScriptContext} instances using {@link #getPolyglotContext()}. The
      * {@link Builder#out(OutputStream) out},{@link Builder#err(OutputStream) err} and
      * {@link Builder#in(InputStream) in} stream configuration are not inherited from the provided
      * polyglot context config. Instead {@link ScriptContext} output and input streams are used.
      *
-     * @param engine the engine to be used for context configurations or <code>null</code> if a default
-     *            engine should be used.
-     * @param newContextConfig a base configuration to create new context instances or <code>null</code>
-     *            if the default configuration should be used to construct new context instances.
+     * @param engine the engine to be used for context configurations or <code>null</code> if a
+     *            default engine should be used.
+     * @param newContextConfig a base configuration to create new context instances or
+     *            <code>null</code> if the default configuration should be used to construct new
+     *            context instances.
      */
     public static GraalJSScriptEngine create(Engine engine, Context.Builder newContextConfig) {
         return new GraalJSScriptEngine(engine, newContextConfig);
