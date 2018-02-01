@@ -326,31 +326,35 @@ public final class RegexParser {
         addTerm(ast.createCharacterClass(matcherBuilder));
     }
 
+    private void createOptionalBranch(Term term, boolean greedy, int recurse) throws RegexSyntaxException {
+        addTerm(copyVisitor.copy(term));
+        // When translating a quantified expression that allows zero occurrences into a
+        // disjunction of the form (curTerm|), we must make sure that curTerm cannot match the
+        // empty string, as is specified in step 2a of RepeatMatcher from ECMAScript draft 2018,
+        // chapter 21.2.2.5.1.
+        curTerm.setEmptyGuard(true);
+        if (curTerm instanceof Group) {
+            ((Group) curTerm).setExpandedQuantifier(true);
+        }
+        createOptional(term, greedy, recurse - 1);
+    }
+
     private void createOptional(Term term, boolean greedy, int recurse) throws RegexSyntaxException {
         if (recurse < 0) {
             return;
         }
         properties.setAlternations();
         createGroup();
-        curGroup.setExpandedQuantifier(true);
         if (term instanceof Group) {
             curGroup.setEnclosedCaptureGroupsLow(((Group) term).getEnclosedCaptureGroupsLow());
             curGroup.setEnclosedCaptureGroupsHigh(((Group) term).getEnclosedCaptureGroupsHigh());
         }
         if (greedy) {
-            addTerm(copyVisitor.copy(term));
-            if (curTerm instanceof Group) {
-                ((Group) curTerm).setExpandedQuantifier(true);
-            }
-            createOptional(term, true, recurse - 1);
+            createOptionalBranch(term, greedy, recurse);
             addSequence();
         } else {
             addSequence();
-            addTerm(copyVisitor.copy(term));
-            if (curTerm instanceof Group) {
-                ((Group) curTerm).setExpandedQuantifier(true);
-            }
-            createOptional(term, false, recurse - 1);
+            createOptionalBranch(term, greedy, recurse);
         }
         popGroup();
     }

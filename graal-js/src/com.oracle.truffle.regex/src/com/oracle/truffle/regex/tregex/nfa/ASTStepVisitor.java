@@ -135,7 +135,7 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
                         if (element.isGroupPassThrough() && group.isExpandedQuantifier()) {
                             outerPassThrough = group;
                         }
-                        if (group.isCapturing() && (!element.isGroupPassThrough() || !group.isExpandedQuantifier())) {
+                        if (group.isCapturing() && !(element.isGroupPassThrough() && group.isExpandedQuantifier())) {
                             updateStarts.set(group.getGroupNumber());
                             clearStarts.clear(group.getGroupNumber());
                         }
@@ -153,7 +153,7 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
                 } else {
                     assert element.isGroupExit();
                     if (outerPassThrough == null) {
-                        if (group.isCapturing() && (!element.isGroupPassThrough() || !group.isExpandedQuantifier())) {
+                        if (group.isCapturing() && !(element.isGroupPassThrough() && group.isExpandedQuantifier())) {
                             updateEnds.set(group.getGroupNumber());
                             clearEnds.clear(group.getGroupNumber());
                         }

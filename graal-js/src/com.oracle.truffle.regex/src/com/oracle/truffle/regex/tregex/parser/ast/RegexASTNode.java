@@ -18,6 +18,7 @@ public abstract class RegexASTNode implements IndexedState {
     protected static final byte FLAG_GROUP_LOOP = 1 << 4;
     protected static final byte FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 5;
     protected static final byte FLAG_LOOK_AHEAD_NEGATED = 1 << 6;
+    protected static final byte FLAG_EMPTY_GUARD = (byte) (1 << 7);
 
     private short id = -1;
     private RegexASTNode parent;
@@ -150,6 +151,19 @@ public abstract class RegexASTNode implements IndexedState {
 
     public void setEndsWithDollar(boolean endsWithDollar) {
         setFlag(FLAG_DOLLAR, endsWithDollar);
+    }
+
+    /**
+     * Indicates whether or not this node should be allowed to match the empty string.
+     * 
+     * @return true if this node is <em>not</em> allowed to match the empty string
+     */
+    public boolean hasEmptyGuard() {
+        return isFlagSet(FLAG_EMPTY_GUARD);
+    }
+
+    public void setEmptyGuard(boolean emptyGuard) {
+        setFlag(FLAG_EMPTY_GUARD, emptyGuard);
     }
 
     public int getMinPath() {
