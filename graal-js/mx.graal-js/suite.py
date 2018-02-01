@@ -6,7 +6,7 @@ suite = {
   "imports" : {
     "suites" : [
         {
-           "name" : "truffle",
+           "name" : "tools",
            "subdir" : True,
            "version" : "18946714e294ebb2f6f13df561942f112635c63c",
            "urls" : [
