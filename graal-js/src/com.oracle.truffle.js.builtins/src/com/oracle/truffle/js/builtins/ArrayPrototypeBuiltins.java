@@ -626,6 +626,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected boolean isArrayWithHoles(DynamicObject thisObj, ValueProfile arrayTypeProfile) {
             return arrayTypeProfile.profile(arrayGetArrayType(thisObj)).hasHoles(thisObj);
         }
+
+        protected static final void throwLengthError() {
+            throw Errors.createTypeError("length too big");
+        }
     }
 
     public abstract static class JSArrayOperationWithToInt extends JSArrayOperation {
@@ -742,7 +746,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private void checkLength(Object[] args, long len) {
             if (len + args.length > JSRuntime.MAX_SAFE_INTEGER) {
                 errorBranch.enter();
-                throw Errors.createTypeError("length exceeded");
+                throwLengthError();
             }
         }
     }
@@ -1019,6 +1023,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long len = getLength(thisObj);
 
             if (getContext().getEcmaScriptVersion() <= 5 || args.length > 0) {
+                if (args.length + len > JSRuntime.MAX_SAFE_INTEGER_LONG) {
+                    errorBranch.enter();
+                    throwLengthError();
+                }
                 long lastIdx = lastElementIndexNode.executeLong(thisObj, len);
                 long firstIdx = firstElementIndexNode.executeLong(thisObj, len);
 
@@ -1188,11 +1196,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
             }
             return n + len2;
-        }
-
-        @TruffleBoundary
-        private static void throwLengthError() {
-            throw Errors.createTypeError("length too big");
         }
 
         // ES2015, 22.1.3.1.1
@@ -1546,7 +1549,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long itemCount = Math.max(0, args.length - 2);
             if (len + itemCount - actualDeleteCount > JSRuntime.MAX_SAFE_INTEGER_LONG) {
                 errorBranch.enter();
-                throw Errors.createTypeError("Invalid array length");
+                throwLengthError();
             }
 
             DynamicObject aObj = (DynamicObject) getArraySpeciesConstructorNode().createEmptyContainer(thisObj, actualDeleteCount);
