@@ -49,7 +49,14 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
         this.engine = Engine.create();
     }
 
-    Engine getEngine() {
+    GraalJSEngineFactory(Engine engine) {
+        this.engine = engine;
+    }
+
+    /**
+     * Returns the underlying polyglot engine.
+     */
+    public Engine getPolyglotEngine() {
         return engine;
     }
 

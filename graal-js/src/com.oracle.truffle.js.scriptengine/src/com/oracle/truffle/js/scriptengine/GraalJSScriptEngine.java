@@ -17,16 +17,21 @@ import javax.script.CompiledScript;
 import javax.script.Invocable;
 import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
-import javax.script.ScriptEngineFactory;
 import javax.script.ScriptException;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Context.Builder;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 
-public class GraalJSScriptEngine extends AbstractScriptEngine implements Compilable, Invocable {
+/**
+ * A Graal.JS implementation of the script engine. It provides access to the polyglot context using
+ * {@link #getPolyglotContext()}.
+ */
+public final class GraalJSScriptEngine extends AbstractScriptEngine implements Compilable, Invocable {
 
     private static final String POLYGLOT_CONTEXT = "polyglot.context";
     private static final String OUT_SYMBOL = "$$internal.out$$";
@@ -34,9 +39,24 @@ public class GraalJSScriptEngine extends AbstractScriptEngine implements Compila
     private static final String ERR_SYMBOL = "$$internal.err$$";
 
     private final GraalJSEngineFactory factory;
+    private final Context.Builder contextConfig;
 
     GraalJSScriptEngine(GraalJSEngineFactory factory) {
-        this.factory = factory;
+        this(factory.getPolyglotEngine(), null);
+    }
+
+    GraalJSScriptEngine(Engine engine, Context.Builder contextConfig) {
+        Engine engineToUse = engine;
+        if (engineToUse == null) {
+            engineToUse = Engine.create();
+        }
+        Context.Builder contextConfigToUse = contextConfig;
+        if (contextConfigToUse == null) {
+            // default config
+            contextConfigToUse = Context.newBuilder("js").allowHostAccess(true).allowCreateThread(true);
+        }
+        this.factory = new GraalJSEngineFactory(engineToUse);
+        this.contextConfig = contextConfigToUse.engine(engineToUse);
         this.context.setBindings(new GraalJSBindings(createDefaultContext()), ScriptContext.ENGINE_SCOPE);
     }
 
@@ -44,7 +64,9 @@ public class GraalJSScriptEngine extends AbstractScriptEngine implements Compila
         DelegatingInputStream in = new DelegatingInputStream();
         DelegatingOutputStream out = new DelegatingOutputStream();
         DelegatingOutputStream err = new DelegatingOutputStream();
-        Context ctx = Context.newBuilder("js").engine(factory.getEngine()).allowHostAccess(true).allowCreateThread(true).in(in).out(out).err(err).build();
+        Context.Builder builder = this.contextConfig;
+        builder.in(in).out(out).err(err);
+        Context ctx = builder.build();
         Value global = evalInternal(ctx, "this");
         evalInternal(ctx, "Object.defineProperty(this,'arguments',{enumerable:false,iterable:false})");
         evalInternal(ctx, "Object.defineProperty(this,'__engine',{enumerable:false,iterable:false})");
@@ -54,6 +76,32 @@ public class GraalJSScriptEngine extends AbstractScriptEngine implements Compila
         ctx.exportSymbol(ERR_SYMBOL, err);
         ctx.exportSymbol(IN_SYMBOL, in);
         return ctx;
+    }
+
+    /**
+     * Returns the polyglot engine associated with this script engine.
+     */
+    public Engine getPolyglotEngine() {
+        return factory.getPolyglotEngine();
+    }
+
+    /**
+     * Returns the polyglot context associated with the default ScriptContext of the engine.
+     *
+     * @see #getPolyglotContext(ScriptContext) to access the polyglot context of a particular
+     *      context.
+     */
+    public Context getPolyglotContext() {
+        return getPolyglotContext(context);
+    }
+
+    /**
+     * Returns the polyglot context associated with a ScriptContext. If the context is not yet
+     * initialized then it will be initialized using the default context builder specified in
+     * {@link #create(Engine, org.graalvm.polyglot.Context.Builder)}.
+     */
+    public Context getPolyglotContext(ScriptContext ctxt) {
+        return getOrCreateContext(ctxt);
     }
 
     static Value evalInternal(Context context, String script) {
@@ -88,31 +136,27 @@ public class GraalJSScriptEngine extends AbstractScriptEngine implements Compila
     }
 
     private Object eval(Source source, ScriptContext scriptContext) throws ScriptException {
-        Context polyglotContext = getContext(scriptContext);
-        ((DelegatingOutputStream) polyglotContext.importSymbol(OUT_SYMBOL).asHostObject()).setWriter(scriptContext.getWriter());
-        ((DelegatingOutputStream) polyglotContext.importSymbol(ERR_SYMBOL).asHostObject()).setWriter(scriptContext.getErrorWriter());
-        ((DelegatingInputStream) polyglotContext.importSymbol(IN_SYMBOL).asHostObject()).setReader(scriptContext.getReader());
+        Context polyglotContext = getOrCreateContext(scriptContext);
+        ((DelegatingOutputStream) polyglotContext.importSymbol(OUT_SYMBOL).asProxyObject()).setWriter(scriptContext.getWriter());
+        ((DelegatingOutputStream) polyglotContext.importSymbol(ERR_SYMBOL).asProxyObject()).setWriter(scriptContext.getErrorWriter());
+        ((DelegatingInputStream) polyglotContext.importSymbol(IN_SYMBOL).asProxyObject()).setReader(scriptContext.getReader());
         try {
-            return GraalJSBindings.convertGuestToHost(polyglotContext.eval(source));
+            return polyglotContext.eval(source).as(Object.class);
         } catch (PolyglotException e) {
             throw new ScriptException(e);
         }
     }
 
-    private Context getContext(ScriptContext ctxt) {
-        return getBindings(ctxt).getContext();
-    }
-
-    private GraalJSBindings getBindings(ScriptContext ctxt) {
+    private Context getOrCreateContext(ScriptContext ctxt) {
         Bindings engineB = ctxt.getBindings(ScriptContext.ENGINE_SCOPE);
         if (engineB instanceof GraalJSBindings) {
-            return (GraalJSBindings) engineB;
+            return ((GraalJSBindings) engineB).getContext();
         } else {
             Context polyglotContext = createContext(engineB);
             GraalJSBindings bindings = new GraalJSBindings(polyglotContext);
             bindings.clear();
             bindings.putAll(ctxt.getBindings(ScriptContext.ENGINE_SCOPE));
-            return bindings;
+            return polyglotContext;
         }
     }
 
@@ -126,23 +170,23 @@ public class GraalJSScriptEngine extends AbstractScriptEngine implements Compila
     }
 
     @Override
-    public ScriptEngineFactory getFactory() {
+    public GraalJSEngineFactory getFactory() {
         return factory;
     }
 
     @Override
     public Object invokeMethod(Object thiz, String name, Object... args) throws ScriptException, NoSuchMethodException {
-        if (thiz == null || !(thiz instanceof Value)) {
+        if (thiz == null) {
             throw new IllegalArgumentException("thiz is not a valid object.");
         }
-        Value value = (Value) thiz;
+        Value value = getPolyglotContext().asValue(thiz);
         Value function = value.getMember(name);
         return invoke(name, function, args);
     }
 
     @Override
     public Object invokeFunction(String name, Object... args) throws ScriptException, NoSuchMethodException {
-        Value value = getContext(context).lookup("js", name);
+        Value value = getOrCreateContext(context).lookup("js", name);
         return invoke(name, value, args);
     }
 
@@ -152,9 +196,8 @@ public class GraalJSScriptEngine extends AbstractScriptEngine implements Compila
         } else if (!function.canExecute()) {
             throw new NoSuchMethodException(methodName + " is not a fucntion");
         }
-
         try {
-            return GraalJSBindings.convertGuestToHost(function.execute(args));
+            return function.execute(args).as(Object.class);
         } catch (PolyglotException e) {
             throw new ScriptException(e);
         }
@@ -162,14 +205,12 @@ public class GraalJSScriptEngine extends AbstractScriptEngine implements Compila
 
     @Override
     public <T> T getInterface(Class<T> clasz) {
-        // not supported yet. could be implemented with proxies
-        return null;
+        return evalInternal(getPolyglotContext(), "this").as(clasz);
     }
 
     @Override
     public <T> T getInterface(Object thiz, Class<T> clasz) {
-        // not supported yet. could be implemented with proxies
-        return null;
+        return getPolyglotContext().asValue(thiz).as(clasz);
     }
 
     @Override
@@ -242,6 +283,33 @@ public class GraalJSScriptEngine extends AbstractScriptEngine implements Compila
             this.writer = writer;
         }
 
+    }
+
+    /**
+     * Creates a new GraalJSScriptEngine with default configuration.
+     *
+     * @see #create(Engine, Context.Builder) to customize the configuration.
+     */
+    public static GraalJSScriptEngine create() {
+        return create(null, null);
+    }
+
+    /**
+     * Creates a new GraalJS script engine from a polyglot Engine instance with a base configuration
+     * for new polyglot {@link Context} instances. Polyglot context instances can be accessed from
+     * {@link ScriptContext} instances using {@link #getPolyglotContext()}. The
+     * {@link Builder#out(OutputStream) out},{@link Builder#err(OutputStream) err} and
+     * {@link Builder#in(InputStream) in} stream configuration are not inherited from the provided
+     * polyglot context config. Instead {@link ScriptContext} output and input streams are used.
+     *
+     * @param engine the engine to be used for context configurations or <code>null</code> if a
+     *            default engine should be used.
+     * @param newContextConfig a base configuration to create new context instances or
+     *            <code>null</code> if the default configuration should be used to construct new
+     *            context instances.
+     */
+    public static GraalJSScriptEngine create(Engine engine, Context.Builder newContextConfig) {
+        return new GraalJSScriptEngine(engine, newContextConfig);
     }
 
 }
