@@ -62,7 +62,7 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization(guards = "!isDynamicObject(bummer)")
         public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
-            throw Errors.createTypeErrorNumberFormatExpected();
+            throw Errors.createTypeErrorPluralRulesExpected();
         }
     }
 
@@ -80,7 +80,7 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization(guards = "!isDynamicObject(bummer)")
         @SuppressWarnings("unused")
         public void throwTypeError(Object bummer, Object value) {
-            throw Errors.createTypeErrorNumberFormatExpected();
+            throw Errors.createTypeErrorPluralRulesExpected();
         }
     }
 }

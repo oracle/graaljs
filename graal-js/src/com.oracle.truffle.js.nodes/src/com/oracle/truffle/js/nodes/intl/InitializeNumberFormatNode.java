@@ -25,10 +25,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
     @Child CreateOptionsObjectNode createOptionsNode;
 
     @Child GetStringOptionNode getLocaleMatcherOption;
-    @Child GetStringOptionNode getStyleOption;
-    @Child GetStringOptionNode getCurrencyOption;
-    @Child GetStringOptionNode getCurrencyDisplayOption;
-    @Child GetBooleanOptionNode getUseGroupingOption;
+
     @Child GetNumberOptionNode getMinIntDigitsOption;
     @Child GetNumberOptionNode getMinFracDigitsOption;
     @Child GetNumberOptionNode getMaxFracDigitsOption;
@@ -36,6 +33,13 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
     @Child PropertyGetNode getMaxSignificantDigitsOption;
     @Child DefaultNumberOptionNode getMnsdDNO;
     @Child DefaultNumberOptionNode getMxsdDNO;
+
+    @Child GetStringOptionNode getStyleOption;
+
+    @Child GetStringOptionNode getCurrencyOption;
+    @Child GetStringOptionNode getCurrencyDisplayOption;
+
+    @Child GetBooleanOptionNode getUseGroupingOption;
 
     protected InitializeNumberFormatNode(JSContext context) {
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);

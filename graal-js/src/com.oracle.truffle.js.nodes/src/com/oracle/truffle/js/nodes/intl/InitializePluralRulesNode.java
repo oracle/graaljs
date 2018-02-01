@@ -23,7 +23,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
     @Child CreateOptionsObjectNode createOptionsNode;
 
     @Child GetStringOptionNode getLocaleMatcherOption;
-    @Child GetStringOptionNode getTypeOption;
+
     @Child GetNumberOptionNode getMinIntDigitsOption;
     @Child GetNumberOptionNode getMinFracDigitsOption;
     @Child GetNumberOptionNode getMaxFracDigitsOption;
@@ -31,6 +31,8 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
     @Child PropertyGetNode getMaxSignificantDigitsOption;
     @Child DefaultNumberOptionNode getMnsdDNO;
     @Child DefaultNumberOptionNode getMxsdDNO;
+
+    @Child GetStringOptionNode getTypeOption;
 
     protected InitializePluralRulesNode(JSContext context) {
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);

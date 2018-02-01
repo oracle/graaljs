@@ -144,10 +144,10 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
         Number x = JSRuntime.toNumber(n);
         String s = numberFormat.format(x);
         try {
-            Number toSelect = numberFormat.parse(s);
-            return pluralRules.select(toSelect.doubleValue());
+            Number toSelectFrom = numberFormat.parse(s);
+            return pluralRules.select(JSRuntime.doubleValue(toSelectFrom));
         } catch (ParseException pe) {
-            return pluralRules.select(x.doubleValue());
+            return pluralRules.select(JSRuntime.doubleValue(x));
         }
     }
 
