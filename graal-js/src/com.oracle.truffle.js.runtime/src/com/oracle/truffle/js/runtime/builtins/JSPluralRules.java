@@ -19,7 +19,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
-import com.ibm.icu.text.DecimalFormat;
 import com.ibm.icu.text.NumberFormat;
 import com.ibm.icu.text.PluralRules;
 import com.ibm.icu.text.PluralRules.PluralType;
@@ -119,15 +118,6 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
         state.numberFormat = NumberFormat.getInstance(state.javaLocale);
     }
 
-    @TruffleBoundary
-    public static void setSignificantDigits(InternalState state) {
-        if (state.numberFormat instanceof DecimalFormat) {
-            DecimalFormat df = (DecimalFormat) state.numberFormat;
-            df.setMinimumSignificantDigits(state.minimumSignificantDigits.intValue());
-            df.setMaximumSignificantDigits(state.maximumSignificantDigits.intValue());
-        }
-    }
-
     public static PluralRules getPluralRulesProperty(DynamicObject obj) {
         ensureIsPluralRules(obj);
         return getInternalState(obj).pluralRules;
@@ -151,46 +141,16 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
         }
     }
 
-    public static class InternalState {
+    public static class InternalState extends JSNumberFormat.BasicInternalState {
 
-        public boolean initialized = false;
+        public String type = "cardinal";
         public PluralRules pluralRules;
-        public NumberFormat numberFormat;
-        public Locale javaLocale;
-
         public List<String> pluralCategories = new LinkedList<>();
 
-        DynamicObject boundFormatFunction = null;
-
-        public String locale;
-        public String type = "cardinal";
-        public Number minimumIntegerDigits = 1;
-        public Number minimumFractionDigits = 0;
-        public Number maximumFractionDigits = 3;
-        public Number minimumSignificantDigits;
-        public Number maximumSignificantDigits;
-        public String positivePattern = "";
-        public String negativePattern = "";
-
+        @Override
         DynamicObject toResolvedOptionsObject(JSContext context) {
-            DynamicObject result = JSUserObject.create(context);
-            JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
+            DynamicObject result = super.toResolvedOptionsObject(context);
             JSObjectUtil.defineDataProperty(result, "type", type, JSAttributes.getDefault());
-            if (minimumIntegerDigits != null) {
-                JSObjectUtil.defineDataProperty(result, "minimumIntegerDigits", minimumIntegerDigits, JSAttributes.getDefault());
-            }
-            if (minimumFractionDigits != null) {
-                JSObjectUtil.defineDataProperty(result, "minimumFractionDigits", minimumFractionDigits, JSAttributes.getDefault());
-            }
-            if (maximumFractionDigits != null) {
-                JSObjectUtil.defineDataProperty(result, "maximumFractionDigits", maximumFractionDigits, JSAttributes.getDefault());
-            }
-            if (minimumSignificantDigits != null) {
-                JSObjectUtil.defineDataProperty(result, "minimumSignificantDigits", minimumSignificantDigits, JSAttributes.getDefault());
-            }
-            if (maximumSignificantDigits != null) {
-                JSObjectUtil.defineDataProperty(result, "maximumSignificantDigits", maximumSignificantDigits, JSAttributes.getDefault());
-            }
             JSObjectUtil.defineDataProperty(result, "pluralCategories", pluralCategories, JSAttributes.getDefault());
             return result;
         }

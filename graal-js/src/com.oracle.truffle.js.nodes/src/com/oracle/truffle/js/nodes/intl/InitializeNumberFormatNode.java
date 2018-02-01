@@ -116,7 +116,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
     }
 
     // https://tc39.github.io/ecma402/#sec-setnfdigitoptions
-    private void setNumberFormatDigitOptions(JSNumberFormat.InternalState state, DynamicObject options, int mnfdDefault, int mxfdDefault) {
+    private void setNumberFormatDigitOptions(JSNumberFormat.BasicInternalState state, DynamicObject options, int mnfdDefault, int mxfdDefault) {
         Number mnid = getMinIntDigitsOption.executeValue(options, 1, 1);
         Number mnfd = getMinFracDigitsOption.executeValue(options, 0, mnfdDefault);
         int mxfdActualDefault = Math.max(mnfd.intValue(), mxfdDefault);
