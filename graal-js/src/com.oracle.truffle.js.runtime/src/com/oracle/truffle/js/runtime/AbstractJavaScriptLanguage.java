@@ -11,7 +11,6 @@ import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 
 public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSContext> {
     public static final String TEXT_MIME_TYPE = "text/javascript";
@@ -35,21 +34,8 @@ public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSConte
         return org.graalvm.polyglot.Source.newBuilder(ID, new File(fileName)).build();
     }
 
-    public static JSContext getJSContext(PolyglotEngine engine) {
-        try {
-            Source source = Source.newBuilder("this").name(GET_JSCONTEXT_NAME).mimeType(APPLICATION_MIME_TYPE).build();
-            engine.eval(source);
-            JSContext jsContext = contextHolder.get();
-            contextHolder.remove();
-            return jsContext;
-        } catch (Exception e) {
-            // This should never happen
-            throw new RuntimeException(e);
-        }
-    }
-
     public static JSContext getJSContext(Context context) {
-        org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder("js", "this", GET_JSCONTEXT_NAME).buildLiteral();
+        org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder("js", "", GET_JSCONTEXT_NAME).buildLiteral();
         context.eval(source);
         JSContext jsContext = contextHolder.get();
         contextHolder.remove();
