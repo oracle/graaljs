@@ -1543,11 +1543,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 actualDeleteCount = len - actualStart;
             }
 
-            if (JSObject.isDynamicObject(thisObj) && JSObject.isSealed((DynamicObject) thisObj) && (actualDeleteCount != (args.length - 2))) {
-                errorBranch.enter();
-                throw Errors.createTypeError("cannot splice sealed array");
-            }
-
             long itemCount = Math.max(0, args.length - 2);
             if (len + itemCount - actualDeleteCount > JSRuntime.MAX_SAFE_INTEGER_LONG) {
                 errorBranch.enter();
