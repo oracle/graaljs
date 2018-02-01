@@ -13,6 +13,7 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
@@ -44,7 +45,7 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
     }
 
     protected final boolean isArraySuitableForEnumBasedProcessing(TruffleObject object, long length) {
-        return length > JSTruffleOptions.BigArrayThreshold && !JSArrayBufferView.isJSArrayBufferView(object) &&
+        return length > JSTruffleOptions.BigArrayThreshold && !JSArrayBufferView.isJSArrayBufferView(object) && !JSProxy.isProxy(object) &&
                         (context.getArrayPrototypeNoElementsAssumption().isValid() || !JSObject.isJSObject(object) || JSObject.getPrototype((DynamicObject) object) == Null.instance);
     }
 

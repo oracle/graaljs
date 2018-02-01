@@ -1543,9 +1543,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 actualDeleteCount = len - actualStart;
             }
 
-            if (JSObject.isDynamicObject(thisObj) && JSObject.isSealed((DynamicObject) thisObj) && (actualDeleteCount != (args.length - 2))) {
+            long itemCount = Math.max(0, args.length - 2);
+            if (len + itemCount - actualDeleteCount > JSRuntime.MAX_SAFE_INTEGER_LONG) {
                 errorBranch.enter();
-                throw Errors.createTypeError("cannot splice sealed array");
+                throw Errors.createTypeError("Invalid array length");
             }
 
             DynamicObject aObj = (DynamicObject) getArraySpeciesConstructorNode().createEmptyContainer(thisObj, actualDeleteCount);
@@ -1555,7 +1556,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 spliceRead(thisObj, actualStart, actualDeleteCount, aObj, len);
             }
 
-            long itemCount = Math.max(0, args.length - 2);
             if (JSArray.isJSArray(thisObj)) {
                 DynamicObject dynObj = (DynamicObject) thisObj;
                 if (arrayElementwise.profile(mustUseElementwise(dynObj))) {
@@ -1594,10 +1594,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 kPlusStart = nextElementIndex(thisObj, kPlusStart, length);
             }
             while (kPlusStart < (actualDeleteCount + actualStart)) {
-                if (hasProperty(thisObj, kPlusStart)) {
-                    Object fromValue = read(thisObj, kPlusStart);
-                    writeOwn(aObj, kPlusStart - actualStart, fromValue);
-                }
+                Object fromValue = read(thisObj, kPlusStart);
+                writeOwn(aObj, kPlusStart - actualStart, fromValue);
                 kPlusStart = nextElementIndex(thisObj, kPlusStart, length);
             }
         }
