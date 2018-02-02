@@ -9,6 +9,7 @@ import java.util.EnumSet;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
@@ -333,5 +334,10 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     @Override
     public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object propertyKey) {
         throw typeError();
+    }
+
+    @Override
+    public ForeignAccess getForeignAccessFactory(DynamicObject object) {
+        return JSObject.getJSContext(object).getInteropRuntime().getForeignAccessFactory();
     }
 }
