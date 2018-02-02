@@ -21,7 +21,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -187,7 +186,7 @@ public final class JSRuntime {
             return JavaClass.TYPE_NAME;
         } else if (JSTruffleOptions.NashornJavaInterop && value instanceof JavaMethod) {
             return JavaMethod.TYPE_NAME;
-        } else if (JSTruffleOptions.TruffleInterop && value instanceof TruffleObject) {
+        } else if (value instanceof TruffleObject) {
             assert !(value instanceof Symbol);
             if (JSInteropNodeUtil.isBoxed((TruffleObject) value)) {
                 return typeof(JSInteropNodeUtil.unbox((TruffleObject) value));
@@ -795,7 +794,7 @@ public final class JSRuntime {
             return toString(JSObject.toPrimitive((DynamicObject) value, HINT_STRING));
         } else if (JSTruffleOptions.NashornJavaInterop && (value instanceof JavaClass || value instanceof JavaPackage || value instanceof JavaMethod)) {
             return value.toString();
-        } else if (JSTruffleOptions.TruffleInterop && value instanceof TruffleObject) {
+        } else if (value instanceof TruffleObject) {
             assert !(value instanceof Symbol);
             return value.toString();
         } else if (value != null) {
@@ -1306,8 +1305,6 @@ public final class JSRuntime {
             return equal(booleanToNumber((Boolean) a), b);
         } else if (b instanceof Boolean) {
             return equal(a, booleanToNumber((Boolean) b));
-        } else if (a instanceof ScriptArray || b instanceof ScriptArray) {
-            return a == b;
         } else if (isObject(a)) {
             if (b == Undefined.instance || b == Null.instance) {
                 return false;
@@ -1318,7 +1315,7 @@ public final class JSRuntime {
                 return false;
             }
             return equal(a, JSObject.toPrimitive(((DynamicObject) b)));
-        } else if (JSTruffleOptions.TruffleInterop && (isForeignObject(a) || isForeignObject(b))) {
+        } else if (isForeignObject(a) || isForeignObject(b)) {
             return equalInterop(a, b);
         } else {
             return false;

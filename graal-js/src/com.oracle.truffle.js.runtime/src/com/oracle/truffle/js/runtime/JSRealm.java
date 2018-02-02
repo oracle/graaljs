@@ -349,7 +349,7 @@ public class JSRealm implements ShapeContext {
         this.jsAdapterFactory = JSTruffleOptions.NashornExtensions ? JSAdapter.makeInitialShape(context, jsAdapterConstructor.getPrototype()).createFactory() : null;
         this.javaImporterConstructor = JSTruffleOptions.NashornJavaInterop ? JavaImporter.createConstructor(this) : null;
         this.javaImportFactory = JSTruffleOptions.NashornJavaInterop ? JavaImporter.makeInitialShape(context, javaImporterConstructor.getPrototype()).createFactory() : null;
-        this.initialJavaPackageFactory = JSTruffleOptions.NashornJavaInterop ? JavaPackage.createInitialShape(this).createFactory() : null;
+        this.initialJavaPackageFactory = isJavaInteropAvailable() ? JavaPackage.createInitialShape(this).createFactory() : null;
 
         this.iteratorPrototype = es6 ? createIteratorPrototype() : null;
         this.generatorFunctionConstructor = es6 ? JSFunction.createGeneratorFunctionConstructor(this) : null;
@@ -1026,23 +1026,24 @@ public class JSRealm implements ShapeContext {
     }
 
     private void setupJavaInterop(DynamicObject global) {
-        if (JSTruffleOptions.SubstrateVM) {
+        if (!isJavaInteropAvailable()) {
             return;
         }
-        assert isJavaInteropAvailable();
         DynamicObject java = JSJava.create(this);
         JSObjectUtil.putFunctionsFromContainer(this, java, JSJava.CLASS_NAME);
         putGlobalProperty(global, JSJava.CLASS_NAME, java);
 
-        if (JSTruffleOptions.NashornJavaInterop && context.getEnv() != null && context.getEnv().isHostLookupAllowed()) {
+        if (context.getEnv() != null && context.getEnv().isHostLookupAllowed()) {
             putGlobalProperty(global, "Packages", JavaPackage.create(context, ""));
-            putGlobalProperty(global, "java", JavaPackage.create(context, "java"));
-            putGlobalProperty(global, "javafx", JavaPackage.create(context, "javafx"));
-            putGlobalProperty(global, "javax", JavaPackage.create(context, "javax"));
-            putGlobalProperty(global, "com", JavaPackage.create(context, "com"));
-            putGlobalProperty(global, "org", JavaPackage.create(context, "org"));
-            putGlobalProperty(global, "edu", JavaPackage.create(context, "edu"));
-            putGlobalProperty(global, JavaImporter.CLASS_NAME, getJavaImporterConstructor().getFunctionObject());
+            if (JSTruffleOptions.NashornJavaInterop) {
+                putGlobalProperty(global, "java", JavaPackage.create(context, "java"));
+                putGlobalProperty(global, "javafx", JavaPackage.create(context, "javafx"));
+                putGlobalProperty(global, "javax", JavaPackage.create(context, "javax"));
+                putGlobalProperty(global, "com", JavaPackage.create(context, "com"));
+                putGlobalProperty(global, "org", JavaPackage.create(context, "org"));
+                putGlobalProperty(global, "edu", JavaPackage.create(context, "edu"));
+                putGlobalProperty(global, JavaImporter.CLASS_NAME, getJavaImporterConstructor().getFunctionObject());
+            }
         }
     }
 
