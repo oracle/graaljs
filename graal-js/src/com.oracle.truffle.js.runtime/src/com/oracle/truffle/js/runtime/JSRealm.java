@@ -793,10 +793,10 @@ public class JSRealm implements ShapeContext {
     }
 
     /**
-     * This function is used whenever a function is required that throws a TypeError. It is used by some
-     * of the builtins that provide accessor functions that should not be called (e.g., as a method of
-     * deprecation). In the specification, this is often referred to as "[[ThrowTypeError]] function
-     * Object (13.2.3)".
+     * This function is used whenever a function is required that throws a TypeError. It is used by
+     * some of the builtins that provide accessor functions that should not be called (e.g., as a
+     * method of deprecation). In the specification, this is often referred to as
+     * "[[ThrowTypeError]] function Object (13.2.3)".
      *
      */
     private DynamicObject createThrowerFunction() {

@@ -297,8 +297,8 @@ public final class Errors {
 
     /**
      * Similar to UnsupportedOperationException, but with a flavor of a missing feature that will be
-     * resolved in the future. In contrast, UnsupportedOperationException should be used for operations
-     * that are expected to be unsupported forever.
+     * resolved in the future. In contrast, UnsupportedOperationException should be used for
+     * operations that are expected to be unsupported forever.
      */
     public static RuntimeException notYetImplemented(String message) {
         CompilerDirectives.transferToInterpreter();

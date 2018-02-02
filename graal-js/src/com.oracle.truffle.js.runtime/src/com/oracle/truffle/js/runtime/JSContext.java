@@ -96,9 +96,9 @@ public class JSContext implements ShapeContext {
     private final Assumption noSuchMethodUnusedAssumption;
 
     /**
-     * Assumption: There is no array that has a prototype that has indexed (array) elements. As long as
-     * this assumption holds, certain checks can be omitted as all the indexed elements are in the
-     * ScriptArray itself.
+     * Assumption: There is no array that has a prototype that has indexed (array) elements. As long
+     * as this assumption holds, certain checks can be omitted as all the indexed elements are in
+     * the ScriptArray itself.
      */
     private final Assumption arrayPrototypeNoElementsAssumption;
     private final Assumption fastArrayAssumption;
@@ -106,7 +106,8 @@ public class JSContext implements ShapeContext {
 
     /**
      * Assumption: TypedArrays never have their elements detached (i.e., buffer set to null). Can
-     * typically not happen by the ES6 spec, but be used by tests (and by future versions of the spec).
+     * typically not happen by the ES6 spec, but be used by tests (and by future versions of the
+     * spec).
      */
     @CompilationFinal private Assumption typedArrayNotDetachedAssumption;
 
@@ -161,9 +162,9 @@ public class JSContext implements ShapeContext {
     private volatile List<JSRealm> realmList;
 
     /**
-     * According to ECMA2017 8.4 the queue of pending jobs (promises reactions) must be processed when
-     * the current stack is empty. For Interop, we assume that the stack is empty when (1) we are called
-     * from another foreign language, and (2) there are no other nested JS Interop calls.
+     * According to ECMA2017 8.4 the queue of pending jobs (promises reactions) must be processed
+     * when the current stack is empty. For Interop, we assume that the stack is empty when (1) we
+     * are called from another foreign language, and (2) there are no other nested JS Interop calls.
      *
      * This flag is used to implement this semantics.
      */
@@ -265,9 +266,9 @@ public class JSContext implements ShapeContext {
     /**
      * Returns the stream used by {@link #getWriter}, or null if the stream is not available.
      *
-     * Do not write to the stream directly, always use the {@link #getWriter writer} instead. Use this
-     * method only to check if the current writer is already writing to the stream you want to use, in
-     * which case you can avoid creating a new {@link PrintWriter}.
+     * Do not write to the stream directly, always use the {@link #getWriter writer} instead. Use
+     * this method only to check if the current writer is already writing to the stream you want to
+     * use, in which case you can avoid creating a new {@link PrintWriter}.
      */
     public OutputStream getWriterStream() {
         return writerStream;
@@ -280,9 +281,9 @@ public class JSContext implements ShapeContext {
     /**
      * Returns the stream used by {@link #getErrorWriter}, or null if the stream is not available.
      *
-     * Do not write to the stream directly, always use the {@link #getErrorWriter writer} instead. Use
-     * this method only to check if the current writer is already writing to the stream you want to use,
-     * in which case you can avoid creating a new {@link PrintWriter}.
+     * Do not write to the stream directly, always use the {@link #getErrorWriter writer} instead.
+     * Use this method only to check if the current writer is already writing to the stream you want
+     * to use, in which case you can avoid creating a new {@link PrintWriter}.
      */
     public OutputStream getErrorWriterStream() {
         return errorWriterStream;
@@ -1178,9 +1179,9 @@ public class JSContext implements ShapeContext {
     }
 
     /**
-     * A simple wrapper of an {@link OutputStream} that allows to change the delegate. With this it's
-     * not necessary to create a new {@link OutputStreamWriter} for a new {@link OutputStream}, it's
-     * enough to just replace the delegate {@link OutputStream}.
+     * A simple wrapper of an {@link OutputStream} that allows to change the delegate. With this
+     * it's not necessary to create a new {@link OutputStreamWriter} for a new {@link OutputStream},
+     * it's enough to just replace the delegate {@link OutputStream}.
      */
     private static final class OutputStreamWrapper extends OutputStream {
 
