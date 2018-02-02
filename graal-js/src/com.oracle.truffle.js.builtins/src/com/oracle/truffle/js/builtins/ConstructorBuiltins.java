@@ -76,6 +76,7 @@ import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode.ArrayContentType;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetPrototypeFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.IsRegExpNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
@@ -1158,16 +1159,27 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     public abstract static class ConstructArrayBufferNode extends ConstructWithNewTargetNode {
         private final ConditionProfile badLengthCondition = ConditionProfile.createBinaryProfile();
         private final boolean useShared;
+        @Child private GetPrototypeFromConstructorNode getPrototypeFromConstructorNode;
 
         public ConstructArrayBufferNode(JSContext context, JSBuiltin builtin, boolean useShared, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
             this.useShared = useShared;
+            if (isNewTargetCase) {
+                getPrototypeFromConstructorNode = GetPrototypeFromConstructorNode.create(context, null,
+                                realm -> (useShared ? realm.getSharedArrayBufferConstructor() : realm.getArrayBufferConstructor()).getPrototype());
+            }
         }
 
         @Specialization(guards = "!isByteBuffer(length)")
         protected DynamicObject constructFromLength(DynamicObject newTarget, Object length,
                         @Cached("create()") JSToIndexNode toIndexNode) {
             long byteLength = toIndexNode.executeLong(length);
+
+            DynamicObject prototype = null;
+            if (isNewTargetCase) {
+                prototype = getPrototypeFromConstructorNode.executeWithConstructor(newTarget);
+            }
+
             if (badLengthCondition.profile(byteLength > JSTruffleOptions.MaxTypedArrayLength)) {
                 throw Errors.createRangeError("Invalid array buffer length");
             }
@@ -1183,7 +1195,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     arrayBuffer = JSArrayBuffer.createArrayBuffer(contextFromNewTarget, (int) byteLength);
                 }
             }
-            return swapPrototype(arrayBuffer, newTarget);
+            if (isNewTargetCase) {
+                JSObject.setPrototype(arrayBuffer, prototype);
+            }
+            return arrayBuffer;
         }
 
         @Specialization(guards = "isByteBuffer(buffer)")
