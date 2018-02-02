@@ -8,7 +8,7 @@ suite = {
         {
            "name" : "tools",
            "subdir" : True,
-           "version" : "18946714e294ebb2f6f13df561942f112635c63c",
+           "version" : "2519027270b495e94f3da7e0469b3d03bc3fcb86",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -253,18 +253,6 @@ suite = {
       "outputDir" : "mxbuild/graal/graaljs"
     },
 
-    "com.oracle.truffle.js.test.tck" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "mx:JUNIT",
-        "sdk:POLYGLOT_TCK"
-      ],
-      "checkstyle" : "com.oracle.truffle.js.runtime",
-      "javaCompliance" : "1.8",
-      "workingSets" : "Truffle,JavaScript,Test",
-    },
-
     "icu4j-data": {
         "native": True,
         "class": "Icu4jDataProject",
@@ -351,21 +339,6 @@ suite = {
         "GRAALJS_SCRIPTENGINE",
       ],
       "maven" : False,
-    },
-
-    "TRUFFLE_JS_TCK" : {
-      "subDir" : "src",
-      "javaCompliance" : "1.8",
-      "dependencies" : [
-        "com.oracle.truffle.js.test.tck"
-      ],
-      "exclude" : [
-        "mx:JUNIT",
-      ],
-      "distDependencies" : [
-        "sdk:POLYGLOT_TCK"
-      ],
-      "maven" : False
     },
 
     "ICU4J-DIST" : {
