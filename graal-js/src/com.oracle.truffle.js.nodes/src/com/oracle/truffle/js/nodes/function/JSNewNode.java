@@ -29,6 +29,7 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.UserScriptException;
@@ -232,7 +233,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         public DynamicObject createUserObjectAsObject(DynamicObject target, Object shape) {
             assert shape == Undefined.instance;
             // user-provided prototype is not an object
-            return createUserObject(target, context.getInitialUserObjectShape());
+            return createUserObject(target, getFunctionRealm(target).getInitialUserObjectShape());
         }
 
         @Specialization(guards = {"isBuiltin", "isConstructor"})
@@ -244,6 +245,17 @@ public abstract class JSNewNode extends JavaScriptNode {
         @Specialization(guards = {"!isConstructor"})
         public Object throwNotConstructorFunctionTypeError(DynamicObject target, @SuppressWarnings("unused") Object shape) {
             throw Errors.createTypeErrorNotConstructible(target);
+        }
+
+        private static JSRealm getFunctionRealm(DynamicObject callable) {
+            Object target = callable;
+            while (JSProxy.isProxy(target)) {
+                if (JSProxy.isRevoked((DynamicObject) target)) {
+                    throw Errors.createTypeErrorProxyRevoked();
+                }
+                target = JSProxy.getTarget((DynamicObject) target);
+            }
+            return JSFunction.getRealm((DynamicObject) target);
         }
 
         @Override
