@@ -31,7 +31,6 @@ import com.oracle.truffle.js.runtime.util.JSReflectUtils;
 @NodeInfo(cost = NodeCost.NONE)
 public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
 
-    protected final boolean isDeep;
     private final boolean isStrict;
 
     @Child private JSFunctionCallNode call;
@@ -40,55 +39,41 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
     @Child private JSToPropertyKeyNode toPropertyKeyNode;
     @Child private Node writeForeignNode;
 
-    protected JSProxyPropertySetNode(JSContext context, boolean isDeep, boolean isStrict) {
+    protected JSProxyPropertySetNode(JSContext context, boolean isStrict) {
         this.call = JSFunctionCallNode.createCall();
         this.trapGet = GetMethodNode.create(context, null, JSProxy.SET);
         this.toBoolean = JSToBooleanNode.create();
-        this.isDeep = isDeep;
         this.isStrict = isStrict;
     }
 
-    public abstract boolean executeWithReceiverAndValue(Object proxy, Object value, Object key, boolean floatingCondition);
+    public abstract boolean executeWithReceiverAndValue(Object proxy, Object receiver, Object value, Object key, boolean floatingCondition);
 
-    public abstract boolean executeWithReceiverAndValueInt(Object proxy, int value, Object key, boolean floatingCondition);
+    public abstract boolean executeWithReceiverAndValueInt(Object proxy, Object receiver, int value, Object key, boolean floatingCondition);
 
-    public abstract boolean executeWithReceiverAndValueIntKey(Object proxy, Object value, int key, boolean floatingCondition);
+    public abstract boolean executeWithReceiverAndValueIntKey(Object proxy, Object receiver, Object value, int key, boolean floatingCondition);
 
-    public static JSProxyPropertySetNode create(JSContext context, boolean isDeep, boolean isStrict) {
-        return JSProxyPropertySetNodeGen.create(context, isDeep, isStrict);
+    public static JSProxyPropertySetNode create(JSContext context, boolean isStrict) {
+        return JSProxyPropertySetNodeGen.create(context, isStrict);
     }
 
     @Specialization
-    protected boolean doGeneric(DynamicObject obj, Object value, Object key, boolean floatingCondition,
-                    @Cached("createBinaryProfile()") ConditionProfile walkProto,
+    protected boolean doGeneric(DynamicObject proxy, Object receiver, Object value, Object key, boolean floatingCondition,
                     @Cached("createBinaryProfile()") ConditionProfile hasTrap) {
+        assert JSProxy.isProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKey(key);
-        DynamicObject proxy = obj;
-        if (!isDeep) {
-            assert JSProxy.isProxy(proxy);
-        } else if (walkProto.profile(!JSProxy.isProxy(proxy))) {
-            // the proxy is only one of the prototypes
-            while (!JSProxy.isProxy(proxy)) {
-                // check that there is no defined property in the prototype chain
-                if (!JSProxy.checkPropertyIsSettable(proxy, key)) {
-                    return false;
-                }
-                proxy = JSObject.getPrototype(proxy);
-            }
-        }
         DynamicObject handler = JSProxy.getHandler(proxy, floatingCondition);
         TruffleObject target = JSProxy.getTarget(proxy, floatingCondition);
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
             if (JSObject.isJSObject(target)) {
-                return JSReflectUtils.performOrdinarySet((DynamicObject) target, propertyKey, value, obj);
+                return JSReflectUtils.performOrdinarySet((DynamicObject) target, propertyKey, value, receiver);
             } else {
                 truffleWrite(target, propertyKey, value);
                 return true;
             }
         }
-        Object trapResult = call.executeCall(JSArguments.create(handler, trapFun, target, propertyKey, value, obj));
+        Object trapResult = call.executeCall(JSArguments.create(handler, trapFun, target, propertyKey, value, receiver));
         boolean booleanTrapResult = toBoolean.executeBoolean(trapResult);
         if (!booleanTrapResult) {
             if (isStrict) {

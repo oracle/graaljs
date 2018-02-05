@@ -53,17 +53,10 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected boolean doGeneric(DynamicObject obj, Object key,
-                    @Cached("createBinaryProfile()") ConditionProfile trapFunProfile,
-                    @Cached("createBinaryProfile()") ConditionProfile walkProto) {
+    protected boolean doGeneric(DynamicObject proxy, Object key,
+                    @Cached("createBinaryProfile()") ConditionProfile trapFunProfile) {
+        assert JSProxy.isProxy(proxy);
         Object propertyKey = toPropertyKeyNode.execute(key);
-        DynamicObject proxy = obj;
-        if (walkProto.profile(!JSProxy.isProxy(proxy))) {
-            // the proxy is only one of the prototypes
-            while (!JSProxy.isProxy(proxy)) {
-                proxy = JSObject.getPrototype(proxy);
-            }
-        }
         TruffleObject target = JSProxy.getTarget(proxy);
         DynamicObject handler = JSProxy.getHandler(proxy);
         DynamicObject trapFun = (DynamicObject) trapGetter.executeWithTarget(handler);

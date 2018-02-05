@@ -177,7 +177,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
 
         @Override
         public boolean hasPropertyUnchecked(Object thisObj, boolean floatingCondition) {
-            return proxyGet.executeWithTargetAndKeyBoolean(thisObj, key);
+            return proxyGet.executeWithTargetAndKeyBoolean(receiverCheck.getStore(thisObj), key);
         }
     }
 

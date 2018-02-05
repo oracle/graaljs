@@ -826,21 +826,21 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         @Child private JSProxyPropertySetNode proxySet;
         @Child private JSToPropertyKeyNode toPropertyKeyNode;
 
-        public JSProxyDispatcherPropertySetNode(JSContext context, Object key, ReceiverCheckNode receiverCheckNode, boolean isDeep, boolean isStrict) {
+        public JSProxyDispatcherPropertySetNode(JSContext context, Object key, ReceiverCheckNode receiverCheckNode, boolean isStrict) {
             super(key, receiverCheckNode);
-            this.proxySet = JSProxyPropertySetNode.create(context, isDeep, isStrict);
+            this.proxySet = JSProxyPropertySetNode.create(context, isStrict);
             this.toPropertyKeyNode = JSToPropertyKeyNode.create();
             this.propagateFloatingCondition = receiverCheck instanceof JSClassCheckNode;
         }
 
         @Override
         public void setValueUnchecked(Object thisObj, Object value, Object receiver, boolean condition) {
-            proxySet.executeWithReceiverAndValue(thisObj, value, toPropertyKeyNode.execute(key), propagateFloatingCondition && condition);
+            proxySet.executeWithReceiverAndValue(receiverCheck.getStore(thisObj), receiver, value, toPropertyKeyNode.execute(key), propagateFloatingCondition && condition);
         }
 
         @Override
         public void setValueUncheckedInt(Object thisObj, int value, Object receiver, boolean condition) {
-            proxySet.executeWithReceiverAndValueInt(thisObj, value, toPropertyKeyNode.execute(key), propagateFloatingCondition && condition);
+            proxySet.executeWithReceiverAndValueInt(receiverCheck.getStore(thisObj), receiver, value, toPropertyKeyNode.execute(key), propagateFloatingCondition && condition);
         }
     }
 
@@ -1225,7 +1225,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
             if (JSAdapter.isJSAdapter(store)) {
                 return new JSAdapterPropertySetNode(key, receiverCheck, isStrict());
             } else if (JSProxy.isProxy(store) && JSRuntime.isPropertyKey(key) && (!isStrict() || !isGlobal() || JSObject.hasOwnProperty(thisJSObj, key))) {
-                return new JSProxyDispatcherPropertySetNode(context, key, receiverCheck, depth > 0, isStrict());
+                return new JSProxyDispatcherPropertySetNode(context, key, receiverCheck, isStrict());
             } else if (!JSRuntime.isObject(thisJSObj)) {
                 return new TypeErrorPropertySetNode(key, shapeCheck);
             } else if (isStrict() && isGlobal()) {
@@ -1235,6 +1235,9 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
             } else {
                 return new ReadOnlyPropertySetNode(key, createShapeCheckNode(cacheShape, thisJSObj, depth, false, false), isStrict());
             }
+        } else if (JSProxy.isProxy(store)) {
+            ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, depth, context);
+            return new JSProxyDispatcherPropertySetNode(context, key, receiverCheck, isStrict());
         } else {
             boolean doThrow = isStrict();
             if (!JSRuntime.isJSNative(thisObj)) {

@@ -40,33 +40,27 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
         return JSProxyPropertyGetNodeGen.create(context);
     }
 
-    public abstract Object executeWithReceiver(Object proxy, boolean floatingCondition, Object key);
+    public abstract Object executeWithReceiver(Object proxy, Object receiver, boolean floatingCondition, Object key);
 
-    public abstract Object executeWithReceiverInt(Object proxy, boolean floatingCondition, int key);
+    public abstract Object executeWithReceiverInt(Object proxy, Object receiver, boolean floatingCondition, int key);
 
     @Specialization
-    protected Object doGeneric(DynamicObject proxy, boolean floatingCondition, Object key,
-                    @Cached("createBinaryProfile()") ConditionProfile walkProto,
+    protected Object doGeneric(DynamicObject proxy, Object receiver, boolean floatingCondition, Object key,
                     @Cached("createBinaryProfile()") ConditionProfile hasTrap) {
+        assert JSProxy.isProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKey(key);
-        DynamicObject px = proxy;
-        if (walkProto.profile(!JSProxy.isProxy(proxy))) {
-            while (!JSProxy.isProxy(px)) {
-                px = JSObject.getPrototype(px);
-            }
-        }
-        DynamicObject handler = JSProxy.getHandler(px, floatingCondition);
-        TruffleObject target = JSProxy.getTarget(px, floatingCondition);
+        DynamicObject handler = JSProxy.getHandler(proxy, floatingCondition);
+        TruffleObject target = JSProxy.getTarget(proxy, floatingCondition);
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
             if (JSObject.isJSObject(target)) {
-                return JSReflectUtils.performOrdinaryGet((DynamicObject) target, propertyKey, proxy);
+                return JSReflectUtils.performOrdinaryGet((DynamicObject) target, propertyKey, receiver);
             } else {
                 return JSInteropNodeUtil.read(target, propertyKey);
             }
         }
-        Object trapResult = callNode.executeCall(JSArguments.create(handler, trapFun, target, propertyKey, proxy));
+        Object trapResult = callNode.executeCall(JSArguments.create(handler, trapFun, target, propertyKey, receiver));
         JSProxy.checkProxyGetTrapInvariants(target, propertyKey, trapResult);
         return trapResult;
     }
