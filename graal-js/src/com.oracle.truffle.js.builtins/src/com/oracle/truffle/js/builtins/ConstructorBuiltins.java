@@ -1123,12 +1123,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     public abstract static class ConstructFunctionNode extends ConstructWithNewTargetNode {
         private final boolean generatorFunction;
+        private final boolean asyncFunction;
         @Child private JSToStringNode toStringNode;
         @Child private CreateDynamicFunctionNode functionNode;
 
         public ConstructFunctionNode(JSContext context, JSBuiltin builtin, boolean generatorFunction, boolean asyncFunction, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
             this.generatorFunction = generatorFunction;
+            this.asyncFunction = asyncFunction;
             this.toStringNode = JSToStringNode.create();
             this.functionNode = CreateDynamicFunctionNodeGen.create(context, generatorFunction, asyncFunction);
         }
@@ -1155,7 +1157,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return generatorFunction ? realm.getGeneratorFunctionConstructor().getPrototype() : realm.getFunctionPrototype();
+            if (generatorFunction) {
+                return realm.getGeneratorFunctionConstructor().getPrototype();
+            } else if (asyncFunction) {
+                return realm.getAsyncFunctionConstructor().getPrototype();
+            } else {
+                return realm.getFunctionPrototype();
+            }
         }
 
     }
