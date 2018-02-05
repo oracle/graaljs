@@ -936,12 +936,12 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
         @Override
         public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return proxyGet.executeWithReceiver(receiver, propagateFloatingCondition && floatingCondition, key);
+            return proxyGet.executeWithReceiver(receiverCheck.getStore(thisObj), receiver, propagateFloatingCondition && floatingCondition, key);
         }
 
         @Override
         public int getValueUncheckedInt(Object thisObj, Object receiver, boolean floatingCondition) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(proxyGet.executeWithReceiver(receiver, propagateFloatingCondition && floatingCondition, key));
+            return JSTypesGen.expectInteger(proxyGet.executeWithReceiver(receiverCheck.getStore(thisObj), receiver, propagateFloatingCondition && floatingCondition, key));
         }
     }
 
@@ -962,7 +962,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         @Override
         public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
             if (proxyHas.executeWithTargetAndKeyBoolean(thisObj, key)) {
-                return proxyGet.executeWithReceiver(receiver, propagateFloatingCondition && floatingCondition, key);
+                return proxyGet.executeWithReceiver(receiverCheck.getStore(thisObj), receiver, propagateFloatingCondition && floatingCondition, key);
             } else {
                 throw Errors.createReferenceErrorNotDefined(key, this);
             }

@@ -314,22 +314,22 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
-            return proxyGet.executeWithReceiver(target, true, index);
+            return proxyGet.executeWithReceiver(target, target, true, index);
         }
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
-            return proxyGet.executeWithReceiverInt(target, true, index);
+            return proxyGet.executeWithReceiverInt(target, target, true, index);
         }
 
         @Override
         protected int executeWithTargetAndIndexUncheckedInt(Object target, int index) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(proxyGet.executeWithReceiverInt(target, true, index));
+            return JSTypesGen.expectInteger(proxyGet.executeWithReceiverInt(target, target, true, index));
         }
 
         @Override
         protected int executeWithTargetAndIndexUncheckedInt(Object target, Object index) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(proxyGet.executeWithReceiver(target, true, index));
+            return JSTypesGen.expectInteger(proxyGet.executeWithReceiver(target, target, true, index));
         }
 
         @Override
