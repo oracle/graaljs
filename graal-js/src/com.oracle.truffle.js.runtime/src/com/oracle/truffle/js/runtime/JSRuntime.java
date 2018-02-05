@@ -2071,7 +2071,7 @@ public final class JSRuntime {
         } else if (JSProxy.isProxy(obj)) {
             DynamicObject proxy = (DynamicObject) obj;
             if (JSProxy.isRevoked(proxy)) {
-                throw Errors.createTypeError("proxy has been revoked");
+                throw Errors.createTypeErrorProxyRevoked();
             }
             return isArrayProxy(proxy);
         }
@@ -2084,7 +2084,7 @@ public final class JSRuntime {
         } else if (profile2.profile(JSProxy.isProxy(obj))) {
             DynamicObject proxy = (DynamicObject) obj;
             if (JSProxy.isRevoked(proxy)) {
-                throw Errors.createTypeError("proxy has been revoked");
+                throw Errors.createTypeErrorProxyRevoked();
             }
             return isArrayProxy(proxy);
         }
@@ -2385,7 +2385,7 @@ public final class JSRuntime {
                 }
             } else if (JSProxy.isProxy(dynObj)) {
                 if (JSProxy.getHandler(dynObj) == Null.instance) {
-                    throw Errors.createTypeError("non-null handler expected");
+                    throw Errors.createTypeErrorProxyRevoked();
                 }
                 return getFunctionRealm(JSProxy.getTarget(dynObj), currentRealm);
             }

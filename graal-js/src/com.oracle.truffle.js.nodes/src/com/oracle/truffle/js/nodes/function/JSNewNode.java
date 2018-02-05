@@ -29,6 +29,7 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.UserScriptException;
@@ -199,15 +200,17 @@ public abstract class JSNewNode extends JavaScriptNode {
         private final JSContext context;
         protected final boolean isBuiltin;
         protected final boolean isConstructor;
+        protected final boolean isGenerator;
 
-        public SpecializedNewObjectNode(JSContext context, boolean isBuiltin, boolean isConstructor) {
+        public SpecializedNewObjectNode(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator) {
             this.context = context;
             this.isBuiltin = isBuiltin;
             this.isConstructor = isConstructor;
+            this.isGenerator = isGenerator;
         }
 
-        public static SpecializedNewObjectNode create(JSContext context, boolean isBuiltin, boolean isConstructor, JavaScriptNode target) {
-            return SpecializedNewObjectNodeGen.create(context, isBuiltin, isConstructor, target, CachedPrototypeShapeNode.create(context));
+        public static SpecializedNewObjectNode create(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, JavaScriptNode target) {
+            return SpecializedNewObjectNodeGen.create(context, isBuiltin, isConstructor, isGenerator, target, CachedPrototypeShapeNode.create(context));
         }
 
         @Override
@@ -232,7 +235,8 @@ public abstract class JSNewNode extends JavaScriptNode {
         public DynamicObject createUserObjectAsObject(DynamicObject target, Object shape) {
             assert shape == Undefined.instance;
             // user-provided prototype is not an object
-            return createUserObject(target, context.getInitialUserObjectShape());
+            JSRealm realm = JSRuntime.getFunctionRealm(target, context.getRealm());
+            return createUserObject(target, isGenerator ? realm.getInitialGeneratorObjectShape() : realm.getInitialUserObjectShape());
         }
 
         @Specialization(guards = {"isBuiltin", "isConstructor"})
@@ -248,7 +252,7 @@ public abstract class JSNewNode extends JavaScriptNode {
 
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return create(context, isBuiltin, isConstructor, cloneUninitialized(getTarget()));
+            return create(context, isBuiltin, isConstructor, isGenerator, cloneUninitialized(getTarget()));
         }
     }
 
