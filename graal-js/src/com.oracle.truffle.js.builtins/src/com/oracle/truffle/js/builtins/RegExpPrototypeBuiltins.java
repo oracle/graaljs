@@ -53,7 +53,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -611,7 +610,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected String replace(DynamicObject rx, Object searchString, Object replaceValue,
                         @Cached("create()") JSToStringNode toString1Node) {
             String s = toString1Node.executeString(searchString);
-            boolean functionalReplace = JSFunction.isJSFunction(replaceValue);
+            boolean functionalReplace = JSRuntime.isCallable(replaceValue);
 
             String replaceString = null;
             DynamicObject replaceFunction = null;

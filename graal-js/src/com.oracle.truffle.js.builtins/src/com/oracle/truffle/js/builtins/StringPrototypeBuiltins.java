@@ -931,7 +931,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private String builtinReplace(Object searchValue, Object replParam, Object o) {
             String string = toString(o);
             String searchString = toString2Node.executeString(searchValue);
-            boolean functionalReplace = JSFunction.isJSFunction(replParam);
+            boolean functionalReplace = JSRuntime.isCallable(replParam);
             String replaceString = null;
             DynamicObject replaceFunction = null;
             if (functionalReplaceProfile.profile(functionalReplace)) {
