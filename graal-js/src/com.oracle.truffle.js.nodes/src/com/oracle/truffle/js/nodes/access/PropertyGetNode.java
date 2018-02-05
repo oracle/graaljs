@@ -961,8 +961,9 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
         @Override
         public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            if (proxyHas.executeWithTargetAndKeyBoolean(thisObj, key)) {
-                return proxyGet.executeWithReceiver(receiverCheck.getStore(thisObj), receiver, propagateFloatingCondition && floatingCondition, key);
+            DynamicObject proxy = receiverCheck.getStore(thisObj);
+            if (proxyHas.executeWithTargetAndKeyBoolean(proxy, key)) {
+                return proxyGet.executeWithReceiver(proxy, receiver, propagateFloatingCondition && floatingCondition, key);
             } else {
                 throw Errors.createReferenceErrorNotDefined(key, this);
             }
@@ -1717,6 +1718,9 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             } else {
                 return createUndefinedJSObjectPropertyNode(depth, context, jsobject);
             }
+        } else if (JSProxy.isProxy(store)) {
+            ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, depth, context);
+            return new JSProxyDispatcherPropertyGetNode(context, key, receiverCheck, isMethod());
         } else {
             if (thisObj == null) {
                 return new TypeErrorPropertyGetNode(key, new NullCheckNode(), isMethod());
