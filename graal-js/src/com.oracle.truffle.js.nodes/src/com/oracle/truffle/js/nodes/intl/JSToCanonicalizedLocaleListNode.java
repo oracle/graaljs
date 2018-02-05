@@ -6,17 +6,28 @@ package com.oracle.truffle.js.nodes.intl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNodeGen;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 import java.util.ArrayList;
@@ -32,6 +43,10 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     @Child private JSToStringNode toStringNode;
     @Child private JSToLengthNode toLengthNode;
     @Child private TypeOfNode typeOfNode;
+    @Child private JSHasPropertyNode hasPropertyNode;
+    @Child private PropertyGetNode getLengthPropertyNode;
+    @Child private Node foreignGet;
+    @Child private JSForeignToJSTypeNode toJSType;
 
     private final JSContext context;
 
@@ -61,17 +76,17 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!isString(object)", "!isJSString(object)", "isUndefined(object)"})
+    @Specialization(guards = {"!isForeignObject(object)", "!isString(object)", "!isJSString(object)", "isUndefined(object)"})
     protected String[] doUndefined(DynamicObject object) {
         return new String[]{};
     }
 
-    @Specialization(guards = {"!isString(object)", "!isJSString(object)", "!isUndefined(object)"})
+    @Specialization(guards = {"!isForeignObject(object)", "!isString(object)", "!isJSString(object)", "!isUndefined(object)"})
     protected String[] doOtherType(Object object) {
 
         List<String> result = new ArrayList<>();
 
-        DynamicObject localeObj = toObject(object);
+        DynamicObject localeObj = (DynamicObject) toObject(object);
         int len = toLength(JSObject.get(localeObj, "length"));
         for (int k = 0; k < len; k++) {
             String pk = toStringVal(k);
@@ -91,12 +106,70 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
         return result.toArray(new String[]{});
     }
 
-    private DynamicObject toObject(Object obj) {
+    @Specialization(guards = {"isForeignObject(object)"})
+    protected String[] doForeignType(Object object) {
+
+        List<String> result = new ArrayList<>();
+
+        TruffleObject localeObj = toObject(object);
+        if (getLengthPropertyNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            getLengthPropertyNode = insert(PropertyGetNode.create("length", false, context));
+        }
+        int len = toLength(getLengthPropertyNode.getValue(localeObj));
+        for (int k = 0; k < len; k++) {
+            String pk = toStringVal(k);
+            if (hasProperty(localeObj, pk)) {
+                Object kValue = foreignGet(localeObj, pk);
+                String typeOfKValue = typeOf(kValue);
+                if (!typeOfKValue.equals("string") && !typeOfKValue.equals("object")) {
+                    throw Errors.createTypeError(Boundaries.stringFormat("String or Object expected in locales list, got %s", typeOfKValue));
+                }
+                String lt = toStringVal(kValue);
+                String canonicalizedLt = IntlUtil.validateAndCanonicalizeLanguageTag(lt);
+                if (!Boundaries.listContains(result, canonicalizedLt)) {
+                    Boundaries.listAdd(result, canonicalizedLt);
+                }
+            }
+        }
+        return result.toArray(new String[]{});
+    }
+
+    protected final boolean hasProperty(TruffleObject object, String key) {
+        if (hasPropertyNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            hasPropertyNode = insert(JSHasPropertyNode.create());
+        }
+        return hasPropertyNode.executeBoolean(object, key);
+    }
+
+    private Object foreignGet(TruffleObject thisObj, String key) {
+        if (foreignGet == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.foreignGet = insert(Message.READ.createNode());
+        }
+        try {
+            Object foreignResult = ForeignAccess.sendRead(foreignGet, thisObj, key);
+            return convertToJSType(foreignResult);
+        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            return Null.instance;
+        }
+    }
+
+    private Object convertToJSType(Object foreinResult) {
+        if (toJSType == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.toJSType = JSForeignToJSTypeNodeGen.create();
+        }
+        return toJSType.executeWithTarget(foreinResult);
+    }
+
+    private TruffleObject toObject(Object obj) {
         if (toObjectNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
         }
-        return (DynamicObject) toObjectNode.executeTruffleObject(obj);
+        return toObjectNode.executeTruffleObject(obj);
     }
 
     private String toStringVal(Object obj) {
