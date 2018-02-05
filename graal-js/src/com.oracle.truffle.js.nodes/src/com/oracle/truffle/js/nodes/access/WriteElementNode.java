@@ -357,7 +357,7 @@ public class WriteElementNode extends JSTargetableNode {
         protected ProxyWriteElementNode(JSContext context, boolean isStrict, boolean writeOwn) {
             super(context, isStrict, writeOwn);
             if (!writeOwn) {
-                this.proxySet = JSProxyPropertySetNode.create(context, false, isStrict);
+                this.proxySet = JSProxyPropertySetNode.create(context, isStrict);
             }
         }
 
@@ -379,7 +379,7 @@ public class WriteElementNode extends JSTargetableNode {
             if (writeOwn) {
                 createDataPropertyOrThrow(target, index, value);
             } else {
-                proxySet.executeWithReceiverAndValue(target, value, getToPropertyKeyNode().execute(index), isStrict);
+                proxySet.executeWithReceiverAndValue(target, target, value, getToPropertyKeyNode().execute(index), isStrict);
             }
         }
 
@@ -388,7 +388,7 @@ public class WriteElementNode extends JSTargetableNode {
             if (writeOwn) {
                 createDataPropertyOrThrow(target, index, value);
             } else {
-                proxySet.executeWithReceiverAndValueIntKey(target, value, index, isStrict);
+                proxySet.executeWithReceiverAndValueIntKey(target, target, value, index, isStrict);
             }
         }
 

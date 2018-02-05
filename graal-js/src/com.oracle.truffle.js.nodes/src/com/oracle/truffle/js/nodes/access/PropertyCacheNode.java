@@ -770,7 +770,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            throw new UnsupportedOperationException();
+            return (DynamicObject) thisObj;
         }
     }
 
