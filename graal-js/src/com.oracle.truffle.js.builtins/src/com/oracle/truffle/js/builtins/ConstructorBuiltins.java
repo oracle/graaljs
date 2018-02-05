@@ -1030,6 +1030,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             DynamicObject pluralRules = swapPrototype(JSPluralRules.create(getContextFromNewTarget(newTarget)), newTarget);
             return initializePluralRulesNode.executeInit(pluralRules, locales, options);
         }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getPluralRulesConstructor().getPrototype();
+        }
     }
 
     public abstract static class CallDateTimeFormatNode extends JSBuiltinNode {
