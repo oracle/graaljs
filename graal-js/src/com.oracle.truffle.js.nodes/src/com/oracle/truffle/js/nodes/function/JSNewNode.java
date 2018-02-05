@@ -235,7 +235,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         public DynamicObject createUserObjectAsObject(DynamicObject target, Object shape) {
             assert shape == Undefined.instance;
             // user-provided prototype is not an object
-            JSRealm realm = getFunctionRealm(target);
+            JSRealm realm = JSRuntime.getFunctionRealm(target, context.getRealm());
             return createUserObject(target, isGenerator ? realm.getInitialGeneratorObjectShape() : realm.getInitialUserObjectShape());
         }
 
@@ -248,17 +248,6 @@ public abstract class JSNewNode extends JavaScriptNode {
         @Specialization(guards = {"!isConstructor"})
         public Object throwNotConstructorFunctionTypeError(DynamicObject target, @SuppressWarnings("unused") Object shape) {
             throw Errors.createTypeErrorNotConstructible(target);
-        }
-
-        private static JSRealm getFunctionRealm(DynamicObject callable) {
-            Object target = callable;
-            while (JSProxy.isProxy(target)) {
-                if (JSProxy.isRevoked((DynamicObject) target)) {
-                    throw Errors.createTypeErrorProxyRevoked();
-                }
-                target = JSProxy.getTarget((DynamicObject) target);
-            }
-            return JSFunction.getRealm((DynamicObject) target);
         }
 
         @Override

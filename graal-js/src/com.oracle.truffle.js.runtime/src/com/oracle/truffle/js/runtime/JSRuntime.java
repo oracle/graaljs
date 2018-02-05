@@ -2385,7 +2385,7 @@ public final class JSRuntime {
                 }
             } else if (JSProxy.isProxy(dynObj)) {
                 if (JSProxy.getHandler(dynObj) == Null.instance) {
-                    throw Errors.createTypeError("non-null handler expected");
+                    throw Errors.createTypeErrorProxyRevoked();
                 }
                 return getFunctionRealm(JSProxy.getTarget(dynObj), currentRealm);
             }
