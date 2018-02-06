@@ -214,7 +214,7 @@ public final class TRegexDFAExecutorNode extends Node {
     }
 
     public boolean hasNext(VirtualFrame frame) {
-        return props.isForward() ? getIndex(frame) < getCurMaxIndex(frame) : getIndex(frame) > getCurMaxIndex(frame);
+        return props.isForward() ? Integer.compareUnsigned(getIndex(frame), getCurMaxIndex(frame)) < 0 : getIndex(frame) > getCurMaxIndex(frame);
     }
 
     public boolean atBegin(VirtualFrame frame) {
