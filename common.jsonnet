@@ -20,6 +20,7 @@
   deploy:    {targets: ['deploy']},
   gate:      {targets: ['gate']},
   postMerge: {targets: ['post-merge']},
+  bench:     {targets: ['bench', 'post-merge']},
 
   local common = {
     packages: {
@@ -39,15 +40,19 @@
   },
 
   linux: common + {
-    capabilities: ['linux', 'amd64']
+    capabilities: ['linux', 'amd64'],
   },
 
-  ol65:  common + {
-    capabilities: ['ol65', 'amd64']
+  ol65: common + {
+    capabilities: ['ol65', 'linux', 'amd64'],
+  },
+
+  x52: common + {
+    capabilities: ['no_frequency_scaling', 'tmpfs25g', 'x52', 'linux', 'amd64'],
   },
 
   sparc: common + {
-    capabilities: ['solaris', 'sparcv9']
+    capabilities: ['solaris', 'sparcv9'],
   },
 
   darwin: common + {
@@ -61,6 +66,6 @@
       // for compatibility with macOS El Capitan
       MACOSX_DEPLOYMENT_TARGET: '10.11',
     },
-    capabilities: ['darwin_sierra', 'amd64']
+    capabilities: ['darwin_sierra', 'amd64'],
   },
 }
