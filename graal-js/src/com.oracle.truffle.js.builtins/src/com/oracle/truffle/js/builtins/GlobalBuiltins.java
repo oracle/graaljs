@@ -15,12 +15,14 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.EnumSet;
 import java.util.Map;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -32,6 +34,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalDecodeURINodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalEncodeURINodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalExitNodeGen;
@@ -50,11 +53,9 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNode
 import com.oracle.truffle.js.builtins.helper.FloatParser;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
 import com.oracle.truffle.js.nodes.JSGuards;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeEvaluator;
 import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.RealmNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
@@ -209,31 +210,36 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
     }
 
-    public static final class ResolvePathNameNode extends JavaScriptBaseNode {
-        private final JSContext context;
-
-        public ResolvePathNameNode(JSContext context) {
-            this.context = context;
-        }
-
-        public String resolvePathName(String name) {
-            return resolvePathName(GlobalObjectNode.getGlobalObject(context), name);
-        }
-
-        public static String resolvePathName(JSContext context, String name) {
-            return resolvePathName(context.getRealm().getGlobalObject(), name);
-        }
-
-        @TruffleBoundary
-        private static String resolvePathName(DynamicObject globalObject, String name) {
-            File f = new File(name);
-            if (f.isAbsolute()) {
-                return name;
-            } else {
-                Object dir = JSObject.get(globalObject, "__DIR__");
-                return (dir == null || dir == Undefined.instance) ? name : Paths.get(dir.toString(), name).toString();
+    @TruffleBoundary
+    static File resolveRelativeFilePath(String path) {
+        File file = new File(path);
+        if (!file.isAbsolute() && !file.exists()) {
+            File f = tryResolveCallerRelativeFilePath(path);
+            if (f != null) {
+                return f;
             }
         }
+        return file;
+    }
+
+    private static File tryResolveCallerRelativeFilePath(String path) {
+        CallTarget caller = Truffle.getRuntime().getCallerFrame().getCallTarget();
+        if (caller instanceof RootCallTarget) {
+            SourceSection callerSourceSection = ((RootCallTarget) caller).getRootNode().getSourceSection();
+            if (callerSourceSection != null && callerSourceSection.isAvailable()) {
+                String callerPath = callerSourceSection.getSource().getPath();
+                if (callerPath != null) {
+                    File callerFile = new File(callerPath);
+                    if (callerFile.isAbsolute()) {
+                        File file = callerFile.toPath().resolveSibling(path).normalize().toFile();
+                        if (file.isFile()) {
+                            return file;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     public abstract static class JSLoadOperation extends JSGlobalOperation {
@@ -839,15 +845,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 }
             }
 
-            File file = new File(path);
+            File file = resolveRelativeFilePath(path);
             if (file.isFile()) {
                 source = sourceFromFileName(file.getPath());
-            } else if (!file.isAbsolute()) {
-                // TODO why do we need this? nashorn tests fail despite prepending __DIR__
-                file = resolveScriptRelativePath(file);
-                if (file.isFile()) {
-                    source = sourceFromFileName(file.getPath());
-                }
             }
 
             if (source == null) {
@@ -954,12 +954,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 }
             }
             return null;
-        }
-
-        private File resolveScriptRelativePath(File file) {
-            String fileName = file.getPath();
-            fileName = ResolvePathNameNode.resolvePathName(getContext(), fileName);
-            return new File(fileName);
         }
 
         @TruffleBoundary
@@ -1094,7 +1088,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (fileParam instanceof File) {
                 file = (File) fileParam;
             } else if (JSRuntime.isString(fileParam)) {
-                file = new File(ResolvePathNameNode.resolvePathName(getContext(), fileParam.toString()));
+                file = resolveRelativeFilePath(fileParam.toString());
             } else if (fileParam instanceof TruffleObject && JavaInterop.isJavaObject(File.class, (TruffleObject) fileParam)) {
                 file = JavaInterop.asJavaObject(File.class, (TruffleObject) fileParam);
             }
@@ -1140,7 +1134,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (fileParam instanceof File) {
                 file = (File) fileParam;
             } else if (JSRuntime.isString(fileParam)) {
-                file = new File(ResolvePathNameNode.resolvePathName(getContext(), fileParam.toString()));
+                file = resolveRelativeFilePath(fileParam.toString());
             }
 
             if (file == null || !file.isFile()) {
