@@ -112,8 +112,9 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
                 VirtualFrame scopeFrame = appendScopeFrame(frame);
                 try {
                     return block.execute(scopeFrame);
-                } finally {
+                } catch (YieldException e) {
                     setState(frame, scopeFrame.materialize());
+                    throw e;
                 }
             } else {
                 try {
