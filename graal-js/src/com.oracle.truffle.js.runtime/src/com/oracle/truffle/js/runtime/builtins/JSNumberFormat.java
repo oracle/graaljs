@@ -404,8 +404,12 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         if (currencyCode == null) {
             return 2;
         }
-        Currency currency = Currency.getInstance(currencyCode);
-        return (currency != null) ? currency.getDefaultFractionDigits() : 2;
+        try {
+            Currency currency = Currency.getInstance(currencyCode);
+            return (currency != null) ? currency.getDefaultFractionDigits() : 2;
+        } catch (IllegalArgumentException e) {
+            return 2;
+        }
     }
 
     // https://tc39.github.io/ecma402/#sec-iswellformedcurrencycode
