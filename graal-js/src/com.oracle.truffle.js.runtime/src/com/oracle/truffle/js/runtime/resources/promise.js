@@ -299,10 +299,6 @@ var promAll = function all(iterable) {
     if (!Internal.IsObject(C)) {
         throw new TypeError("cannot create promise from type '" + typeof C + "'");
     }
-    var S = C[Symbol.species];
-    if (S !== undefined && S !== null) {
-        C = S;
-    }
     var promiseCapability = NewPromiseCapability(C);
     try {
         var iterator = Internal.GetIterator(iterable);
@@ -315,13 +311,11 @@ var promAll = function all(iterable) {
     try {
         return PerformPromiseAll(iteratorRecord, C, promiseCapability);
     } catch (result) {
-        if (!iteratorRecord.done) {
-            if (iteratorRecord.iterator.return) {
-                iteratorRecord.iterator.return();
-            }
-            promiseCapability.reject(result);
-            return promiseCapability.promise;
+        if (!iteratorRecord.done && iteratorRecord.iterator.return) {
+            iteratorRecord.iterator.return();
         }
+        promiseCapability.reject(result);
+        return promiseCapability.promise;
     }
 };
 
@@ -336,8 +330,14 @@ function PerformPromiseAll(iteratorRecord, constructor, resultCapability) {
     var index = 0;
 
     while (true) {
-        var next = iteratorRecord.iterator.next();
-        if (next.done) {
+        try {
+            var next = iteratorRecord.iterator.next();
+            var done = next.done;
+        } catch (err) {
+            iteratorRecord.done = true;
+            throw err;
+        }
+        if (done) {
             iteratorRecord.done = true;
             remainingElementsCount.value--;
             if (remainingElementsCount.value === 0) {
@@ -346,7 +346,12 @@ function PerformPromiseAll(iteratorRecord, constructor, resultCapability) {
             }
             return resultCapability.promise;
         }
-        var nextValue = next.value;
+        try {
+            var nextValue = next.value;
+        } catch (err) {
+            iteratorRecord.done = true;
+            throw err;
+        }
         Internal.ArrayPush(values, undefined);
         var nextPromise = constructor.resolve(nextValue);
         var resolveElement = PromiseAllResolveElementFunctions(index, values, resultCapability, remainingElementsCount, {value:false});
