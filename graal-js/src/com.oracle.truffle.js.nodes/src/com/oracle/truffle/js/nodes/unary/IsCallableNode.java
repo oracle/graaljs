@@ -4,7 +4,6 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -35,7 +34,13 @@ public abstract class IsCallableNode extends JSUnaryNode {
     }
 
     @SuppressWarnings("unused")
-    @Fallback
+    @Specialization
+    protected static boolean doString(String string) {
+        return false;
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"!isJSFunction(other)", "!isJSProxy(other)"})
     protected static boolean doOther(Object other) {
         return false;
     }
