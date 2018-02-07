@@ -26,6 +26,7 @@
 package com.oracle.js.parser;
 
 import static com.oracle.js.parser.TokenType.ADD;
+import static com.oracle.js.parser.TokenType.BIGINT;
 import static com.oracle.js.parser.TokenType.BINARY_NUMBER;
 import static com.oracle.js.parser.TokenType.COMMENT;
 import static com.oracle.js.parser.TokenType.DECIMAL;
@@ -1273,6 +1274,26 @@ public class Lexer extends Scanner {
         }
     }
 
+    private static BigInteger valueOfBigInt(final String valueString) {
+        if (valueString.length() > 2 && valueString.charAt(0) == '0') {
+            switch (valueString.charAt(1)) {
+                case 'x':
+                case 'X':
+                    return new BigInteger(valueString.substring(2), 16);
+                case 'o':
+                case 'O':
+                    return new BigInteger(valueString.substring(2), 8);
+                case 'b':
+                case 'B':
+                    return new BigInteger(valueString.substring(2), 2);
+                default:
+                    return new BigInteger(valueString, 10);
+            }
+        } else {
+            return new BigInteger(valueString, 10);
+        }
+    }
+
     /**
      * Scan a number.
      */
@@ -1361,6 +1382,12 @@ public class Lexer extends Scanner {
 
                 type = FLOATING;
             }
+        }
+
+        if (ch0 == 'n' && type != FLOATING) {
+            // Skip n
+            skip(1);
+            type = BIGINT;
         }
 
         if (Character.isJavaIdentifierStart(ch0)) {
@@ -1900,6 +1927,8 @@ public class Lexer extends Scanner {
             return Lexer.valueOf(source.getString(start + 2, len - 2), 8); // number
         case BINARY_NUMBER:
             return Lexer.valueOf(source.getString(start + 2, len - 2), 2); // number
+        case BIGINT:
+            return Lexer.valueOfBigInt(source.getString(start, len - 1)); // number
         case FLOATING:
             final String str   = source.getString(start, len);
             final double value = Double.valueOf(str);

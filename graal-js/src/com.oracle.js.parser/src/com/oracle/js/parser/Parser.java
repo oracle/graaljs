@@ -2987,6 +2987,7 @@ loop:
         case HEXADECIMAL:
         case OCTAL:
         case BINARY_NUMBER:
+        case BIGINT:
         case FLOATING:
         case REGEX:
         case XML:
