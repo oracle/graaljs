@@ -326,6 +326,12 @@ public abstract class AbstractParser {
         return msg;
     }
 
+    protected final String expectMessage(final TokenType expected, final long errorToken) {
+        final String expectedName = expected.getNameOrType();
+        final String tokenString = Token.toString(source, errorToken);
+        return AbstractParser.message("expected", expectedName, tokenString);
+    }
+
     /**
      * Check current token and advance to the next token.
      *

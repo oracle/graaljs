@@ -1596,7 +1596,7 @@ loop:
      *
      * @param ident the identifier that is verified
      */
-    private void verifyIdent(final IdentNode ident) {
+    private void verifyIdent(final IdentNode ident, final boolean yield, final boolean await) {
         if (isES6()) {
             if (isEscapedIdent(ident)) {
                 if (isReservedWordSequence(ident.getName())) {
@@ -1615,10 +1615,26 @@ loop:
                 }
             }
         }
-        // It is a Syntax Error if this production has an [Await] parameter and StringValue of Identifier is "await".
-        if (ES8_ASYNC_FUNCTION && isES8() && inAsyncFunction() && AWAIT.getName().equals(ident.getName())) {
-            throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
+        // It is a Syntax Error if this production has a [Yield] parameter and StringValue of Identifier is "yield".
+        if (yield) {
+            if (ident.isTokenType(YIELD)) {
+                throw error(expectMessage(IDENT, ident.getToken()), ident.getToken());
+            } else if (YIELD.getName().equals(ident.getName())) {
+                throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
+            }
         }
+        // It is a Syntax Error if this production has an [Await] parameter and StringValue of Identifier is "await".
+        if (await) {
+            if (ident.isTokenType(AWAIT)) {
+                throw error(expectMessage(IDENT, ident.getToken()), ident.getToken());
+            } else if (AWAIT.getName().equals(ident.getName())) {
+                throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
+            }
+        }
+    }
+
+    private void verifyIdent(final IdentNode ident) {
+        verifyIdent(ident, inGeneratorFunction(), inAsyncFunction());
     }
 
     private static boolean isEscapedIdent(final IdentNode ident) {
@@ -1734,11 +1750,8 @@ loop:
             // Get starting token.
             final int  varLine  = line;
             final long varToken = Token.recast(token, varType);
-            // Get name of var.
-            if (type == YIELD && inGeneratorFunction()) {
-                expect(IDENT);
-            }
 
+            // Get name of var.
             final String contextString = "variable name";
             final Expression binding = bindingIdentifierOrPattern(contextString);
             final boolean isDestructuring = !(binding instanceof IdentNode);
@@ -1834,21 +1847,29 @@ loop:
     /**
      * IdentifierReference or LabelIdentifier.
      */
-    private IdentNode identifier() {
+    private IdentNode identifier(final boolean yield, final boolean await) {
         final IdentNode ident = getIdent();
-        verifyIdent(ident);
+        verifyIdent(ident, yield, await);
         return ident;
+    }
+
+    private IdentNode identifier() {
+        return identifier(inGeneratorFunction(), inAsyncFunction());
     }
 
     private boolean isBindingIdentifier() {
         return type == IDENT || type.isContextualKeyword() || isNonStrictModeIdent();
     }
 
-    private IdentNode bindingIdentifier(String contextString) {
+    private IdentNode bindingIdentifier(String contextString, final boolean yield, final boolean await) {
         final IdentNode ident = getIdent();
-        verifyIdent(ident);
+        verifyIdent(ident, yield, await);
         verifyStrictIdent(ident, contextString);
         return ident;
+    }
+
+    private IdentNode bindingIdentifier(String contextString) {
+        return bindingIdentifier(contextString, inGeneratorFunction(), inAsyncFunction());
     }
 
     private Expression bindingPattern() {
@@ -2518,7 +2539,7 @@ loop:
      *   yield [no LineTerminator here] * AssignmentExpression[?In, Yield]
      */
     private Expression yieldExpression(boolean noIn) {
-        assert inGeneratorFunction();
+        assert inGeneratorFunction() && isES6();
         // Capture YIELD token.
         long yieldToken = token;
         // YIELD tested in caller.
@@ -4025,17 +4046,9 @@ loop:
         IdentNode name = null;
 
         if (isBindingIdentifier()) {
-            if (type == YIELD && ((!isStatement && generator) || (isStatement && inGeneratorFunction()))) {
-                // 12.1.1 Early SyntaxError if:
-                // GeneratorExpression with BindingIdentifier yield
-                // HoistableDeclaration with BindingIdentifier yield in generator function body
-                expect(IDENT);
-            }
-            if (isAwait() && ((!isStatement && async) || (isStatement && inAsyncFunction()))) {
-                // 12.1.1, as above.
-                throw error(expectMessage(IDENT));
-            }
-            name = bindingIdentifier("function name");
+            boolean yield = (!isStatement && generator) || (isStatement && inGeneratorFunction());
+            boolean await = (!isStatement && async) || (isStatement && inAsyncFunction());
+            name = bindingIdentifier("function name", yield, await);
         } else if (isStatement) {
             // Nashorn extension: anonymous function statements.
             // Do not allow anonymous function statement if extensions
@@ -4275,7 +4288,7 @@ loop:
             final String contextString = "function parameter";
             IdentNode ident;
             if (isBindingIdentifier() || restParameter || !(ES6_DESTRUCTURING && isES6())) {
-                ident = bindingIdentifier(contextString);
+                ident = bindingIdentifier(contextString, yield, await);
 
                 if (restParameter) {
                     ident = ident.setIsRestParameter();
@@ -4982,7 +4995,7 @@ loop:
         // This method is protected so that subclass can get details
         // at assignment expression start point!
 
-        if (type == YIELD && ES6_GENERATOR_FUNCTION && inGeneratorFunction() && isES6()) {
+        if (type == YIELD && inGeneratorFunction()) {
             return yieldExpression(noIn);
         }
 
@@ -5878,7 +5891,7 @@ loop:
         expect(RBRACE);
 
         if (reservedWordToken != 0L && type != FROM) {
-            throw error(AbstractParser.message("expected", IDENT.getNameOrType(), Token.toString(source, reservedWordToken)), reservedWordToken);
+            throw error(expectMessage(IDENT, reservedWordToken), reservedWordToken);
         }
 
         return new ExportClauseNode(startToken, Token.descPosition(startToken), finish, exports);
@@ -5964,11 +5977,17 @@ loop:
     }
 
     private boolean inGeneratorFunction() {
+        if (!ES6_GENERATOR_FUNCTION) {
+            return false;
+        }
         ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
         return currentFunction != null && currentFunction.getKind() == FunctionNode.Kind.GENERATOR;
     }
 
     private boolean inAsyncFunction() {
+        if (!ES8_ASYNC_FUNCTION) {
+            return false;
+        }
         ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
         return currentFunction != null && currentFunction.isAsync();
     }
