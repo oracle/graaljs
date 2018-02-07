@@ -69,16 +69,11 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     public enum Interop implements BuiltinEnum<Interop> {
         isExecutable(1),
         isBoxed(1),
-        isBoxedPrimitive(1), // @deprecated
         isNull(1),
         hasSize(1),
-        hasSizeProperty(1), // @deprecated
         read(2),
-        readProperty(2), // @deprecated
         write(3),
-        writeProperty(3), // @deprecated
         unbox(1),
-        unboxValue(1), // @deprecated
         construct(1),
         execute(1),
         getSize(1),
@@ -122,23 +117,18 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
             case isExecutable:
                 return InteropIsExecutableNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case isBoxed:
-            case isBoxedPrimitive:
                 return InteropIsBoxedPrimitiveNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case isNull:
                 return InteropIsNullNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case isInstantiable:
                 return InteropIsInstantiableNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case hasSize:
-            case hasSizeProperty:
                 return InteropHasSizePropertyNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case read:
-            case readProperty:
                 return InteropReadPropertyNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case write:
-            case writeProperty:
                 return InteropWritePropertyNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
             case unbox:
-            case unboxValue:
                 return InteropUnboxValueNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case construct:
                 return InteropConstructNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
