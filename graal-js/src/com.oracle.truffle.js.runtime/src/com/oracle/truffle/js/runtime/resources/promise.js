@@ -396,14 +396,7 @@ var promRace = function race(iterable) {
     if (!Internal.IsObject(C)) {
         throw new TypeError("cannot race over this promise");
     }
-    var S = C[Symbol.species];
-
-    if (S !== undefined && S !== null) {
-        C = S;
-    }
-
     var promiseCapability = NewPromiseCapability(C);
-
     try {
         var iterator = Internal.GetIterator(iterable);
     } catch (e) {
@@ -415,13 +408,11 @@ var promRace = function race(iterable) {
     try {
         return PerformPromiseRaceLoop(iteratorRecord, promiseCapability, C);
     } catch (result) {
-        if (!iteratorRecord.done) {
-            if (iteratorRecord.iterator.return) {
-                iteratorRecord.iterator.return();
-            }
-            promiseCapability.reject(result);
-            return promiseCapability.promise;
+        if (!iteratorRecord.done && iteratorRecord.iterator.return) {
+            iteratorRecord.iterator.return();
         }
+        promiseCapability.reject(result);
+        return promiseCapability.promise;
     }
 };
 
@@ -430,13 +421,24 @@ var promRace = function race(iterable) {
  */
 function PerformPromiseRaceLoop(iteratorRecord, promiseCapability, C) {
     while (true) {
-        var next = iteratorRecord.iterator.next();
-
-        if (!next || next.done) {
+        try {
+            var next = iteratorRecord.iterator.next();
+            var done = next.done
+        } catch (err) {
+            iteratorRecord.done = true;
+            throw err;
+        }
+        if (done) {
             iteratorRecord.done = true;
             return promiseCapability.promise;
         }
-        var nextPromise = C.resolve(next.value);
+        try {
+            var nextValue = next.value;
+        } catch (err) {
+            iteratorRecord.done = true;
+            throw err;
+        }
+        var nextPromise = C.resolve(nextValue);
         nextPromise.then(promiseCapability.resolve, promiseCapability.reject);
     }
 }
