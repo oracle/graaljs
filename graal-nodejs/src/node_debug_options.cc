@@ -103,6 +103,7 @@ bool DebugOptions::ParseOption(const char* argv0, const std::string& option) {
   } else {
     return false;
   }
+  inspector_enabled_ = false; // V8 inspector is replaced by Graal Chrome Inspector
 
 #if !HAVE_INSPECTOR
   if (inspector_enabled_) {
