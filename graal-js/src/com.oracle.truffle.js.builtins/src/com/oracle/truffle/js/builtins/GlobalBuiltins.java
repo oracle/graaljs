@@ -19,6 +19,7 @@ import java.util.EnumSet;
 import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -210,8 +211,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
     }
 
-    @TruffleBoundary
     static File resolveRelativeFilePath(String path) {
+        CompilerAsserts.neverPartOfCompilation();
         File file = new File(path);
         if (!file.isAbsolute() && !file.exists()) {
             File f = tryResolveCallerRelativeFilePath(path);
@@ -223,6 +224,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
     }
 
     private static File tryResolveCallerRelativeFilePath(String path) {
+        CompilerAsserts.neverPartOfCompilation();
         CallTarget caller = Truffle.getRuntime().getCallerFrame().getCallTarget();
         if (caller instanceof RootCallTarget) {
             SourceSection callerSourceSection = ((RootCallTarget) caller).getRootNode().getSourceSection();
@@ -257,8 +259,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return loadNode.executeLoad(source, realm);
         }
 
-        @TruffleBoundary
         protected static ScriptNode loadStringImpl(JSContext ctxt, String name, String script) {
+            CompilerAsserts.neverPartOfCompilation();
             long startTime = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
             try {
                 return ((NodeEvaluator) ctxt.getEvaluator()).evalCompile(ctxt, script, name);
@@ -835,7 +837,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return runImpl(realmNode.execute(frame), source);
         }
 
-        @TruffleBoundary
+        @TruffleBoundary(transferToInterpreterOnException = false)
         private Source sourceFromPath(String path) {
             Source source = null;
             if (path.indexOf(':') != -1) {
@@ -882,12 +884,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = "isJSObject(scriptObj)")
         protected Object loadScriptObj(VirtualFrame frame, DynamicObject scriptObj,
-                        @Cached("create()") JSToStringNode fileNameToStringNode,
                         @Cached("create()") JSToStringNode sourceToStringNode) {
+            JSRealm realm = realmNode.execute(frame);
             if (JSObject.hasProperty(scriptObj, EVAL_OBJ_FILE_NAME) && JSObject.hasProperty(scriptObj, EVAL_OBJ_SOURCE)) {
                 Object fileNameObj = JSObject.get(scriptObj, EVAL_OBJ_FILE_NAME);
                 Object sourceObj = JSObject.get(scriptObj, EVAL_OBJ_SOURCE);
-                return evalImpl(frame, fileNameToStringNode.executeString(fileNameObj), sourceToStringNode.executeString(sourceObj));
+                return evalImpl(realm, toString1(fileNameObj), sourceToStringNode.executeString(sourceObj));
             } else {
                 throw cannotLoadScript(scriptObj);
             }
@@ -895,29 +897,29 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization
         protected Object loadMap(VirtualFrame frame, Map<?, ?> map,
-                        @Cached("create()") JSToStringNode fileNameToStringNode,
                         @Cached("create()") JSToStringNode sourceToStringNode) {
+            JSRealm realm = realmNode.execute(frame);
             if (Boundaries.mapContainsKey(map, EVAL_OBJ_FILE_NAME) && Boundaries.mapContainsKey(map, EVAL_OBJ_SOURCE)) {
                 Object fileNameObj = Boundaries.mapGet(map, EVAL_OBJ_FILE_NAME);
                 Object sourceObj = Boundaries.mapGet(map, EVAL_OBJ_SOURCE);
-                return evalImpl(frame, fileNameToStringNode.executeString(fileNameObj), sourceToStringNode.executeString(sourceObj));
+                return evalImpl(realm, toString1(fileNameObj), sourceToStringNode.executeString(sourceObj));
             } else {
                 throw cannotLoadScript(map);
             }
         }
 
         @Specialization(guards = "isFallback(fileName)")
-        protected Object loadConvertToString(VirtualFrame frame, Object fileName,
-                        @Cached("create()") JSToStringNode fileNameToStringNode) {
-            return loadString(frame, fileNameToStringNode.executeString(fileName));
+        protected Object loadConvertToString(VirtualFrame frame, Object fileName) {
+            return loadString(frame, toString1(fileName));
         }
 
         protected static boolean isFallback(Object value) {
             return !(JSGuards.isString(value) || value instanceof URL || value instanceof File || value instanceof Map || value instanceof TruffleObject || JSGuards.isJSObject(value));
         }
 
-        private Object evalImpl(VirtualFrame frame, String fileName, String source) {
-            return loadStringImpl(getContext(), fileName, source).run(realmNode.execute(frame));
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        private Object evalImpl(JSRealm realm, String fileName, String source) {
+            return loadStringImpl(getContext(), fileName, source).run(realm);
         }
 
         private Source sourceFromURI(String resource) {
@@ -956,7 +958,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return null;
         }
 
-        @TruffleBoundary
+        @TruffleBoundary(transferToInterpreterOnException = false)
         private static JSException cannotLoadScript(Object script) {
             return Errors.createTypeError("Cannot load script: " + JSRuntime.safeToString(script));
         }
@@ -973,13 +975,13 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected Object loadURL(URL thing, @SuppressWarnings("unused") Object[] args) {
-            return runImpl(createRealm(), sourceFromURL(thing));
+        protected Object loadURL(URL from, @SuppressWarnings("unused") Object[] args) {
+            return runImpl(createRealm(), sourceFromURL(from));
         }
 
-        @Specialization(guards = "!isJSObject(thing)")
-        protected Object load(Object thing, @SuppressWarnings("unused") Object[] args) {
-            String name = toString1(thing);
+        @Specialization(guards = "!isJSObject(from)")
+        protected Object load(Object from, @SuppressWarnings("unused") Object[] args) {
+            String name = toString1(from);
             return runImpl(createRealm(), sourceFromURL(toURL(name)));
         }
 
@@ -993,14 +995,14 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected Object load(DynamicObject thing, Object[] args, //
+        protected Object load(DynamicObject from, Object[] args,
                         @Cached("create()") JSToStringNode toString2Node) {
-            String name = toString1(JSObject.get(thing, "name"));
-            String script = toString2Node.executeString(JSObject.get(thing, "script"));
+            String name = toString1(JSObject.get(from, "name"));
+            String script = toString2Node.executeString(JSObject.get(from, "script"));
             return loadIntl(name, script, args);
         }
 
-        @TruffleBoundary
+        @TruffleBoundary(transferToInterpreterOnException = false)
         private Object loadIntl(String name, String script, Object[] args) {
             JSRealm childRealm = createRealm();
             ScriptNode scriptNode = loadStringImpl(childRealm.getContext(), name, script);
@@ -1069,6 +1071,32 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
     }
 
+    static File getFileFromArgument(Object arg) {
+        CompilerAsserts.neverPartOfCompilation();
+        String path;
+        File file = null;
+        if (JSRuntime.isString(arg)) {
+            path = arg.toString();
+        } else if (!JSTruffleOptions.SubstrateVM && JavaInterop.isJavaObject(arg) && JavaInterop.isJavaObject(File.class, (TruffleObject) arg)) {
+            file = JavaInterop.asJavaObject(File.class, (TruffleObject) arg);
+            path = file.getPath();
+        } else if (JSTruffleOptions.NashornJavaInterop && arg instanceof File) {
+            file = (File) arg;
+            path = file.getPath();
+        } else {
+            path = JSRuntime.toString(arg);
+        }
+
+        if (file == null) {
+            file = resolveRelativeFilePath(JSRuntime.toString(path));
+        }
+
+        if (!file.isFile()) {
+            throw Errors.createTypeError("Not a file: " + path);
+        }
+        return file;
+    }
+
     /**
      * Non-standard read() and readFully() to provide compatibility with V8 and Nashorn,
      * respectively.
@@ -1081,21 +1109,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        @TruffleBoundary
+        @TruffleBoundary(transferToInterpreterOnException = false)
         protected String read(Object fileParam) {
-            File file = null;
-
-            if (fileParam instanceof File) {
-                file = (File) fileParam;
-            } else if (JSRuntime.isString(fileParam)) {
-                file = resolveRelativeFilePath(fileParam.toString());
-            } else if (fileParam instanceof TruffleObject && JavaInterop.isJavaObject(File.class, (TruffleObject) fileParam)) {
-                file = JavaInterop.asJavaObject(File.class, (TruffleObject) fileParam);
-            }
-
-            if (file == null || !file.isFile()) {
-                throw Errors.createTypeError("Not a file: " + (file == null ? fileParam : file));
-            }
+            File file = getFileFromArgument(fileParam);
 
             try {
                 return readImpl(file);
@@ -1127,19 +1143,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        @TruffleBoundary
+        @TruffleBoundary(transferToInterpreterOnException = false)
         protected final DynamicObject readbuffer(Object fileParam) {
-            File file = null;
-
-            if (fileParam instanceof File) {
-                file = (File) fileParam;
-            } else if (JSRuntime.isString(fileParam)) {
-                file = resolveRelativeFilePath(fileParam.toString());
-            }
-
-            if (file == null || !file.isFile()) {
-                throw Errors.createTypeError("Not a file: " + (file == null ? fileParam : file));
-            }
+            File file = getFileFromArgument(fileParam);
 
             try {
                 final byte[] bytes = Files.readAllBytes(file.toPath());
