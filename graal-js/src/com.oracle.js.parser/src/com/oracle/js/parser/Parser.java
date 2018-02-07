@@ -1597,38 +1597,33 @@ loop:
      * @param ident the identifier that is verified
      */
     private void verifyIdent(final IdentNode ident, final boolean yield, final boolean await) {
+        // It is a Syntax Error if StringValue of IdentifierName is the same as the StringValue of any ReservedWord except for yield or await.
         if (isES6()) {
-            if (isEscapedIdent(ident)) {
-                if (isReservedWordSequence(ident.getName())) {
-                    throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
-                }
+            if (isEscapedIdent(ident) && isReservedWordSequence(ident.getName())) {
+                throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
             } else {
                 assert !isReservedWordSequence(ident.getName()) : ident.getName();
-            }
-
-            if (isModule) {
-                // in module mode, "await" is not an allowed identifier name
-                if (ident.isTokenType(AWAIT)) {
-                    throw error(AbstractParser.message("strict.name", ident.getName(), "Identifier"), ident.getToken());
-                } else if (AWAIT.getName().equals(ident.getName())) {
-                    throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
-                }
             }
         }
         // It is a Syntax Error if this production has a [Yield] parameter and StringValue of Identifier is "yield".
         if (yield) {
             if (ident.isTokenType(YIELD)) {
                 throw error(expectMessage(IDENT, ident.getToken()), ident.getToken());
-            } else if (YIELD.getName().equals(ident.getName())) {
+            } else if (isEscapedIdent(ident) && YIELD.getName().equals(ident.getName())) {
                 throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
+            } else {
+                assert !YIELD.getName().equals(ident.getName());
             }
         }
-        // It is a Syntax Error if this production has an [Await] parameter and StringValue of Identifier is "await".
-        if (await) {
+        // It is a Syntax Error if this production has an [Await] parameter or if the goal symbol
+        // of the syntactic grammar is Module and StringValue of Identifier is "await".
+        if (await || isModule) {
             if (ident.isTokenType(AWAIT)) {
                 throw error(expectMessage(IDENT, ident.getToken()), ident.getToken());
-            } else if (AWAIT.getName().equals(ident.getName())) {
+            } else if (isEscapedIdent(ident) && AWAIT.getName().equals(ident.getName())) {
                 throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
+            } else {
+                assert !AWAIT.getName().equals(ident.getName());
             }
         }
     }
@@ -1841,7 +1836,7 @@ loop:
     }
 
     private boolean isIdentifier() {
-        return type == IDENT || type.isContextualKeyword();
+        return type == IDENT || type.isContextualKeyword() || isNonStrictModeIdent();
     }
 
     /**
@@ -3390,7 +3385,7 @@ loop:
         }
 
         final boolean computed = type == LBRACKET;
-        if (type == IDENT) {
+        if (type == IDENT || (isIdentifier() && !(type == GET || type == SET))) {
             isIdentifier = true;
             propertyName = getIdent().setIsPropertyName();
         } else if (type == GET || type == SET) {
@@ -3417,7 +3412,7 @@ loop:
             Expression spread = new UnaryNode(spreadToken, assignmentExpression);
             return new PropertyNode(propertyToken, finish, spread, null, null, null, false, false, false, false);
         } else {
-            isIdentifier = type.isContextualKeyword() || isNonStrictModeIdent();
+            isIdentifier = false;
             propertyName = propertyName();
         }
 
@@ -5011,7 +5006,7 @@ loop:
         final int startLine = line;
         Expression exprLhs = conditionalExpression(noIn);
 
-        if (asyncArrow && exprLhs instanceof IdentNode && isIdentifier() && lookaheadIsArrow()) {
+        if (asyncArrow && exprLhs instanceof IdentNode && isBindingIdentifier() && lookaheadIsArrow()) {
             // async ident =>
             exprLhs = primaryExpression();
         }
