@@ -5,6 +5,9 @@
 package com.oracle.truffle.js.runtime.util;
 
 import com.ibm.icu.impl.ICUResourceBundle;
+import com.ibm.icu.text.CaseMap;
+import com.ibm.icu.text.CaseMap.Lower;
+import com.ibm.icu.text.CaseMap.Upper;
 import com.ibm.icu.text.NumberFormat;
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -12,6 +15,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.IllformedLocaleException;
 import java.util.LinkedList;
@@ -109,16 +113,30 @@ public class IntlUtil {
 
     @TruffleBoundary
     private static List<Locale> getAvailableLocales() {
+
         if (availableLocales == null) {
-            availableLocales = Arrays.asList(doGetAvailableLocales());
+            availableLocales = new ArrayList<>();
+
+            availableLocales.addAll(Arrays.asList(doGetAvailableLocales()));
+            // As of Unicode 10.0, the availableLocales list
+            // contains the elements "az", "lt", and "tr".
+            addIfMissing(availableLocales, Locale.forLanguageTag("az"));
+            addIfMissing(availableLocales, Locale.forLanguageTag("lt"));
+            addIfMissing(availableLocales, Locale.forLanguageTag("tr"));
         }
+
         return availableLocales;
+    }
+
+    private static void addIfMissing(List<Locale> locales, Locale locale) {
+        if (!locales.contains(locale)) {
+            locales.add(locale);
+        }
     }
 
     private static Locale[] doGetAvailableLocales() {
         if (JSTruffleOptions.SubstrateVM) {
             // GR-6347 (Locale.getAvailableLocales() support is missing in SVM)
-            // TODO: is still the safe thing to do just: return new Locale[]{Locale.ENGLISH};
             return javaLocalesAvailable;
         } else {
             return Locale.getAvailableLocales();
@@ -178,5 +196,31 @@ public class IntlUtil {
             }
         }
         return result.toString();
+    }
+
+    @TruffleBoundary
+    public static String toLowerCase(String s, String[] locales) {
+        Locale strippedLocale = selectedLocaleStripped(locales);
+        StringBuilder result = new StringBuilder();
+        Lower tr = CaseMap.toLower();
+        tr.apply(strippedLocale, s, result, null);
+        return result.toString();
+    }
+
+    @TruffleBoundary
+    public static String toUpperCase(String s, String[] locales) {
+        Locale strippedLocale = selectedLocaleStripped(locales);
+        StringBuilder result = new StringBuilder();
+        Upper tr = CaseMap.toUpper();
+        tr.apply(strippedLocale, s, result, null);
+        return result.toString();
+    }
+
+    @TruffleBoundary
+    public static Locale selectedLocaleStripped(String[] locales) {
+        String selectedTag = IntlUtil.selectedLocale(locales);
+        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
+        Locale strippedLocale = selectedLocale.stripExtensions();
+        return strippedLocale;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.js.builtins;
@@ -32,6 +32,8 @@ import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringInd
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringLastIndexOfNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringLocaleCompareNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringLocaleCompareIntlNodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToLocaleLowerCaseIntlNodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToLocaleUpperCaseIntlNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringMatchES5NodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringMatchNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringNormalizeNodeGen;
@@ -71,6 +73,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.intl.InitializeCollatorNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.nodes.intl.JSToCanonicalizedLocaleListNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -87,6 +90,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 /**
@@ -223,11 +227,19 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             case toLowerCase:
                 return JSStringToLowerCaseNodeGen.create(context, builtin, false, args().withThis().createArgumentNodes(context));
             case toLocaleLowerCase:
-                return JSStringToLowerCaseNodeGen.create(context, builtin, true, args().withThis().createArgumentNodes(context));
+                if (context.isOptionIntl402()) {
+                    return JSStringToLocaleLowerCaseIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                } else {
+                    return JSStringToLowerCaseNodeGen.create(context, builtin, true, args().withThis().createArgumentNodes(context));
+                }
             case toUpperCase:
                 return JSStringToUpperCaseNodeGen.create(context, builtin, false, args().withThis().createArgumentNodes(context));
             case toLocaleUpperCase:
-                return JSStringToUpperCaseNodeGen.create(context, builtin, true, args().withThis().createArgumentNodes(context));
+                if (context.isOptionIntl402()) {
+                    return JSStringToLocaleUpperCaseIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                } else {
+                    return JSStringToUpperCaseNodeGen.create(context, builtin, true, args().withThis().createArgumentNodes(context));
+                }
             case toString:
                 return JSStringToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case valueOf:
@@ -1434,6 +1446,63 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         private String toLowerCaseIntl(String thisStr) {
             return locale ? thisStr.toLowerCase() : thisStr.toLowerCase(Locale.US);
+        }
+    }
+
+    public abstract static class JSStringToLocaleXCaseIntl extends JSStringOperation {
+
+        @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
+
+        public JSStringToLocaleXCaseIntl(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
+        }
+
+        @Specialization
+        protected String toDesiredCase(Object thisObj, Object locale) {
+            requireObjectCoercible(thisObj);
+            String thisStr = toString(thisObj);
+            if (thisStr == null || thisStr.isEmpty()) {
+                return thisStr;
+            }
+            String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(locale);
+            return toXCase(thisStr, locales);
+        }
+
+        protected abstract String toXCase(String thisStr, String[] locales);
+    }
+
+    /**
+     * Implementation of the String.prototype.toLocaleLowerCase() method as specified by ECMAScript
+     * Internationalization API, 1.0.
+     * https://tc39.github.io/ecma402/#sup-string.prototype.tolocalelowercase
+     */
+    public abstract static class JSStringToLocaleLowerCaseIntlNode extends JSStringToLocaleXCaseIntl {
+
+        public JSStringToLocaleLowerCaseIntlNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Override
+        protected String toXCase(String thisStr, String[] locales) {
+            return IntlUtil.toLowerCase(thisStr, locales);
+        }
+    }
+
+    /**
+     * Implementation of the String.prototype.toLocaleUpperCase() method as specified by ECMAScript
+     * Internationalization API, 1.0.
+     * https://tc39.github.io/ecma402/#sup-string.prototype.tolocaleuppercase
+     */
+    public abstract static class JSStringToLocaleUpperCaseIntlNode extends JSStringToLocaleXCaseIntl {
+
+        public JSStringToLocaleUpperCaseIntlNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Override
+        protected String toXCase(String thisStr, String[] locales) {
+            return IntlUtil.toUpperCase(thisStr, locales);
         }
     }
 
