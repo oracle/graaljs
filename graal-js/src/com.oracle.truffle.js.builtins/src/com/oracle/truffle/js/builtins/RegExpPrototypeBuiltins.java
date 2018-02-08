@@ -44,6 +44,7 @@ import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -53,7 +54,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -590,6 +590,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSFunctionCallNode functionCallNode;
         @Child private JSToBooleanNode toBoolean1Node;
         @Child private JSToBooleanNode toBoolean2Node;
+        @Child private IsCallableNode isCallableNode;
 
         private final ConditionProfile unicodeProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile globalProfile = ConditionProfile.createBinaryProfile();
@@ -605,13 +606,14 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.getIndexNode = PropertyGetNode.create("index", false, context);
             this.toIntegerNode = JSToIntegerNode.create();
             this.toBoolean1Node = JSToBooleanNode.create();
+            this.isCallableNode = IsCallableNode.create();
         }
 
         @Specialization(guards = "isJSObject(rx)")
         protected String replace(DynamicObject rx, Object searchString, Object replaceValue,
                         @Cached("create()") JSToStringNode toString1Node) {
             String s = toString1Node.executeString(searchString);
-            boolean functionalReplace = JSFunction.isJSFunction(replaceValue);
+            boolean functionalReplace = isCallableNode.executeBoolean(replaceValue);
 
             String replaceString = null;
             DynamicObject replaceFunction = null;

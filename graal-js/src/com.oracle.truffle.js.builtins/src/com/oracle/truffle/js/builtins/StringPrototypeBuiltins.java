@@ -70,6 +70,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.intl.InitializeCollatorNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -900,6 +901,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSFunctionCallNode functionReplaceCallNode;
         @Child private JSToStringNode toString2Node;
         @Child private JSToStringNode toString3Node;
+        @Child private IsCallableNode isCallableNode;
         private final ConditionProfile functionalReplaceProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile replaceNecessaryProfile = ConditionProfile.createBinaryProfile();
         private final BranchProfile dollarProfile = BranchProfile.create();
@@ -925,13 +927,17 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toString3Node = insert(JSToStringNode.create());
             }
+            if (isCallableNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isCallableNode = insert(IsCallableNode.create());
+            }
             return builtinReplace(searchValue, replParam, thisObj);
         }
 
         private String builtinReplace(Object searchValue, Object replParam, Object o) {
             String string = toString(o);
             String searchString = toString2Node.executeString(searchValue);
-            boolean functionalReplace = JSFunction.isJSFunction(replParam);
+            boolean functionalReplace = isCallableNode.executeBoolean(replParam);
             String replaceString = null;
             DynamicObject replaceFunction = null;
             if (functionalReplaceProfile.profile(functionalReplace)) {
