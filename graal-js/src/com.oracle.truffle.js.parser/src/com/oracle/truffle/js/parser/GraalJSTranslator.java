@@ -7,11 +7,9 @@ package com.oracle.truffle.js.parser;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.oracle.js.parser.Lexer;
 import com.oracle.js.parser.Token;
@@ -47,8 +45,10 @@ import com.oracle.js.parser.ir.TryNode;
 import com.oracle.js.parser.ir.UnaryNode;
 import com.oracle.js.parser.ir.VarNode;
 import com.oracle.js.parser.ir.WithNode;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.Source;
@@ -122,11 +122,16 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor<LexicalContext, JavaScriptNode> {
-    private static final Object DEFAULT_VALUE = Undefined.instance;
     public static final JavaScriptNode[] EMPTY_NODE_ARRAY = new JavaScriptNode[0];
+    private static final JavaScriptNode ANY_JAVA_SCRIPT_NODE = new JavaScriptNode() {
+        @Override
+        public Object execute(VirtualFrame frame) {
+            CompilerAsserts.neverPartOfCompilation();
+            throw new UnsupportedOperationException();
+        }
+    };
 
     private Environment environment;
     protected final JSContext context;
@@ -442,86 +447,93 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         System.out.printf(new PrintVisitor(functionNode).toString());
     }
 
-    // ##### Async functions parse-time AST modifications
-
+    /**
+     * Async function parse-time AST modifications.
+     *
+     * @return instrumented function body
+     */
     private JavaScriptNode handleAsyncFunctionBody(JavaScriptNode body, JavaScriptNode parameterInit) {
         VarRef asyncContextVar = environment.findAsyncContextVar();
         VarRef asyncResultVar = environment.findAsyncResultVar();
         JSWriteFrameSlotNode writeResultNode = (JSWriteFrameSlotNode) asyncResultVar.createWriteNode(null);
         JSWriteFrameSlotNode writeContextNode = (JSWriteFrameSlotNode) asyncContextVar.createWriteNode(null);
-        return factory.createAsyncFunctionBody(context, parameterInit, instrumentAwaits(body), writeContextNode, writeResultNode);
+        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body, AwaitNode.class, currentFunction().getAwaitCount());
+        return factory.createAsyncFunctionBody(context, parameterInit, instrumentedBody, writeContextNode, writeResultNode);
     }
 
-    private JavaScriptNode instrumentAwaits(JavaScriptNode body) {
-        return instrumentResumableNode(body, AwaitNode.class, currentFunction().getAwaitsCount());
-    }
-
-    // ##### Generators parse-time AST modifications
-
+    /**
+     * Generator function parse-time AST modifications.
+     *
+     * @return instrumented function body
+     */
     private JavaScriptNode handleGeneratorBody(JavaScriptNode body) {
         VarRef yieldVar = environment.findYieldValueVar();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
         JSReadFrameSlotNode readYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
-        return factory.createGeneratorBody(context, instrumentResumableNode(body, YieldNode.class, currentFunction().getYieldCount()), writeYieldValueNode, readYieldResultNode);
+        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body, YieldNode.class, currentFunction().getYieldCount());
+        return factory.createGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode);
     }
 
-    private JavaScriptNode instrumentResumableNode(JavaScriptNode body, Class<? extends ResumableNode> klass, int count) {
+    /**
+     * Instrument code paths leading to yield and await expressions.
+     */
+    private JavaScriptNode instrumentSuspendNodes(JavaScriptNode body, Class<? extends ResumableNode> klass, int count) {
         if (count == 0) {
             return body;
         }
-        JavaScriptNode root = ReturnTargetNode.create(body);
-        root.adoptChildren();
-        List<? extends ResumableNode> yieldNodes = NodeUtil.findAllNodeInstances(root, klass);
-        Set<Node> processed = Collections.newSetFromMap(new IdentityHashMap<>());
-        for (ResumableNode yieldNode : yieldNodes) {
-            Node parent = (Node) yieldNode;
-            do {
-                assert !(parent instanceof GeneratorWrapperNode);
-                if (processed.contains(parent)) {
-                    // parent is already instrumented, we're done here
-                    // if it's a ResumableNode, it's already wrapped
-                    assert !(parent instanceof ResumableNode) || parent.getParent() instanceof GeneratorWrapperNode;
-                    break;
-                } else if (parent instanceof ResumableNode) {
-                    assert !(parent.getParent() instanceof GeneratorWrapperNode); // visited again?
-                    processed.add(parent);
+        JavaScriptNode newBody = (JavaScriptNode) instrumentSuspendHelper(body, klass, null);
+        assert newBody != null;
+        return newBody;
+    }
 
-                    JavaScriptNode wrapper = wrapResumableNode((ResumableNode) parent);
-                    parent.replace(wrapper, "generator yield wrapper");
-                    parent = wrapper;
-                } else if (parent instanceof ReturnNode || parent instanceof ReturnTargetNode || isSideEffectFreeUnaryOpNode(parent)) {
-                    // these are side-effect-free, skip
-                } else if (isSupportedDispersibleExpression(parent)) {
-                    // need to rescue side-effecting/non-repeatable expressions into temporaries
-                    // note that the expressions have to be extracted in evaluation order
-                    List<JavaScriptNode> extracted = new ArrayList<>();
-                    if (parent.isSafelyReplaceableBy(factory.createExprBlock(new JavaScriptNode[3]))) {
-                        // extraction is a destructive step; only attempt it if replace can succeed
-                        extractChildrenTo(parent, extracted);
-                    } else {
-                        // not assignable to field type (e.g. JSTargetableNode), ignore for now
-                    }
-                    if (!extracted.isEmpty()) { // only if there's actually something to rescue
-                        extracted.add((JavaScriptNode) parent);
-                        processed.addAll(extracted);
-                        JavaScriptNode exprBlock = factory.createExprBlock(extracted.toArray(EMPTY_NODE_ARRAY));
-                        parent.replace(exprBlock);
-                        parent = exprBlock;
-                        continue; // insert block node wrapper
-                    } else {
-                        // nothing to do, still mark it as processed
-                        processed.add(parent);
-                    }
-                } else {
-                    // if (parent instanceof JavaScriptNode):
-                    // unknown expression node type, either safe or unexpected (not handled)
-                    // else:
-                    // unsupported node type, skip over
-                }
-                parent = parent.getParent();
-            } while (parent != null);
+    private Node instrumentSuspendHelper(Node parent, Class<? extends ResumableNode> klass, Node grandparent) {
+        boolean hasSuspendChild = false;
+        for (Node child : getChildrenInExecutionOrder(parent)) {
+            Node newChild = instrumentSuspendHelper(child, klass, parent);
+            if (newChild != null) {
+                hasSuspendChild = true;
+                NodeUtil.replaceChild(parent, child, newChild);
+                assert !(child instanceof ResumableNode) || newChild instanceof GeneratorWrapperNode : "resumable node not wrapped: " + child;
+            }
         }
-        return ((ReturnTargetNode) root).getBody();
+        if (klass.isInstance(parent)) {
+            return wrapResumableNode((ResumableNode) parent);
+        } else if (!hasSuspendChild) {
+            return null;
+        }
+
+        if (parent instanceof ResumableNode) {
+            return wrapResumableNode((ResumableNode) parent);
+        } else if (parent instanceof ReturnNode || parent instanceof ReturnTargetNode || isSideEffectFreeUnaryOpNode(parent)) {
+            // these are side-effect-free, skip
+            return parent;
+        } else if (isSupportedDispersibleExpression(parent)) {
+            // need to rescue side-effecting/non-repeatable expressions into temporaries
+            // note that the expressions have to be extracted in evaluation order
+            List<JavaScriptNode> extracted = new ArrayList<>();
+            // we can only replace child fields assignable from JavaScriptNode
+            if (NodeUtil.isReplacementSafe(grandparent, parent, ANY_JAVA_SCRIPT_NODE)) {
+                // extraction is a destructive step; only attempt it if replace can succeed
+                extractChildrenTo(parent, extracted);
+            } else {
+                // not assignable to field type (e.g. JSTargetableNode), ignore for now
+            }
+            if (!extracted.isEmpty()) { // only if there's actually something to rescue
+                extracted.add((JavaScriptNode) parent);
+                // insert block node wrapper
+                JavaScriptNode exprBlock = factory.createExprBlock(extracted.toArray(EMPTY_NODE_ARRAY));
+                return wrapResumableNode((ResumableNode) exprBlock);
+            } else {
+                // nothing to do
+                return parent;
+            }
+        } else {
+            // if (parent instanceof JavaScriptNode):
+            // unknown expression node type, either safe or unexpected (not handled)
+            // else:
+            // unsupported node type, skip over
+            return parent;
+        }
     }
 
     private JavaScriptNode wrapResumableNode(ResumableNode parent) {
@@ -554,7 +566,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return node instanceof ObjectLiteralMemberNode || node instanceof AbstractFunctionArgumentsNode || node instanceof ArrayLiteralNode.SpreadArrayNode || node instanceof SpreadArgumentNode;
     }
 
-    private void extractChildTo(Node child, List<JavaScriptNode> extracted) {
+    private void extractChildTo(Node child, Node parent, List<JavaScriptNode> extracted) {
         if (isStatelessExpression(child)) {
             return;
         }
@@ -564,10 +576,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             String identifier = ":generatorexpr:" + environment.getFunctionFrameDescriptor().getSize();
             LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
             JavaScriptNode writeState = factory.createLazyWriteFrameSlot(identifier, (JavaScriptNode) child);
-            if (child.isSafelyReplaceableBy(writeState)) {
+            if (NodeUtil.isReplacementSafe(parent, child, readState)) {
                 environment.getFunctionFrameDescriptor().addFrameSlot(identifier);
                 extracted.add(writeState);
-                child.replace(readState, "generator saved expression result");
+                // replace child with saved expression result
+                boolean ok = NodeUtil.replaceChild(parent, child, readState);
+                assert ok;
             } else {
                 // not assignable to field type (e.g. JSTargetableNode), cannot extract
                 // but try to extract grandchildren instead, e.g.:
@@ -586,7 +600,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private void extractChildrenTo(Node parent, List<JavaScriptNode> extracted) {
         for (Node child : getChildrenInExecutionOrder(parent)) {
-            extractChildTo(child, extracted);
+            extractChildTo(child, parent, extracted);
         }
     }
 
@@ -1725,7 +1739,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
         JavaScriptNode whileNode = createWhileDo(condition, wrappedBody);
         JavaScriptNode wrappedWhile = factory.createIteratorCloseWrapper(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode());
-        JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(DEFAULT_VALUE));
+        JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
         wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
         return createBlock(iteratorInit, wrappedWhile);
     }
@@ -1772,7 +1786,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode wrappedWhile = factory.createAsyncIteratorCloseWrapper(context,
                         jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(), asyncContextNode,
                         asyncResultNode);
-        JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(DEFAULT_VALUE));
+        JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
         wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
         return createBlock(iteratorInit, wrappedWhile);
     }

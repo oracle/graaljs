@@ -19,6 +19,7 @@ public final class GeneratorWrapperNode extends JavaScriptNode implements Repeat
     @Child private WriteNode writeStateNode;
 
     private GeneratorWrapperNode(JavaScriptNode childNode, JavaScriptNode stateNode, WriteNode writeStateNode) {
+        assert !(childNode instanceof GeneratorWrapperNode);
         this.childNode = childNode;
         this.stateNode = stateNode;
         this.writeStateNode = writeStateNode;

@@ -252,7 +252,7 @@ public class FunctionEnvironment extends Environment {
         returnNodeCount++;
     }
 
-    public int getAwaitsCount() {
+    public int getAwaitCount() {
         return awaitCount;
     }
 
