@@ -6,11 +6,13 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
+import com.oracle.truffle.js.nodes.access.LevelScopeFrameNode;
 
 public abstract class IterationScopeNode extends JavaScriptNode {
 
@@ -38,14 +40,21 @@ public abstract class IterationScopeNode extends JavaScriptNode {
         @Override
         public VirtualFrame execute(VirtualFrame frame) {
             VirtualFrame nextFrame = Truffle.getRuntime().createVirtualFrame(frame.getArguments(), frameDescriptor);
-            executeCopy(nextFrame, frame);
+            writes[0].executeWithFrame(nextFrame, reads[0].execute(frame)); // copy parent slot
+            copySlots(nextFrame, frame);
             return nextFrame;
         }
 
-        @ExplodeLoop
         @Override
         public void executeCopy(VirtualFrame nextFrame, VirtualFrame frame) {
-            for (int i = 0; i < reads.length; i++) {
+            // no need to copy effectively final parent frame slot
+            assert FrameUtil.getObjectSafe(nextFrame, LevelScopeFrameNode.PARENT_SCOPE_SLOT) == FrameUtil.getObjectSafe(frame, LevelScopeFrameNode.PARENT_SCOPE_SLOT);
+            copySlots(nextFrame, frame);
+        }
+
+        @ExplodeLoop
+        private void copySlots(VirtualFrame nextFrame, VirtualFrame frame) {
+            for (int i = 1; i < reads.length; i++) {
                 writes[i].executeWithFrame(nextFrame, reads[i].execute(frame));
             }
         }

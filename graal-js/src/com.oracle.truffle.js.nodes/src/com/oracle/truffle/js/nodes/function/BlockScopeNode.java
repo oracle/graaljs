@@ -15,6 +15,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.LevelScopeFrameNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.YieldException;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class BlockScopeNode extends JavaScriptNode implements ResumableNode, RepeatingNode {
@@ -118,7 +119,7 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
                 }
             } else {
                 try {
-                    return block.execute((VirtualFrame) savedScopeFrame);
+                    return block.execute(JSFrameUtil.castMaterializedFrame(savedScopeFrame));
                 } catch (YieldException e) {
                     setState(frame, savedScopeFrame);
                     throw e;

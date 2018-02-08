@@ -25,6 +25,7 @@ import com.oracle.truffle.js.nodes.arguments.AccessFunctionNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode.SpecializedNewObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.UserScriptException;
@@ -64,7 +65,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
             Object value = frame.getArguments()[1];
             GeneratorResumeMethod method = (GeneratorResumeMethod) frame.getArguments()[2];
 
-            VirtualFrame generatorFrame = (VirtualFrame) getGeneratorContext.getValue(generatorObject);
+            VirtualFrame generatorFrame = JSFrameUtil.castMaterializedFrame(getGeneratorContext.getValue(generatorObject));
             GeneratorState generatorState = generatorValidate(generatorObject);
 
             if (method == GeneratorResumeMethod.Next) {

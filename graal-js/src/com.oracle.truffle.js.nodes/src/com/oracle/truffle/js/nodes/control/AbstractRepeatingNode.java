@@ -25,7 +25,11 @@ abstract class AbstractRepeatingNode extends JavaScriptNode implements Repeating
     }
 
     protected final boolean executeCondition(VirtualFrame frame) {
-        return conditionProfile.profile(WhileNode.executeConditionAsBoolean(frame, conditionNode));
+        return conditionProfile.profile(StatementNode.executeConditionAsBoolean(frame, conditionNode));
+    }
+
+    protected final boolean executeConditionNoProfile(VirtualFrame frame) {
+        return StatementNode.executeConditionAsBoolean(frame, conditionNode);
     }
 
     protected final void executeBody(VirtualFrame frame) {
