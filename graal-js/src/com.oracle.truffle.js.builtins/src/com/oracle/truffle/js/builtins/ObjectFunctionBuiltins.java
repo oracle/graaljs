@@ -248,18 +248,38 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
+    @ImportStatic(JSInteropUtil.class)
     public abstract static class ObjectGetOwnPropertyNamesOrSymbolsNode extends ObjectOperation {
-        private final boolean symbols;
+        protected final boolean symbols;
 
         public ObjectGetOwnPropertyNamesOrSymbolsNode(JSContext context, JSBuiltin builtin, boolean symbols) {
             super(context, builtin);
             this.symbols = symbols;
         }
 
-        @Specialization
-        protected DynamicObject getOwnPropertyNamesOrSymbols(Object thisObj) {
+        @Specialization(guards = "isJSObject(thisObj)")
+        protected DynamicObject getJSObject(DynamicObject thisObj) {
+            return JSRuntime.getOwnPropertyKeys(getContext(), thisObj, symbols);
+        }
+
+        @Specialization(guards = {"!isJSObject(thisObj)", "!isForeignObject(thisObj)"})
+        protected DynamicObject getDefault(Object thisObj) {
             DynamicObject object = toOrAsObject(thisObj);
             return JSRuntime.getOwnPropertyKeys(getContext(), object, symbols);
+        }
+
+        @Specialization(guards = {"isForeignObject(thisObj)", "symbols"})
+        protected DynamicObject getForeignObjectSymbols(@SuppressWarnings("unused") TruffleObject thisObj) {
+            // TrufleObjects can never have symbols.
+            return JSArray.createConstantEmptyArray(getContext());
+        }
+
+        @Specialization(guards = {"isForeignObject(thisObj)", "!symbols"})
+        protected DynamicObject getForeignObjectNames(TruffleObject thisObj,
+                        @Cached("createKeys()") Node keysNode,
+                        @Cached("createRead()") Node readNode,
+                        @Cached("createGetSize()") Node getSizeNode) {
+            return JSArray.createConstant(getContext(), Boundaries.listToArray(JSInteropNodeUtil.keys(thisObj, keysNode, readNode, getSizeNode, true)));
         }
     }
 
