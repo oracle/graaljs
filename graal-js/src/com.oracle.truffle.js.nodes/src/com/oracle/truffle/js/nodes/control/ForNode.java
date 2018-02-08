@@ -4,15 +4,23 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.IterationScopeNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -85,6 +93,20 @@ public final class ForNode extends StatementNode implements ResumableNode {
             this.copy = copy;
             this.isFirstNode = isFirstNode;
             this.setNotFirstNode = setNotFirstNode;
+        }
+
+        @Override
+        public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+            if (materializedTags.contains(ControlFlowStatementRootTag.class) || materializedTags.contains(ControlFlowBlockStatementTag.class) ||
+                            materializedTags.contains(ControlFlowConditionStatementTag.class)) {
+                JavaScriptNode newBody = JSTaggedExecutionNode.createFor(bodyNode, ControlFlowBlockStatementTag.class);
+                JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(conditionNode, ControlFlowConditionStatementTag.class);
+                JavaScriptNode newLoop = new ForRepeatingNode(newCondition, newBody, cloneUninitialized(modify), cloneUninitialized(copy), isFirstNode, cloneUninitialized(setNotFirstNode));
+                transferSourceSection(this, newLoop);
+                return newLoop;
+            } else {
+                return this;
+            }
         }
 
         @Override

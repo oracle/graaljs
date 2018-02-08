@@ -24,9 +24,9 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantDoubleNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags.BinaryOperationTag;
-import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
@@ -52,27 +52,28 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == BinaryOperationTag.class) {
+        if (tag == BinaryExpressionTag.class) {
             return true;
+        } else {
+            return super.hasTag(tag);
         }
-        return super.hasTag(tag);
     }
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
         NodeInfo annotation = getClass().getAnnotation(NodeInfo.class);
         descriptor.addProperty("operator", annotation.shortName());
         return descriptor;
     }
 
     @Override
-    public InstrumentableNode materializeSyntaxNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(BinaryOperationTag.class)) {
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(BinaryExpressionTag.class)) {
             JSConstantNode constantNode = isInt ? JSConstantIntegerNode.create(rightInt) : JSConstantDoubleNode.create(rightDouble);
             JavaScriptNode node = JSAddNodeGen.create(truncate, getOperand(), constantNode);
-            node.setSourceSection(getSourceSection());
-            constantNode.setSourceSection(getSourceSection());
+            transferSourceSection(this, constantNode);
+            transferSourceSection(this, node);
             return node;
         } else {
             return this;

@@ -17,7 +17,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags.EvalCallTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -45,8 +45,9 @@ public abstract class EvalNode extends JavaScriptNode {
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == EvalCallTag.class) {
             return true;
+        } else {
+            return super.hasTag(tag);
         }
-        return super.hasTag(tag);
     }
 
     @Specialization(guards = {"!isEvalOverridden(evalFunction)"})

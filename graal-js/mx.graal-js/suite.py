@@ -8,7 +8,7 @@ suite = {
         {
            "name" : "tools",
            "subdir" : True,
-           "version" : "8c629b91f1882a6d7e482832f87f99a9071a3a23",
+           "version" : "9ddcf72ec678787e245e8a202c5f064589d22951",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -270,19 +270,18 @@ suite = {
       "workingSets" : "Truffle,JavaScript",
     },
 
-    "com.oracle.truffle.js.jalangilike" : {
+    "com.oracle.truffle.js.test.instrumentation" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.js.shell",
-        "mx:JUNIT",        
+        "mx:JUNIT",
         "graaljs",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js.runtime",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,JavaScript",
-    },    
+    },
 
     "com.oracle.truffle.js.scriptengine" : {
       "subDir" : "src",
@@ -365,7 +364,7 @@ suite = {
 
     "GRAALJS_LAUNCHER" : {
       "subDir" : "src",
-      "dependencies" : ["com.oracle.truffle.js.shell", "com.oracle.truffle.js.jalangilike"],
+      "dependencies" : ["com.oracle.truffle.js.shell"],
       "mainClass" : "com.oracle.truffle.js.shell.JSLauncher",
       "distDependencies" : ["sdk:LAUNCHER_COMMON"],
       "description" : "Graal JavaScript Launcher",
@@ -435,7 +434,7 @@ suite = {
     },
 
     "TRUFFLE_JS_TESTS" : {
-      "dependencies" : ["com.oracle.truffle.js.test.external"],
+      "dependencies" : ["com.oracle.truffle.js.test.external", "com.oracle.truffle.js.test.instrumentation"],
       "exclude" : [
         "mx:HAMCREST",
         "mx:JUNIT",

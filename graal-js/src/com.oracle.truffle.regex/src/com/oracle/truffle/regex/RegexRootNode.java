@@ -6,13 +6,16 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
-@Instrumentable(factory = RegexRootNodeWrapper.class)
-public abstract class RegexRootNode extends RootNode {
+@GenerateWrapper
+public abstract class RegexRootNode extends RootNode implements InstrumentableNode {
 
     private static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = new FrameDescriptor();
 
@@ -42,8 +45,18 @@ public abstract class RegexRootNode extends RootNode {
     }
 
     @Override
-    protected boolean isTaggedWith(Class<?> tag) {
+    public boolean hasTag(Class<? extends Tag> tag) {
         return tag == StandardTags.RootTag.class;
+    }
+
+    @Override
+    public boolean isInstrumentable() {
+        return super.isInstrumentable();
+    }
+
+    @Override
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new RegexRootNodeWrapper(this, probe);
     }
 
     @Override

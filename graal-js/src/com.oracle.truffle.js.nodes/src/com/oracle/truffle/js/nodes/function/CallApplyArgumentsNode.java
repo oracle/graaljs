@@ -35,7 +35,7 @@ public class CallApplyArgumentsNode extends JavaScriptNode {
 
     private void replaceWithOrdinaryCall() {
         atomic(() -> {
-            NodeUtil.forEachChild(callNode.argumentsNode, node -> {
+            NodeUtil.forEachChild(callNode.getArgumentsNode(), node -> {
                 if (node instanceof AccessArgumentsArrayDirectlyNode) {
                     ((AccessArgumentsArrayDirectlyNode) node).replaceWithDefaultArguments();
                 }

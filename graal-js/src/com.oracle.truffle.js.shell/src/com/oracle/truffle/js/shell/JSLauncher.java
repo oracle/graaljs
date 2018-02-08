@@ -48,7 +48,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
         return "js";
     }
 
-    protected void preEval(Context context) {
+    protected void preEval(@SuppressWarnings("unused") Context context) {
     }
 
     @Override

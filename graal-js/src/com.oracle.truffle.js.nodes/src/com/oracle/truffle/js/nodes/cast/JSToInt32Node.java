@@ -15,10 +15,10 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode.JSStringToNumberWithTrimNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
-import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags.UnaryOperationTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -38,15 +38,16 @@ public abstract class JSToInt32Node extends JSUnaryNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == UnaryOperationTag.class) {
+        if (tag == UnaryExpressionTag.class) {
             return true;
+        } else {
+            return super.hasTag(tag);
         }
-        return super.hasTag(tag);
     }
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
         NodeInfo annotation = getClass().getAnnotation(NodeInfo.class);
         descriptor.addProperty("operator", annotation.shortName());
         return descriptor;

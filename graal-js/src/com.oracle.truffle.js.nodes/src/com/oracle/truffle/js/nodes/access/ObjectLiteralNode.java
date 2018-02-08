@@ -24,9 +24,9 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
 import com.oracle.truffle.js.nodes.function.FunctionNameHolder;
 import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
-import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -43,16 +43,17 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == LiteralTag.class) {
+        if (tag == LiteralExpressionTag.class) {
             return true;
+        } else {
+            return super.hasTag(tag);
         }
-        return super.hasTag(tag);
     }
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
-        descriptor.addProperty("type", LiteralTag.Type.ObjectLiteral.name());
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
+        descriptor.addProperty("type", LiteralExpressionTag.Type.ObjectLiteral.name());
         return descriptor;
     }
 

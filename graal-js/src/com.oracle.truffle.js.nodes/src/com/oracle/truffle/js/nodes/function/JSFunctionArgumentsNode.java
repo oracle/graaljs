@@ -135,16 +135,16 @@ class JSFunctionOneConstantArgumentNode extends AbstractFunctionArgumentsNode {
 
     @Override
     public Object[] executeFillObjectArray(VirtualFrame frame, Object[] arguments, int delta) {
-        arguments[delta] = getValue();
+        arguments[delta] = value;
         return arguments;
     }
 
     @Override
     protected AbstractFunctionArgumentsNode copyUninitialized() {
-        return new JSFunctionOneConstantArgumentNode(getValue());
+        return new JSFunctionOneConstantArgumentNode(value);
     }
 
-    public Object getValue() {
+    public final Object getValue() {
         return value;
     }
 }

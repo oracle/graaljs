@@ -14,9 +14,9 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
-import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags.PropertyWriteTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public class WritePropertyNode extends JSTargetableNode implements WriteNode {
@@ -46,30 +46,31 @@ public class WritePropertyNode extends JSTargetableNode implements WriteNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == JSSpecificTags.PropertyWriteTag.class) {
+        if (tag == WritePropertyExpressionTag.class) {
             return true;
+        } else {
+            return super.hasTag(tag);
         }
-        return super.hasTag(tag);
     }
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
         descriptor.addProperty("key", getKey());
         return descriptor;
     }
 
     @Override
-    public InstrumentableNode materializeSyntaxNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(PropertyWriteTag.class)) {
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(WritePropertyExpressionTag.class)) {
             // if we have no source section, we must assign one to be discoverable at
             // instrumentation time.
             if (targetNode.getSourceSection() == null) {
-                JavaScriptNode clonedTarget = (JavaScriptNode) targetNode.materializeSyntaxNodes(materializedTags);
-                JavaScriptNode clonedRhs = (JavaScriptNode) rhsNode.materializeSyntaxNodes(materializedTags);
+                JavaScriptNode clonedTarget = (JavaScriptNode) targetNode.materializeInstrumentableNodes(materializedTags);
+                JavaScriptNode clonedRhs = (JavaScriptNode) rhsNode.materializeInstrumentableNodes(materializedTags);
                 WritePropertyNode cloneUninitialized = WritePropertyNode.create(clonedTarget, cache.getKey(), clonedRhs, cache.getContext(), cache.isStrict());
-                cloneUninitialized.setSourceSection(getSourceSection());
-                cloneUninitialized.targetNode.setSourceSection(getSourceSection());
+                transferSourceSection(this, cloneUninitialized);
+                transferSourceSection(this, cloneUninitialized.targetNode);
                 return cloneUninitialized;
             }
         }

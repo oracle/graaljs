@@ -20,7 +20,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
@@ -37,8 +36,7 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
 
     private static final int ROOT_TAG_BIT = 1 << 31;
     private static final int ALWAYS_HALT_TAG_BIT = 1 << 30;
-    private static final int CONDITION_EXPRESSION_TAG_BIT = 1 << 29;
-    private static final int CHAR_INDEX_MASK = ~(ROOT_TAG_BIT | ALWAYS_HALT_TAG_BIT | CONDITION_EXPRESSION_TAG_BIT);
+    private static final int CHAR_INDEX_MASK = ~(ROOT_TAG_BIT | ALWAYS_HALT_TAG_BIT);
 
     protected static final String INTERMEDIATE_VALUE = "(intermediate value)";
 
@@ -291,19 +289,12 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
             return (charIndex & ROOT_TAG_BIT) != 0;
         } else if (tag == DebuggerTags.AlwaysHalt.class) {
             return (charIndex & ALWAYS_HALT_TAG_BIT) != 0;
-        } else if (tag == JSSpecificTags.ConditionalExpressionTag.class) {
-            return (charIndex & CONDITION_EXPRESSION_TAG_BIT) != 0;
         } else if (tag == StandardTags.ExpressionTag.class) {
-            // TODO(db) double-check this
+            // Non-expression nodes override and return false.
             return true;
         } else {
             return false;
         }
-    }
-
-    @Override
-    public boolean isTaggedWith(Class<?> tag) {
-        throw new AssertionError("This is deprecated");
     }
 
     public final void addStatementTag() {
@@ -320,10 +311,6 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
 
     public final void addAlwaysHaltTag() {
         charIndex |= ALWAYS_HALT_TAG_BIT;
-    }
-
-    public final void addConditionExpressionTag() {
-        charIndex |= CONDITION_EXPRESSION_TAG_BIT;
     }
 
     protected JavaScriptNode copyUninitialized() {
@@ -360,8 +347,11 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         }
     }
 
+    public void removeSourceSection() {
+        this.source = null;
+    }
+
     public String expressionToString() {
         return null;
     }
-
 }

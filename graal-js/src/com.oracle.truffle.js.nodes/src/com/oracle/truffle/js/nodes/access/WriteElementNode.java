@@ -11,11 +11,14 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArr
 import java.lang.reflect.Array;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -38,7 +41,9 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags.ElementWriteTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -119,11 +124,24 @@ public class WriteElementNode extends JSTargetableNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ElementWriteTag.class) {
+        if (tag == WriteElementExpressionTag.class) {
             return true;
         } else {
             return super.hasTag(tag);
         }
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(ReadElementExpressionTag.class)) {
+            JavaScriptNode clonedTarget = targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createFor(targetNode, ExpressionTag.class);
+            JavaScriptNode clonedIndex = indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createFor(indexNode, ExpressionTag.class);
+            JavaScriptNode clonedValue = valueNode.hasSourceSection() ? valueNode : JSTaggedExecutionNode.createFor(valueNode, ExpressionTag.class);
+            JavaScriptNode cloned = WriteElementNode.create(clonedTarget, clonedIndex, clonedValue, getContext(), isStrict(), typeCacheNode.writeOwn);
+            transferSourceSection(this, cloned);
+            return cloned;
+        }
+        return this;
     }
 
     @Override

@@ -11,6 +11,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -19,9 +21,9 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.EmptyNode;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
-import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -34,9 +36,14 @@ import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 
+@GenerateWrapper
 public abstract class ArrayLiteralNode extends JavaScriptNode {
 
     protected final JSContext context;
+
+    public ArrayLiteralNode(ArrayLiteralNode copy) {
+        this.context = copy.context;
+    }
 
     protected ArrayLiteralNode(JSContext context) {
         this.context = context;
@@ -49,17 +56,23 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == JSSpecificTags.LiteralTag.class) {
+        if (tag == LiteralExpressionTag.class) {
             return true;
+        } else {
+            return super.hasTag(tag);
         }
-        return super.hasTag(tag);
     }
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
-        descriptor.addProperty("type", LiteralTag.Type.ArrayLiteral.name());
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
+        descriptor.addProperty("type", LiteralExpressionTag.Type.ArrayLiteral.name());
         return descriptor;
+    }
+
+    @Override
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new ArrayLiteralNodeWrapper(this, this, probe);
     }
 
     @Override

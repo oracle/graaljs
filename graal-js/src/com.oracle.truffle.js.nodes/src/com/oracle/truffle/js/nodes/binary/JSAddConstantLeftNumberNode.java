@@ -19,11 +19,12 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
+import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantDoubleNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags.BinaryOperationTag;
-import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
@@ -46,23 +47,24 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == BinaryOperationTag.class) {
+        if (tag == BinaryExpressionTag.class) {
             return true;
+        } else {
+            return super.hasTag(tag);
         }
-        return super.hasTag(tag);
     }
 
     @Override
-    public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
-        NodeInfo annotation = getClass().getAnnotation(NodeInfo.class);
-        descriptor.addProperty("operator", annotation.shortName());
-        return descriptor;
-    }
-
-    @Override
-    public InstrumentableNode materializeSyntaxNodes(Set<Class<? extends Tag>> materializedTags) {
-        throw new UnsupportedOperationException("TODO");
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(BinaryExpressionTag.class)) {
+            JSConstantNode constantNode = isInt ? JSConstantIntegerNode.create(leftInt) : JSConstantDoubleNode.create(leftDouble);
+            JavaScriptNode node = JSAddNodeGen.create(truncate, constantNode, getOperand());
+            transferSourceSection(this, constantNode);
+            transferSourceSection(this, node);
+            return node;
+        } else {
+            return this;
+        }
     }
 
     public abstract Object execute(Object a);

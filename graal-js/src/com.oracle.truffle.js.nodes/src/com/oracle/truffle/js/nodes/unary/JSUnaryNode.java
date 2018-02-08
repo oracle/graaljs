@@ -12,6 +12,8 @@ import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 
 @GenerateWrapper
 @NodeChild(value = "operand")
@@ -33,6 +35,15 @@ public abstract class JSUnaryNode extends JavaScriptNode {
             }
         }
         return null;
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
+        NodeInfo annotation = getClass().getAnnotation(NodeInfo.class);
+        assert annotation != null;
+        descriptor.addProperty("operator", annotation.shortName());
+        return descriptor;
     }
 
     @Override

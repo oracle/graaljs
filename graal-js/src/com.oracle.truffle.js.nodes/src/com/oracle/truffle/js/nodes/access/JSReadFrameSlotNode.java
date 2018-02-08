@@ -18,9 +18,9 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags;
-import com.oracle.truffle.js.nodes.tags.NodeObjectDescriptor;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags.VariableReadTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
 @ImportStatic(FrameSlotKind.class)
@@ -46,15 +46,16 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == VariableReadTag.class) {
+        if (tag == ReadVariableExpressionTag.class) {
             return true;
+        } else {
+            return super.hasTag(tag);
         }
-        return super.hasTag(tag);
     }
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSSpecificTags.createNodeObjectDescriptor();
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
         descriptor.addProperty("name", getIdentifier());
         return descriptor;
     }

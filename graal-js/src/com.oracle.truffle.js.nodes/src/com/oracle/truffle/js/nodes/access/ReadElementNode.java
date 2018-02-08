@@ -8,12 +8,14 @@ import java.lang.reflect.Array;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -34,10 +36,11 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNodeGen;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
-import com.oracle.truffle.js.nodes.tags.JSSpecificTags.ElementReadTag;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -75,7 +78,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
-public class ReadElementNode extends JSTargetableNode implements ReadNode, InstrumentableNode {
+public class ReadElementNode extends JSTargetableNode implements ReadNode {
     @Child protected JavaScriptNode targetNode;
     @Child protected JavaScriptNode indexNode;
     @Child protected ReadElementTypeCacheNode typeCacheNode;
@@ -96,6 +99,29 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode, Instr
         this.targetNode = targetNode;
         this.indexNode = indexNode;
         this.typeCacheNode = new UninitReadElementTypeCacheNode(context);
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(ReadElementExpressionTag.class)) {
+            JavaScriptNode clonedTarget = targetNode.hasSourceSection() ? cloneUninitialized(targetNode) : JSTaggedExecutionNode.createFor(targetNode, ExpressionTag.class);
+            JavaScriptNode clonedIndex = indexNode.hasSourceSection() ? cloneUninitialized(indexNode) : JSTaggedExecutionNode.createFor(indexNode, ExpressionTag.class);
+            JavaScriptNode cloned = ReadElementNode.create(clonedTarget, clonedIndex, getContext());
+            transferSourceSection(this, cloned);
+            transferSourceSection(this, clonedTarget);
+            transferSourceSection(this, clonedIndex);
+            return cloned;
+        }
+        return this;
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == ReadElementExpressionTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
     }
 
     @Override
@@ -1483,15 +1509,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode, Instr
             return Objects.toString(targetNode.expressionToString(), INTERMEDIATE_VALUE) + "[" + Objects.toString(indexNode.expressionToString(), INTERMEDIATE_VALUE) + "]";
         }
         return null;
-    }
-
-    @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ElementReadTag.class) {
-            return true;
-        } else {
-            return super.hasTag(tag);
-        }
     }
 
 }
