@@ -1785,7 +1785,7 @@ loop:
                     pushDefaultName(binding);
                 }
                 try {
-                    init = assignmentExpression(!isStatement);
+                    init = assignmentExpression(isStatement);
                 } finally {
                     if (!isDestructuring) {
                         popDefaultName();
@@ -2075,16 +2075,7 @@ loop:
     }
 
     /**
-     * ... IterationStatement:
-     *           ...
-     *           for ( Expression[NoIn]?; Expression? ; Expression? ) Statement
-     *           for ( var VariableDeclarationList[NoIn]; Expression? ; Expression? ) Statement
-     *           for ( LeftHandSideExpression in Expression ) Statement
-     *           for ( var VariableDeclaration[NoIn] in Expression ) Statement
-     *
-     * See 12.6
-     *
-     * Parse a FOR statement.
+     * Parse a {@code for} IterationStatement.
      */
     private void forStatement() {
         final long forToken = token;
@@ -2148,7 +2139,7 @@ loop:
                     break;
                 }
 
-                init = expression(true, inGeneratorFunction(), inAsyncFunction(), true);
+                init = expression(false, inGeneratorFunction(), inAsyncFunction(), true);
                 break;
             }
 
@@ -2234,7 +2225,7 @@ loop:
                 next();
 
                 // For-of only allows AssignmentExpression.
-                modify = isForOf || isForAwaitOf ? new JoinPredecessorExpression(assignmentExpression(false)) : joinPredecessorExpression();
+                modify = isForOf || isForAwaitOf ? new JoinPredecessorExpression(assignmentExpression(true)) : joinPredecessorExpression();
                 break;
 
             default:
@@ -2315,14 +2306,7 @@ loop:
     }
 
     /**
-     * ...IterationStatement :
-     *           ...
-     *           while ( Expression ) Statement
-     *           ...
-     *
-     * See 12.6
-     *
-     * Parse while statement.
+     * Parse a {@code while} IterationStatement.
      */
     private void whileStatement() {
         // Capture WHILE token.
@@ -2352,14 +2336,7 @@ loop:
     }
 
     /**
-     * ...IterationStatement :
-     *           ...
-     *           do Statement while( Expression ) ;
-     *           ...
-     *
-     * See 12.6
-     *
-     * Parse DO WHILE statement.
+     * Parse a {@code do while} IterationStatement.
      */
     private void doStatement() {
         // Capture DO token.
@@ -2536,12 +2513,14 @@ loop:
     /**
      * Parse YieldExpression.
      *
-     * YieldExpression[In] :
+     * <pre>
+     * YieldExpression[In, Await] :
      *   yield
-     *   yield [no LineTerminator here] AssignmentExpression[?In, Yield]
-     *   yield [no LineTerminator here] * AssignmentExpression[?In, Yield]
+     *   yield [no LineTerminator here] AssignmentExpression[?In, +Yield, ?Await]
+     *   yield [no LineTerminator here] * AssignmentExpression[?In, +Yield, ?Await]
+     * </pre>
      */
-    private Expression yieldExpression(boolean noIn, boolean await) {
+    private Expression yieldExpression(boolean in, boolean await) {
         assert inGeneratorFunction() && isES6();
         // Capture YIELD token.
         long yieldToken = token;
@@ -2579,7 +2558,7 @@ loop:
             }
 
         default:
-            expression = assignmentExpression(noIn, true, await);
+            expression = assignmentExpression(in, true, await);
             break;
         }
 
@@ -3139,7 +3118,7 @@ loop:
                 }
 
                 // Add expression element.
-                Expression expression = assignmentExpression(false, yield, await, true);
+                Expression expression = assignmentExpression(true, yield, await, true);
                 if (expression != null) {
                     if (spreadToken != 0) {
                         expression = new UnaryNode(Token.recast(spreadToken, SPREAD_ARRAY), expression);
@@ -3337,7 +3316,7 @@ loop:
      */
     private Expression computedPropertyName(boolean yield, boolean await) {
         expect(LBRACKET);
-        Expression expression = assignmentExpression(false, yield, await);
+        Expression expression = assignmentExpression(true, yield, await);
         expect(RBRACKET);
         return expression;
     }
@@ -3414,7 +3393,7 @@ loop:
         } else if (type == ELLIPSIS && ES8_REST_SPREAD_PROPERTY && isES8() && !(generator || async)) {
             long spreadToken = Token.recast(propertyToken, TokenType.SPREAD_OBJECT);
             next();
-            Expression assignmentExpression = assignmentExpression(false, yield, await);
+            Expression assignmentExpression = assignmentExpression(true, yield, await);
             Expression spread = new UnaryNode(spreadToken, assignmentExpression);
             return new PropertyNode(propertyToken, finish, spread, null, null, null, false, false, false, false);
         } else {
@@ -3441,7 +3420,7 @@ loop:
                 long assignToken = token;
                 coverInitializedName = true;
                 next();
-                Expression rhs = assignmentExpression(false, yield, await);
+                Expression rhs = assignmentExpression(true, yield, await);
                 propertyValue = verifyAssignment(assignToken, propertyValue, rhs);
             }
         } else {
@@ -3453,7 +3432,7 @@ loop:
 
             pushDefaultName(propertyName);
             try {
-                propertyValue = assignmentExpression(false, yield, await, true);
+                propertyValue = assignmentExpression(true, yield, await, true);
             } finally {
                 popDefaultName();
             }
@@ -3671,7 +3650,7 @@ loop:
                 next();
 
                 // Get array index.
-                final Expression rhs = expression(false, yield, await);
+                final Expression rhs = expression(true, yield, await);
 
                 expect(RBRACKET);
 
@@ -3871,7 +3850,7 @@ loop:
                 next();
 
                 // Get array index.
-                final Expression index = expression(false, yield, await);
+                final Expression index = expression(true, yield, await);
 
                 expect(RBRACKET);
 
@@ -3965,7 +3944,7 @@ loop:
             }
 
             // Get argument expression.
-            Expression expression = assignmentExpression(false, yield, await);
+            Expression expression = assignmentExpression(true, yield, await);
             if (spreadToken != 0) {
                 expression = new UnaryNode(Token.recast(spreadToken, TokenType.SPREAD_ARGUMENT), expression);
             }
@@ -4302,7 +4281,7 @@ loop:
                     }
 
                     // default parameter
-                    Expression initializer = assignmentExpression(false, yield, await);
+                    Expression initializer = assignmentExpression(true, yield, await);
 
                     ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
                     if (currentFunction != null) {
@@ -4334,7 +4313,7 @@ loop:
                     ident = ident.setIsDefaultParameter();
 
                     // binding pattern with initializer. desugar to: (param === undefined) ? initializer : param
-                    Expression initializer = assignmentExpression(false, yield, await);
+                    Expression initializer = assignmentExpression(true, yield, await);
                     BinaryNode test = new BinaryNode(Token.recast(paramToken, EQ_STRICT), ident, newUndefinedLiteral(paramToken, finish));
                     value = new TernaryNode(Token.recast(paramToken, TERNARY), test, new JoinPredecessorExpression(initializer), new JoinPredecessorExpression(ident));
                 }
@@ -4406,7 +4385,7 @@ loop:
                  */
 
                 // just expression as function body
-                final Expression expr = assignmentExpression(false);
+                final Expression expr = assignmentExpression(true);
                 lastToken = previousToken;
                 functionNode.setLastToken(previousToken);
                 assert lc.getCurrentBlock() == lc.getFunctionBody(functionNode);
@@ -4822,20 +4801,20 @@ loop:
      */
     private Expression expression() {
         // Include commas in expression parsing.
-        return expression(false, inGeneratorFunction(), inAsyncFunction());
+        return expression(true, inGeneratorFunction(), inAsyncFunction());
     }
 
-    private Expression expression(boolean noIn, boolean yield, boolean await) {
-        return expression(noIn, yield, await, false);
+    private Expression expression(boolean in, boolean yield, boolean await) {
+        return expression(in, yield, await, false);
     }
 
-    private Expression expression(boolean noIn, boolean yield, boolean await, boolean inPatternPosition) {
-        Expression assignmentExpression = assignmentExpression(noIn, yield, await, inPatternPosition);
+    private Expression expression(boolean in, boolean yield, boolean await, boolean inPatternPosition) {
+        Expression assignmentExpression = assignmentExpression(in, yield, await, inPatternPosition);
         while (type == COMMARIGHT) {
             long commaToken = token;
             next();
 
-            Expression rhs = assignmentExpression(noIn, yield, await);
+            Expression rhs = assignmentExpression(in, yield, await);
             assignmentExpression = new BinaryNode(commaToken, assignmentExpression, rhs);
         }
         return assignmentExpression;
@@ -4862,7 +4841,7 @@ loop:
             }
         }
 
-        Expression assignmentExpression = assignmentExpression(false, yield, await, true);
+        Expression assignmentExpression = assignmentExpression(true, yield, await, true);
         boolean hasCoverInitializedName = hasCoverInitializedName(assignmentExpression);
         while (type == COMMARIGHT) {
             long commaToken = token;
@@ -4881,7 +4860,7 @@ loop:
                 break;
             }
 
-            Expression rhs = assignmentExpression(false, yield, await, true);
+            Expression rhs = assignmentExpression(true, yield, await, true);
             hasCoverInitializedName = hasCoverInitializedName || hasCoverInitializedName(rhs);
 
             if (rhsRestParameter) {
@@ -4903,21 +4882,21 @@ loop:
         return assignmentExpression;
     }
 
-    private Expression expression(int minPrecedence, boolean noIn, boolean yield, boolean await) {
-        return expression(unaryExpression(yield, await), minPrecedence, noIn, yield, await);
+    private Expression expression(int minPrecedence, boolean in, boolean yield, boolean await) {
+        return expression(unaryExpression(yield, await), minPrecedence, in, yield, await);
     }
 
     private JoinPredecessorExpression joinPredecessorExpression() {
         return new JoinPredecessorExpression(expression());
     }
 
-    private Expression expression(Expression exprLhs, int minPrecedence, boolean noIn, boolean yield, boolean await) {
+    private Expression expression(Expression exprLhs, int minPrecedence, boolean in, boolean yield, boolean await) {
         // Get the precedence of the next operator.
         int precedence = type.getPrecedence();
         Expression lhs = exprLhs;
 
         // While greater precedence.
-        while (checkOperator(noIn) && precedence >= minPrecedence) {
+        while (checkOperator(in) && precedence >= minPrecedence) {
             // Capture the operator token.
             final long op = token;
 
@@ -4927,12 +4906,12 @@ loop:
 
                 // Pass expression. Middle expression of a conditional expression can be a "in"
                 // expression - even in the contexts where "in" is not permitted.
-                final Expression trueExpr = assignmentExpression(false, yield, await);
+                final Expression trueExpr = assignmentExpression(true, yield, await);
 
                 expect(COLON);
 
                 // Fail expression.
-                final Expression falseExpr = assignmentExpression(noIn, yield, await);
+                final Expression falseExpr = assignmentExpression(in, yield, await);
 
                 // Build up node.
                 lhs = new TernaryNode(op, lhs, new JoinPredecessorExpression(trueExpr), new JoinPredecessorExpression(falseExpr));
@@ -4948,10 +4927,10 @@ loop:
                 int nextPrecedence = type.getPrecedence();
 
                 // Subtask greater precedence.
-                while (checkOperator(noIn) &&
+                while (checkOperator(in) &&
                        (nextPrecedence > precedence ||
                        nextPrecedence == precedence && !type.isLeftAssociative())) {
-                    rhs = expression(rhs, nextPrecedence, noIn, yield, await);
+                    rhs = expression(rhs, nextPrecedence, in, yield, await);
                     nextPrecedence = type.getPrecedence();
                 }
                 lhs = newBinaryExpression(op, lhs, rhs);
@@ -4963,16 +4942,16 @@ loop:
         return lhs;
     }
 
-    private boolean checkOperator(final boolean noIn) {
-        return type.isOperator(noIn) && (type != TokenType.EXP || isES6());
+    private boolean checkOperator(final boolean in) {
+        return type.isOperator(in) && (type != TokenType.EXP || isES6());
     }
 
-    private Expression assignmentExpression(boolean noIn) {
-        return assignmentExpression(noIn, inGeneratorFunction(), inAsyncFunction(), false);
+    private Expression assignmentExpression(boolean in) {
+        return assignmentExpression(in, inGeneratorFunction(), inAsyncFunction(), false);
     }
 
-    private Expression assignmentExpression(boolean noIn, boolean yield, boolean await) {
-        return assignmentExpression(noIn, yield, await, false);
+    private Expression assignmentExpression(boolean in, boolean yield, boolean await) {
+        return assignmentExpression(in, yield, await, false);
     }
 
     /**
@@ -4986,9 +4965,9 @@ loop:
      *   LeftHandSideExpression[?Yield] = AssignmentExpression[?In, ?Yield]
      *   LeftHandSideExpression[?Yield] AssignmentOperator AssignmentExpression[?In, ?Yield]
      */
-    private Expression assignmentExpression(boolean noIn, boolean yield, boolean await, boolean inPatternPosition) {
+    private Expression assignmentExpression(boolean in, boolean yield, boolean await, boolean inPatternPosition) {
         if (type == YIELD && yield) {
-            return yieldExpression(noIn, await);
+            return yieldExpression(in, await);
         }
 
         boolean asyncArrow = isAsync() && lookaheadIsAsyncArrowParameterListStart();
@@ -5001,7 +4980,7 @@ loop:
 
         final long startToken = token;
         final int startLine = line;
-        Expression exprLhs = conditionalExpression(noIn, yield, await);
+        Expression exprLhs = conditionalExpression(in, yield, await);
 
         if (asyncArrow && exprLhs instanceof IdentNode && isBindingIdentifier() && lookaheadIsArrow()) {
             // async ident =>
@@ -5031,7 +5010,7 @@ loop:
             try {
                 long assignToken = token;
                 next();
-                Expression exprRhs = assignmentExpression(noIn, yield, await);
+                Expression exprRhs = assignmentExpression(in, yield, await);
                 return verifyAssignment(assignToken, exprLhs, exprRhs);
             } finally {
                 if (isAssign) {
@@ -5049,8 +5028,8 @@ loop:
     /**
      * ConditionalExpression.
      */
-    private Expression conditionalExpression(boolean noIn, boolean yield, boolean await) {
-        return expression(TERNARY.getPrecedence(), noIn, yield, await);
+    private Expression conditionalExpression(boolean in, boolean yield, boolean await) {
+        return expression(TERNARY.getPrecedence(), in, yield, await);
     }
 
     /**
@@ -5385,7 +5364,7 @@ loop:
      */
     private Expression templateLiteralExpression(boolean yield, boolean await) {
         assert lexer.pauseOnRightBrace;
-        Expression expression = expression(false, yield, await);
+        Expression expression = expression(true, yield, await);
         if (type != RBRACE) {
             throw error(AbstractParser.message("unterminated.template.expression"), token);
         }
@@ -5768,7 +5747,7 @@ loop:
                             declaration = true;
                             break;
                         }
-                        assignmentExpression = assignmentExpression(false, false, false);
+                        assignmentExpression = assignmentExpression(true, false, false);
                         ident = null;
                         declaration = false;
                         break;

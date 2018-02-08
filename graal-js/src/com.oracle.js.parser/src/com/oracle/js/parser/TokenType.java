@@ -260,12 +260,12 @@ public enum TokenType {
     /**
      * Determines if the type is a valid operator.
      *
-     * @param noIn {@code true} if IN operator should be ignored.
+     * @param in {@code false} if IN operator should be ignored.
      *
      * @return {@code true} if valid operator.
      */
-    public boolean isOperator(final boolean noIn) {
-        return kind == BINARY && (!noIn || this != IN) && precedence != 0;
+    public boolean isOperator(final boolean in) {
+        return kind == BINARY && (in || this != IN) && precedence != 0;
     }
 
     public int getLength() {
