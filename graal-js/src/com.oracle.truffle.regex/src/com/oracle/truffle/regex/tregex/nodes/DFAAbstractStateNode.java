@@ -7,6 +7,7 @@ package com.oracle.truffle.regex.tregex.nodes;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 public abstract class DFAAbstractStateNode extends Node {
@@ -22,7 +23,7 @@ public abstract class DFAAbstractStateNode extends Node {
     /**
      * Creates a copy of this state node, where all attributes are copied shallowly, except for the
      * {@link #successors} array, which is deep-copied, and the node ID, which is replaced by the
-     * parameter copyID. Used by {@link com.oracle.truffle.regex.tregex.util.DFANodeSplit}.
+     * parameter copyID. Used by {@link DFANodeSplit}.
      *
      * @param copyID new ID for the copy.
      * @return an "almost shallow" copy of this node.
