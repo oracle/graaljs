@@ -1182,7 +1182,7 @@ loop:
                 if (singleStatement) {
                     throw error(AbstractParser.message("expected.stmt", "class declaration"), token);
                 }
-                classDeclaration(false);
+                classDeclaration(inGeneratorFunction(), inAsyncFunction(), false);
                 break;
             } else if (isAsync() && lookaheadIsAsyncFunction()) {
                 asyncFunctionExpression(true, topLevel || labelledStatement);
@@ -1205,11 +1205,11 @@ loop:
                     final int propertyLine = line;
                     if (type == GET) {
                         next();
-                        addPropertyFunctionStatement(propertyGetterFunction(propertyToken, propertyLine));
+                        addPropertyFunctionStatement(propertyGetterFunction(propertyToken, propertyLine, false, false));
                         return;
                     } else if (type == SET) {
                         next();
-                        addPropertyFunctionStatement(propertySetterFunction(propertyToken, propertyLine));
+                        addPropertyFunctionStatement(propertySetterFunction(propertyToken, propertyLine, false, false));
                         return;
                     }
                 } else if (isES6Method) {
@@ -1235,24 +1235,30 @@ loop:
     }
 
     /**
-     * ClassDeclaration[Yield, Default] :
-     *   class BindingIdentifier[?Yield] ClassTail[?Yield]
-     *   [+Default] class ClassTail[?Yield]
+     * Parse ClassDeclaration.
+     *
+     * <pre>
+     * ClassDeclaration[Yield, Await, Default] :
+     *   class BindingIdentifier[?Yield, ?Await] ClassTail[?Yield, ?Await]
+     *   [+Default] class ClassTail[?Yield, ?Await]
+     * </pre>
+     *
+     * @return Class expression node.
      */
-    private Expression classDeclaration(boolean isDefault) {
+    private Expression classDeclaration(boolean yield, boolean await, boolean defaultExport) {
         assert type == CLASS;
         int classLineNumber = line;
         long classToken = token;
         next();
 
         IdentNode className = null;
-        if (!isDefault || isBindingIdentifier()) {
-            className = bindingIdentifier("class name");
+        if (!defaultExport || isBindingIdentifier()) {
+            className = bindingIdentifier("class name", yield, await);
         }
 
-        Expression classExpression = classTail(classLineNumber, classToken, className);
+        Expression classExpression = classTail(classLineNumber, classToken, className, yield, await);
 
-        if (!isDefault) {
+        if (!defaultExport) {
             VarNode classVar = new VarNode(classLineNumber, Token.recast(classExpression.getToken(), LET), classExpression.getFinish(), className, classExpression, VarNode.IS_LET);
             appendStatement(classVar);
         }
@@ -1260,10 +1266,16 @@ loop:
     }
 
     /**
-     * ClassExpression[Yield] :
-     *   class BindingIdentifier[?Yield]opt ClassTail[?Yield]
+     * Parse ClassExpression.
+     *
+     * <pre>
+     * ClassExpression[Yield, Await] :
+     *   class BindingIdentifier[?Yield, ?Await]opt ClassTail[?Yield, ?Await]
+     * </pre>
+     *
+     * @return Class expression node.
      */
-    private Expression classExpression() {
+    private Expression classExpression(boolean yield, boolean await) {
         assert type == CLASS;
         int classLineNumber = line;
         long classToken = token;
@@ -1271,10 +1283,10 @@ loop:
 
         IdentNode className = null;
         if (isBindingIdentifier()) {
-            className = bindingIdentifier("class name");
+            className = bindingIdentifier("class name", yield, await);
         }
 
-        return classTail(classLineNumber, classToken, className);
+        return classTail(classLineNumber, classToken, className, yield, await);
     }
 
     private static final class ClassElementKey {
@@ -1323,14 +1335,14 @@ loop:
      *   static MethodDefinition[?Yield]
      *   ;
      */
-    private Expression classTail(int classLineNumber, long classToken, IdentNode className) {
+    private Expression classTail(int classLineNumber, long classToken, IdentNode className, boolean yield, boolean await) {
         boolean oldStrictMode = isStrictMode;
         isStrictMode = true;
         try {
             Expression classHeritage = null;
             if (type == EXTENDS) {
                 next();
-                classHeritage = leftHandSideExpression();
+                classHeritage = leftHandSideExpression(yield, await);
             }
 
             expect(LBRACE);
@@ -1363,7 +1375,7 @@ loop:
                     generator = true;
                     next();
                 }
-                PropertyNode classElement = methodDefinition(isStatic, classHeritage != null, generator, async, classElementToken, classElementLine);
+                PropertyNode classElement = methodDefinition(isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await);
                 if (classElement.isComputed()) {
                     classElements.add(classElement);
                 } else if (!classElement.isStatic() && classElement.getKeyName().equals(CONSTRUCTOR_NAME)) {
@@ -1477,19 +1489,19 @@ loop:
         return constructor;
     }
 
-    private PropertyNode methodDefinition(boolean isStatic, boolean subclass, boolean generator, boolean async, long methodToken, int methodLine) {
+    private PropertyNode methodDefinition(boolean isStatic, boolean subclass, boolean generator, boolean async, long methodToken, int methodLine, boolean yield, boolean await) {
         final TokenType startTokenType = type;
         final boolean computed = startTokenType == LBRACKET;
-        Expression propertyName = propertyName();
+        Expression propertyName = propertyName(yield, await);
         int flags = FunctionNode.IS_METHOD;
         if (!computed) {
             final String name = ((PropertyKey)propertyName).getPropertyName();
             if (!generator && startTokenType == GET && type != LPAREN) {
-                PropertyFunction methodDefinition = propertyGetterFunction(methodToken, methodLine, flags);
+                PropertyFunction methodDefinition = propertyGetterFunction(methodToken, methodLine, yield, await);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true);
                 return new PropertyNode(methodToken, finish, methodDefinition.key, null, methodDefinition.functionNode, null, isStatic, methodDefinition.computed, false, false);
             } else if (!generator && startTokenType == SET && type != LPAREN) {
-                PropertyFunction methodDefinition = propertySetterFunction(methodToken, methodLine, flags);
+                PropertyFunction methodDefinition = propertySetterFunction(methodToken, methodLine, yield, await);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true);
                 return new PropertyNode(methodToken, finish, methodDefinition.key, null, null, methodDefinition.functionNode, isStatic, methodDefinition.computed, false, false);
             } else {
@@ -1626,10 +1638,6 @@ loop:
                 assert !AWAIT.getName().equals(ident.getName());
             }
         }
-    }
-
-    private void verifyIdent(final IdentNode ident) {
-        verifyIdent(ident, inGeneratorFunction(), inAsyncFunction());
     }
 
     private static boolean isEscapedIdent(final IdentNode ident) {
@@ -1842,7 +1850,7 @@ loop:
     /**
      * IdentifierReference or LabelIdentifier.
      */
-    private IdentNode identifier(final boolean yield, final boolean await) {
+    private IdentNode identifier(boolean yield, boolean await) {
         final IdentNode ident = getIdent();
         verifyIdent(ident, yield, await);
         return ident;
@@ -1856,33 +1864,33 @@ loop:
         return type == IDENT || type.isContextualKeyword() || isNonStrictModeIdent();
     }
 
-    private IdentNode bindingIdentifier(String contextString, final boolean yield, final boolean await) {
+    private IdentNode bindingIdentifier(String contextString, boolean yield, boolean await) {
         final IdentNode ident = getIdent();
         verifyIdent(ident, yield, await);
         verifyStrictIdent(ident, contextString);
         return ident;
     }
 
-    private IdentNode bindingIdentifier(String contextString) {
-        return bindingIdentifier(contextString, inGeneratorFunction(), inAsyncFunction());
-    }
-
-    private Expression bindingPattern() {
+    private Expression bindingPattern(boolean yield, boolean await) {
         if (type == LBRACKET) {
-            return arrayLiteral();
+            return arrayLiteral(yield, await);
         } else if (type == LBRACE) {
-            return objectLiteral();
+            return objectLiteral(yield, await);
         } else {
             throw error(AbstractParser.message("expected.binding"));
         }
     }
 
-    private Expression bindingIdentifierOrPattern(String contextString) {
+    private Expression bindingIdentifierOrPattern(String contextString, boolean yield, boolean await) {
         if (isBindingIdentifier() || !(ES6_DESTRUCTURING && isES6())) {
-            return bindingIdentifier(contextString);
+            return bindingIdentifier(contextString, yield, await);
         } else {
-            return bindingPattern();
+            return bindingPattern(yield, await);
         }
+    }
+
+    private Expression bindingIdentifierOrPattern(String contextString) {
+        return bindingIdentifierOrPattern(contextString, inGeneratorFunction(), inAsyncFunction());
     }
 
     private abstract class VerifyDestructuringPatternNodeVisitor extends NodeVisitor<LexicalContext> {
@@ -2140,7 +2148,7 @@ loop:
                     break;
                 }
 
-                init = expression(true, true);
+                init = expression(true, inGeneratorFunction(), inAsyncFunction(), true);
                 break;
             }
 
@@ -2533,7 +2541,7 @@ loop:
      *   yield [no LineTerminator here] AssignmentExpression[?In, Yield]
      *   yield [no LineTerminator here] * AssignmentExpression[?In, Yield]
      */
-    private Expression yieldExpression(boolean noIn) {
+    private Expression yieldExpression(boolean noIn, boolean await) {
         assert inGeneratorFunction() && isES6();
         // Capture YIELD token.
         long yieldToken = token;
@@ -2571,7 +2579,7 @@ loop:
             }
 
         default:
-            expression = assignmentExpression(noIn);
+            expression = assignmentExpression(noIn, true, await);
             break;
         }
 
@@ -2579,13 +2587,13 @@ loop:
         return new UnaryNode(yieldToken, expression);
     }
 
-    private Expression awaitExpression() {
+    private Expression awaitExpression(boolean yield) {
         assert inAsyncFunction();
         // Capture await token.
         long awaitToken = token;
         nextOrEOL();
 
-        Expression expression = unaryExpression();
+        Expression expression = unaryExpression(yield, true);
 
         // Construct and add AWAIT node.
         return new UnaryNode(Token.recast(awaitToken, AWAIT), expression);
@@ -2971,7 +2979,7 @@ loop:
      * @return Expression node.
      */
     @SuppressWarnings("fallthrough")
-    private Expression primaryExpression() {
+    private Expression primaryExpression(boolean yield, boolean await) {
         // Capture first token.
         final int  primaryLine  = line;
         final long primaryToken = token;
@@ -2983,7 +2991,7 @@ loop:
             markThis(lc);
             return new IdentNode(primaryToken, finish, name).setIsThis();
         case IDENT:
-            final IdentNode ident = identifier();
+            final IdentNode ident = identifier(yield, await);
             if (ident == null) {
                 break;
             }
@@ -3020,14 +3028,14 @@ loop:
             next();
             return LiteralNode.newInstance(primaryToken, finish);
         case LBRACKET:
-            return arrayLiteral();
+            return arrayLiteral(yield, await);
         case LBRACE:
-            return objectLiteral();
+            return objectLiteral(yield, await);
         case LPAREN:
-            return parenthesizedExpressionAndArrowParameterList();
+            return parenthesizedExpressionAndArrowParameterList(yield, await);
         case TEMPLATE:
         case TEMPLATE_HEAD:
-            return templateLiteral();
+            return templateLiteral(yield, await);
 
         default:
             // In this context some operator tokens mark the start of a literal.
@@ -3036,7 +3044,7 @@ loop:
                 return getLiteral();
             }
             if (type.isContextualKeyword() || isNonStrictModeIdent()) {
-                return identifier();
+                return identifier(yield, await);
             }
             break;
         }
@@ -3067,6 +3075,8 @@ loop:
     }
 
     /**
+     * Parse ArrayLiteral.
+     *
      * ArrayLiteral :
      *      [ Elision? ]
      *      [ ElementList ]
@@ -3080,13 +3090,9 @@ loop:
      *      ,
      *      Elision ,
      *
-     * See 12.1.4
-     * JavaScript 1.8
-     *
-     * Parse array literal.
      * @return Expression node.
      */
-    private LiteralNode<Expression[]> arrayLiteral() {
+    private LiteralNode<Expression[]> arrayLiteral(boolean yield, boolean await) {
         // Capture LBRACKET token.
         final long arrayToken = token;
         // LBRACKET tested in caller.
@@ -3133,7 +3139,7 @@ loop:
                 }
 
                 // Add expression element.
-                Expression expression = assignmentExpression(false, true);
+                Expression expression = assignmentExpression(false, yield, await, true);
                 if (expression != null) {
                     if (spreadToken != 0) {
                         expression = new UnaryNode(Token.recast(spreadToken, SPREAD_ARRAY), expression);
@@ -3166,7 +3172,7 @@ loop:
      * Parse an object literal.
      * @return Expression node.
      */
-    private ObjectNode objectLiteral() {
+    private ObjectNode objectLiteral(boolean yield, boolean await) {
         // Capture LBRACE token.
         final long objectToken = token;
         // LBRACE tested in caller.
@@ -3202,7 +3208,7 @@ loop:
 
                     commaSeen = false;
                     // Get and add the next property.
-                    final PropertyNode property = propertyDefinition();
+                    final PropertyNode property = propertyDefinition(yield, await);
                     hasCoverInitializedName = hasCoverInitializedName || property.isCoverInitializedName() || hasCoverInitializedName(property.getValue());
 
                     if (property.isComputed() || property.getKey().isTokenType(SPREAD_OBJECT)) {
@@ -3329,9 +3335,9 @@ loop:
      *
      * @return PropertyName node
      */
-    private Expression computedPropertyName() {
+    private Expression computedPropertyName(boolean yield, boolean await) {
         expect(LBRACKET);
-        Expression expression = assignmentExpression(false);
+        Expression expression = assignmentExpression(false, yield, await);
         expect(RBRACKET);
         return expression;
     }
@@ -3343,9 +3349,9 @@ loop:
      *
      * @return PropertyName node
      */
-    private Expression propertyName() {
+    private Expression propertyName(boolean yield, boolean await) {
         if (ES6_COMPUTED_PROPERTY_NAME && type == LBRACKET && isES6()) {
-            return computedPropertyName();
+            return computedPropertyName(yield, await);
         } else {
             return (Expression)literalPropertyName();
         }
@@ -3365,7 +3371,7 @@ loop:
      *
      * @return Property or reference node.
      */
-    private PropertyNode propertyDefinition() {
+    private PropertyNode propertyDefinition(boolean yield, boolean await) {
         // Capture firstToken.
         final long propertyToken = token;
         final int  functionLine  = line;
@@ -3395,10 +3401,10 @@ loop:
             if (type != COLON && type != COMMARIGHT && type != RBRACE && ((type != ASSIGN && type != LPAREN) || !isES6())) {
                 final long getOrSetToken = propertyToken;
                 if (getOrSet == GET) {
-                    final PropertyFunction getter = propertyGetterFunction(getOrSetToken, functionLine);
+                    final PropertyFunction getter = propertyGetterFunction(getOrSetToken, functionLine, yield, await);
                     return new PropertyNode(propertyToken, finish, getter.key, null, getter.functionNode, null, false, getter.computed, false, false);
                 } else if (getOrSet == SET) {
-                    final PropertyFunction setter = propertySetterFunction(getOrSetToken, functionLine);
+                    final PropertyFunction setter = propertySetterFunction(getOrSetToken, functionLine, yield, await);
                     return new PropertyNode(propertyToken, finish, setter.key, null, null, setter.functionNode, false, setter.computed, false, false);
                 }
             }
@@ -3408,12 +3414,12 @@ loop:
         } else if (type == ELLIPSIS && ES8_REST_SPREAD_PROPERTY && isES8() && !(generator || async)) {
             long spreadToken = Token.recast(propertyToken, TokenType.SPREAD_OBJECT);
             next();
-            Expression assignmentExpression = assignmentExpression(false);
+            Expression assignmentExpression = assignmentExpression(false, yield, await);
             Expression spread = new UnaryNode(spreadToken, assignmentExpression);
             return new PropertyNode(propertyToken, finish, spread, null, null, null, false, false, false, false);
         } else {
             isIdentifier = false;
-            propertyName = propertyName();
+            propertyName = propertyName(yield, await);
         }
 
         Expression propertyValue;
@@ -3428,14 +3434,14 @@ loop:
             propertyValue = propertyMethodFunction(propertyName, propertyToken, functionLine, generator, FunctionNode.IS_METHOD, computed, async).functionNode;
         } else if (isIdentifier && (type == COMMARIGHT || type == RBRACE || type == ASSIGN) && isES6()) {
             IdentNode ident = (IdentNode) propertyName;
-            verifyIdent(ident);
+            verifyIdent(ident, yield, await);
             propertyValue = createIdentNode(propertyToken, finish, ident.getPropertyName());
             if (type == ASSIGN && ES6_DESTRUCTURING) {
                 // If not destructuring, this is a SyntaxError
                 long assignToken = token;
                 coverInitializedName = true;
                 next();
-                Expression rhs = assignmentExpression(false);
+                Expression rhs = assignmentExpression(false, yield, await);
                 propertyValue = verifyAssignment(assignToken, propertyValue, rhs);
             }
         } else {
@@ -3447,7 +3453,7 @@ loop:
 
             pushDefaultName(propertyName);
             try {
-                propertyValue = assignmentExpression(false, true);
+                propertyValue = assignmentExpression(false, yield, await, true);
             } finally {
                 popDefaultName();
             }
@@ -3456,21 +3462,16 @@ loop:
         return new PropertyNode(propertyToken, finish, propertyName, propertyValue, null, null, false, computed, coverInitializedName, proto);
     }
 
-    private PropertyFunction propertyGetterFunction(final long getSetToken, final int functionLine) {
-        return propertyGetterFunction(getSetToken, functionLine, FunctionNode.IS_METHOD);
-    }
-
-    private PropertyFunction propertyGetterFunction(final long getSetToken, final int functionLine, final int flags) {
-        assert (flags & FunctionNode.IS_METHOD) != 0;
+    private PropertyFunction propertyGetterFunction(long getSetToken, int functionLine, boolean yield, boolean await) {
         final boolean computed = type == LBRACKET;
-        final Expression propertyName = propertyName();
+        final Expression propertyName = propertyName(yield, await);
         final String getterName = propertyName instanceof PropertyKey ? ((PropertyKey) propertyName).getPropertyName() : getDefaultFunctionName();
         final IdentNode getNameNode = createIdentNode(propertyName.getToken(), finish, ("get " + getterName));
         expect(LPAREN);
         expect(RPAREN);
 
         final ParserContextFunctionNode functionNode = createParserContextFunctionNode(getNameNode, getSetToken, FunctionNode.Kind.GETTER, functionLine, Collections.<IdentNode>emptyList());
-        functionNode.setFlag(flags);
+        functionNode.setFlag(FunctionNode.IS_METHOD);
         if (computed) {
             functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
         }
@@ -3498,14 +3499,9 @@ loop:
         return new PropertyFunction(propertyName, function, computed);
     }
 
-    private PropertyFunction propertySetterFunction(final long getSetToken, final int functionLine) {
-        return propertySetterFunction(getSetToken, functionLine, FunctionNode.IS_METHOD);
-    }
-
-    private PropertyFunction propertySetterFunction(final long getSetToken, final int functionLine, final int flags) {
-        assert (flags & FunctionNode.IS_METHOD) != 0;
+    private PropertyFunction propertySetterFunction(long getSetToken, int functionLine, boolean yield, boolean await) {
         final boolean computed = type == LBRACKET;
-        final Expression propertyName = propertyName();
+        final Expression propertyName = propertyName(yield, await);
         final String setterName = propertyName instanceof PropertyKey ? ((PropertyKey) propertyName).getPropertyName() : getDefaultFunctionName();
         final IdentNode setNameNode = createIdentNode(propertyName.getToken(), finish, ("set " + setterName));
         expect(LPAREN);
@@ -3513,7 +3509,7 @@ loop:
         // spec does not permit it!
         final IdentNode argIdent;
         if (isBindingIdentifier()) {
-            argIdent = bindingIdentifier("setter argument");
+            argIdent = bindingIdentifier("setter argument", false, false);
         } else {
             argIdent = null;
         }
@@ -3525,7 +3521,7 @@ loop:
 
 
         final ParserContextFunctionNode functionNode = createParserContextFunctionNode(setNameNode, getSetToken, FunctionNode.Kind.SETTER, functionLine, parameters);
-        functionNode.setFlag(flags);
+        functionNode.setFlag(FunctionNode.IS_METHOD);
         if (computed) {
             functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
         }
@@ -3632,14 +3628,14 @@ loop:
      * Parse left hand side expression.
      * @return Expression node.
      */
-    private Expression leftHandSideExpression() {
+    private Expression leftHandSideExpression(boolean yield, boolean await) {
         int  callLine  = line;
         long callToken = token;
 
-        Expression lhs = memberExpression();
+        Expression lhs = memberExpression(yield, await);
 
         if (type == LPAREN) {
-            final List<Expression> arguments = optimizeList(argumentList());
+            final List<Expression> arguments = optimizeList(argumentList(yield, await));
 
             // Catch special functions.
             if (lhs instanceof IdentNode) {
@@ -3664,7 +3660,7 @@ loop:
             switch (type) {
             case LPAREN: {
                 // Get NEW or FUNCTION arguments.
-                final List<Expression> arguments = optimizeList(argumentList());
+                final List<Expression> arguments = optimizeList(argumentList(yield, await));
 
                 // Create call node.
                 lhs = new CallNode(callLine, callToken, finish, lhs, arguments, false);
@@ -3675,7 +3671,7 @@ loop:
                 next();
 
                 // Get array index.
-                final Expression rhs = expression();
+                final Expression rhs = expression(false, yield, await);
 
                 expect(RBRACKET);
 
@@ -3697,7 +3693,7 @@ loop:
             case TEMPLATE:
             case TEMPLATE_HEAD: {
                 // tagged template literal
-                final List<Expression> arguments = templateLiteralArgumentList();
+                final List<Expression> arguments = templateLiteralArgumentList(yield, await);
 
                 // Create call node.
                 lhs = new CallNode(callLine, callToken, finish, lhs, arguments, false);
@@ -3722,7 +3718,7 @@ loop:
      * Parse new expression.
      * @return Expression node.
      */
-    private Expression newExpression() {
+    private Expression newExpression(boolean yield, boolean await) {
         final long newToken = token;
         // NEW is tested in caller.
         next();
@@ -3743,7 +3739,7 @@ loop:
 
         // Get function base.
         final int  callLine    = line;
-        final Expression constructor = memberExpression();
+        final Expression constructor = memberExpression(yield, await);
         if (constructor == null) {
             return null;
         }
@@ -3752,7 +3748,7 @@ loop:
 
         // Allow for missing arguments.
         if (type == LPAREN) {
-            arguments = argumentList();
+            arguments = argumentList(yield, await);
         } else {
             arguments = new ArrayList<>();
         }
@@ -3767,7 +3763,7 @@ loop:
         // The object literal following the "new Constructor()" expression
         // is passed as an additional (last) argument to the constructor.
         if (env.syntaxExtensions && type == LBRACE) {
-            arguments.add(objectLiteral());
+            arguments.add(objectLiteral(yield, await));
         }
 
         final CallNode callNode = new CallNode(callLine, constructor.getToken(), finish, constructor, optimizeList(arguments), true);
@@ -3798,7 +3794,7 @@ loop:
      * Parse member expression.
      * @return Expression node.
      */
-    private Expression memberExpression() {
+    private Expression memberExpression(boolean yield, boolean await) {
         // Prepare to build operation.
         Expression lhs;
         boolean isSuper = false;
@@ -3806,7 +3802,7 @@ loop:
         switch (type) {
         case NEW:
             // Get new expression.
-            lhs = newExpression();
+            lhs = newExpression(yield, await);
             break;
 
         case FUNCTION:
@@ -3816,7 +3812,7 @@ loop:
 
         case CLASS:
             if (ES6_CLASS && isES6()) {
-                lhs = classExpression();
+                lhs = classExpression(yield, await);
                 break;
             } else {
                 // fall through
@@ -3861,7 +3857,7 @@ loop:
             }
 
             // Get primary expression.
-            lhs = primaryExpression();
+            lhs = primaryExpression(yield, await);
             break;
         }
 
@@ -3875,7 +3871,7 @@ loop:
                 next();
 
                 // Get array index.
-                final Expression index = expression();
+                final Expression index = expression(false, yield, await);
 
                 expect(RBRACKET);
 
@@ -3912,7 +3908,7 @@ loop:
             case TEMPLATE_HEAD: {
                 // tagged template literal
                 final int callLine = line;
-                final List<Expression> arguments = templateLiteralArgumentList();
+                final List<Expression> arguments = templateLiteralArgumentList(yield, await);
 
                 lhs = new CallNode(callLine, callToken, finish, lhs, arguments, false);
 
@@ -3927,6 +3923,8 @@ loop:
     }
 
     /**
+     * Parse function call arguments.
+     *
      * Arguments :
      *      ( )
      *      ( ArgumentList )
@@ -3937,12 +3935,9 @@ loop:
      *      ArgumentList , AssignmentExpression
      *      ArgumentList , ... AssignmentExpression
      *
-     * See 11.2
-     *
-     * Parse function call arguments.
      * @return Argument list.
      */
-    private ArrayList<Expression> argumentList() {
+    private ArrayList<Expression> argumentList(boolean yield, boolean await) {
         // Prepare to accumulate list of arguments.
         final ArrayList<Expression> nodeList = new ArrayList<>();
         // LPAREN tested in caller.
@@ -3970,7 +3965,7 @@ loop:
             }
 
             // Get argument expression.
-            Expression expression = assignmentExpression(false);
+            Expression expression = assignmentExpression(false, yield, await);
             if (spreadToken != 0) {
                 expression = new UnaryNode(Token.recast(spreadToken, TokenType.SPREAD_ARGUMENT), expression);
             }
@@ -4307,7 +4302,7 @@ loop:
                     }
 
                     // default parameter
-                    Expression initializer = assignmentExpression(false);
+                    Expression initializer = assignmentExpression(false, yield, await);
 
                     ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
                     if (currentFunction != null) {
@@ -4328,7 +4323,7 @@ loop:
                     }
                 }
             } else {
-                final Expression pattern = bindingPattern();
+                final Expression pattern = bindingPattern(yield, await);
                 // Introduce synthetic temporary parameter to capture the object to be destructured.
                 ident = createIdentNode(paramToken, pattern.getFinish(), String.format("arguments[%d]", parameters.size())).setIsDestructuredParameter();
                 verifyDestructuringParameterBindingPattern(pattern, paramToken, paramLine, contextString);
@@ -4339,8 +4334,7 @@ loop:
                     ident = ident.setIsDefaultParameter();
 
                     // binding pattern with initializer. desugar to: (param === undefined) ? initializer : param
-                    Expression initializer = assignmentExpression(false);
-                    // TODO initializer must not contain yield expression if yield=true (i.e. this is generator function's parameter list)
+                    Expression initializer = assignmentExpression(false, yield, await);
                     BinaryNode test = new BinaryNode(Token.recast(paramToken, EQ_STRICT), ident, newUndefinedLiteral(paramToken, finish));
                     value = new TernaryNode(Token.recast(paramToken, TERNARY), test, new JoinPredecessorExpression(initializer), new JoinPredecessorExpression(ident));
                 }
@@ -4620,14 +4614,14 @@ loop:
      * Parse unary expression.
      * @return Expression node.
      */
-    private Expression unaryExpression() {
+    private Expression unaryExpression(boolean yield, boolean await) {
         final int  unaryLine  = line;
         final long unaryToken = token;
 
         switch (type) {
         case DELETE: {
             next();
-            final Expression expr = unaryExpression();
+            final Expression expr = unaryExpression(yield, await);
 
             if (type == TokenType.EXP) {
                 throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
@@ -4652,7 +4646,7 @@ loop:
         case BIT_NOT:
         case NOT:
             next();
-            final Expression expr = unaryExpression();
+            final Expression expr = unaryExpression(yield, await);
 
             if (type == TokenType.EXP) {
                 throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
@@ -4665,7 +4659,7 @@ loop:
             final TokenType opType = type;
             next();
 
-            final Expression lhs = unaryExpression();
+            final Expression lhs = unaryExpression(yield, await);
             // ++, -- without operand..
             if (lhs == null) {
                 throw error(AbstractParser.message("expected.lvalue", type.getNameOrType()));
@@ -4674,13 +4668,13 @@ loop:
             return verifyIncDecExpression(unaryToken, opType, lhs, false);
 
         default:
-            if (isAwait() && inAsyncFunction()) {
-                return awaitExpression();
+            if (isAwait() && await) {
+                return awaitExpression(yield);
             }
             break;
         }
 
-        Expression expression = leftHandSideExpression();
+        Expression expression = leftHandSideExpression(yield, await);
 
         if (last != EOL) {
             switch (type) {
@@ -4733,6 +4727,8 @@ loop:
     }
 
     /**
+     * Parse Expression.
+     *
      * {@code
      * MultiplicativeExpression :
      *      UnaryExpression
@@ -4822,30 +4818,30 @@ loop:
      * See 11.14
      * }
      *
-     * Parse expression.
      * @return Expression node.
      */
-    protected Expression expression() {
-        // This method is protected so that subclass can get details
-        // at expression start point!
-
+    private Expression expression() {
         // Include commas in expression parsing.
-        return expression(false, false);
+        return expression(false, inGeneratorFunction(), inAsyncFunction());
     }
 
-    private Expression expression(final boolean noIn, final boolean inPatternPosition) {
-        Expression assignmentExpression = assignmentExpression(noIn, inPatternPosition);
+    private Expression expression(boolean noIn, boolean yield, boolean await) {
+        return expression(noIn, yield, await, false);
+    }
+
+    private Expression expression(boolean noIn, boolean yield, boolean await, boolean inPatternPosition) {
+        Expression assignmentExpression = assignmentExpression(noIn, yield, await, inPatternPosition);
         while (type == COMMARIGHT) {
             long commaToken = token;
             next();
 
-            Expression rhs = assignmentExpression(noIn);
+            Expression rhs = assignmentExpression(noIn, yield, await);
             assignmentExpression = new BinaryNode(commaToken, assignmentExpression, rhs);
         }
         return assignmentExpression;
     }
 
-    private Expression parenthesizedExpressionAndArrowParameterList() {
+    private Expression parenthesizedExpressionAndArrowParameterList(boolean yield, boolean await) {
         long primaryToken = token;
         assert type == LPAREN;
         next();
@@ -4866,7 +4862,7 @@ loop:
             }
         }
 
-        Expression assignmentExpression = assignmentExpression(false, true);
+        Expression assignmentExpression = assignmentExpression(false, yield, await, true);
         boolean hasCoverInitializedName = hasCoverInitializedName(assignmentExpression);
         while (type == COMMARIGHT) {
             long commaToken = token;
@@ -4885,7 +4881,7 @@ loop:
                 break;
             }
 
-            Expression rhs = assignmentExpression(false, true);
+            Expression rhs = assignmentExpression(false, yield, await, true);
             hasCoverInitializedName = hasCoverInitializedName || hasCoverInitializedName(rhs);
 
             if (rhsRestParameter) {
@@ -4907,15 +4903,15 @@ loop:
         return assignmentExpression;
     }
 
-    private Expression expression(final int minPrecedence, final boolean noIn) {
-        return expression(unaryExpression(), minPrecedence, noIn);
+    private Expression expression(int minPrecedence, boolean noIn, boolean yield, boolean await) {
+        return expression(unaryExpression(yield, await), minPrecedence, noIn, yield, await);
     }
 
     private JoinPredecessorExpression joinPredecessorExpression() {
         return new JoinPredecessorExpression(expression());
     }
 
-    private Expression expression(final Expression exprLhs, final int minPrecedence, final boolean noIn) {
+    private Expression expression(Expression exprLhs, int minPrecedence, boolean noIn, boolean yield, boolean await) {
         // Get the precedence of the next operator.
         int precedence = type.getPrecedence();
         Expression lhs = exprLhs;
@@ -4931,12 +4927,12 @@ loop:
 
                 // Pass expression. Middle expression of a conditional expression can be a "in"
                 // expression - even in the contexts where "in" is not permitted.
-                final Expression trueExpr = assignmentExpression(false);
+                final Expression trueExpr = assignmentExpression(false, yield, await);
 
                 expect(COLON);
 
                 // Fail expression.
-                final Expression falseExpr = assignmentExpression(noIn);
+                final Expression falseExpr = assignmentExpression(noIn, yield, await);
 
                 // Build up node.
                 lhs = new TernaryNode(op, lhs, new JoinPredecessorExpression(trueExpr), new JoinPredecessorExpression(falseExpr));
@@ -4946,7 +4942,7 @@ loop:
 
                 assert !Token.descType(op).isAssignment();
                  // Get the next primary expression.
-                Expression rhs = unaryExpression();
+                Expression rhs = unaryExpression(yield, await);
 
                 // Get precedence of next operator.
                 int nextPrecedence = type.getPrecedence();
@@ -4955,7 +4951,7 @@ loop:
                 while (checkOperator(noIn) &&
                        (nextPrecedence > precedence ||
                        nextPrecedence == precedence && !type.isLeftAssociative())) {
-                    rhs = expression(rhs, nextPrecedence, noIn);
+                    rhs = expression(rhs, nextPrecedence, noIn, yield, await);
                     nextPrecedence = type.getPrecedence();
                 }
                 lhs = newBinaryExpression(op, lhs, rhs);
@@ -4971,8 +4967,12 @@ loop:
         return type.isOperator(noIn) && (type != TokenType.EXP || isES6());
     }
 
-    private Expression assignmentExpression(final boolean noIn) {
-        return assignmentExpression(noIn, false);
+    private Expression assignmentExpression(boolean noIn) {
+        return assignmentExpression(noIn, inGeneratorFunction(), inAsyncFunction(), false);
+    }
+
+    private Expression assignmentExpression(boolean noIn, boolean yield, boolean await) {
+        return assignmentExpression(noIn, yield, await, false);
     }
 
     /**
@@ -4986,12 +4986,9 @@ loop:
      *   LeftHandSideExpression[?Yield] = AssignmentExpression[?In, ?Yield]
      *   LeftHandSideExpression[?Yield] AssignmentOperator AssignmentExpression[?In, ?Yield]
      */
-    protected Expression assignmentExpression(final boolean noIn, final boolean inPatternPosition) {
-        // This method is protected so that subclass can get details
-        // at assignment expression start point!
-
-        if (type == YIELD && inGeneratorFunction()) {
-            return yieldExpression(noIn);
+    private Expression assignmentExpression(boolean noIn, boolean yield, boolean await, boolean inPatternPosition) {
+        if (type == YIELD && yield) {
+            return yieldExpression(noIn, await);
         }
 
         boolean asyncArrow = isAsync() && lookaheadIsAsyncArrowParameterListStart();
@@ -5004,11 +5001,11 @@ loop:
 
         final long startToken = token;
         final int startLine = line;
-        Expression exprLhs = conditionalExpression(noIn);
+        Expression exprLhs = conditionalExpression(noIn, yield, await);
 
         if (asyncArrow && exprLhs instanceof IdentNode && isBindingIdentifier() && lookaheadIsArrow()) {
             // async ident =>
-            exprLhs = primaryExpression();
+            exprLhs = primaryExpression(yield, await);
         }
 
         if (ES6_ARROW_FUNCTION && type == ARROW && isES6()) {
@@ -5034,7 +5031,7 @@ loop:
             try {
                 long assignToken = token;
                 next();
-                Expression exprRhs = assignmentExpression(noIn);
+                Expression exprRhs = assignmentExpression(noIn, yield, await);
                 return verifyAssignment(assignToken, exprLhs, exprRhs);
             } finally {
                 if (isAssign) {
@@ -5052,8 +5049,8 @@ loop:
     /**
      * ConditionalExpression.
      */
-    private Expression conditionalExpression(boolean noIn) {
-        return expression(TERNARY.getPrecedence(), noIn);
+    private Expression conditionalExpression(boolean noIn, boolean yield, boolean await) {
+        return expression(TERNARY.getPrecedence(), noIn, yield, await);
     }
 
     /**
@@ -5354,7 +5351,7 @@ loop:
     /**
      * Parse untagged template literal as string concatenation.
      */
-    private Expression templateLiteral() {
+    private Expression templateLiteral(boolean yield, boolean await) {
         assert type == TEMPLATE || type == TEMPLATE_HEAD;
         final boolean noSubstitutionTemplate = type == TEMPLATE;
         long lastLiteralToken = token;
@@ -5369,7 +5366,7 @@ loop:
             Expression concat = literal;
             TokenType lastLiteralType;
             do {
-                Expression expression = templateLiteralExpression();
+                Expression expression = templateLiteralExpression(yield, await);
                 expression = new RuntimeNode(Token.recast(expression.getToken(), VOID), expression.getFinish(), RuntimeNode.Request.TO_STRING, expression);
                 concat = new BinaryNode(Token.recast(lastLiteralToken, TokenType.ADD), concat, expression);
                 lastLiteralType = type;
@@ -5383,9 +5380,12 @@ loop:
         }
     }
 
-    private Expression templateLiteralExpression() {
+    /**
+     * Parse expression inside a template literal.
+     */
+    private Expression templateLiteralExpression(boolean yield, boolean await) {
         assert lexer.pauseOnRightBrace;
-        Expression expression = expression();
+        Expression expression = expression(false, yield, await);
         if (type != RBRACE) {
             throw error(AbstractParser.message("unterminated.template.expression"), token);
         }
@@ -5399,7 +5399,7 @@ loop:
      * Parse tagged template literal as argument list.
      * @return argument list for a tag function call (template object, ...substitutions)
      */
-    private List<Expression> templateLiteralArgumentList() {
+    private List<Expression> templateLiteralArgumentList(boolean yield, boolean await) {
         assert type == TEMPLATE || type == TEMPLATE_HEAD;
         final ArrayList<Expression> argumentList = new ArrayList<>();
         final ArrayList<Expression> rawStrings = new ArrayList<>();
@@ -5416,7 +5416,7 @@ loop:
             if (hasSubstitutions) {
                 TokenType lastLiteralType;
                 do {
-                    Expression expression = templateLiteralExpression();
+                    Expression expression = templateLiteralExpression(yield, await);
                     argumentList.add(expression);
 
                     lastLiteralType = type;
@@ -5580,7 +5580,7 @@ loop:
                 importEntries = convert(namedImportsNode);
             } else if (isBindingIdentifier()) {
                 // ImportedDefaultBinding
-                IdentNode importedDefaultBinding = bindingIdentifier("ImportedBinding");
+                IdentNode importedDefaultBinding = bindingIdentifier("ImportedBinding", false, false);
                 ImportEntry defaultImport = ImportEntry.importDefault(importedDefaultBinding.getName());
 
                 if (type == COMMARIGHT) {
@@ -5633,7 +5633,7 @@ loop:
 
         expect(AS);
 
-        IdentNode localNameSpace = bindingIdentifier("ImportedBinding");
+        IdentNode localNameSpace = bindingIdentifier("ImportedBinding", false, false);
         return new NameSpaceImportNode(startToken, Token.descPosition(startToken), finish, localNameSpace);
     }
 
@@ -5662,7 +5662,7 @@ loop:
             IdentNode importName = getIdentifierName();
             if (type == AS) {
                 next();
-                IdentNode localName = bindingIdentifier("ImportedBinding");
+                IdentNode localName = bindingIdentifier("ImportedBinding", false, false);
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
                 //importEntries.add(ImportEntry.importSpecifier(importName.getName(), localName.getName()));
             } else if (bindingIdentifier) {
@@ -5757,7 +5757,7 @@ loop:
                         declaration = true;
                         break;
                     case CLASS:
-                        assignmentExpression = classDeclaration(true);
+                        assignmentExpression = classDeclaration(false, false, true);
                         ident = getClassDeclarationName(assignmentExpression);
                         declaration = true;
                         break;
@@ -5768,7 +5768,7 @@ loop:
                             declaration = true;
                             break;
                         }
-                        assignmentExpression = assignmentExpression(false);
+                        assignmentExpression = assignmentExpression(false, false, false);
                         ident = null;
                         declaration = false;
                         break;
@@ -5800,7 +5800,7 @@ loop:
                 }
                 break;
             case CLASS: {
-                Expression classDeclaration = classDeclaration(false);
+                Expression classDeclaration = classDeclaration(false, false, false);
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, classDeclaration, false));
                 IdentNode classIdent = getClassDeclarationName(classDeclaration);
                 module.addLocalExportEntry(ExportEntry.exportSpecifier(classIdent.getName()));
@@ -5857,7 +5857,7 @@ loop:
             long nameToken = token;
             IdentNode localName;
             if (isIdentifier()) {
-                localName = identifier();
+                localName = identifier(false, false);
             } else if (isReservedWord()) {
                 // Reserved words are allowed iff the ExportClause is followed by a FromClause.
                 // Remember the first reserved word and throw an error if this is not the case.
