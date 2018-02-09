@@ -303,8 +303,9 @@ public class JSForeignAccessFactory {
             boolean readable = true;
             boolean writable = desc.getIfHasWritable(true);
             boolean invocable = desc.isDataDescriptor() & JSRuntime.isCallable(desc.getValue());
+            boolean removable = desc.getIfHasConfigurable(false);
 
-            return KeyInfo.newBuilder().setInternal(false).setInvocable(invocable).setWritable(writable).setReadable(readable).build();
+            return KeyInfo.newBuilder().setInternal(false).setInvocable(invocable).setWritable(writable).setReadable(readable).setRemovable(removable).build();
         }
     }
 
