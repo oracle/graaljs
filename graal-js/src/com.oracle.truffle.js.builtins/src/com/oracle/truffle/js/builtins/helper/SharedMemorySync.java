@@ -101,20 +101,7 @@ public class SharedMemorySync {
         cx.getJSAgent().atomicSectionEnter(target);
         Object value = JSRuntime.toUInt32(doVolatileGet(target, intArrayOffset));
         if (value.equals(JSRuntime.toUInt32(expected))) {
-            doVolatilePut(target, intArrayOffset, (int) result);
-            cx.getJSAgent().atomicSectionLeave(target);
-            return true;
-        }
-        cx.getJSAgent().atomicSectionLeave(target);
-        return false;
-    }
-
-    @TruffleBoundary
-    public static boolean compareAndSwapObject(JSContext cx, DynamicObject target, int intArrayOffset, Object expected, Object result) {
-        cx.getJSAgent().atomicSectionEnter(target);
-        Object value = doVolatileGet(target, intArrayOffset);
-        if (value.equals(expected)) {
-            doVolatilePut(target, intArrayOffset, (int) result);
+            doVolatilePut(target, intArrayOffset, (int) JSRuntime.toUInt32(result));
             cx.getJSAgent().atomicSectionLeave(target);
             return true;
         }
@@ -129,15 +116,6 @@ public class SharedMemorySync {
             return JSRuntime.toUInt32(expected);
         } else {
             return doVolatileGet(target, intArrayOffset) & 0xFFFFFFFFL;
-        }
-    }
-
-    @TruffleBoundary
-    public static Object atomicFetchOrGetObject(JSContext cx, DynamicObject target, int intArrayOffset, Object expected, Object replacement) {
-        if (compareAndSwapObject(cx, target, intArrayOffset, expected, replacement)) {
-            return expected;
-        } else {
-            return doVolatileGet(target, intArrayOffset);
         }
     }
 
