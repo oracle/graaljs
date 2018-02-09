@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.js.runtime.util;
@@ -113,18 +113,9 @@ public class IntlUtil {
 
     @TruffleBoundary
     private static List<Locale> getAvailableLocales() {
-
         if (availableLocales == null) {
-            availableLocales = new ArrayList<>();
-
-            availableLocales.addAll(Arrays.asList(doGetAvailableLocales()));
-            // As of Unicode 10.0, the availableLocales list
-            // contains the elements "az", "lt", and "tr".
-            addIfMissing(availableLocales, Locale.forLanguageTag("az"));
-            addIfMissing(availableLocales, Locale.forLanguageTag("lt"));
-            addIfMissing(availableLocales, Locale.forLanguageTag("tr"));
+            availableLocales = doGetAvailableLocales();
         }
-
         return availableLocales;
     }
 
@@ -134,13 +125,23 @@ public class IntlUtil {
         }
     }
 
-    private static Locale[] doGetAvailableLocales() {
+    private static List<Locale> doGetAvailableLocales() {
+
+        List<Locale> result = new ArrayList<>();
+
         if (JSTruffleOptions.SubstrateVM) {
             // GR-6347 (Locale.getAvailableLocales() support is missing in SVM)
-            return javaLocalesAvailable;
+            result.addAll(Arrays.asList(javaLocalesAvailable));
         } else {
-            return Locale.getAvailableLocales();
+            result.addAll(Arrays.asList(Locale.getAvailableLocales()));
         }
+        // As of Unicode 10.0, the availableLocales list
+        // contains the elements "az", "lt", and "tr".
+        addIfMissing(result, Locale.forLanguageTag("az"));
+        addIfMissing(result, Locale.forLanguageTag("lt"));
+        addIfMissing(result, Locale.forLanguageTag("tr"));
+
+        return result;
     }
 
     public static boolean isSupportedNumberSystemKey(String nuKey) {
