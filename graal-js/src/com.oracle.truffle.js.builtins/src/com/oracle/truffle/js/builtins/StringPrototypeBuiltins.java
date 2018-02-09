@@ -1469,7 +1469,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toXCase(thisStr, locales);
         }
 
-        protected abstract String toXCase(String thisStr, String[] locales);
+        @SuppressWarnings("unused")
+        protected String toXCase(String thisStr, String[] locales) {
+            throw new UnsupportedOperationException();
+        }
     }
 
     /**
