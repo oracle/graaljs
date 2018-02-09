@@ -29,9 +29,5 @@ try:
     import mx_js_benchmarks
     _suite = mx.suite('graal-js')
     mx_js_benchmarks.add_vm(GraalJsVm('default', []), _suite, 10)
-    mx_js_benchmarks.add_vm(GraalJsVm('no-comp-oops', ['-XX:-UseCompressedOops']), _suite)
-    mx_js_benchmarks.add_vm(GraalJsVm('no-splitting', ['-Dgraal.TruffleSplitting=false']), _suite)
-    mx_js_benchmarks.add_vm(GraalJsVm('limit-truffle-inlining', ['-Dgraal.TruffleMaximumRecursiveInlining=2']), _suite)
-    mx_js_benchmarks.add_vm(GraalJsVm('no-splitting-limit-truffle-inlining', ['-Dgraal.TruffleSplitting=false', '-Dgraal.TruffleMaximumRecursiveInlining=2']), _suite)
 except ImportError:
     pass
