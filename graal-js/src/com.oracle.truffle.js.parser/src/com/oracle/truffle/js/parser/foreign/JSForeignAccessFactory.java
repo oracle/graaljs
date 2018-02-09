@@ -16,6 +16,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
@@ -29,6 +30,8 @@ import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.cast.JSDoubleToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSDoubleToStringNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
@@ -307,6 +310,33 @@ public class JSForeignAccessFactory {
 
             return KeyInfo.newBuilder().setInternal(false).setInvocable(invocable).setWritable(writable).setReadable(readable).setRemovable(removable).build();
         }
+    }
+
+    @Resolve(message = "REMOVE")
+    abstract static class RemoveNode extends Node {
+
+        @Child private DeletePropertyNode deleteNode;
+        @Child private JSToStringNode toStringNode;
+        @Child protected JSToPropertyKeyNode toKey = JSToPropertyKeyNode.create();
+        @Child protected JSForeignToJSTypeNode cast = JSForeignToJSTypeNode.create();
+
+        public Object access(DynamicObject target, Object key) {
+            if (deleteNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                deleteNode = insert(DeletePropertyNode.create(true));
+            }
+            Object castKey = toKey.execute(cast.executeWithTarget(key));
+            if (!deleteNode.executeEvaluated(target, castKey)) {
+                // delete failed
+                if (toStringNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    toStringNode = insert(JSToStringNode.create());
+                }
+                throw UnknownIdentifierException.raise(toStringNode.executeString(castKey));
+            }
+            return true;
+        }
+
     }
 
     // ##### Extra, non-standard interop messages
