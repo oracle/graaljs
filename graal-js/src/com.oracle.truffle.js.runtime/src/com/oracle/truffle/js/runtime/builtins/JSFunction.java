@@ -343,7 +343,11 @@ public final class JSFunction extends JSBuiltinObject {
 
         boolean constructor = JSFunction.isConstructor(boundTargetFunction);
         JSFunctionData functionData = context.getBoundFunctionData(constructor);
-
+        boolean isAsync = JSFunction.getFunctionData(boundTargetFunction).isAsync();
+        if (isAsync) {
+            int length = Math.max(0, JSFunction.getLength(boundTargetFunction) - boundArguments.length);
+            functionData = makeBoundFunctionData(context, length, constructor, isAsync);
+        }
         DynamicObject boundFunction = JSFunction.createBound(context, realm, functionData, boundTargetFunction, boundThis, boundArguments);
         if (proto != context.getRealm().getFunctionPrototype()) {
             JSObject.setPrototype(boundFunction, proto);
@@ -353,10 +357,10 @@ public final class JSFunction extends JSBuiltinObject {
     }
 
     @TruffleBoundary
-    private static JSFunctionData makeBoundFunctionData(JSContext context, int length, boolean constructor) {
+    private static JSFunctionData makeBoundFunctionData(JSContext context, int length, boolean constructor, boolean isAsync) {
         return JSFunctionData.create(context,
                         context.getBoundFunctionCallTarget(), context.getBoundFunctionConstructTarget(), context.getBoundFunctionConstructNewTarget(),
-                        length, "bound", constructor, false, true, false, false, false, false, false, true, false, true);
+                        length, "bound", constructor, false, true, false, false, false, isAsync, false, true, false, true);
     }
 
     @TruffleBoundary
