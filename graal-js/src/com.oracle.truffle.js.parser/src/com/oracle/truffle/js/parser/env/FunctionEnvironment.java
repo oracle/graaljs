@@ -66,6 +66,7 @@ public class FunctionEnvironment extends Environment {
     private final boolean isArrowFunction;
     private final boolean isGeneratorFunction;
     private final boolean isDerivedConstructor;
+    private final boolean isAsyncFunction;
     private boolean hasRestParameter;
     private boolean simpleParameterList = true;
     private boolean isDynamicallyScoped;
@@ -74,9 +75,10 @@ public class FunctionEnvironment extends Environment {
     private Map<String, ImportBindingRef> importBindings;
 
     public FunctionEnvironment(Environment parent, NodeFactory factory, JSContext context,
-                    boolean isStrictMode, boolean isEval, boolean isDirectEval, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor) {
+                    boolean isStrictMode, boolean isEval, boolean isDirectEval, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor, boolean isAsyncFunction) {
         super(parent, factory, context);
         this.isDirectEval = isDirectEval;
+        this.isAsyncFunction = isAsyncFunction;
         this.isStrictMode = isStrictMode || (parent != null && parent.isStrictMode());
         this.isEval = isEval;
         this.isArrowFunction = isArrowFunction;
@@ -540,6 +542,10 @@ public class FunctionEnvironment extends Environment {
 
     public int getArrowFunctionLevel() {
         return isArrowFunction ? 1 + getParentFunction().getArrowFunctionLevel() : 0;
+    }
+
+    public boolean isAsyncFunction() {
+        return isAsyncFunction;
     }
 
     public void addImportBinding(String localName, JSModuleRecord module, String bindingName) {

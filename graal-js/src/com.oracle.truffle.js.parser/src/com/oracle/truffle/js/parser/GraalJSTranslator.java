@@ -207,7 +207,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     protected final JavaScriptNode translateExpression(Expression expression) {
-        try (EnvironmentCloseable dummyFunctionEnv = enterFunctionEnvironment(true, false, false, false)) {
+        try (EnvironmentCloseable dummyFunctionEnv = enterFunctionEnvironment(true, false, false, false, false)) {
             currentFunction().setNeedsParentFrame(true);
             currentFunction().freeze(); // cannot add frame slots
             return transform(expression);
@@ -289,7 +289,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             });
             functionRoot = null;
         } else {
-            try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor)) {
+            try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction)) {
                 FunctionEnvironment currentFunction = currentFunction();
                 currentFunction.setFunctionName(functionName);
                 currentFunction.setInternalFunctionName(!functionName.isEmpty() ? functionName : functionNode.getIdent().getName());
@@ -399,7 +399,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private FunctionRootNode translateFunctionOnDemand(FunctionNode functionNode, JSFunctionData functionData, boolean isStrict, boolean isArrowFunction, boolean isGeneratorFunction,
                     boolean isAsyncFunction, boolean isDerivedConstructor, boolean needsNewTarget, boolean needsParentFrame, String functionName) {
-        try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor)) {
+        try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction)) {
             FunctionEnvironment currentFunction = currentFunction();
             currentFunction.setFunctionName(functionName);
             currentFunction.setInternalFunctionName(!functionName.isEmpty() ? functionName : functionNode.getIdent().getName());
@@ -621,12 +621,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return body;
     }
 
-    private EnvironmentCloseable enterFunctionEnvironment(boolean isStrict, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor) {
+    private EnvironmentCloseable enterFunctionEnvironment(boolean isStrict, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor, boolean isAsyncFunction) {
         Environment functionEnv;
         if (environment instanceof EvalEnvironment) {
-            functionEnv = new FunctionEnvironment(environment.getParent(), factory, context, isStrict, true, ((EvalEnvironment) environment).isDirectEval(), false, false, false);
+            functionEnv = new FunctionEnvironment(environment.getParent(), factory, context, isStrict, true, ((EvalEnvironment) environment).isDirectEval(), false, false, false, false);
         } else {
-            functionEnv = new FunctionEnvironment(environment, factory, context, isStrict, false, false, isArrowFunction, isGeneratorFunction, isDerivedConstructor);
+            functionEnv = new FunctionEnvironment(environment, factory, context, isStrict, false, false, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction);
         }
         return new EnvironmentCloseable(functionEnv);
     }
@@ -1900,19 +1900,21 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createAwaitNode(UnaryNode unaryNode) {
-        currentFunction().addAwait();
+        FunctionEnvironment currentFunction = currentFunction();
+        currentFunction.addAwait();
         JavaScriptNode expression = transform(unaryNode.getExpression());
-        JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncResultSlot()).createReadNode();
-        JSReadFrameSlotNode asyncContextNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncContextSlot()).createReadNode();
+        JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction.getAsyncResultSlot()).createReadNode();
+        JSReadFrameSlotNode asyncContextNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction.getAsyncContextSlot()).createReadNode();
         return factory.createAwait(context, expression, asyncContextNode, asyncResultNode);
     }
 
     private JavaScriptNode createYieldNode(UnaryNode unaryNode) {
-        currentFunction().addYield();
-        currentFunction().addReturn();
+        FunctionEnvironment currentFunction = currentFunction();
+        currentFunction.addYield();
+        currentFunction.addReturn();
         JavaScriptNode expression = transform(unaryNode.getExpression());
         boolean delegating = unaryNode.tokenType() == TokenType.YIELD_STAR;
-        JSWriteFrameSlotNode writeYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSWriteFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createWriteNode(null)
+        JSWriteFrameSlotNode writeYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSWriteFrameSlotNode) environment.findTempVar(currentFunction.getYieldResultSlot()).createWriteNode(null)
                         : null;
         return factory.createYield(context, expression, environment.findYieldValueVar().createReadNode(), delegating, createReturnNode(null), writeYieldResultNode);
     }
