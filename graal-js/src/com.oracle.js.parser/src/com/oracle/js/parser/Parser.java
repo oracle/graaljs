@@ -466,19 +466,18 @@ public class Parser extends AbstractParser {
             }
 
             lc.push(function);
-
             final ParserContextBlockNode body = newBlock();
-
             functionDeclarations = new ArrayList<>();
-            sourceElements(0);
-            addFunctionDeclarations(function);
-            functionDeclarations = null;
-
-            restoreBlock(body);
+            try {
+                sourceElements(0);
+                addFunctionDeclarations(function);
+            } finally {
+                functionDeclarations = null;
+                restoreBlock(body);
+                lc.pop(function);
+            }
             body.setFlag(Block.NEEDS_SCOPE);
-
             final Block functionBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY, body.getStatements());
-            lc.pop(function);
 
             expect(EOF);
 
@@ -915,16 +914,17 @@ loop:
                 Collections.<IdentNode>emptyList());
         lc.push(script);
         final ParserContextBlockNode body = newBlock();
-
         functionDeclarations = new ArrayList<>();
-        sourceElements(reparseFlags);
-        addFunctionDeclarations(script);
-        functionDeclarations = null;
-
-        restoreBlock(body);
+        try {
+            sourceElements(reparseFlags);
+            addFunctionDeclarations(script);
+        } finally {
+            functionDeclarations = null;
+            restoreBlock(body);
+            lc.pop(script);
+        }
         body.setFlag(Block.NEEDS_SCOPE);
         final Block programBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY, body.getStatements());
-        lc.pop(script);
         script.setLastToken(token);
 
         expect(EOF);
@@ -5454,18 +5454,20 @@ loop:
             lc.push(script);
 
             final ParserContextModuleNode module = new ParserContextModuleNode(moduleName);
-
             final ParserContextBlockNode body = newBlock();
-
             functionDeclarations = new ArrayList<>();
-            moduleBody(module);
-            addFunctionDeclarations(script);
-            functionDeclarations = null;
 
-            restoreBlock(body);
+            try {
+                moduleBody(module);
+                addFunctionDeclarations(script);
+            } finally {
+                functionDeclarations = null;
+                restoreBlock(body);
+                lc.pop(script);
+            }
+
             body.setFlag(Block.NEEDS_SCOPE);
             final Block programBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY, body.getStatements());
-            lc.pop(script);
             script.setLastToken(token);
 
             expect(EOF);
