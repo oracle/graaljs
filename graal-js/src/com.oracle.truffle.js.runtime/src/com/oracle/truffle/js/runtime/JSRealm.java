@@ -196,8 +196,6 @@ public class JSRealm implements ShapeContext {
     private final JSConstructor proxyConstructor;
     private final DynamicObjectFactory proxyFactory;
     private final DynamicObject iteratorPrototype;
-    private final DynamicObject asyncIteratorPrototype;
-    private final DynamicObject asyncFromSyncIteratorPrototype;
 
     @CompilationFinal(dimensions = 1) private final JSConstructor[] simdTypeConstructors;
     @CompilationFinal(dimensions = 1) private final DynamicObjectFactory[] simdTypeFactories;
@@ -214,6 +212,12 @@ public class JSRealm implements ShapeContext {
     private final JSConstructor asyncFunctionConstructor;
     private final DynamicObjectFactory initialAsyncFunctionFactory;
     private final DynamicObjectFactory initialAnonymousAsyncFunctionFactory;
+
+    private final DynamicObject asyncIteratorPrototype;
+    private final DynamicObject asyncFromSyncIteratorPrototype;
+    private final JSConstructor asyncGeneratorFunctionConstructor;
+    private final DynamicObjectFactory initialAsyncGeneratorFunctionFactory;
+    private final DynamicObjectFactory initialAnonymousAsyncGeneratorFunctionFactory;
 
     private final DynamicObject throwerFunction;
 
@@ -402,12 +406,16 @@ public class JSRealm implements ShapeContext {
         this.dictionaryShapeObjectPrototype = JSTruffleOptions.DictionaryObject ? JSDictionaryObject.makeDictionaryShape(context, objectPrototype) : null;
 
         boolean es8 = JSTruffleOptions.MaxECMAScriptVersion >= 8;
-        this.asyncIteratorPrototype = es8 ? createAsyncIteratorPrototype() : null;
-        this.asyncFromSyncIteratorPrototype = es8 ? createAsyncFromSyncIteratorPrototype() : null;
-
         this.asyncFunctionConstructor = es8 ? JSFunction.createAsyncFunctionConstructor(this) : null;
-        this.initialAsyncFunctionFactory = es8 ? JSFunction.makeInitialAsyncFunctionConstructorShape(this, asyncFunctionConstructor.getPrototype(), false).createFactory() : null;
-        this.initialAnonymousAsyncFunctionFactory = es8 ? JSFunction.makeInitialAsyncFunctionConstructorShape(this, asyncFunctionConstructor.getPrototype(), true).createFactory() : null;
+        this.initialAsyncFunctionFactory = es8 ? JSFunction.makeInitialAsyncFunctionShape(this, asyncFunctionConstructor.getPrototype(), false).createFactory() : null;
+        this.initialAnonymousAsyncFunctionFactory = es8 ? JSFunction.makeInitialAsyncFunctionShape(this, asyncFunctionConstructor.getPrototype(), true).createFactory() : null;
+
+        boolean es9 = JSTruffleOptions.MaxECMAScriptVersion >= 9;
+        this.asyncIteratorPrototype = es9 ? JSFunction.createAsyncIteratorPrototype(this) : null;
+        this.asyncFromSyncIteratorPrototype = es9 ? JSFunction.createAsyncFromSyncIteratorPrototype(this) : null;
+        this.asyncGeneratorFunctionConstructor = es9 ? JSFunction.createAsyncGeneratorFunctionConstructor(this) : null;
+        this.initialAsyncGeneratorFunctionFactory = es9 ? JSFunction.makeInitialAsyncFunctionShape(this, asyncGeneratorFunctionConstructor.getPrototype(), false).createFactory() : null;
+        this.initialAnonymousAsyncGeneratorFunctionFactory = es9 ? JSFunction.makeInitialAsyncFunctionShape(this, asyncGeneratorFunctionConstructor.getPrototype(), true).createFactory() : null;
 
         this.javaInteropWorkerConstructor = isJavaInteropAvailable() ? JSJavaWorkerBuiltin.createWorkerConstructor(this) : null;
         this.javaInteropWorkerFactory = isJavaInteropAvailable() ? JSJavaWorkerBuiltin.makeInitialShape(context, javaInteropWorkerConstructor.getPrototype()).createFactory() : null;
@@ -521,7 +529,11 @@ public class JSRealm implements ShapeContext {
 
     public final DynamicObjectFactory getFunctionFactory(boolean strictFunctionProperties, boolean isConstructor, boolean isGenerator, boolean isAsync, boolean isAnonymous) {
         if (isAsync) {
-            return isAnonymous ? initialAnonymousAsyncFunctionFactory : initialAsyncFunctionFactory;
+            if (isGenerator) {
+                return isAnonymous ? initialAnonymousAsyncGeneratorFunctionFactory : initialAsyncGeneratorFunctionFactory;
+            } else {
+                return isAnonymous ? initialAnonymousAsyncFunctionFactory : initialAsyncFunctionFactory;
+            }
         } else if (isConstructor) {
             if (!isGenerator) {
                 if (strictFunctionProperties) {
@@ -698,6 +710,10 @@ public class JSRealm implements ShapeContext {
 
     public JSConstructor getAsyncFunctionConstructor() {
         return asyncFunctionConstructor;
+    }
+
+    public JSConstructor getAsyncGeneratorFunctionConstructor() {
+        return asyncGeneratorFunctionConstructor;
     }
 
     @Override
@@ -1107,22 +1123,6 @@ public class JSRealm implements ShapeContext {
      */
     private DynamicObject createIteratorPrototype() {
         return JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
-    }
-
-    /**
-     * Creates the %AsyncIteratorPrototype% object as specified in ES8 11.1.2.
-     */
-    private DynamicObject createAsyncIteratorPrototype() {
-        return JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
-    }
-
-    /**
-     * Creates the %AsyncFromSyncIteratorPrototype% object as specified in ES8 11.1.3.2.
-     */
-    private DynamicObject createAsyncFromSyncIteratorPrototype() {
-        DynamicObject prototype = JSObject.create(this, getObjectPrototype(), JSUserObject.INSTANCE);
-        JSObjectUtil.putFunctionsFromContainer(this, prototype, JSFunction.ASYNC_FROM_SYNC_ITERATOR_PROTOTYPE_NAME);
-        return prototype;
     }
 
     public DynamicObject getArrayProtoValuesIterator() {

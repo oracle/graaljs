@@ -21,6 +21,7 @@ public final class JSPromise extends JSBuiltinObject {
 
     public static final HiddenKey PROMISE_STATE = new HiddenKey("PromiseState");
     public static final HiddenKey PROMISE_RESULT = new HiddenKey("PromiseResult");
+    public static final HiddenKey PROMISE_IS_HANDLED = new HiddenKey("PromiseIsHandled");
 
     // for Promise.prototype.finally
     public static final HiddenKey PROMISE_ON_FINALLY = new HiddenKey("OnFinally");

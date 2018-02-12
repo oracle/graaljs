@@ -59,6 +59,9 @@ public final class JSFunction extends JSBuiltinObject {
     public static final String GENERATOR_NAME = "Generator";
     public static final String GENERATOR_PROTOTYPE_NAME = "Generator.prototype";
     public static final String ASYNC_FUNCTION_NAME = "AsyncFunction";
+    public static final String ASYNC_GENERATOR_FUNCTION_NAME = "AsyncGeneratorFunction";
+    public static final String ASYNC_GENERATOR_NAME = "AsyncGenerator";
+    public static final String ASYNC_GENERATOR_PROTOTYPE_NAME = "AsyncGenerator.prototype";
     public static final String ENUMERATE_ITERATOR_PROTOTYPE_NAME = "[[Enumerate]].prototype";
     public static final String CALLER = "caller";
     public static final String ARGUMENTS = "arguments";
@@ -142,6 +145,8 @@ public final class JSFunction extends JSBuiltinObject {
     public static final HiddenKey GENERATOR_CONTEXT_ID = new HiddenKey("GeneratorContext");
     public static final HiddenKey GENERATOR_TARGET_ID = new HiddenKey("GeneratorTarget");
 
+    public static final HiddenKey ASYNC_GENERATOR_QUEUE_ID = new HiddenKey("AsyncGeneratorQueue");
+
     /** Marker property to ensure generator function shapes are distinct from normal functions. */
     private static final Property GENERATOR_FUNCTION_MARKER_PROPERTY;
     private static final HiddenKey GENERATOR_FUNCTION_MARKER_ID = new HiddenKey("generator function");
@@ -161,10 +166,12 @@ public final class JSFunction extends JSBuiltinObject {
         Completed,
     }
 
-    public enum GeneratorResumeMethod {
-        Next,
-        Return,
-        Throw,
+    public enum AsyncGeneratorState {
+        SuspendedStart,
+        SuspendedYield,
+        Executing,
+        AwaitingReturn,
+        Completed,
     }
 
     static {
@@ -657,7 +664,7 @@ public final class JSFunction extends JSBuiltinObject {
     /**
      * Add prototype property to an initial function shape.
      *
-     * @param functionShape an initital function shape without a prototype property.
+     * @param functionShape an initial function shape without a prototype property.
      * @param notWritable prototype property is non-writable; {@code true} for class constructors.
      */
     public static Shape makeConstructorShape(Shape functionShape, boolean notWritable) {
@@ -824,7 +831,7 @@ public final class JSFunction extends JSBuiltinObject {
 
     public static DynamicObject createAsyncFunctionPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
-        // intrinsic object %AsyncFunction%
+        // intrinsic object %AsyncFunctionPrototype%
         DynamicObject prototype = JSObject.create(realm, realm.getFunctionPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, ASYNC_FUNCTION_NAME, JSAttributes.configurableNotEnumerableNotWritable());
@@ -833,7 +840,7 @@ public final class JSFunction extends JSBuiltinObject {
 
     public static JSConstructor createAsyncFunctionConstructor(JSRealm realm) {
         JSContext ctx = realm.getContext();
-        // intrinsic constructor for %AsyncFunction%
+        // intrinsic constructor %AsyncFunction%
         DynamicObject constructor = realm.lookupFunction(JSConstructor.BUILTINS, ASYNC_FUNCTION_NAME);
         JSObject.setPrototype(constructor, realm.getFunctionConstructor());
         DynamicObject prototype = createAsyncFunctionPrototype(realm, constructor);
@@ -841,8 +848,64 @@ public final class JSFunction extends JSBuiltinObject {
         return new JSConstructor(constructor, prototype);
     }
 
-    public static Shape makeInitialAsyncFunctionConstructorShape(JSRealm realm, DynamicObject prototype, boolean isAnonymous) {
+    public static Shape makeInitialAsyncFunctionShape(JSRealm realm, DynamicObject prototype, boolean isAnonymous) {
         return makeInitialFunctionShape(realm, prototype, true, isAnonymous);
+    }
+
+    /**
+     * Creates the %AsyncIteratorPrototype% object (ES2018 11.1.2).
+     */
+    public static DynamicObject createAsyncIteratorPrototype(JSRealm realm) {
+        DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        JSContext context = realm.getContext();
+        JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return JSFrameUtil.getThisObj(frame);
+            }
+        }), 0, Symbol.SYMBOL_ASYNC_ITERATOR.toFunctionNameString());
+        DynamicObject asyncIterator = JSFunction.create(realm, functionData);
+        JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_ASYNC_ITERATOR, asyncIterator, JSAttributes.getDefaultNotEnumerable());
+        return prototype;
+    }
+
+    /**
+     * Creates the %AsyncFromSyncIteratorPrototype% object (ES2018 11.1.3.2).
+     */
+    public static DynamicObject createAsyncFromSyncIteratorPrototype(JSRealm realm) {
+        DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, JSFunction.ASYNC_FROM_SYNC_ITERATOR_PROTOTYPE_NAME);
+        return prototype;
+    }
+
+    public static DynamicObject createAsyncGeneratorFunctionPrototype(JSRealm realm, DynamicObject constructor) {
+        JSContext ctx = realm.getContext();
+        // intrinsic object %AsyncGenerator%
+        DynamicObject prototype = JSObject.create(realm, realm.getFunctionPrototype(), JSUserObject.INSTANCE);
+        JSObjectUtil.putDataProperty(ctx, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putDataProperty(ctx, prototype, JSObject.PROTOTYPE, createAsyncGeneratorPrototype(realm, prototype), JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, ASYNC_GENERATOR_FUNCTION_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        return prototype;
+    }
+
+    private static DynamicObject createAsyncGeneratorPrototype(JSRealm realm, DynamicObject constructor) {
+        JSContext ctx = realm.getContext();
+        // intrinsic object %AsyncGeneratorPrototype%
+        DynamicObject prototype = JSObject.create(realm, realm.getAsyncIteratorPrototype(), JSUserObject.INSTANCE);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, JSFunction.ASYNC_GENERATOR_PROTOTYPE_NAME);
+        JSObjectUtil.putDataProperty(ctx, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, ASYNC_GENERATOR_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        return prototype;
+    }
+
+    public static JSConstructor createAsyncGeneratorFunctionConstructor(JSRealm realm) {
+        JSContext ctx = realm.getContext();
+        // intrinsic constructor %AsyncGeneratorFunction%
+        DynamicObject constructor = realm.lookupFunction(JSConstructor.BUILTINS, ASYNC_GENERATOR_FUNCTION_NAME);
+        JSObject.setPrototype(constructor, realm.getFunctionConstructor());
+        DynamicObject prototype = createAsyncGeneratorFunctionPrototype(realm, constructor);
+        JSObjectUtil.putDataProperty(ctx, constructor, JSObject.PROTOTYPE, prototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
+        return new JSConstructor(constructor, prototype);
     }
 
     // ##### Bound functions and enumerate iterator

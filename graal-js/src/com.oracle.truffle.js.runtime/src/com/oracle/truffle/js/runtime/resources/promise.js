@@ -11,7 +11,7 @@ var PROMISE_STATE = Internal.GetHiddenKey("PromiseState");
 var PROMISE_RESULT = Internal.GetHiddenKey("PromiseResult");
 var PROMISE_FULFILL_REACTIONS = Internal.HiddenKey("PromiseFulfillReactions");
 var PROMISE_REJECT_REACTIONS = Internal.HiddenKey("PromiseRejectReactions");
-var PROMISE_IS_HANDLED = Internal.HiddenKey("PromiseIsHandled");
+var PROMISE_IS_HANDLED = Internal.GetHiddenKey("PromiseIsHandled");
 var PROMISE_ON_FINALLY = Internal.GetHiddenKey("OnFinally");
 var PROMISE_FINALLY_CONSTRUCTOR = Internal.GetHiddenKey("PromiseFinallyConstructor");
 
@@ -642,41 +642,6 @@ var NewDefaultCapability = function() {
     return NewPromiseCapability(Promise);
 }
 
-/**
- * 25.5.5.4 AsyncFunction Awaited Fulfilled
- */
-function getAsyncFunctionAwaitedFulfilled(execContextData) {
-    return function(result) {
-        // resume the execution at the proper 'await' node
-        return Internal.ResumeContext(execContextData, result, false);
-    }
-}
-
-/**
- * 25.5.5.5 AsyncFunction Awaited Rejected
- */
-function getAsyncFunctionAwaitedRejected(execContextData) {
-    return function(reason) {
-        // resume the execution at the proper 'await' node
-        return Internal.ResumeContext(execContextData, reason, true);
-    }
-}
-
-/**
- * 25.5.5.3 AsyncFunctionAwait
- */
-var AsyncFunctionAwait = function(value, execContextData) {
-    Internal.PromiseHook(-1 /* parent info */, Internal.PromiseFromExecutionContext(execContextData));
-    var promiseCapability = NewPromiseCapability(Promise);
-    var resolveResult = Internal.CallFunction(promiseCapability.resolve, undefined, value);
-    var onFulFilled = getAsyncFunctionAwaitedFulfilled(execContextData);
-    var onRejected = getAsyncFunctionAwaitedRejected(execContextData);
-    Internal.PromiseHook(-1 /* parent info */, promiseCapability.promise);
-    var tawayCapability = NewPromiseCapability(Promise);
-    tawayCapability.promise[PROMISE_IS_HANDLED] = true;
-    PerformPromiseThen(promiseCapability.promise, onFulFilled, onRejected, tawayCapability);
-}
-
-Internal.RegisterAsyncFunctionBuiltins(AsyncFunctionAwait, NewDefaultCapability, PerformPromiseThen);
+Internal.RegisterAsyncFunctionBuiltins(NewDefaultCapability, PerformPromiseThen);
 
 })();

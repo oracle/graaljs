@@ -4,83 +4,86 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.control.AwaitNode.AsyncAwaitExecutionContext;
-import com.oracle.truffle.js.nodes.control.AwaitNode.Rejected;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * ES8 5.2 AsyncIteratorClose(iterator, completion).
  */
-public class AsyncIteratorCloseWrapperNode extends JavaScriptNode implements ResumableNode {
+public class AsyncIteratorCloseWrapperNode extends AwaitNode {
 
     private final JSContext context;
-
-    @Child private JSReadFrameSlotNode readAsyncResultNode;
-    @Child private JSReadFrameSlotNode readAsyncContextNode;
-    @Child private JSFunctionCallNode awaitTrampolineCall;
-
     @Child private JavaScriptNode loopNode;
     @Child private GetMethodNode getReturnNode;
     @Child private JSFunctionCallNode methodCallNode;
     @Child private IsObjectNode isObjectNode;
-    @Child private JavaScriptNode iterator;
-    @Child private PropertyGetNode getValue;
+    @Child private JavaScriptNode iteratorNode;
+    @Child private JavaScriptNode doneNode;
 
-    protected AsyncIteratorCloseWrapperNode(JSContext context, JavaScriptNode loopNode, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
+    protected AsyncIteratorCloseWrapperNode(JSContext context, JavaScriptNode loopNode, JavaScriptNode iteratorNode, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode,
+                    JavaScriptNode doneNode) {
+        super(context, null, asyncContextNode, asyncResultNode);
         this.context = context;
         this.loopNode = loopNode;
-        this.iterator = iterator;
+        this.iteratorNode = iteratorNode;
+        this.doneNode = doneNode;
 
         this.getReturnNode = GetMethodNode.create(context, null, "return");
 
         this.methodCallNode = JSFunctionCallNode.createCall();
         this.isObjectNode = IsObjectNode.create();
-        this.getValue = PropertyGetNode.create("value", false, context);
 
         this.readAsyncResultNode = asyncResultNode;
         this.readAsyncContextNode = asyncContextNode;
-        this.awaitTrampolineCall = JSFunctionCallNode.create(false);
+        this.awaitTrampolineCall = JSFunctionCallNode.createCall();
 
     }
 
     public static JavaScriptNode create(JSContext context, JavaScriptNode loopNode, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode,
-                    JSReadFrameSlotNode asyncResultNode) {
-        return new AsyncIteratorCloseWrapperNode(context, loopNode, iterator, asyncContextNode, asyncResultNode);
+                    JSReadFrameSlotNode asyncResultNode, JavaScriptNode doneNode) {
+        return new AsyncIteratorCloseWrapperNode(context, loopNode, iterator, asyncContextNode, asyncResultNode, doneNode);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        Object completion = loopNode.execute(frame);
-        // The for-await-of loop returned here.
-        // 5.2 AsyncIteratorClose (iterator, completion)
-        Object returnMethod = getReturnNode.executeWithTarget(frame, iterator.execute(frame));
-        if (returnMethod == Undefined.instance) {
-            return completion;
+        Object result;
+        try {
+            result = loopNode.execute(frame);
+        } catch (YieldException e) {
+            throw e;
+        } catch (Exception e) {
+            Object iterator = iteratorNode.execute(frame);
+            Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
+            if (returnMethod != Undefined.instance) {
+                try {
+                    methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                } catch (Exception ex) {
+                    // re-throw outer exception
+                }
+            }
+            throw e;
         }
-        Object innerResult = methodCallNode.executeCall(JSArguments.create(iterator.execute(frame), returnMethod, Undefined.instance));
-        Object[] initialState = (Object[]) readAsyncContextNode.execute(frame);
-        CallTarget target = (CallTarget) initialState[0];
-        DynamicObject currentCapability = (DynamicObject) initialState[1];
-        awaitTrampolineCall.executeCall(JSArguments.create(Undefined.instance, context.getAsyncFunctionAwait(),
-                        innerResult, new AsyncAwaitExecutionContext(target, currentCapability)));
-        setState(frame, 1);
-        // We throw YieldException so that we can rely on the generator's recovery mechanism. The
-        // exception value is ignored.
-        throw new YieldException(Undefined.instance);
+        if (StatementNode.executeConditionAsBoolean(frame, doneNode)) {
+            return result;
+        } else {
+            Object iterator = iteratorNode.execute(frame);
+            Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
+            if (returnMethod == Undefined.instance) {
+                return result;
+            }
+            Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+            setState(frame, 1);
+            return suspendAwait(frame, innerResult);
+        }
     }
 
     @Override
@@ -90,11 +93,7 @@ public class AsyncIteratorCloseWrapperNode extends JavaScriptNode implements Res
             return execute(frame);
         } else {
             setState(frame, 0);
-            // We have been restored at this point. The frame contains the resumption state.
-            Object innerResult = readAsyncResultNode.execute(frame);
-            if (innerResult instanceof Rejected) {
-                throw UserScriptException.create(((Rejected) innerResult).reason, this);
-            }
+            Object innerResult = resumeAwait(frame);
             if (!JSObject.isJSObject(innerResult)) {
                 throw Errors.createTypeError("not an object");
             }
@@ -104,7 +103,7 @@ public class AsyncIteratorCloseWrapperNode extends JavaScriptNode implements Res
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new AsyncIteratorCloseWrapperNode(context, cloneUninitialized(loopNode), cloneUninitialized(iterator), cloneUninitialized(readAsyncContextNode),
-                        cloneUninitialized(readAsyncResultNode));
+        return new AsyncIteratorCloseWrapperNode(context, cloneUninitialized(loopNode), cloneUninitialized(iteratorNode), cloneUninitialized(readAsyncContextNode),
+                        cloneUninitialized(readAsyncResultNode), cloneUninitialized(doneNode));
     }
 }

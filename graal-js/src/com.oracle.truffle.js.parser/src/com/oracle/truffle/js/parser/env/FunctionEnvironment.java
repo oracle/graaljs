@@ -548,6 +548,10 @@ public class FunctionEnvironment extends Environment {
         return isAsyncFunction;
     }
 
+    public boolean isAsyncGeneratorFunction() {
+        return isAsyncFunction && isGeneratorFunction;
+    }
+
     public void addImportBinding(String localName, JSModuleRecord module, String bindingName) {
         Map<String, ImportBindingRef> map = importBindings;
         if (map == null) {

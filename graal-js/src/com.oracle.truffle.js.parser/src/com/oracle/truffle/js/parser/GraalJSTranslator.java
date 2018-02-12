@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.js.parser.Lexer;
 import com.oracle.js.parser.Token;
@@ -80,7 +81,6 @@ import com.oracle.truffle.js.nodes.binary.DualNode;
 import com.oracle.truffle.js.nodes.binary.JSBinaryNode;
 import com.oracle.truffle.js.nodes.binary.JSOrNode;
 import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
-import com.oracle.truffle.js.nodes.control.AwaitNode;
 import com.oracle.truffle.js.nodes.control.BreakNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
@@ -90,7 +90,7 @@ import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode;
 import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
 import com.oracle.truffle.js.nodes.control.SequenceNode;
-import com.oracle.truffle.js.nodes.control.YieldNode;
+import com.oracle.truffle.js.nodes.control.SuspendNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
@@ -359,14 +359,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         body = handleFunctionReturn(functionNode, body);
 
-        if (isGeneratorFunction) {
-            body = handleGeneratorBody(body);
+        if (isGeneratorFunction || isAsyncFunction) {
+            if (isGeneratorFunction && isAsyncFunction) {
+                body = handleAsyncGeneratorBody(body);
+            } else if (isGeneratorFunction) {
+                body = handleGeneratorBody(body);
+            } else if (isAsyncFunction) {
+                body = handleAsyncFunctionBody(body, parameterBlock);
+                parameterBlock = null;
+            }
         }
 
-        // parameter initialization must precede (i.e. wrap) the [generator|async] function body
-        if (isAsyncFunction) {
-            body = handleAsyncFunctionBody(body, parameterBlock);
-        } else if (parameterBlock != null) {
+        // parameter initialization must precede (i.e. wrap) the (async) generator function body
+        if (parameterBlock != null) {
             body = factory.createExprBlock(parameterBlock, body);
         }
 
@@ -458,7 +463,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         VarRef asyncResultVar = environment.findAsyncResultVar();
         JSWriteFrameSlotNode writeResultNode = (JSWriteFrameSlotNode) asyncResultVar.createWriteNode(null);
         JSWriteFrameSlotNode writeContextNode = (JSWriteFrameSlotNode) asyncContextVar.createWriteNode(null);
-        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body, AwaitNode.class, currentFunction().getAwaitCount());
+        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body, currentFunction().getAwaitCount());
         return factory.createAsyncFunctionBody(context, parameterInit, instrumentedBody, writeContextNode, writeResultNode);
     }
 
@@ -471,33 +476,47 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         VarRef yieldVar = environment.findYieldValueVar();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
         JSReadFrameSlotNode readYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
-        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body, YieldNode.class, currentFunction().getYieldCount());
+        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body, currentFunction().getYieldCount());
         return factory.createGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode);
+    }
+
+    /**
+     * Generator function parse-time AST modifications.
+     *
+     * @return instrumented function body
+     */
+    private JavaScriptNode handleAsyncGeneratorBody(JavaScriptNode body) {
+        JSWriteFrameSlotNode writeAsyncContextNode = (JSWriteFrameSlotNode) environment.findAsyncContextVar().createWriteNode(null);
+        VarRef yieldVar = environment.findAsyncResultVar();
+        JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
+        JSReadFrameSlotNode readYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
+        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body, currentFunction().getAwaitCount());
+        return factory.createAsyncGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode, writeAsyncContextNode);
     }
 
     /**
      * Instrument code paths leading to yield and await expressions.
      */
-    private JavaScriptNode instrumentSuspendNodes(JavaScriptNode body, Class<? extends ResumableNode> klass, int count) {
+    private JavaScriptNode instrumentSuspendNodes(JavaScriptNode body, int count) {
         if (count == 0) {
             return body;
         }
-        JavaScriptNode newBody = (JavaScriptNode) instrumentSuspendHelper(body, klass, null);
-        assert newBody != null;
+        JavaScriptNode newBody = (JavaScriptNode) instrumentSuspendHelper(body, null);
+        Objects.requireNonNull(newBody);
         return newBody;
     }
 
-    private Node instrumentSuspendHelper(Node parent, Class<? extends ResumableNode> klass, Node grandparent) {
+    private Node instrumentSuspendHelper(Node parent, Node grandparent) {
         boolean hasSuspendChild = false;
         for (Node child : getChildrenInExecutionOrder(parent)) {
-            Node newChild = instrumentSuspendHelper(child, klass, parent);
+            Node newChild = instrumentSuspendHelper(child, parent);
             if (newChild != null) {
                 hasSuspendChild = true;
                 NodeUtil.replaceChild(parent, child, newChild);
                 assert !(child instanceof ResumableNode) || newChild instanceof GeneratorWrapperNode : "resumable node not wrapped: " + child;
             }
         }
-        if (klass.isInstance(parent)) {
+        if (parent instanceof SuspendNode) {
             return wrapResumableNode((ResumableNode) parent);
         } else if (!hasSuspendChild) {
             return null;
@@ -1232,18 +1251,22 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     @Override
     public JavaScriptNode enterReturnNode(com.oracle.js.parser.ir.ReturnNode returnNode) {
         JavaScriptNode expression = returnNode.getExpression() != null ? transform(returnNode.getExpression()) : factory.createConstantUndefined();
+        if (currentFunction().isAsyncGeneratorFunction()) {
+            expression = createAwaitNode(expression);
+        }
 
         if (returnNode.isInTerminalPosition()) {
             return result(tagWithHaltTag(expression));
         }
 
-        currentFunction().addReturn();
         return result(tagWithHaltTag(createReturnNode(expression)));
     }
 
     private ReturnNode createReturnNode(JavaScriptNode expression) {
+        FunctionEnvironment currentFunction = currentFunction();
+        currentFunction.addReturn();
         if (JSTruffleOptions.ReturnValueInFrame) {
-            JavaScriptNode writeReturnSlotNode = environment.findTempVar(currentFunction().getReturnSlot()).createWriteNode(expression);
+            JavaScriptNode writeReturnSlotNode = environment.findTempVar(currentFunction.getReturnSlot()).createWriteNode(expression);
             return factory.createFrameReturn(writeReturnSlotNode);
         } else {
             return factory.createReturn(expression);
@@ -1754,22 +1777,24 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assert forNode.isForIn() && !forNode.isForEach() && !forNode.isForOf();
             createIteratorNode = factory.createEnumerate(context, modify, false);
         }
-        return desugarForBody(forNode, createIteratorNode, jumpTarget);
+        return desugarForInOrOfBody(forNode, createIteratorNode, jumpTarget);
     }
 
     private JavaScriptNode desugarForOf(ForNode forNode, JavaScriptNode modify, JumpTargetCloseable<ContinueTarget> jumpTarget) {
         assert forNode.isForOf();
         JavaScriptNode getIterator = factory.createGetIterator(context, modify);
-        return desugarForBody(forNode, getIterator, jumpTarget);
+        return desugarForInOrOfBody(forNode, getIterator, jumpTarget);
     }
 
-    private JavaScriptNode desugarForBody(ForNode forNode, JavaScriptNode getIterator, JumpTargetCloseable<ContinueTarget> jumpTarget) {
+    private JavaScriptNode desugarForInOrOfBody(ForNode forNode, JavaScriptNode iterator, JumpTargetCloseable<ContinueTarget> jumpTarget) {
         VarRef iteratorVar = environment.createTempVar();
-        JavaScriptNode iteratorInit = iteratorVar.createWriteNode(getIterator);
+        JavaScriptNode iteratorInit = iteratorVar.createWriteNode(iterator);
         VarRef nextResultVar = environment.createTempVar();
-        JavaScriptNode iteratorStep = factory.createIteratorStep(context, iteratorVar.createReadNode());
-        // while(nextResult = IteratorStep(iterator))
-        JavaScriptNode condition = nextResultVar.createWriteNode(iteratorStep);
+        VarRef doneVar = environment.createTempVar();
+        JavaScriptNode iteratorNext = factory.createIteratorNext(context, iteratorVar.createReadNode());
+        // nextResult = IteratorNext(iterator)
+        // while(!(done = IteratorComplete(nextResult)))
+        JavaScriptNode condition = factory.createUnary(UnaryOperation.NOT, doneVar.createWriteNode(factory.createIteratorComplete(context, nextResultVar.createWriteNode(iteratorNext))));
         JavaScriptNode wrappedBody;
         try (EnvironmentCloseable blockEnv = forNode.hasPerIterationScope() ? enterBlockEnvironment(lc.getCurrentBlock()) : new EnvironmentCloseable(environment)) {
             // var nextValue = IteratorValue(nextResult);
@@ -1782,7 +1807,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
         JavaScriptNode whileNode = createWhileDo(condition, wrappedBody);
-        JavaScriptNode wrappedWhile = factory.createIteratorCloseWrapper(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode());
+        JavaScriptNode wrappedWhile = factory.createIteratorCloseIfNotDone(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(), doneVar.createReadNode());
         JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
         wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
         return createBlock(iteratorInit, wrappedWhile);
@@ -1803,13 +1828,15 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         VarRef iteratorVar = environment.createTempVar();
         JavaScriptNode iteratorInit = iteratorVar.createWriteNode(getIterator);
         VarRef nextResultVar = environment.createTempVar();
+        VarRef doneVar = environment.createTempVar();
 
         currentFunction().addAwait();
         JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncResultSlot()).createReadNode();
         JSReadFrameSlotNode asyncContextNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncContextSlot()).createReadNode();
-        JavaScriptNode iteratorStep = factory.createAsyncIteratorStep(context, iteratorVar.createReadNode(), asyncContextNode, asyncResultNode);
-        // while(nextResult = await IteratorStep(iterator))
-        JavaScriptNode condition = nextResultVar.createWriteNode(iteratorStep);
+        JavaScriptNode iteratorNext = factory.createAsyncIteratorNext(context, iteratorVar.createReadNode(), asyncContextNode, asyncResultNode);
+        // nextResult = Await(IteratorNext(iterator))
+        // while(!(done = IteratorComplete(nextResult)))
+        JavaScriptNode condition = factory.createUnary(UnaryOperation.NOT, doneVar.createWriteNode(factory.createIteratorComplete(context, nextResultVar.createWriteNode(iteratorNext))));
         JavaScriptNode wrappedBody;
         try (EnvironmentCloseable blockEnv = forNode.hasPerIterationScope() ? enterBlockEnvironment(lc.getCurrentBlock()) : new EnvironmentCloseable(environment)) {
             // var nextValue = IteratorValue(nextResult);
@@ -1823,9 +1850,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
         JavaScriptNode whileNode = createWhileDo(condition, wrappedBody);
         currentFunction().addAwait();
-        JavaScriptNode wrappedWhile = factory.createAsyncIteratorCloseWrapper(context,
-                        jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(), asyncContextNode,
-                        asyncResultNode);
+        JavaScriptNode wrappedWhile = factory.createAsyncIteratorCloseWrapper(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(), asyncContextNode, asyncResultNode,
+                        doneVar.createReadNode());
         JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
         wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
         return createBlock(iteratorInit, wrappedWhile);
@@ -1893,30 +1919,49 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             case YIELD_STAR:
                 return result(createYieldNode(unaryNode));
             case AWAIT:
-                return result(createAwaitNode(unaryNode));
+                return result(translateAwaitNode(unaryNode));
             default:
                 throw new UnsupportedOperationException(unaryNode.tokenType().toString());
         }
     }
 
-    private JavaScriptNode createAwaitNode(UnaryNode unaryNode) {
+    private JavaScriptNode translateAwaitNode(UnaryNode unaryNode) {
+        JavaScriptNode expression = transform(unaryNode.getExpression());
+        return createAwaitNode(expression);
+    }
+
+    private JavaScriptNode createAwaitNode(JavaScriptNode expression) {
         FunctionEnvironment currentFunction = currentFunction();
         currentFunction.addAwait();
-        JavaScriptNode expression = transform(unaryNode.getExpression());
-        JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction.getAsyncResultSlot()).createReadNode();
         JSReadFrameSlotNode asyncContextNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction.getAsyncContextSlot()).createReadNode();
+        JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction.getAsyncResultSlot()).createReadNode();
         return factory.createAwait(context, expression, asyncContextNode, asyncResultNode);
     }
 
     private JavaScriptNode createYieldNode(UnaryNode unaryNode) {
         FunctionEnvironment currentFunction = currentFunction();
-        currentFunction.addYield();
-        currentFunction.addReturn();
+        assert currentFunction.isGeneratorFunction();
+        boolean asyncGeneratorYield = currentFunction.isAsyncFunction();
+        boolean yieldStar = unaryNode.tokenType() == TokenType.YIELD_STAR;
+
         JavaScriptNode expression = transform(unaryNode.getExpression());
-        boolean delegating = unaryNode.tokenType() == TokenType.YIELD_STAR;
-        JSWriteFrameSlotNode writeYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSWriteFrameSlotNode) environment.findTempVar(currentFunction.getYieldResultSlot()).createWriteNode(null)
-                        : null;
-        return factory.createYield(context, expression, environment.findYieldValueVar().createReadNode(), delegating, createReturnNode(null), writeYieldResultNode);
+        ReturnNode returnNode = createReturnNode(null);
+        if (asyncGeneratorYield) {
+            currentFunction.addAwait();
+            JSReadFrameSlotNode asyncContextNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction.getAsyncContextSlot()).createReadNode();
+            JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction.getAsyncResultSlot()).createReadNode();
+            if (yieldStar) {
+                VarRef tempVar = environment.createTempVar();
+                return factory.createAsyncGeneratorYieldStar(context, expression, asyncContextNode, asyncResultNode, returnNode, tempVar.createReadNode(), (WriteNode) tempVar.createWriteNode(null));
+            } else {
+                return factory.createAsyncGeneratorYield(context, expression, asyncContextNode, asyncResultNode, returnNode);
+            }
+        } else {
+            currentFunction.addYield();
+            JSWriteFrameSlotNode writeYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSWriteFrameSlotNode) environment.findTempVar(currentFunction.getYieldResultSlot()).createWriteNode(null)
+                            : null;
+            return factory.createYield(context, expression, environment.findYieldValueVar().createReadNode(), yieldStar, returnNode, writeYieldResultNode);
+        }
     }
 
     private JavaScriptNode enterUnaryDefaultNode(UnaryNode unaryNode) {

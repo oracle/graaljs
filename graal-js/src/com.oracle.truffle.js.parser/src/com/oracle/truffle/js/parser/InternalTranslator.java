@@ -9,22 +9,18 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArrayPrototype;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectDefinePropertyNodeGen;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -32,13 +28,13 @@ import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetViewValueNode;
 import com.oracle.truffle.js.nodes.access.GlobalConstantNode;
 import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
+import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode.IsArrayWrappedNode;
 import com.oracle.truffle.js.nodes.access.IsJSClassNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode.IsObjectWrappedNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.OrdinaryCreateFromConstructorNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectNode;
 import com.oracle.truffle.js.nodes.access.SetViewValueNode;
 import com.oracle.truffle.js.nodes.cast.JSEnqueueJobNode;
@@ -53,15 +49,12 @@ import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapp
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode.JSToStringWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node.JSToUInt32WrapperNode;
-import com.oracle.truffle.js.nodes.control.AwaitNode;
-import com.oracle.truffle.js.nodes.control.AwaitNode.AsyncAwaitExecutionContext;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
-import com.oracle.truffle.js.parser.InternalTranslatorFactory.InternalHasHiddenKeyCacheNodeGen;
 import com.oracle.truffle.js.parser.InternalTranslatorFactory.InternalStringReplaceNodeGen;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.runtime.Errors;
@@ -69,7 +62,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -262,15 +254,11 @@ final class InternalTranslator extends GraalJSTranslator {
                     case "GetIterator":
                         return GetIteratorNode.create(context, arguments[0]);
                     case "RegisterAsyncFunctionBuiltins":
-                        return InternalRegisterAsyncFunctionBuiltins.create(context, arguments[0], arguments[1], arguments[2]);
-                    case "ResumeContext":
-                        return InternalResumeContext.create(context, arguments[0], arguments[1], (boolean) ((JSConstantNode) arguments[2]).getValue());
+                        return InternalRegisterAsyncFunctionBuiltins.create(context, arguments[0], arguments[1]);
                     case "PromiseRejectionTracker":
                         return PromiseRejectionTrackerNode.create(context, arguments[0], arguments[1]);
                     case "PromiseHook":
                         return PromiseHookNode.create(context, arguments[0], arguments[1]);
-                    case "PromiseFromExecutionContext":
-                        return PromiseFromExecutionContextNode.create(context, arguments[0]);
                 }
                 return new InternalFunctionCallNode(name);
             }
@@ -330,6 +318,8 @@ final class InternalTranslator extends GraalJSTranslator {
                     return JSPromise.PROMISE_ON_FINALLY;
                 case "PromiseFinallyConstructor":
                     return JSPromise.PROMISE_FINALLY_CONSTRUCTOR;
+                case "PromiseIsHandled":
+                    return JSPromise.PROMISE_IS_HANDLED;
             }
             throw new IllegalArgumentException(keyName);
         }
@@ -571,27 +561,22 @@ final class InternalTranslator extends GraalJSTranslator {
     public static class InternalRegisterAsyncFunctionBuiltins extends JavaScriptNode {
 
         @Child private JavaScriptNode performPromiseThen;
-        @Child private JavaScriptNode asyncFunctionAwait;
         @Child private JavaScriptNode newDefaultCapability;
 
         private final JSContext context;
 
-        InternalRegisterAsyncFunctionBuiltins(JSContext context, JavaScriptNode asyncFunctionAwait, JavaScriptNode newDefaultCapability, JavaScriptNode performPromiseThen) {
+        InternalRegisterAsyncFunctionBuiltins(JSContext context, JavaScriptNode newDefaultCapability, JavaScriptNode performPromiseThen) {
             this.context = context;
-            this.asyncFunctionAwait = asyncFunctionAwait;
             this.newDefaultCapability = newDefaultCapability;
             this.performPromiseThen = performPromiseThen;
         }
 
-        public static JavaScriptNode create(JSContext context, JavaScriptNode asyncFunctionAwait, JavaScriptNode newDefaultCapability, JavaScriptNode performPromiseThen) {
-            return new InternalRegisterAsyncFunctionBuiltins(context, asyncFunctionAwait, newDefaultCapability, performPromiseThen);
+        public static JavaScriptNode create(JSContext context, JavaScriptNode newDefaultCapability, JavaScriptNode performPromiseThen) {
+            return new InternalRegisterAsyncFunctionBuiltins(context, newDefaultCapability, performPromiseThen);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            DynamicObject await = (DynamicObject) asyncFunctionAwait.execute(frame);
-            assert JSFunction.isJSFunction(await);
-            context.setAsyncFunctionAwait(await);
             DynamicObject constructor = (DynamicObject) newDefaultCapability.execute(frame);
             assert JSFunction.isJSFunction(constructor);
             context.setAsyncFunctionPromiseCapabilityConstructor(constructor);
@@ -603,44 +588,7 @@ final class InternalTranslator extends GraalJSTranslator {
 
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return new InternalRegisterAsyncFunctionBuiltins(context, cloneUninitialized(asyncFunctionAwait), cloneUninitialized(newDefaultCapability), cloneUninitialized(performPromiseThen));
-        }
-    }
-
-    public static class InternalResumeContext extends JavaScriptNode {
-
-        @Child private JavaScriptNode targetNode;
-        @Child private JavaScriptNode contextNode;
-        @Child private IndirectCallNode executeResumeNode;
-
-        private final JSContext context;
-        private final boolean rejected;
-
-        InternalResumeContext(JSContext context, JavaScriptNode targetNode, JavaScriptNode contextNode, boolean rejected) {
-            this.context = context;
-            this.targetNode = targetNode;
-            this.contextNode = contextNode;
-            this.rejected = rejected;
-            this.executeResumeNode = IndirectCallNode.create();
-        }
-
-        public static JavaScriptNode create(JSContext context, JavaScriptNode targetNode, JavaScriptNode contextNode, boolean rejected) {
-            return new InternalResumeContext(context, targetNode, contextNode, rejected);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            AsyncAwaitExecutionContext asyncContext = (AsyncAwaitExecutionContext) targetNode.execute(frame);
-            Object result = contextNode.execute(frame);
-            if (rejected) {
-                result = new AwaitNode.Rejected(result);
-            }
-            return executeResumeNode.call(asyncContext.target, new Object[]{asyncContext, result});
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new InternalResumeContext(context, cloneUninitialized(targetNode), cloneUninitialized(contextNode), rejected);
+            return new InternalRegisterAsyncFunctionBuiltins(context, cloneUninitialized(newDefaultCapability), cloneUninitialized(performPromiseThen));
         }
     }
 
@@ -674,7 +622,7 @@ final class InternalTranslator extends GraalJSTranslator {
     public static class InternalHasHiddenKeyNode extends JavaScriptNode {
         @Child private JavaScriptNode targetNode;
         @Child private JavaScriptNode keyNode;
-        @Child private InternalHasHiddenKeyCacheNode hasHiddenPropertyNode;
+        @Child private HasHiddenKeyCacheNode hasHiddenPropertyNode;
 
         InternalHasHiddenKeyNode(JavaScriptNode targetNode, JavaScriptNode keyNode) {
             this.targetNode = targetNode;
@@ -693,49 +641,17 @@ final class InternalTranslator extends GraalJSTranslator {
 
         private boolean hasHiddenKey(Object target, Object key) {
             HiddenKey hiddenKey = (HiddenKey) key;
-            if (hasHiddenPropertyNode == null || !hiddenKey.equals(hasHiddenPropertyNode.key)) {
+            if (hasHiddenPropertyNode == null || !hiddenKey.equals(hasHiddenPropertyNode.getKey())) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                hasHiddenPropertyNode = insert(InternalHasHiddenKeyCacheNode.create(hiddenKey));
+                hasHiddenPropertyNode = insert(HasHiddenKeyCacheNode.create(hiddenKey));
             }
-            return hasHiddenPropertyNode.executeHasOwnPropertyBoolean(target);
+            return hasHiddenPropertyNode.executeHasHiddenKey(target);
         }
 
         @Override
         protected JavaScriptNode copyUninitialized() {
             return new InternalHasHiddenKeyNode(cloneUninitialized(targetNode), cloneUninitialized(keyNode));
 
-        }
-    }
-
-    @ImportStatic(JSTruffleOptions.class)
-    public abstract static class InternalHasHiddenKeyCacheNode extends JavaScriptBaseNode {
-        protected final HiddenKey key;
-
-        protected InternalHasHiddenKeyCacheNode(HiddenKey key) {
-            this.key = key;
-        }
-
-        public static InternalHasHiddenKeyCacheNode create(HiddenKey key) {
-            return InternalHasHiddenKeyCacheNodeGen.create(key);
-        }
-
-        public abstract boolean executeHasOwnPropertyBoolean(Object object);
-
-        @Specialization(guards = {"cachedShape.check(object)"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "PropertyCacheLimit")
-        protected static boolean doCached(@SuppressWarnings("unused") DynamicObject object,
-                        @SuppressWarnings("unused") @Cached("object.getShape()") Shape cachedShape,
-                        @Cached("doUncached(object)") boolean hasOwnProperty) {
-            return hasOwnProperty;
-        }
-
-        @Specialization(guards = "isJSObject(object)", replaces = {"doCached"})
-        protected final boolean doUncached(DynamicObject object) {
-            return object.containsKey(key);
-        }
-
-        @Specialization(guards = "!isJSObject(object)")
-        protected static boolean doNonObject(@SuppressWarnings("unused") Object object) {
-            return false;
         }
     }
 
@@ -906,31 +822,4 @@ final class InternalTranslator extends GraalJSTranslator {
             return new PromiseHookNode(context, cloneUninitialized(changeTypeNode), cloneUninitialized(promiseNode));
         }
     }
-
-    public static class PromiseFromExecutionContextNode extends JavaScriptNode {
-
-        @Child private JavaScriptNode executionContextNode;
-        @Child private PropertyGetNode getPromiseNode;
-
-        PromiseFromExecutionContextNode(JSContext context, JavaScriptNode executionContextNode) {
-            this.executionContextNode = executionContextNode;
-            this.getPromiseNode = PropertyGetNode.create("promise", false, context);
-        }
-
-        public static JavaScriptNode create(JSContext context, JavaScriptNode executionContextNode) {
-            return new PromiseFromExecutionContextNode(context, executionContextNode);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            AsyncAwaitExecutionContext asyncContext = (AsyncAwaitExecutionContext) executionContextNode.execute(frame);
-            return getPromiseNode.getValue(asyncContext.capability);
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new PromiseFromExecutionContextNode(getPromiseNode.getContext(), cloneUninitialized(executionContextNode));
-        }
-    }
-
 }

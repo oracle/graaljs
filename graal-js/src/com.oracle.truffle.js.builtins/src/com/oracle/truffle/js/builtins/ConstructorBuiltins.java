@@ -5,6 +5,7 @@
 package com.oracle.truffle.js.builtins;
 
 import static com.oracle.truffle.js.runtime.JSTruffleOptions.ECMAScript2017;
+import static com.oracle.truffle.js.runtime.JSTruffleOptions.ECMAScript2018;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -194,6 +195,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         AsyncFunction(1),
         SharedArrayBuffer(1),
+        AsyncGeneratorFunction(1),
 
         // --- not new.target-capable below ---
         TypedArray(0),
@@ -242,7 +244,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         public int getECMAScriptVersion() {
-            if (EnumSet.of(SharedArrayBuffer, AsyncFunction).contains(this)) {
+            if (AsyncGeneratorFunction == this) {
+                return ECMAScript2018;
+            } else if (EnumSet.of(SharedArrayBuffer, AsyncFunction).contains(this)) {
                 return ECMAScript2017;
             } else if (EnumSet.range(Map, Symbol).contains(this)) {
                 return 6;
@@ -407,6 +411,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     return ConstructFunctionNodeGen.create(context, builtin, false, true, true, args().newTarget().varArgs().createArgumentNodes(context));
                 }
                 return ConstructFunctionNodeGen.create(context, builtin, false, true, false, args().function().varArgs().createArgumentNodes(context));
+            case AsyncGeneratorFunction:
+                if (newTarget) {
+                    return ConstructFunctionNodeGen.create(context, builtin, true, true, true, args().newTarget().varArgs().createArgumentNodes(context));
+                }
+                return ConstructFunctionNodeGen.create(context, builtin, true, true, false, args().function().varArgs().createArgumentNodes(context));
 
             case Symbol:
                 return construct ? ConstructSymbolNodeGen.create(context, builtin, args().createArgumentNodes(context))
@@ -1187,7 +1196,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            if (generatorFunction) {
+            if (generatorFunction && asyncFunction) {
+                return realm.getAsyncGeneratorFunctionConstructor().getPrototype();
+            } else if (generatorFunction) {
                 return realm.getGeneratorFunctionConstructor().getPrototype();
             } else if (asyncFunction) {
                 return realm.getAsyncFunctionConstructor().getPrototype();

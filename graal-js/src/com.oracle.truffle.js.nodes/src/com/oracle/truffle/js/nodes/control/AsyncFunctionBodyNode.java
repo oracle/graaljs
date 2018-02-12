@@ -20,13 +20,14 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
-import com.oracle.truffle.js.nodes.control.AwaitNode.AsyncAwaitExecutionContext;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
+import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class AsyncFunctionBodyNode extends JavaScriptNode {
@@ -36,7 +37,6 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
 
         @Child private JavaScriptNode functionBody;
         @Child private JSWriteFrameSlotNode writeAsyncResult;
-        @Child private PropertyGetNode getAsyncContext;
         @Child private PropertyGetNode getPromiseResolve;
         @Child private PropertyGetNode getPromiseReject;
         @Child private JSFunctionCallNode executePromiseMethod;
@@ -45,28 +45,28 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
             super(context.getLanguage(), functionSourceSection, null);
             this.functionBody = body;
             this.writeAsyncResult = asyncResult;
-            this.getAsyncContext = PropertyGetNode.create("context", false, context);
             this.getPromiseResolve = PropertyGetNode.create("resolve", false, context);
             this.getPromiseReject = PropertyGetNode.create("reject", false, context);
-            this.executePromiseMethod = JSFunctionCallNode.create(false);
+            this.executePromiseMethod = JSFunctionCallNode.createCall();
         }
 
         @Override
         protected Object executeAndSetRealm(VirtualFrame frame) {
-            AsyncAwaitExecutionContext cx = (AsyncAwaitExecutionContext) frame.getArguments()[0];
+            VirtualFrame asyncFrame = JSFrameUtil.castMaterializedFrame(frame.getArguments()[0]);
+            DynamicObject promiseCapability = (DynamicObject) frame.getArguments()[1];
+            Completion resumptionValue = (Completion) frame.getArguments()[2];
+            writeAsyncResult.executeWrite(asyncFrame, resumptionValue);
             try {
-                Object resumptionResult = frame.getArguments()[1];
-                VirtualFrame asyncFrame = (VirtualFrame) getAsyncContext.getValue(cx.capability);
-                writeAsyncResult.executeWrite(asyncFrame, resumptionResult);
                 Object result = functionBody.execute(asyncFrame);
-                processCapabilityResolve(executePromiseMethod, getPromiseResolve, cx.capability, result);
+                promiseCapabilityResolve(executePromiseMethod, getPromiseResolve, promiseCapability, result);
+            } catch (YieldException e) {
+                assert e.isAwait();
+                // no-op: we called await, so we will resume later.
             } catch (GraalJSException error) {
-                JSContext context = getPromiseReject.getContext();
-                processCapabilityReject(executePromiseMethod, getPromiseReject, cx.capability, error.getErrorObjectEager(context));
-            } catch (YieldException exp) {
-                // NOP: we called await, so we will resume later
+                Object result = error.getErrorObjectEager(getPromiseReject.getContext());
+                promiseCapabilityReject(executePromiseMethod, getPromiseReject, promiseCapability, result);
             }
-            // ECMA2017 25.5.5.2 step 7. The result is undefined for normal completion.
+            // The result is undefined for normal completion.
             return Undefined.instance;
         }
 
@@ -96,9 +96,8 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
         this.writeAsyncResult = asyncResult;
         this.getPromise = PropertyGetNode.create("promise", false, context);
         this.getPromiseReject = PropertyGetNode.create("reject", false, context);
-        this.createPromiseCapability = JSFunctionCallNode.create(false);
-        this.executePromiseMethod = JSFunctionCallNode.create(false);
-        this.setAsyncContext = PropertySetNode.create("context", false, context, false);
+        this.createPromiseCapability = JSFunctionCallNode.createCall();
+        this.executePromiseMethod = JSFunctionCallNode.createCall();
     }
 
     public static JavaScriptNode create(JSContext context, JavaScriptNode parameterInit, JavaScriptNode body, JSWriteFrameSlotNode asyncVar, JSWriteFrameSlotNode asyncResult) {
@@ -129,9 +128,9 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     }
 
     private void asyncFunctionStart(VirtualFrame frame, DynamicObject promiseCapability) {
-        writeAsyncContext.executeWrite(frame, new Object[]{resumptionTarget, promiseCapability});
-        setAsyncContext.setValue(promiseCapability, frame.materialize());
-        asyncCallNode.call(new Object[]{new AsyncAwaitExecutionContext(resumptionTarget, promiseCapability), Undefined.instance});
+        writeAsyncContext.executeWrite(frame, new Object[]{resumptionTarget, promiseCapability, frame.materialize()});
+        Completion unusedInitialResult = null;
+        asyncCallNode.call(new Object[]{frame.materialize(), promiseCapability, unusedInitialResult});
     }
 
     @Override
@@ -143,7 +142,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
                 parameterInit.execute(frame);
             } catch (GraalJSException error) {
                 JSContext context = getPromiseReject.getContext();
-                processCapabilityReject(executePromiseMethod, getPromiseReject, promiseCapability, error.getErrorObjectEager(context));
+                promiseCapabilityReject(executePromiseMethod, getPromiseReject, promiseCapability, error.getErrorObjectEager(context));
 
                 return getPromise.getValue(promiseCapability);
             }
@@ -155,18 +154,18 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
         return getPromise.getValue(promiseCapability);
     }
 
-    private static void processCapabilityResolve(JSFunctionCallNode promiseCallNode, PropertyGetNode resolveNode, DynamicObject promiseCapability, Object result) {
+    private static void promiseCapabilityResolve(JSFunctionCallNode promiseCallNode, PropertyGetNode resolveNode, DynamicObject promiseCapability, Object result) {
         DynamicObject resolve = (DynamicObject) resolveNode.getValue(promiseCapability);
         promiseCallNode.executeCall(JSArguments.create(Undefined.instance, resolve, new Object[]{result}));
     }
 
-    private static void processCapabilityReject(JSFunctionCallNode promiseCallNode, PropertyGetNode rejectNode, DynamicObject promiseCapability, Object result) {
+    private static void promiseCapabilityReject(JSFunctionCallNode promiseCallNode, PropertyGetNode rejectNode, DynamicObject promiseCapability, Object result) {
         DynamicObject reject = (DynamicObject) rejectNode.getValue(promiseCapability);
         promiseCallNode.executeCall(JSArguments.create(Undefined.instance, reject, new Object[]{result}));
     }
 
     private DynamicObject createPromiseCapability() {
-        return (DynamicObject) createPromiseCapability.executeCall(JSArguments.create(Undefined.instance, getContext().getAsyncFunctionPromiseCapabilityConstructor(), new Object[]{}));
+        return (DynamicObject) createPromiseCapability.executeCall(JSArguments.createZeroArg(Undefined.instance, getContext().getAsyncFunctionPromiseCapabilityConstructor()));
     }
 
     @Override

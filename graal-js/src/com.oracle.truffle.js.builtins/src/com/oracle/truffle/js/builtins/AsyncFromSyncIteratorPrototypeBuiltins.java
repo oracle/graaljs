@@ -9,20 +9,23 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.builtins.AsyncFromSyncIteratorPrototypeBuiltinsFactory.AsyncFromSyncNextNodeGen;
 import com.oracle.truffle.js.builtins.AsyncFromSyncIteratorPrototypeBuiltinsFactory.AsyncFromSyncReturnNodeGen;
 import com.oracle.truffle.js.builtins.AsyncFromSyncIteratorPrototypeBuiltinsFactory.AsyncFromSyncThrowNodeGen;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNodeGen;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
-import com.oracle.truffle.js.nodes.access.IteratorCompleteNodeGen;
 import com.oracle.truffle.js.nodes.access.IteratorNextNode;
-import com.oracle.truffle.js.nodes.access.IteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -31,6 +34,8 @@ import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -82,6 +87,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
     @ImportStatic(JSRuntime.class)
     private abstract static class AsyncFromSyncBaseNode extends JSBuiltinNode {
+        static final HiddenKey DONE = new HiddenKey("Done");
 
         @Child private PropertyGetNode getPromise;
         @Child private PropertyGetNode getPromiseReject;
@@ -96,19 +102,21 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         @Child protected PropertyGetNode getGeneratorTarget;
         @Child private JSFunctionCallNode performPromiseThenCall;
+        @Child private PropertySetNode setDoneNode;
 
         AsyncFromSyncBaseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.createPromiseCapability = JSFunctionCallNode.create(false);
+            this.createPromiseCapability = JSFunctionCallNode.createCall();
             this.getPromiseReject = PropertyGetNode.create("reject", false, context);
             this.getPromiseResolve = PropertyGetNode.create("resolve", false, context);
-            this.executePromiseMethod = JSFunctionCallNode.create(false);
+            this.executePromiseMethod = JSFunctionCallNode.createCall();
             this.getPromise = PropertyGetNode.create("promise", false, context);
-            this.iteratorNext = IteratorNextNodeGen.create(context);
-            this.iteratorComplete = IteratorCompleteNodeGen.create(context);
+            this.iteratorNext = IteratorNextNode.create(context);
+            this.iteratorComplete = IteratorCompleteNode.create(context);
             this.iteratorValue = IteratorValueNodeGen.create(context);
             this.getGeneratorTarget = PropertyGetNode.create(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, false, context);
-            this.performPromiseThenCall = JSFunctionCallNode.create(false);
+            this.performPromiseThenCall = JSFunctionCallNode.createCall();
+            this.setDoneNode = PropertySetNode.create(DONE, false, context, false);
         }
 
         protected DynamicObject createPromiseCapability() {
@@ -119,12 +127,12 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             return thiz != Undefined.instance && getGeneratorTarget.getValue(thiz) != Undefined.instance;
         }
 
-        protected void processCapabilityReject(DynamicObject promiseCapability, Object result) {
+        protected void promiseCapabilityReject(DynamicObject promiseCapability, Object result) {
             DynamicObject reject = (DynamicObject) getPromiseReject.getValue(promiseCapability);
             executePromiseMethod.executeCall(JSArguments.create(Undefined.instance, reject, new Object[]{result}));
         }
 
-        protected void processCapabilityResolve(DynamicObject promiseCapability, Object result) {
+        protected void promiseCapabilityResolve(DynamicObject promiseCapability, Object result) {
             DynamicObject resolve = (DynamicObject) getPromiseResolve.getValue(promiseCapability);
             executePromiseMethod.executeCall(JSArguments.create(Undefined.instance, resolve, new Object[]{result}));
         }
@@ -133,23 +141,41 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             return getPromise.getValue(promiseCapability);
         }
 
-        protected void performPromiseThen(Object promise, DynamicObject onFullfilled, DynamicObject instance, DynamicObject promiseCapability) {
-            performPromiseThenCall.executeCall(JSArguments.create(Undefined.instance, getContext().getPerformPromiseThen(), promise, onFullfilled, instance, promiseCapability));
+        protected void performPromiseThen(Object promise, DynamicObject onFulfilled, DynamicObject instance, DynamicObject promiseCapability) {
+            performPromiseThenCall.executeCall(JSArguments.create(Undefined.instance, getContext().getPerformPromiseThen(), promise, onFulfilled, instance, promiseCapability));
         }
 
-        protected DynamicObject createOnFulFilled(Object value, boolean done) {
-            CallTarget unwrap = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+        /**
+         * Async-from-Sync Iterator Value Unwrap Functions.
+         */
+        protected final DynamicObject createIteratorValueUnwrapFunction(JSRealm realm, boolean done) {
+            JSContext context = realm.getContext();
+            JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncFromSyncIteratorValueUnwrap, c -> createIteratorValueUnwrapImpl(c));
+            DynamicObject function = JSFunction.create(realm, functionData);
+            setDoneNode.setValueBoolean(function, done);
+            return function;
+        }
 
-                @Child private CreateIterResultObjectNode iterResult = CreateIterResultObjectNodeGen.create(getContext());
+        private static JSFunctionData createIteratorValueUnwrapImpl(JSContext context) {
+            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+                @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
+                @Child private PropertyGetNode isDoneNode = PropertyGetNode.create(DONE, false, context);
+                @Child private CreateIterResultObjectNode iterResult = CreateIterResultObjectNodeGen.create(context);
 
                 @Override
-                public Object execute(VirtualFrame myFrame) {
-                    return iterResult.execute(myFrame, value, done);
+                public Object execute(VirtualFrame frame) {
+                    DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                    boolean done;
+                    try {
+                        done = isDoneNode.getValueBoolean(functionObject);
+                    } catch (UnexpectedResultException e) {
+                        throw Errors.shouldNotReachHere();
+                    }
+                    return iterResult.execute(frame, valueNode.execute(frame), done);
                 }
             });
-            return JSFunction.create(getContext().getRealm(), JSFunctionData.create(getContext(), unwrap, 0, "Async-from-Sync Iterator Value Unwrap Functions"));
+            return JSFunctionData.createCallOnly(context, callTarget, 1, "Async-from-Sync Iterator Value Unwrap Function");
         }
-
     }
 
     public abstract static class AsyncFromSyncNext extends AsyncFromSyncBaseNode {
@@ -163,7 +189,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             DynamicObject promiseCapability = createPromiseCapability();
             if (!isAsyncFromSyncIterator(thisObj)) {
                 JSException typeError = Errors.createTypeError("wrong type");
-                processCapabilityReject(promiseCapability, typeError);
+                promiseCapabilityReject(promiseCapability, typeError);
                 return getPromise(promiseCapability);
             }
             boolean nextDone;
@@ -173,25 +199,25 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             try {
                 nextResult = iteratorNext.execute(syncIterator, Undefined.instance);
             } catch (GraalJSException e) {
-                processCapabilityReject(promiseCapability, e);
+                promiseCapabilityReject(promiseCapability, e);
                 return getPromise(promiseCapability);
             }
             try {
                 nextDone = iteratorComplete.execute(nextResult);
             } catch (GraalJSException e) {
-                processCapabilityReject(promiseCapability, e);
+                promiseCapabilityReject(promiseCapability, e);
                 return getPromise(promiseCapability);
             }
             try {
                 nextValue = iteratorValue.execute(nextResult);
             } catch (Exception e) {
-                processCapabilityReject(promiseCapability, e);
+                promiseCapabilityReject(promiseCapability, e);
                 return getPromise(promiseCapability);
             }
             DynamicObject valueWrapperCapability = createPromiseCapability();
-            processCapabilityResolve(valueWrapperCapability, nextValue);
-            DynamicObject onFullfilled = createOnFulFilled(nextValue, nextDone);
-            performPromiseThen(getPromise(valueWrapperCapability), onFullfilled, Undefined.instance, promiseCapability);
+            promiseCapabilityResolve(valueWrapperCapability, nextValue);
+            DynamicObject onFulfilled = createIteratorValueUnwrapFunction(getContext().getRealm(), nextDone);
+            performPromiseThen(getPromise(valueWrapperCapability), onFulfilled, Undefined.instance, promiseCapability);
             return getPromise(promiseCapability);
         }
 
@@ -205,7 +231,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         public AsyncFromSyncMethod(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.createIterResult = CreateIterResultObjectNodeGen.create(getContext());
-            this.executeReturnMethod = JSFunctionCallNode.create(false);
+            this.executeReturnMethod = JSFunctionCallNode.createCall();
         }
 
         protected abstract GetMethodNode getMethod();
@@ -214,7 +240,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             DynamicObject promiseCapability = createPromiseCapability();
             if (!isAsyncFromSyncIterator(thisObj)) {
                 JSException typeError = Errors.createTypeError("wrong type");
-                processCapabilityReject(promiseCapability, typeError);
+                promiseCapabilityReject(promiseCapability, typeError);
                 return getPromise(promiseCapability);
             }
             boolean done;
@@ -223,30 +249,30 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             Object method = getMethod().executeWithTarget(syncIterator);
             if (method == Undefined.instance) {
                 DynamicObject iterResult = createIterResult.execute(frame, /* value? */Undefined.instance, true);
-                processCapabilityResolve(promiseCapability, iterResult);
+                promiseCapabilityResolve(promiseCapability, iterResult);
                 return getPromise(promiseCapability);
             }
             DynamicObject returnResult = (DynamicObject) executeReturnMethod.executeCall(JSArguments.create(syncIterator, method));
             if (!JSObject.isJSObject(returnResult)) {
-                processCapabilityReject(promiseCapability, Errors.createTypeError("Wrong type"));
+                promiseCapabilityReject(promiseCapability, Errors.createTypeError("Wrong type"));
                 return getPromise(promiseCapability);
             }
             try {
                 done = iteratorComplete.execute(returnResult);
             } catch (GraalJSException e) {
-                processCapabilityReject(promiseCapability, e);
+                promiseCapabilityReject(promiseCapability, e);
                 return getPromise(promiseCapability);
             }
             try {
                 value = iteratorValue.execute(returnResult);
             } catch (Exception e) {
-                processCapabilityReject(promiseCapability, e);
+                promiseCapabilityReject(promiseCapability, e);
                 return getPromise(promiseCapability);
             }
             DynamicObject valueWrapperCapability = createPromiseCapability();
-            processCapabilityResolve(valueWrapperCapability, value);
-            DynamicObject onFullfilled = createOnFulFilled(value, done);
-            performPromiseThen(getPromise(valueWrapperCapability), onFullfilled, Undefined.instance, promiseCapability);
+            promiseCapabilityResolve(valueWrapperCapability, value);
+            DynamicObject onFulfilled = createIteratorValueUnwrapFunction(getContext().getRealm(), done);
+            performPromiseThen(getPromise(valueWrapperCapability), onFulfilled, Undefined.instance, promiseCapability);
             return getPromise(promiseCapability);
         }
     }

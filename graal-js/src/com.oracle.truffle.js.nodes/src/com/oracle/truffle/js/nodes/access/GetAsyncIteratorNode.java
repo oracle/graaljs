@@ -19,7 +19,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * ES8 7.4.1 GetIterator(obj, hint == true).
+ * GetIterator(obj, hint = async).
  */
 public abstract class GetAsyncIteratorNode extends GetIteratorNode {
     @Child private PropertySetNode setState;

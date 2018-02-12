@@ -18,11 +18,11 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.annotations.GenerateDecoder;
 import com.oracle.truffle.js.annotations.GenerateProxy;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
-import com.oracle.truffle.js.nodes.access.AsyncIteratorStepNode;
+import com.oracle.truffle.js.nodes.access.AsyncIteratorNextNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalFunctionNode;
+import com.oracle.truffle.js.nodes.access.DeclareGlobalLexicalVariableNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalVariableNode;
-import com.oracle.truffle.js.nodes.access.DeclareGlobalLexicalVariableNode;
 import com.oracle.truffle.js.nodes.access.DoWithNode;
 import com.oracle.truffle.js.nodes.access.EnumerateNode;
 import com.oracle.truffle.js.nodes.access.FrameSlotNode;
@@ -33,6 +33,8 @@ import com.oracle.truffle.js.nodes.access.GlobalDeclarationInstantiationNode;
 import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
+import com.oracle.truffle.js.nodes.access.IteratorCompleteUnaryNode;
+import com.oracle.truffle.js.nodes.access.IteratorNextUnaryNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepSpecialNode;
 import com.oracle.truffle.js.nodes.access.IteratorToArrayNode;
@@ -99,6 +101,8 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode.JSToStringWrapperNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.control.AsyncFunctionBodyNode;
+import com.oracle.truffle.js.nodes.control.AsyncGeneratorBodyNode;
+import com.oracle.truffle.js.nodes.control.AsyncGeneratorYieldNode;
 import com.oracle.truffle.js.nodes.control.AsyncIteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.AwaitNode;
 import com.oracle.truffle.js.nodes.control.BlockNode;
@@ -720,12 +724,21 @@ public class NodeFactory {
 
     // ##### Generator nodes
 
-    public JavaScriptNode createYield(JSContext context, JavaScriptNode expression, JavaScriptNode yieldValue, boolean delegating, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
-        if (delegating) {
-            return YieldNode.createDelegatingYield(context, expression, yieldValue, returnNode, writeYieldResultNode);
+    public JavaScriptNode createYield(JSContext context, JavaScriptNode expression, JavaScriptNode yieldValue, boolean yieldStar, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
+        if (yieldStar) {
+            return YieldNode.createYieldStar(context, expression, yieldValue, returnNode, writeYieldResultNode);
         } else {
             return YieldNode.createYield(context, expression, yieldValue, returnNode, writeYieldResultNode);
         }
+    }
+
+    public JavaScriptNode createAsyncGeneratorYield(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode, ReturnNode returnNode) {
+        return AsyncGeneratorYieldNode.createYield(context, expression, asyncContextNode, asyncResultNode, returnNode);
+    }
+
+    public JavaScriptNode createAsyncGeneratorYieldStar(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode,
+                    ReturnNode returnNode, JavaScriptNode readTemp, WriteNode writeTemp) {
+        return AsyncGeneratorYieldNode.createYieldStar(context, expression, asyncContextNode, asyncResultNode, returnNode, readTemp, writeTemp);
     }
 
     public JavaScriptNode createAsyncFunctionBody(JSContext context, JavaScriptNode parameterInit, JavaScriptNode body, JSWriteFrameSlotNode asyncContext, JSWriteFrameSlotNode asyncResult) {
@@ -734,6 +747,11 @@ public class NodeFactory {
 
     public JavaScriptNode createGeneratorBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValue, JSReadFrameSlotNode readYieldResult) {
         return GeneratorBodyNode.create(context, body, writeYieldValue, readYieldResult);
+    }
+
+    public JavaScriptNode createAsyncGeneratorBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValue, JSReadFrameSlotNode readYieldResult,
+                    JSWriteFrameSlotNode writeAsyncContext) {
+        return AsyncGeneratorBodyNode.create(context, body, writeYieldValue, readYieldResult, writeAsyncContext);
     }
 
     public JavaScriptNode createGeneratorWrapper(JavaScriptNode child, JavaScriptNode state, WriteNode writeStateNode) {
@@ -778,6 +796,14 @@ public class NodeFactory {
         return EnumerateNode.create(context, iteratedObject, values);
     }
 
+    public JavaScriptNode createIteratorNext(JSContext context, JavaScriptNode iterator) {
+        return IteratorNextUnaryNode.create(context, iterator);
+    }
+
+    public JavaScriptNode createIteratorComplete(JSContext context, JavaScriptNode iterResult) {
+        return IteratorCompleteUnaryNode.create(context, iterResult);
+    }
+
     public JavaScriptNode createIteratorStep(JSContext context, JavaScriptNode iterator) {
         return IteratorStepNode.create(context, iterator);
     }
@@ -786,8 +812,8 @@ public class NodeFactory {
         return IteratorStepSpecialNode.create(context, iterator, doneNode, setDoneOnError);
     }
 
-    public JavaScriptNode createAsyncIteratorStep(JSContext context, JavaScriptNode createReadNode, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
-        return AsyncIteratorStepNode.create(context, createReadNode, asyncContextNode, asyncResultNode);
+    public JavaScriptNode createAsyncIteratorNext(JSContext context, JavaScriptNode createReadNode, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
+        return AsyncIteratorNextNode.create(context, createReadNode, asyncContextNode, asyncResultNode);
     }
 
     public JavaScriptNode createIteratorValue(JSContext context, JavaScriptNode iterator) {
@@ -799,8 +825,8 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createAsyncIteratorCloseWrapper(JSContext context, JavaScriptNode loopNode, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode,
-                    JSReadFrameSlotNode asyncResultNode) {
-        return AsyncIteratorCloseWrapperNode.create(context, loopNode, iterator, asyncContextNode, asyncResultNode);
+                    JSReadFrameSlotNode asyncResultNode, JavaScriptNode doneNode) {
+        return AsyncIteratorCloseWrapperNode.create(context, loopNode, iterator, asyncContextNode, asyncResultNode, doneNode);
     }
 
     public JavaScriptNode createIteratorClose(JSContext context, JavaScriptNode iterator) {
