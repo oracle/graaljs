@@ -14,6 +14,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
@@ -68,6 +70,7 @@ import com.oracle.truffle.js.runtime.builtins.SIMDType;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
+import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -234,6 +237,8 @@ public class JSRealm implements ShapeContext {
     private volatile Map<List<String>, DynamicObject> templateRegistry;
     private final Shape dictionaryShapeObjectPrototype;
 
+    private final MaterializedFrame globalScope;
+
     public JSRealm(JSContext context) {
         this.context = context;
         context.setRealm(this); // (GR-1992)
@@ -391,6 +396,8 @@ public class JSRealm implements ShapeContext {
         if (JSTruffleOptions.Stage3 && !context.isOptionV8CompatibilityMode()) {
             JSObjectUtil.putDataProperty(context, this.globalObject, "global", this.globalObject, JSAttributes.getDefaultNotEnumerable());
         }
+
+        this.globalScope = Truffle.getRuntime().createMaterializedFrame(JSArguments.createZeroArg(globalObject, null), new FrameDescriptor(Dead.instance()));
 
         this.dictionaryShapeObjectPrototype = JSTruffleOptions.DictionaryObject ? JSDictionaryObject.makeDictionaryShape(context, objectPrototype) : null;
 
@@ -1272,6 +1279,10 @@ public class JSRealm implements ShapeContext {
 
     public DynamicObjectFactory getCallSiteFactory() {
         return callSiteFactory;
+    }
+
+    public final MaterializedFrame getGlobalScope() {
+        return globalScope;
     }
 
     /**

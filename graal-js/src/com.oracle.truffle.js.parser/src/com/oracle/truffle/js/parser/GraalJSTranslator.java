@@ -62,6 +62,7 @@ import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.DeclareEvalVariableNode;
+import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
 import com.oracle.truffle.js.nodes.access.FrameSlotNode;
 import com.oracle.truffle.js.nodes.access.GetTemplateObjectNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
@@ -109,6 +110,7 @@ import com.oracle.truffle.js.parser.env.Environment.VarRef;
 import com.oracle.truffle.js.parser.env.EvalEnvironment;
 import com.oracle.truffle.js.parser.env.FunctionEnvironment;
 import com.oracle.truffle.js.parser.env.FunctionEnvironment.JumpTargetCloseable;
+import com.oracle.truffle.js.parser.env.GlobalEnvironment;
 import com.oracle.truffle.js.parser.env.WithEnvironment;
 import com.oracle.truffle.js.parser.internal.ir.debug.PrintVisitor;
 import com.oracle.truffle.js.runtime.Errors;
@@ -1113,17 +1115,26 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private List<JavaScriptNode> collectGlobalVars(FunctionNode functionNode, boolean configurable) {
-        final List<JavaScriptNode> declarations = new ArrayList<>();
+        int symbolCount = functionNode.getBody().getSymbolCount();
+        if (symbolCount == 0) {
+            return Collections.emptyList();
+        }
+        final List<DeclareGlobalNode> declarations = new ArrayList<>(symbolCount);
         for (Symbol symbol : functionNode.getBody().getSymbols()) {
             if (symbol.isGlobal()) {
                 if (symbol.isFunctionDeclaration()) {
-                    declarations.add(factory.createDeclareGlobalFunction(context, symbol.getName(), configurable, null));
+                    declarations.add(factory.createDeclareGlobalFunction(symbol.getName(), configurable, null));
                 } else {
-                    declarations.add(factory.createDeclareGlobalVariable(context, symbol.getName(), configurable));
+                    declarations.add(factory.createDeclareGlobalVariable(symbol.getName(), configurable));
                 }
+            } else if (!configurable) {
+                assert symbol.isBlockScoped();
+                declarations.add(factory.createDeclareGlobalLexicalVariable(symbol.getName()));
             }
         }
-        return declarations;
+        final List<JavaScriptNode> nodes = new ArrayList<>(2);
+        nodes.add(factory.createGlobalDeclarationInstantiation(context, declarations));
+        return nodes;
     }
 
     static void detectVarNameConflict(LexicalContext lexcon, VarNode varNode, GraalJSParserOptions options) {
@@ -1343,6 +1354,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private EnvironmentCloseable enterBlockEnvironment(Block block) {
+        // Global lexical environment is shared by scripts (but not eval).
+        if (block.isFunctionBody() && lc.getCurrentFunction().getKind() == FunctionNode.Kind.SCRIPT && !currentFunction().isEval()) {
+            GlobalEnvironment globalEnv = new GlobalEnvironment(environment, factory, context);
+            setupGlobalEnvironment(globalEnv, block);
+            return new EnvironmentCloseable(globalEnv);
+        }
+
         if (block.hasDeclarations() || JSTruffleOptions.ManyBlockScopes) {
             /*
              * The function environment is filled with top-level vars from the function body, unless
@@ -1351,19 +1369,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
              */
             if (block.isParameterBlock() || (block.isFunctionBody() && lc.getCurrentFunction().getParameterBlock() == null)) {
                 assert environment instanceof FunctionEnvironment;
-                if (!currentFunction().isCallerContextEval()) {
-                    environment.addFrameSlotsFromSymbols(block.getSymbols());
-                } else {
-                    for (Symbol symbol : block.getSymbols()) {
-                        if (symbol.isImportBinding()) {
-                            continue; // no frame slot required
-                        } else if (symbol.isBlockScoped()) {
-                            environment.addFrameSlotFromSymbol(symbol);
-                        } else if (symbol.isVarDeclaredHere()) {
-                            // environment.declareDynamicVar(symbol.getName());
-                        }
-                    }
-                }
+                boolean onlyBlockScoped = currentFunction().isCallerContextEval();
+                environment.addFrameSlotsFromSymbols(block.getSymbols(), onlyBlockScoped);
                 return new EnvironmentCloseable(environment);
             } else {
                 BlockEnvironment blockEnv = new BlockEnvironment(environment, factory, context);
@@ -1372,6 +1379,28 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
         } else {
             return new EnvironmentCloseable(environment);
+        }
+    }
+
+    /**
+     * Set up slots for lexical declarations in the global environment. If an existing lexical
+     * declaration is found, do nothing; an error will be reported at run time.
+     *
+     * @see #collectGlobalVars(FunctionNode, boolean)
+     */
+    private static void setupGlobalEnvironment(GlobalEnvironment globalEnv, Block block) {
+        FrameDescriptor frameDescriptor = globalEnv.getBlockFrameDescriptor();
+        boolean duplicateFound = false;
+        if (frameDescriptor.getSize() > 0) {
+            for (com.oracle.js.parser.ir.Symbol symbol : block.getSymbols()) {
+                if (symbol.isBlockScoped() && frameDescriptor.findFrameSlot(symbol.getName()) != null) {
+                    duplicateFound = true;
+                    break;
+                }
+            }
+        }
+        if (!duplicateFound) {
+            globalEnv.addFrameSlotsFromSymbols(block.getSymbols(), true);
         }
     }
 

@@ -20,13 +20,16 @@ import com.oracle.truffle.js.annotations.GenerateProxy;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.AsyncIteratorStepNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalFunctionNode;
+import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalVariableNode;
+import com.oracle.truffle.js.nodes.access.DeclareGlobalLexicalVariableNode;
 import com.oracle.truffle.js.nodes.access.DoWithNode;
 import com.oracle.truffle.js.nodes.access.EnumerateNode;
 import com.oracle.truffle.js.nodes.access.FrameSlotNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.GetTemplateObjectNode;
+import com.oracle.truffle.js.nodes.access.GlobalDeclarationInstantiationNode;
 import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
@@ -44,7 +47,6 @@ import com.oracle.truffle.js.nodes.access.JSTargetableWrapperNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.LazyReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.LazyWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.LocalVarIncNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.MakeMethodNode;
@@ -53,6 +55,7 @@ import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.RegExpLiteralNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode.RequireObjectCoercibleWrapperNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
@@ -96,6 +99,7 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode.JSToStringWrapperNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.control.AsyncFunctionBodyNode;
+import com.oracle.truffle.js.nodes.control.AsyncIteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.AwaitNode;
 import com.oracle.truffle.js.nodes.control.BlockNode;
 import com.oracle.truffle.js.nodes.control.BreakNode;
@@ -112,7 +116,6 @@ import com.oracle.truffle.js.nodes.control.ForNode;
 import com.oracle.truffle.js.nodes.control.GeneratorBodyNode;
 import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
 import com.oracle.truffle.js.nodes.control.IfNode;
-import com.oracle.truffle.js.nodes.control.AsyncIteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.IteratorCloseIfNotDoneNode;
 import com.oracle.truffle.js.nodes.control.IteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.LabelNode;
@@ -459,6 +462,14 @@ public class NodeFactory {
 
     public JSWriteFrameSlotNode createWriteFrameSlot(FrameSlot frameSlot, int frameLevel, int scopeLevel, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
         return JSWriteFrameSlotNode.create(frameSlot, frameLevel, scopeLevel, rhs, hasTemporalDeadZone);
+    }
+
+    public JavaScriptNode createReadGlobal(FrameSlot frameSlot, boolean hasTemporalDeadZone, JSContext context) {
+        return JSReadFrameSlotNode.create(frameSlot, ScopeFrameNode.createGlobalScope(context), hasTemporalDeadZone);
+    }
+
+    public JavaScriptNode createWriteGlobal(FrameSlot frameSlot, JavaScriptNode rhs, boolean hasTemporalDeadZone, JSContext context) {
+        return JSWriteFrameSlotNode.create(frameSlot, ScopeFrameNode.createGlobalScope(context), rhs, hasTemporalDeadZone);
     }
 
     public JavaScriptNode createThrow(JavaScriptNode expression) {
@@ -863,12 +874,20 @@ public class NodeFactory {
         return ScopeFrameNode.SCOPE_FRAME_DESCRIPTOR.shallowCopy();
     }
 
-    public JavaScriptNode createDeclareGlobalVariable(JSContext context, String varName, boolean configurable) {
-        return new DeclareGlobalVariableNode(context, varName, configurable);
+    public DeclareGlobalNode createDeclareGlobalVariable(String varName, boolean configurable) {
+        return new DeclareGlobalVariableNode(varName, configurable);
     }
 
-    public JavaScriptNode createDeclareGlobalFunction(JSContext context, String varName, boolean configurable, JavaScriptNode valueNode) {
-        return new DeclareGlobalFunctionNode(context, varName, configurable, valueNode);
+    public DeclareGlobalNode createDeclareGlobalFunction(String varName, boolean configurable, JavaScriptNode valueNode) {
+        return new DeclareGlobalFunctionNode(varName, configurable, valueNode);
+    }
+
+    public DeclareGlobalNode createDeclareGlobalLexicalVariable(String varName) {
+        return new DeclareGlobalLexicalVariableNode(varName);
+    }
+
+    public JavaScriptNode createGlobalDeclarationInstantiation(JSContext context, List<DeclareGlobalNode> declarations) {
+        return GlobalDeclarationInstantiationNode.create(context, declarations);
     }
 
     public JavaScriptNode copy(JavaScriptNode node) {

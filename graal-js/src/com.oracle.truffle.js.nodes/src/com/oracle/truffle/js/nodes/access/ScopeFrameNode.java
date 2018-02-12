@@ -5,10 +5,8 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameUtil;
@@ -18,6 +16,7 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -47,6 +46,10 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
             return new EnclosingFunctionFrameNode(frameLevel);
         }
         return new EnclosingFunctionScopeFrameNode(frameLevel, scopeLevel, parentSlot);
+    }
+
+    public static ScopeFrameNode createGlobalScope(JSContext context) {
+        return new GlobalScopeFrameNode(context);
     }
 
     public static boolean isBlockScopeFrame(Frame frame) {
@@ -136,23 +139,16 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
         }
     }
 
-    public static final class CallerFrameNode extends ScopeFrameNode {
-        private final int frameLevel;
+    private static final class GlobalScopeFrameNode extends ScopeFrameNode {
+        private final JSContext context;
 
-        CallerFrameNode(int frameLevel) {
-            assert frameLevel >= 1;
-            this.frameLevel = frameLevel;
+        GlobalScopeFrameNode(JSContext context) {
+            this.context = context;
         }
 
         @Override
-        @ExplodeLoop
         public Frame executeFrame(Frame frame) {
-            Frame callerFrame = Truffle.getRuntime().getCallerFrame().getFrame(FrameAccess.READ_ONLY);
-            MaterializedFrame retFrame = JSArguments.getEnclosingFrame(callerFrame.getArguments());
-            for (int i = 1; i < frameLevel; i++) {
-                retFrame = JSArguments.getEnclosingFrame(retFrame.getArguments());
-            }
-            return retFrame;
+            return context.getRealm().getGlobalScope();
         }
     }
 }
