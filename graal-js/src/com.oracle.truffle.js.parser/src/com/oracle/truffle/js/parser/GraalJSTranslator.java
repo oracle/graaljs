@@ -1745,15 +1745,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode desugarForHeadAssignment(ForNode forNode, JavaScriptNode next) {
-        return desugarForHeadAssignment(forNode, next, false);
-    }
-
-    private JavaScriptNode desugarForHeadAssignment(ForNode forNode, JavaScriptNode next, boolean iteratorHint) {
         if (forNode.getInit() instanceof IdentNode) {
             return findScopeVarCheckTDZ(((IdentNode) forNode.getInit()).getName(), true).createWriteNode(next);
         } else {
             // transform destructuring assignment
-            return transformAssignment(forNode.getInit(), next, null, false, false, true, iteratorHint);
+            return transformAssignment(forNode.getInit(), next, null, false, false, true);
         }
     }
 
@@ -1776,7 +1772,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             VarRef nextResultVar2 = environment.findTempVar(nextResultVar.getFrameSlot());
             JavaScriptNode nextResult = nextResultVar2.createReadNode();
             JavaScriptNode nextValue = factory.createIteratorValue(context, nextResult);
-            JavaScriptNode writeNext = tagWithHaltTag(desugarForHeadAssignment(forNode, nextValue, true));
+            JavaScriptNode writeNext = tagWithHaltTag(desugarForHeadAssignment(forNode, nextValue));
             JavaScriptNode body = transform(forNode.getBody());
             wrappedBody = blockEnv.wrapBlockScope(createBlock(writeNext, body));
         }
@@ -2220,11 +2216,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode transformAssignment(Expression lhsExpression, JavaScriptNode assignedValue, BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertRHSToNumber,
                     boolean initializationAssignment) {
-        return transformAssignment(lhsExpression, assignedValue, shortcutOperation, returnOldValue, convertRHSToNumber, initializationAssignment, false);
-    }
-
-    private JavaScriptNode transformAssignment(Expression lhsExpression, JavaScriptNode assignedValue, BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertRHSToNumber,
-                    boolean initializationAssignment, boolean iteratorHint) {
         assert shortcutOperation != null || (!returnOldValue && !convertRHSToNumber) : "returnOldValue / convertRHSToNumber can only be used with shortcut assignments";
         JavaScriptNode assignedNode = null;
         JavaScriptNode rhs;
@@ -2398,7 +2389,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     if (init != null) {
                         rhsNode = factory.createNotUndefinedOr(rhsNode, transform(init));
                     }
-                    initElements[i] = transformAssignment(lhsExpr, rhsNode, null, false, false, initializationAssignment, iteratorHint);
+                    initElements[i] = transformAssignment(lhsExpr, rhsNode, null, false, false, initializationAssignment);
                 }
                 assignedNode = factory.createExprBlock(initValueTempVar, createBlock(initElements), valueTempVar.createReadNode());
                 break;
