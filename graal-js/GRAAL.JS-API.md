@@ -228,7 +228,7 @@ Exceptions thrown by the evaluated program are only thrown once the resultin fun
 #### `Interop.isExecutable()`
 
 Sends the `IS_EXECUTABLE` message to `obj`.
-See JavaDoc [Message.IS_EXECUTABLE](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#IS_EXECUTABLE).
+See JavaDoc [Message.IS_EXECUTABLE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#IS_EXECUTABLE).
 The source language of `obj` responds whether it can execute `obj`.
 
 Graal.js answers `true` for *function*s and callable *proxies*.
@@ -236,7 +236,7 @@ Graal.js answers `true` for *function*s and callable *proxies*.
 #### `Interop.isNull(obj)`
 
 Sends the `IS_NULL` message to `obj`.
-See JavaDoc [Message.IS_NULL](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#IS_NULL).
+See JavaDoc [Message.IS_NULL](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#IS_NULL).
 The source language of `obj` responds whether it considers `obj` to be a `null`-like value.
 
 Graal.js answers `true` for the values `null` and `undefined`, but `false` for all other JavaScript values.
@@ -244,7 +244,7 @@ Graal.js answers `true` for the values `null` and `undefined`, but `false` for a
 #### `Interop.hasSizeProperty(obj)`
 
 Send the `HAS_SIZE` message to `obj`.
-See JavaDoc [Message.HAS_SIZE](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#HAS_SIZE).
+See JavaDoc [Message.HAS_SIZE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#HAS_SIZE).
 The source language of `obj` respons whether it can provide a *size* for `obj`.
 The answer is typically `true` for *arrays* and *collections*, but `false` for other types of objects.
 
@@ -253,7 +253,7 @@ Graal.js answers `true` for *Array*s, *TypedArray*s, *Map*s and *Set*s.
 #### `Interop.getSize()`
 
 Sends the `GET_SIZE` message to `obj`.
-See JavaDoc [Message.GET_SIZE](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#GET_SIZE).
+See JavaDoc [Message.GET_SIZE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#GET_SIZE).
 The source language of `obj` determines and returns the *size* of this object.
 
 This method can throw an exception if `obj` does not have a size. Use `HAS_SIZE` to check whether a size can be provided.
@@ -265,7 +265,7 @@ Note: The `obj` should answer to `READ` messages for all keys between `0` and `s
 #### `Interop.read(obj, key)`
 
 Sends the `READ` message to `obj`.
-See JavaDoc [Message.READ](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#READ).
+See JavaDoc [Message.READ](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#READ).
 The source language of `obj` determines and returns the value of the property `key` of `obj`.
 
 `Interop.read` is very lenient regarding errors.
@@ -279,7 +279,7 @@ Prototypes are considered when reading; if `key` cannot be found in `obj`, the p
 #### `Interop.write(obj, key, value)`
 
 Sends the `WRITE` message to `obj`.
-See JavaDoc [Message.WRITE](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#WRITE).
+See JavaDoc [Message.WRITE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#WRITE).
 The source language of `obj` will set `obj`'s `key` property to `value`, if possible.
 This method might throw an exception, if setting the property is not possible.
 
@@ -291,10 +291,23 @@ Writing the property in plain JavaScript syntax might expose such exceptions.
 Graal.js sets the value according to JavaScript semantics on the object: it converts `key` to a String if necessary, it calls setter functions when appropriate, it adheres to non-configurable properties or frozen/sealed objects, etc.
 The property is always set on `obj` itself, even when a `key` property already exists in the prototype chain of `obj`.
 
+#### `Interop.remove(obj, key)`
+
+Sends the `REMOVE` message to `obj`.
+See JavaDoc [Message.REMOVE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#REMOVE).
+The source language of `obj` will try to remove the `key` property, if possible.
+
+`Interop.remove` is very lenient regarding errors.
+It returns `null` when the value cannot be deleted from `obj`.
+This happens when `obj` does not answer the `REMOVE` message, when `obj` does not have a `key` property, or when removing the `key` property is not allowed by language semantics.
+Trying to remove a property in pure JavaScript semantics (e.g. with the `delete` keyword) might expose such errors.
+
+Graal.js removes the property according to JavaScript semantics of the object: it converts `key` to a property key value, and adheres to limitations imposed by e.g. the `configurable` attribute of properties.
+
 #### `Interop.isBoxedPrimitive()`
 
 Send the `IS_BOXED` message to `obj`.
-See JavaDoc [Message.IS_BOXED](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#IS_BOXED).
+See JavaDoc [Message.IS_BOXED](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#IS_BOXED).
 The source language of `obj` respons whether it can unbox `obj`.
 
 Graal.js answers `true` for boxed primitive Objects *String*s, *Number*s, *Boolean*, and potentially other internal types that are only converted lazily.
@@ -302,7 +315,7 @@ Graal.js answers `true` for boxed primitive Objects *String*s, *Number*s, *Boole
 #### `Interop.unboxValue(obj)`
 
 Sends the `UNBOX` message to `obj`.
-See JavaDoc [Message.UNBOX](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#UNBOX).
+See JavaDoc [Message.UNBOX](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#UNBOX).
 The source language of `obj` will return the unboxed primitive value stored in `obj`.
 
 Graal.js has special semantics for different kinds of objects.
@@ -313,14 +326,14 @@ Graal.js has special semantics for different kinds of objects.
 #### `Interop.hasKeys(obj)`
 
 Sends the `HAS_KEYS` message to `obj`.
-See JavaDoc [Message.HAS_KEYS](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#HAS_KEYS).
+See JavaDoc [Message.HAS_KEYS](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#HAS_KEYS).
 The object responds whether it answers to the `KEYS` message.
 A boolean value is returned.
 
 #### `Interop.keys(obj)`
 
 Sends the `KEYS` message to `obj`.
-See JavaDoc [Message.KEYS](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#KEYS).
+See JavaDoc [Message.KEYS](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#KEYS).
 An array-like object is returned, that has the keys stored in indices 0..(size-1).
 
     var keys = Interop.keys(obj);
@@ -337,7 +350,7 @@ This implies that only "own properties" of `obj` are shown; the prototype chain 
 #### `Interop.isInstantiable(obj)`
 
 Sends the `IS_INSTANTIABLE` message to `obj`.
-See JavaDoc [Message.IS_INSTANTIABLE](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#IS_INSTANTIABLE).
+See JavaDoc [Message.IS_INSTANTIABLE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#IS_INSTANTIABLE).
 The object responds whether you can construct a new object based on `obj`.
 A boolean value is returned.
 

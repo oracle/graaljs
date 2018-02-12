@@ -35,7 +35,7 @@ import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropExecuteNodeG
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropExportNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropGetSizeNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropHasKeysNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropHasSizePropertyNodeGen;
+import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropHasSizeNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropImportNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropIsBoxedPrimitiveNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropIsExecutableNodeGen;
@@ -43,9 +43,10 @@ import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropIsInstantiab
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropIsNullNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropKeysNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropParseNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropReadPropertyNodeGen;
+import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropReadNodeGen;
+import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropRemoveNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropUnboxValueNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropWritePropertyNodeGen;
+import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropWriteNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -77,6 +78,7 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         construct(1),
         execute(1),
         getSize(1),
+        remove(2),
         // import and export
         export(2),
         import_(1),
@@ -123,11 +125,13 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
             case isInstantiable:
                 return InteropIsInstantiableNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case hasSize:
-                return InteropHasSizePropertyNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                return InteropHasSizeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case read:
-                return InteropReadPropertyNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+                return InteropReadNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case write:
-                return InteropWritePropertyNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
+                return InteropWriteNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
+            case remove:
+                return InteropRemoveNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case unbox:
                 return InteropUnboxValueNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case construct:
@@ -294,20 +298,20 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         }
     }
 
-    abstract static class InteropHasSizePropertyNode extends JSBuiltinNode {
-        @Child private Node hasSizeProperty;
+    abstract static class InteropHasSizeNode extends JSBuiltinNode {
+        @Child private Node hasSize;
 
-        InteropHasSizePropertyNode(JSContext context, JSBuiltin builtin) {
+        InteropHasSizeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
         protected boolean execute(TruffleObject obj) {
-            if (hasSizeProperty == null) {
+            if (hasSize == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                hasSizeProperty = insert(Message.HAS_SIZE.createNode());
+                hasSize = insert(Message.HAS_SIZE.createNode());
             }
-            return ForeignAccess.sendHasSize(hasSizeProperty, obj);
+            return ForeignAccess.sendHasSize(hasSize, obj);
         }
 
         @Specialization(guards = "isJavaPrimitive(obj)")
@@ -322,11 +326,11 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         }
     }
 
-    abstract static class InteropReadPropertyNode extends JSBuiltinNode {
+    abstract static class InteropReadNode extends JSBuiltinNode {
         @Child private Node read;
         @Child private JSForeignToJSTypeNode foreignConvert;
 
-        InteropReadPropertyNode(JSContext context, JSBuiltin builtin) {
+        InteropReadNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -354,11 +358,11 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         }
     }
 
-    abstract static class InteropWritePropertyNode extends JSBuiltinNode {
+    abstract static class InteropWriteNode extends JSBuiltinNode {
         @Child private Node write;
         @Child ExportValueNode exportValue = ExportValueNode.create();
 
-        InteropWritePropertyNode(JSContext context, JSBuiltin builtin) {
+        InteropWriteNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -381,6 +385,35 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         @Specialization(guards = "!isTruffleObject(obj)")
         protected boolean executeError(Object obj, Object name, Object value) {
             throw Errors.createTypeError("cannot call WRITE on a non-interop object");
+        }
+    }
+
+    abstract static class InteropRemoveNode extends JSBuiltinNode {
+        @Child private Node remove;
+        @Child ExportValueNode exportValue = ExportValueNode.create();
+
+        InteropRemoveNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object execute(TruffleObject obj, Object key) {
+            if (remove == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                remove = insert(Message.REMOVE.createNode());
+            }
+            try {
+                Object exportedKey = exportValue.executeWithTarget(key, Undefined.instance);
+                return ForeignAccess.sendRemove(remove, obj, exportedKey);
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                return Null.instance;
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isTruffleObject(obj)")
+        protected boolean executeError(Object obj, Object key) {
+            throw Errors.createTypeError("cannot call REMOVE on a non-interop object");
         }
     }
 

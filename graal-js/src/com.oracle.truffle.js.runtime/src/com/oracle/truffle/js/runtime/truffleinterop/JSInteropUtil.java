@@ -60,4 +60,8 @@ public final class JSInteropUtil {
     public static Node createNew(int length) {
         return Message.createNew(length).createNode();
     }
+
+    public static Node createRemove() {
+        return Message.REMOVE.createNode();
+    }
 }
