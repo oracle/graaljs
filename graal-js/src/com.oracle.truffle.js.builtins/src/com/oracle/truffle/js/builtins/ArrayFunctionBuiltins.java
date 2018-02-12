@@ -17,6 +17,7 @@ import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSIsArrayNode
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperation;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
+import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
@@ -159,12 +160,14 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Child private GetMethodNode getIteratorMethodNode;
         @Child private IsObjectNode isObjectNode;
         @Child private JSGetLengthNode getSourceLengthNode;
+        @Child private IsArrayNode isFastArrayNode;
         private final ConditionProfile isIterable = ConditionProfile.createBinaryProfile();
         private final BranchProfile notAJSObjectBranch = BranchProfile.create();
 
         public JSArrayFromNode(JSContext context, JSBuiltin builtin, boolean isTypedArray) {
             super(context, builtin, isTypedArray);
             this.getIteratorMethodNode = GetMethodNode.create(context, null, Symbol.SYMBOL_ITERATOR);
+            this.isFastArrayNode = isTypedArrayImplementation ? null : IsArrayNode.createIsFastArray();
         }
 
         protected void iteratorCloseAbrupt(DynamicObject iterator) {
@@ -262,7 +265,11 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                     if (mapping) {
                         mapped = callMapFn(thisArg, (DynamicObject) mapFn, new Object[]{mapped, k});
                     }
-                    writeOwn(obj, k, mapped);
+                    if (isTypedArrayImplementation || isFastArrayNode.execute(obj)) {
+                        writeOwn(obj, k, mapped);
+                    } else {
+                        JSRuntime.createDataPropertyOrThrow(obj, Boundaries.stringValueOf(k), mapped);
+                    }
                     k++;
                 }
             } catch (Exception ex) {
@@ -283,7 +290,11 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 if (mapping) {
                     mapped = callMapFn(thisArg, (DynamicObject) mapFn, new Object[]{mapped, k});
                 }
-                writeOwn(obj, k, mapped);
+                if (isTypedArrayImplementation || isFastArrayNode.execute(obj)) {
+                    writeOwn(obj, k, mapped);
+                } else {
+                    JSRuntime.createDataPropertyOrThrow(obj, Boundaries.stringValueOf(k), mapped);
+                }
                 k++;
             }
             if (setLength) {
