@@ -404,8 +404,8 @@ public abstract class Environment {
         return 0;
     }
 
-    public void addFrameSlotsFromSymbolMap(Map<String, com.oracle.js.parser.ir.Symbol> symbolMap) {
-        for (com.oracle.js.parser.ir.Symbol symbol : symbolMap.values()) {
+    public void addFrameSlotsFromSymbols(Iterable<com.oracle.js.parser.ir.Symbol> symbols) {
+        for (com.oracle.js.parser.ir.Symbol symbol : symbols) {
             if ((symbol.isBlockScoped() || (symbol.isVar() && symbol.isVarDeclaredHere())) && !symbol.isImportBinding()) {
                 addFrameSlotFromSymbol(symbol);
             }

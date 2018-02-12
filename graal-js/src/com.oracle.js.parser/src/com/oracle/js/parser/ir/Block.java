@@ -25,12 +25,11 @@
 
 package com.oracle.js.parser.ir;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
@@ -44,7 +43,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
     protected final List<Statement> statements;
 
     /** Symbol table - keys must be returned in the order they were put in. */
-    protected final Map<String, Symbol> symbols;
+    protected final EconomicMap<String, Symbol> symbols;
 
     private int blockScopedOrRedeclaredSymbols;
     private int declaredNames;
@@ -110,7 +109,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
         assert start <= finish;
 
         this.statements = Arrays.asList(statements);
-        this.symbols    = new LinkedHashMap<>();
+        this.symbols    = EconomicMap.create();
         final int len = statements.length;
         final int terminalFlags = len > 0 && statements[len - 1].hasTerminalFlags() ? IS_TERMINAL : 0;
         this.flags = terminalFlags | flags;
@@ -128,11 +127,11 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
         this(token, finish, flags, statements.toArray(new Statement[statements.size()]));
     }
 
-    private Block(final Block block, final int finish, final List<Statement> statements, final int flags, final Map<String, Symbol> symbols) {
+    private Block(final Block block, final int finish, final List<Statement> statements, final int flags, final EconomicMap<String, Symbol> symbols) {
         super(block, finish);
         this.statements = statements;
         this.flags      = flags;
-        this.symbols    = new LinkedHashMap<>(symbols);
+        this.symbols    = EconomicMap.create(symbols);
 
         this.declaredNames = block.declaredNames;
         this.blockScopedOrRedeclaredSymbols = block.blockScopedOrRedeclaredSymbols;
@@ -168,11 +167,11 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
     }
 
     /**
-     * Get a copy of the list for all the symbols defined in this block
+     * Get all the symbols defined in this block, in definition order.
      * @return symbol iterator
      */
-    public List<Symbol> getSymbols() {
-        return Collections.unmodifiableList(new ArrayList<>(symbols.values()));
+    public Iterable<Symbol> getSymbols() {
+        return symbols.getValues();
     }
 
     /**
@@ -183,6 +182,21 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
      */
     public Symbol getExistingSymbol(final String name) {
         return symbols.get(name);
+    }
+
+    /**
+     * Test if a symbol with this name is defined in the current block.
+     * @param name the name of the symbol
+     */
+    public boolean hasSymbol(final String name) {
+        return symbols.containsKey(name);
+    }
+
+    /**
+     * Get the number of symbols defined in this block.
+     */
+    public int getSymbolCount() {
+        return symbols.size();
     }
 
     /**
@@ -346,10 +360,6 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
     @Override
     public <R> R accept(TranslatorNodeVisitor<? extends LexicalContext, R> visitor) {
         return BreakableNode.super.accept(visitor);
-    }
-
-    public Map<String, Symbol> getSymbolMap() {
-        return symbols;
     }
 
     public boolean hasBlockScopedOrRedeclaredSymbols() {

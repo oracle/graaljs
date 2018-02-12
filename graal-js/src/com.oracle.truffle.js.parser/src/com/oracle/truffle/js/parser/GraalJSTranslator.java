@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 import com.oracle.js.parser.Lexer;
 import com.oracle.js.parser.Token;
@@ -1261,9 +1260,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return Collections.emptyList();
         }
 
-        Map<String, Symbol> symbolMap = block.getSymbolMap();
-        ArrayList<JavaScriptNode> blockWithInit = new ArrayList<>(symbolMap.size() + 1);
-        for (Symbol symbol : symbolMap.values()) {
+        ArrayList<JavaScriptNode> blockWithInit = new ArrayList<>(block.getSymbolCount() + 1);
+        for (Symbol symbol : block.getSymbols()) {
             if (symbol.isImportBinding()) {
                 continue;
             }
@@ -1288,8 +1286,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode prependDynamicScopeBindingInit(Block block, JavaScriptNode blockNode) {
         assert currentFunction().isCallerContextEval();
         ArrayList<JavaScriptNode> blockWithInit = new ArrayList<>();
-        Map<String, Symbol> symbolMap = block.getSymbolMap();
-        for (Symbol symbol : symbolMap.values()) {
+        for (Symbol symbol : block.getSymbols()) {
             if (symbol.isVarDeclaredHere() && !environment.getVariableEnvironment().hasLocalVar(symbol.getName())) {
                 blockWithInit.add(createDynamicScopeBinding(symbol.getName(), true));
             }
@@ -1355,9 +1352,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (block.isParameterBlock() || (block.isFunctionBody() && lc.getCurrentFunction().getParameterBlock() == null)) {
                 assert environment instanceof FunctionEnvironment;
                 if (!currentFunction().isCallerContextEval()) {
-                    environment.addFrameSlotsFromSymbolMap(block.getSymbolMap());
+                    environment.addFrameSlotsFromSymbols(block.getSymbols());
                 } else {
-                    for (Symbol symbol : block.getSymbolMap().values()) {
+                    for (Symbol symbol : block.getSymbols()) {
                         if (symbol.isImportBinding()) {
                             continue; // no frame slot required
                         } else if (symbol.isBlockScoped()) {
@@ -1370,7 +1367,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 return new EnvironmentCloseable(environment);
             } else {
                 BlockEnvironment blockEnv = new BlockEnvironment(environment, factory, context);
-                blockEnv.addFrameSlotsFromSymbolMap(block.getSymbolMap());
+                blockEnv.addFrameSlotsFromSymbols(block.getSymbols());
                 return new EnvironmentCloseable(blockEnv);
             }
         } else {
