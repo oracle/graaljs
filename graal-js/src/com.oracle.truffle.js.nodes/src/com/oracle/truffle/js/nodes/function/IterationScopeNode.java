@@ -12,7 +12,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.LevelScopeFrameNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 
 public abstract class IterationScopeNode extends JavaScriptNode {
 
@@ -48,7 +48,7 @@ public abstract class IterationScopeNode extends JavaScriptNode {
         @Override
         public void executeCopy(VirtualFrame nextFrame, VirtualFrame frame) {
             // no need to copy effectively final parent frame slot
-            assert FrameUtil.getObjectSafe(nextFrame, LevelScopeFrameNode.PARENT_SCOPE_SLOT) == FrameUtil.getObjectSafe(frame, LevelScopeFrameNode.PARENT_SCOPE_SLOT);
+            assert FrameUtil.getObjectSafe(nextFrame, ScopeFrameNode.PARENT_SCOPE_SLOT) == FrameUtil.getObjectSafe(frame, ScopeFrameNode.PARENT_SCOPE_SLOT);
             copySlots(nextFrame, frame);
         }
 

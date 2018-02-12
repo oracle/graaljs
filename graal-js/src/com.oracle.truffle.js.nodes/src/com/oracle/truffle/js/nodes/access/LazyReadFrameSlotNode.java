@@ -53,11 +53,11 @@ public abstract class LazyReadFrameSlotNode extends JavaScriptNode implements Re
                 for (int scopeLevel = 0;; scopeLevel++) {
                     FrameSlot slot = outerScope.getFrameDescriptor().findFrameSlot(identifier);
                     if (slot != null) {
-                        JSReadFrameSlotNode resolved = JSReadFrameSlotNode.create(slot, LevelScopeFrameNode.create(frameLevel, scopeLevel, parentSlot), JSFrameUtil.hasTemporalDeadZone(slot));
+                        JSReadFrameSlotNode resolved = JSReadFrameSlotNode.create(slot, ScopeFrameNode.create(frameLevel, scopeLevel, parentSlot), JSFrameUtil.hasTemporalDeadZone(slot));
                         return this.replace(resolved).execute(frame);
                     }
 
-                    parentSlot = outerScope.getFrameDescriptor().findFrameSlot(LevelScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
+                    parentSlot = outerScope.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
                     if (parentSlot == null) {
                         break;
                     }

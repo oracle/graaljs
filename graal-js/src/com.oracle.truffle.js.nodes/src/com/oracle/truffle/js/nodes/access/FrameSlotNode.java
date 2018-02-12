@@ -41,7 +41,7 @@ public abstract class FrameSlotNode extends JavaScriptNode {
         return frameSlot.getIdentifier();
     }
 
-    public abstract LevelScopeFrameNode getLevelFrameNode();
+    public abstract ScopeFrameNode getLevelFrameNode();
 
     protected final boolean getBoolean(Frame frame) {
         return FrameUtil.getBooleanSafe(frame, frameSlot);

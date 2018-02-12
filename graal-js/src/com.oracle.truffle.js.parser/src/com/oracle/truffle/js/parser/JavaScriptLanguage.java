@@ -47,7 +47,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.nodes.access.LevelScopeFrameNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.unary.FlattenNode;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
@@ -389,7 +389,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         while (frame != null && frame != JSFrameUtil.NULL_MATERIALIZED_FRAME) {
             assert isJSArgumentsArray(frame.getArguments());
             FrameSlot parentSlot;
-            while ((parentSlot = frame.getFrameDescriptor().findFrameSlot(LevelScopeFrameNode.PARENT_SCOPE_IDENTIFIER)) != null) {
+            while ((parentSlot = frame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER)) != null) {
                 frameDescriptors.add(frame.getFrameDescriptor());
                 frame = (Frame) FrameUtil.getObjectSafe(frame, parentSlot);
             }

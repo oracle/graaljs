@@ -25,7 +25,7 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
         super(slot);
     }
 
-    public static JSReadFrameSlotNode create(FrameSlot slot, LevelScopeFrameNode levelFrameNode, boolean hasTemporalDeadZone) {
+    public static JSReadFrameSlotNode create(FrameSlot slot, ScopeFrameNode levelFrameNode, boolean hasTemporalDeadZone) {
         if (hasTemporalDeadZone) {
             return JSReadScopeFrameSlotWithTDZNodeGen.create(slot, levelFrameNode);
         } else {
@@ -37,11 +37,11 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
         if (frameLevel == 0 && scopeLevel == 0 && !hasTemporalDeadZone) {
             return JSReadCurrentFrameSlotNodeGen.create(slot);
         }
-        return create(slot, LevelScopeFrameNode.create(frameLevel, scopeLevel), hasTemporalDeadZone);
+        return create(slot, ScopeFrameNode.create(frameLevel, scopeLevel), hasTemporalDeadZone);
     }
 
     public static JSReadFrameSlotNode create(FrameSlot slot, int frameLevel, int scopeLevel, FrameSlot parentSlot, boolean hasTemporalDeadZone) {
-        return create(slot, LevelScopeFrameNode.create(frameLevel, scopeLevel, parentSlot), hasTemporalDeadZone);
+        return create(slot, ScopeFrameNode.create(frameLevel, scopeLevel, parentSlot), hasTemporalDeadZone);
     }
 
     @Override
@@ -53,7 +53,7 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
     }
 }
 
-@NodeChild(value = "levelFrameNode", type = LevelScopeFrameNode.class)
+@NodeChild(value = "levelFrameNode", type = ScopeFrameNode.class)
 abstract class JSReadScopeFrameSlotNode extends JSReadFrameSlotNode {
     JSReadScopeFrameSlotNode(FrameSlot slot) {
         super(slot);
@@ -143,8 +143,8 @@ abstract class JSReadCurrentFrameSlotNode extends JSReadFrameSlotNode {
     }
 
     @Override
-    public LevelScopeFrameNode getLevelFrameNode() {
-        return LevelScopeFrameNode.create(0, 0);
+    public ScopeFrameNode getLevelFrameNode() {
+        return ScopeFrameNode.create(0, 0);
     }
 
     @Override

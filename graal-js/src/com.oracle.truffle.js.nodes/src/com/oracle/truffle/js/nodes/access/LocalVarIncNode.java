@@ -17,7 +17,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
-@NodeChild(value = "levelFrameNode", type = LevelScopeFrameNode.class)
+@NodeChild(value = "levelFrameNode", type = ScopeFrameNode.class)
 public abstract class LocalVarIncNode extends FrameSlotNode {
     public enum Op {
         Inc(new IncOp()),

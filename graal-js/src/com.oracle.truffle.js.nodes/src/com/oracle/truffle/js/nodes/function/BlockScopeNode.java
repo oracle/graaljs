@@ -13,7 +13,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.FrameDescriptorProvider;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.LevelScopeFrameNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.YieldException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -89,7 +89,7 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
 
         @Override
         public void exitScope(VirtualFrame frame) {
-            assert CompilerDirectives.inCompiledCode() || LevelScopeFrameNode.isBlockScopeFrame(frame);
+            assert CompilerDirectives.inCompiledCode() || ScopeFrameNode.isBlockScopeFrame(frame);
         }
 
         @Override

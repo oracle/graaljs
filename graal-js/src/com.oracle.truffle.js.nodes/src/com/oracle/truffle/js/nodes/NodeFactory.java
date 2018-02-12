@@ -44,7 +44,7 @@ import com.oracle.truffle.js.nodes.access.JSTargetableWrapperNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.LazyReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.LazyWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.LevelScopeFrameNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.LocalVarIncNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.MakeMethodNode;
@@ -389,7 +389,7 @@ public class NodeFactory {
     }
 
     public IterationScopeNode createIterationScope(FrameDescriptor frameDescriptor) {
-        assert frameDescriptor.getSize() > 0 && frameDescriptor.getSlots().get(0) == LevelScopeFrameNode.PARENT_SCOPE_SLOT;
+        assert frameDescriptor.getSize() > 0 && frameDescriptor.getSlots().get(0) == ScopeFrameNode.PARENT_SCOPE_SLOT;
         List<? extends FrameSlot> slots = frameDescriptor.getSlots();
         JSReadFrameSlotNode[] reads = new JSReadFrameSlotNode[slots.size()];
         JSWriteFrameSlotNode[] writes = new JSWriteFrameSlotNode[slots.size()];
@@ -860,7 +860,7 @@ public class NodeFactory {
     }
 
     public FrameDescriptor createBlockFrameDescriptor() {
-        return LevelScopeFrameNode.SCOPE_FRAME_DESCRIPTOR.shallowCopy();
+        return ScopeFrameNode.SCOPE_FRAME_DESCRIPTOR.shallowCopy();
     }
 
     public JavaScriptNode createDeclareGlobalVariable(JSContext context, String varName, boolean configurable) {
@@ -921,7 +921,7 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createReadModuleImportBinding(JSModuleRecord moduleRecord, String bindingName) {
-        class ModuleEnvFrameNode extends LevelScopeFrameNode {
+        class ModuleEnvFrameNode extends ScopeFrameNode {
             private final JSModuleRecord module;
 
             ModuleEnvFrameNode(JSModuleRecord module) {

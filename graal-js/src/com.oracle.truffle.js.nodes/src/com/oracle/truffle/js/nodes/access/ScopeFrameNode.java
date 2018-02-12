@@ -4,16 +4,24 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.profiles.*;
-import com.oracle.truffle.js.nodes.*;
-import com.oracle.truffle.js.runtime.*;
-import com.oracle.truffle.js.runtime.objects.*;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameUtil;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public abstract class LevelScopeFrameNode extends JavaScriptBaseNode {
+public abstract class ScopeFrameNode extends JavaScriptBaseNode {
     public static final FrameDescriptor SCOPE_FRAME_DESCRIPTOR;
     public static final FrameSlot PARENT_SCOPE_SLOT;
     public static final Object PARENT_SCOPE_IDENTIFIER = "<parent>";
@@ -22,11 +30,11 @@ public abstract class LevelScopeFrameNode extends JavaScriptBaseNode {
         PARENT_SCOPE_SLOT = SCOPE_FRAME_DESCRIPTOR.addFrameSlot(PARENT_SCOPE_IDENTIFIER, FrameSlotKind.Object);
     }
 
-    public static LevelScopeFrameNode create(int frameLevel, int scopeLevel) {
+    public static ScopeFrameNode create(int frameLevel, int scopeLevel) {
         return create(frameLevel, scopeLevel, PARENT_SCOPE_SLOT);
     }
 
-    public static LevelScopeFrameNode create(int frameLevel, int scopeLevel, FrameSlot parentSlot) {
+    public static ScopeFrameNode create(int frameLevel, int scopeLevel, FrameSlot parentSlot) {
         if (frameLevel == 0) {
             if (scopeLevel == 0) {
                 return new CurrentFrameNode();
@@ -49,14 +57,14 @@ public abstract class LevelScopeFrameNode extends JavaScriptBaseNode {
     public abstract Frame executeFrame(Frame frame);
 
     @NodeInfo(cost = NodeCost.NONE)
-    private static final class CurrentFrameNode extends LevelScopeFrameNode {
+    private static final class CurrentFrameNode extends ScopeFrameNode {
         @Override
         public Frame executeFrame(Frame frame) {
             return frame;
         }
     }
 
-    private static final class EnclosingScopeFrameNode extends LevelScopeFrameNode {
+    private static final class EnclosingScopeFrameNode extends ScopeFrameNode {
         private final int scopeLevel;
         private final FrameSlot parentSlot;
         private final ValueProfile frameClassProfile = ValueProfile.createClassProfile();
@@ -78,7 +86,7 @@ public abstract class LevelScopeFrameNode extends JavaScriptBaseNode {
         }
     }
 
-    private static final class EnclosingFunctionScopeFrameNode extends LevelScopeFrameNode {
+    private static final class EnclosingFunctionScopeFrameNode extends ScopeFrameNode {
         private final int frameLevel;
         private final int scopeLevel;
         private final FrameSlot parentSlot;
@@ -104,14 +112,14 @@ public abstract class LevelScopeFrameNode extends JavaScriptBaseNode {
         }
     }
 
-    private static final class EnclosingFunctionFrameNodeLevel1 extends LevelScopeFrameNode {
+    private static final class EnclosingFunctionFrameNodeLevel1 extends ScopeFrameNode {
         @Override
         public Frame executeFrame(Frame frame) {
             return JSArguments.getEnclosingFrame(frame.getArguments());
         }
     }
 
-    private static final class EnclosingFunctionFrameNode extends LevelScopeFrameNode {
+    private static final class EnclosingFunctionFrameNode extends ScopeFrameNode {
         private final int frameLevel;
 
         EnclosingFunctionFrameNode(int frameLevel) {
@@ -130,7 +138,7 @@ public abstract class LevelScopeFrameNode extends JavaScriptBaseNode {
         }
     }
 
-    public static final class CallerFrameNode extends LevelScopeFrameNode {
+    public static final class CallerFrameNode extends ScopeFrameNode {
         private final int frameLevel;
 
         CallerFrameNode(int frameLevel) {

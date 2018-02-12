@@ -38,7 +38,7 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.LevelScopeFrameNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
@@ -106,7 +106,7 @@ public abstract class JSScope {
 
     public static JSScope createScope(Node node, MaterializedFrame frame) {
         if (frame != null) {
-            if (LevelScopeFrameNode.isBlockScopeFrame(frame)) {
+            if (ScopeFrameNode.isBlockScopeFrame(frame)) {
                 for (Node n = node; n != null; n = n.getParent()) {
                     if (n instanceof FrameBlockScopeNode) {
                         FrameBlockScopeNode blockScopeNode = (FrameBlockScopeNode) n;
@@ -281,7 +281,7 @@ public abstract class JSScope {
             if (parent == null) {
                 return null;
             }
-            Frame parentFrame = (Frame) FrameUtil.getObjectSafe(mFrame, LevelScopeFrameNode.PARENT_SCOPE_SLOT);
+            Frame parentFrame = (Frame) FrameUtil.getObjectSafe(mFrame, ScopeFrameNode.PARENT_SCOPE_SLOT);
             return JSScope.createScope(parent, parentFrame.materialize());
         }
     }
