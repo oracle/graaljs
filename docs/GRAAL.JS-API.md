@@ -403,7 +403,7 @@ See reference and examples at [Nashorn extensions](https://wiki.openjdk.java.net
 
 ### JavaImporter
 
-`JavaImporter` can be used to import packages explizitly, without polluting the global scope.
+`JavaImporter` can be used to import packages explicitly, without polluting the global scope.
 See reference at [Nashorn extensions](https://wiki.openjdk.java.net/display/Nashorn/Nashorn+extensions). 
 
 ### JSAdapter
