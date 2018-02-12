@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.js.nodes.access;
@@ -16,9 +16,9 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class ScopeFrameNode extends JavaScriptBaseNode {
@@ -67,7 +67,6 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
     private static final class EnclosingScopeFrameNode extends ScopeFrameNode {
         private final int scopeLevel;
         private final FrameSlot parentSlot;
-        private final ValueProfile frameClassProfile = ValueProfile.createClassProfile();
 
         EnclosingScopeFrameNode(int scopeLevel, FrameSlot parentSlot) {
             assert scopeLevel >= 1;
@@ -80,7 +79,7 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
         public Frame executeFrame(Frame frame) {
             Frame retFrame = frame;
             for (int i = 0; i < scopeLevel; i++) {
-                retFrame = (Frame) frameClassProfile.profile(FrameUtil.getObjectSafe(retFrame, parentSlot));
+                retFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(retFrame, parentSlot));
             }
             return retFrame;
         }
@@ -90,7 +89,6 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
         private final int frameLevel;
         private final int scopeLevel;
         private final FrameSlot parentSlot;
-        private final ValueProfile frameClassProfile = ValueProfile.createClassProfile();
 
         EnclosingFunctionScopeFrameNode(int frameLevel, int scopeLevel, FrameSlot parentSlot) {
             this.frameLevel = frameLevel;
@@ -106,7 +104,7 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
                 retFrame = JSArguments.getEnclosingFrame(retFrame.getArguments());
             }
             for (int i = 0; i < scopeLevel; i++) {
-                retFrame = (Frame) frameClassProfile.profile(FrameUtil.getObjectSafe(retFrame, parentSlot));
+                retFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(retFrame, parentSlot));
             }
             return retFrame;
         }
