@@ -355,7 +355,7 @@ public final class JSProxy extends AbstractJSClass {
             if (JSObject.isJSObject(target)) {
                 return JSObject.delete((DynamicObject) target, propertyKey, isStrict);
             } else {
-                return JSInteropNodeUtil.delete(target, propertyKey);
+                return JSInteropNodeUtil.remove(target, propertyKey);
             }
         }
         Object trapResult = JSFunction.call(deleteFn, handler, new Object[]{target, propertyKey});

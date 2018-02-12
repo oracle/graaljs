@@ -21,7 +21,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Null;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Utility class for interop operations.
@@ -70,6 +69,11 @@ public final class JSInteropNodeUtil {
     static Node getHasSizeNode() {
         CompilerAsserts.neverPartOfCompilation();
         return JSInteropUtil.createHasSize();
+    }
+
+    static Node getRemoveNode() {
+        CompilerAsserts.neverPartOfCompilation();
+        return JSInteropUtil.createRemove();
     }
 
     @TruffleBoundary
@@ -188,24 +192,22 @@ public final class JSInteropNodeUtil {
     }
 
     /**
-     * Best-effort "DELETE" message: write a null value. A graal.js extension.
+     * Sends the "REMOVE" message to obj.
      */
-    public static boolean delete(TruffleObject obj, Object key, Node writeNode) {
+    public static boolean remove(TruffleObject obj, Object key, Node removeNode) {
         try {
-            ForeignAccess.sendWrite(writeNode, obj, key, Undefined.instance);
+            ForeignAccess.sendRemove(removeNode, obj, key);
             return true;
         } catch (UnknownIdentifierException e) {
             throw Errors.createTypeError("failed to write property %s", key);
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeError("cannot write from foreign object due to: %s", e.getMessage());
-        } catch (UnsupportedTypeException e) {
-            throw Errors.createTypeError("cannot write to foreign object due to unsupported type: %s", e.getMessage());
         }
     }
 
     @TruffleBoundary
-    public static boolean delete(TruffleObject obj, Object key) {
-        return delete(obj, key, getWriteNode());
+    public static boolean remove(TruffleObject obj, Object key) {
+        return remove(obj, key, getRemoveNode());
     }
 
     @TruffleBoundary

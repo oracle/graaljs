@@ -20,7 +20,6 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -31,6 +30,7 @@ import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
+import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -121,11 +121,12 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     @Specialization(guards = {"isForeignObject(target)"})
     protected static boolean doInterop(TruffleObject target, Object property,
-                    @Cached("createWrite()") Node writeNode) {
+                    @Cached("createRemove()") Node removeNode,
+                    @Cached("create()") ExportValueNode exportNode) {
         try {
-            ForeignAccess.sendWrite(writeNode, target, property, Undefined.instance);
+            ForeignAccess.sendRemove(removeNode, target, exportNode.executeWithTarget(property, Undefined.instance));
             return true;
-        } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             return false;
         }
     }
