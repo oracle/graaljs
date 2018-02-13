@@ -26,9 +26,10 @@
 
 import mx, mx_gate, mx_graal_js, os, re, shutil, tarfile, tempfile
 
-from mx import BinarySuite
+from mx import BinarySuite, VC
 from mx_gate import Task, Tags
 from argparse import ArgumentParser
+from contextlib import contextmanager
 from os import remove, symlink, unlink
 from os.path import dirname, exists, join, isdir, isfile, islink
 
@@ -36,8 +37,6 @@ _suite = mx.suite('graal-nodejs')
 _currentOs = mx.get_os()
 _currentArch = mx.get_arch()
 _jdkHome = None
-_svmNodeLibName = mx.add_lib_prefix('graaljs')
-_svmNodeLibNameWithSuffix = mx.add_lib_suffix(_svmNodeLibName)
 
 class GraalNodeJsTags:
     sharedBuild = 'sharedbuild'
@@ -499,50 +498,42 @@ def overrideBuild():
 if _suite.primary:
     overrideBuild()
 
-def buildSvmImage(args):
-    javaArgs = []
-    svmArgs = []
-    for a in list(args):
-        if a[0:3] in ("-R:", "-H:"):
-            svmArgs.append(a)
-        else:
-            javaArgs.append(a)
-    if len(javaArgs) > 0:
-        mx.log("extra java args found: " + " ".join(javaArgs))
-    if len(svmArgs) > 0:
-        mx.log("extra svm args found: " + " ".join(svmArgs))
-    mx.suite('substratevm').extensions.image([
-            '-Dtruffle.js.DirectByteBuffer=true',
-            '-Dpolyglot.js.v8-compatibility-mode=true',
-            '-Dpolyglot.js.syntax-extensions=false',
-            '-Dtruffle.js.U180EWhitespace=true',
-            '-Dpolyglot.engine.PreinitializeContexts=js',
-            ] + javaArgs + ['--',
-            '-js',
-            '-H:Kind=SHARED_LIBRARY',
-            '-H:Name={}'.format(_svmNodeLibName),
-            '-H:Projects=com.oracle.truffle.trufflenode',
-            '-H:JNIConfigurationFiles=svmnodejs.jniconfig',
-            '-H:+MultiThreaded',
-            '-H:+JNICreateJavaVM',
-            ] + svmArgs
-        )
+@contextmanager
+def _import_substratevm():
+    try:
+        import mx_substratevm
+    except:
+        mx.abort("Cannot import 'mx_substratevm'. Did you forget to dynamically import SubstrateVM?")
+    yield mx_substratevm
 
-def preparesvmenv():
+def buildSvmImage(args):
+    """build a shared SubstrateVM library to run Graal.nodejs"""
+    with _import_substratevm() as _svm:
+        _svm.flag_suitename_map['nodejs'] = ('graal-nodejs', ['TRUFFLENODE'], ['TRUFFLENODE_NATIVE'], 'js')
+        _js_version = VC.get_vc(_suite.vc_dir).parent(_suite.vc_dir)
+        mx.logv('Fetch JS version {}'.format(_js_version))
+        for _lang in ['js', 'nodejs']:
+            _svm.fetch_languages(['--{}.version={}'.format(_lang, _js_version)])
+        with _svm.native_image_context() as _native_image:
+            _native_image(['--nodejs', '-H:JNIConfigurationFiles={}'.format(join(_suite.dir, 'svmnodejs.jniconfig'))] + args)
+
+def _prepare_svm_env():
     setLibraryPath()
-    _setEnvVar('NODE_JVM_LIB', join(_suite.dir, 'svmbuild', _svmNodeLibNameWithSuffix))
+    with _import_substratevm() as _svm:
+        _setEnvVar('NODE_JVM_LIB', join(_svm.svmbuild_dir(), mx.add_lib_suffix('nodejs')))
 
 def testsvmnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
-    preparesvmenv()
+    _prepare_svm_env()
     return mx.run([join(_suite.mxDir, 'python2', 'python'), 'tools/test.py'] + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 def svmnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
-    preparesvmenv()
+    """run Graal.nodejs on SubstrateVM"""
+    _prepare_svm_env()
     return mx.run([join(_suite.dir, 'node')] + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 def svmnpm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
-    preparesvmenv()
-    return mx.run([join(_suite.dir, 'node'), join(_suite.dir, 'deps', 'npm', 'bin', 'npm-cli.js')] + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
+    """run 'npm' with Graal.nodejs on SubstrateVM"""
+    return svmnode([join(_suite.dir, 'deps', 'npm', 'bin', 'npm-cli.js')] + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 mx.update_commands(_suite, {
     'node' : [node, ''],
