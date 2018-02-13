@@ -20,7 +20,7 @@ The binaries provided typically are `js` and `node`.
 
 ### Enabling Java interoperability
 By default, the `js` and `node` binaries are started in an ahead-of-time compiled native mode.
-In that mode, Java interoperatibility is not available.
+In that mode, Java interoperability is not available.
 
 To enable Java interoperability, the `--jvm` option has to be provided to the native launcher.
 This way, Graal.js is executed on a traditional JVM and allow full Java interoperability.
@@ -252,7 +252,7 @@ The most important differences relevant for migration are listed here.
 Items already covered in the Rhino to Graal.js migration guide above are not repeated, unless Nashorn exhibits behavior different to Rhino.
 
 ### Overloading Java functions and argument conversion
-Graal.js does not allow lossy coversions of arguments when calling Java methods.
+Graal.js does not allow lossy conversions of arguments when calling Java methods.
 It will always select the overloaded method with the narrowest possible argument types that can be converted to without loss.
 If no such overloaded method is available, Graal.js throws a `TypeError` instead of lossy conversion.
 In general, this affects which overloaded method is executed.
