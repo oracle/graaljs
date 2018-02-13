@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.js.runtime;
@@ -647,6 +647,11 @@ public class JSContext implements ShapeContext {
     @Override
     public final DynamicObjectFactory getNumberFormatFactory() {
         return shapeContext.getNumberFormatFactory();
+    }
+
+    @Override
+    public final DynamicObjectFactory getPluralRulesFactory() {
+        return shapeContext.getPluralRulesFactory();
     }
 
     @Override

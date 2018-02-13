@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.js.runtime;
@@ -48,6 +48,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.JSON;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSPerformance;
+import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
@@ -135,6 +136,8 @@ public class JSRealm implements ShapeContext {
     private final DynamicObjectFactory collatorFactory;
     private final JSConstructor numberFormatConstructor;
     private final DynamicObjectFactory numberFormatFactory;
+    private final JSConstructor pluralRulesConstructor;
+    private final DynamicObjectFactory pluralRulesFactory;
     private final JSConstructor dateTimeFormatConstructor;
     private final DynamicObjectFactory dateTimeFormatFactory;
     private final JSConstructor dateConstructor;
@@ -336,6 +339,8 @@ public class JSRealm implements ShapeContext {
             this.numberFormatFactory = JSNumberFormat.makeInitialShape(context, numberFormatConstructor.getPrototype()).createFactory();
             this.dateTimeFormatConstructor = JSDateTimeFormat.createConstructor(this);
             this.dateTimeFormatFactory = JSDateTimeFormat.makeInitialShape(context, dateTimeFormatConstructor.getPrototype()).createFactory();
+            this.pluralRulesConstructor = JSPluralRules.createConstructor(this);
+            this.pluralRulesFactory = JSPluralRules.makeInitialShape(context, pluralRulesConstructor.getPrototype()).createFactory();
         } else {
             this.collatorConstructor = null;
             this.collatorFactory = null;
@@ -343,6 +348,8 @@ public class JSRealm implements ShapeContext {
             this.numberFormatFactory = null;
             this.dateTimeFormatConstructor = null;
             this.dateTimeFormatFactory = null;
+            this.pluralRulesConstructor = null;
+            this.pluralRulesFactory = null;
         }
 
         this.jsAdapterConstructor = JSTruffleOptions.NashornExtensions ? JSAdapter.createConstructor(this) : null;
@@ -540,6 +547,10 @@ public class JSRealm implements ShapeContext {
 
     public final JSConstructor getNumberFormatConstructor() {
         return numberFormatConstructor;
+    }
+
+    public final JSConstructor getPluralRulesConstructor() {
+        return pluralRulesConstructor;
     }
 
     public final JSConstructor getDateTimeFormatConstructor() {
@@ -838,9 +849,11 @@ public class JSRealm implements ShapeContext {
             DynamicObject collatorFn = getCollatorConstructor().getFunctionObject();
             DynamicObject numberFormatFn = getNumberFormatConstructor().getFunctionObject();
             DynamicObject dateTimeFormatFn = getDateTimeFormatConstructor().getFunctionObject();
+            DynamicObject pluralRulesFn = getPluralRulesConstructor().getFunctionObject();
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
             putGlobalProperty(global, JSIntl.CLASS_NAME, intlObject);
         }
 
@@ -1153,6 +1166,11 @@ public class JSRealm implements ShapeContext {
     @Override
     public final DynamicObjectFactory getNumberFormatFactory() {
         return numberFormatFactory;
+    }
+
+    @Override
+    public final DynamicObjectFactory getPluralRulesFactory() {
+        return pluralRulesFactory;
     }
 
     @Override

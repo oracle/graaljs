@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.js.runtime;
@@ -70,6 +70,11 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorNumberFormatExpected() {
         return createTypeError("NumberFormat object expected.");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorPluralRulesExpected() {
+        return createTypeError("PluralRules object expected.");
     }
 
     @TruffleBoundary

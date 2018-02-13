@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.js.builtins;
@@ -147,6 +147,8 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         defineBuiltins(new NumberFormatFunctionBuiltins());
         defineBuiltins(new DateTimeFormatPrototypeBuiltins());
         defineBuiltins(new DateTimeFormatFunctionBuiltins());
+        defineBuiltins(new PluralRulesPrototypeBuiltins());
+        defineBuiltins(new PluralRulesFunctionBuiltins());
         defineBuiltins(new IntlBuiltins());
     }
 

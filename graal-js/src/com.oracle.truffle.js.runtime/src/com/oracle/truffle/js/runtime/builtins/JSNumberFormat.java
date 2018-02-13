@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.js.runtime.builtins;
@@ -404,8 +404,12 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         if (currencyCode == null) {
             return 2;
         }
-        Currency currency = Currency.getInstance(currencyCode);
-        return (currency != null) ? currency.getDefaultFractionDigits() : 2;
+        try {
+            Currency currency = Currency.getInstance(currencyCode);
+            return (currency != null) ? currency.getDefaultFractionDigits() : 2;
+        } catch (IllegalArgumentException e) {
+            return 2;
+        }
     }
 
     // https://tc39.github.io/ecma402/#sec-iswellformedcurrencycode
@@ -440,7 +444,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     }
 
     @TruffleBoundary
-    public static void setLocaleAndNumberingSystem(InternalState state, String[] locales) {
+    public static void setLocaleAndNumberingSystem(BasicInternalState state, String[] locales) {
         String selectedTag = IntlUtil.selectedLocale(locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
@@ -470,7 +474,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     }
 
     @TruffleBoundary
-    public static void setSignificantDigits(InternalState state) {
+    public static void setSignificantDigits(BasicInternalState state) {
         if (state.numberFormat instanceof DecimalFormat) {
             DecimalFormat df = (DecimalFormat) state.numberFormat;
             df.setMinimumSignificantDigits(state.minimumSignificantDigits.intValue());
@@ -542,39 +546,27 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         return p;
     }
 
-    public static class InternalState {
+    public static class BasicInternalState {
 
         public boolean initialized = false;
+
         public NumberFormat numberFormat;
+
         public Locale javaLocale;
-
-        DynamicObject boundFormatFunction = null;
-
         public String locale;
+
         public String numberingSystem = "latn";
-        public String style = "decimal";
-        public String currency;
-        public String currencyDisplay;
+
         public Number minimumIntegerDigits = 1;
         public Number minimumFractionDigits = 0;
         public Number maximumFractionDigits = 3;
         public Number minimumSignificantDigits;
         public Number maximumSignificantDigits;
-        public boolean useGrouping = true;
-        public String positivePattern = "";
-        public String negativePattern = "";
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
+
             DynamicObject result = JSUserObject.create(context);
             JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "numberingSystem", numberingSystem, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "style", style, JSAttributes.getDefault());
-            if (currency != null) {
-                JSObjectUtil.defineDataProperty(result, "currency", currency, JSAttributes.getDefault());
-            }
-            if (currencyDisplay != null) {
-                JSObjectUtil.defineDataProperty(result, "currencyDisplay", currencyDisplay, JSAttributes.getDefault());
-            }
             if (minimumIntegerDigits != null) {
                 JSObjectUtil.defineDataProperty(result, "minimumIntegerDigits", minimumIntegerDigits, JSAttributes.getDefault());
             }
@@ -590,7 +582,33 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             if (maximumSignificantDigits != null) {
                 JSObjectUtil.defineDataProperty(result, "maximumSignificantDigits", maximumSignificantDigits, JSAttributes.getDefault());
             }
+            return result;
+        }
+    }
+
+    public static class InternalState extends BasicInternalState {
+
+        public String style = "decimal";
+        public String currency;
+        public String currencyDisplay;
+        public boolean useGrouping = true;
+
+        DynamicObject boundFormatFunction = null;
+
+        @Override
+        DynamicObject toResolvedOptionsObject(JSContext context) {
+
+            DynamicObject result = super.toResolvedOptionsObject(context);
+
+            JSObjectUtil.defineDataProperty(result, "numberingSystem", numberingSystem, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, "style", style, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, "useGrouping", useGrouping, JSAttributes.getDefault());
+            if (currency != null) {
+                JSObjectUtil.defineDataProperty(result, "currency", currency, JSAttributes.getDefault());
+            }
+            if (currencyDisplay != null) {
+                JSObjectUtil.defineDataProperty(result, "currencyDisplay", currencyDisplay, JSAttributes.getDefault());
+            }
             return result;
         }
     }
