@@ -45,6 +45,8 @@ import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropKeysNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropParseNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropReadNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropRemoveNodeGen;
+import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropToInteropValueNodeGen;
+import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropToJSValueNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropUnboxValueNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropWriteNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -61,6 +63,7 @@ import com.oracle.truffle.js.runtime.TruffleGlobalScopeImpl;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<InteropBuiltins.Interop> {
     protected InteropBuiltins() {
@@ -79,6 +82,8 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         execute(1),
         getSize(1),
         remove(2),
+        toJSValue(1),
+        toInteropValue(1),
         // import and export
         export(2),
         import_(1),
@@ -150,6 +155,10 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
                 return InteropParseNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case keys:
                 return InteropKeysNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case toJSValue:
+                return InteropToJSValueNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case toInteropValue:
+                return InteropToInteropValueNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case hasKeys:
                 return InteropHasKeysNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case createForeignObject:
@@ -784,6 +793,86 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
             } else {
                 return Undefined.instance;
             }
+        }
+    }
+
+    /**
+     * Forces the conversion of an (potential) interop value to a JavaScript compliant value. In
+     * addition to the conversions forced at the language boundary anyway (e.g., Java primitive
+     * types like short or float that are not supported by JavaScript), this operation also converts
+     * Nullish interop values to the JavaScript null value, and unboxes boxed TruffleObjects.
+     *
+     */
+    abstract static class InteropToJSValueNode extends JSBuiltinNode {
+        // this is most likely redundant, we do it to be sure
+        @Child private JSForeignToJSTypeNode foreignToJSNode = JSForeignToJSTypeNode.create();
+        @Child private Node isNullNode;
+        @Child private Node isBoxedNode;
+        @Child private Node unboxNode;
+
+        InteropToJSValueNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object execute(Object value) {
+            Object imported = foreignToJSNode.executeWithTarget(value);
+
+            if (imported instanceof TruffleObject) {
+                TruffleObject truffleObj = (TruffleObject) imported;
+                if (ForeignAccess.sendIsNull(getIsNull(), truffleObj)) {
+                    return Null.instance;
+                } else if (ForeignAccess.sendIsBoxed(getIsBoxed(), truffleObj)) {
+                    try {
+                        return foreignToJSNode.executeWithTarget(ForeignAccess.sendUnbox(getUnbox(), truffleObj));
+                    } catch (UnsupportedMessageException e) {
+                        return Null.instance;
+                    }
+                }
+            }
+            return imported;
+        }
+
+        private Node getUnbox() {
+            if (unboxNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                unboxNode = insert(JSInteropUtil.createUnbox());
+            }
+            return unboxNode;
+        }
+
+        private Node getIsNull() {
+            if (isNullNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isNullNode = insert(JSInteropUtil.createIsNull());
+            }
+            return isNullNode;
+        }
+
+        public Node getIsBoxed() {
+            if (isBoxedNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isBoxedNode = insert(JSInteropUtil.createIsBoxed());
+            }
+            return isBoxedNode;
+        }
+    }
+
+    /**
+     * Forces the conversion of a JavaScript value to a value compliant with Interop semantics. This
+     * is done automatically at the language boundary and should rarely be necessary to be triggered
+     * by user code.
+     */
+    abstract static class InteropToInteropValueNode extends JSBuiltinNode {
+        @Child private ExportValueNode exportValueNode = ExportValueNode.create();
+
+        InteropToInteropValueNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object execute(Object value) {
+            return exportValueNode.executeWithTarget(value, Undefined.instance);
         }
     }
 }
