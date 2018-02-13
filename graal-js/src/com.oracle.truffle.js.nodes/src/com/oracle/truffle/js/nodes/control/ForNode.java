@@ -5,6 +5,7 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -13,6 +14,7 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.IterationScopeNode;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 
@@ -49,11 +51,11 @@ public final class ForNode extends StatementNode implements ResumableNode {
     @Override
     public Object resume(VirtualFrame frame) {
         Object state = getStateAndReset(frame);
-        VirtualFrame saveFrame = state == Undefined.instance ? copy.execute(frame) : (VirtualFrame) state;
+        MaterializedFrame loopFrame = state == Undefined.instance ? copy.execute(frame).materialize() : JSFrameUtil.castMaterializedFrame(state);
         try {
-            loop.executeLoop(saveFrame);
+            loop.executeLoop(loopFrame);
         } catch (YieldException e) {
-            setState(frame, saveFrame);
+            setState(frame, loopFrame);
             throw e;
         }
         return EMPTY;
@@ -110,15 +112,15 @@ public final class ForNode extends StatementNode implements ResumableNode {
         @Override
         public Object resume(VirtualFrame frame) {
             Object state = getStateAndReset(frame);
-            VirtualFrame iterationFrame;
+            MaterializedFrame iterationFrame;
             int index; // resume into: 0:modify, 1:condition, 2:body
             if (state == Undefined.instance) {
-                iterationFrame = copy.execute(frame);
+                iterationFrame = copy.execute(frame).materialize();
                 index = 0;
             } else {
                 @SuppressWarnings("unchecked")
                 Pair<VirtualFrame, Integer> statePair = (Pair<VirtualFrame, Integer>) state;
-                iterationFrame = statePair.getFirst();
+                iterationFrame = JSFrameUtil.castMaterializedFrame(statePair.getFirst());
                 index = statePair.getSecond();
             }
             if (index <= 0 && notFirstIteration(frame)) {
@@ -132,7 +134,12 @@ public final class ForNode extends StatementNode implements ResumableNode {
             boolean condition = true;
             if (index <= 1) {
                 try {
-                    condition = executeCondition(iterationFrame);
+                    /*
+                     * Cannot profile here: branch probability injection would fail due to the
+                     * following control flow merge with the else branch where we do not execute;
+                     * i.e., condition in the if below actually becomes phi(condition, true).
+                     */
+                    condition = executeConditionNoProfile(iterationFrame);
                 } catch (YieldException e) {
                     setState(frame, new Pair<>(iterationFrame, 1));
                     throw e;

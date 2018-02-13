@@ -8,6 +8,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.FrameDescriptorProvider;
@@ -15,6 +16,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.LevelScopeFrameNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.YieldException;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class BlockScopeNode extends JavaScriptNode implements ResumableNode, RepeatingNode {
@@ -108,20 +110,13 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         @Override
         public Object resume(VirtualFrame frame) {
             Object savedScopeFrame = getStateAndReset(frame);
-            if (savedScopeFrame == Undefined.instance) {
-                VirtualFrame scopeFrame = appendScopeFrame(frame);
-                try {
-                    return block.execute(scopeFrame);
-                } finally {
-                    setState(frame, scopeFrame.materialize());
-                }
-            } else {
-                try {
-                    return block.execute((VirtualFrame) savedScopeFrame);
-                } catch (YieldException e) {
-                    setState(frame, savedScopeFrame);
-                    throw e;
-                }
+            // Always materialize the frame here to avoid having to duplicate the block code.
+            MaterializedFrame scopeFrame = savedScopeFrame == Undefined.instance ? appendScopeFrame(frame).materialize() : JSFrameUtil.castMaterializedFrame(savedScopeFrame);
+            try {
+                return block.execute(scopeFrame);
+            } catch (YieldException e) {
+                setState(frame, scopeFrame);
+                throw e;
             }
         }
 

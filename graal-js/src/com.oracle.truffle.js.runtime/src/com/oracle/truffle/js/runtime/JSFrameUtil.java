@@ -10,10 +10,13 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSFrameUtil {
     public static final MaterializedFrame NULL_MATERIALIZED_FRAME = Truffle.getRuntime().createMaterializedFrame(JSArguments.createNullArguments());
+    public static final Object DEFAULT_VALUE = Undefined.instance;
 
+    private static final Class<? extends MaterializedFrame> MATERIALIZED_FRAME_CLASS = NULL_MATERIALIZED_FRAME.getClass();
     private static final int IS_LET = 1 << 4;
     private static final int IS_CONST = 1 << 5;
     private static final int HAS_TDZ = IS_LET | IS_CONST;
@@ -56,6 +59,10 @@ public final class JSFrameUtil {
 
     public static MaterializedFrame getParentFrame(Frame frame) {
         return JSArguments.getEnclosingFrame(frame.getArguments());
+    }
+
+    public static MaterializedFrame castMaterializedFrame(Object frame) {
+        return MATERIALIZED_FRAME_CLASS.cast(frame);
     }
 
     /**
