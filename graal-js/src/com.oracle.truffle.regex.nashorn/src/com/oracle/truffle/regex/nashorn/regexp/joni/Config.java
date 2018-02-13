@@ -48,11 +48,6 @@ public interface Config {
     final boolean USE_POSIX_API_REGION_OPTION = false;                           /* needed for POSIX API support */
     final boolean USE_FIND_LONGEST_SEARCH_ALL_OF_RANGE = true;
 
-    final int NREGION                   = 10;
-    final int MAX_BACKREF_NUM           = 1000;
-    final int MAX_REPEAT_NUM            = Integer.MAX_VALUE;
-    final int MAX_MULTI_BYTE_RANGES_NUM = 10000;
-
 
     final boolean USE_WARN = true;
 

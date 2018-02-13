@@ -74,9 +74,6 @@ class Lexer extends ScannerSupport {
         if (low < 0) {
             throw new SyntaxException(ErrorMessages.ERR_TOO_BIG_NUMBER_FOR_REPEAT_RANGE);
         }
-        if (low > Config.MAX_REPEAT_NUM) {
-            throw new SyntaxException(ErrorMessages.ERR_TOO_BIG_NUMBER_FOR_REPEAT_RANGE);
-        }
 
         boolean nonLow = false;
         if (p == _p) { /* can't read low */
@@ -99,9 +96,6 @@ class Lexer extends ScannerSupport {
             final int prev = p; // ??? last
             up = scanUnsignedNumber();
             if (up < 0) {
-                throw new ValueException(ERR_TOO_BIG_NUMBER_FOR_REPEAT_RANGE);
-            }
-            if (up > Config.MAX_REPEAT_NUM) {
                 throw new ValueException(ERR_TOO_BIG_NUMBER_FOR_REPEAT_RANGE);
             }
 
@@ -500,7 +494,7 @@ class Lexer extends ScannerSupport {
         unfetch();
         final int last = p;
         final int num = scanUnsignedNumber();
-        if (num < 0 || num > Config.MAX_BACKREF_NUM) { // goto skip_backref
+        if (num < 0) { // goto skip_backref
         } else if (syntax.opDecimalBackref() && (num <= env.numMem || num <= 9)) { /* This spec. from GNU regex */
             if (syntax.strictCheckBackref()) {
                 if (num > env.numMem || env.memNodes == null || env.memNodes[num] == null) {
