@@ -129,13 +129,13 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
 
         public String type = "cardinal";
         public PluralRules pluralRules;
-        public List<String> pluralCategories = new LinkedList<>();
+        public List<Object> pluralCategories = new LinkedList<>();
 
         @Override
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = super.toResolvedOptionsObject(context);
             JSObjectUtil.defineDataProperty(result, "type", type, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "pluralCategories", pluralCategories, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, "pluralCategories", JSRuntime.createArrayFromList(context, pluralCategories), JSAttributes.getDefault());
             return result;
         }
     }
