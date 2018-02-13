@@ -374,6 +374,25 @@ This method constructs an object that is non-native to JavaScript.
 The created object behaves mostly like a Map.
 Graal.js uses such objects for testing purposes, when no other foreign languages are available.
 
+#### `Interop.toJSValue(value)`
+
+This function forces the conversion of `value` to a primitive JavaScript compliant value.
+Primitive values are automatically converted to a type used by Graal.js, e.g. Java primitive types (like `short` or `float`, which are converted to `int` or `double`).
+This is done eagerly the language boundary.
+
+Some values are converted lazily.
+Most prominently, boxed primitive values are only unboxed when they are actually accessed.
+Same is true for the conversion of a foreign `null` value, encoded in a TruffleObject answering `true` to the `IS_NULL` message.
+
+It should never be necessary to call this conversion manually, as Graal.js does it automatically on access to such value.
+However, there are certain cornercases when manually converting this value results in better behaviour, e.g. when passing on objects to native code.
+
+#### `Interop.toInteropValue(value)`
+
+This function forces the conversion of `value` to a type supported by Interop.
+Whenever a value leaves Graal.js, this conversion is done automatically.
+It should never be necessary to manually call this function.
+
 ### Debug
 
 requires starting the engine with the `debug` flag.
