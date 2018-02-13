@@ -573,4 +573,23 @@ public final class JSArrayBufferView extends JSBuiltinObject {
             return JSRuntime.objectToConsoleString(obj, typedArrayGetName(obj));
         }
     }
+
+    @Override
+    public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
+        if (JSRuntime.isString(key)) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString(key);
+            if (numericIndex != Undefined.instance) {
+                if (hasNumericIndex(thisObj, numericIndex)) {
+                    if (isStrict) {
+                        throw Errors.createTypeErrorNotConfigurableProperty(key);
+                    }
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+        }
+        return super.delete(thisObj, key, isStrict);
+    }
+
 }
