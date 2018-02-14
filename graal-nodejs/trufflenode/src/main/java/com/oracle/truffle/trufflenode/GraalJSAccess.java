@@ -71,6 +71,8 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -138,6 +140,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.trufflenode.buffer.NIOBufferObject;
@@ -292,8 +295,10 @@ public final class GraalJSAccess {
                 sharedBuffer.putDouble(((Number) value).doubleValue());
             }
             return NUMBER_VALUE;
-        } else if (JSObject.isDynamicObject(value)) {
-            return valueTypeDynamicObject(value, useSharedBuffer);
+        } else if (JSObject.isJSObject(value)) {
+            return valueTypeJSObject((DynamicObject) value, useSharedBuffer);
+        } else if (JSRuntime.isForeignObject(value)) {
+            return valueTypeForeignObject((TruffleObject) value, useSharedBuffer);
         } else if (JSRuntime.isString(value)) { // JSLazyString
             return LAZY_STRING_VALUE;
         } else if (value instanceof Symbol) {
@@ -305,8 +310,18 @@ public final class GraalJSAccess {
         return UNKNOWN_TYPE;
     }
 
-    private int valueTypeDynamicObject(Object value, boolean useSharedBuffer) {
-        DynamicObject obj = (DynamicObject) value;
+    private int valueTypeForeignObject(TruffleObject value, boolean useSharedBuffer) {
+        if (ForeignAccess.sendIsBoxed(Message.IS_BOXED.createNode(), value)) {
+            Object unboxedValue = JSInteropNodeUtil.unbox(value);
+            return valueType(unboxedValue, useSharedBuffer);
+        } else if (ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), value)) {
+            return FUNCTION_OBJECT;
+        } else {
+            return ORDINARY_OBJECT;
+        }
+    }
+
+    private int valueTypeJSObject(DynamicObject obj, boolean useSharedBuffer) {
         if (JSExternalObject.isJSExternalObject(obj)) {
             return EXTERNAL_OBJECT;
         } else if (JSFunction.isJSFunction(obj)) {
@@ -331,10 +346,8 @@ public final class GraalJSAccess {
             return PROMISE_OBJECT;
         } else if (JSProxy.isProxy(obj)) {
             return PROXY_OBJECT;
-        } else if (JSObject.isJSObject(value)) {
-            return ORDINARY_OBJECT;
         } else {
-            return UNKNOWN_TYPE; // foreign objects
+            return ORDINARY_OBJECT;
         }
     }
 
@@ -633,6 +646,15 @@ public final class GraalJSAccess {
             return ((JSLazyString) value).toString();
         } else if (value instanceof PropertyReference) {
             return ((PropertyReference) value).toString();
+        } else if (JSRuntime.isForeignObject(value)) {
+            TruffleObject truffleObject = (TruffleObject) value;
+            if (ForeignAccess.sendIsBoxed(Message.IS_BOXED.createNode(), truffleObject)) {
+                Object unboxedValue = JSInteropNodeUtil.unbox(truffleObject);
+                if (unboxedValue instanceof String) {
+                    return unboxedValue;
+                }
+            }
+            return value;
         } else {
             return value;
         }
