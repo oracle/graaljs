@@ -225,22 +225,6 @@ public final class GraalJSParserOptions implements ParserOptions {
         return this;
     }
 
-    public GraalJSParserOptions putFunctionStatementWarning(boolean functionStatementWarning) {
-        if (functionStatementWarning != this.functionStatementWarning) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, functionStatementWarning, earlyLvalueError,
-                            dumpOnError, emptyStatements, annexB);
-        }
-        return this;
-    }
-
-    public GraalJSParserOptions putEarlyLvalueError(boolean earlyLvalueError) {
-        if (earlyLvalueError != this.earlyLvalueError) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, functionStatementWarning, earlyLvalueError,
-                            dumpOnError, emptyStatements, annexB);
-        }
-        return this;
-    }
-
     public GraalJSParserOptions putAnnexB(boolean annexB) {
         if (annexB != this.annexB) {
             return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, functionStatementWarning, annexB,

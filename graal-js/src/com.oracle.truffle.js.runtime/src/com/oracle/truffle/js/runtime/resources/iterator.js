@@ -173,12 +173,12 @@ function SetIteratorNext() {
   }
   var index = iterator[ITERATOR_NEXT_INDEX_ID];
   var itemKind = iterator[SET_ITERATION_KIND_ID];
-  if (!Internal.AdvanceMapCursor(set, index)) {
+  if (!Internal.AdvanceMapCursor(index)) {
     iterator[ITERATED_OBJECT_ID] = undefined;
     return CreateIterResultObject(undefined, true);
   }
 
-  var elementValue = Internal.GetKeyFromMapCursor(set, index);
+  var elementValue = Internal.GetKeyFromMapCursor(index);
   var result;
   if (itemKind === ITERATION_KIND_VALUE) {
     result = elementValue;
@@ -247,13 +247,13 @@ function MapIteratorNext() {
   }
   var index = iterator[ITERATOR_NEXT_INDEX_ID];
   var itemKind = iterator[MAP_ITERATION_KIND_ID];
-  if (!Internal.AdvanceMapCursor(map, index)) {
+  if (!Internal.AdvanceMapCursor(index)) {
     iterator[ITERATED_OBJECT_ID] = undefined;
     return CreateIterResultObject(undefined, true);
   }
 
-  var elementKey = Internal.GetKeyFromMapCursor(map, index);
-  var elementValue = Internal.GetValueFromMapCursor(map, index);
+  var elementKey = Internal.GetKeyFromMapCursor(index);
+  var elementValue = Internal.GetValueFromMapCursor(index);
 
   if (itemKind === ITERATION_KIND_KEY) {
     return CreateIterResultObject(elementKey, false);
