@@ -1172,61 +1172,64 @@ loop:
             functionExpression(true, topLevel || labelledStatement);
             return;
         default:
-            if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration(false) || type == CONST)) {
-                if (singleStatement) {
-                    throw error(AbstractParser.message("expected.stmt", type.getName() + " declaration"), token);
-                }
-                variableStatement(type);
-                break;
-            } else if (ES6_CLASS && type == CLASS && isES6()) {
-                if (singleStatement) {
-                    throw error(AbstractParser.message("expected.stmt", "class declaration"), token);
-                }
-                classDeclaration(inGeneratorFunction(), inAsyncFunction(), false);
-                break;
-            } else if (isAsync() && lookaheadIsAsyncFunction()) {
-                asyncFunctionExpression(true, topLevel || labelledStatement);
-                break;
-            }
-            if (env.constAsVar && type == CONST) {
-                variableStatement(TokenType.VAR);
-                break;
-            }
-
-            if (isBindingIdentifier()) {
-                if (T(k + 1) == COLON && (type != YIELD || !inGeneratorFunction()) && (!isAwait() || !inAsyncFunction())) {
-                    labelStatement(mayBeFunctionDeclaration);
-                    return;
-                }
-                final boolean allowPropertyFunction = (reparseFlags & REPARSE_IS_PROPERTY_ACCESSOR) != 0;
-                final boolean isES6Method = (reparseFlags & REPARSE_IS_METHOD) != 0;
-                if (allowPropertyFunction) {
-                    final long propertyToken = token;
-                    final int propertyLine = line;
-                    if (type == GET) {
-                        next();
-                        addPropertyFunctionStatement(propertyGetterFunction(propertyToken, propertyLine, false, false));
-                        return;
-                    } else if (type == SET) {
-                        next();
-                        addPropertyFunctionStatement(propertySetterFunction(propertyToken, propertyLine, false, false));
-                        return;
-                    }
-                } else if (isES6Method) {
-                    final String ident = (String)getValue();
-                    IdentNode identNode = createIdentNode(token, finish, ident).setIsPropertyName();
-                    final long propertyToken = token;
-                    final int propertyLine = line;
-                    next();
-                    final int flags = CONSTRUCTOR_NAME.equals(ident) ? FunctionNode.IS_CLASS_CONSTRUCTOR : FunctionNode.IS_METHOD;
-                    addPropertyFunctionStatement(propertyMethodFunction(identNode, propertyToken, propertyLine, false, flags, false, false));
-                    return;
-                }
-            }
-
-            expressionStatement();
-            break;
+            statementDefault(topLevel, reparseFlags, singleStatement, labelledStatement, mayBeFunctionDeclaration);
         }
+    }
+
+    private void statementDefault(final boolean topLevel, final int reparseFlags, final boolean singleStatement, final boolean labelledStatement, final boolean mayBeFunctionDeclaration) {
+        if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration(false) || type == CONST)) {
+            if (singleStatement) {
+                throw error(AbstractParser.message("expected.stmt", type.getName() + " declaration"), token);
+            }
+            variableStatement(type);
+            return;
+        } else if (ES6_CLASS && type == CLASS && isES6()) {
+            if (singleStatement) {
+                throw error(AbstractParser.message("expected.stmt", "class declaration"), token);
+            }
+            classDeclaration(inGeneratorFunction(), inAsyncFunction(), false);
+            return;
+        } else if (isAsync() && lookaheadIsAsyncFunction()) {
+            asyncFunctionExpression(true, topLevel || labelledStatement);
+            return;
+        }
+        if (env.constAsVar && type == CONST) {
+            variableStatement(TokenType.VAR);
+            return;
+        }
+
+        if (isBindingIdentifier()) {
+            if (T(k + 1) == COLON && (type != YIELD || !inGeneratorFunction()) && (!isAwait() || !inAsyncFunction())) {
+                labelStatement(mayBeFunctionDeclaration);
+                return;
+            }
+            final boolean allowPropertyFunction = (reparseFlags & REPARSE_IS_PROPERTY_ACCESSOR) != 0;
+            final boolean isES6Method = (reparseFlags & REPARSE_IS_METHOD) != 0;
+            if (allowPropertyFunction) {
+                final long propertyToken = token;
+                final int propertyLine = line;
+                if (type == GET) {
+                    next();
+                    addPropertyFunctionStatement(propertyGetterFunction(propertyToken, propertyLine, false, false));
+                    return;
+                } else if (type == SET) {
+                    next();
+                    addPropertyFunctionStatement(propertySetterFunction(propertyToken, propertyLine, false, false));
+                    return;
+                }
+            } else if (isES6Method) {
+                final String ident = (String)getValue();
+                IdentNode identNode = createIdentNode(token, finish, ident).setIsPropertyName();
+                final long propertyToken = token;
+                final int propertyLine = line;
+                next();
+                final int flags = CONSTRUCTOR_NAME.equals(ident) ? FunctionNode.IS_CLASS_CONSTRUCTOR : FunctionNode.IS_METHOD;
+                addPropertyFunctionStatement(propertyMethodFunction(identNode, propertyToken, propertyLine, false, flags, false, false));
+                return;
+            }
+        }
+
+        expressionStatement();
     }
 
     private void addPropertyFunctionStatement(final PropertyFunction propertyFunction) {
@@ -2033,10 +2036,9 @@ loop:
         // Get expression and add as statement.
         final Expression expression = expression();
 
-        ExpressionStatement expressionStatement = null;
-        if (expression != null) {
+         if (expression != null) {
             endOfLine();
-            expressionStatement = new ExpressionStatement(expressionLine, expressionToken, finish, expression);
+            ExpressionStatement expressionStatement = new ExpressionStatement(expressionLine, expressionToken, finish, expression);
             appendStatement(expressionStatement);
         } else {
             expect(null);
