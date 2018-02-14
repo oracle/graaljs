@@ -10,7 +10,7 @@ This documents explains the public API it provides to  user applications written
 
 ## ECMAScript language compliance
 
-Graal.js implements JavaScript as prescribed in the ECMAScript (ECMA-262) specifictaion.
+Graal.js implements JavaScript as prescribed in the ECMAScript (ECMA-262) specification.
 By default, Graal.js is compatible with the 2017 edition of ECMAScript (sometimes referred to as "version 8" or "ES8"), see [http://www.ecma-international.org/ecma-262/8.0/](http://www.ecma-international.org/ecma-262/8.0/).
 Older versions, as well as some features of the most recent version, can be enabled with special flags on startup.
 For informations on the flags, see the *--help* message of the executable.
@@ -200,7 +200,7 @@ If no language has exported a value identified by `key`, `null` is returned.
 #### `Interop.exportUnbound(key, value)`
 
 Exports the JavaScript `value` under the name `key` to the polyglot scope.
-In contast to `Interop.export`, the function is **not** bound.
+In contrast to `Interop.export`, the function is **not** bound.
 Using `Interop.export` is the preferred method of exporting a JavaScript function, but the unbound variant might be necessary under certain circumstances. 
 
 #### `Interop.eval(mimeType, sourceCode)`
@@ -223,7 +223,7 @@ Returns an executable object, typically a function.
     var result = rFunc();
 
 Exceptions can occur when an invalid `mimeType` is passed, when the file identified by `sourceFileName` cannot be found, or when the language throws an exception during parsing (parse time errors, e.g. syntax errors).
-Exceptions thrown by the evaluated program are only thrown once the resultin function is evaluated.
+Exceptions thrown by the evaluated program are only thrown once the resulting function is evaluated.
 
 #### `Interop.isExecutable()`
 
@@ -308,7 +308,7 @@ Graal.js removes the property according to JavaScript semantics of the object: i
 
 Send the `IS_BOXED` message to `obj`.
 See JavaDoc [Message.IS_BOXED](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#IS_BOXED).
-The source language of `obj` respons whether it can unbox `obj`.
+The source language of `obj` responds whether it can unbox `obj`.
 
 Graal.js answers `true` for boxed primitive Objects *String*s, *Number*s, *Boolean*, and potentially other internal types that are only converted lazily.
 
