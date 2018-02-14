@@ -112,41 +112,11 @@ public class TokenStream {
     }
 
     /**
-     * Get the number of tokens in the buffer.
-     * @return Number of tokens.
-     */
-    public int count() {
-        return count;
-    }
-
-    /**
-     * Get the index of the first token in the stream.
-     * @return Index of first buffered token in the stream.
-     */
-    public int first() {
-        return base;
-    }
-
-    /**
      * Get the index of the last token in the stream.
      * @return Index of last buffered token in the stream.
      */
     public int last() {
         return base + count - 1;
-    }
-
-    /**
-     * Remove the last token in the stream.
-     */
-    public void removeLast() {
-        if (count != 0) {
-            count--;
-            in--;
-
-            if (in < 0) {
-                in = buffer.length - 1;
-            }
-        }
     }
 
     /**

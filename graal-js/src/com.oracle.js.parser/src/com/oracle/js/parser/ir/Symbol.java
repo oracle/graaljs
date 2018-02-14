@@ -279,81 +279,12 @@ public final class Symbol implements Comparable<Symbol> {
     }
 
     /**
-     * Increase the symbol's use count by one.
-     */
-    public void increaseUseCount() {
-        if (isScope()) { // Avoid dirtying a cache line; we only need the use count for scoped symbols
-            useCount++;
-        }
-    }
-
-    /**
      * Get the symbol's use count
      *
      * @return the number of times the symbol is used in code.
      */
     public int getUseCount() {
         return useCount;
-    }
-
-    /**
-     * Flag this symbol as scope as described in {@link Symbol#isScope()}
-     *
-     * @return the symbol
-     */
-    public Symbol setIsScope() {
-        if (!isScope()) {
-            flags |= IS_SCOPE;
-        }
-        return this;
-    }
-
-    /**
-     * Mark this symbol as a function declaration.
-     */
-    public void setIsFunctionDeclaration() {
-        if (!isFunctionDeclaration()) {
-            flags |= IS_FUNCTION_DECLARATION;
-        }
-    }
-
-    /**
-     * Set the symbol flags
-     *
-     * @param flags flags
-     * @return the symbol
-     */
-    public Symbol setFlags(final int flags) {
-        if (this.flags != flags) {
-            this.flags = flags;
-        }
-        return this;
-    }
-
-    /**
-     * Set a single symbol flag
-     *
-     * @param flag flag to set
-     * @return the symbol
-     */
-    public Symbol setFlag(final int flag) {
-        if ((this.flags & flag) == 0) {
-            this.flags |= flag;
-        }
-        return this;
-    }
-
-    /**
-     * Clears a single symbol flag
-     *
-     * @param flag flag to set
-     * @return the symbol
-     */
-    public Symbol clearFlag(final int flag) {
-        if ((this.flags & flag) != 0) {
-            this.flags &= ~flag;
-        }
-        return this;
     }
 
     /**

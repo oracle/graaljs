@@ -124,35 +124,6 @@ public class Lexer extends Scanner {
 
     private static final int JAVASCRIPT_WHITESPACE_HIGH_START = JAVASCRIPT_WHITESPACE_HIGH.charAt(0);
 
-    private static final String JAVASCRIPT_WHITESPACE_IN_REGEXP =
-        "\\u000a" + // line feed
-        "\\u000d" + // carriage return (ctrl-m)
-        "\\u2028" + // line separator
-        "\\u2029" + // paragraph separator
-        "\\u0009" + // tab
-        "\\u0020" + // ASCII space
-        "\\u000b" + // tabulation line
-        "\\u000c" + // ff (ctrl-l)
-        "\\u00a0" + // Latin-1 space
-        "\\u1680" + // Ogham space mark
-        "\\u180e" + // separator, Mongolian vowel
-        "\\u2000" + // en quad
-        "\\u2001" + // em quad
-        "\\u2002" + // en space
-        "\\u2003" + // em space
-        "\\u2004" + // three-per-em space
-        "\\u2005" + // four-per-em space
-        "\\u2006" + // six-per-em space
-        "\\u2007" + // figure space
-        "\\u2008" + // punctuation space
-        "\\u2009" + // thin space
-        "\\u200a" + // hair space
-        "\\u202f" + // narrow no-break space
-        "\\u205f" + // medium mathematical space
-        "\\u3000" + // ideographic space
-        "\\ufeff"   // byte order mark
-        ;
-
     public static String unicodeEscape(final char ch) {
         final StringBuilder sb = new StringBuilder();
 
@@ -165,16 +136,6 @@ public class Lexer extends Scanner {
         sb.append(hex);
 
         return sb.toString();
-    }
-
-    /**
-     * Constructor
-     *
-     * @param source    the source
-     * @param stream    the token stream to lex
-     */
-    public Lexer(final Source source, final TokenStream stream) {
-        this(source, stream, false, false, false);
     }
 
     /**
@@ -326,15 +287,6 @@ public class Lexer extends Scanner {
     }
 
     /**
-     * Return the String of valid whitespace characters for regular
-     * expressions in JavaScript
-     * @return regexp whitespace string
-     */
-    public static String getWhitespaceRegExp() {
-        return JAVASCRIPT_WHITESPACE_IN_REGEXP;
-    }
-
-    /**
      * Skip end of line.
      *
      * @param addEOL true if EOL token should be recorded.
@@ -408,25 +360,6 @@ public class Lexer extends Scanner {
     public static boolean isJSEOL(final char ch) {
         return ch == '\n' || ch == '\r' || ch == '\u2028' || ch == '\u2029';
     }
-
-    /**
-     * Test whether a char is valid JSON whitespace
-     * @param ch a char
-     * @return true if valid JSON whitespace
-     */
-    public static boolean isJsonWhitespace(final char ch) {
-        return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r';
-    }
-
-    /**
-     * Test whether a char is valid JSON end of line
-     * @param ch a char
-     * @return true if valid JSON end of line
-     */
-    public static boolean isJsonEOL(final char ch) {
-        return ch == '\n' || ch == '\r';
-    }
-
 
     /**
      * Test if char is a string delimiter, e.g. '\' or '"'.

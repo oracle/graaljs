@@ -442,10 +442,6 @@ public class Parser extends AbstractParser {
      *
      * @return function node resulting from successful parse
      */
-    public FunctionNode parseFunctionBody() {
-        return parseFunctionBody(false, false);
-    }
-
     public FunctionNode parseFunctionBody(boolean generator, boolean async) {
         try {
             stream = new TokenStream();

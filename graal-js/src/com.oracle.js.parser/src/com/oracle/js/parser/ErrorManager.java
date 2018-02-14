@@ -25,8 +25,6 @@
 
 package com.oracle.js.parser;
 
-import java.io.PrintWriter;
-
 /**
  * Handles JavaScript error reporting.
  */
@@ -227,35 +225,6 @@ public abstract class ErrorManager {
 
     public ParserException getParserException() {
         return parserException;
-    }
-
-    /**
-     * {@link ErrorManager} that reports to a {@link PrintWriter}.
-     */
-    public static class PrintWriterErrorManager extends ErrorManager {
-        /** Reporting writer. */
-        private final PrintWriter writer;
-
-        /**
-         * Constructor. Reports to {@link System#err}.
-         */
-        public PrintWriterErrorManager() {
-            this(new PrintWriter(System.err, true));
-        }
-
-        /**
-         * Constructor.
-         *
-         * @param writer I/O writer to report on.
-         */
-        public PrintWriterErrorManager(final PrintWriter writer) {
-            this.writer = writer;
-        }
-
-        @Override
-        protected void message(String message) {
-            writer.println(message);
-        }
     }
 
     /**

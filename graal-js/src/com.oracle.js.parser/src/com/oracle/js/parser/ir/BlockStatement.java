@@ -39,15 +39,6 @@ public class BlockStatement extends Statement {
     /**
      * Constructor
      *
-     * @param block the block to execute
-     */
-    public BlockStatement(final Block block) {
-        this(block.getFirstStatementLineNumber(), block);
-    }
-
-    /**
-     * Constructor
-     *
      * @param lineNumber line number
      * @param block the block to execute
      */

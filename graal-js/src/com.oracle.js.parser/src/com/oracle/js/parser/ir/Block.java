@@ -117,17 +117,6 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
     }
 
     /**
-     * Constructs a new block
-     *
-     * @param token The first token of the block
-     * @param finish The index of the last character
-     * @param statements All statements in the block
-     */
-    public Block(final long token, final int finish, final List<Statement> statements) {
-        this(token, finish, IS_SYNTHETIC, statements);
-    }
-
-    /**
      * Constructor
      *
      * @param token      The first token of the block

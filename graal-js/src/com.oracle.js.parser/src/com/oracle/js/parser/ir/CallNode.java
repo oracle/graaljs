@@ -167,10 +167,6 @@ public final class CallNode extends LexicalContextExpression {
         return (flags & IS_EVAL) != 0;
     }
 
-    public CallNode setIsEval() {
-        return setFlags(flags | IS_EVAL);
-    }
-
     /**
      * Return the function expression that this call invokes
      * @return the function
@@ -197,12 +193,5 @@ public final class CallNode extends LexicalContextExpression {
      */
     public boolean isNew() {
         return (flags & IS_NEW) != 0;
-    }
-
-    private CallNode setFlags(final int flags) {
-        if (this.flags == flags) {
-            return this;
-        }
-        return new CallNode(this, function, args, flags);
     }
 }
