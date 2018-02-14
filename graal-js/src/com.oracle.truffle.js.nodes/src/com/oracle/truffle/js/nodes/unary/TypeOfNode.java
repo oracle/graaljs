@@ -94,7 +94,7 @@ public abstract class TypeOfNode extends JSUnaryNode {
         return JSFunction.TYPE_NAME;
     }
 
-    @Specialization(guards = {"!isJSFunction(operand)", "!isUndefined(operand)", "!isJSProxy(operand)"})
+    @Specialization(guards = {"isJSType(operand)", "!isJSFunction(operand)", "!isUndefined(operand)", "!isJSProxy(operand)"})
     protected String doJSObjectOnly(DynamicObject operand) {
         return JSUserObject.TYPE_NAME;
     }
