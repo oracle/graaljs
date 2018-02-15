@@ -4,13 +4,11 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -35,6 +33,7 @@ import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
  * This node optimizes the code patterns of typeof(a) === "typename" and "typename" == typeof (a).
@@ -42,15 +41,10 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
  * this case).
  *
  */
-@ImportStatic(JSTypeofIdenticalNode.Type.class)
+@ImportStatic({JSTypeofIdenticalNode.Type.class, JSInteropUtil.class})
 public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     protected static final int MAX_CLASSES = 3;
     private final BranchProfile proxyBranch = BranchProfile.create();
-    private final BranchProfile foreignBranch = BranchProfile.create();
-    @Child private Node isExecutable;
-    @Child private Node isBoxed;
-    @Child private Node unboxNode;
-    @Child private JSForeignToJSTypeNode toJSTypeNode;
 
     public enum Type {
         Number,
@@ -111,41 +105,67 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     @Override
     public abstract boolean executeBoolean(VirtualFrame frame);
 
-    @Specialization(guards = {"value.getClass() == cachedClass"}, limit = "MAX_CLASSES")
-    protected final boolean doCached(Object value,      //
+    @Specialization(guards = {"value.getClass() == cachedClass", "!isTruffleObject(value)"}, limit = "MAX_CLASSES")
+    protected final boolean doCached(Object value,
                     @Cached("value.getClass()") Class<?> cachedClass) {
-        return doDefault(cachedClass.cast(value));
+        return doUncached(cachedClass.cast(value));
     }
 
-    @Specialization(replaces = "doCached")
-    protected final boolean doDefault(Object value) {
-        if (ambiguousForForeignObject() && JSRuntime.isForeignObject(value)) {
-            foreignBranch.enter();
-            return doForeignObject((TruffleObject) value);
-        }
-        return doDefaultImpl(value);
+    @Specialization
+    protected final boolean doSymbol(@SuppressWarnings("unused") Symbol value) {
+        return (type == Type.Symbol);
     }
 
-    private boolean ambiguousForForeignObject() {
-        // Type.False, Type.Symbol and Type.Undefined do not require special
-        // handling of foreign objects - we always have foreignObject !== type
-        return type == Type.Boolean || type == Type.Function || type == Type.Number || type == Type.Object || type == Type.String;
-    }
-
-    private boolean doForeignObject(TruffleObject object) {
-        if (isBoxedForeignObject(object)) {
-            Object unboxedValue = unboxForeignObject(object);
-            return doDefaultImpl(unboxedValue);
-        } else if (type == Type.Function) {
-            return canExecuteForeignObject(object);
-        } else if (type == Type.Object) {
-            return !canExecuteForeignObject(object);
-        } else {
+    @Specialization(guards = {"isJSType(value)"})
+    protected final boolean doJSType(DynamicObject value) {
+        if (type == Type.Number || type == Type.String || type == Type.Boolean || type == Type.Symbol || type == Type.False) {
             return false;
+        } else if (type == Type.Object) {
+            if (JSProxy.isProxy(value)) {
+                proxyBranch.enter();
+                return checkProxy(value, false);
+            } else {
+                return !JSFunction.isJSFunction(value) && value != Undefined.instance;
+            }
+        } else if (type == Type.Undefined) {
+            return value == Undefined.instance;
+        } else if (type == Type.Function) {
+            if (JSFunction.isJSFunction(value)) {
+                return true;
+            } else if (JSProxy.isProxy(value)) {
+                proxyBranch.enter();
+                return checkProxy(value, true);
+            } else {
+                return false;
+            }
+        }
+        throw Errors.shouldNotReachHere();
+    }
+
+    @Specialization(guards = {"isForeignObject(value)"})
+    protected final boolean doForeignObject(TruffleObject value,
+                    @Cached("createIsExecutable()") Node isExecutable,
+                    @Cached("createIsBoxed()") Node isBoxed,
+                    @Cached("createUnbox()") Node unboxNode,
+                    @Cached("create()") JSForeignToJSTypeNode toJSTypeNode) {
+        if (type == Type.Undefined || type == Type.Symbol || type == Type.False) {
+            return false;
+        } else {
+            if (ForeignAccess.sendIsBoxed(isBoxed, value)) {
+                Object unboxedValue = toJSTypeNode.executeWithTarget(JSInteropNodeUtil.unbox(value, unboxNode));
+                return doUncached(unboxedValue);
+            } else if (type == Type.Function) {
+                return ForeignAccess.sendIsExecutable(isExecutable, value);
+            } else if (type == Type.Object) {
+                return !ForeignAccess.sendIsExecutable(isExecutable, value);
+            } else {
+                return false;
+            }
         }
     }
 
-    private boolean doDefaultImpl(Object value) {
+    @Specialization(guards = {"!isTruffleObject(value)"}, replaces = "doCached")
+    protected boolean doUncached(Object value) {
         if (type == Type.Number) {
             return JSTruffleOptions.NashornJavaInterop ? value instanceof Number : JSRuntime.isNumber(value);
         } else if (type == Type.String) {
@@ -153,28 +173,13 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         } else if (type == Type.Boolean) {
             return value instanceof Boolean;
         } else if (type == Type.Object) {
-            if (JSObject.isDynamicObject(value)) {
-                DynamicObject obj = (DynamicObject) value;
-                if (JSProxy.isProxy(obj)) {
-                    proxyBranch.enter();
-                    return checkProxy(obj, false);
-                } else {
-                    return !JSFunction.isJSFunction((DynamicObject) value) && value != Undefined.instance;
-                }
-            } else {
-                return JSTruffleOptions.NashornJavaInterop && nonPrimitiveJavaObj(value);
-            }
+            return JSTruffleOptions.NashornJavaInterop && nonPrimitiveJavaObj(value);
         } else if (type == Type.Undefined) {
-            return value == Undefined.instance;
+            return false;
         } else if (type == Type.Symbol) {
-            return value instanceof Symbol;
+            return false;
         } else if (type == Type.Function) {
-            if (JSFunction.isJSFunction(value)) {
-                return true;
-            } else if (JSProxy.isProxy(value)) {
-                proxyBranch.enter();
-                return checkProxy((DynamicObject) value, true);
-            } else if (JSTruffleOptions.NashornJavaInterop) {
+            if (JSTruffleOptions.NashornJavaInterop) {
                 return value instanceof JavaClass || value instanceof JavaMethod;
             } else {
                 return false;
@@ -183,31 +188,6 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
             return false;
         }
         throw Errors.shouldNotReachHere();
-    }
-
-    private boolean canExecuteForeignObject(TruffleObject object) {
-        if (isExecutable == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            isExecutable = insert(Message.IS_EXECUTABLE.createNode());
-        }
-        return ForeignAccess.sendIsExecutable(isExecutable, object);
-    }
-
-    private boolean isBoxedForeignObject(TruffleObject object) {
-        if (isBoxed == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            isBoxed = insert(Message.IS_BOXED.createNode());
-        }
-        return ForeignAccess.sendIsExecutable(isBoxed, object);
-    }
-
-    private Object unboxForeignObject(TruffleObject object) {
-        if (unboxNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            unboxNode = insert(Message.UNBOX.createNode());
-            toJSTypeNode = insert(JSForeignToJSTypeNode.create());
-        }
-        return toJSTypeNode.executeWithTarget(JSInteropNodeUtil.unbox(object, unboxNode));
     }
 
     private static boolean checkProxy(DynamicObject value, boolean isFunction) {
