@@ -5,6 +5,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -25,6 +26,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
     private final JSContext context;
     @Child private JSToBooleanNode toBooleanNode;
+    @CompilationFinal private boolean wasExecuted = false;
 
     @Child private PropertyGetNode getEnumerableNode;
     @Child private PropertyGetNode getConfigurableNode;
@@ -67,7 +69,23 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         return toBooleanNode.executeBoolean(target);
     }
 
-    @Specialization(guards = "isJSObject(obj)")
+    // DSL would not re-read the value if we queried the variable!
+    protected boolean wasExecuted(@SuppressWarnings("unused") DynamicObject obj) {
+        return wasExecuted;
+    }
+
+    /**
+     * If this node is executed only once, there is no need to create all the specializing child
+     * nodes.
+     */
+    @Specialization(guards = {"!wasExecuted(obj)", "isJSObject(obj)"})
+    protected Object nonSpecialized(DynamicObject obj) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        wasExecuted = true;
+        return JSRuntime.toPropertyDescriptor(obj);
+    }
+
+    @Specialization(guards = {"wasExecuted(obj)", "isJSObject(obj)"})
     protected Object doDefault(DynamicObject obj,
                     @Cached("create()") BranchProfile hasGetBranch,
                     @Cached("create()") BranchProfile hasSetBranch,
