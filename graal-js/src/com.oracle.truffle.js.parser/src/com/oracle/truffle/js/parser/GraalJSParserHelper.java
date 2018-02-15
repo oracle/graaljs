@@ -124,7 +124,6 @@ public class GraalJSParserHelper {
         builder.strict(parserOptions.isStrict());
         builder.es6(parserOptions.isES6());
         builder.es8(parserOptions.isES8());
-        builder.earlyLvalueError(parserOptions.isEarlyLvalueError());
         builder.emptyStatements(parserOptions.isEmptyStatements());
         builder.syntaxExtensions(parserOptions.isSyntaxExtensions());
         builder.scripting(parserOptions.isScripting());
@@ -132,8 +131,6 @@ public class GraalJSParserHelper {
         builder.constAsVar(parserOptions.isConstAsVar());
         if (parserOptions.isFunctionStatementError()) {
             builder.functionStatementBehavior(FunctionStatementBehavior.ERROR);
-        } else if (parserOptions.isFunctionStatementWarning()) {
-            builder.functionStatementBehavior(FunctionStatementBehavior.WARNING);
         } else {
             builder.functionStatementBehavior(FunctionStatementBehavior.ACCEPT);
         }
