@@ -10,7 +10,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -94,7 +93,7 @@ public abstract class TypeOfNode extends JSUnaryNode {
         return JSFunction.TYPE_NAME;
     }
 
-    @Specialization(guards = {"!isJSFunction(operand)", "!isUndefined(operand)", "!isJSProxy(operand)"})
+    @Specialization(guards = {"isJSType(operand)", "!isJSFunction(operand)", "!isUndefined(operand)", "!isJSProxy(operand)"})
     protected String doJSObjectOnly(DynamicObject operand) {
         return JSUserObject.TYPE_NAME;
     }
@@ -123,7 +122,7 @@ public abstract class TypeOfNode extends JSUnaryNode {
     @TruffleBoundary
     @Specialization(guards = "isForeignObject(operand)")
     protected String doTruffleObject(TruffleObject operand,
-                    @Cached("createForeignIsExecutable()") Node isExecutable,
+                    @Cached("createIsExecutable()") Node isExecutable,
                     @Cached("createIsBoxed()") Node isBoxedNode,
                     @Cached("createUnbox()") Node unboxNode,
                     @Cached("create()") TypeOfNode recTypeOf,
@@ -160,7 +159,4 @@ public abstract class TypeOfNode extends JSUnaryNode {
         return TypeOfNodeGen.create(cloneUninitialized(getOperand()));
     }
 
-    protected static Node createForeignIsExecutable() {
-        return Message.IS_EXECUTABLE.createNode();
-    }
 }

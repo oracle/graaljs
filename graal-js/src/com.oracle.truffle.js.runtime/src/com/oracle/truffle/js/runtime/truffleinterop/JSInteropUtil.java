@@ -64,4 +64,9 @@ public final class JSInteropUtil {
     public static Node createRemove() {
         return Message.REMOVE.createNode();
     }
+
+    public static Node createIsExecutable() {
+        return Message.IS_EXECUTABLE.createNode();
+    }
+
 }

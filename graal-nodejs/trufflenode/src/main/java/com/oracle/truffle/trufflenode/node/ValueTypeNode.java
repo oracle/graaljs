@@ -40,9 +40,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -56,6 +60,8 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.JSExternalObject;
 
@@ -63,16 +69,20 @@ import com.oracle.truffle.trufflenode.JSExternalObject;
  * Keep in sync with {@link GraalJSAccess#valueType}.
  */
 @SuppressWarnings("unused")
-@ImportStatic({JSExternalObject.class, JSRuntime.class, JSUserObject.class, JSMap.class, JSSet.class, JSPromise.class, JSProxy.class, JSObject.class, JSDataView.class})
+@ImportStatic({JSExternalObject.class, JSRuntime.class, JSUserObject.class, JSMap.class, JSSet.class, JSPromise.class, JSProxy.class, JSObject.class, JSDataView.class, JSInteropUtil.class})
 abstract class ValueTypeNode extends JavaScriptBaseNode {
-    private final GraalJSAccess graalAccess;
-    private final JSContext context;
-    private final boolean useSharedBuffer;
+    protected final GraalJSAccess graalAccess;
+    protected final JSContext context;
+    protected final boolean useSharedBuffer;
 
     ValueTypeNode(GraalJSAccess graalAccess, JSContext context, boolean useSharedBuffer) {
         this.graalAccess = graalAccess;
         this.context = context;
         this.useSharedBuffer = useSharedBuffer;
+    }
+
+    public static ValueTypeNode create(GraalJSAccess graalAccess, JSContext context, boolean useSharedBuffer) {
+        return ValueTypeNodeGen.create(graalAccess, context, useSharedBuffer);
     }
 
     protected abstract int executeInt(Object value);
@@ -268,9 +278,27 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         return SYMBOL_VALUE;
     }
 
+    @Specialization(guards = "isForeignObject(value)")
+    protected static int doForeignObject(TruffleObject value,
+                    @Cached("createIsExecutable()") Node isExecutable,
+                    @Cached("createIsBoxed()") Node isBoxed,
+                    @Cached("createUnbox()") Node unboxNode,
+                    @Cached("create(graalAccess, context, useSharedBuffer)") ValueTypeNode unboxedValueType,
+                    @Cached("create()") JSForeignToJSTypeNode foreignConvertNode) {
+        if (ForeignAccess.sendIsBoxed(isBoxed, value)) {
+            Object obj = foreignConvertNode.executeWithTarget(JSInteropNodeUtil.unbox(value, unboxNode));
+            return unboxedValueType.executeInt(obj);
+        } else if (ForeignAccess.sendIsExecutable(isExecutable, value)) {
+            return FUNCTION_OBJECT;
+        } else {
+            return ORDINARY_OBJECT;
+        }
+    }
+
     @Fallback
     protected static int doFallback(Object value) {
         GraalJSAccess.valueTypeError(value);
         return UNKNOWN_TYPE;
     }
+
 }
