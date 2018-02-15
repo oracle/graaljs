@@ -358,25 +358,6 @@ public abstract class AbstractParser {
     }
 
     /**
-     * Check next token, get its value and advance.
-     *
-     * @param expected Expected tokenType.
-     * @return The JavaScript value of the token
-     * @throws ParserException on unexpected token type
-     */
-    protected final Object expectValue(final TokenType expected) throws ParserException {
-        if (type != expected) {
-            throw error(expectMessage(expected));
-        }
-
-        final Object value = getValue();
-
-        next();
-
-        return value;
-    }
-
-    /**
      * Get the value of the current token. If the current token contains an escape sequence, the
      * method does not attempt to convert it.
      *

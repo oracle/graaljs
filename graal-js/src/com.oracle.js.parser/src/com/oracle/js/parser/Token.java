@@ -170,14 +170,4 @@ public final class Token {
         return Token.toString(source, token, false);
     }
 
-    /**
-     * String conversion of token - version without source given
-     *
-     * @param token  the token
-     *
-     * @return token as string
-     */
-    public static String toString(final long token) {
-        return Token.toString(null, token, false);
-    }
 }

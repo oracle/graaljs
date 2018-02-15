@@ -52,8 +52,6 @@ public final class GraalJSParserOptions implements ParserOptions {
     private final boolean syntaxExtensions;
     private final boolean constAsVar;
     private final boolean functionStatementError;
-    private final boolean functionStatementWarning;
-    private final boolean earlyLvalueError;
     private final boolean dumpOnError;
     private final boolean emptyStatements;
     private final boolean annexB;
@@ -66,15 +64,13 @@ public final class GraalJSParserOptions implements ParserOptions {
         this.syntaxExtensions = false;
         this.constAsVar = false;
         this.functionStatementError = false;
-        this.functionStatementWarning = false;
-        this.earlyLvalueError = true;
         this.dumpOnError = false;
         this.emptyStatements = false;
         this.annexB = JSTruffleOptions.AnnexB;
     }
 
     private GraalJSParserOptions(boolean strict, boolean scripting, boolean shebang, int ecmaScriptVersion, boolean syntaxExtensions, boolean constAsVar, boolean functionStatementError,
-                    boolean functionStatementWarning, boolean earlyLvalueError, boolean dumpOnError, boolean emptyStatements, boolean annexB) {
+                    boolean dumpOnError, boolean emptyStatements, boolean annexB) {
         this.strict = strict;
         this.scripting = scripting;
         this.shebang = shebang;
@@ -82,8 +78,6 @@ public final class GraalJSParserOptions implements ParserOptions {
         this.syntaxExtensions = syntaxExtensions;
         this.constAsVar = constAsVar;
         this.functionStatementError = functionStatementError;
-        this.functionStatementWarning = functionStatementWarning;
-        this.earlyLvalueError = earlyLvalueError;
         this.dumpOnError = dumpOnError;
         this.emptyStatements = emptyStatements;
         this.annexB = annexB;
@@ -126,14 +120,6 @@ public final class GraalJSParserOptions implements ParserOptions {
         return functionStatementError;
     }
 
-    public boolean isFunctionStatementWarning() {
-        return functionStatementWarning;
-    }
-
-    public boolean isEarlyLvalueError() {
-        return earlyLvalueError;
-    }
-
     public boolean isDumpOnError() {
         return dumpOnError;
     }
@@ -171,80 +157,57 @@ public final class GraalJSParserOptions implements ParserOptions {
 
     public GraalJSParserOptions putStrict(boolean strict) {
         if (strict != this.strict) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, functionStatementWarning, earlyLvalueError,
-                            dumpOnError, emptyStatements, annexB);
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
         }
         return this;
     }
 
     public GraalJSParserOptions putScripting(boolean scripting) {
         if (scripting != this.scripting) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, functionStatementWarning, earlyLvalueError,
-                            dumpOnError, emptyStatements, annexB);
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
         }
         return this;
     }
 
     public GraalJSParserOptions putShebang(boolean shebang) {
         if (shebang != this.shebang) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, functionStatementWarning, earlyLvalueError,
-                            dumpOnError, emptyStatements, annexB);
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
         }
         return this;
     }
 
     public GraalJSParserOptions putEcmaScriptVersion(int ecmaScriptVersion) {
         if (ecmaScriptVersion != this.ecmaScriptVersion) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, functionStatementWarning, earlyLvalueError,
-                            dumpOnError, emptyStatements, annexB);
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
         }
         return this;
     }
 
     public GraalJSParserOptions putSyntaxExtensions(boolean syntaxExtensions) {
         if (syntaxExtensions != this.syntaxExtensions) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, functionStatementWarning, earlyLvalueError,
-                            dumpOnError, emptyStatements, annexB);
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
         }
         return this;
     }
 
     public GraalJSParserOptions putConstAsVar(boolean constAsVar) {
         if (constAsVar != this.constAsVar) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, functionStatementWarning, earlyLvalueError,
-                            dumpOnError, emptyStatements, annexB);
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
         }
         return this;
     }
 
     public GraalJSParserOptions putFunctionStatementError(boolean functionStatementError) {
         if (functionStatementError != this.functionStatementError) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, functionStatementWarning, earlyLvalueError,
-                            dumpOnError, emptyStatements, annexB);
-        }
-        return this;
-    }
-
-    public GraalJSParserOptions putFunctionStatementWarning(boolean functionStatementWarning) {
-        if (functionStatementWarning != this.functionStatementWarning) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, functionStatementWarning, earlyLvalueError,
-                            dumpOnError, emptyStatements, annexB);
-        }
-        return this;
-    }
-
-    public GraalJSParserOptions putEarlyLvalueError(boolean earlyLvalueError) {
-        if (earlyLvalueError != this.earlyLvalueError) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, functionStatementWarning, earlyLvalueError,
-                            dumpOnError, emptyStatements, annexB);
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements,
+                            annexB);
         }
         return this;
     }
 
     public GraalJSParserOptions putAnnexB(boolean annexB) {
         if (annexB != this.annexB) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, functionStatementWarning, annexB,
-                            dumpOnError, emptyStatements, annexB);
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
         }
         return this;
     }

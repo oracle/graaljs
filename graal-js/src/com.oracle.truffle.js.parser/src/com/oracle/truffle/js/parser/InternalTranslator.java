@@ -231,11 +231,11 @@ final class InternalTranslator extends GraalJSTranslator {
                     case "GetIteratorPrototype":
                         return JSConstantNode.create(realm.getIteratorPrototype());
                     case "GetKeyFromMapCursor":
-                        return new InternalGetKeyFromMapCursorNode(arguments[0], arguments[1]);
+                        return new InternalGetKeyFromMapCursorNode(arguments[0]);
                     case "GetValueFromMapCursor":
-                        return new InternalGetValueFromMapCursorNode(arguments[0], arguments[1]);
+                        return new InternalGetValueFromMapCursorNode(arguments[0]);
                     case "AdvanceMapCursor":
-                        return new InternalAdvanceMapCursorNode(arguments[0], arguments[1]);
+                        return new InternalAdvanceMapCursorNode(arguments[0]);
                     case "GetMapCursor":
                         return new InternalGetMapCursorNode(arguments[0]);
                     case "RevokeProxy":
@@ -472,12 +472,10 @@ final class InternalTranslator extends GraalJSTranslator {
     }
 
     public abstract static class InternalMapCursorOperation extends JavaScriptNode {
-        @Child protected JavaScriptNode collectionNode;
         @Child protected JavaScriptNode indexNode;
         @Child private JSToNumberNode toNumberNode;
 
-        InternalMapCursorOperation(JavaScriptNode collectionNode, JavaScriptNode indexNode) {
-            this.collectionNode = collectionNode;
+        InternalMapCursorOperation(JavaScriptNode indexNode) {
             this.indexNode = indexNode;
         }
 
@@ -493,16 +491,12 @@ final class InternalTranslator extends GraalJSTranslator {
         protected Object executeIndexNode(VirtualFrame frame) {
             return indexNode.execute(frame);
         }
-
-        protected DynamicObject executeCollectionNode(VirtualFrame frame) {
-            return (DynamicObject) collectionNode.execute(frame);
-        }
     }
 
     public static class InternalGetKeyFromMapCursorNode extends InternalMapCursorOperation {
 
-        InternalGetKeyFromMapCursorNode(JavaScriptNode collection, JavaScriptNode index) {
-            super(collection, index);
+        InternalGetKeyFromMapCursorNode(JavaScriptNode index) {
+            super(index);
         }
 
         @Override
@@ -512,14 +506,14 @@ final class InternalTranslator extends GraalJSTranslator {
 
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return new InternalGetKeyFromMapCursorNode(cloneUninitialized(collectionNode), cloneUninitialized(indexNode));
+            return new InternalGetKeyFromMapCursorNode(cloneUninitialized(indexNode));
         }
     }
 
     public static class InternalGetValueFromMapCursorNode extends InternalMapCursorOperation {
 
-        InternalGetValueFromMapCursorNode(JavaScriptNode collection, JavaScriptNode index) {
-            super(collection, index);
+        InternalGetValueFromMapCursorNode(JavaScriptNode index) {
+            super(index);
         }
 
         @Override
@@ -529,14 +523,14 @@ final class InternalTranslator extends GraalJSTranslator {
 
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return new InternalGetValueFromMapCursorNode(cloneUninitialized(collectionNode), cloneUninitialized(indexNode));
+            return new InternalGetValueFromMapCursorNode(cloneUninitialized(indexNode));
         }
     }
 
     public static class InternalAdvanceMapCursorNode extends InternalMapCursorOperation {
 
-        InternalAdvanceMapCursorNode(JavaScriptNode collection, JavaScriptNode index) {
-            super(collection, index);
+        InternalAdvanceMapCursorNode(JavaScriptNode index) {
+            super(index);
         }
 
         @Override
@@ -546,7 +540,7 @@ final class InternalTranslator extends GraalJSTranslator {
 
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return new InternalAdvanceMapCursorNode(cloneUninitialized(collectionNode), cloneUninitialized(indexNode));
+            return new InternalAdvanceMapCursorNode(cloneUninitialized(indexNode));
         }
 
         @Override

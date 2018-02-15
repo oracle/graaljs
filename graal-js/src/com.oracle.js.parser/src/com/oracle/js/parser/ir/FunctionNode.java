@@ -178,9 +178,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /** Does this function or any nested functions contain an eval? */
     private static final int HAS_DEEP_EVAL = HAS_EVAL | HAS_NESTED_EVAL;
 
-    /** Does this function need to store all its variables in scope? */
-    private static final int HAS_ALL_VARS_IN_SCOPE = HAS_DEEP_EVAL;
-
     /**
      * Does this function potentially need "arguments"? Note that this is not a full test, as
      * further negative check of REDEFINES_ARGS is needed.
@@ -307,25 +304,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     @Override
     public <R> R accept(LexicalContext lc, TranslatorNodeVisitor<? extends LexicalContext, R> visitor) {
         return visitor.enterFunctionNode(this);
-    }
-
-    /**
-     * Visits the parameter nodes of this function. Parameters are normally not visited
-     * automatically.
-     *
-     * @param visitor the visitor to apply to the nodes.
-     * @return a list of parameter nodes, potentially modified from original ones by the visitor.
-     */
-    public List<IdentNode> visitParameters(final NodeVisitor<? extends LexicalContext> visitor) {
-        return Node.accept(visitor, parameters);
-    }
-
-    public List<ImportNode> visitImports(final NodeVisitor<? extends LexicalContext> visitor) {
-        return Node.accept(visitor, module.getImports());
-    }
-
-    public List<ExportNode> visitExports(final NodeVisitor<? extends LexicalContext> visitor) {
-        return Node.accept(visitor, module.getExports());
     }
 
     /**
@@ -458,28 +436,11 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     }
 
     /**
-     * Returns true if a function nested (directly or transitively) within this function {@link #hasEval()}.
-     *
-     * @return true if a nested function calls {@code eval}.
-     */
-    public boolean hasNestedEval() {
-        return getFlag(HAS_NESTED_EVAL);
-    }
-
-    /**
      * Get the first token for this function
      * @return the first token
      */
     public long getFirstToken() {
         return firstToken;
-    }
-
-    /**
-     * Check whether this function has nested function declarations
-     * @return true if nested function declarations exist
-     */
-    public boolean hasDeclaredFunctions() {
-        return getFlag(HAS_FUNCTION_DECLARATIONS);
     }
 
     /**
@@ -575,17 +536,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     }
 
     /**
-     * Returns true if this function needs access to its parent scope. Functions referencing variables outside their
-     * scope (including global variables), as well as functions that call eval or have a with block, or have nested
-     * functions that call eval or have a with block, will need a parent scope. Top-level script functions also need a
-     * parent scope since they might be used from within eval, and eval will need an externally passed scope.
-     * @return true if the function needs parent scope.
-     */
-    public boolean needsParentScope() {
-        return getFlag(NEEDS_PARENT_SCOPE);
-    }
-
-    /**
      * Get the number of properties assigned to the this object in this function.
      * @return number of properties
      */
@@ -627,42 +577,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     }
 
     /**
-     * Set the internal name for this function
-     * @param lc    lexical context
-     * @param name new name
-     * @return new function node if changed, otherwise the same
-     */
-    public FunctionNode setName(final LexicalContext lc, final String name) {
-        if (this.name.equals(name)) {
-            return this;
-        }
-        return Node.replaceInLexicalContext(
-                lc,
-                this,
-                new FunctionNode(
-                        this,
-                        lastToken,
-                        endParserState,
-                        flags,
-                        name,
-                        body,
-                        parameters,
-                        parameterBlock,
-                        thisProperties,
-                        source));
-    }
-
-    /**
-     * Check if this function should have all its variables in its own scope. Split sub-functions, and
-     * functions having with and/or eval blocks are such.
-     *
-     * @return true if all variables should be in scope
-     */
-    public boolean allVarsInScope() {
-        return getFlag(HAS_ALL_VARS_IN_SCOPE);
-    }
-
-    /**
      * Checks if this function is split into several smaller fragments.
      *
      * @return true if this function is split into several smaller fragments.
@@ -685,16 +599,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      */
     public int getNumOfParams() {
         return parameters.size();
-    }
-
-    /**
-     * Returns the identifier for a named parameter at the specified position in this function's parameter list.
-     * @param index the parameter's position.
-     * @return the identifier for the requested named parameter.
-     * @throws IndexOutOfBoundsException if the index is invalid.
-     */
-    public IdentNode getParameter(final int index) {
-        return parameters.get(index);
     }
 
     public Block getParameterBlock() {

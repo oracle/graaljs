@@ -60,15 +60,6 @@ public class ReturnNode extends Statement {
         return true;
     }
 
-    /**
-     * Check if this return node has an expression
-     *
-     * @return true if not a void return
-     */
-    public boolean hasExpression() {
-        return expression != null;
-    }
-
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterReturnNode(this)) {

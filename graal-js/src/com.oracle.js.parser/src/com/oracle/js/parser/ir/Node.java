@@ -148,15 +148,6 @@ public abstract class Node implements Cloneable {
     }
 
     /**
-     * String conversion helper. Fills a {@link StringBuilder} with the string version of this node
-     *
-     * @param sb a StringBuilder
-     */
-    public void toString(final StringBuilder sb) {
-        toString(sb, true);
-    }
-
-    /**
      * Print logic that decides whether to show the optimistic type or not - for example it should
      * not be printed after just parse, when it hasn't been computed, or has been set to a trivially
      * provable value
@@ -215,24 +206,6 @@ public abstract class Node implements Cloneable {
          * initializing, it touches the object header and/or stores the identity hashcode somewhere.
          */
         return Long.hashCode(token);
-    }
-
-    /**
-     * Return token position from a token descriptor.
-     *
-     * @return Start position of the token in the source.
-     */
-    public int position() {
-        return Token.descPosition(token);
-    }
-
-    /**
-     * Return token length from a token descriptor.
-     *
-     * @return Length of the token.
-     */
-    public int length() {
-        return Token.descLength(token);
     }
 
     /**

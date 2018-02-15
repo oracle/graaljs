@@ -136,20 +136,6 @@ public class RuntimeNode extends Expression {
         this(token, finish, request, Arrays.asList(args));
     }
 
-    /**
-     * Constructor
-     *
-     * @param parent parent node from which to inherit source, token, finish
-     * @param request the request
-     * @param args arguments to request
-     */
-    public RuntimeNode(final Expression parent, final Request request, final List<Expression> args) {
-        super(parent);
-
-        this.request = request;
-        this.args = args;
-    }
-
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterRuntimeNode(this)) {

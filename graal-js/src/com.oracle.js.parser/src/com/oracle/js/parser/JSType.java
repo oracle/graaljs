@@ -39,17 +39,6 @@ public final class JSType {
     private static final double INT32_LIMIT = 4294967296.0;
 
     /**
-     * Returns true if double number can be represented as an int
-     *
-     * @param number a long to inspect
-     *
-     * @return true for int representable longs
-     */
-    public static boolean isRepresentableAsInt(final long number) {
-        return (int) number == number;
-    }
-
-    /**
      * Returns true if double number can be represented as an int. Note that it returns true for negative
      * zero. If you need to exclude negative zero, use {@link #isStrictlyRepresentableAsInt(double)}.
      *
@@ -71,20 +60,6 @@ public final class JSType {
      */
     public static boolean isStrictlyRepresentableAsInt(final double number) {
         return isRepresentableAsInt(number) && isNotNegativeZero(number);
-    }
-
-    /**
-     * Returns true if Object can be represented as an int
-     *
-     * @param obj an object to inspect
-     *
-     * @return true for int representable objects
-     */
-    public static boolean isRepresentableAsInt(final Object obj) {
-        if (obj instanceof Number) {
-            return isRepresentableAsInt(((Number) obj).doubleValue());
-        }
-        return false;
     }
 
     /**
@@ -111,47 +86,12 @@ public final class JSType {
     }
 
     /**
-     * Returns true if Object can be represented as a long
-     *
-     * @param obj an object to inspect
-     *
-     * @return true for long representable objects
-     */
-    public static boolean isRepresentableAsLong(final Object obj) {
-        if (obj instanceof Number) {
-            return isRepresentableAsLong(((Number) obj).doubleValue());
-        }
-        return false;
-    }
-
-    /**
-     * Returns true if the number is the negative zero ({@code -0.0d}).
-     *
-     * @param number the number to test
-     * @return true if it is the negative zero, false otherwise.
-     */
-    public static boolean isNegativeZero(final double number) {
-        return number == 0.0d && Double.doubleToRawLongBits(number) == 0x8000000000000000L;
-    }
-
-    /**
      * Returns true if the number is not the negative zero ({@code -0.0d}).
      * @param number the number to test
      * @return true if it is not the negative zero, false otherwise.
      */
     private static boolean isNotNegativeZero(final double number) {
         return Double.doubleToRawLongBits(number) != 0x8000000000000000L;
-    }
-
-    /**
-     * JavaScript compliant conversion of number to boolean
-     *
-     * @param num a number
-     *
-     * @return a boolean
-     */
-    public static boolean toBoolean(final double num) {
-        return num != 0 && !Double.isNaN(num);
     }
 
     /**
@@ -180,75 +120,6 @@ public final class JSType {
         }
 
         return true;
-    }
-
-    /**
-     * JavaScript compliant conversion of number to String
-     *
-     * @param num a number
-     * @param radix a radix for the conversion
-     *
-     * @return a string
-     */
-    public static String toString(final double num, final int radix) {
-        assert radix >= 2 && radix <= 36 : "invalid radix";
-
-        if (isRepresentableAsInt(num)) {
-            return Integer.toString((int) num, radix);
-        }
-
-        if (num == Double.POSITIVE_INFINITY) {
-            return "Infinity";
-        }
-
-        if (num == Double.NEGATIVE_INFINITY) {
-            return "-Infinity";
-        }
-
-        if (Double.isNaN(num)) {
-            return "NaN";
-        }
-
-        if (num == 0.0) {
-            return "0";
-        }
-
-        final String chars = "0123456789abcdefghijklmnopqrstuvwxyz";
-        final StringBuilder sb = new StringBuilder();
-
-        final boolean negative = num < 0.0;
-        final double signedNum = negative ? -num : num;
-
-        double intPart = Math.floor(signedNum);
-        double decPart = signedNum - intPart;
-
-        // encode integer part from least significant digit, then reverse
-        do {
-            final double remainder = intPart % radix;
-            sb.append(chars.charAt((int) remainder));
-            intPart -= remainder;
-            intPart /= radix;
-        } while (intPart >= 1.0);
-
-        if (negative) {
-            sb.append('-');
-        }
-        sb.reverse();
-
-        // encode decimal part
-        if (decPart > 0.0) {
-            final int dot = sb.length();
-            sb.append('.');
-            do {
-                decPart *= radix;
-                final double d = Math.floor(decPart);
-                sb.append(chars.charAt((int) d));
-                decPart -= d;
-            } while (decPart > 0.0 && sb.length() - dot < 1100);
-            // somewhat arbitrarily use same limit as V8
-        }
-
-        return sb.toString();
     }
 
     /**
@@ -409,20 +280,6 @@ public final class JSType {
         return toInt32(toNumber(obj));
     }
 
-    // Minimum and maximum range between which every long value can be precisely represented as a double.
-    private static final long MAX_PRECISE_DOUBLE = 1L << 53;
-    private static final long MIN_PRECISE_DOUBLE = -MAX_PRECISE_DOUBLE;
-
-    /**
-     * JavaScript compliant long to int32 conversion
-     *
-     * @param num a long
-     * @return an int32
-     */
-    public static int toInt32(final long num) {
-        return (int) (num >= MIN_PRECISE_DOUBLE && num <= MAX_PRECISE_DOUBLE ? num : (long) (num % INT32_LIMIT));
-    }
-
     /**
      * JavaScript compliant number to int32 conversion
      *
@@ -453,46 +310,6 @@ public final class JSType {
         return doubleToInt32(num) & MAX_UINT;
     }
 
-    /**
-     * JavaScript compliant Object to uint16 conversion ECMA 9.7 ToUint16: (Unsigned 16 Bit Integer)
-     *
-     * @param obj an object
-     * @return a uint16
-     */
-    public static int toUint16(final Object obj) {
-        return toUint16(toNumber(obj));
-    }
-
-    /**
-     * JavaScript compliant number to uint16 conversion
-     *
-     * @param num a number
-     * @return a uint16
-     */
-    public static int toUint16(final int num) {
-        return num & 0xffff;
-    }
-
-    /**
-     * JavaScript compliant number to uint16 conversion
-     *
-     * @param num a number
-     * @return a uint16
-     */
-    public static int toUint16(final long num) {
-        return (int) num & 0xffff;
-    }
-
-    /**
-     * JavaScript compliant number to uint16 conversion
-     *
-     * @param num a number
-     * @return a uint16
-     */
-    public static int toUint16(final double num) {
-        return (int) doubleToInt32(num) & 0xffff;
-    }
-
     private static long doubleToInt32(final double num) {
         final int exponent = Math.getExponent(num);
         if (exponent < 31) {
@@ -506,16 +323,6 @@ public final class JSType {
         // This is rather slow and could probably be sped up using bit-fiddling.
         final double d = num >= 0 ? Math.floor(num) : Math.ceil(num);
         return (long) (d % INT32_LIMIT);
-    }
-
-    /**
-     * Check whether a number is finite
-     *
-     * @param num a number
-     * @return true if finite
-     */
-    public static boolean isFinite(final double num) {
-        return !Double.isInfinite(num) && !Double.isNaN(num);
     }
 
     private static double parseRadix(final char[] chars, final int start, final int length, final int radix) {

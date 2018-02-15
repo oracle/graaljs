@@ -231,35 +231,11 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
     }
 
     /**
-     * Reset the initialization expression
-     * @param init new initialization expression
-     * @return a node equivalent to this one except for the requested change.
-     */
-    public VarNode setInit(final Expression init) {
-        if (this.init == init) {
-            return this;
-        }
-        return new VarNode(this, name, init, flags);
-    }
-
-    /**
      * Get the identifier for the variable
      * @return IdentNode representing the variable being set or declared
      */
     public IdentNode getName() {
         return name;
-    }
-
-    /**
-     * Reset the identifier for this VarNode
-     * @param name new IdentNode representing the variable being set or declared
-     * @return a node equivalent to this one except for the requested change.
-     */
-    public VarNode setName(final IdentNode name) {
-        if (this.name == name) {
-            return this;
-        }
-        return new VarNode(this, name, init, flags);
     }
 
     private VarNode setFlags(final int flags) {

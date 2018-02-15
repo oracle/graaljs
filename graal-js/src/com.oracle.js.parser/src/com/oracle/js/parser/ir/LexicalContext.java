@@ -52,22 +52,6 @@ public class LexicalContext {
     }
 
     /**
-     * Get the function body of a function node on the lexical context
-     * stack. This will trigger an assertion if node isn't present.
-     *
-     * @param functionNode function node
-     * @return body of function node
-     */
-    public Block getFunctionBody(final FunctionNode functionNode) {
-        for (int i = sp - 1; i >= 0; i--) {
-            if (stack[i] == functionNode) {
-                return (Block) stack[i + 1];
-            }
-        }
-        throw new AssertionError(functionNode.getName() + " not on context stack");
-    }
-
-    /**
      * @return all nodes in the LexicalContext.
      */
     public Iterator<LexicalContextNode> getAllNodes() {
@@ -117,13 +101,6 @@ public class LexicalContext {
     }
 
     /**
-     * @return the depth of the lexical context.
-     */
-    public int size() {
-        return sp;
-    }
-
-    /**
      * Pops the innermost block off the context and all nodes that has been
      * contributed since it was put there.
      *
@@ -140,15 +117,6 @@ public class LexicalContext {
         stack[sp] = null;
 
         return (T) popped;
-    }
-
-    /**
-     * Return the top element in the context.
-     *
-     * @return the node that was pushed last
-     */
-    public LexicalContextNode peek() {
-        return stack[sp - 1];
     }
 
     /**
@@ -245,76 +213,6 @@ public class LexicalContext {
     }
 
     /**
-     * Returns an iterator over all ancestors block of the given block, with its
-     * parent block first.
-     *
-     * @param block the block whose ancestors are returned
-     * @return an iterator over all ancestors block of the given block.
-     */
-    public Iterator<Block> getAncestorBlocks(final Block block) {
-        final Iterator<Block> iter = getBlocks();
-        while (iter.hasNext()) {
-            final Block b = iter.next();
-            if (block == b) {
-                return iter;
-            }
-        }
-        throw new AssertionError("Block is not on the current lexical context stack");
-    }
-
-    /**
-     * Returns an iterator over a block and all its ancestors blocks, with the
-     * block first.
-     *
-     * @param block the block that is the starting point of the iteration.
-     * @return an iterator over a block and all its ancestors.
-     */
-    public Iterator<Block> getBlocks(final Block block) {
-        final Iterator<Block> iter = getAncestorBlocks(block);
-        return new Iterator<Block>() {
-            boolean blockReturned = false;
-
-            @Override
-            public boolean hasNext() {
-                return iter.hasNext() || !blockReturned;
-            }
-
-            @Override
-            public Block next() {
-                if (blockReturned) {
-                    return iter.next();
-                }
-                blockReturned = true;
-                return block;
-            }
-        };
-    }
-
-    /**
-     * Get the function for this block.
-     *
-     * @param block block for which to get function
-     *
-     * @return function for block
-     */
-    public FunctionNode getFunction(final Block block) {
-        final Iterator<LexicalContextNode> iter = new NodeIterator<>(LexicalContextNode.class);
-        while (iter.hasNext()) {
-            final LexicalContextNode next = iter.next();
-            if (next == block) {
-                while (iter.hasNext()) {
-                    final LexicalContextNode next2 = iter.next();
-                    if (next2 instanceof FunctionNode) {
-                        return (FunctionNode) next2;
-                    }
-                }
-            }
-        }
-        assert false;
-        return null;
-    }
-
-    /**
      * @return the innermost block in the context.
      */
     public Block getCurrentBlock() {
@@ -342,26 +240,6 @@ public class LexicalContext {
         return getParentBlock() == null;
     }
 
-    /**
-     * Get the parent function for a function in the lexical context.
-     *
-     * @param functionNode function for which to get parent
-     *
-     * @return parent function of functionNode or {@code null} if none (e.g., if
-     *         functionNode is the program).
-     */
-    public FunctionNode getParentFunction(final FunctionNode functionNode) {
-        final Iterator<FunctionNode> iter = new NodeIterator<>(FunctionNode.class);
-        while (iter.hasNext()) {
-            final FunctionNode next = iter.next();
-            if (next == functionNode) {
-                return iter.hasNext() ? iter.next() : null;
-            }
-        }
-        assert false;
-        return null;
-    }
-
     private BreakableNode getBreakable() {
         for (final NodeIterator<BreakableNode> iter = new NodeIterator<>(BreakableNode.class, getCurrentFunction()); iter.hasNext();) {
             final BreakableNode next = iter.next();
@@ -370,15 +248,6 @@ public class LexicalContext {
             }
         }
         return null;
-    }
-
-    /**
-     * Check whether the lexical context is currently inside a loop.
-     *
-     * @return {@code true} if inside a loop
-     */
-    public boolean inLoop() {
-        return getCurrentLoop() != null;
     }
 
     /**
