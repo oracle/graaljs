@@ -77,7 +77,12 @@ class GraalJsBuildTask(mx.ArchivableBuildTask):
         return 'Snapshotting {}'.format(self.subject)
 
     def needsBuild(self, newestInput):
-        return (False, 'This project does not contain files')
+        if self.args.force:
+            return (True, 'forced build')
+
+        if not self.subject.getResults():
+            return (True, 'output files are missing')
+        return (False, 'this project does not contain input files')
 
     def newestOutput(self):
         return mx.TimeStampFile.newest(self.subject.getResults())
