@@ -184,10 +184,6 @@ public final class CodeRangeBuffer implements Cloneable {
 
         final int incN = low + 1 - high;
 
-        if (n + incN > Config.MAX_MULTI_BYTE_RANGES_NUM) {
-            throw new ValueException(ErrorMessages.ERR_TOO_MANY_MULTI_BYTE_RANGES);
-        }
-
         if (incN != 1) {
             if (from > p[low * 2 + 1]) {
                 from = p[low * 2 + 1];

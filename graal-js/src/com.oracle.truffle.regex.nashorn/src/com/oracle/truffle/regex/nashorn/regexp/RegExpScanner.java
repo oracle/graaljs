@@ -395,6 +395,7 @@ public final class RegExpScanner extends Scanner {
                 commit(1);
             } else {
                 // Bad quantifier should be rejected but is accepted by all major engines
+                pop('}');
                 restart(startIn, startOut);
                 return false;
             }
