@@ -2236,8 +2236,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     boolean initializationAssignment) {
         assert shortcutOperation != null || (!returnOldValue && !convertRHSToNumber) : "returnOldValue / convertRHSToNumber can only be used with shortcut assignments";
         JavaScriptNode assignedNode = null;
-        JavaScriptNode rhs;
-        JavaScriptNode shortcutNode;
         JavaScriptNode prev = null;
         VarRef resultTemp = (shortcutOperation != null && returnOldValue) ? environment.createTempVar() : null;
         TokenType tokenType = lhsExpression.tokenType();
@@ -2255,6 +2253,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 IndexNode indexNode = (IndexNode) lhsExpression;
                 JavaScriptNode target = transform(indexNode.getBase());
                 JavaScriptNode elem = transform(indexNode.getIndex());
+                JavaScriptNode rhs;
 
                 if (shortcutOperation != null) {
                     if (!(target instanceof RepeatableNode)) {
@@ -2276,7 +2275,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     // index must be ToPropertyKey-converted only once, save it in temp var
                     VarRef keyTemp = environment.createTempVar();
 
-                    shortcutNode = factory.createReadElementNode(context, target, keyTemp.createReadNode());
+                    JavaScriptNode shortcutNode = factory.createReadElementNode(context, target, keyTemp.createReadNode());
 
                     // RequireObjectCoercible(target); safely repeatable, no temp var needed
                     target = factory.createToObject(context, factory.copy(target));
@@ -2303,6 +2302,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 // target.property
                 AccessNode accessNode = (AccessNode) lhsExpression;
                 JavaScriptNode target = transform(accessNode.getBase());
+                JavaScriptNode rhs;
 
                 if (shortcutOperation != null) {
                     if (!(target instanceof RepeatableNode)) {
@@ -2311,7 +2311,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         target = newTemp.createReadNode();
                     }
 
-                    shortcutNode = factory.createReadProperty(context, target, accessNode.getProperty());
+                    JavaScriptNode shortcutNode = factory.createReadProperty(context, target, accessNode.getProperty());
 
                     target = factory.copy(target);
 
