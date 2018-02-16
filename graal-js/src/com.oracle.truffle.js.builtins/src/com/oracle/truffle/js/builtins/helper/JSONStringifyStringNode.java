@@ -49,6 +49,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     @Child private Node readNode;
     @Child private Node keysNode;
     @Child private Node isNullNode;
+    @Child private Node isBoxedNode;
 
     public abstract Object execute(Object data, String key, DynamicObject holder);
 
@@ -109,14 +110,11 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     private void jsonTruffleObject(DelimitedStringBuilder builder, JSONData data, TruffleObject obj) {
-        boolean isNull = truffleIsNull(obj);
-        if (isNull) {
+        if (truffleIsNull(obj)) {
             builder.append(Null.NAME);
-            return;
-        }
-
-        boolean hasSize = truffleHasSize(obj);
-        if (hasSize) {
+        } else if (truffleIsBoxed(obj)) {
+            jsonStrExecute(builder, data, JSInteropNodeUtil.unbox(obj));
+        } else if (truffleHasSize(obj)) {
             jsonJA(builder, data, obj);
         } else {
             jsonJO(builder, data, obj);
@@ -451,4 +449,13 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
         return ForeignAccess.sendIsNull(isNullNode, obj);
     }
+
+    private boolean truffleIsBoxed(TruffleObject obj) {
+        if (isBoxedNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            isBoxedNode = insert(Message.IS_BOXED.createNode());
+        }
+        return ForeignAccess.sendIsBoxed(isBoxedNode, obj);
+    }
+
 }
