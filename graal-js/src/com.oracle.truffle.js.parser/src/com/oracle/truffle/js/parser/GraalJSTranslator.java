@@ -1902,9 +1902,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode operand = null;
         if (unaryNode.getExpression() instanceof IdentNode) {
             IdentNode identNode = (IdentNode) unaryNode.getExpression();
-            if (!identNode.isThis() && !identNode.isNewTarget()) {
+            String identNodeName = identNode.getName();
+            if (JSTruffleOptions.NashornExtensions && (identNodeName.equals("__LINE__") || identNodeName.equals("__FILE__") || identNodeName.equals("__DIR__"))) {
+                operand = GlobalPropertyNode.createPropertyNode(context, identNodeName);
+            } else if (!identNode.isThis() && !identNode.isNewTarget()) {
                 // typeof globalVar must not throw ReferenceError if globalVar does not exist
-                operand = findScopeVarCheckTDZ(identNode.getName(), false).withRequired(false).createReadNode();
+                operand = findScopeVarCheckTDZ(identNodeName, false).withRequired(false).createReadNode();
             }
         }
         if (operand == null) {
