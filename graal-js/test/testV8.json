@@ -1,0 +1,2232 @@
+{
+  "testFiles" : [ {
+    "filePath" : "mjsunit/accessors-on-global-object.js",
+    "status" : "SKIP",
+    "comment" : "__defineGetter__, __defineSetter__, __lookupSetter__, __lookupGetter__ not according to spec"
+  }, {
+    "filePath" : "mjsunit/allocation-site-info.js",
+    "status" : "SKIP",
+    "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
+  }, {
+    "filePath" : "mjsunit/array-constructor-feedback.js",
+    "status" : "SKIP",
+    "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
+  }, {
+    "filePath" : "mjsunit/array-feedback.js",
+    "status" : "SKIP",
+    "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
+  }, {
+    "filePath" : "mjsunit/array-join.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/array-length.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/array-literal-feedback.js",
+    "status" : "SKIP",
+    "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
+  }, {
+    "filePath" : "mjsunit/array-sort.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/asm/asm-validation.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/asm/call-stdlib.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/asm/global-imports.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/asm/regress-674089.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/bugs/bug-1344252.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/bugs/bug-222.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/bugs/bug-617.js",
+    "status" : "SKIP",
+    "comment" : "that test SHOULD fail according to the standard, cannot call a RegExp"
+  }, {
+    "filePath" : "mjsunit/bugs/bug-941049.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/bugs/bug-proto.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/code-coverage-ad-hoc.js",
+    "status" : "SKIP",
+    "comment" : "code coverage support (GR-6539)"
+  }, {
+    "filePath" : "mjsunit/code-coverage-block-noopt.js",
+    "status" : "SKIP",
+    "comment" : "code coverage support (GR-6539)"
+  }, {
+    "filePath" : "mjsunit/code-coverage-block-opt.js",
+    "status" : "SKIP",
+    "comment" : "code coverage support (GR-6539)"
+  }, {
+    "filePath" : "mjsunit/code-coverage-block.js",
+    "status" : "SKIP",
+    "comment" : "code coverage support (GR-6539)"
+  }, {
+    "filePath" : "mjsunit/code-coverage-precise.js",
+    "status" : "SKIP",
+    "comment" : "code coverage support (GR-6539)"
+  }, {
+    "filePath" : "mjsunit/compiler/constructor-inlining.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/compiler/native-context-specialization-hole-check.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/const-field-tracking.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/cross-realm-filtering.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/cross-realm-global-prototype.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/cyclic-array-to-string.js",
+    "status" : "SKIP",
+    "comment" : "stack overflow, recursion"
+  }, {
+    "filePath" : "mjsunit/date-parse.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/debugPrint.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/deserialize-script-id.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/div-mod.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/duplicate-parameters.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/elements-kind.js",
+    "status" : "SKIP",
+    "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
+  }, {
+    "filePath" : "mjsunit/error-tostring-omit.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/error-tostring.js",
+    "status" : "FAIL",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/es6/array-species.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/block-conflicts-sloppy.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/block-conflicts.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/block-const-assign-sloppy.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/block-const-assign.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/block-eval-var-over-let.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/block-for-sloppy.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/block-for.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/block-let-contextual-sloppy.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/block-let-semantics-sloppy.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/block-scope-class.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/block-sloppy-function.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/class-computed-property-names-super.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/classes-lazy-parsing.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/classes-subclass-builtins.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/classes-super.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/classes.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/completion.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/computed-property-names-classes.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/computed-property-names-object-literals-methods.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/es6/computed-property-names-super.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/debug-promises/throw-with-undefined-reject.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/es6/default-parameters-destructuring.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/default-parameters.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/destructuring-assignment.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/es6/destructuring.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/function-name.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/generator-destructuring.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/generators-objects.js",
+    "status" : "SKIP",
+    "comment" : "V8 cannot construct Generators"
+  }, {
+    "filePath" : "mjsunit/es6/global-proto-proxy.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/es6/iteration-syntax.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/iterator-close.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/math-log2-log10.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "BIG_ENDIAN" : "SKIP"
+    },
+    "comment" : "fails due to byte order (LE required)\nfails atm on SPARC GR-1672"
+  }, {
+    "filePath" : "mjsunit/es6/microtask-delivery.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/es6/new-target.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/object-literals-super.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/object-tostring.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/proxies-accesschecks.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/proxies-bind.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/proxies-construct.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/proxies-cross-realm-exception.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/proxies-for.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/proxies-function.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/proxies-get.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/proxies-prototype-handler-stackoverflow.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/es6/proxies-set.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/reflect-construct.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/reflect-set-prototype-of.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/regress/regress-2322.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/regress/regress-4097.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/regress/regress-4522.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/regress/regress-576662.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/regress/regress-5929-1.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/es6/regress/regress-cr493566.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/regress/regress-crbug-465671-null.js",
+    "status" : "SKIP",
+    "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+  }, {
+    "filePath" : "mjsunit/es6/regress/regress-crbug-465671.js",
+    "status" : "SKIP",
+    "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+  }, {
+    "filePath" : "mjsunit/es6/rest-params.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/sloppy-restrictive-block-function.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/super.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/throw-type-error-function-restrictions.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/typed-array-iterator.js",
+    "status" : "SKIP",
+    "comment" : "violating spec: Array.prototype.entries !== %TypedArray%.prototype.entries according to ES6 22.2.3.6"
+  }, {
+    "filePath" : "mjsunit/es6/typedarray-construct-by-array-like-prototype-element-added.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/es6/typedarray-construct-by-array-like.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/es6/typedarray-construct-offset-not-smi.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/es6/typedarray-every.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/typedarray-foreach.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/typedarray-neutered.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/typedarray.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/unicode-character-ranges.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/unicode-escapes-in-regexps.js",
+    "status" : "FAIL",
+    "comment" : "JONI fails the test on line 244, which uses an astral Unicode escape (TRegex bails out because of back-references)."
+  }, {
+    "filePath" : "mjsunit/es6/unicode-regexp-backrefs.js",
+    "status" : "FAIL",
+    "comment" : "Back-references cause TRegex to bail out and then JONI is unable to cope with Unicode."
+  }, {
+    "filePath" : "mjsunit/es6/unicode-regexp-ignore-case-noi18n.js",
+    "status" : "FAIL",
+    "comment" : "This test is set to fail in v8 as well, unless v8_enable_i18n_support is set to false."
+  }, {
+    "filePath" : "mjsunit/es6/unicode-regexp-ignore-case.js",
+    "status" : "FAIL",
+    "comment" : "Back-references cause TRegex to bail out and then JONI is unable to cope with Unicode (lines 51-52)."
+  }, {
+    "filePath" : "mjsunit/es7/exponentiation-operator.js",
+    "status" : "SKIP",
+    "comment" : "test should fail (V8 should report Early Error as we do)"
+  }, {
+    "filePath" : "mjsunit/es7/typed-array-includes.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/es8/async-arrow-lexical-arguments.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es8/async-arrow-lexical-new.target.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es8/async-arrow-lexical-super.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es8/async-arrow-lexical-this.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es8/async-await-basic.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es8/async-await-no-constructor.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es8/async-await-species.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es8/async-destructuring.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es8/async-function-stacktrace.js",
+    "status" : "FAIL",
+    "comment" : "GR-6610"
+  }, {
+    "filePath" : "mjsunit/es8/async-function-try-finally.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/es8/constructor-returning-primitive.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/es8/object-get-own-property-descriptors.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/eval-enclosing-function-name.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/eval-stack-trace.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/function-caller.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/function-name-eval-shadowed.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/function.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/generated-transition-stub.js",
+    "status" : "SKIP",
+    "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
+  }, {
+    "filePath" : "mjsunit/global-accessors.js",
+    "status" : "SKIP",
+    "comment" : "__defineGetter__, __defineSetter__, __lookupSetter__, __lookupGetter__ not according to spec"
+  }, {
+    "filePath" : "mjsunit/harmony/async-for-of-non-iterable.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/async-from-sync-iterator.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/async-generators-basic.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/async-generators-resume-return.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/harmony/async-generators-return.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/harmony/async-generators-yield.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/harmony/atomics-value-check.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/default-parameter-do-expression.js",
+    "status" : "SKIP",
+    "comment" : "non-standard do-expressions"
+  }, {
+    "filePath" : "mjsunit/harmony/do-expressions-arrow-param-scope.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/harmony/do-expressions-control.js",
+    "status" : "SKIP",
+    "comment" : "non-standard do-expressions"
+  }, {
+    "filePath" : "mjsunit/harmony/do-expressions.js",
+    "status" : "SKIP",
+    "comment" : "non-standard do-expressions"
+  }, {
+    "filePath" : "mjsunit/harmony/function-sent.js",
+    "status" : "SKIP",
+    "comment" : "Function.sent"
+  }, {
+    "filePath" : "mjsunit/harmony/function-tostring.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/futex.js",
+    "status" : "SKIP",
+    "comment" : "Some parts use %SetAllowAtomicsWait and %AtomicsNumWaitersForTesting, all other parts pass"
+  }, {
+    "filePath" : "mjsunit/harmony/generators.js",
+    "status" : "SKIP",
+    "comment" : "non-standard do-expressions"
+  }, {
+    "filePath" : "mjsunit/harmony/import-from-compilation-errored.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/import-from-evaluation-errored.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/import-from-fetch-errored.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/import-from-instantiation-errored.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-1.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-10.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-11.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-12.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-13.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-14.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-15.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-16.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-2.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-3.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-4.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-5.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-6.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-7.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-8.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-9.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-large.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-skip-1.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-skip-10.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-skip-11.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-skip-12.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-skip-2.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-skip-3.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-skip-4.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-skip-5.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-skip-6.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-skip-7.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-skip-8.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-skip-9.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-skip-large1.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-skip-large2.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/harmony/object-rest-basic.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/harmony/object-spread-basic.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/harmony/private-symbols.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/harmony/private.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/harmony/promise-prototype-finally.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/regexp-lookbehind.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/harmony/regexp-named-captures.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/harmony/regexp-property-disabled.js",
+    "status" : "SKIP",
+    "comment" : "Test that is supposed to pass only if we disable our implementation of Unicode property escapes."
+  }, {
+    "filePath" : "mjsunit/harmony/regress/regress-4658.js",
+    "status" : "SKIP",
+    "comment" : "non-standard do-expressions"
+  }, {
+    "filePath" : "mjsunit/harmony/regress/regress-4755.js",
+    "status" : "SKIP",
+    "comment" : "non-standard do-expressions"
+  }, {
+    "filePath" : "mjsunit/harmony/regress/regress-4904.js",
+    "status" : "SKIP",
+    "comment" : "non-standard do-expressions"
+  }, {
+    "filePath" : "mjsunit/harmony/regress/regress-546967.js",
+    "status" : "SKIP",
+    "comment" : "non-standard do-expressions"
+  }, {
+    "filePath" : "mjsunit/harmony/regress/regress-6100.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/sloppy-legacy-duplicate-generators.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/harmony/template-escapes.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/html-comments.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/icu-date-lord-howe.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/icu-date-to-string.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/ignition/dead-code-source-position.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/ignition/ignition-statistics-extension.js",
+    "status" : "SKIP",
+    "comment" : "Ignition statistics - https://codereview.chromium.org/1899133004"
+  }, {
+    "filePath" : "mjsunit/ignition/regress-599001-verifyheap.js",
+    "status" : "SKIP",
+    "comment" : "infinite loop"
+  }, {
+    "filePath" : "mjsunit/indexed-accessors.js",
+    "status" : "SKIP",
+    "comment" : "__defineGetter__, __defineSetter__, __lookupSetter__, __lookupGetter__ not according to spec"
+  }, {
+    "filePath" : "mjsunit/invalid-lhs.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/json-errors.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/json-stringify-recursive.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/lookup-behind-property.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/messages.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/migrations.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/mjsunit-assertion-error.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/modules-circular-valid.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-cycle.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/modules-default-name1.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-default-name2.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-default-name3.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-default-name4.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-default-name5.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-default-name6.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-default-name7.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-default-name8.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-default-name9.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-default.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-empty-import1.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-empty-import2.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-empty-import3.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-empty-import4.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-error-trace.js",
+    "status" : "SKIP",
+    "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+  }, {
+    "filePath" : "mjsunit/modules-exports1.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-exports2.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-exports3.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-imports1.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-imports2.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-imports3.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-imports4.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-imports5.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-imports6.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-imports7.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-init1.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-init2.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-init3.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-init4.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/modules-namespace1.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-namespace2.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-namespace3.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-namespace4.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-relative-path.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-1.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-2.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-3.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-4.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-5.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-6.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-7.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-circular-valid.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-cycle.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/modules-skip-default-name1.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-default-name2.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-default-name3.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-default-name4.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-default-name5.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-default-name6.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-default-name7.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-default-name8.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-default-name9.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-empty-import-aux.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-empty-import.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-init1.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-init3.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-init4a.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/modules-skip-init4b.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/modules-skip-namespace.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-star-exports-conflict.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-skip-star-exports-cycle.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-star-exports-cycle.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-this.js",
+    "status" : "SKIP",
+    "comment" : "modules, import, export"
+  }, {
+    "filePath" : "mjsunit/modules-turbo1.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/modules-turbo2.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/number-tostring-big-integer.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/opt-elements-kind.js",
+    "status" : "SKIP",
+    "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
+  }, {
+    "filePath" : "mjsunit/osr-elements-kind.js",
+    "status" : "SKIP",
+    "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
+  }, {
+    "filePath" : "mjsunit/parallel-optimize-disabled.js",
+    "status" : "SKIP",
+    "comment" : "const variable assignment should throw but test expects no error"
+  }, {
+    "filePath" : "mjsunit/primitive-keyed-access.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/random-bit-correlations.js",
+    "status" : "SKIP",
+    "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+  }, {
+    "filePath" : "mjsunit/readonly.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/realm-property-access.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regexp-stack-overflow.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/cross-script-vars.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/redeclaration-error-types.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1039610.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/regress/regress-105.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1118.js",
+    "status" : "SKIP",
+    "comment" : "infinite loops caused by not compiling V8 style"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1119.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1129.js",
+    "status" : "SKIP",
+    "comment" : "This test checks, among other things, that the implementation compiles regular expressions lazily, which is not mandated by the spec. It also checks whether a specific regular expression triggers a stack overflow during its compilation, which is heavily dependent on the implementation (e.g. TRegex's parser has its own stack). It also calls gc after the test, which is V8-specific."
+  }, {
+    "filePath" : "mjsunit/regress/regress-1132.js",
+    "status" : "SKIP",
+    "runInIsolation" : true,
+    "comment" : "these tests expect the stack limit to be reached; spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-115452.js",
+    "status" : "SKIP",
+    "comment" : "GR-6956"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1170.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-119429.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1199637.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1240.js",
+    "status" : "SKIP",
+    "comment" : "__defineGetter__, __defineSetter__, __lookupSetter__, __lookupGetter__ not according to spec"
+  }, {
+    "filePath" : "mjsunit/regress/regress-148378.js",
+    "status" : "SKIP",
+    "comment" : "NOW: Fails consistently with NoClassDefFoundError. Uses infinite recursion, expects to run out of stack and catch the exception. BEFORE: spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1548.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-186.js",
+    "status" : "SKIP",
+    "comment" : "const variable declared in eval code leaking into outer scope"
+  }, {
+    "filePath" : "mjsunit/regress/regress-233.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-2564.js",
+    "status" : "SKIP",
+    "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-2596.js",
+    "status" : "SKIP",
+    "comment" : "fails due to byte order (LE required)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-2618.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-2989.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-3116.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-319722-ArrayBuffer.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-319722-TypedArrays.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-3404.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-350865.js",
+    "status" : "SKIP",
+    "comment" : "NOW: Consistently fails with NoClassDefFoundError. Sets stack size and uses infinite recursion. BEFORE: spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-353004.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-353058.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-353551.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-360733.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-394.js",
+    "status" : "SKIP",
+    "comment" : "__defineGetter__, __defineSetter__, __lookupSetter__, __lookupGetter__ not according to spec"
+  }, {
+    "filePath" : "mjsunit/regress/regress-411210.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-4266.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-436893.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-446389.js",
+    "status" : "SKIP",
+    "runInIsolation" : true,
+    "comment" : "these tests expect the stack limit to be reached"
+  }, {
+    "filePath" : "mjsunit/regress/regress-454725.js",
+    "status" : "SKIP",
+    "comment" : "timeout unknown"
+  }, {
+    "filePath" : "mjsunit/regress/regress-4577.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-458987.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-4665.js",
+    "status" : "SKIP",
+    "comment" : "TypedArray.prototype.subarray failing as the created object has a TypedArray as prototype, but JSArrayBufferView.isArrayBufferView() returns false"
+  }, {
+    "filePath" : "mjsunit/regress/regress-4693.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-475705.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-4815.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-487981.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-4967.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-4970.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-5085.js",
+    "status" : "SKIP",
+    "comment" : "obj instanceof Proxy throws (as Proxy.prototype is not an object) but the test expects it to be false"
+  }, {
+    "filePath" : "mjsunit/regress/regress-5173.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-5405.js",
+    "status" : "SKIP",
+    "comment" : "async"
+  }, {
+    "filePath" : "mjsunit/regress/regress-543994.js",
+    "status" : "SKIP",
+    "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-544991.js",
+    "status" : "SKIP",
+    "comment" : "'will fail later, if so, delete the test' on line 14"
+  }, {
+    "filePath" : "mjsunit/regress/regress-5454.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-5638.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-5638b.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-5664.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-5669.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-575364.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/regress/regress-5767.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-5888.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-5902.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-5911.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-5927.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-599068-func-bindings.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-599414-array-concat-fast-path.js",
+    "status" : "SKIP",
+    "comment" : "infinite loop"
+  }, {
+    "filePath" : "mjsunit/regress/regress-6142.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-618608.js",
+    "status" : "SKIP",
+    "comment" : "infinite loop"
+  }, {
+    "filePath" : "mjsunit/regress/regress-6209.js",
+    "status" : "SKIP",
+    "comment" : "Explicitly calls v8AllocateHeapNumber."
+  }, {
+    "filePath" : "mjsunit/regress/regress-6248.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-631050.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-633998.js",
+    "status" : "SKIP",
+    "comment" : "'Wrong' test - checking error message (which is not always complete and contains a typo) instead of error type\nsee https://github.com/v8/v8/commit/ea6b9609a67b78f5f8d327c578e931d4db2a5268"
+  }, {
+    "filePath" : "mjsunit/regress/regress-639270.js",
+    "status" : "SKIP",
+    "comment" : "async"
+  }, {
+    "filePath" : "mjsunit/regress/regress-6677.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-6681.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-6733.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-677685.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-681984.js",
+    "status" : "SKIP",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests. Repeatedly broke gate, thus deactivating (GR-8177)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-682349.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-689016.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-705934.js",
+    "status" : "SKIP",
+    "comment" : "REGEX language cannot be initialized after StackOverflow"
+  }, {
+    "filePath" : "mjsunit/regress/regress-707410.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-740694.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-744292.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-746909.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-752764.js",
+    "status" : "SKIP",
+    "comment" : "Calls v8StringMaxLength. Checks that longer strings cannot be parsed as RegExps by V8."
+  }, {
+    "filePath" : "mjsunit/regress/regress-798.js",
+    "status" : "SKIP",
+    "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-88591.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-944.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-100859.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-109362.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-150545.js",
+    "status" : "SKIP",
+    "comment" : "infinite loops caused by not compiling V8 style"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-160010.js",
+    "status" : "SKIP",
+    "comment" : "timeout unknown"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-245480.js",
+    "status" : "SKIP",
+    "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-352586.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-357137.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-380671.js",
+    "status" : "SKIP",
+    "comment" : "Flag --mock-arraybuffer-allocator"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-385002.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-387031.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-412208.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-429159.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-450960.js",
+    "runInIsolation" : true,
+    "comment" : "these tests expect the stack limit to be reached"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-451013.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-467047.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-469480.js",
+    "status" : "SKIP",
+    "comment" : "Calls %GetDebugContext. Uses infinite recursion to hit the stack limit while running RegExp code."
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-471659.js",
+    "status" : "SKIP",
+    "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-474297.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-482998.js",
+    "status" : "SKIP",
+    "comment" : "RegExp: Performance test. Tests for a specific optimization made by V8's Irregexp, in which patterns of the form (ab|ac|z|ad|ae|af) are optimized into patterns of the form (a[b-f]|z). Due to the size of the pattern involved, TRegex bails out during parsing (https://bugs.chromium.org/p/chromium/issues/detail?id=482998)."
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-484077.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-491062.js",
+    "status" : "SKIP",
+    "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-501711.js",
+    "status" : "SKIP",
+    "comment" : "stack overflow, recursion"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-505007-1.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-506443.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-507070.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-522380.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-527364.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-546968.js",
+    "status" : "SKIP",
+    "comment" : "non-standard do-expressions"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-584188.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-593282.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-595657.js",
+    "status" : "SKIP",
+    "comment" : "NOW: Consistently fails with NoClassDefFoundError. Uses infinite recursion to hit the stack limit and then tries to do some regexp work. spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-600257.js",
+    "status" : "SKIP",
+    "runInIsolation" : true,
+    "comment" : "NOW: Timeout on infinite recursion where v8 expects the stack limit to be hit. After hitting stack limit, tries to compile a simple regexp. BEFORE: test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-621611.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "BIG_ENDIAN" : "SKIP"
+    },
+    "comment" : "fails due to byte order (LE required)\nfails atm on SPARC GR-1672\nmore fails on SPARC"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-627934.js",
+    "status" : "SKIP",
+    "runInIsolation" : true,
+    "comment" : "Out of memory even when run together with other memory-intense tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-631917.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-647217.js",
+    "status" : "SKIP",
+    "comment" : "stack overflow, recursion"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-658528.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-663410.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-669540.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-683667.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-688567.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-691323.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-696622.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-740398.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-754177.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-double-canonicalization.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "BIG_ENDIAN" : "SKIP"
+    },
+    "comment" : "fails due to byte order (LE required)\nfails atm on SPARC GR-1672\nmore fails on SPARC"
+  }, {
+    "filePath" : "mjsunit/regress/regress-inline-getter-near-stack-limit.js",
+    "status" : "SKIP",
+    "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-integer-indexed-element.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-osr-in-case-label.js",
+    "status" : "SKIP",
+    "comment" : "non-standard do-expressions"
+  }, {
+    "filePath" : "mjsunit/regress/regress-osr-in-literal.js",
+    "status" : "SKIP",
+    "comment" : "non-standard do-expressions"
+  }, {
+    "filePath" : "mjsunit/regress/regress-private-enumerable.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-put-prototype-transition.js",
+    "status" : "SKIP",
+    "comment" : "PrettyPrint"
+  }, {
+    "filePath" : "mjsunit/regress/regress-trap-allocation-memento.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-5009.js",
+    "status" : "SKIP",
+    "comment" : "version()"
+  }, {
+    "filePath" : "mjsunit/regress/regress-wasm-crbug-599413.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/regress/regress-wasm-crbug-618602.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/loop-stack-check.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-5860.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-709684.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-752423.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-5531.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-5800.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-5884.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-6054.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-6164.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-644682.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-647649.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-648079.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-651961.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-654377.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-663994.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-666741.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-667745.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-670683.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-680938.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-684858.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-688876.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-689450.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-694433.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-699485.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-702460.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-708714.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-710844.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-711203.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-715216-b.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-717194.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-722445.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-724846.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-724851.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-724972.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-727222.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-727560.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-729991.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-734108.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-734246.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-734345.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-736584.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-737069.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-739768.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regression-757217.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/samevalue.js",
+    "status" : "SKIP",
+    "comment" : "--expose-natives-as="
+  }, {
+    "filePath" : "mjsunit/serialize-embedded-error.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/stack-overflow-arity-catch-noinline.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/stack-traces-2.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/stack-traces-custom-lazy.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/stack-traces-custom.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/stack-traces-overflow.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/stack-traces.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/string-oom-array-join.js",
+    "status" : "SKIP",
+    "runInIsolation" : true,
+    "comment" : "Out of memory even when run together with other memory-intense tests, and sometimes even then"
+  }, {
+    "filePath" : "mjsunit/string-oom-concat.js",
+    "runInIsolation" : true,
+    "comment" : "Out of memory even when run together with other memory-intense tests"
+  }, {
+    "filePath" : "mjsunit/string-oom-replace-global-regexp-with-string.js",
+    "runInIsolation" : true,
+    "comment" : "Out of memory even when run together with other memory-intense tests"
+  }, {
+    "filePath" : "mjsunit/string-oom-replace-regexp-global-with-function.js",
+    "runInIsolation" : true,
+    "comment" : "Out of memory even when run together with other memory-intense tests"
+  }, {
+    "filePath" : "mjsunit/test-builtins-setup.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/tools/codemap.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/tools/consarray.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/tools/csvparser.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/tools/dumpcpp.js",
+    "status" : "SKIP",
+    "comment" : "UnixCppEntriesProvider"
+  }, {
+    "filePath" : "mjsunit/tools/profile.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/tools/profile_view.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/tools/profviz.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/tools/splaytree.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/tools/tickprocessor.js",
+    "status" : "SKIP"
+  }, {
+    "filePath" : "mjsunit/unbox-double-arrays.js",
+    "status" : "SKIP",
+    "comment" : "timeout unknown"
+  }, {
+    "filePath" : "mjsunit/undetectable-compare.js",
+    "status" : "SKIP",
+    "comment" : "undetectable"
+  }, {
+    "filePath" : "mjsunit/undetectable.js",
+    "status" : "SKIP",
+    "comment" : "undetectable"
+  }, {
+    "filePath" : "mjsunit/unicode-case-overoptimization.js",
+    "status" : "SKIP",
+    "comment" : "timeout unknown"
+  }, {
+    "filePath" : "mjsunit/value-wrapper-accessor.js",
+    "status" : "SKIP",
+    "comment" : "fails due to GenericPropertyGetNode (in noIC mode)"
+  }, {
+    "filePath" : "mjsunit/var.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/verify-assert-false.js",
+    "status" : "SKIP",
+    "comment" : "two tests using internal functions, just to ensure assertFalse etc. are working properly"
+  }, {
+    "filePath" : "mjsunit/verify-check-false.js",
+    "status" : "SKIP",
+    "comment" : "two tests using internal functions, just to ensure assertFalse etc. are working properly"
+  }, {
+    "filePath" : "mjsunit/wasm/adapter-frame.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/add-getters.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/asm-wasm-copy.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/asm-wasm-deopt.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/asm-wasm-exception-in-tonumber.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/asm-wasm-expr.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/asm-wasm-f32.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/asm-wasm-f64.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/asm-wasm-heap.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/asm-wasm-i32.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/asm-wasm-literals.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/asm-wasm-stack.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/asm-wasm-stdlib.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/asm-wasm-switch.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/asm-wasm-u32.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/asm-wasm.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/asm-with-wasm-off.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/async-compile.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/atomics.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/calls.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/compilation-limits.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/compiled-module-management.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/compiled-module-serialization.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/data-segments.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/divrem-trap.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/embenchen/box2d.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/embenchen/copy.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/embenchen/corrections.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/embenchen/fannkuch.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/embenchen/fasta.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/embenchen/lua_binarytrees.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/embenchen/memops.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/embenchen/primes.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/embenchen/zlib.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/ensure-wasm-binaries-up-to-date.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/errors.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/exceptions.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/export-global.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/export-table.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/ffi-error.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/ffi.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/float-constant-folding.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/function-names.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/function-prototype.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/gc-buffer.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/gc-frame.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/gc-stress.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/globals.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/graceful_shutdown.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/grow-memory-in-branch.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/grow-memory-in-call.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/grow-memory-in-loop.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/grow-memory.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/huge-memory.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/import-memory.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/import-table.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/indirect-calls.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/indirect-sig-mismatch.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/indirect-tables.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/instance-gc.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/instance-memory-gc-stress.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/instantiate-module-basic.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/instantiate-run-basic.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/interpreter-mixed.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/interpreter.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/js-api.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/jsapi-harness.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/large-offset.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/memory-external-call.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/memory-instance-validation.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/memory-size.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/memory.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/module-memory.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/names.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/parallel_compilation.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/params.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/receiver.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/shared-memory.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/stack.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/stackwalk.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/start-function.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/table-grow.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/table.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/test-import-export-wrapper.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/test-wasm-module-builder.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/trap-location.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/unicode-validation.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/unicode.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/unreachable-validation.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/unreachable.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/user-properties.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/wasm-api-overloading.js",
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/wasm/wasm-default.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  }, {
+    "filePath" : "mjsunit/wasm/wasm-object-api.js",
+    "status" : "SKIP",
+    "comment" : "WASM"
+  } ]
+}

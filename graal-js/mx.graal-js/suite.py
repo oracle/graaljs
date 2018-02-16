@@ -49,6 +49,58 @@ suite = {
         "version" : "59.1",
       },
     },
+
+    "TEST262" : {
+      "sha1" : "0a879659eefc76edae39a1417f08a58c9a01f792",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/test262-f3b5a1e.tar.bz2"],
+    },
+
+    "TESTNASHORN" : {
+      "sha1" : "1a31d35e485247e0edf2738a248e1bc2b97f1054",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/testnashorn-e118c818dbf8.tar.bz2"],
+    },
+
+    "TESTNASHORN_EXTERNAL" : {
+      "sha1" : "3e3edc251d800bc74f28c78f75844c7086cb5216",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/testnashorn-external-0f91116bb4bd.tar.bz2"],
+    },
+
+    "NASHORN_INTERNAL_TESTS" : {
+      "sha1" : "b5840706cc8ce639fcafeab1bc61da2d8aa37afd",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/nashorn-internal-tests-700f5e3f5ff2.jar"],
+    },
+
+    "TESTV8" : {
+      "sha1" : "dd8107d045713ac6e880459ec7ae79531d23efb1",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/testv8-20170906.tar.gz"],
+    },
+
+    "JACKSON_CORE" : {
+      "sha1" : "2ef7b1cc34de149600f5e75bc2d5bf40de894e60",
+      "maven" : {
+        "groupId" : "com.fasterxml.jackson.core",
+        "artifactId" : "jackson-core",
+        "version" : "2.8.6",
+      },
+    },
+
+    "JACKSON_ANNOTATIONS" : {
+      "sha1" : "9577018f9ce3636a2e1cb0a0c7fe915e5098ded5",
+      "maven" : {
+        "groupId" : "com.fasterxml.jackson.core",
+        "artifactId" : "jackson-annotations",
+        "version" : "2.8.6",
+      },
+    },
+
+    "JACKSON_DATABIND" : {
+      "sha1" : "c43de61f74ecc61322ef8f402837ba65b0aa2bf4",
+      "maven" : {
+        "groupId" : "com.fasterxml.jackson.core",
+        "artifactId" : "jackson-databind",
+        "version" : "2.8.6",
+      },
+    },
   },
 
   "projects" : {
@@ -243,6 +295,23 @@ suite = {
       "workingSets" : "Truffle,JavaScript",
     },
 
+    "com.oracle.truffle.js.test.external" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "graal-js:GRAALJS",
+        "mx:JUNIT",
+        "JACKSON_CORE",
+        "JACKSON_ANNOTATIONS",
+        "JACKSON_DATABIND",
+        "NASHORN_INTERNAL_TESTS",
+      ],
+      "checkstyle" : "com.oracle.truffle.js.runtime",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,JavaScript,Test",
+      "testProject" : True,
+    },
+
     "graaljs" : {
       "dependencies" : [
         "com.oracle.truffle.js.parser",
@@ -348,6 +417,20 @@ suite = {
         "GRAALJS",
         "GRAALJS_SCRIPTENGINE",
       ],
+      "maven" : False,
+    },
+
+    "TRUFFLE_JS_TESTS" : {
+      "dependencies" : ["com.oracle.truffle.js.test.external"],
+      "exclude" : [
+        "mx:HAMCREST",
+        "mx:JUNIT",
+        "JACKSON_CORE",
+        "JACKSON_ANNOTATIONS",
+        "JACKSON_DATABIND",
+        "NASHORN_INTERNAL_TESTS",
+      ],
+      "distDependencies" : ["GRAALJS"],
       "maven" : False,
     },
 

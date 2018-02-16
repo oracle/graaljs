@@ -1,0 +1,572 @@
+{
+  "testFiles" : [ {
+    "filePath" : "basic/assign_builtin_func_props.js",
+    "status" : "SKIP",
+    "comment" : "failing after a fix in DataView.buffer et al getters"
+  }, {
+    "filePath" : "basic/classloader.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/convert.js",
+    "status" : "SKIP",
+    "comment" : "Calling Nashorn code that cannot handle Truffle's JSObject"
+  }, {
+    "filePath" : "basic/errors.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/class.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/const-reassign.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/const-redeclare-extra.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/const-redeclare.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/destructuring.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/generator.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/JDK-8156665.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/JDK-8156743.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/let-const-switch.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/let-eval.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/let-load.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/let-redeclare-extra.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/let-redeclare.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/let_const_reuse.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/lexical-toplevel-redeclare.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/lexical-toplevel.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/map.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/restparam.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/set.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/spread.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/super.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/symbols.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/fileline.js",
+    "status" : "SKIP",
+    "comment" : "Using 'jdk.nashorn.internal.runtime.Source'"
+  }, {
+    "filePath" : "basic/javaarrayconversion.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8008197.js",
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
+  }, {
+    "filePath" : "basic/JDK-8008448.js",
+    "status" : "SKIP",
+    "comment" : "our parser supports the ES6 equivalent instead"
+  }, {
+    "filePath" : "basic/JDK-8010199.js",
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
+  }, {
+    "filePath" : "basic/JDK-8010924.js",
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
+  }, {
+    "filePath" : "basic/JDK-8010946-2.js",
+    "status" : "SKIP",
+    "comment" : "dynalink"
+  }, {
+    "filePath" : "basic/JDK-8010946.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8011555.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8011893.js",
+    "status" : "SKIP",
+    "comment" : "non-deterministic failures because of multi-threading"
+  }, {
+    "filePath" : "basic/JDK-8011964.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8013131.js",
+    "status" : "SKIP",
+    "comment" : "String.prototype.split with different behavior between V8 and Nashorn"
+  }, {
+    "filePath" : "basic/JDK-8014426.js",
+    "status" : "SKIP",
+    "comment" : "Using 'jdk.nashorn.api.scripting.NashornScriptEngineFactory'"
+  }, {
+    "filePath" : "basic/JDK-8014785.js",
+    "status" : "SKIP",
+    "comment" : "Object.bindProperties"
+  }, {
+    "filePath" : "basic/JDK-8015345.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8015352.js",
+    "runInIsolation" : true
+  }, {
+    "filePath" : "basic/JDK-8015830.js",
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
+  }, {
+    "filePath" : "basic/JDK-8015959.js",
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
+  }, {
+    "filePath" : "basic/JDK-8015969.js",
+    "status" : "SKIP",
+    "comment" : "context and engine variables"
+  }, {
+    "filePath" : "basic/JDK-8019553.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8019783.js",
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
+  }, {
+    "filePath" : "basic/JDK-8019814.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8020223.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8020324.js",
+    "status" : "SKIP",
+    "comment" : "nashorn class not found"
+  }, {
+    "filePath" : "basic/JDK-8020508.js",
+    "status" : "SKIP",
+    "comment" : "Object.bindProperties"
+  }, {
+    "filePath" : "basic/JDK-8021122.js",
+    "status" : "SKIP",
+    "comment" : "Object.bindProperties"
+  }, {
+    "filePath" : "basic/JDK-8022731.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8023551.js",
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
+  }, {
+    "filePath" : "basic/JDK-8023780.js",
+    "status" : "SKIP",
+    "comment" : "Object.bindProperties"
+  }, {
+    "filePath" : "basic/JDK-8024120.js",
+    "status" : "SKIP",
+    "comment" : "__proto__ behavior off-spec (test fails with v8, spidermonkey)"
+  }, {
+    "filePath" : "basic/JDK-8024174.js",
+    "status" : "SKIP",
+    "comment" : "__proto__ behavior off-spec (test fails with v8, spidermonkey)"
+  }, {
+    "filePath" : "basic/JDK-8024619.js",
+    "status" : "SKIP",
+    "comment" : "nashorn class not found"
+  }, {
+    "filePath" : "basic/JDK-8024847.js",
+    "status" : "SKIP",
+    "comment" : "using jdk.nashorn.api.scripting.JSObject"
+  }, {
+    "filePath" : "basic/JDK-8025080.js",
+    "status" : "SKIP",
+    "comment" : "number conversion off-spec (expected: 1e+81, actual: 1e81)"
+  }, {
+    "filePath" : "basic/JDK-8025515.js",
+    "status" : "SKIP",
+    "comment" : "names of anonymous functions are not defined by the standard"
+  }, {
+    "filePath" : "basic/JDK-8026161.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8026167.js",
+    "status" : "SKIP",
+    "comment" : "Loading the 'js' engine"
+  }, {
+    "filePath" : "basic/JDK-8026302.js",
+    "status" : "SKIP",
+    "comment" : "wrong enumeration order"
+  }, {
+    "filePath" : "basic/JDK-8026367.js",
+    "status" : "SKIP",
+    "comment" : "non-deterministic failures because of multi-threading"
+  }, {
+    "filePath" : "basic/JDK-8026701.js",
+    "status" : "SKIP",
+    "comment" : "type conversion for Interop suspicious"
+  }, {
+    "filePath" : "basic/JDK-8027753.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8029364.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8030182_2.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8030809.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8031359.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8032068.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8035312.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8035312_2.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8035312_3.js",
+    "status" : "SKIP",
+    "comment" : "does not conform to ES6 [[DefineOwnProperty]] of Array Exotic Objects;\nES6 9.4.2.1, clause 3.f.: If index >= oldLen and oldLenDesc.[[Writable]] is false, return false."
+  }, {
+    "filePath" : "basic/JDK-8035312_4.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8035312_5.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8041998.js",
+    "status" : "SKIP",
+    "comment" : "non-deterministic failures because of multi-threading"
+  }, {
+    "filePath" : "basic/JDK-8042364.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8043232.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8044534.js",
+    "status" : "SKIP",
+    "comment" : "Using 'jdk.nashorn.test.tools.StaticTypeInspector'"
+  }, {
+    "filePath" : "basic/JDK-8044750.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8046026.js",
+    "status" : "SKIP",
+    "comment" : "non-deterministic failures because of multi-threading"
+  }, {
+    "filePath" : "basic/JDK-8048071.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8049086.js",
+    "status" : "SKIP",
+    "comment" : "using jdk.nashorn.api.scripting.JSObject"
+  }, {
+    "filePath" : "basic/JDK-8049242.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8050432.js",
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
+  }, {
+    "filePath" : "basic/JDK-8051778.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8055762.js",
+    "status" : "SKIP",
+    "comment" : "using jdk.nashorn.api.scripting.JSObject"
+  }, {
+    "filePath" : "basic/JDK-8055796.js",
+    "status" : "SKIP",
+    "comment" : "using jdk.nashorn.api.scripting.JSObject"
+  }, {
+    "filePath" : "basic/JDK-8055796_2.js",
+    "status" : "SKIP",
+    "comment" : "Fails on SPARC, JDK does not provide netscape.javascript.JSObject and the instancof check seems to be wrong\nThe exception thrown by Java.type(\"netscape.javascript.JSObject\") is not a ClassCastException object\nbut a \"TypeError: java.lang.ClassNotFoundException: netscape.javascript.JSObject\". The test fails also on openjdk1.8.0_121-graalvm-jvmci-0.30."
+  }, {
+    "filePath" : "basic/JDK-8058422.js",
+    "status" : "SKIP",
+    "comment" : "context and engine variables"
+  }, {
+    "filePath" : "basic/JDK-8060101.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8062141.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8062583.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8062799.js",
+    "status" : "SKIP",
+    "comment" : "type conversion for Interop suspicious"
+  }, {
+    "filePath" : "basic/JDK-8066215.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8066226.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8066669.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8067136.js",
+    "status" : "SKIP",
+    "comment" : "using jdk.nashorn.api.scripting.JSObject"
+  }, {
+    "filePath" : "basic/JDK-8068573.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8068580.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8068901.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8068903.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8072426.js",
+    "status" : "SKIP",
+    "comment" : "using jdk.nashorn.api.scripting.JSObject"
+  }, {
+    "filePath" : "basic/JDK-8072596.js",
+    "status" : "SKIP",
+    "comment" : "nashorn class not found"
+  }, {
+    "filePath" : "basic/JDK-8073653.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8073733.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8075207.js",
+    "status" : "SKIP",
+    "comment" : "nashorn class not found"
+  }, {
+    "filePath" : "basic/JDK-8075448.js",
+    "status" : "SKIP",
+    "comment" : "nashorn class not found"
+  }, {
+    "filePath" : "basic/JDK-8075454.js",
+    "status" : "SKIP",
+    "comment" : "nashorn class not found"
+  }, {
+    "filePath" : "basic/JDK-8077955.js",
+    "status" : "SKIP",
+    "comment" : "Loading the 'js' engine"
+  }, {
+    "filePath" : "basic/JDK-8079145.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8079470.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8080848.js",
+    "status" : "SKIP",
+    "comment" : "Object.bindProperties"
+  }, {
+    "filePath" : "basic/JDK-8081156.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8087211.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8087312.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8098578.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8114838.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8129410.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8130853.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8131929.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8133119.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8134609.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8134939.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8136544.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8136694.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8137134.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8143896.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8144020.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8150218.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8156896.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8157160.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8157680.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8157819.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8158467.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8161579.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8162771.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8163945.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8164708.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8169886.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8171849.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8172006.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8173480.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/jsadapter-ids.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/jsadapter.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/jsobject.js",
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
+  }, {
+    "filePath" : "basic/list.js",
+    "status" : "SKIP",
+    "comment" : "Nashorn treats property access on List differently depending on notation (dot vs. bracket)"
+  }, {
+    "filePath" : "basic/map.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/NASHORN-111.js",
+    "status" : "SKIP",
+    "comment" : "stringify of TypeError prints empty message (V8 disagrees with Nashorn)"
+  }, {
+    "filePath" : "basic/NASHORN-173.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/NASHORN-377-big-endian.js",
+    "status" : "PASS"
+  }, {
+    "filePath" : "basic/NASHORN-377.js",
+    "status" : "PASS"
+  }, {
+    "filePath" : "basic/NASHORN-401.js",
+    "status" : "SKIP",
+    "comment" : "type conversion for Interop suspicious"
+  }, {
+    "filePath" : "basic/NASHORN-486.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/NASHORN-500.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/NASHORN-544.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/NASHORN-60.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/NASHORN-711.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/NASHORN-75.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/NASHORN-768.js",
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
+  }, {
+    "filePath" : "basic/optimistic_arithmetic_check_type.js",
+    "status" : "SKIP",
+    "comment" : "Using 'jdk.nashorn.test.tools.StaticTypeInspector'"
+  }, {
+    "filePath" : "basic/optimistic_assignment_check_type.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/optimistic_check_type.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/optimistic_logical_check_type.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "basic/undefined.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "error/NASHORN-154/invalid_lvalue.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "error/NASHORN-214.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "error/NASHORN-57.js",
+    "status" : "FAIL"
+  } ]
+}
