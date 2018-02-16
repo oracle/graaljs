@@ -2023,7 +2023,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile hasCompareFnBranch = BranchProfile.create();
         private final BranchProfile noCompareFnBranch = BranchProfile.create();
 
-        @Specialization(guards = "isJSArray(thisObj)")
+        @Specialization(guards = "isJSFastArray(thisObj)")
         protected DynamicObject sortArray(final DynamicObject thisObj, final Object compare, //
                         @Cached("create(getContext())") JSToObjectArrayNode arrayToObjectArrayNode,
                         @Cached("createClassProfile()") ValueProfile classProfile) {
