@@ -90,6 +90,10 @@
     "filePath" : "basic/javaarrayconversion.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "basic/JDK-8007990.js",
+    "status" : "SKIP",
+    "comment" : "Assumes that the test is executed from a specific directory. Should rather use '__FILE__'."
+  }, {
     "filePath" : "basic/JDK-8008197.js",
     "status" : "SKIP",
     "comment" : "Loading the 'nashorn' engine"
