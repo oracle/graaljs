@@ -249,6 +249,10 @@ public abstract class TestSuite {
             // cannot find any file with the given filter. Maybe the filter is a valid filename?
             Stream.of(config.getEndsWithFilter(), config.getContainsFilter()).filter(Objects::nonNull).findFirst().ifPresent(filter -> findSingleFile(testFiles, filter));
         }
+        if (testFiles.isEmpty()) {
+            System.err.println("Cannot find test files. Suite location: " + config.getSuiteTestsLoc() + "; ends-with filter: " + config.getEndsWithFilter() + "; contains filter: " +
+                            config.getContainsFilter());
+        }
     }
 
     private void findSingleFile(List<TestFile> files, String filter) {
@@ -516,7 +520,7 @@ public abstract class TestSuite {
         }
     }
 
-    public void runTestSuite(String[] selectedTestDirs) {
+    public int runTestSuite(String[] selectedTestDirs) {
         preloadErrorClasses();
         long startTime = System.currentTimeMillis();
 
@@ -530,7 +534,7 @@ public abstract class TestSuite {
         findTestFiles(selectedTestDirs);
         if (testFiles.isEmpty()) {
             log("Error: no test files found, exiting");
-            return;
+            return -1;
         }
         testCount = testFiles.size() - skippedTests.size();
         // sort files
@@ -591,8 +595,9 @@ public abstract class TestSuite {
             Map<String, TestFile> unexpectedlyPassed = checkUnexpectedlyPassedTests();
             Map<String, TestFile> unexpectedlyFailed = checkUnexpectedlyFailedTests();
             storeUnexpectedlyFailedTests(unexpectedlyFailed.keySet());
-            analyzeGateResult(unexpectedlyPassed.values(), unexpectedlyFailed.values());
+            return analyzeGateResult(unexpectedlyPassed.values(), unexpectedlyFailed.values());
         }
+        return 0;
     }
 
     private static void deleteFiles(String... files) {
@@ -672,7 +677,7 @@ public abstract class TestSuite {
         }
     }
 
-    private void analyzeGateResult(Collection<TestFile> unexpectedlyPassed, Collection<TestFile> unexpectedlyFailed) {
+    private int analyzeGateResult(Collection<TestFile> unexpectedlyPassed, Collection<TestFile> unexpectedlyFailed) {
         boolean gatePassed = gateCheck(unexpectedlyFailed.size());
         if (!unexpectedlyPassed.isEmpty() || !unexpectedlyFailed.isEmpty()) {
             if (config.isRegenerateConfig() || askYesNoQuestion((gatePassed ? "" : "WARNING: GATE FAILED. ") + "Update configuration file? [y/N]")) {
@@ -701,9 +706,7 @@ public abstract class TestSuite {
         } else if (config.isRegenerateConfig() && askYesNoQuestion((gatePassed ? "" : "WARNING: GATE FAILED. ") + "Regenerate configuration file? [y/N]")) {
             regenerateConfig(null, null);
         }
-        if (!gatePassed) {
-            System.exit(1);
-        }
+        return gatePassed ? 0 : 1;
     }
 
     private void findAndExecute(Collection<TestFile> orderedTestFiles, List<Runnable> isolatedRunnables) {

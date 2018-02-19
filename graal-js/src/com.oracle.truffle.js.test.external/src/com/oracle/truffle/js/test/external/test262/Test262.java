@@ -164,7 +164,6 @@ public class Test262 extends TestSuite {
         }
 
         Test262 suite = new Test262(config);
-        suite.runTestSuite(TEST_DIRS);
-        System.exit(0);
+        System.exit(suite.runTestSuite(TEST_DIRS));
     }
 }

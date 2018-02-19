@@ -273,12 +273,12 @@ def _fetch_test_suite(dest, library_names):
             with tarfile.open(_lib_path, 'r') as _tar:
                 _tar.extractall(dest)
 
-def _run_test_suite(location, library_names, custom_args, default_vm_args, max_heap, stack_size, main_class, cwd):
+def _run_test_suite(location, library_names, custom_args, default_vm_args, max_heap, stack_size, main_class, nonZeroIsFatal, cwd):
     _fetch_test_suite(location, library_names)
     _vm_args, _prog_args = parse_js_args(custom_args)
     _vm_args = _append_default_js_vm_args(vm_args=_vm_args, max_heap=max_heap, stack_size=stack_size)
     _vm_args = ['-ea', '-esa', '-cp', mx.classpath('TRUFFLE_JS_TESTS')] + default_vm_args + _vm_args
-    mx.run_java(_vm_args + [main_class] + _prog_args, nonZeroIsFatal=True, cwd=cwd)
+    return mx.run_java(_vm_args + [main_class] + _prog_args, nonZeroIsFatal=nonZeroIsFatal, cwd=cwd)
 
 def test262(args, nonZeroIsFatal=True):
     """run the test262 conformance suite"""
@@ -289,7 +289,7 @@ def test262(args, nonZeroIsFatal=True):
         '-Dtruffle.js.SIMDJS=true',
         '-Dtruffle.js.Intl402LocaleInRFC5646=false',
     ]
-    _run_test_suite(
+    return _run_test_suite(
         location=_location,
         library_names=['TEST262'],
         custom_args=args,
@@ -297,6 +297,7 @@ def test262(args, nonZeroIsFatal=True):
         max_heap='4g',
         stack_size='1m',
         main_class='com.oracle.truffle.js.test.external.test262.Test262',
+        nonZeroIsFatal=nonZeroIsFatal,
         cwd=_suite.dir
     )
 
@@ -318,6 +319,7 @@ def testnashorn(args, nonZeroIsFatal=True):
         max_heap='2g',
         stack_size=_stack_size,
         main_class='com.oracle.truffle.js.test.external.nashorn.TestNashorn',
+        nonZeroIsFatal=nonZeroIsFatal,
         cwd=_location
     )
 
@@ -337,6 +339,7 @@ def testv8(args, nonZeroIsFatal=True):
         max_heap='4g',
         stack_size=_stack_size,
         main_class='com.oracle.truffle.js.test.external.testv8.TestV8',
+        nonZeroIsFatal=nonZeroIsFatal,
         cwd=_suite.dir
     )
 

@@ -106,7 +106,6 @@ public class TestV8 extends TestSuite {
         }
 
         TestV8 suite = new TestV8(config);
-        suite.runTestSuite(TEST_DIRS);
-        System.exit(0);
+        System.exit(suite.runTestSuite(TEST_DIRS));
     }
 }

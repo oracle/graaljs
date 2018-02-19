@@ -23,7 +23,7 @@ public class TestNashorn extends TestSuite {
     private static final String SUITE_NAME = "testnashorn";
     private static final String SUITE_DESCRIPTION = "Nashorn testsuite";
     private static final String DEFAULT_LOC = "";
-    private static final String DEFAULT_CONFIG_LOC = Paths.get("..", "..","test").toString();
+    private static final String DEFAULT_CONFIG_LOC = Paths.get("..", "..", "test").toString();
     private static final String TESTS_REL_LOC = Paths.get("test", "script").toString();
     private static final String HARNESS_REL_LOC = "";
 
@@ -169,14 +169,18 @@ public class TestNashorn extends TestSuite {
         stream.println("</ul>");
     }
 
+    private static void exit(int status) {
+        System.exit(status);
+    }
+
     public static void main(String[] args) throws Exception {
         if (!JSTruffleOptions.NashornJavaInterop) {
-            System.out.println("Nashorn testsuite requires NashornJavaInterop.");
-            return;
+            System.err.println("Nashorn testsuite requires NashornJavaInterop.");
+            exit(-1);
         }
         if (!JSTruffleOptions.NashornCompatibilityMode) {
-            System.out.println("Nashorn testsuite requires NashornCompatibilityMode.");
-            return;
+            System.err.println("Nashorn testsuite requires NashornCompatibilityMode.");
+            exit(-2);
         }
 
         SuiteConfig config = new SuiteConfig(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
@@ -210,7 +214,6 @@ public class TestNashorn extends TestSuite {
         // remember out & err after TestSuite is created since it uses its own impls!
         origOut = System.out;
         origErr = System.err;
-        suite.runTestSuite(TEST_DIRS);
-        System.exit(0);
+        exit(suite.runTestSuite(TEST_DIRS));
     }
 }
