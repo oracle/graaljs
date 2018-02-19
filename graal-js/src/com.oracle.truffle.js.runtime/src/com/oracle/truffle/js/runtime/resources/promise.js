@@ -475,7 +475,7 @@ var promResolve = function resolve(x) {
 /**
  * 25.4.5.1 Promise.prototype.catch
  */
-var promProtoCatch = function(onRejected) {
+var promProtoCatch = function catchFn(onRejected) {
     var promise = this;
     return promise.then(undefined, onRejected);
 };
@@ -601,7 +601,7 @@ function PromiseResolve(C, x) {
 // Register promise constructor in the Global object.
 Internal.ObjectDefineProperty(Internal.GetGlobalObject(), 'Promise', {value: Promise, configurable: true, enumerable: false, writable: true});
 
-var speciesGet = function() {return this;};
+function speciesGet() {return this;};
 Internal.SetFunctionName(speciesGet, "get [Symbol.species]");
 Internal.SetFunctionName(promProtoCatch, "catch");
 Internal.SetFunctionName(promProtoFinally, "finally");
