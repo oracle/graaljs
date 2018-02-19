@@ -2649,7 +2649,7 @@ loop:
 
         int defaultCaseIndex = -1;
         // Prepare to accumulate cases.
-        final List<CaseNode> cases = new ArrayList<>();
+        final ArrayList<CaseNode> cases = new ArrayList<>();
 
         SwitchNode switchStatement = null;
 
@@ -2711,7 +2711,7 @@ loop:
 
             next();
 
-            switchStatement = new SwitchNode(switchLine, switchToken, finish, expression, cases, defaultCaseIndex);
+            switchStatement = new SwitchNode(switchLine, switchToken, finish, expression, optimizeList(cases), defaultCaseIndex);
         } finally {
             lc.pop(switchNode);
             restoreBlock(switchBlock);
@@ -2829,7 +2829,7 @@ loop:
 
         try {
             final Block       tryBody     = getBlock(true);
-            final List<Block> catchBlocks = new ArrayList<>();
+            final ArrayList<Block> catchBlocks = new ArrayList<>();
 
             while (type == CATCH) {
                 final int  catchLine  = line;
@@ -2906,7 +2906,7 @@ loop:
                 throw error(AbstractParser.message("missing.catch.or.finally"), tryToken);
             }
 
-            final TryNode tryNode = new TryNode(tryLine, tryToken, finish, tryBody, catchBlocks, finallyStatements);
+            final TryNode tryNode = new TryNode(tryLine, tryToken, finish, tryBody, optimizeList(catchBlocks), finallyStatements);
             // Add try.
             assert lc.peek() == outer;
             appendStatement(tryNode);
@@ -3076,7 +3076,7 @@ loop:
         next();
 
         // Prepare to accumulate elements.
-        final List<Expression> elements = new ArrayList<>();
+        final ArrayList<Expression> elements = new ArrayList<>();
         // Track elisions.
         boolean elision = true;
         boolean hasSpread = false;
@@ -3132,7 +3132,7 @@ loop:
             }
         }
 
-        return LiteralNode.newInstance(arrayToken, finish, elements, hasSpread, elision, hasCoverInitializedName);
+        return LiteralNode.newInstance(arrayToken, finish, optimizeList(elements), hasSpread, elision, hasCoverInitializedName);
     }
 
     /**
@@ -3157,7 +3157,7 @@ loop:
 
         // Object context.
         // Prepare to accumulate elements.
-        final List<PropertyNode> elements = new ArrayList<>();
+        final ArrayList<PropertyNode> elements = new ArrayList<>();
         final Map<String, Integer> map = new HashMap<>();
 
         // Create a block for the object literal.
@@ -3236,7 +3236,7 @@ loop:
             }
         }
 
-        return new ObjectNode(objectToken, finish, elements, hasCoverInitializedName);
+        return new ObjectNode(objectToken, finish, optimizeList(elements), hasCoverInitializedName);
     }
 
     private static boolean hasCoverInitializedName(Expression value) {
@@ -4327,7 +4327,7 @@ loop:
         }
 
         parameters.trimToSize();
-        return parameters;
+        return optimizeList(parameters);
     }
 
     private void verifyDestructuringParameterBindingPattern(final Expression pattern, final long paramToken, final int paramLine, final String contextString) {
@@ -5130,14 +5130,15 @@ loop:
         } else if (paramListExpr instanceof IdentNode || paramListExpr.isTokenType(ASSIGN) || isDestructuringLhs(paramListExpr)) {
             parameters = Collections.singletonList(verifyArrowParameter(paramListExpr, 0, functionLine));
         } else if (paramListExpr instanceof BinaryNode && Token.descType(paramListExpr.getToken()) == COMMARIGHT) {
-            parameters = new ArrayList<>();
+            ArrayList<IdentNode> param2 = new ArrayList<>();
             Expression car = paramListExpr;
             do {
                 Expression cdr = ((BinaryNode) car).rhs();
-                parameters.add(0, verifyArrowParameter(cdr, parameters.size(), functionLine));
+                param2.add(0, verifyArrowParameter(cdr, param2.size(), functionLine));
                 car = ((BinaryNode) car).lhs();
             } while (car instanceof BinaryNode && Token.descType(car.getToken()) == COMMARIGHT);
-            parameters.add(0, verifyArrowParameter(car, parameters.size(), functionLine));
+            param2.add(0, verifyArrowParameter(car, param2.size(), functionLine));
+            parameters = optimizeList(param2);
         } else {
             throw error(AbstractParser.message("expected.arrow.parameter"), paramListExpr.getToken());
         }
@@ -5634,7 +5635,7 @@ loop:
         final long startToken = token;
         assert type == LBRACE;
         next();
-        List<ImportSpecifierNode> importSpecifiers = new ArrayList<>();
+        ArrayList<ImportSpecifierNode> importSpecifiers = new ArrayList<>();
         while (type != RBRACE) {
             boolean bindingIdentifier = isBindingIdentifier();
             long nameToken = token;
@@ -5659,7 +5660,7 @@ loop:
             }
         }
         expect(RBRACE);
-        return new NamedImportsNode(startToken, Token.descPosition(startToken), finish, importSpecifiers);
+        return new NamedImportsNode(startToken, Token.descPosition(startToken), finish, optimizeList(importSpecifiers));
     }
 
     /**
@@ -5830,7 +5831,7 @@ loop:
         final long startToken = token;
         assert type == LBRACE;
         next();
-        List<ExportSpecifierNode> exports = new ArrayList<>();
+        ArrayList<ExportSpecifierNode> exports = new ArrayList<>();
         long reservedWordToken = 0L;
         while (type != RBRACE) {
             long nameToken = token;
@@ -5868,7 +5869,7 @@ loop:
             throw error(expectMessage(IDENT, reservedWordToken), reservedWordToken);
         }
 
-        return new ExportClauseNode(startToken, Token.descPosition(startToken), finish, exports);
+        return new ExportClauseNode(startToken, Token.descPosition(startToken), finish, optimizeList(exports));
     }
 
     private boolean isReservedWord() {

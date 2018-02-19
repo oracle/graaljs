@@ -178,23 +178,24 @@ public abstract class Environment {
                     }
                 }
                 if (current instanceof FunctionEnvironment) {
-                    if (current.function().isNamedFunctionExpression() && current.function().getFunctionName().equals(name)) {
+                    FunctionEnvironment fnEnv = current.function();
+                    if (fnEnv.isNamedFunctionExpression() && fnEnv.getFunctionName().equals(name)) {
                         return wrapIn(wrapClosure, wrapFrameLevel, new FunctionCalleeVarRef(scopeLevel, frameLevel, name, current));
                     }
-                    if (!skipEval && current.function().isDynamicallyScoped()) {
+                    if (!skipEval && fnEnv.isDynamicallyScoped()) {
                         wrapClosure = makeEvalWrapClosure(wrapClosure, name, frameLevel, scopeLevel, current);
                         wrapFrameLevel = frameLevel;
                     }
-                    if (!current.function().isGlobal() && !current.function().isEval() && name.equals(ARGUMENTS_NAME)) {
-                        if (current.function().hasArgumentsSlot()) {
+                    if (!fnEnv.isGlobal() && !fnEnv.isEval() && name.equals(ARGUMENTS_NAME)) {
+                        if (fnEnv.hasArgumentsSlot()) {
                             return wrapIn(wrapClosure, wrapFrameLevel, new ArgumentsVarRef(scopeLevel, frameLevel, name, current));
                         } else {
-                            assert current.function().isArrowFunction();
+                            assert fnEnv.isArrowFunction();
                             // we need to go deeper
                         }
                     }
 
-                    VarRef importBinding = current.function().getImportBinding(name);
+                    VarRef importBinding = fnEnv.getImportBinding(name);
                     if (importBinding != null) {
                         // NB: no outer frame access or wrapping required
                         return importBinding;
