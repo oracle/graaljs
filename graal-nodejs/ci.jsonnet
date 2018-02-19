@@ -20,7 +20,7 @@ local common = import '../common.jsonnet';
       ['mx', 'sversions'],
     ],
     run+: [
-      gateCmd + ['--tags', 'style,fullbuild,mvnPackage,sharedBuild'],
+      gateCmd + ['--tags', 'style,fullbuild,sharedbuild'],
     ],
     timelimit: '30:00',
   },
