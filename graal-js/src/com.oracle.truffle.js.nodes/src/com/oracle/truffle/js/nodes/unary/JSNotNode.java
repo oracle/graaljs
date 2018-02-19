@@ -10,6 +10,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBooleanNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
@@ -27,6 +28,10 @@ public abstract class JSNotNode extends JSUnaryNode {
         } else if (JSTruffleOptions.UseSuperOperations && operand instanceof JSConstantBooleanNode) {
             boolean value = (boolean) operand.execute(null);
             return JSConstantNode.createBoolean(!value);
+        } else if (JSTruffleOptions.UseSuperOperations && operand instanceof JSConstantIntegerNode) {
+            // used by minifiers, "!0" is shorter than "true"
+            int value = (int) operand.execute(null);
+            return JSConstantNode.createBoolean(value == 0); // negating it
         }
         return JSNotNodeGen.create(operand);
     }
