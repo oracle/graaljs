@@ -57,7 +57,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.js.runtime.doubleconv",
-        "TREGEX",
+        "com.oracle.truffle.regex",
         "mx:ASM_DEBUG_ALL",
         "ICU4J",
       ],
