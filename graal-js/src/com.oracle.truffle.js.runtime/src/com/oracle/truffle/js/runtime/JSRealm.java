@@ -117,9 +117,13 @@ public class JSRealm implements ShapeContext {
     private final DynamicObject functionConstructor;
     private final DynamicObject functionPrototype;
     private final DynamicObjectFactory initialFunctionFactory;
+    private final DynamicObjectFactory initialAnonymousFunctionFactory;
     private final DynamicObjectFactory initialConstructorFactory;
+    private final DynamicObjectFactory initialAnonymousConstructorFactory;
     private final DynamicObjectFactory initialStrictFunctionFactory;
+    private final DynamicObjectFactory initialAnonymousStrictFunctionFactory;
     private final DynamicObjectFactory initialStrictConstructorFactory;
+    private final DynamicObjectFactory initialAnonymousStrictConstructorFactory;
 
     private final JSConstructor arrayConstructor;
     private final DynamicObjectFactory arrayFactory;
@@ -197,13 +201,16 @@ public class JSRealm implements ShapeContext {
 
     private final JSConstructor generatorFunctionConstructor;
     private final DynamicObjectFactory initialGeneratorFactory;
+    private final DynamicObjectFactory initialAnonymousGeneratorFactory;
     private final Shape initialGeneratorObjectShape;
     private final DynamicObjectFactory initialEnumerateIteratorFactory;
     private final DynamicObjectFactory initialBoundFunctionFactory;
+    private final DynamicObjectFactory initialAnonymousBoundFunctionFactory;
     private final DynamicObjectFactory promiseFactory;
 
     private final JSConstructor asyncFunctionConstructor;
     private final DynamicObjectFactory initialAsyncFunctionFactory;
+    private final DynamicObjectFactory initialAnonymousAsyncFunctionFactory;
 
     private final DynamicObject throwerFunction;
 
@@ -235,11 +242,15 @@ public class JSRealm implements ShapeContext {
         this.objectPrototype = JSObjectPrototype.create(context);
 
         this.functionPrototype = JSFunction.createFunctionPrototype(this, objectPrototype);
-        this.initialFunctionFactory = JSFunction.makeInitialFunctionShape(this, functionPrototype, false).createFactory();
-        this.initialConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(this, functionPrototype, false)).createFactory();
+        this.initialFunctionFactory = JSFunction.makeInitialFunctionShape(this, functionPrototype, false, false).createFactory();
+        this.initialAnonymousFunctionFactory = JSFunction.makeInitialFunctionShape(this, functionPrototype, false, true).createFactory();
+        this.initialConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(this, functionPrototype, false, false)).createFactory();
+        this.initialAnonymousConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(this, functionPrototype, false, true)).createFactory();
         this.throwerFunction = createThrowerFunction();
-        this.initialStrictFunctionFactory = JSFunction.makeInitialFunctionShape(this, functionPrototype, true).createFactory();
-        this.initialStrictConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(this, functionPrototype, true)).createFactory();
+        this.initialStrictFunctionFactory = JSFunction.makeInitialFunctionShape(this, functionPrototype, true, false).createFactory();
+        this.initialAnonymousStrictFunctionFactory = JSFunction.makeInitialFunctionShape(this, functionPrototype, true, true).createFactory();
+        this.initialStrictConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(this, functionPrototype, true, false)).createFactory();
+        this.initialAnonymousStrictConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(this, functionPrototype, true, true)).createFactory();
 
         if (context.isOptionAnnexB()) {
             putProtoAccessorProperty(this);
@@ -360,10 +371,12 @@ public class JSRealm implements ShapeContext {
 
         this.iteratorPrototype = es6 ? createIteratorPrototype() : null;
         this.generatorFunctionConstructor = es6 ? JSFunction.createGeneratorFunctionConstructor(this) : null;
-        this.initialGeneratorFactory = es6 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(this, generatorFunctionConstructor.getPrototype()).createFactory() : null;
+        this.initialGeneratorFactory = es6 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(this, generatorFunctionConstructor.getPrototype(), false).createFactory() : null;
+        this.initialAnonymousGeneratorFactory = es6 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(this, generatorFunctionConstructor.getPrototype(), true).createFactory() : null;
         this.initialGeneratorObjectShape = es6 ? JSFunction.makeInitialGeneratorObjectShape(this) : null;
         this.initialEnumerateIteratorFactory = JSFunction.makeInitialEnumerateIteratorShape(this).createFactory();
-        this.initialBoundFunctionFactory = JSFunction.makeInitialBoundFunctionShape(this, functionPrototype).createFactory();
+        this.initialBoundFunctionFactory = JSFunction.makeInitialBoundFunctionShape(this, functionPrototype, false).createFactory();
+        this.initialAnonymousBoundFunctionFactory = JSFunction.makeInitialBoundFunctionShape(this, functionPrototype, true).createFactory();
 
         if (context.isOptionSharedArrayBuffer()) {
             this.sharedArrayBufferConstructor = JSSharedArrayBuffer.createConstructor(this);
@@ -386,7 +399,8 @@ public class JSRealm implements ShapeContext {
         this.asyncFromSyncIteratorPrototype = es8 ? createAsyncFromSyncIteratorPrototype() : null;
 
         this.asyncFunctionConstructor = es8 ? JSFunction.createAsyncFunctionConstructor(this) : null;
-        this.initialAsyncFunctionFactory = es8 ? JSFunction.makeInitialAsyncFunctionConstructorShape(this, asyncFunctionConstructor.getPrototype()).createFactory() : null;
+        this.initialAsyncFunctionFactory = es8 ? JSFunction.makeInitialAsyncFunctionConstructorShape(this, asyncFunctionConstructor.getPrototype(), false).createFactory() : null;
+        this.initialAnonymousAsyncFunctionFactory = es8 ? JSFunction.makeInitialAsyncFunctionConstructorShape(this, asyncFunctionConstructor.getPrototype(), true).createFactory() : null;
 
         this.javaInteropWorkerConstructor = isJavaInteropAvailable() ? JSJavaWorkerBuiltin.createWorkerConstructor(this) : null;
         this.javaInteropWorkerFactory = isJavaInteropAvailable() ? JSJavaWorkerBuiltin.makeInitialShape(context, javaInteropWorkerConstructor.getPrototype()).createFactory() : null;
@@ -498,25 +512,25 @@ public class JSRealm implements ShapeContext {
         return initialStrictConstructorFactory;
     }
 
-    public final DynamicObjectFactory getFunctionFactory(boolean strictFunctionProperties, boolean isConstructor, boolean isGenerator, boolean isAsync) {
+    public final DynamicObjectFactory getFunctionFactory(boolean strictFunctionProperties, boolean isConstructor, boolean isGenerator, boolean isAsync, boolean isAnonymous) {
         if (isAsync) {
-            return initialAsyncFunctionFactory;
+            return isAnonymous ? initialAnonymousAsyncFunctionFactory : initialAsyncFunctionFactory;
         } else if (isConstructor) {
             if (!isGenerator) {
                 if (strictFunctionProperties) {
-                    return getStrictConstructorFactory();
+                    return isAnonymous ? initialAnonymousStrictConstructorFactory : initialStrictConstructorFactory;
                 } else {
-                    return getConstructorFactory();
+                    return isAnonymous ? initialAnonymousConstructorFactory : initialConstructorFactory;
                 }
             } else {
-                return initialGeneratorFactory;
+                return isAnonymous ? initialAnonymousGeneratorFactory : initialGeneratorFactory;
             }
         } else {
             assert !isGenerator;
             if (strictFunctionProperties) {
-                return getStrictFunctionFactory();
+                return isAnonymous ? initialAnonymousStrictFunctionFactory : initialStrictFunctionFactory;
             } else {
-                return getFunctionFactory();
+                return isAnonymous ? initialAnonymousFunctionFactory : initialFunctionFactory;
             }
         }
     }
@@ -592,6 +606,10 @@ public class JSRealm implements ShapeContext {
 
     public DynamicObjectFactory getInitialBoundFunctionFactory() {
         return initialBoundFunctionFactory;
+    }
+
+    public DynamicObjectFactory getInitialAnonymousBoundFunctionFactory() {
+        return initialAnonymousBoundFunctionFactory;
     }
 
     public final DynamicObjectFactory getNonStrictArgumentsFactory() {

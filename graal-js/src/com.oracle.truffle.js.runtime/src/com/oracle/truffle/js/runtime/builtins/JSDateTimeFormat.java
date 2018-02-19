@@ -595,7 +595,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
                     if (state.boundFormatFunction == null) {
                         DynamicObject formatFn = createFormatFunction(realm, context);
-                        DynamicObject boundFn = JSFunction.boundFunctionCreate(context, realm, formatFn, numberFormatObj, new Object[]{}, JSObject.getPrototype(formatFn));
+                        DynamicObject boundFn = JSFunction.boundFunctionCreate(context, realm, formatFn, numberFormatObj, new Object[]{}, JSObject.getPrototype(formatFn), true);
                         state.boundFormatFunction = boundFn;
                     }
 
