@@ -168,18 +168,6 @@
     "status" : "SKIP",
     "comment" : "GR-6710 BigInt propsal"
   }, {
-    "filePath" : "built-ins/Promise/all/resolve-element-function-name.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/Promise/executor-function-name.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/Promise/reject-function-name.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/Promise/resolve-function-name.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "built-ins/Proxy/apply/arguments-realm.js",
     "status" : "FAIL"
   }, {
@@ -187,9 +175,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "built-ins/Proxy/defineProperty/desc-realm.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/Proxy/revocable/revocation-function-name.js",
     "status" : "FAIL"
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
@@ -1832,9 +1817,6 @@
     "filePath" : "built-ins/ThrowTypeError/forbidden-caller.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "built-ins/ThrowTypeError/name.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1870,15 +1852,7 @@
     "status" : "FAIL",
     "comment" : "tests updated to add the latest version of intl402 tests"
   }, {
-    "filePath" : "intl402/Collator/prototype/compare/compare-function-name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: anonymous function should not have a name"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/12.3.2_FDT_7_a_iv.js",
-    "status" : "FAIL",
-    "comment" : "tests updated to add the latest version of intl402 tests"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/format-function-name.js",
     "status" : "FAIL",
     "comment" : "tests updated to add the latest version of intl402 tests"
   }, {
@@ -1895,10 +1869,6 @@
     "comment" : "tests updated to add the latest version of intl402 tests"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/11.3.2_TRF.js",
-    "status" : "FAIL",
-    "comment" : "tests updated to add the latest version of intl402 tests"
-  }, {
-    "filePath" : "intl402/NumberFormat/prototype/format/format-function-name.js",
     "status" : "FAIL",
     "comment" : "tests updated to add the latest version of intl402 tests"
   }, {
@@ -2157,9 +2127,6 @@
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
     "filePath" : "language/expressions/assignment/fn-name-lhs-cover.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/assignment/fn-name-lhs-member.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/assignment/S11.13.1_A5_T5.js",
@@ -7103,9 +7070,6 @@
     "filePath" : "language/expressions/class/meth-static-dflt-params-ref-self.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/class/name.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/class/scope-setter-paramsbody-var-close.js",
     "status" : "FAIL"
   }, {
@@ -7182,9 +7146,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
-    "filePath" : "language/expressions/function/name.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/function/scope-body-lex-distinct.js",
     "status" : "FAIL"
   }, {
@@ -7233,9 +7194,6 @@
     "filePath" : "language/expressions/generators/dstr-obj-ptrn-rest-val-obj.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/expressions/generators/name.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/generators/named-yield-identifier-spread-non-strict.js",
     "status" : "FAIL",

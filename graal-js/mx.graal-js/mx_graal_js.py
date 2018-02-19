@@ -325,7 +325,7 @@ def testnashorn(args, nonZeroIsFatal=True):
 
 def testv8(args, nonZeroIsFatal=True):
     """run the testV8 conformance suite"""
-    _location = join(_suite.dir, 'lib')
+    _location = join(_suite.dir, 'lib', 'testv8')
     _default_vm_args = [
         '-Dtruffle.js.V8LegacyConst=true',
         '-Dtruffle.js.TestV8Mode=true',

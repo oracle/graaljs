@@ -79,6 +79,10 @@
     "status" : "SKIP",
     "comment" : "code coverage support (GR-6539)"
   }, {
+    "filePath" : "mjsunit/compiler/constructor-inlining-no-harmony-restrict-constructor-return.js",
+    "status" : "FAIL",
+    "comment" : "The load function does not resolve the relative path and the hardcoded path is now wrong."
+  }, {
     "filePath" : "mjsunit/compiler/constructor-inlining.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
