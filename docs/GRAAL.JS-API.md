@@ -25,6 +25,7 @@ Graal.js provides the following function objects in the global scope as specifie
 - Date
 - Error
 - Function
+- Intl (flag required)
 - JSON
 - Map
 - Math
@@ -46,6 +47,22 @@ Graal.js provides the following function objects in the global scope as specifie
 Several of these function objects and some of their members are only available when a certain version of the spec is selected for execution.
 For a list of methods provided, inspect the ECMAScript specification.
 Extensions to the specification are specified below.
+
+### Internationalization API (ECMA-402)
+
+Internationalization API implementation (see [https://tc39.github.io/ecma402](https://tc39.github.io/ecma402)) can be activated using the following flag: `--js.intl-402=true`.
+If you run in native mode (default option), you also need to specify path to your ICU data directory using the following flag: `--native.Dcom.ibm.icu.impl.ICUBinary.dataPath=$GRAAL_VM_DIR/jre/languages/js/icu4j/icudt`,
+where `$GRAAL_VM_DIR` refers to your GraalVM installation directory.
+If you run in JVM mode (a jvm flag is used), you do not need to specify where your ICU data are located, although you can do it with `--jvm.Dcom.ibm.icu.impl.ICUBinary.dataPath=$GRAAL_VM_DIR/jre/languages/js/icu4j/icudt`.
+
+Once you activate Internationalization API, you can use the following built-ins:
+
+- Intl.NumberFormat
+- Intl.DateTimeFormat
+- Intl.Collator
+- Intl.PluralRules
+
+Functionality of a few other built-ins is then also updated according to the specification linked above.
 
 ## Compatibility extensions
 
