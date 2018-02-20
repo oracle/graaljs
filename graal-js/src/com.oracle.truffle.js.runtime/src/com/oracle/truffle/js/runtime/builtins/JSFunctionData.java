@@ -24,7 +24,7 @@ public final class JSFunctionData {
     @CompilationFinal private volatile CallTarget constructNewTarget;
 
     private final JSContext context;
-    private String name;
+    @CompilationFinal private String name;
     /** The ExpectedArgumentCount and initial value of the function's {@code length} property. */
     private final int length;
 
