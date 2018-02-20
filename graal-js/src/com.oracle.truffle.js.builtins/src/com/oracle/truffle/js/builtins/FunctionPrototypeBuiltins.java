@@ -142,7 +142,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             JSRealm realm = JSFunction.getRealm(thisFnObj);
             DynamicObject proto = getPrototypeNode.executeJSObject(thisFnObj);
 
-            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), realm, thisFnObj, thisArg, args, proto);
+            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), realm, thisFnObj, thisArg, args, proto, false);
 
             int length = 0;
             boolean mustSetLength = true;
@@ -197,7 +197,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             assert JSFunction.isJSFunction(innerFunction);
 
             JSRealm realm = JSFunction.getRealm((DynamicObject) innerFunction);
-            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), realm, (DynamicObject) innerFunction, thisArg, args, proto);
+            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), realm, (DynamicObject) innerFunction, thisArg, args, proto, false);
 
             int length = 0;
             boolean targetHasLength = JSObject.hasOwnProperty(target, JSFunction.LENGTH);

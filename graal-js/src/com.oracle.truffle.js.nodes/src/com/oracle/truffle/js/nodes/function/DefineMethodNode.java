@@ -75,7 +75,8 @@ public class DefineMethodNode extends JavaScriptBaseNode {
 
         @TruffleBoundary
         protected final DynamicObjectFactory makeFactory(JSRealm realm, DynamicObject prototype) {
-            return JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(realm, prototype, true), functionData.isPrototypeNotWritable()).createFactory();
+            return JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(realm, prototype, true, functionData.getName().isEmpty()),
+                            functionData.isPrototypeNotWritable()).createFactory();
         }
 
         protected final DynamicObject makeFunction(DynamicObjectFactory factory, VirtualFrame frame) {

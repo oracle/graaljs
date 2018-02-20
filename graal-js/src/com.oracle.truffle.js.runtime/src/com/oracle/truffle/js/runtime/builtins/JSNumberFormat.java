@@ -643,7 +643,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
                     if (state.boundFormatFunction == null) {
                         DynamicObject formatFn = createFormatFunction(realm, context);
-                        DynamicObject boundFn = JSFunction.boundFunctionCreate(context, realm, formatFn, numberFormatObj, new Object[]{}, JSObject.getPrototype(formatFn));
+                        DynamicObject boundFn = JSFunction.boundFunctionCreate(context, realm, formatFn, numberFormatObj, new Object[]{}, JSObject.getPrototype(formatFn), true);
                         state.boundFormatFunction = boundFn;
                     }
 

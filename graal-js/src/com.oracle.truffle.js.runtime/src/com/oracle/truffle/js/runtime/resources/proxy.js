@@ -10,14 +10,14 @@
 var REVOCABLE_PROXY = Internal.HiddenKey("RevocableProxy");
 
 function CreateProxyRevokerFunction() {
-    var F = function() {
+    var F = (0, function() {
         var p = F[REVOCABLE_PROXY];
         if (p === null) {
             return undefined;
         }
         F[REVOCABLE_PROXY] = null;
         Internal.RevokeProxy(p);
-    };
+    });
     return F;
 }
 

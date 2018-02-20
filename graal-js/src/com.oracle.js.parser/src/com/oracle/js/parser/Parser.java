@@ -1425,8 +1425,12 @@ loop:
             } else {
                 // constructor takes on source section of class declaration/expression
                 FunctionNode ctor = (FunctionNode)constructor.getValue();
-                constructor = constructor.setValue(new FunctionNode(ctor.getSource(), ctor.getLineNumber(), ctor.getToken(), classFinish, classToken, lastToken, ctor.getIdent(), ctor.getName(),
-                                ctor.getParameters(), ctor.getParameterBlock(), ctor.getKind(), ctor.getFlags(), ctor.getBody(), ctor.getEndParserState(), ctor.getModule()));
+                int flags = ctor.getFlags();
+                if (className == null) {
+                    flags |= FunctionNode.IS_ANONYMOUS;
+                }
+                constructor = constructor.setValue(new FunctionNode(ctor.getSource(), ctor.getLineNumber(), ctor.getToken(), classFinish, classToken, lastToken, ctor.getIdent(), className == null ? null : className.getName(),
+                                ctor.getParameters(), ctor.getParameterBlock(), ctor.getKind(), flags, ctor.getBody(), ctor.getEndParserState(), ctor.getModule()));
             }
 
             ClassNode classBody = new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements);
