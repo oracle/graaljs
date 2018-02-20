@@ -14,20 +14,6 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 @MessageResolution(receiverType = JSLazyString.class)
 public class JSLazyStringForeignAccessFactory {
 
-    @Resolve(message = "READ")
-    abstract static class ReadNode extends Node {
-        public Object access(JSLazyString target, int key) {
-            return target.charAt(key);
-        }
-    }
-
-    @Resolve(message = "GET_SIZE")
-    abstract static class GetSizeNode extends Node {
-        public int access(JSLazyString target) {
-            return target.length();
-        }
-    }
-
     @Resolve(message = "UNBOX")
     abstract static class UnboxNode extends Node {
         public Object access(JSLazyString target) {
@@ -37,14 +23,6 @@ public class JSLazyStringForeignAccessFactory {
 
     @Resolve(message = "IS_BOXED")
     abstract static class IsBoxedNode extends Node {
-        @SuppressWarnings("unused")
-        public Object access(JSLazyString target) {
-            return true;
-        }
-    }
-
-    @Resolve(message = "HAS_SIZE")
-    abstract static class HasSizeNode extends Node {
         @SuppressWarnings("unused")
         public Object access(JSLazyString target) {
             return true;
