@@ -257,7 +257,7 @@ public final class JSFunction extends JSBuiltinObject {
     public static DynamicObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments,
                     boolean isAnonymous) {
         assert functionData != null;
-        DynamicObjectFactory factory = isAnonymous ? realm.getInitialAnonymousBoundFunctionFactory() : realm.getInitialBoundFunctionFactory();
+        DynamicObjectFactory factory = isAnonymous ? context.getRealm().getInitialAnonymousBoundFunctionFactory() : context.getRealm().getInitialBoundFunctionFactory();
         return JSObject.create(context, factory, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, CLASS_PROTOTYPE_PLACEHOLDER, realm,
                         boundTargetFunction, boundThis, boundArguments);
     }
