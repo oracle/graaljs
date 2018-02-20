@@ -55,6 +55,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -523,6 +524,11 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected DynamicObject keys(Symbol symbol) {
             return keysDynamicObject(toOrAsObject(symbol));
+        }
+
+        @Specialization
+        protected DynamicObject keys(JSLazyString string) {
+            return keysDynamicObject(toOrAsObject(string));
         }
 
         @Specialization(guards = "!isTruffleObject(thisObj)")

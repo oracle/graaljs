@@ -30,6 +30,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.interop.JavaMethod;
+import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
@@ -114,6 +115,11 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     @Specialization
     protected final boolean doSymbol(@SuppressWarnings("unused") Symbol value) {
         return (type == Type.Symbol);
+    }
+
+    @Specialization
+    protected final boolean doLazyString(@SuppressWarnings("unused") JSLazyString value) {
+        return (type == Type.String);
     }
 
     @Specialization(guards = {"isJSType(value)"})
