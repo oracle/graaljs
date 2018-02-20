@@ -71,6 +71,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -101,7 +102,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     public boolean isObjectOfLanguage(Object o) {
-        return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof InteropBoundFunction;
+        return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof JSLazyString || o instanceof InteropBoundFunction;
     }
 
     private abstract class ContextRootNode extends RootNode {
@@ -322,6 +323,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             }
         } else if (value instanceof Symbol) {
             return value.toString();
+        } else if (value instanceof JSLazyString) {
+            return value.toString();
         } else if (value instanceof TruffleObject) {
             TruffleObject truffleObject = (TruffleObject) value;
             try {
@@ -538,7 +541,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             } else if (JSUserObject.isJSUserObject(obj)) {
                 description = className;
             }
-        } else if (value instanceof TruffleObject && !(value instanceof Symbol)) {
+        } else if (value instanceof TruffleObject && !(value instanceof Symbol) && !(value instanceof JSLazyString)) {
             assert !JSObject.isJSObject(value);
             TruffleObject truffleObject = (TruffleObject) value;
             if (JSInteropNodeUtil.isBoxed(truffleObject)) {
