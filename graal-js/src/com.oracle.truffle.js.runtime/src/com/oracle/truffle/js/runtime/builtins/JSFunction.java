@@ -645,7 +645,7 @@ public final class JSFunction extends JSBuiltinObject {
 
     private static Shape addLengthAndNameProxyProperties(Shape initialShape, JSContext context, boolean isAnonymous) {
         Shape shape = initialShape.addProperty(context.getEcmaScriptVersion() < 6 ? LENGTH_PROPERTY_NOT_CONFIGURABLE : LENGTH_PROPERTY);
-        return isAnonymous ? shape : shape.addProperty(NAME_PROPERTY);
+        return isAnonymous && !context.isOptionV8CompatibilityMode() ? shape : shape.addProperty(NAME_PROPERTY);
     }
 
     public static Shape makeInitialFunctionShape(JSRealm realm, DynamicObject prototype, boolean isStrict, boolean isAnonymous) {
