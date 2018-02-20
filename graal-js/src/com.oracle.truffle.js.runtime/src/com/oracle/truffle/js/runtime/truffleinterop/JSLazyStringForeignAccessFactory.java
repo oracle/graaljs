@@ -43,43 +43,11 @@ public class JSLazyStringForeignAccessFactory {
         }
     }
 
-    @Resolve(message = "IS_EXECUTABLE")
-    abstract static class IsExecutableNode extends Node {
-        @SuppressWarnings("unused")
-        public Object access(JSLazyString target) {
-            return false;
-        }
-    }
-
-    @Resolve(message = "IS_NULL")
-    abstract static class IsNullNode extends Node {
-        @SuppressWarnings("unused")
-        public Object access(JSLazyString target) {
-            return false;
-        }
-    }
-
-    @Resolve(message = "IS_INSTANTIABLE")
-    abstract static class IsInstantiableNode extends Node {
-        @SuppressWarnings("unused")
-        public Object access(JSLazyString target) {
-            return false;
-        }
-    }
-
     @Resolve(message = "HAS_SIZE")
     abstract static class HasSizeNode extends Node {
         @SuppressWarnings("unused")
         public Object access(JSLazyString target) {
             return true;
-        }
-    }
-
-    @Resolve(message = "HAS_KEYS")
-    abstract static class HasKeysNode extends Node {
-        @SuppressWarnings("unused")
-        public Object access(JSLazyString target) {
-            return false;
         }
     }
 
