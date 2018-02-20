@@ -230,6 +230,11 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
             fprintf(stderr, "Cannot find %s. Update GRAALJS_JAR_PATH environment variable!\n", graaljs_jar_path.c_str());
             exit(1);
         }
+        std::string tregex_jar_path = getstdenv("TREGEX_JAR_PATH");
+        if (!tregex_jar_path.empty() && access(tregex_jar_path.c_str(), F_OK) == -1) {
+            fprintf(stderr, "Cannot find %s. Update TREGEX_JAR_PATH environment variable!\n", tregex_jar_path.c_str());
+            exit(1);
+        }
         std::string truffleom_jar_path = getstdenv("TRUFFLEOM_JAR_PATH");
         if (!truffleom_jar_path.empty() && access(truffleom_jar_path.c_str(), F_OK) == -1) {
             // Cannot find the jar of the enterprise object model.
@@ -285,6 +290,11 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
         std::string classpath_sep = "";
         if (!graaljs_jar_path.empty()) {
             classpath += graaljs_jar_path;
+            classpath_sep = ":";
+        }
+        if (!tregex_jar_path.empty()) {
+            classpath += classpath_sep;
+            classpath += tregex_jar_path;
             classpath_sep = ":";
         }
         if (!graalnode_jar_path.empty()) {

@@ -266,6 +266,7 @@ suite = {
       "subDir" : "src",
       "dependencies" : ["graaljs"],
       "distDependencies" : [
+        "TREGEX",
         "truffle:TRUFFLE_API",
         "sdk:GRAAL_SDK",
       ],
@@ -306,6 +307,15 @@ suite = {
         "GRAALJS",
       ],
       "maven" : False,
+    },
+
+    "TREGEX" : {
+      "subDir" : "src",
+      "dependencies" : ["com.oracle.truffle.regex"],
+      "distDependencies" : [
+        "truffle:TRUFFLE_API",
+        "sdk:GRAAL_SDK"
+      ],
     },
 
     "TRUFFLE_STATS" : {
