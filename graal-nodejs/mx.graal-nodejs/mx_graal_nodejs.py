@@ -41,7 +41,6 @@ _svmNodeLibNameWithSuffix = mx.add_lib_suffix(_svmNodeLibName)
 
 class GraalNodeJsTags:
     sharedBuild = 'sharedbuild'
-    mvnPackage = 'mvnpackage'
     allTests = 'all'
     unitTests = 'unit'
     jniProfilerTests = 'jniprofiler'
@@ -84,10 +83,6 @@ def _graal_nodejs_post_gate_runner(args, tasks):
             mx.run(['rm', '-rf', 'node_modules', 'build'], cwd=unitTestDir)
             npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
             node(['-profile-native-boundary', '-Dtruffle.js.NashornJavaInterop=true', 'test.js'] + commonArgs, cwd=unitTestDir)
-
-    with Task('MavenPackage', tasks, tags=[GraalNodeJsTags.mvnPackage]) as t:
-        if t:
-            mx.run(['mvn', '--batch-mode', '-f', join(_suite.dir, 'trufflenode', 'pom.xml'), 'package'])
 
 mx_gate.prepend_gate_runner(_suite, _graal_nodejs_pre_gate_runner)
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)

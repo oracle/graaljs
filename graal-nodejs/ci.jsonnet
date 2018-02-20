@@ -20,14 +20,14 @@ local common = import '../common.jsonnet';
       ['mx', 'sversions'],
     ],
     run+: [
-      gateCmd + ['--tags', 'style,fullbuild,mvnPackage,sharedBuild'],
+      gateCmd + ['--tags', 'style,fullbuild,sharedbuild'],
     ],
     timelimit: '30:00',
   },
 
   local buildGraalTip = {
     setup+: [
-      ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/graal.git'], '../graal'],
+      ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/graal.git'], '../../graal'],
       ['mx', 'sversions'],
       ['mx', 'build', '--force-javac'],
     ],
@@ -58,7 +58,6 @@ local common = import '../common.jsonnet';
   builds: [
     // gates
     graalNodeJs + common.jdk8 + gateGraalImport                                                                        + common.gate + common.linux + {name: 'nodejs-gate-graal-import-jdk8-linux-amd64'},
-    graalNodeJs + common.jdk8 + gateGraalTip                   + {environment+: {GATE_TAGS: 'build'}}                  + common.gate + common.linux + {name: 'nodejs-gate-alltests-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8 + testNodeGraalTip + buildAddons + {environment+: {SUITE: 'addons', PART: '-r0,1'}}      + common.gate + common.linux + {name: 'nodejs-gate-addons-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8 + testNodeGraalTip + buildAddons + {environment+: {SUITE: 'addons-napi', PART: '-r0,1'}} + common.gate + common.linux + {name: 'nodejs-gate-addons-napi-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'async-hooks', PART: '-r0,1'}} + common.gate + common.linux + {name: 'nodejs-gate-async-hooks-graal-tip-jdk8-linux-amd64'},

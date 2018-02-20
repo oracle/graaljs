@@ -7,7 +7,7 @@ local common = import '../common.jsonnet';
     ],
   },
 
-  local gateCmd = ['mx', '--strict-compliance', 'gate', '--strict-mode'],
+  local gateCmd = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
 
   local gateGraalImport = {
     downloads+: {
@@ -27,21 +27,30 @@ local common = import '../common.jsonnet';
 
   local gateGraalTip = {
     setup+: [
-      ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/graal.git'], '../graal'],
+      ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/graal.git'], '../../graal'],
       ['mx', 'sversions'],
     ],
     run+: [
       ['mx', 'build', '--force-javac'],
+      gateCmd,
     ],
     timelimit: '30:00',
   },
 
   builds: [
-    // gates
-    graalJs + common.jdk8 + gateGraalImport + common.gate + common.linux + {name: 'js-gate-graal-import-jdk8-linux-amd64'},
-    graalJs + common.jdk9 + gateGraalImport + common.gate + common.linux + {name: 'js-gate-graal-import-jdk9-linux-amd64'},
-    graalJs + common.jdk8 + gateGraalTip    + common.gate + common.linux + {name: 'js-gate-graal-tip-jdk8-linux-amd64'},
-    graalJs + common.jdk8 + gateGraalTip    + common.gate + common.sparc + {name: 'js-gate-graal-tip-jdk8-solaris-sparcv9'},
-    graalJs + common.jdk9 + gateGraalTip    + common.gate + common.linux + {name: 'js-gate-graal-tip-jdk9-linux-amd64'},
+    // jdk 8 - linux
+    graalJs + common.jdk8 + common.gate + common.linux + gateGraalImport + {environment+: {GATE_TAGS: 'style,fullbuild'}}    + {name: 'js-gate-style-fullbuild-graal-import-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'noic'}}               + {name: 'js-gate-noic-graal-tip-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'directbytebuffer'}}   + {name: 'js-gate-directbytebuffer-graal-tip-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'cloneuninitialized'}} + {name: 'js-gate-cloneuninitialized-graal-tip-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'lazytranslation'}}    + {name: 'js-gate-lazytranslation-graal-tip-jdk8-linux-amd64'},
+
+    // jdk 8 - sparc
+    graalJs + common.jdk8 + common.gate + common.sparc + gateGraalTip    + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk8-solaris-sparcv9'},
+
+    // jdk 9 - linux
+    graalJs + common.jdk9 + common.gate + common.linux + gateGraalImport + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'js-gate-style-fullbuild-graal-import-jdk9-linux-amd64'},
+    graalJs + common.jdk9 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'default'}}         + {name: 'js-gate-default-graal-tip-jdk9-linux-amd64'},
   ],
 }
