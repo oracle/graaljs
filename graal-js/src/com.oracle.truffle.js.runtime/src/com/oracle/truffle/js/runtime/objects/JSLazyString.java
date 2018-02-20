@@ -6,11 +6,14 @@ package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.truffleinterop.JSLazyStringForeignAccessFactoryForeign;
 
-public final class JSLazyString implements CharSequence {
+public final class JSLazyString implements CharSequence, TruffleObject {
     @TruffleBoundary
     public static CharSequence create(CharSequence left, CharSequence right) {
         assert JSRuntime.isString(left);
@@ -270,5 +273,10 @@ public final class JSLazyString implements CharSequence {
             return str;
         }
 
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return JSLazyStringForeignAccessFactoryForeign.ACCESS;
     }
 }

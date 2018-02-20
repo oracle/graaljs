@@ -37,6 +37,7 @@ import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
+import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -90,7 +91,7 @@ public final class JSGuards {
     }
 
     public static boolean isForeignObject(TruffleObject value) {
-        return !JSObject.isJSObject(value) && !(value instanceof Symbol);
+        return !JSObject.isJSObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString);
     }
 
     public static boolean isUndefined(Object value) {
