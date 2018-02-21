@@ -5,6 +5,7 @@
 package com.oracle.truffle.js.parser;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -46,6 +47,7 @@ import com.oracle.truffle.js.nodes.function.BlockScopeNode.FrameBlockScopeNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Dead;
 
@@ -62,7 +64,7 @@ public abstract class JSScope {
         this.mFrame = frame;
     }
 
-    public static Iterable<Scope> createScopes(Node node, MaterializedFrame frame) {
+    public static Iterable<Scope> createLocalScopes(Node node, MaterializedFrame frame) {
         final JSScope scope = createScope(node, frame);
         return new Iterable<Scope>() {
             @Override
@@ -84,7 +86,7 @@ public abstract class JSScope {
                         if (!hasNext()) {
                             throw new NoSuchElementException();
                         }
-                        Scope vscope = Scope.newBuilder(nextScope.getName(), nextScope.getVariables(frame)).node(nextScope.getNode()).arguments(nextScope.getArguments(frame)).build();
+                        Scope vscope = nextScope.toScope(frame);
                         previousScope = nextScope;
                         nextScope = null;
                         return vscope;
@@ -92,6 +94,16 @@ public abstract class JSScope {
                 };
             }
         };
+    }
+
+    public static Iterable<Scope> createGlobalScopes(JSRealm realm) {
+        Scope globalLexicalScope = Scope.newBuilder("global", createVariablesMapObject(realm.getGlobalScope(), null)).build();
+        Scope globalVarScope = Scope.newBuilder("global", realm.getGlobalObject()).build();
+        return Arrays.asList(globalLexicalScope, globalVarScope);
+    }
+
+    protected final Scope toScope(MaterializedFrame frame) {
+        return Scope.newBuilder(getName(), getVariables(frame)).node(getNode()).arguments(getArguments(frame)).build();
     }
 
     protected abstract String getName();
@@ -104,7 +116,7 @@ public abstract class JSScope {
 
     protected abstract JSScope findParent();
 
-    public static JSScope createScope(Node node, MaterializedFrame frame) {
+    private static JSScope createScope(Node node, MaterializedFrame frame) {
         if (frame != null) {
             if (ScopeFrameNode.isBlockScopeFrame(frame)) {
                 for (Node n = node; n != null; n = n.getParent()) {
@@ -126,7 +138,8 @@ public abstract class JSScope {
         return new JSFunctionScope(node, frame);
     }
 
-    protected Object createVariablesMapObject(FrameDescriptor fDesc, MaterializedFrame frame, Object[] args) {
+    protected static Object createVariablesMapObject(MaterializedFrame frame, Object[] args) {
+        FrameDescriptor fDesc = frame.getFrameDescriptor();
         Map<String, Variable> slotMap = new HashMap<>();
         for (FrameSlot slot : fDesc.getSlots()) {
             if (slot.getIdentifier().equals(THIS_SLOT_ID)) {
@@ -264,7 +277,7 @@ public abstract class JSScope {
         protected Object getVariables(Frame frame) {
             MaterializedFrame f = mFrame != null ? mFrame : frame.materialize();
             assert f.getFrameDescriptor() == blockScopeNode.getFrameDescriptor();
-            return createVariablesMapObject(blockScopeNode.getFrameDescriptor(), f, null);
+            return createVariablesMapObject(f, null);
         }
 
         @Override
@@ -293,7 +306,7 @@ public abstract class JSScope {
         protected JSFunctionScope(Node node, MaterializedFrame frame) {
             super(node, frame);
             this.rootNode = findRootNode(node);
-            assert frame == null || frame.getFrameDescriptor() == rootNode.getFrameDescriptor();
+            assert frame == null || rootNode == null || frame.getFrameDescriptor() == rootNode.getFrameDescriptor();
         }
 
         private static RootNode findRootNode(Node node) {
@@ -306,6 +319,9 @@ public abstract class JSScope {
 
         @Override
         protected String getName() {
+            if (rootNode == null) {
+                return "unknown";
+            }
             return rootNode.getName();
         }
 
@@ -316,12 +332,10 @@ public abstract class JSScope {
 
         @Override
         protected Object getVariables(Frame frame) {
-            if (rootNode == null || mFrame == null) {
+            if (mFrame == null) {
                 return new VariablesMapObject(Collections.emptyMap(), null, null);
             }
-            // The passed frame can be from some inner block frame
-            // Use the scope's frame instead:
-            return createVariablesMapObject(rootNode.getFrameDescriptor(), mFrame, null);
+            return createVariablesMapObject(mFrame, null);
         }
 
         @Override
@@ -371,12 +385,9 @@ public abstract class JSScope {
             if (mFrame == null) {
                 return null;
             }
-            Node parent = findParentScopeNode();
-            if (parent == null) {
-                return null;
-            }
-            MaterializedFrame parentFrame = JSFrameUtil.getParentFrame(mFrame);
-            return JSScope.createScope(parent, parentFrame);
+            assert findParentScopeNode() == null;
+            // TODO find captured scope in parent function, if any
+            return null;
         }
     }
 

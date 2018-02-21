@@ -5,7 +5,6 @@
 package com.oracle.truffle.js.parser;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
@@ -607,12 +606,12 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected Iterable<Scope> findLocalScopes(JSContext context, Node node, Frame frame) {
-        return JSScope.createScopes(node, frame.materialize());
+        return JSScope.createLocalScopes(node, frame.materialize());
     }
 
     @Override
     protected Iterable<Scope> findTopScopes(JSContext context) {
-        return Collections.singleton(Scope.newBuilder("global", context.getRealm().getGlobalObject()).build());
+        return JSScope.createGlobalScopes(context.getRealm());
     }
 
 }
