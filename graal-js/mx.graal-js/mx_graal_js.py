@@ -27,7 +27,7 @@
 import os, zipfile, re, shutil, tarfile
 from os.path import join, exists, isdir, getmtime
 
-import mx
+import mx, mx_graal_js_benchmark # pylint: disable=unused-import
 from mx_gate import Task, add_gate_runner
 from mx_unittest import unittest
 
