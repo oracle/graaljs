@@ -62,9 +62,6 @@
     "filePath" : "basic/es6/lexical-toplevel-redeclare.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "basic/es6/lexical-toplevel.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "basic/es6/map.js",
     "status" : "FAIL"
   }, {
