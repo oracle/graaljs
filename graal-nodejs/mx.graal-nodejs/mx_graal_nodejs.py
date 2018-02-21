@@ -538,6 +538,10 @@ def svmnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     preparesvmenv()
     return mx.run([join(_suite.dir, 'node')] + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
+def svmnpm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
+    preparesvmenv()
+    return mx.run([join(_suite.dir, 'node'), join(_suite.dir, 'deps', 'npm', 'bin', 'npm-cli.js')] + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
+
 mx.update_commands(_suite, {
     'node' : [node, ''],
     'npm' : [npm, ''],
@@ -547,5 +551,6 @@ mx.update_commands(_suite, {
     'makeinnodeenv' : [makeInNodeEnvironment, ''],
     'buildsvmimage' : [buildSvmImage, ''],
     'svmnode' : [svmnode, ''],
+    'svmnpm' : [svmnpm, ''],
     'testsvmnode' : [testsvmnode, ''],
 })
