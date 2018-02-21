@@ -351,6 +351,12 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeErrorNotObjectCoercible(thisObj);
         }
 
+        @Specialization
+        protected boolean hasOwnPropertyLazyString(JSLazyString thisObj, Object propName) {
+            Object key = getToPropertyKeyNode().execute(propName); // ordering 15.2.4.5 Note2
+            return JSObject.hasOwnProperty(toObject(thisObj), key, classProfile);
+        }
+
         @Specialization(guards = "!isTruffleObject(thisObj)")
         protected boolean hasOwnPropertyPrimitive(Object thisObj, Object propName) {
             Object key = getToPropertyKeyNode().execute(propName); // ordering 15.2.4.5 Note2
