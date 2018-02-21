@@ -42,6 +42,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -259,6 +260,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         protected String doSymbol(Symbol thisObj) {
             assert thisObj != null;
+            return JSObject.defaultToString(toObject(thisObj));
+        }
+
+        @Specialization
+        protected String doLazyString(JSLazyString thisObj) {
             return JSObject.defaultToString(toObject(thisObj));
         }
 
