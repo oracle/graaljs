@@ -2675,10 +2675,11 @@ static void DLOpen(const FunctionCallbackInfo<Value>& args) {
         snprintf(errmsg,
              sizeof(errmsg),
              "Native module '%s' is compiled against the original Node.js!\n"
-             "Use --nodedir option of 'npm install' resp. 'node-gyp' for compilation against Graal-Node.js.\n"
-             "If the native module is downloaded by 'node-pre-gyp' then use also --build-from-source option\n"
-             "(to force the compilation).",
-             mp->nm_modname);
+             "Use '--nodedir=<GraalVMHome>/jre/languages/js' option of 'npm install' "
+             "(resp. 'node-gyp') for the compilation against Graal-Node.js.\n"
+             "If the native module is downloaded by 'node-pre-gyp' then use also "
+             "'--build-from-source' option (to force the compilation).",
+             *filename);
     } else {
         snprintf(errmsg,
              sizeof(errmsg),
