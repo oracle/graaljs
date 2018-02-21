@@ -6,6 +6,7 @@ package com.oracle.truffle.js.builtins;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -52,7 +53,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -228,13 +228,14 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected DynamicObject getOwnPropertyDescriptor(Object obj) {
+        protected DynamicObject getOwnPropertyDescriptors(Object obj) {
             TruffleObject thisTObj = toTruffleObject(obj);
             if (JSObject.isJSObject(thisTObj)) {
                 DynamicObject thisObj = (DynamicObject) thisTObj;
                 DynamicObject retObj = JSUserObject.create(getContext());
 
-                for (Object key : JSObject.ownPropertyKeys(thisObj)) {
+                for (Iterator<Object> iterator = Boundaries.iterator(JSObject.ownPropertyKeys(thisObj, classProfile)); Boundaries.iteratorHasNext(iterator);) {
+                    Object key = Boundaries.iteratorNext(iterator);
                     assert JSRuntime.isPropertyKey(key);
                     PropertyDescriptor desc = JSObject.getOwnProperty(thisObj, key, classProfile);
                     if (desc != null) {
@@ -287,7 +288,6 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     protected abstract static class ObjectDefineOperation extends ObjectOperation {
 
         @Child private ToPropertyDescriptorNode toPropertyDescriptorNode;
-        private final ValueProfile descClassProfile = ValueProfile.createClassProfile();
 
         public ObjectDefineOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -301,13 +301,13 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return (PropertyDescriptor) toPropertyDescriptorNode.execute(target);
         }
 
+        @TruffleBoundary
         protected DynamicObject intlDefineProperties(DynamicObject obj, DynamicObject descs) {
             List<Pair<Object, PropertyDescriptor>> descriptors = new ArrayList<>();
-            JSClass descClass = descClassProfile.profile(JSObject.getJSClass(descs));
-            for (Object key : descClass.ownPropertyKeys(descs)) {
-                PropertyDescriptor keyDesc = descClass.getOwnProperty(descs, key);
+            for (Object key : JSObject.ownPropertyKeys(descs)) {
+                PropertyDescriptor keyDesc = JSObject.getOwnProperty(descs, key);
                 if (keyDesc.getEnumerable()) {
-                    PropertyDescriptor desc = toPropertyDescriptor(descClass.get(descs, key));
+                    PropertyDescriptor desc = toPropertyDescriptor(JSObject.get(descs, key));
                     Boundaries.listAdd(descriptors, new Pair<>(key, desc));
                 }
             }
@@ -677,7 +677,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 if (o != Undefined.instance && o != Null.instance) {
                     listProfile.enter();
                     DynamicObject from = JSRuntime.expectJSObject(toObject(o), notAJSObjectBranch);
-                    for (Object nextKey : JSObject.ownPropertyKeys(from, classProfile)) {
+                    for (Iterator<Object> iterator = Boundaries.iterator(JSObject.ownPropertyKeys(from, classProfile)); Boundaries.iteratorHasNext(iterator);) {
+                        Object nextKey = Boundaries.iteratorNext(iterator);
                         PropertyDescriptor desc = JSObject.getOwnProperty(from, nextKey, classProfile);
                         if (desc != null && desc.getEnumerable()) {
                             elementProfile.enter();

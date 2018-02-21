@@ -279,4 +279,9 @@ public final class Boundaries {
     public static <T> T iteratorNext(Iterator<T> it) {
         return it.next();
     }
+
+    @TruffleBoundary
+    public static <T> Iterator<T> iterator(Iterable<T> iterable) {
+        return iterable.iterator();
+    }
 }
