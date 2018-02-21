@@ -42,6 +42,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -167,6 +168,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toObject(thisObj);
         }
 
+        @Specialization
+        protected DynamicObject valueOf(JSLazyString thisObj) {
+            return toObject(thisObj);
+        }
+
         @Specialization(guards = "!isTruffleObject(thisObj)")
         protected DynamicObject valueOf(Object thisObj) {
             return toObject(thisObj);
@@ -262,6 +268,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return JSObject.defaultToString(toObject(thisObj));
         }
 
+        @Specialization
+        protected String doLazyString(JSLazyString thisObj) {
+            return JSObject.defaultToString(toObject(thisObj));
+        }
+
         @Specialization(guards = {"!isTruffleObject(thisObj)"})
         protected String doObject(Object thisObj) {
             assert thisObj != null;
@@ -343,6 +354,12 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected boolean hasOwnPropertyNullOrUndefined(DynamicObject thisObj, Object propName) {
             getToPropertyKeyNode().execute(propName); // ordering 15.2.4.5 Note2
             throw Errors.createTypeErrorNotObjectCoercible(thisObj);
+        }
+
+        @Specialization
+        protected boolean hasOwnPropertyLazyString(JSLazyString thisObj, Object propName) {
+            Object key = getToPropertyKeyNode().execute(propName); // ordering 15.2.4.5 Note2
+            return JSObject.hasOwnProperty(toObject(thisObj), key, classProfile);
         }
 
         @Specialization(guards = "!isTruffleObject(thisObj)")

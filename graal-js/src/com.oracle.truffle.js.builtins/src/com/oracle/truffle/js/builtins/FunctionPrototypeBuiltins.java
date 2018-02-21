@@ -158,8 +158,12 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             Object targetName = getFunctionNameNode.getValue(thisFnObj);
-            if (!JSRuntime.isString(targetName)) {
-                targetName = "";
+            if (!(targetName instanceof String)) {
+                if (JSRuntime.isLazyString(targetName)) {
+                    targetName = targetName.toString();
+                } else {
+                    targetName = "";
+                }
             }
             if (setNameProfile.profile(targetName != JSFunction.getName(thisFnObj))) {
                 JSFunction.setBoundFunctionName(boundFunction, (String) targetName);
