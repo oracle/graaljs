@@ -160,16 +160,16 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     }
 
     @TruffleBoundary
-    public static int compare(DynamicObject collatorObj, Object one, Object two) {
+    public static int compare(DynamicObject collatorObj, String one, String two) {
         Collator collator = getCollatorProperty(collatorObj);
         return collator.compare(one, two);
     }
 
     @TruffleBoundary
-    public static int caseSensitiveCompare(DynamicObject collatorObj, Object one, Object two) {
+    public static int caseSensitiveCompare(DynamicObject collatorObj, String one, String two) {
         Collator collator = getCollatorProperty(collatorObj);
-        String a = stripAccents(one.toString());
-        String b = stripAccents(two.toString());
+        String a = stripAccents(one);
+        String b = stripAccents(two);
         return collator.compare(a, b);
     }
 
@@ -274,8 +274,9 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
                 DynamicObject thisObj = JSRuntime.toObject(context, JSArguments.getThisObject(arguments));
-                Object one = JSArguments.getUserArgument(arguments, 0);
-                Object two = JSArguments.getUserArgument(arguments, 1);
+                int argumentCount = JSArguments.getUserArgumentCount(arguments);
+                String one = (argumentCount > 0) ? JSRuntime.toString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME;
+                String two = (argumentCount > 1) ? JSRuntime.toString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME;
                 return compare(thisObj, one, two);
             }
         }), 2, "compare"));
@@ -288,8 +289,9 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
                 DynamicObject thisObj = JSRuntime.toObject(context, JSArguments.getThisObject(arguments));
-                Object one = JSArguments.getUserArgumentCount(arguments) > 0 ? JSArguments.getUserArgument(arguments, 0) : Undefined.instance;
-                Object two = JSArguments.getUserArgumentCount(arguments) > 1 ? JSArguments.getUserArgument(arguments, 1) : Undefined.instance;
+                int argumentCount = JSArguments.getUserArgumentCount(arguments);
+                String one = (argumentCount > 0) ? JSRuntime.toString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME;
+                String two = (argumentCount > 1) ? JSRuntime.toString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME;
                 return caseSensitiveCompare(thisObj, one, two);
             }
         }), 2, "compare"));
