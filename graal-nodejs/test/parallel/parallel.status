@@ -78,7 +78,6 @@ test-domain-no-error-handler-abort-on-uncaught-9                   : FAIL
 test-domain-throw-error-then-throw-from-uncaught-exception-handler : FAIL
 test-http2-response-splitting                                      : FAIL
 test-repl                                                          : FAIL
-test-repl-require-context                                          : FAIL
 test-repl-tab-complete                                             : FAIL
 test-repl-underscore                                               : FAIL
 test-repl-unexpected-token-recoverable                             : FAIL

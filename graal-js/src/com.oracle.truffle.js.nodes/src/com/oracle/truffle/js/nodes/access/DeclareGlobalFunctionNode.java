@@ -7,7 +7,6 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
@@ -18,22 +17,19 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
-public class DeclareGlobalFunctionNode extends StatementNode {
-    private final String varName;
-    private final JSContext context;
+public class DeclareGlobalFunctionNode extends DeclareGlobalNode {
     private final boolean configurable;
     @Child private JavaScriptNode valueNode;
     private final JSClassProfile classProfile = JSClassProfile.create();
 
-    public DeclareGlobalFunctionNode(JSContext context, String varName, boolean configurable, JavaScriptNode valueNode) {
-        this.varName = varName;
-        this.context = context;
+    public DeclareGlobalFunctionNode(String varName, boolean configurable, JavaScriptNode valueNode) {
+        super(varName);
         this.configurable = configurable;
         this.valueNode = valueNode;
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public void executeVoid(VirtualFrame frame, JSContext context) {
         Object value = valueNode == null ? Undefined.instance : valueNode.execute(frame);
         DynamicObject globalObject = GlobalObjectNode.getGlobalObject(context);
         PropertyDescriptor desc = JSObject.getOwnProperty(globalObject, varName, classProfile);
@@ -53,17 +49,10 @@ public class DeclareGlobalFunctionNode extends StatementNode {
                 JSObject.set(globalObject, varName, value, false, classProfile);
             }
         }
-        return EMPTY;
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new DeclareGlobalFunctionNode(context, varName, configurable, valueNode);
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        assert EMPTY == Undefined.instance;
-        return clazz == Undefined.class;
+    protected DeclareGlobalNode copyUninitialized() {
+        return new DeclareGlobalFunctionNode(varName, configurable, valueNode);
     }
 }

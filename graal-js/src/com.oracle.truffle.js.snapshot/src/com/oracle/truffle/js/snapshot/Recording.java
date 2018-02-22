@@ -55,7 +55,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.codec.BinaryEncoder;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
-import com.oracle.truffle.js.nodes.access.LevelScopeFrameNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
@@ -600,7 +600,7 @@ public class Recording {
             this.frameDescriptor = frameDescriptor;
             this.identifier = identifier;
             this.flags = flags;
-            this.findOrAdd = frameSlot == LevelScopeFrameNode.PARENT_SCOPE_SLOT;
+            this.findOrAdd = frameSlot == ScopeFrameNode.PARENT_SCOPE_SLOT;
         }
 
         @Override

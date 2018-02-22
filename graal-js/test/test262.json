@@ -140,12 +140,6 @@
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
   }, {
-    "filePath" : "built-ins/Function/prototype/toString/bound-function.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/Function/prototype/toString/intrinsics.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "built-ins/Function/prototype/toString/line-terminator-normalisation-CR-LF.js",
     "status" : "FAIL"
   }, {
@@ -1894,9 +1888,6 @@
     "filePath" : "language/eval-code/direct/super-prop-method.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/eval-code/direct/var-env-global-lex-non-strict.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/eval-code/direct/var-env-lower-lex-catch-non-strict.js",
     "status" : "FAIL"
   }, {
@@ -1907,9 +1898,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/eval-code/indirect/non-definable-function-with-function.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/eval-code/indirect/var-env-global-lex-non-strict.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/addition/coerce-bigint-to-string.js",
@@ -8680,9 +8668,6 @@
     "filePath" : "language/future-reserved-words/yield-strict-escaped.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/global-code/decl-lex-restricted-global.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "language/global-code/new.target-arrow.js",
     "status" : "FAIL"

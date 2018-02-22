@@ -139,7 +139,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     protected void verifyModuleLocalExports(Block bodyBlock) {
         Module module = (Module) moduleRecord.getModule();
         for (ExportEntry exportEntry : module.getLocalExportEntries()) {
-            if (!bodyBlock.getSymbolMap().containsKey(exportEntry.getLocalName())) {
+            if (!bodyBlock.hasSymbol(exportEntry.getLocalName())) {
                 throw Errors.createSyntaxError(String.format("Export specifies undeclared identifier: '%s'", exportEntry.getLocalName()));
             }
         }

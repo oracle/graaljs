@@ -19,7 +19,7 @@ public class BlockEnvironment extends Environment {
         super(parent, factory, context);
         this.functionEnvironment = parent.function();
         this.blockFrameDescriptor = factory.createBlockFrameDescriptor();
-        this.parentSlot = LevelScopeFrameNode.PARENT_SCOPE_SLOT;
+        this.parentSlot = ScopeFrameNode.PARENT_SCOPE_SLOT;
         this.scopeLevel = parent.getScopeLevel() + 1;
     }
 

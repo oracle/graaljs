@@ -27,10 +27,10 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements Writ
         if (frameLevel == 0 && scopeLevel == 0 && !hasTemporalDeadZone) {
             return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, rhs);
         }
-        return create(frameSlot, LevelScopeFrameNode.create(frameLevel, scopeLevel), rhs, hasTemporalDeadZone);
+        return create(frameSlot, ScopeFrameNode.create(frameLevel, scopeLevel), rhs, hasTemporalDeadZone);
     }
 
-    public static JSWriteFrameSlotNode create(FrameSlot frameSlot, LevelScopeFrameNode levelFrameNode, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
+    public static JSWriteFrameSlotNode create(FrameSlot frameSlot, ScopeFrameNode levelFrameNode, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
         return JSWriteScopeFrameSlotNodeGen.create(frameSlot, levelFrameNode, hasTemporalDeadZone ? TemporalDeadZoneCheckNode.create(frameSlot, levelFrameNode, rhs) : rhs);
     }
 
@@ -40,7 +40,7 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements Writ
     }
 }
 
-@NodeChild(value = "levelFrameNode", type = LevelScopeFrameNode.class)
+@NodeChild(value = "levelFrameNode", type = ScopeFrameNode.class)
 @NodeChild(value = "rhs", type = JavaScriptNode.class)
 abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
 
@@ -97,7 +97,7 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
     }
 
     @Override
-    public abstract LevelScopeFrameNode getLevelFrameNode();
+    public abstract ScopeFrameNode getLevelFrameNode();
 
     @Override
     protected JavaScriptNode copyUninitialized() {
@@ -166,7 +166,7 @@ abstract class JSWriteCurrentFrameSlotNode extends JSWriteFrameSlotNode {
     }
 
     @Override
-    public LevelScopeFrameNode getLevelFrameNode() {
-        return LevelScopeFrameNode.create(0, 0);
+    public ScopeFrameNode getLevelFrameNode() {
+        return ScopeFrameNode.create(0, 0);
     }
 }

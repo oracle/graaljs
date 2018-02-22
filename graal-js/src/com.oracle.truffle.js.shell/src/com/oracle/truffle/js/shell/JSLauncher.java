@@ -310,6 +310,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
     private static int runREPL(Context context) {
         final BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
         PrintStream output = System.out;
+        int lineNumber = 0;
 
         for (;;) {
             try {
@@ -322,7 +323,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
                     continue;
                 }
 
-                context.eval(Source.newBuilder("js", line, "ShellSource").interactive(true).build());
+                context.eval(Source.newBuilder("js", line, "<shell>:" + (++lineNumber)).interactive(true).build());
             } catch (PolyglotException t) {
                 if (t.isExit()) {
                     return t.getExitStatus();

@@ -311,6 +311,9 @@ public abstract class Environment {
     }
 
     private JavaScriptNode createReadLocalVarNodeFromSlot(Environment current, int frameLevel, FrameSlot slot, int scopeLevel, boolean checkTDZ) {
+        if (current instanceof GlobalEnvironment) {
+            return factory.createReadGlobal(slot, checkTDZ, context);
+        }
         FunctionEnvironment currentFunction = current.function();
         if (currentFunction.getArgumentsSlot() != null && !currentFunction.isStrictMode() && currentFunction.hasSimpleParameterList() && currentFunction.isParam(slot)) {
             return createReadParameterFromMappedArguments(current, frameLevel, scopeLevel, slot);
@@ -319,6 +322,9 @@ public abstract class Environment {
     }
 
     private JavaScriptNode createWriteLocalVarNodeFromSlot(Environment current, int frameLevel, FrameSlot slot, int scopeLevel, boolean checkTDZ, JavaScriptNode rhs) {
+        if (current instanceof GlobalEnvironment) {
+            return factory.createWriteGlobal(slot, rhs, checkTDZ, context);
+        }
         FunctionEnvironment currentFunction = current.function();
         if (currentFunction.getArgumentsSlot() != null && !currentFunction.isStrictMode() && currentFunction.hasSimpleParameterList() && currentFunction.isParam(slot)) {
             return createWriteParameterFromMappedArguments(current, frameLevel, scopeLevel, slot, rhs);
@@ -404,9 +410,16 @@ public abstract class Environment {
         return 0;
     }
 
-    public void addFrameSlotsFromSymbolMap(Map<String, com.oracle.js.parser.ir.Symbol> symbolMap) {
-        for (com.oracle.js.parser.ir.Symbol symbol : symbolMap.values()) {
-            if ((symbol.isBlockScoped() || (symbol.isVar() && symbol.isVarDeclaredHere())) && !symbol.isImportBinding()) {
+    public void addFrameSlotsFromSymbols(Iterable<com.oracle.js.parser.ir.Symbol> symbols) {
+        addFrameSlotsFromSymbols(symbols, false);
+    }
+
+    public void addFrameSlotsFromSymbols(Iterable<com.oracle.js.parser.ir.Symbol> symbols, boolean onlyBlockScoped) {
+        for (com.oracle.js.parser.ir.Symbol symbol : symbols) {
+            if (symbol.isImportBinding()) {
+                continue; // no frame slot required
+            }
+            if (symbol.isBlockScoped() || (!onlyBlockScoped && symbol.isVar() && symbol.isVarDeclaredHere())) {
                 addFrameSlotFromSymbol(symbol);
             }
         }

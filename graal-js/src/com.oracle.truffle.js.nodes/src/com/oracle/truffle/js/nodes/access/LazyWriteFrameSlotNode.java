@@ -59,11 +59,11 @@ public abstract class LazyWriteFrameSlotNode extends JavaScriptNode implements W
                 for (int scopeLevel = 0;; scopeLevel++) {
                     FrameSlot slot = outerScope.getFrameDescriptor().findFrameSlot(identifier);
                     if (slot != null) {
-                        JSWriteFrameSlotNode resolved = JSWriteFrameSlotNode.create(slot, LevelScopeFrameNode.create(frameLevel, scopeLevel, parentSlot), rhs, JSFrameUtil.hasTemporalDeadZone(slot));
+                        JSWriteFrameSlotNode resolved = JSWriteFrameSlotNode.create(slot, ScopeFrameNode.create(frameLevel, scopeLevel, parentSlot), rhs, JSFrameUtil.hasTemporalDeadZone(slot));
                         return this.replace(resolved).executeWrite(frame, value);
                     }
 
-                    parentSlot = outerScope.getFrameDescriptor().findFrameSlot(LevelScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
+                    parentSlot = outerScope.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
                     if (parentSlot == null) {
                         break;
                     }

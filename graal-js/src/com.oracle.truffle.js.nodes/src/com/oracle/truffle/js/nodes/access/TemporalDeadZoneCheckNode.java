@@ -15,10 +15,10 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 
 public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
     @Child private JavaScriptNode child;
-    @Child private LevelScopeFrameNode levelFrameNode;
+    @Child private ScopeFrameNode levelFrameNode;
     private final BranchProfile deadBranch = BranchProfile.create();
 
-    private TemporalDeadZoneCheckNode(FrameSlot frameSlot, LevelScopeFrameNode levelFrameNode, JavaScriptNode child) {
+    private TemporalDeadZoneCheckNode(FrameSlot frameSlot, ScopeFrameNode levelFrameNode, JavaScriptNode child) {
         super(frameSlot);
         this.levelFrameNode = levelFrameNode;
         this.child = child;
@@ -57,7 +57,7 @@ public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
     }
 
     @Override
-    public LevelScopeFrameNode getLevelFrameNode() {
+    public ScopeFrameNode getLevelFrameNode() {
         return levelFrameNode;
     }
 
@@ -67,10 +67,10 @@ public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
     }
 
     public static TemporalDeadZoneCheckNode create(FrameSlot frameSlot, int frameLevel, int scopeLevel, JavaScriptNode rhs) {
-        return create(frameSlot, LevelScopeFrameNode.create(frameLevel, scopeLevel), rhs);
+        return create(frameSlot, ScopeFrameNode.create(frameLevel, scopeLevel), rhs);
     }
 
-    public static TemporalDeadZoneCheckNode create(FrameSlot frameSlot, LevelScopeFrameNode levelFrameNode, JavaScriptNode rhs) {
+    public static TemporalDeadZoneCheckNode create(FrameSlot frameSlot, ScopeFrameNode levelFrameNode, JavaScriptNode rhs) {
         return new TemporalDeadZoneCheckNode(frameSlot, levelFrameNode, rhs);
     }
 
