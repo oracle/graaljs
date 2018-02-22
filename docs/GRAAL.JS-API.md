@@ -147,9 +147,37 @@ In recent ECMAScript versions, getters and setters are natively supported by the
 
 ## Graal.js extensions
 
+### Graal
+
+The `Graal` object is provided as property of the global object.
+It provides Graal-specific information.
+The existence of the property can be used to identify whether the Graal.js engine is the current language engine.
+
+    if (Graal) {
+        print(Graal.versionJS);
+        print(Graal.versionGraalVM);
+        print(Graal.isGraalRuntime);
+    }
+
+The Graal object is available in Graal.js by default, unless deactivated by an option (`truffle.js.GraalBuiltin=false`).
+
+#### `Graal.versionJS`
+
+Provides the version number of Graal.js.
+
+#### `Graal.versionGraalVM`
+
+Provides the version of the GraalVM, if the current engine is executed on a GraalVM.
+
+#### `Graal.isGraalRuntime`
+
+Provides whether Graal.js is executed on a Graal-enabled runtime.
+If `true`, hot code is compiled by the Graal compiler, resulting in high peak performance.
+If `false`, Graal.js will not be compiled by the Graal compiler, typically resulting in lower performance.
+
 ### Java
 
-The Java object is only available when the engine is started in JVM mode or in Nashorn compatibility mode. 
+The `Java` object is only available when the engine is started in JVM mode. 
 
 #### `Java.type(className)`
 
