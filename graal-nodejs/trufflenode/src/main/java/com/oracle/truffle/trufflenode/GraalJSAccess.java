@@ -1436,7 +1436,9 @@ public final class GraalJSAccess {
                 GraalJSParserOptions options = ((GraalJSParserOptions) jsContext.getParserOptions());
                 NodeFactory factory = NodeFactory.getInstance(jsContext);
                 scriptNode = JavaScriptTranslator.translateFunction(factory, jsContext, null, source, options.isStrict(), (FunctionNode) parseResult);
-                contextData.getScriptNodeCache().put(source, scriptNode);
+                if (!"repl".equals(source.getName())) {
+                    contextData.getScriptNodeCache().put(source, scriptNode);
+                }
             }
         } else {
             scriptNode = parseScriptNodeFromSnapshot(jsContext, source, (ByteBuffer) parseResult);
