@@ -50,9 +50,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
-import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -182,7 +179,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         }
         FrameVisitorImpl visitor = new FrameVisitorImpl(getLocation(), stackTraceLimit, skipFramesUpTo);
         for (TruffleStackTraceElement element : stackTrace) {
-            if (visitor.visitFrame(element) != null) {
+            if (!visitor.visitFrame(element)) {
                 break;
             }
         }
@@ -198,7 +195,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         return UserScriptException.createCapture("", originatingNode, JSTruffleOptions.StackTraceLimit, Undefined.instance).getJSStackTrace();
     }
 
-    private static final class FrameVisitorImpl implements FrameInstanceVisitor<List<JSStackTraceElement>> {
+    private static final class FrameVisitorImpl {
         private static final int STACK_FRAME_SKIP = 0;
         private static final int STACK_FRAME_JS = 1;
         private static final int STACK_FRAME_FOREIGN = 2;
@@ -245,15 +242,14 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             }
         }
 
-        @Override
-        public List<JSStackTraceElement> visitFrame(FrameInstance frameInstance) {
-            Node callNode = frameInstance.getCallNode();
+        public boolean visitFrame(TruffleStackTraceElement element) {
+            Node callNode = element.getLocation();
             if (first) {
                 first = false;
                 callNode = originatingNode;
             }
             if (callNode == null) {
-                CallTarget callTarget = frameInstance.getCallTarget();
+                CallTarget callTarget = element.getTarget();
                 if (callTarget instanceof RootCallTarget) {
                     callNode = ((RootCallTarget) callTarget).getRootNode();
                 }
@@ -261,7 +257,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             switch (stackFrameType(callNode)) {
                 case STACK_FRAME_JS:
                     if (JSRuntime.isJSFunctionRootNode(callNode.getRootNode())) {
-                        Frame frame = frameInstance.getFrame(FrameAccess.READ_ONLY);
+                        Frame frame = element.getFrame();
                         Object thisObj = JSArguments.getThisObject(frame.getArguments());
                         Object functionObj = JSArguments.getFunctionObject(frame.getArguments());
                         if (JSFunction.isJSFunction(functionObj)) {
@@ -273,11 +269,11 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                             }
                             if (skippingFrames && functionObj == skipFramesUpTo) {
                                 skippingFrames = false;
-                                return null; // skip this frame as well
+                                return true; // skip this frame as well
                             }
                             JSRealm realm = JSFunction.getRealm((DynamicObject) functionObj);
                             if (functionObj == realm.getApplyFunctionObject() || functionObj == realm.getCallFunctionObject()) {
-                                return null; // skip Function.apply and Function.call
+                                return true; // skip Function.apply and Function.call
                             }
                         }
                         if (!skippingFrames) {
@@ -294,35 +290,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                     }
                     break;
             }
-            if (stackTrace.size() < stackTraceLimit) {
-                return null;
-            } else {
-                return stackTrace;
-            }
-        }
-
-        public List<JSStackTraceElement> visitFrame(TruffleStackTraceElement element) {
-            return visitFrame(new FrameInstance() {
-                @Override
-                public CallTarget getCallTarget() {
-                    return element.getTarget();
-                }
-
-                @Override
-                public Node getCallNode() {
-                    return element.getLocation();
-                }
-
-                @Override
-                public Frame getFrame(FrameAccess access) {
-                    return element.getFrame();
-                }
-
-                @Override
-                public boolean isVirtualFrame() {
-                    return false;
-                }
-            });
+            return stackTrace.size() < stackTraceLimit;
         }
 
         public List<JSStackTraceElement> getStackTrace() {
