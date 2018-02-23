@@ -1385,7 +1385,14 @@ public final class GraalJSAccess {
     }
 
     private static FunctionNode parseSource(Source source, JSContext context) {
-        return GraalJSParserHelper.parseScript(source, (GraalJSParserOptions) context.getParserOptions());
+        ContextData contextData = (ContextData) context.getEmbedderData();
+        String content = source.getCharacters().toString();
+        FunctionNode parseResult = contextData.getFunctionNodeCache().get(content);
+        if (parseResult == null) {
+            parseResult = GraalJSParserHelper.parseScript(source, (GraalJSParserOptions) context.getParserOptions());
+            contextData.getFunctionNodeCache().put(content, parseResult);
+        }
+        return parseResult;
     }
 
     public Object unboundScriptCompile(Object sourceCode, Object fileName) {
@@ -1421,11 +1428,16 @@ public final class GraalJSAccess {
         UnboundScript unboundScript = (UnboundScript) script;
         Source source = unboundScript.getSource();
         Object parseResult = unboundScript.getParseResult();
-        GraalJSParserOptions options = ((GraalJSParserOptions) jsContext.getParserOptions());
-        NodeFactory factory = NodeFactory.getInstance(jsContext);
         ScriptNode scriptNode;
         if (parseResult instanceof FunctionNode) {
-            scriptNode = JavaScriptTranslator.translateFunction(factory, jsContext, null, source, options.isStrict(), (FunctionNode) parseResult);
+            ContextData contextData = (ContextData) jsContext.getEmbedderData();
+            scriptNode = contextData.getScriptNodeCache().get(source);
+            if (scriptNode == null) {
+                GraalJSParserOptions options = ((GraalJSParserOptions) jsContext.getParserOptions());
+                NodeFactory factory = NodeFactory.getInstance(jsContext);
+                scriptNode = JavaScriptTranslator.translateFunction(factory, jsContext, null, source, options.isStrict(), (FunctionNode) parseResult);
+                contextData.getScriptNodeCache().put(source, scriptNode);
+            }
         } else {
             scriptNode = parseScriptNodeFromSnapshot(jsContext, source, (ByteBuffer) parseResult);
         }
