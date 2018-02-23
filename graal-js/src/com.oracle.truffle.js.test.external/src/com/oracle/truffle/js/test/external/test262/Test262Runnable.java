@@ -105,13 +105,13 @@ public class Test262Runnable extends TestRunnable {
         final String ecmaVersionSuffix = " (ES" + ecmaVersion + ")";
         suite.logVerbose(getName() + ecmaVersionSuffix);
         TestFile.Result testResult;
-        OutputStream outputStream = new ByteArrayOutputStream();
-        // Writer writer = new OutputStreamWriter(outputStream);
 
+        OutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        OutputStream outputStream = byteArrayOutputStream;
         if (getConfig().isPrintFullOutput()) {
-            // writer = makeDualWriter(writer, new OutputStreamWriter(System.out));
-            outputStream = makeDualStream(outputStream, System.out);
+            outputStream = makeDualStream(byteArrayOutputStream, System.out);
         }
+
         Source[] harnessSources = getHarnessSources(ecmaVersion, runStrict);
         TestCallable tc = new TestCallable(suite, harnessSources, testSource, file, ecmaVersion, commonOptions);
         tc.setOutput(outputStream);
@@ -154,7 +154,7 @@ public class Test262Runnable extends TestRunnable {
         }
 
         if (asyncTest) {
-            String stdout = outputStream.toString();
+            String stdout = byteArrayOutputStream.toString();
             if (!stdout.contains(ASYNC_TEST_COMPLETE)) {
                 testResult = TestFile.Result.failed("async test failed" + ecmaVersionSuffix);
                 suite.logFail(testFile, "FAILED" + ecmaVersionSuffix, String.format("async test; expected output: '%s' actual: '%s'", ASYNC_TEST_COMPLETE, stdout));
