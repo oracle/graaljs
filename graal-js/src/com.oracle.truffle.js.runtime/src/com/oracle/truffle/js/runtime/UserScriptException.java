@@ -54,24 +54,24 @@ public final class UserScriptException extends GraalJSException {
     private static final long serialVersionUID = -6624166672101791072L;
     private final Object exceptionObject;
 
-    private UserScriptException(Object exceptionObject, Node originatingNode, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean capture) {
-        super(getMessage(exceptionObject), originatingNode, stackTraceLimit, skipFramesUpTo, capture);
+    private UserScriptException(Object exceptionObject, Node originatingNode, int stackTraceLimit) {
+        super(getMessage(exceptionObject), originatingNode, stackTraceLimit);
         this.exceptionObject = exceptionObject;
     }
 
-    private UserScriptException(Throwable exception, Node originatingNode, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean capture) {
-        super(exception.toString(), exception, originatingNode, stackTraceLimit, skipFramesUpTo, capture);
+    private UserScriptException(Throwable exception, Node originatingNode, int stackTraceLimit) {
+        super(exception.toString(), exception, originatingNode, stackTraceLimit);
         this.exceptionObject = exception;
     }
 
     @TruffleBoundary
     public static UserScriptException createCapture(Object exceptionObject, Node originatingNode, int stackTraceLimit, DynamicObject skipFramesUpTo) {
-        return new UserScriptException(exceptionObject, originatingNode, stackTraceLimit, skipFramesUpTo, true);
+        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit), skipFramesUpTo, true);
     }
 
     @TruffleBoundary
     public static UserScriptException create(Object exceptionObject, Node originatingNode) {
-        return new UserScriptException(exceptionObject, originatingNode, JSTruffleOptions.StackTraceLimit, Undefined.instance, false);
+        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, JSTruffleOptions.StackTraceLimit), Undefined.instance, false);
     }
 
     @TruffleBoundary
@@ -86,7 +86,7 @@ public final class UserScriptException extends GraalJSException {
 
     @TruffleBoundary
     public static UserScriptException createJavaException(Throwable exception, Node originatingNode) {
-        return new UserScriptException(exception, originatingNode, JSTruffleOptions.StackTraceLimit, Undefined.instance, false);
+        return fillInStackTrace(new UserScriptException(exception, originatingNode, JSTruffleOptions.StackTraceLimit), Undefined.instance, false);
     }
 
     @Override
