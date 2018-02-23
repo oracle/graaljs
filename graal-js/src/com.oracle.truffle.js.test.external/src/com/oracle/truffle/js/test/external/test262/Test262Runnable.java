@@ -73,8 +73,9 @@ public class Test262Runnable extends TestRunnable {
         Set<String> flags = getFlags(scriptCodeList);
         boolean runStrict = flags.contains(ONLY_STRICT_FLAG);
         boolean asyncTest = isAsyncTest(scriptCodeList);
-        assert !asyncTest || !negative : "async test must not be negative: " + testFile.getFilePath();
         boolean module = flags.contains(MODULE_FLAG);
+
+        assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();
 
         String prefix = runStrict ? "\"use strict\";" : "";
         org.graalvm.polyglot.Source testSource = createSource(file, prefix + TestSuite.toPrintableCode(scriptCodeList), module);
@@ -153,7 +154,7 @@ public class Test262Runnable extends TestRunnable {
             }
         }
 
-        if (asyncTest) {
+        if (asyncTest && !negative) {
             String stdout = byteArrayOutputStream.toString();
             if (!stdout.contains(ASYNC_TEST_COMPLETE)) {
                 testResult = TestFile.Result.failed("async test failed" + ecmaVersionSuffix);
