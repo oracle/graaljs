@@ -119,7 +119,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
 
     private void compileEagerSearchNode() {
         if (eagerSearchNode == null) {
-            TRegexDFAExecutorNode executorNode = Objects.requireNonNull(getLanguage(RegexLanguage.class)).getTRegexEngine().compileEagerDFAExecutor(getSource());
+            TRegexDFAExecutorNode executorNode = Objects.requireNonNull(getLanguage(RegexLanguage.class)).getTRegexCompiler().compileEagerDFAExecutor(getSource());
             if (executorNode == null) {
                 eagerSearchNode = EAGER_SEARCH_BAILED_OUT;
             } else {

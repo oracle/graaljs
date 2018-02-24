@@ -27,7 +27,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.regex.CompiledRegex;
-import com.oracle.truffle.regex.RegexEngine;
+import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
@@ -52,7 +52,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.NFAExport;
 
-public final class TRegexEngine extends RegexEngine {
+public final class TRegexCompiler extends RegexCompiler {
 
     private final DebugUtil.DebugLogger logBailout = new DebugUtil.DebugLogger("TRegex Bailout: ", DebugUtil.LOG_BAILOUT_MESSAGES);
     private final DebugUtil.DebugLogger logPhases = new DebugUtil.DebugLogger("TRegex Phase: ", DebugUtil.LOG_PHASES);
@@ -61,7 +61,7 @@ public final class TRegexEngine extends RegexEngine {
 
     private final RegexLanguage language;
 
-    public TRegexEngine(RegexLanguage language) {
+    public TRegexCompiler(RegexLanguage language) {
         this.language = language;
     }
 

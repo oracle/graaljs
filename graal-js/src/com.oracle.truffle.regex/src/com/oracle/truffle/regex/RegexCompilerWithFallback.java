@@ -6,16 +6,16 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
-public class RegexEngineWithFallback extends RegexEngine {
+public class RegexCompilerWithFallback extends RegexCompiler {
 
-    private final RegexEngine mainEngine;
-    private final RegexEngine fallbackEngine;
+    private final RegexCompiler mainCompiler;
+    private final RegexCompiler fallbackCompiler;
 
     private final DebugUtil.Timer timer = DebugUtil.LOG_TOTAL_COMPILATION_TIME ? new DebugUtil.Timer() : null;
 
-    public RegexEngineWithFallback(RegexEngine mainEngine, RegexEngine fallbackEngine) {
-        this.mainEngine = mainEngine;
-        this.fallbackEngine = fallbackEngine;
+    public RegexCompilerWithFallback(RegexCompiler mainCompiler, RegexCompiler fallbackCompiler) {
+        this.mainCompiler = mainCompiler;
+        this.fallbackCompiler = fallbackCompiler;
     }
 
     @Override
@@ -27,7 +27,7 @@ public class RegexEngineWithFallback extends RegexEngine {
             if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
                 timer.start();
             }
-            regex = mainEngine.compile(regexSource);
+            regex = mainCompiler.compile(regexSource);
             if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
                 elapsedTimeMain = timer.getElapsed();
             }
@@ -36,7 +36,7 @@ public class RegexEngineWithFallback extends RegexEngine {
                 if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
                     timer.start();
                 }
-                regex = fallbackEngine.compile(regexSource);
+                regex = fallbackCompiler.compile(regexSource);
                 if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
                     elapsedTimeFallback = timer.getElapsed();
                 }

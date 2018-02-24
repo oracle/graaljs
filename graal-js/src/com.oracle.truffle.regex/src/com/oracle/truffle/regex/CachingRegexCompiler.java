@@ -9,12 +9,12 @@ import com.oracle.truffle.regex.util.LRUCache;
 import java.util.Collections;
 import java.util.Map;
 
-public class CachingRegexEngine extends RegexEngine {
+public class CachingRegexCompiler extends RegexCompiler {
 
-    private final RegexEngine engine;
+    private final RegexCompiler compiler;
 
-    public CachingRegexEngine(RegexEngine engine) {
-        this.engine = engine;
+    public CachingRegexCompiler(RegexCompiler compiler) {
+        this.compiler = compiler;
     }
 
     /**
@@ -79,7 +79,7 @@ public class CachingRegexEngine extends RegexEngine {
 
     private CompilationResult doCompile(RegexSource regexSource) {
         try {
-            CompiledRegex regex = engine.compile(regexSource);
+            CompiledRegex regex = compiler.compile(regexSource);
             return new CompilationResult(regex);
         } catch (RegexSyntaxException e) {
             return new CompilationResult(e);

@@ -10,9 +10,9 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.regex.joni.JoniRegexEngine;
+import com.oracle.truffle.regex.joni.JoniRegexCompiler;
 import com.oracle.truffle.regex.result.RegexResult;
-import com.oracle.truffle.regex.tregex.TRegexEngine;
+import com.oracle.truffle.regex.tregex.TRegexCompiler;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 
 import java.util.Collections;
@@ -81,15 +81,15 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     public static final String ID = "regex";
     public static final String MIME_TYPE = "application/js-regex";
 
-    private final TRegexEngine tRegexEngine = new TRegexEngine(this);
+    private final TRegexCompiler tRegexCompiler = new TRegexCompiler(this);
     static final String NO_MATCH_RESULT_IDENTIFIER = "T_REGEX_NO_MATCH_RESULT";
     public static final RegexResult EXPORT_NO_MATCH_RESULT = RegexResult.NO_MATCH;
     static final String THE_ENGINE_IDENTIFIER = "TREGEX_ENGINE";
-    public final RegexEngine THE_ENGINE = new CachingRegexEngine(new RegexEngineWithFallback(tRegexEngine, new JoniRegexEngine(this)));
+    public final RegexEngine THE_ENGINE = new RegexEngine(new CachingRegexCompiler(new RegexCompilerWithFallback(tRegexCompiler, new JoniRegexCompiler(this))));
     private final Iterable<Scope> TREGEX_GLOBALS_SCOPE = Collections.singleton(Scope.newBuilder("global", new TRegexScopeObject(this)).build());
 
-    public TRegexEngine getTRegexEngine() {
-        return tRegexEngine;
+    public TRegexCompiler getTRegexCompiler() {
+        return tRegexCompiler;
     }
 
     public static void tRegexValidate(String pattern, String flags) throws RegexSyntaxException {

@@ -6,12 +6,13 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.tregex.TRegexEngine;
+import com.oracle.truffle.regex.tregex.TRegexCompiler;
 
 public class RegexEngineBuilder implements RegexLanguageObject {
 
@@ -22,7 +23,7 @@ public class RegexEngineBuilder implements RegexLanguageObject {
     }
     
     public static boolean isInstance(TruffleObject object) {
-        return object instanceof RegexEngine;
+        return object instanceof RegexCompiler;
     }
 
     @Override
@@ -35,6 +36,8 @@ public class RegexEngineBuilder implements RegexLanguageObject {
 
         @Resolve(message = "EXECUTE")
         abstract static class RegexEngineBuilderExecuteNode extends Node {
+
+            private Node isExecutableNode = Message.IS_EXECUTABLE.createNode();
 
             public Object access(RegexEngineBuilder receiver, Object[] args) {
                 if (args.length > 2) {
@@ -49,15 +52,15 @@ public class RegexEngineBuilder implements RegexLanguageObject {
                 }
                 TruffleObject fallbackEngine = null;
                 if (args.length >= 2) {
-//                    if (!isExecutable(fallbackEngine)) {
-//                        throw UnsupportedTypeException.raise(args);
-//                    }
+                    if (!(args[1] instanceof TruffleObject && ForeignAccess.sendIsExecutable(isExecutableNode, (TruffleObject)args[1]))) {
+                        throw UnsupportedTypeException.raise(args);
+                    }
                     fallbackEngine = (TruffleObject)args[1];
                 }
                 if (fallbackEngine != null) {
-                    return new CachingRegexEngine(new RegexEngineWithFallback(new TRegexEngine(receiver.language), /*fallbackEngine*/ null));
+                    return new RegexEngine(new CachingRegexCompiler(new RegexCompilerWithFallback(new TRegexCompiler(receiver.language), null /*fallbackEngine*/)));
                 } else {
-                    return new CachingRegexEngine(new TRegexEngine(receiver.language));
+                    return new RegexEngine(new CachingRegexCompiler(new TRegexCompiler(receiver.language)));
                 }
             }
         }

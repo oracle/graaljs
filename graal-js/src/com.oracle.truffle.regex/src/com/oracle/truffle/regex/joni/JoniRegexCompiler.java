@@ -8,7 +8,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.regex.CompiledRegex;
-import com.oracle.truffle.regex.RegexEngine;
+import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexRootNode;
@@ -22,7 +22,7 @@ import com.oracle.truffle.regex.nashorn.regexp.joni.exception.JOniException;
 
 import java.util.regex.PatternSyntaxException;
 
-public final class JoniRegexEngine extends RegexEngine {
+public final class JoniRegexCompiler extends RegexCompiler {
 
     private final RegexLanguage language;
     // For Joni, we want to share call targets to avoid excessive splitting.
@@ -31,7 +31,7 @@ public final class JoniRegexEngine extends RegexEngine {
     private CallTarget matchSimpleCallTarget;
     private CallTarget matchGroupCallTarget;
 
-    public JoniRegexEngine(RegexLanguage language) {
+    public JoniRegexCompiler(RegexLanguage language) {
         this.language = language;
     }
 

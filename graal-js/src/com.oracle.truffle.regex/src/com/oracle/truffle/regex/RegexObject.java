@@ -4,24 +4,22 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.runtime.RegexObjectExecMethod;
 import com.oracle.truffle.regex.runtime.RegexObjectMessageResolutionForeign;
 
-public class RegexObject implements RegexLanguageObject {
+public class RegexObject implements RegexLanguageObject, HasCompiledRegex {
 
-    private final RegexEngine engine;
+    private final RegexCompiler compiler;
     private final RegexSource source;
     private CompiledRegex compiledRegex;
     private final RegexObjectExecMethod execMethod;
     private RegexProfile regexProfile;
 
-    public RegexObject(RegexEngine engine, RegexSource source) {
-        this.engine = engine;
+    public RegexObject(RegexCompiler compiler, RegexSource source) {
+        this.compiler = compiler;
         this.source = source;
         execMethod = new RegexObjectExecMethod(this);
         if (source.getOptions().isRegressionTestMode()) {
@@ -34,6 +32,7 @@ public class RegexObject implements RegexLanguageObject {
         return source;
     }
 
+    @Override
     public CompiledRegex getCompiledRegex() {
         if (compiledRegex == null) {
             compiledRegex = compileRegex();
@@ -44,7 +43,7 @@ public class RegexObject implements RegexLanguageObject {
     @CompilerDirectives.TruffleBoundary
     private CompiledRegex compileRegex() {
         try {
-            return engine.compile(source);
+            return compiler.compile(source);
         } catch (RegexSyntaxException e) {
             throw new RuntimeException(e);
         }
@@ -52,15 +51,6 @@ public class RegexObject implements RegexLanguageObject {
 
     public void setCompiledRegex(CompiledRegex compiledRegex) {
         this.compiledRegex = compiledRegex;
-    }
-
-    /**
-     * A call target to the underlying {@link RegexExecRootNode} which will return a
-     * {@link RegexResult} object. The signature of this operation corresponds to:
-     * <code>{@link RegexResult} find(String input, int fromIndex);</code>
-     */
-    public CallTarget getCallTarget() {
-        return getCompiledRegex().getRegexCallTarget();
     }
 
     public RegexObjectExecMethod getExecMethod() {
