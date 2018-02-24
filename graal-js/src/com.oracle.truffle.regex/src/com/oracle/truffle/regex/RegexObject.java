@@ -14,14 +14,14 @@ import com.oracle.truffle.regex.runtime.RegexObjectMessageResolutionForeign;
 
 public class RegexObject implements RegexLanguageObject {
 
-    private final RegexLanguage language;
+    private final RegexEngine engine;
     private final RegexSource source;
     private CompiledRegex compiledRegex;
     private final RegexObjectExecMethod execMethod;
     private RegexProfile regexProfile;
 
-    public RegexObject(RegexLanguage language, RegexSource source) {
-        this.language = language;
+    public RegexObject(RegexEngine engine, RegexSource source) {
+        this.engine = engine;
         this.source = source;
         execMethod = new RegexObjectExecMethod(this);
         if (source.getOptions().isRegressionTestMode()) {
@@ -44,7 +44,7 @@ public class RegexObject implements RegexLanguageObject {
     @CompilerDirectives.TruffleBoundary
     private CompiledRegex compileRegex() {
         try {
-            return language.compileRegex(source);
+            return engine.compile(source);
         } catch (RegexSyntaxException e) {
             throw new RuntimeException(e);
         }

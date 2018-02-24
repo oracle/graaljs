@@ -22,7 +22,7 @@ import com.oracle.truffle.regex.nashorn.regexp.joni.exception.JOniException;
 
 import java.util.regex.PatternSyntaxException;
 
-public final class JoniRegexEngine implements RegexEngine {
+public final class JoniRegexEngine extends RegexEngine {
 
     private final RegexLanguage language;
     // For Joni, we want to share call targets to avoid excessive splitting.

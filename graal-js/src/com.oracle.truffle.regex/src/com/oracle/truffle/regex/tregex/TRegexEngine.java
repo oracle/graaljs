@@ -52,7 +52,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.NFAExport;
 
-public final class TRegexEngine implements RegexEngine {
+public final class TRegexEngine extends RegexEngine {
 
     private final DebugUtil.DebugLogger logBailout = new DebugUtil.DebugLogger("TRegex Bailout: ", DebugUtil.LOG_BAILOUT_MESSAGES);
     private final DebugUtil.DebugLogger logPhases = new DebugUtil.DebugLogger("TRegex Phase: ", DebugUtil.LOG_PHASES);
@@ -68,86 +68,79 @@ public final class TRegexEngine implements RegexEngine {
     @CompilerDirectives.TruffleBoundary
     @Override
     public CompiledRegex compile(RegexSource source) throws RegexSyntaxException {
-        try {
-            CompilationBuffer compilationBuffer = new CompilationBuffer();
-            // System.out.println("TRegex compiling " +
-            // DebugUtil.jsStringEscape(source.toString()));
-            // System.out.println(new RegexUnifier(pattern, flags).getUnifiedPattern());
-            phaseStart("Parser");
-            RegexAST ast = new RegexParser(source).parse();
-            phaseEnd("Parser");
-            debugAST(ast);
-            RegexProperties properties = ast.getProperties();
-            if (!isSupported(properties)) {
-                // features not supported by DFA
-                logBailout.log("unsupported feature: " + source);
-                return null;
-            }
-            if (ast.getRoot().isDead()) {
-                return new DeadRegexExecRootNode(language, source);
-            }
-            LiteralRegexExecRootNode literal = LiteralRegexEngine.createNode(language, ast);
-            if (literal != null) {
-                logSizes.log(String.format("\"/%s/\", \"%s\", %d, %d, %d, %d, %d, \"literal\"", source.getPattern(), source.getFlags(), 0, 0, 0, 0, 0));
-                return literal;
-            }
-            PreCalculatedResultFactory[] preCalculatedResults = null;
-            if (!(properties.hasAlternations() || properties.hasLookAroundAssertions())) {
-                preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
-            }
-            phaseStart("NFA");
-            NFA nfa = NFAGenerator.createNFA(ast, compilationBuffer);
-            phaseEnd("NFA");
-            debugNFA(nfa);
-            NFA traceFinder = null;
-            if (preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder &&
-                            (properties.hasCaptureGroups() || properties.hasLookAroundAssertions()) && !properties.hasLoops()) {
-                try {
-                    phaseStart("TraceFinder");
-                    traceFinder = NFATraceFinderGenerator.generateTraceFinder(nfa);
-                    preCalculatedResults = traceFinder.getPreCalculatedResults();
-                    phaseEnd("TraceFinder");
-                    debugTraceFinder(traceFinder);
-                } catch (UnsupportedRegexException e) {
-                    phaseEnd("TraceFinder Bailout");
-                    logBailout.log("TraceFinder: " + e.getMessage());
-                    // handle with capture group aware DFA, bailout will always happen before
-                    // assigning preCalculatedResults
-                }
-            }
-            final boolean createCaptureGroupTracker = (properties.hasCaptureGroups() || properties.hasLookAroundAssertions()) && preCalculatedResults == null;
-            TRegexDFAExecutorNode captureGroupExecutor = null;
-            int nCG = nfa.getAst().getNumberOfCaptureGroups();
-            phaseStart("Forward DFA");
-            TRegexDFAExecutorNode executorNode = DFAGenerator.createForwardDFAExecutor(nfa, createExecutorProperties(true, true, false, nCG), compilationBuffer);
-            phaseEnd("Forward DFA");
-            if (createCaptureGroupTracker) {
-                phaseStart("CG DFA");
-                captureGroupExecutor = DFAGenerator.createForwardDFAExecutor(nfa, createExecutorProperties(true, false, true, nCG), compilationBuffer);
-                phaseEnd("CG DFA");
-            }
-            TRegexDFAExecutorNode executorNodeB = null;
-            if (preCalculatedResults != null && preCalculatedResults.length > 1) {
-                phaseStart("Backward DFA");
-                executorNodeB = DFAGenerator.createBackwardDFAExecutor(traceFinder, createExecutorProperties(false, false, false, nCG), compilationBuffer);
-                phaseEnd("Backward DFA");
-            } else if (preCalculatedResults == null || !nfa.hasReverseUnAnchoredEntry()) {
-                phaseStart("Backward DFA");
-                executorNodeB = DFAGenerator.createBackwardDFAExecutor(nfa, createExecutorProperties(false, false, false, nCG), compilationBuffer);
-                phaseEnd("Backward DFA");
-            }
-            TRegexExecRootNode tRegexRootNode = new TRegexExecRootNode(
-                            language, source, preCalculatedResults, executorNode, executorNodeB, captureGroupExecutor);
-            if (DebugUtil.LOG_AUTOMATON_SIZES) {
-                logAutomatonSizes(source, ast, nfa, traceFinder, captureGroupExecutor, executorNode, executorNodeB);
-                logAutomatonSizesCSV(source, ast, nfa, traceFinder, captureGroupExecutor, executorNode, executorNodeB);
-            }
-            return tRegexRootNode;
-        } catch (UnsupportedRegexException e) {
-            phaseEnd("DFA Bailout");
-            logBailout.log(e.getMessage() + ": " + source);
-            return null;
+        CompilationBuffer compilationBuffer = new CompilationBuffer();
+        // System.out.println("TRegex compiling " +
+        // DebugUtil.jsStringEscape(source.toString()));
+        // System.out.println(new RegexUnifier(pattern, flags).getUnifiedPattern());
+        phaseStart("Parser");
+        RegexAST ast = new RegexParser(source).parse();
+        phaseEnd("Parser");
+        debugAST(ast);
+        RegexProperties properties = ast.getProperties();
+        if (!isSupported(properties)) {
+            // features not supported by DFA
+            throw new UnsupportedRegexException("unsupported feature: " + source);
         }
+        if (ast.getRoot().isDead()) {
+            return new DeadRegexExecRootNode(language, source);
+        }
+        LiteralRegexExecRootNode literal = LiteralRegexEngine.createNode(language, ast);
+        if (literal != null) {
+            logSizes.log(String.format("\"/%s/\", \"%s\", %d, %d, %d, %d, %d, \"literal\"", source.getPattern(), source.getFlags(), 0, 0, 0, 0, 0));
+            return literal;
+        }
+        PreCalculatedResultFactory[] preCalculatedResults = null;
+        if (!(properties.hasAlternations() || properties.hasLookAroundAssertions())) {
+            preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
+        }
+        phaseStart("NFA");
+        NFA nfa = NFAGenerator.createNFA(ast, compilationBuffer);
+        phaseEnd("NFA");
+        debugNFA(nfa);
+        NFA traceFinder = null;
+        if (preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder &&
+                        (properties.hasCaptureGroups() || properties.hasLookAroundAssertions()) && !properties.hasLoops()) {
+            try {
+                phaseStart("TraceFinder");
+                traceFinder = NFATraceFinderGenerator.generateTraceFinder(nfa);
+                preCalculatedResults = traceFinder.getPreCalculatedResults();
+                phaseEnd("TraceFinder");
+                debugTraceFinder(traceFinder);
+            } catch (UnsupportedRegexException e) {
+                phaseEnd("TraceFinder Bailout");
+                logBailout.log("TraceFinder: " + e.getMessage());
+                // handle with capture group aware DFA, bailout will always happen before
+                // assigning preCalculatedResults
+            }
+        }
+        final boolean createCaptureGroupTracker = (properties.hasCaptureGroups() || properties.hasLookAroundAssertions()) && preCalculatedResults == null;
+        TRegexDFAExecutorNode captureGroupExecutor = null;
+        int nCG = nfa.getAst().getNumberOfCaptureGroups();
+        phaseStart("Forward DFA");
+        TRegexDFAExecutorNode executorNode = DFAGenerator.createForwardDFAExecutor(nfa, createExecutorProperties(true, true, false, nCG), compilationBuffer);
+        phaseEnd("Forward DFA");
+        if (createCaptureGroupTracker) {
+            phaseStart("CG DFA");
+            captureGroupExecutor = DFAGenerator.createForwardDFAExecutor(nfa, createExecutorProperties(true, false, true, nCG), compilationBuffer);
+            phaseEnd("CG DFA");
+        }
+        TRegexDFAExecutorNode executorNodeB = null;
+        if (preCalculatedResults != null && preCalculatedResults.length > 1) {
+            phaseStart("Backward DFA");
+            executorNodeB = DFAGenerator.createBackwardDFAExecutor(traceFinder, createExecutorProperties(false, false, false, nCG), compilationBuffer);
+            phaseEnd("Backward DFA");
+        } else if (preCalculatedResults == null || !nfa.hasReverseUnAnchoredEntry()) {
+            phaseStart("Backward DFA");
+            executorNodeB = DFAGenerator.createBackwardDFAExecutor(nfa, createExecutorProperties(false, false, false, nCG), compilationBuffer);
+            phaseEnd("Backward DFA");
+        }
+        TRegexExecRootNode tRegexRootNode = new TRegexExecRootNode(
+                        language, source, preCalculatedResults, executorNode, executorNodeB, captureGroupExecutor);
+        if (DebugUtil.LOG_AUTOMATON_SIZES) {
+            logAutomatonSizes(source, ast, nfa, traceFinder, captureGroupExecutor, executorNode, executorNodeB);
+            logAutomatonSizesCSV(source, ast, nfa, traceFinder, captureGroupExecutor, executorNode, executorNodeB);
+        }
+        return tRegexRootNode;
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -171,10 +164,6 @@ public final class TRegexEngine implements RegexEngine {
             return eagerCaptureGroupExecutor;
         } catch (RegexSyntaxException e) {
             throw new RuntimeException(e);
-        } catch (UnsupportedRegexException e) {
-            phaseEnd("DFA Bailout");
-            logBailout.log(e.getMessage() + ": " + source);
-            return null;
         }
     }
 

@@ -4,26 +4,18 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.joni.JoniRegexEngine;
-import com.oracle.truffle.regex.nodes.RegexGetRegexObjectRootNode;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.TRegexEngine;
-import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
-import com.oracle.truffle.regex.util.LRUCache;
 
 import java.util.Collections;
-import java.util.Map;
 
 /**
  * Truffle Regular Expression Language
@@ -90,137 +82,25 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     public static final String MIME_TYPE = "application/js-regex";
 
     private final TRegexEngine tRegexEngine = new TRegexEngine(this);
-    private final JoniRegexEngine fallbackEngine = new JoniRegexEngine(this);
     static final String NO_MATCH_RESULT_IDENTIFIER = "T_REGEX_NO_MATCH_RESULT";
     public static final RegexResult EXPORT_NO_MATCH_RESULT = RegexResult.NO_MATCH;
-    private static final Iterable<Scope> NO_MATCH_RESULT_SCOPE = Collections.singleton(Scope.newBuilder("global", new NoMatchResultObject()).build());
-
-    private final DebugUtil.Timer timer = DebugUtil.LOG_TOTAL_COMPILATION_TIME ? new DebugUtil.Timer() : null;
+    static final String THE_ENGINE_IDENTIFIER = "TREGEX_ENGINE";
+    public final RegexEngine THE_ENGINE = new CachingRegexEngine(new RegexEngineWithFallback(tRegexEngine, new JoniRegexEngine(this)));
+    private final Iterable<Scope> TREGEX_GLOBALS_SCOPE = Collections.singleton(Scope.newBuilder("global", new TRegexScopeObject(this)).build());
 
     public TRegexEngine getTRegexEngine() {
         return tRegexEngine;
     }
 
-    /**
-     * Trying to parse and compile a regular expression using can produce one of two results. This
-     * class encodes the sum of these two possibilities.
-     * 
-     * <ul>
-     * <li>the regular expression is successfully compiled: getCompiledRegex is not null,
-     * syntaxException is null</li>
-     * <li>there is a syntax error in the regular expression: getCompiledRegex is null,
-     * syntaxException is not null</li>
-     * </ul>
-     */
-    private static final class ParsingResult {
-
-        private final CallTarget getCompiledRegex;
-        private final RegexSyntaxException syntaxException;
-
-        private ParsingResult(CallTarget getCompiledRegex, RegexSyntaxException syntaxException) {
-            this.getCompiledRegex = getCompiledRegex;
-            this.syntaxException = syntaxException;
-        }
-    }
-
-    private final Map<RegexSource, ParsingResult> cache = Collections.synchronizedMap(new LRUCache<>(TRegexOptions.RegexMaxCacheSize));
-
-    private CallTarget compileWithCache(RegexSource source) throws RegexSyntaxException {
-        ParsingResult result = cache.get(source);
-        if (result == null) {
-            result = compileCallTarget(source);
-            cache.put(source, result);
-        }
-        if (result.getCompiledRegex == null) {
-            assert result.syntaxException != null;
-            throw result.syntaxException;
-        } else {
-            assert result.syntaxException == null;
-            return result.getCompiledRegex;
-        }
-    }
-
-    private ParsingResult compileCallTarget(RegexSource regexSource) {
-        try {
-            RegexObject regex = new RegexObject(this, regexSource);
-            try {
-                RegexParser.validate(regexSource);
-            } catch (UnsupportedRegexException e) {
-                if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
-                    timer.start();
-                }
-                regex.setCompiledRegex(fallbackEngine.compile(regexSource));
-                if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
-                    logCompilationTime(regexSource, 0, timer.getElapsed());
-                }
-            }
-            RegexGetRegexObjectRootNode rootNode = new RegexGetRegexObjectRootNode(this, regex);
-            return new ParsingResult(Truffle.getRuntime().createCallTarget(rootNode), null);
-        } catch (RegexSyntaxException e) {
-            return new ParsingResult(null, e);
-        }
-    }
-
-    public static void tRegexValidate(Source source) throws RegexSyntaxException {
-        RegexParser.validate(parseRegexSource(source));
-    }
-
-    private static RegexSource parseRegexSource(Source source) throws RegexSyntaxException {
-        String code = source.getCharacters().toString();
-        if (code.length() < 2) {
-            throw new RegexSyntaxException(code, "length must be at least 2 (//)!");
-        }
-        int firstSlash = code.indexOf('/');
-        if (firstSlash < 0) {
-            throw new RegexSyntaxException(code, "pattern must start with a slash!");
-        }
-        int lastSlash = code.lastIndexOf('/');
-        if (lastSlash == firstSlash) {
-            throw new RegexSyntaxException(code, "pattern must end with a slash!");
-        }
-        final String optionsString = code.substring(0, firstSlash);
-        final String patternString = code.substring(firstSlash + 1, lastSlash);
-        final String flagsString = code.substring(lastSlash + 1);
-        return new RegexSource(source.createSection(firstSlash, code.length() - firstSlash), patternString, RegexFlags.parseFlags(flagsString), RegexOptions.parse(optionsString));
-    }
-
-    public CompiledRegex compileRegex(RegexSource regexSource) throws RegexSyntaxException {
-        CompiledRegex regex = null;
-        long elapsedTimeTRegex = 0;
-        long elapsedTimeJoni = 0;
-        if (!regexSource.getOptions().useJoniEngine()) {
-            if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
-                timer.start();
-            }
-            regex = tRegexEngine.compile(regexSource);
-            if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
-                elapsedTimeTRegex = timer.getElapsed();
-            }
-        }
-        if (regex == null) {
-            if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
-                timer.start();
-            }
-            regex = fallbackEngine.compile(regexSource);
-            if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
-                elapsedTimeJoni = timer.getElapsed();
-            }
-        }
-        if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
-            logCompilationTime(regexSource, elapsedTimeTRegex, elapsedTimeJoni);
-        }
-        return regex;
+    public static void tRegexValidate(String pattern, String flags) throws RegexSyntaxException {
+        RegexParser.validate(new RegexSource(null, pattern, RegexFlags.parseFlags(flags), RegexOptions.DEFAULT));
     }
 
     @Override
     protected Void createContext(Env env) {
         env.exportSymbol(NO_MATCH_RESULT_IDENTIFIER, EXPORT_NO_MATCH_RESULT);
+        env.exportSymbol(THE_ENGINE_IDENTIFIER, THE_ENGINE);
         return null;
-    }
-
-    @Override
-    protected CallTarget parse(ParsingRequest request) throws Exception {
-        return compileWithCache(parseRegexSource(request.getSource()));
     }
 
     @Override
@@ -228,12 +108,15 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
         if (globalName.equals(NO_MATCH_RESULT_IDENTIFIER)) {
             return EXPORT_NO_MATCH_RESULT;
         }
+        if (globalName.equals(THE_ENGINE_IDENTIFIER)) {
+            return THE_ENGINE;
+        }
         return null;
     }
 
     @Override
     protected Iterable<Scope> findTopScopes(Void context) {
-        return NO_MATCH_RESULT_SCOPE;
+        return TREGEX_GLOBALS_SCOPE;
     }
 
     @Override
@@ -260,13 +143,5 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     @Override
     protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
         return true;
-    }
-
-    private static void logCompilationTime(RegexSource regexSource, long elapsedTimeTRegex, long elapsedTimeJoni) {
-        System.out.println(String.format("%s, %s, %s, %s",
-                        DebugUtil.Timer.elapsedToString(elapsedTimeTRegex + elapsedTimeJoni),
-                        DebugUtil.Timer.elapsedToString(elapsedTimeTRegex),
-                        DebugUtil.Timer.elapsedToString(elapsedTimeJoni),
-                        DebugUtil.jsStringEscape(regexSource.toString())));
     }
 }

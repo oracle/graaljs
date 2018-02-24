@@ -5,7 +5,12 @@
 package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSyntaxException;
@@ -19,6 +24,8 @@ public final class RegexCompiler {
     private static final String REPEATED_REG_EXP_FLAG_MSG = "Repeated RegExp flag: %c";
     private static final String UNSUPPORTED_REG_EXP_FLAG_MSG = "Invalid regular expression flags";
     private static final String UNSUPPORTED_REG_EXP_FLAG_MSG_NASHORN = "Unsupported RegExp flag: %c";
+
+    private static final Node ENGINE_EXEC_NODE = Message.createExecute(2).createNode();
 
     private static Source createRegexLanguageSource(String pattern, String flags) {
         StringBuilder src = new StringBuilder(pattern.length() + 30);
@@ -47,13 +54,16 @@ public final class RegexCompiler {
             // RegexLanguage does its own validation of the flags. This call to validateFlags only
             // serves the purpose of mimicking the error messages of Nashorn and V8.
             validateFlags(flags, context.getEcmaScriptVersion());
-            final Source source = createRegexLanguageSource(pattern, flags);
-            return (TruffleObject) context.getEnv().parse(source).call();
+            final LanguageInfo regexLanguage = context.getEnv().getLanguages().get("regex");
+            final TruffleObject engine = (TruffleObject) context.getEnv().lookupSymbol(regexLanguage, "TREGEX_ENGINE");
+            return (TruffleObject) ForeignAccess.sendExecute(ENGINE_EXEC_NODE, engine, pattern, flags);
         } catch (RuntimeException runtimeException) {
             if (runtimeException.getCause() instanceof RegexSyntaxException) {
                 throw Errors.createSyntaxError(runtimeException.getCause().getMessage());
             }
             throw runtimeException;
+        } catch (InteropException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
@@ -64,7 +74,7 @@ public final class RegexCompiler {
         // parser produces different error messages.
         if (!JSTruffleOptions.NashornCompatibilityMode) {
             try {
-                RegexLanguage.tRegexValidate(createRegexLanguageSource(pattern, flags));
+                RegexLanguage.tRegexValidate(pattern, flags);
                 validated = true;
             } catch (final RegexSyntaxException e) {
                 throw Errors.createSyntaxError(e.getMessage());
