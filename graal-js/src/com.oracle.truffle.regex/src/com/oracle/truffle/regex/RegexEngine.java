@@ -22,7 +22,7 @@ public class RegexEngine implements RegexLanguageObject {
         this.compiler = compiler;
         this.eagerCompilation = eagerCompilation;
     }
-    
+
     public static boolean isInstance(TruffleObject object) {
         return object instanceof RegexEngine;
     }
@@ -45,13 +45,13 @@ public class RegexEngine implements RegexLanguageObject {
                 if (!(args[0] instanceof String)) {
                     throw UnsupportedTypeException.raise(args);
                 }
-                String pattern = (String)args[0];
+                String pattern = (String) args[0];
                 String flags = "";
                 if (args.length == 2) {
                     if (!(args[1] instanceof String)) {
                         throw UnsupportedTypeException.raise(args);
                     }
-                    flags = (String)args[1];
+                    flags = (String) args[1];
                 }
                 RegexSource regexSource = new RegexSource(pattern, RegexFlags.parseFlags(flags));
                 // Detect SyntaxErrors in regular expressions early.

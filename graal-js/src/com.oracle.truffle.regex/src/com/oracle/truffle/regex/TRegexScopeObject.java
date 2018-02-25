@@ -21,7 +21,7 @@ class TRegexScopeObject implements TruffleObject {
 
     private RegexLanguage language;
 
-    public TRegexScopeObject(RegexLanguage language) {
+    TRegexScopeObject(RegexLanguage language) {
         this.language = language;
     }
 
@@ -70,7 +70,7 @@ class TRegexScopeObject implements TruffleObject {
                     return RegexLanguage.EXPORT_NO_MATCH_RESULT;
                 }
                 if (RegexLanguage.ENGINE_BUILDER_IDENTIFIER.equals(name)) {
-                    return o.language.ENGINE_BUILDER;
+                    return o.language.engineBuilder;
                 }
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise(name);

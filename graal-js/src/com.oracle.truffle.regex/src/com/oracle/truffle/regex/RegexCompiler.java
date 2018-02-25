@@ -46,13 +46,13 @@ public abstract class RegexCompiler implements RegexLanguageObject {
                 if (!(args[0] instanceof String)) {
                     throw UnsupportedTypeException.raise(args);
                 }
-                String pattern = (String)args[0];
+                String pattern = (String) args[0];
                 String flags = "";
                 if (args.length == 2) {
                     if (!(args[1] instanceof String)) {
                         throw UnsupportedTypeException.raise(args);
                     }
-                    flags = (String)args[1];
+                    flags = (String) args[1];
                 }
                 RegexSource regexSource = new RegexSource(pattern, RegexFlags.parseFlags(flags));
                 return receiver.compile(regexSource);

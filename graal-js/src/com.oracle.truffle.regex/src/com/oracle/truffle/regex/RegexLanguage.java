@@ -82,8 +82,8 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     static final String NO_MATCH_RESULT_IDENTIFIER = "T_REGEX_NO_MATCH_RESULT";
     public static final RegexResult EXPORT_NO_MATCH_RESULT = RegexResult.NO_MATCH;
     static final String ENGINE_BUILDER_IDENTIFIER = "T_REGEX_ENGINE_BUILDER";
-    public final RegexEngineBuilder ENGINE_BUILDER = new RegexEngineBuilder(this);
-    private final Iterable<Scope> TREGEX_GLOBALS_SCOPE = Collections.singleton(Scope.newBuilder("global", new TRegexScopeObject(this)).build());
+    public final RegexEngineBuilder engineBuilder = new RegexEngineBuilder(this);
+    private final Iterable<Scope> tRegexGlobalsScope = Collections.singleton(Scope.newBuilder("global", new TRegexScopeObject(this)).build());
 
     public static void validateRegex(String pattern, String flags) throws RegexSyntaxException {
         RegexParser.validate(new RegexSource(pattern, RegexFlags.parseFlags(flags)));
@@ -92,7 +92,7 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     @Override
     protected Void createContext(Env env) {
         env.exportSymbol(NO_MATCH_RESULT_IDENTIFIER, EXPORT_NO_MATCH_RESULT);
-        env.exportSymbol(ENGINE_BUILDER_IDENTIFIER, ENGINE_BUILDER);
+        env.exportSymbol(ENGINE_BUILDER_IDENTIFIER, engineBuilder);
         return null;
     }
 
@@ -102,14 +102,14 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
             return EXPORT_NO_MATCH_RESULT;
         }
         if (globalName.equals(ENGINE_BUILDER_IDENTIFIER)) {
-            return ENGINE_BUILDER;
+            return engineBuilder;
         }
         return null;
     }
 
     @Override
     protected Iterable<Scope> findTopScopes(Void context) {
-        return TREGEX_GLOBALS_SCOPE;
+        return tRegexGlobalsScope;
     }
 
     @Override

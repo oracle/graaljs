@@ -11,7 +11,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
 public class ForeignRegexCompiler extends RegexCompiler {
-    
+
     private final TruffleObject foreignCompiler;
 
     private final Node executeNode = Message.createExecute(2).createNode();
@@ -21,7 +21,7 @@ public class ForeignRegexCompiler extends RegexCompiler {
     }
 
     public static RegexCompiler importRegexCompiler(TruffleObject regexCompiler) {
-        return regexCompiler instanceof RegexCompiler ? (RegexCompiler)regexCompiler : new ForeignRegexCompiler(regexCompiler);
+        return regexCompiler instanceof RegexCompiler ? (RegexCompiler) regexCompiler : new ForeignRegexCompiler(regexCompiler);
     }
 
     @Override

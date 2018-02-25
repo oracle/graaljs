@@ -51,11 +51,11 @@ public class RegexCompilerWithFallback extends RegexCompiler {
         return regex;
     }
 
-    private static void logCompilationTime(RegexSource regexSource, long elapsedTimeTRegex, long elapsedTimeJoni) {
+    private static void logCompilationTime(RegexSource regexSource, long elapsedTimeMain, long elapsedTimeFallback) {
         System.out.println(String.format("%s, %s, %s, %s",
-                        DebugUtil.Timer.elapsedToString(elapsedTimeTRegex + elapsedTimeJoni),
-                        DebugUtil.Timer.elapsedToString(elapsedTimeTRegex),
-                        DebugUtil.Timer.elapsedToString(elapsedTimeJoni),
+                        DebugUtil.Timer.elapsedToString(elapsedTimeMain + elapsedTimeFallback),
+                        DebugUtil.Timer.elapsedToString(elapsedTimeMain),
+                        DebugUtil.Timer.elapsedToString(elapsedTimeFallback),
                         DebugUtil.jsStringEscape(regexSource.toString())));
     }
 }

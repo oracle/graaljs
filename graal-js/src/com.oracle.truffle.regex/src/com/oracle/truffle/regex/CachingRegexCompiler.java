@@ -25,7 +25,8 @@ public class CachingRegexCompiler extends RegexCompiler {
      * <ul>
      * <li>the regular expression is successfully compiled: compiledRegex is not null</li>
      * <li>there is a syntax error in the regular expression: syntaxException is not null</li>
-     * <li>the regular expression is not supported by the engine: unsupportedRegexException is not null</li>
+     * <li>the regular expression is not supported by the engine: unsupportedRegexException is not
+     * null</li>
      * </ul>
      */
     private static final class CompilationResult {

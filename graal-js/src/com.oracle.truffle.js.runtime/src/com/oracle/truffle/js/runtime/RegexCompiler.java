@@ -32,11 +32,8 @@ public final class RegexCompiler {
             // serves the purpose of mimicking the error messages of Nashorn and V8.
             validateFlags(flags, context.getEcmaScriptVersion());
             return (TruffleObject) ForeignAccess.sendExecute(ENGINE_EXEC_NODE, context.getRegexEngine(), pattern, flags);
-        } catch (RuntimeException runtimeException) {
-            if (runtimeException.getCause() instanceof RegexSyntaxException) {
-                throw Errors.createSyntaxError(runtimeException.getCause().getMessage());
-            }
-            throw runtimeException;
+        } catch (RegexSyntaxException syntaxException) {
+            throw Errors.createSyntaxError(syntaxException.getMessage());
         } catch (InteropException ex) {
             throw new RuntimeException(ex);
         }

@@ -21,7 +21,7 @@ public class RegexEngineBuilder implements RegexLanguageObject {
     public RegexEngineBuilder(RegexLanguage language) {
         this.language = language;
     }
-    
+
     public static boolean isInstance(TruffleObject object) {
         return object instanceof RegexCompiler;
     }
@@ -48,14 +48,14 @@ public class RegexEngineBuilder implements RegexLanguageObject {
                     if (!(args[0] instanceof String)) {
                         throw UnsupportedTypeException.raise(args);
                     }
-                    options = RegexOptions.parse((String)args[0]);
+                    options = RegexOptions.parse((String) args[0]);
                 }
                 TruffleObject fallbackEngine = null;
                 if (args.length >= 2) {
-                    if (!(args[1] instanceof TruffleObject && ForeignAccess.sendIsExecutable(isExecutableNode, (TruffleObject)args[1]))) {
+                    if (!(args[1] instanceof TruffleObject && ForeignAccess.sendIsExecutable(isExecutableNode, (TruffleObject) args[1]))) {
                         throw UnsupportedTypeException.raise(args);
                     }
-                    fallbackEngine = (TruffleObject)args[1];
+                    fallbackEngine = (TruffleObject) args[1];
                 }
                 if (fallbackEngine != null) {
                     return new RegexEngine(new CachingRegexCompiler(new RegexCompilerWithFallback(new TRegexCompiler(receiver.language, options), fallbackEngine)), options.isRegressionTestMode());

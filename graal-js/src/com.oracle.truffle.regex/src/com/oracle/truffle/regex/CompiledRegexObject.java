@@ -49,7 +49,7 @@ public class CompiledRegexObject implements RegexLanguageObject {
                 if (!(args[0] instanceof RegexObject)) {
                     throw UnsupportedTypeException.raise(args);
                 }
-                return doExecute.execute(receiver.getCompiledRegex(), (RegexObject)args[0], args[1], args[2]);
+                return doExecute.execute(receiver.getCompiledRegex(), (RegexObject) args[0], args[1], args[2]);
             }
         }
 
@@ -57,7 +57,7 @@ public class CompiledRegexObject implements RegexLanguageObject {
         abstract static class CompiledRegexObjectIsExecutableNode extends Node {
 
             @SuppressWarnings("unused")
-            public boolean access(CompiledRegex receiver) {
+            public boolean access(CompiledRegexObject receiver) {
                 return true;
             }
         }

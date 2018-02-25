@@ -40,7 +40,9 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
 
     @Child private RunRegexSearchNode runRegexSearchNode;
 
-    public TRegexExecRootNode(RegexLanguage language, TRegexCompiler tRegexCompiler, RegexSource source,
+    public TRegexExecRootNode(RegexLanguage language,
+                    TRegexCompiler tRegexCompiler,
+                    RegexSource source,
                     boolean eagerCompilation,
                     PreCalculatedResultFactory[] preCalculatedResults,
                     TRegexDFAExecutorNode forwardExecutor,

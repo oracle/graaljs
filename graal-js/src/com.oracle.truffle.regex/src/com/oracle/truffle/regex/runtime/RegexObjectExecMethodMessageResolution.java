@@ -5,11 +5,12 @@
 package com.oracle.truffle.regex.runtime;
 
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.runtime.nodes.NewExecuteRegexDispatchNode;
 
 @MessageResolution(receiverType = RegexObjectExecMethod.class)
 class RegexObjectExecMethodMessageResolution {
@@ -17,13 +18,17 @@ class RegexObjectExecMethodMessageResolution {
     @Resolve(message = "EXECUTE")
     abstract static class ExecuteRegexExecNode extends Node {
 
-        @Child NewExecuteRegexDispatchNode executeRegexDispatchNode = NewExecuteRegexDispatchNode.create();
+        @Child Node executeNode = Message.createExecute(3).createNode();
 
-        public TruffleObject access(RegexObjectExecMethod receiver, Object[] args) {
+        public Object access(RegexObjectExecMethod receiver, Object[] args) {
             if (args.length != 2) {
                 throw ArityException.raise(2, args.length);
             }
-            return executeRegexDispatchNode.execute(receiver.getRegexObject().getCompiledRegexObject(), receiver.getRegexObject(), args[0], args[1]);
+            try {
+                return ForeignAccess.sendExecute(executeNode, receiver.getRegexObject().getCompiledRegexObject(), receiver.getRegexObject(), args[0], args[1]);
+            } catch (InteropException ex) {
+                throw new RuntimeException(ex);
+            }
         }
     }
 
