@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 import com.oracle.truffle.js.runtime.interop.DefaultJavaInteropWorker;
 import com.oracle.truffle.js.runtime.interop.DefaultJavaInteropWorker.DefaultMainWorker;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
+import com.oracle.truffle.js.runtime.joni.JoniRegexCompiler;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -72,7 +73,6 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
 import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexEngine;
-import com.oracle.truffle.regex.joni.JoniRegexCompiler;
 
 public class JSContext implements ShapeContext {
     private final Evaluator evaluator;
