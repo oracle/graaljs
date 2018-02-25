@@ -54,7 +54,7 @@ public abstract class RegexCompiler implements RegexLanguageObject {
                     }
                     flags = (String)args[1];
                 }
-                RegexSource regexSource = new RegexSource(null, pattern, RegexFlags.parseFlags(flags), RegexOptions.DEFAULT);
+                RegexSource regexSource = new RegexSource(null, pattern, RegexFlags.parseFlags(flags));
                 return receiver.compile(regexSource);
             }
         }

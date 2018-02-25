@@ -36,10 +36,12 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
     private final LazyCaptureGroupRegexSearchNode lazySearchNode;
     private EagerCaptureGroupRegexSearchNode eagerSearchNode;
     private final TRegexCompiler tRegexCompiler;
+    private final boolean eagerCompilation;
 
     @Child private RunRegexSearchNode runRegexSearchNode;
 
     public TRegexExecRootNode(RegexLanguage language, TRegexCompiler tRegexCompiler, RegexSource source,
+                    boolean eagerCompilation,
                     PreCalculatedResultFactory[] preCalculatedResults,
                     TRegexDFAExecutorNode forwardExecutor,
                     TRegexDFAExecutorNode backwardExecutor,
@@ -49,7 +51,8 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         runRegexSearchNode = insert(lazySearchNode);
         regexCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, forwardExecutor.getProperties().getFrameDescriptor(), this));
         this.tRegexCompiler = tRegexCompiler;
-        if (source.getOptions().isRegressionTestMode() && captureGroupExecutor != null) {
+        this.eagerCompilation = eagerCompilation;
+        if (eagerCompilation && captureGroupExecutor != null) {
             compileEagerSearchNode();
         }
         if (DebugUtil.DEBUG_ALWAYS_EAGER) {
@@ -60,7 +63,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
     @Override
     public final RegexResult execute(VirtualFrame frame, RegexObject regex, Object input, int fromIndex) {
         final RegexResult result = runRegexSearchNode.run(frame, regex, input, fromIndex);
-        assert !getSource().getOptions().isRegressionTestMode() || eagerAndLazySearchNodesProduceSameResult(frame, regex, input, fromIndex, result);
+        assert !eagerCompilation || eagerAndLazySearchNodesProduceSameResult(frame, regex, input, fromIndex, result);
         if (CompilerDirectives.inInterpreter() && runRegexSearchNode == lazySearchNode) {
             RegexProfile profile = regex.getRegexProfile();
             if (profile.atEvaluationTripPoint() && profile.shouldUseEagerMatching()) {

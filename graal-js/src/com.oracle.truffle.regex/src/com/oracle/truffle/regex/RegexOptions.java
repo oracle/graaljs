@@ -11,8 +11,7 @@ import java.util.Arrays;
 public final class RegexOptions {
 
     private static final int U180E_WHITESPACE = 1;
-    private static final int USE_JONI = 1 << 1;
-    private static final int REGRESSION_TEST_MODE = 1 << 2;
+    private static final int REGRESSION_TEST_MODE = 1 << 1;
 
     public static final RegexOptions DEFAULT = new RegexOptions(0);
 
@@ -38,17 +37,6 @@ public final class RegexOptions {
             switch (key) {
                 case "U180EWhitespace":
                     options = parseBooleanOption(optionsString, options, key, value, U180E_WHITESPACE);
-                    break;
-                case "Engine":
-                    switch (value) {
-                        case "tregex":
-                            break;
-                        case "joni":
-                            options |= USE_JONI;
-                            break;
-                        default:
-                            throw optionsSyntaxErrorUnexpectedValue(optionsString, key, value, "joni");
-                    }
                     break;
                 case "RegressionTestMode":
                     options = parseBooleanOption(optionsString, options, key, value, REGRESSION_TEST_MODE);
@@ -81,10 +69,6 @@ public final class RegexOptions {
         return (options & bit) != 0;
     }
 
-    public boolean useJoniEngine() {
-        return isBitSet(USE_JONI);
-    }
-
     public boolean isU180EWhitespace() {
         return isBitSet(U180E_WHITESPACE);
     }
@@ -109,11 +93,11 @@ public final class RegexOptions {
         if (isU180EWhitespace()) {
             sb.append("U180EWhitespace");
         }
-        if (useJoniEngine()) {
+        if (isRegressionTestMode()) {
             if (isU180EWhitespace()) {
                 sb.append(",");
             }
-            sb.append("useJoni");
+            sb.append("RegressionTestMode");
         }
         return sb.toString();
     }

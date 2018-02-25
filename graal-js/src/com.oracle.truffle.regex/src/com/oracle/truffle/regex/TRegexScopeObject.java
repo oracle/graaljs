@@ -54,7 +54,7 @@ class TRegexScopeObject implements TruffleObject {
             public Object access(TRegexScopeObject o, String name) {
                 if (RegexLanguage.NO_MATCH_RESULT_IDENTIFIER.equals(name)) {
                     return 3;
-                } else if (RegexLanguage.THE_ENGINE_IDENTIFIER.equals(name)) {
+                } else if (RegexLanguage.ENGINE_BUILDER_IDENTIFIER.equals(name)) {
                     return 3;
                 } else {
                     return 0;
@@ -69,8 +69,8 @@ class TRegexScopeObject implements TruffleObject {
                 if (RegexLanguage.NO_MATCH_RESULT_IDENTIFIER.equals(name)) {
                     return RegexLanguage.EXPORT_NO_MATCH_RESULT;
                 }
-                if (RegexLanguage.THE_ENGINE_IDENTIFIER.equals(name)) {
-                    return o.language.THE_ENGINE;
+                if (RegexLanguage.ENGINE_BUILDER_IDENTIFIER.equals(name)) {
+                    return o.language.ENGINE_BUILDER;
                 }
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise(name);
@@ -118,7 +118,7 @@ class TRegexScopeObject implements TruffleObject {
                             return RegexLanguage.NO_MATCH_RESULT_IDENTIFIER;
                         }
                         if (index == 1) {
-                            return RegexLanguage.THE_ENGINE_IDENTIFIER;
+                            return RegexLanguage.ENGINE_BUILDER_IDENTIFIER;
                         }
                         CompilerDirectives.transferToInterpreter();
                         throw UnknownIdentifierException.raise(Integer.toString(index));

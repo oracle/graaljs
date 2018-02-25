@@ -10,9 +10,7 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.regex.joni.JoniRegexCompiler;
 import com.oracle.truffle.regex.result.RegexResult;
-import com.oracle.truffle.regex.tregex.TRegexCompiler;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 
 import java.util.Collections;
@@ -83,18 +81,18 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
 
     static final String NO_MATCH_RESULT_IDENTIFIER = "T_REGEX_NO_MATCH_RESULT";
     public static final RegexResult EXPORT_NO_MATCH_RESULT = RegexResult.NO_MATCH;
-    static final String THE_ENGINE_IDENTIFIER = "TREGEX_ENGINE";
-    public final RegexEngine THE_ENGINE = new RegexEngine(new CachingRegexCompiler(new RegexCompilerWithFallback(new TRegexCompiler(this, RegexOptions.DEFAULT), new JoniRegexCompiler(this))));
+    static final String ENGINE_BUILDER_IDENTIFIER = "T_REGEX_ENGINE_BUILDER";
+    public final RegexEngineBuilder ENGINE_BUILDER = new RegexEngineBuilder(this);
     private final Iterable<Scope> TREGEX_GLOBALS_SCOPE = Collections.singleton(Scope.newBuilder("global", new TRegexScopeObject(this)).build());
 
     public static void validateRegex(String pattern, String flags) throws RegexSyntaxException {
-        RegexParser.validate(new RegexSource(null, pattern, RegexFlags.parseFlags(flags), RegexOptions.DEFAULT));
+        RegexParser.validate(new RegexSource(null, pattern, RegexFlags.parseFlags(flags)));
     }
 
     @Override
     protected Void createContext(Env env) {
         env.exportSymbol(NO_MATCH_RESULT_IDENTIFIER, EXPORT_NO_MATCH_RESULT);
-        env.exportSymbol(THE_ENGINE_IDENTIFIER, THE_ENGINE);
+        env.exportSymbol(ENGINE_BUILDER_IDENTIFIER, ENGINE_BUILDER);
         return null;
     }
 
@@ -103,8 +101,8 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
         if (globalName.equals(NO_MATCH_RESULT_IDENTIFIER)) {
             return EXPORT_NO_MATCH_RESULT;
         }
-        if (globalName.equals(THE_ENGINE_IDENTIFIER)) {
-            return THE_ENGINE;
+        if (globalName.equals(ENGINE_BUILDER_IDENTIFIER)) {
+            return ENGINE_BUILDER;
         }
         return null;
     }

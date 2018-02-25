@@ -29,10 +29,10 @@ public final class RegexLexer {
     private int nGroups = 1;
     private boolean countedAllGroups = false;
 
-    public RegexLexer(RegexSource source) {
+    public RegexLexer(RegexSource source, RegexOptions options) {
         this.pattern = source.getPattern();
         this.flags = source.getFlags();
-        this.options = source.getOptions();
+        this.options = options;
     }
 
     public boolean hasNext() {

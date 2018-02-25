@@ -12,7 +12,6 @@ import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexObject;
-import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Matcher;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Regex;
@@ -80,8 +79,7 @@ public abstract class JoniRegexExecRootNode extends RegexExecRootNode {
         return new RegexSource(
                         Source.newBuilder(pattern).name(name).mimeType("application/js-regex").build().createSection(0, pattern.length()),
                         pattern,
-                        RegexFlags.DEFAULT,
-                        RegexOptions.DEFAULT);
+                        RegexFlags.DEFAULT);
     }
 
     public static class Simple extends JoniRegexExecRootNode {

@@ -77,7 +77,7 @@ public final class TRegexCompiler extends RegexCompiler {
         // DebugUtil.jsStringEscape(source.toString()));
         // System.out.println(new RegexUnifier(pattern, flags).getUnifiedPattern());
         phaseStart("Parser");
-        RegexAST ast = new RegexParser(source).parse();
+        RegexAST ast = new RegexParser(source, options).parse();
         phaseEnd("Parser");
         debugAST(ast);
         RegexProperties properties = ast.getProperties();
@@ -139,7 +139,7 @@ public final class TRegexCompiler extends RegexCompiler {
             phaseEnd("Backward DFA");
         }
         TRegexExecRootNode tRegexRootNode = new TRegexExecRootNode(
-                        language, this, source, preCalculatedResults, executorNode, executorNodeB, captureGroupExecutor);
+                        language, this, source, options.isRegressionTestMode(), preCalculatedResults, executorNode, executorNodeB, captureGroupExecutor);
         if (DebugUtil.LOG_AUTOMATON_SIZES) {
             logAutomatonSizes(source, ast, nfa, traceFinder, captureGroupExecutor, executorNode, executorNodeB);
             logAutomatonSizesCSV(source, ast, nfa, traceFinder, captureGroupExecutor, executorNode, executorNodeB);
@@ -152,7 +152,7 @@ public final class TRegexCompiler extends RegexCompiler {
         try {
             CompilationBuffer compilationBuffer = new CompilationBuffer();
             phaseStart("Parser");
-            RegexAST ast = new RegexParser(source).parse();
+            RegexAST ast = new RegexParser(source, options).parse();
             phaseEnd("Parser");
             RegexProperties properties = ast.getProperties();
             assert isSupported(properties);

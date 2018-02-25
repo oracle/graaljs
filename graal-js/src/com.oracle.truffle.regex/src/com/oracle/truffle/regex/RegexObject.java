@@ -22,10 +22,6 @@ public class RegexObject implements RegexLanguageObject {
         this.compiler = compiler;
         this.source = source;
         execMethod = new RegexObjectExecMethod(this);
-        if (source.getOptions().isRegressionTestMode()) {
-            // compile expression eagerly in regression test mode
-            getCompiledRegexObject();
-        }
     }
 
     public RegexSource getSource() {

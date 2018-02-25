@@ -83,9 +83,9 @@ public final class RegexParser {
     private Group curGroup;
     private Term curTerm;
 
-    public RegexParser(RegexSource source) {
+    public RegexParser(RegexSource source, RegexOptions options) {
         this.source = source;
-        this.lexer = new RegexLexer(source);
+        this.lexer = new RegexLexer(source, options);
         this.ast = new RegexAST(source);
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
@@ -95,7 +95,7 @@ public final class RegexParser {
 
     private static Group parseRootLess(String pattern) throws RegexSyntaxException {
         try {
-            return new RegexParser(new RegexSource(null, pattern, RegexFlags.DEFAULT, RegexOptions.DEFAULT)).parse(false);
+            return new RegexParser(new RegexSource(null, pattern, RegexFlags.DEFAULT), RegexOptions.DEFAULT).parse(false);
         } catch (Throwable e) {
             e.printStackTrace();
             System.out.flush();
@@ -103,12 +103,12 @@ public final class RegexParser {
         }
     }
 
-    public static RegexAST parse(RegexSource source) throws RegexSyntaxException {
-        return new RegexParser(source).parse();
+    public static RegexAST parse(RegexSource source, RegexOptions options) throws RegexSyntaxException {
+        return new RegexParser(source, options).parse();
     }
 
     public static void validate(RegexSource source) throws RegexSyntaxException {
-        new RegexParser(source).parse(true);
+        new RegexParser(source, RegexOptions.DEFAULT).parse(true);
     }
 
     public RegexAST parse() throws RegexSyntaxException {

@@ -9,9 +9,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -27,36 +25,13 @@ public final class RegexCompiler {
 
     private static final Node ENGINE_EXEC_NODE = Message.createExecute(2).createNode();
 
-    private static Source createRegexLanguageSource(String pattern, String flags) {
-        StringBuilder src = new StringBuilder(pattern.length() + 30);
-        if (JSTruffleOptions.U180EWhitespace) {
-            src.append("U180EWhitespace=true");
-        }
-        if (JSTruffleOptions.RegexEngine.equals("joni") || JSTruffleOptions.RegexEngine.equals("tregex")) {
-            if (src.length() > 0) {
-                src.append(",");
-            }
-            src.append("Engine=").append(JSTruffleOptions.RegexEngine);
-        }
-        if (JSTruffleOptions.RegexRegressionTestMode) {
-            if (src.length() > 0) {
-                src.append(",");
-            }
-            src.append("RegressionTestMode=true");
-        }
-        src.append("/").append(pattern).append("/").append(flags);
-        return Source.newBuilder(src.toString()).name(pattern).mimeType("application/js-regex").build();
-    }
-
     @TruffleBoundary
     public static TruffleObject compile(String pattern, String flags, JSContext context) {
         try {
             // RegexLanguage does its own validation of the flags. This call to validateFlags only
             // serves the purpose of mimicking the error messages of Nashorn and V8.
             validateFlags(flags, context.getEcmaScriptVersion());
-            final LanguageInfo regexLanguage = context.getEnv().getLanguages().get("regex");
-            final TruffleObject engine = (TruffleObject) context.getEnv().lookupSymbol(regexLanguage, "TREGEX_ENGINE");
-            return (TruffleObject) ForeignAccess.sendExecute(ENGINE_EXEC_NODE, engine, pattern, flags);
+            return (TruffleObject) ForeignAccess.sendExecute(ENGINE_EXEC_NODE, context.getRegexEngine(), pattern, flags);
         } catch (RuntimeException runtimeException) {
             if (runtimeException.getCause() instanceof RegexSyntaxException) {
                 throw Errors.createSyntaxError(runtimeException.getCause().getMessage());

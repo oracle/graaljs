@@ -15,10 +15,12 @@ import com.oracle.truffle.regex.tregex.parser.RegexParser;
 
 public class RegexEngine implements RegexLanguageObject {
 
-    private RegexCompiler compiler;
+    private final RegexCompiler compiler;
+    private final boolean eagerCompilation;
 
-    public RegexEngine(RegexCompiler compiler) {
+    public RegexEngine(RegexCompiler compiler, boolean eagerCompilation) {
         this.compiler = compiler;
+        this.eagerCompilation = eagerCompilation;
     }
     
     public static boolean isInstance(TruffleObject object) {
@@ -51,10 +53,15 @@ public class RegexEngine implements RegexLanguageObject {
                     }
                     flags = (String)args[1];
                 }
-                RegexSource regexSource = new RegexSource(null, pattern, RegexFlags.parseFlags(flags), RegexOptions.DEFAULT);
+                RegexSource regexSource = new RegexSource(null, pattern, RegexFlags.parseFlags(flags));
                 // Detect SyntaxErrors in regular expressions early.
                 RegexParser.validate(regexSource);
-                return new RegexObject(receiver.compiler, regexSource);
+                RegexObject regexObject = new RegexObject(receiver.compiler, regexSource);
+                if (receiver.eagerCompilation) {
+                    // Force the compilation of the RegExp.
+                    regexObject.getCompiledRegexObject();
+                }
+                return regexObject;
             }
         }
 

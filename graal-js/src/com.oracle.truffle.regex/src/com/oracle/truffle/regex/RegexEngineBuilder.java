@@ -58,9 +58,9 @@ public class RegexEngineBuilder implements RegexLanguageObject {
                     fallbackEngine = (TruffleObject)args[1];
                 }
                 if (fallbackEngine != null) {
-                    return new RegexEngine(new CachingRegexCompiler(new RegexCompilerWithFallback(new TRegexCompiler(receiver.language, options), fallbackEngine)));
+                    return new RegexEngine(new CachingRegexCompiler(new RegexCompilerWithFallback(new TRegexCompiler(receiver.language, options), fallbackEngine)), options.isRegressionTestMode());
                 } else {
-                    return new RegexEngine(new CachingRegexCompiler(new TRegexCompiler(receiver.language, options)));
+                    return new RegexEngine(new CachingRegexCompiler(new TRegexCompiler(receiver.language, options)), options.isRegressionTestMode());
                 }
             }
         }

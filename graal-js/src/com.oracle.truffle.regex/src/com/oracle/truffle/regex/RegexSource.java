@@ -12,15 +12,13 @@ public final class RegexSource {
     private final SourceSection sourceSection;
     private final String pattern;
     private final RegexFlags flags;
-    private final RegexOptions options;
     private boolean hashComputed = false;
     private int cachedHash;
 
-    public RegexSource(SourceSection sourceSection, String pattern, RegexFlags flags, RegexOptions options) {
+    public RegexSource(SourceSection sourceSection, String pattern, RegexFlags flags) {
         this.sourceSection = sourceSection;
         this.pattern = pattern;
         this.flags = flags;
-        this.options = options;
     }
 
     public SourceSection getSourceSection() {
@@ -35,10 +33,6 @@ public final class RegexSource {
         return flags;
     }
 
-    public RegexOptions getOptions() {
-        return options;
-    }
-
     @Override
     public int hashCode() {
         if (!hashComputed) {
@@ -46,7 +40,6 @@ public final class RegexSource {
             cachedHash = 1;
             cachedHash = prime * cachedHash + pattern.hashCode();
             cachedHash = prime * cachedHash + flags.hashCode();
-            cachedHash = prime * cachedHash + options.hashCode();
             hashComputed = true;
         }
         return cachedHash;
@@ -56,8 +49,7 @@ public final class RegexSource {
     public boolean equals(Object obj) {
         return this == obj || obj instanceof RegexSource &&
                         pattern.equals(((RegexSource) obj).pattern) &&
-                        flags.equals(((RegexSource) obj).flags) &&
-                        options.equals(((RegexSource) obj).options);
+                        flags.equals(((RegexSource) obj).flags);
     }
 
     @Override
@@ -68,7 +60,6 @@ public final class RegexSource {
     public DebugUtil.Table toTable() {
         return new DebugUtil.Table("RegexSource",
                         new DebugUtil.Value("pattern", pattern),
-                        new DebugUtil.Value("flags", flags),
-                        new DebugUtil.Value("options", options));
+                        new DebugUtil.Value("flags", flags));
     }
 }
