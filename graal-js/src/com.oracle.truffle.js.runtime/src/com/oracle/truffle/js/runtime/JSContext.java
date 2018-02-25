@@ -764,9 +764,7 @@ public class JSContext implements ShapeContext {
     public TruffleObject getRegexEngine() {
         if (regexEngine == null) {
             RegexCompiler joniCompiler = new JoniRegexCompiler(null);
-            if (JSTruffleOptions.RegexEngine.equals("joni")) {
-                regexEngine = new RegexEngine(joniCompiler, JSTruffleOptions.RegexRegressionTestMode);
-            } else if (JSTruffleOptions.RegexEngine.equals("tregex")) {
+            if (JSTruffleOptions.UseTRegex) {
                 LanguageInfo regexLanguage = getEnv().getLanguages().get("regex");
                 TruffleObject regexEngineBuilder = (TruffleObject) getEnv().lookupSymbol(regexLanguage, "T_REGEX_ENGINE_BUILDER");
                 String regexOptions = createRegexEngineOptions();
@@ -776,7 +774,7 @@ public class JSContext implements ShapeContext {
                     throw new RuntimeException(ex);
                 }
             } else {
-                throw new RuntimeException("invalid value for truffle.js.regex");
+                regexEngine = new RegexEngine(joniCompiler, JSTruffleOptions.RegexRegressionTestMode);
             }
         }
         return regexEngine;
