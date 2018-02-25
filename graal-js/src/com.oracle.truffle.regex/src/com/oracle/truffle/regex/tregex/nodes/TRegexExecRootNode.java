@@ -22,11 +22,11 @@ import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.result.SingleResult;
 import com.oracle.truffle.regex.result.SingleResultLazyStart;
 import com.oracle.truffle.regex.result.TraceFinderResult;
+import com.oracle.truffle.regex.tregex.TRegexCompiler;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 import java.util.Arrays;
-import java.util.Objects;
 
 public class TRegexExecRootNode extends RegexExecRootNode implements CompiledRegex {
 
@@ -35,10 +35,11 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
     private final CallTarget regexCallTarget;
     private final LazyCaptureGroupRegexSearchNode lazySearchNode;
     private EagerCaptureGroupRegexSearchNode eagerSearchNode;
+    private final TRegexCompiler tRegexCompiler;
 
     @Child private RunRegexSearchNode runRegexSearchNode;
 
-    public TRegexExecRootNode(RegexLanguage language, RegexSource source,
+    public TRegexExecRootNode(RegexLanguage language, TRegexCompiler tRegexCompiler, RegexSource source,
                     PreCalculatedResultFactory[] preCalculatedResults,
                     TRegexDFAExecutorNode forwardExecutor,
                     TRegexDFAExecutorNode backwardExecutor,
@@ -47,6 +48,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         lazySearchNode = new LazyCaptureGroupRegexSearchNode(language, source, preCalculatedResults, forwardExecutor, backwardExecutor, captureGroupExecutor);
         runRegexSearchNode = insert(lazySearchNode);
         regexCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, forwardExecutor.getProperties().getFrameDescriptor(), this));
+        this.tRegexCompiler = tRegexCompiler;
         if (source.getOptions().isRegressionTestMode() && captureGroupExecutor != null) {
             compileEagerSearchNode();
         }
@@ -119,7 +121,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
 
     private void compileEagerSearchNode() {
         if (eagerSearchNode == null) {
-            TRegexDFAExecutorNode executorNode = Objects.requireNonNull(getLanguage(RegexLanguage.class)).getTRegexCompiler().compileEagerDFAExecutor(getSource());
+            TRegexDFAExecutorNode executorNode = tRegexCompiler.compileEagerDFAExecutor(getSource());
             if (executorNode == null) {
                 eagerSearchNode = EAGER_SEARCH_BAILED_OUT;
             } else {

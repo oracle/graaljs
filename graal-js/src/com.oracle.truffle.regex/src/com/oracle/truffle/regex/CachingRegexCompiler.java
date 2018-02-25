@@ -4,6 +4,7 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.util.LRUCache;
 import java.util.Collections;
@@ -13,8 +14,8 @@ public class CachingRegexCompiler extends RegexCompiler {
 
     private final RegexCompiler compiler;
 
-    public CachingRegexCompiler(RegexCompiler compiler) {
-        this.compiler = compiler;
+    public CachingRegexCompiler(TruffleObject compiler) {
+        this.compiler = ForeignRegexCompiler.importRegexCompiler(compiler);
     }
 
     /**
@@ -29,24 +30,24 @@ public class CachingRegexCompiler extends RegexCompiler {
      */
     private static final class CompilationResult {
 
-        private final CompiledRegex compiledRegex;
+        private final TruffleObject compiledRegexObject;
         private final RegexSyntaxException syntaxException;
         private final UnsupportedRegexException unsupportedRegexException;
 
-        private CompilationResult(CompiledRegex compiledRegex) {
-            this.compiledRegex = compiledRegex;
+        private CompilationResult(TruffleObject compiledRegexObject) {
+            this.compiledRegexObject = compiledRegexObject;
             this.syntaxException = null;
             this.unsupportedRegexException = null;
         }
 
         private CompilationResult(RegexSyntaxException syntaxException) {
-            this.compiledRegex = null;
+            this.compiledRegexObject = null;
             this.syntaxException = syntaxException;
             this.unsupportedRegexException = null;
         }
 
         private CompilationResult(UnsupportedRegexException unsupportedRegexException) {
-            this.compiledRegex = null;
+            this.compiledRegexObject = null;
             this.syntaxException = null;
             this.unsupportedRegexException = unsupportedRegexException;
         }
@@ -55,22 +56,22 @@ public class CachingRegexCompiler extends RegexCompiler {
     private final Map<RegexSource, CompilationResult> cache = Collections.synchronizedMap(new LRUCache<>(TRegexOptions.RegexMaxCacheSize));
 
     @Override
-    public CompiledRegex compile(RegexSource source) throws RegexSyntaxException {
+    public TruffleObject compile(RegexSource source) throws RegexSyntaxException {
         CompilationResult result = cache.get(source);
         if (result == null) {
             result = doCompile(source);
             cache.put(source, result);
         }
-        if (result.compiledRegex != null) {
+        if (result.compiledRegexObject != null) {
             assert result.syntaxException == null;
             assert result.unsupportedRegexException == null;
-            return result.compiledRegex;
+            return result.compiledRegexObject;
         } else if (result.syntaxException != null) {
-            assert result.compiledRegex == null;
+            assert result.compiledRegexObject == null;
             assert result.unsupportedRegexException == null;
             throw result.syntaxException;
         } else {
-            assert result.compiledRegex == null;
+            assert result.compiledRegexObject == null;
             assert result.syntaxException == null;
             assert result.unsupportedRegexException != null;
             throw result.unsupportedRegexException;
@@ -79,7 +80,7 @@ public class CachingRegexCompiler extends RegexCompiler {
 
     private CompilationResult doCompile(RegexSource regexSource) {
         try {
-            CompiledRegex regex = compiler.compile(regexSource);
+            TruffleObject regex = compiler.compile(regexSource);
             return new CompilationResult(regex);
         } catch (RegexSyntaxException e) {
             return new CompilationResult(e);

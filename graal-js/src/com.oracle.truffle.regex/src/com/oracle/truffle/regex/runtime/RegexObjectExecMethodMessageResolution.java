@@ -7,9 +7,9 @@ package com.oracle.truffle.regex.runtime;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.result.RegexResult;
-import com.oracle.truffle.regex.runtime.nodes.ExecuteRegexDispatchNode;
+import com.oracle.truffle.regex.runtime.nodes.NewExecuteRegexDispatchNode;
 
 @MessageResolution(receiverType = RegexObjectExecMethod.class)
 class RegexObjectExecMethodMessageResolution {
@@ -17,13 +17,13 @@ class RegexObjectExecMethodMessageResolution {
     @Resolve(message = "EXECUTE")
     abstract static class ExecuteRegexExecNode extends Node {
 
-        @Child ExecuteRegexDispatchNode executeRegexDispatchNode = ExecuteRegexDispatchNode.create();
+        @Child NewExecuteRegexDispatchNode executeRegexDispatchNode = NewExecuteRegexDispatchNode.create();
 
-        public RegexResult access(RegexObjectExecMethod receiver, Object[] args) {
+        public TruffleObject access(RegexObjectExecMethod receiver, Object[] args) {
             if (args.length != 2) {
                 throw ArityException.raise(2, args.length);
             }
-            return executeRegexDispatchNode.execute(receiver.getRegexObject(), args[0], args[1]);
+            return executeRegexDispatchNode.execute(receiver.getRegexObject().getCompiledRegexObject(), receiver.getRegexObject(), args[0], args[1]);
         }
     }
 

@@ -10,11 +10,11 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.runtime.RegexObjectExecMethod;
 import com.oracle.truffle.regex.runtime.RegexObjectMessageResolutionForeign;
 
-public class RegexObject implements RegexLanguageObject, HasCompiledRegex {
+public class RegexObject implements RegexLanguageObject {
 
     private final RegexCompiler compiler;
     private final RegexSource source;
-    private CompiledRegex compiledRegex;
+    private TruffleObject compiledRegexObject;
     private final RegexObjectExecMethod execMethod;
     private RegexProfile regexProfile;
 
@@ -24,7 +24,7 @@ public class RegexObject implements RegexLanguageObject, HasCompiledRegex {
         execMethod = new RegexObjectExecMethod(this);
         if (source.getOptions().isRegressionTestMode()) {
             // compile expression eagerly in regression test mode
-            getCompiledRegex();
+            getCompiledRegexObject();
         }
     }
 
@@ -32,16 +32,15 @@ public class RegexObject implements RegexLanguageObject, HasCompiledRegex {
         return source;
     }
 
-    @Override
-    public CompiledRegex getCompiledRegex() {
-        if (compiledRegex == null) {
-            compiledRegex = compileRegex();
+    public TruffleObject getCompiledRegexObject() {
+        if (compiledRegexObject == null) {
+            compiledRegexObject = compileRegex();
         }
-        return compiledRegex;
+        return compiledRegexObject;
     }
 
     @CompilerDirectives.TruffleBoundary
-    private CompiledRegex compileRegex() {
+    private TruffleObject compileRegex() {
         try {
             return compiler.compile(source);
         } catch (RegexSyntaxException e) {
@@ -49,8 +48,8 @@ public class RegexObject implements RegexLanguageObject, HasCompiledRegex {
         }
     }
 
-    public void setCompiledRegex(CompiledRegex compiledRegex) {
-        this.compiledRegex = compiledRegex;
+    public void setCompiledRegexObject(TruffleObject compiledRegexObject) {
+        this.compiledRegexObject = compiledRegexObject;
     }
 
     public RegexObjectExecMethod getExecMethod() {

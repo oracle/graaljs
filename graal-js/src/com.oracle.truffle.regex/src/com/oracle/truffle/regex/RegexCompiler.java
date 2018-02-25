@@ -22,7 +22,7 @@ public abstract class RegexCompiler implements RegexLanguageObject {
      * @throws RegexSyntaxException if the engine discovers a syntax error in the regular expression
      * @throws UnsupportedRegexException if the regular expression is not supported by the engine
      */
-    public abstract CompiledRegex compile(RegexSource source) throws RegexSyntaxException;
+    public abstract TruffleObject compile(RegexSource source) throws RegexSyntaxException;
 
     public static boolean isInstance(TruffleObject object) {
         return object instanceof RegexCompiler;
@@ -55,7 +55,7 @@ public abstract class RegexCompiler implements RegexLanguageObject {
                     flags = (String)args[1];
                 }
                 RegexSource regexSource = new RegexSource(null, pattern, RegexFlags.parseFlags(flags), RegexOptions.DEFAULT);
-                return new CompiledRegexObject(receiver.compile(regexSource));
+                return receiver.compile(regexSource);
             }
         }
 

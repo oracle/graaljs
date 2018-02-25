@@ -81,18 +81,13 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     public static final String ID = "regex";
     public static final String MIME_TYPE = "application/js-regex";
 
-    private final TRegexCompiler tRegexCompiler = new TRegexCompiler(this);
     static final String NO_MATCH_RESULT_IDENTIFIER = "T_REGEX_NO_MATCH_RESULT";
     public static final RegexResult EXPORT_NO_MATCH_RESULT = RegexResult.NO_MATCH;
     static final String THE_ENGINE_IDENTIFIER = "TREGEX_ENGINE";
-    public final RegexEngine THE_ENGINE = new RegexEngine(new CachingRegexCompiler(new RegexCompilerWithFallback(tRegexCompiler, new JoniRegexCompiler(this))));
+    public final RegexEngine THE_ENGINE = new RegexEngine(new CachingRegexCompiler(new RegexCompilerWithFallback(new TRegexCompiler(this, RegexOptions.DEFAULT), new JoniRegexCompiler(this))));
     private final Iterable<Scope> TREGEX_GLOBALS_SCOPE = Collections.singleton(Scope.newBuilder("global", new TRegexScopeObject(this)).build());
 
-    public TRegexCompiler getTRegexCompiler() {
-        return tRegexCompiler;
-    }
-
-    public static void tRegexValidate(String pattern, String flags) throws RegexSyntaxException {
+    public static void validateRegex(String pattern, String flags) throws RegexSyntaxException {
         RegexParser.validate(new RegexSource(null, pattern, RegexFlags.parseFlags(flags), RegexOptions.DEFAULT));
     }
 

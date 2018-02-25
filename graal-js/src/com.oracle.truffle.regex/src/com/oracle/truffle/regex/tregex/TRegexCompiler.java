@@ -26,9 +26,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.regex.CompiledRegex;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.regex.CompiledRegexObject;
 import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -60,14 +62,16 @@ public final class TRegexCompiler extends RegexCompiler {
     private final DebugUtil.Timer timer = DebugUtil.LOG_PHASES ? new DebugUtil.Timer() : null;
 
     private final RegexLanguage language;
+    private final RegexOptions options;
 
-    public TRegexCompiler(RegexLanguage language) {
+    public TRegexCompiler(RegexLanguage language, RegexOptions options) {
         this.language = language;
+        this.options = options;
     }
 
     @CompilerDirectives.TruffleBoundary
     @Override
-    public CompiledRegex compile(RegexSource source) throws RegexSyntaxException {
+    public TruffleObject compile(RegexSource source) throws RegexSyntaxException {
         CompilationBuffer compilationBuffer = new CompilationBuffer();
         // System.out.println("TRegex compiling " +
         // DebugUtil.jsStringEscape(source.toString()));
@@ -82,12 +86,12 @@ public final class TRegexCompiler extends RegexCompiler {
             throw new UnsupportedRegexException("unsupported feature: " + source);
         }
         if (ast.getRoot().isDead()) {
-            return new DeadRegexExecRootNode(language, source);
+            return new CompiledRegexObject(new DeadRegexExecRootNode(language, source));
         }
         LiteralRegexExecRootNode literal = LiteralRegexEngine.createNode(language, ast);
         if (literal != null) {
             logSizes.log(String.format("\"/%s/\", \"%s\", %d, %d, %d, %d, %d, \"literal\"", source.getPattern(), source.getFlags(), 0, 0, 0, 0, 0));
-            return literal;
+            return new CompiledRegexObject(literal);
         }
         PreCalculatedResultFactory[] preCalculatedResults = null;
         if (!(properties.hasAlternations() || properties.hasLookAroundAssertions())) {
@@ -135,12 +139,12 @@ public final class TRegexCompiler extends RegexCompiler {
             phaseEnd("Backward DFA");
         }
         TRegexExecRootNode tRegexRootNode = new TRegexExecRootNode(
-                        language, source, preCalculatedResults, executorNode, executorNodeB, captureGroupExecutor);
+                        language, this, source, preCalculatedResults, executorNode, executorNodeB, captureGroupExecutor);
         if (DebugUtil.LOG_AUTOMATON_SIZES) {
             logAutomatonSizes(source, ast, nfa, traceFinder, captureGroupExecutor, executorNode, executorNodeB);
             logAutomatonSizesCSV(source, ast, nfa, traceFinder, captureGroupExecutor, executorNode, executorNodeB);
         }
-        return tRegexRootNode;
+        return new CompiledRegexObject(tRegexRootNode);
     }
 
     @CompilerDirectives.TruffleBoundary

@@ -4,6 +4,7 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 public class RegexCompilerWithFallback extends RegexCompiler {
@@ -13,14 +14,14 @@ public class RegexCompilerWithFallback extends RegexCompiler {
 
     private final DebugUtil.Timer timer = DebugUtil.LOG_TOTAL_COMPILATION_TIME ? new DebugUtil.Timer() : null;
 
-    public RegexCompilerWithFallback(RegexCompiler mainCompiler, RegexCompiler fallbackCompiler) {
-        this.mainCompiler = mainCompiler;
-        this.fallbackCompiler = fallbackCompiler;
+    public RegexCompilerWithFallback(TruffleObject mainCompiler, TruffleObject fallbackCompiler) {
+        this.mainCompiler = ForeignRegexCompiler.importRegexCompiler(mainCompiler);
+        this.fallbackCompiler = ForeignRegexCompiler.importRegexCompiler(fallbackCompiler);
     }
 
     @Override
-    public CompiledRegex compile(RegexSource regexSource) throws RegexSyntaxException {
-        CompiledRegex regex;
+    public TruffleObject compile(RegexSource regexSource) throws RegexSyntaxException {
+        TruffleObject regex;
         long elapsedTimeMain = 0;
         long elapsedTimeFallback = 0;
         try {

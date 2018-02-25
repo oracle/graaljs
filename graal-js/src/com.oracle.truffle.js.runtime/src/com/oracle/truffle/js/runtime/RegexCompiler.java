@@ -74,7 +74,7 @@ public final class RegexCompiler {
         // parser produces different error messages.
         if (!JSTruffleOptions.NashornCompatibilityMode) {
             try {
-                RegexLanguage.tRegexValidate(pattern, flags);
+                RegexLanguage.validateRegex(pattern, flags);
                 validated = true;
             } catch (final RegexSyntaxException e) {
                 throw Errors.createSyntaxError(e.getMessage());

@@ -9,18 +9,18 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.runtime.nodes.ExecuteRegexDispatchNode;
 
-public class CompiledRegexObject implements RegexLanguageObject, HasCompiledRegex {
+public class CompiledRegexObject implements RegexLanguageObject {
 
-    public CompiledRegex compiledRegex;
+    private final CompiledRegex compiledRegex;
 
     public CompiledRegexObject(CompiledRegex compiledRegex) {
         this.compiledRegex = compiledRegex;
     }
 
-    @Override
     public CompiledRegex getCompiledRegex() {
         return compiledRegex;
     }
@@ -43,10 +43,13 @@ public class CompiledRegexObject implements RegexLanguageObject, HasCompiledRege
             @Child private ExecuteRegexDispatchNode doExecute = ExecuteRegexDispatchNode.create();
 
             public Object access(CompiledRegexObject receiver, Object[] args) {
-                if (args.length != 2) {
-                    throw ArityException.raise(2, args.length);
+                if (args.length != 3) {
+                    throw ArityException.raise(3, args.length);
                 }
-                return doExecute.execute(receiver, args[0], args[1]);
+                if (!(args[0] instanceof RegexObject)) {
+                    throw UnsupportedTypeException.raise(args);
+                }
+                return doExecute.execute(receiver.getCompiledRegex(), (RegexObject)args[0], args[1], args[2]);
             }
         }
 

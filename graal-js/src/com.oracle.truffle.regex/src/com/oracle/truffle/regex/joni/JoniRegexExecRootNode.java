@@ -7,6 +7,7 @@ package com.oracle.truffle.regex.joni;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.regex.CompiledRegexObject;
 import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
@@ -43,7 +44,7 @@ public abstract class JoniRegexExecRootNode extends RegexExecRootNode {
 
     @Override
     public RegexResult execute(VirtualFrame frame, RegexObject regexObject, Object input, int fromIndex) {
-        Regex impl = ((JoniCompiledRegex) regexObject.getCompiledRegex()).getJoniRegex();
+        Regex impl = ((JoniCompiledRegex) ((CompiledRegexObject) regexObject.getCompiledRegexObject()).getCompiledRegex()).getJoniRegex();
         Matcher matcher = sticky ? match(impl, toStringNode.execute(input), fromIndex) : search(impl, toStringNode.execute(input), fromIndex);
 
         return (matcher != null) ? getMatchResult(regexObject, input, matcher) : RegexResult.NO_MATCH;

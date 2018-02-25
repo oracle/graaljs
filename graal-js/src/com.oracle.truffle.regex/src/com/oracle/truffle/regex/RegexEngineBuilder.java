@@ -43,12 +43,12 @@ public class RegexEngineBuilder implements RegexLanguageObject {
                 if (args.length > 2) {
                     throw ArityException.raise(2, args.length);
                 }
-                String options = "";
+                RegexOptions options = RegexOptions.DEFAULT;
                 if (args.length >= 1) {
                     if (!(args[0] instanceof String)) {
                         throw UnsupportedTypeException.raise(args);
                     }
-                    options = (String)args[0];
+                    options = RegexOptions.parse((String)args[0]);
                 }
                 TruffleObject fallbackEngine = null;
                 if (args.length >= 2) {
@@ -58,9 +58,9 @@ public class RegexEngineBuilder implements RegexLanguageObject {
                     fallbackEngine = (TruffleObject)args[1];
                 }
                 if (fallbackEngine != null) {
-                    return new RegexEngine(new CachingRegexCompiler(new RegexCompilerWithFallback(new TRegexCompiler(receiver.language), null /*fallbackEngine*/)));
+                    return new RegexEngine(new CachingRegexCompiler(new RegexCompilerWithFallback(new TRegexCompiler(receiver.language, options), fallbackEngine)));
                 } else {
-                    return new RegexEngine(new CachingRegexCompiler(new TRegexCompiler(receiver.language)));
+                    return new RegexEngine(new CachingRegexCompiler(new TRegexCompiler(receiver.language, options)));
                 }
             }
         }
