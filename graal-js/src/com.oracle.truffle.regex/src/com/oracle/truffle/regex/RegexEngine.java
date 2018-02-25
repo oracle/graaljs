@@ -53,7 +53,7 @@ public class RegexEngine implements RegexLanguageObject {
                     }
                     flags = (String)args[1];
                 }
-                RegexSource regexSource = new RegexSource(null, pattern, RegexFlags.parseFlags(flags));
+                RegexSource regexSource = new RegexSource(pattern, RegexFlags.parseFlags(flags));
                 // Detect SyntaxErrors in regular expressions early.
                 RegexParser.validate(regexSource);
                 RegexObject regexObject = new RegexObject(receiver.compiler, regexSource);

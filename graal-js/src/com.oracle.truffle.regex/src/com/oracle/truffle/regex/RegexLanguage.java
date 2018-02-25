@@ -86,7 +86,7 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     private final Iterable<Scope> TREGEX_GLOBALS_SCOPE = Collections.singleton(Scope.newBuilder("global", new TRegexScopeObject(this)).build());
 
     public static void validateRegex(String pattern, String flags) throws RegexSyntaxException {
-        RegexParser.validate(new RegexSource(null, pattern, RegexFlags.parseFlags(flags)));
+        RegexParser.validate(new RegexSource(pattern, RegexFlags.parseFlags(flags)));
     }
 
     @Override

@@ -6,7 +6,6 @@ package com.oracle.truffle.js.runtime.joni;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.CompiledRegexObject;
 import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexFlags;
@@ -76,10 +75,7 @@ public abstract class JoniRegexExecRootNode extends RegexExecRootNode {
 
     private static RegexSource createPseudoSource(String name) {
         String pattern = "/[" + name + "]/";
-        return new RegexSource(
-                        Source.newBuilder(pattern).name(name).mimeType("application/js-regex").build().createSection(0, pattern.length()),
-                        pattern,
-                        RegexFlags.DEFAULT);
+        return new RegexSource(pattern, RegexFlags.DEFAULT);
     }
 
     public static class Simple extends JoniRegexExecRootNode {

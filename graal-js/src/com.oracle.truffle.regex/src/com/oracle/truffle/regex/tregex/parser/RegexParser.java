@@ -95,7 +95,7 @@ public final class RegexParser {
 
     private static Group parseRootLess(String pattern) throws RegexSyntaxException {
         try {
-            return new RegexParser(new RegexSource(null, pattern, RegexFlags.DEFAULT), RegexOptions.DEFAULT).parse(false);
+            return new RegexParser(new RegexSource(pattern, RegexFlags.DEFAULT), RegexOptions.DEFAULT).parse(false);
         } catch (Throwable e) {
             e.printStackTrace();
             System.out.flush();
