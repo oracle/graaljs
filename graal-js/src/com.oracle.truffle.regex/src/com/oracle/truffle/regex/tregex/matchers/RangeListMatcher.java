@@ -36,6 +36,6 @@ public final class RangeListMatcher extends ProfiledCharMatcher {
     @Override
     @CompilerDirectives.TruffleBoundary
     public String toString() {
-        return modifiersToString() + MatcherBuilder.rangesToString(ranges);
+        return "list " + modifiersToString() + MatcherBuilder.rangesToString(ranges);
     }
 }

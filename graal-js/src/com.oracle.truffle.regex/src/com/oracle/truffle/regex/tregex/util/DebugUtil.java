@@ -9,6 +9,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -17,6 +18,9 @@ import java.util.stream.Stream;
 public class DebugUtil {
 
     public static final boolean DEBUG = false;
+    public static final boolean DEBUG_STEP_EXECUTION = false;
+    public static final boolean DEBUG_ALWAYS_EAGER = false;
+    public static final boolean LOG_SWITCH_TO_EAGER = false;
     public static final boolean LOG_TOTAL_COMPILATION_TIME = false;
     public static final boolean LOG_PHASES = false;
     public static final boolean LOG_BAILOUT_MESSAGES = false;
@@ -74,6 +78,27 @@ public class DebugUtil {
         }
         m.appendTail(escapedString);
         return escapedString.toString();
+    }
+
+    public static String randomJsStringFromRanges(char[] ranges, int length) {
+        Random random = new Random(System.currentTimeMillis());
+        StringBuilder stringBuilder = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            int rangeIndex = random.nextInt(ranges.length / 2);
+            char lo = ranges[rangeIndex * 2];
+            char hi = ranges[rangeIndex * 2 + 1];
+            char randChar = (char) (lo + random.nextInt((hi + 1) - lo));
+            if (randChar == '"') {
+                stringBuilder.append("\\\\\"");
+            } else if (randChar == '\\') {
+                stringBuilder.append("\\\\\\\\");
+            } else if (randChar > 0x7f || Character.isISOControl(randChar)) {
+                stringBuilder.append(String.format("\\u%04x", (int) randChar));
+            } else {
+                stringBuilder.append(randChar);
+            }
+        }
+        return stringBuilder.toString();
     }
 
     public static class Timer {

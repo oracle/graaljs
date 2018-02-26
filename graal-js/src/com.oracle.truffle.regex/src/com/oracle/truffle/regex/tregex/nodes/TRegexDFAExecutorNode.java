@@ -13,6 +13,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.tregex.nodes.input.InputCharAtNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
+import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 public final class TRegexDFAExecutorNode extends Node {
 
@@ -206,7 +207,12 @@ public final class TRegexDFAExecutorNode extends Node {
     }
 
     public char getChar(VirtualFrame frame) {
-        return charAtNode.execute(getInput(frame), getIndex(frame));
+        char c = charAtNode.execute(getInput(frame), getIndex(frame));
+        if (DebugUtil.DEBUG_STEP_EXECUTION) {
+            System.out.println();
+            System.out.println("read char " + c);
+        }
+        return c;
     }
 
     public void advance(VirtualFrame frame) {

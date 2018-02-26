@@ -13,10 +13,17 @@ public final class BitSetMatcher extends ProfiledCharMatcher {
     private final int highByte;
     private final CompilationFinalBitSet bitSet;
 
-    public BitSetMatcher(boolean invert, int highByte, CompilationFinalBitSet bitSet) {
+    private BitSetMatcher(boolean invert, int highByte, CompilationFinalBitSet bitSet) {
         super(invert);
         this.highByte = highByte;
         this.bitSet = bitSet;
+    }
+
+    public static CharMatcher create(boolean invert, int highByte, CompilationFinalBitSet bitSet) {
+        if (highByte == 0) {
+            return new NullHighByteBitSetMatcher(invert, bitSet);
+        }
+        return new BitSetMatcher(invert, highByte, bitSet);
     }
 
     @Override

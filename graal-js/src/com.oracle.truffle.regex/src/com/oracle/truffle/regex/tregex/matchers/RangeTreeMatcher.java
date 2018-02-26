@@ -98,6 +98,6 @@ public final class RangeTreeMatcher extends ProfiledCharMatcher {
     @Override
     @CompilerDirectives.TruffleBoundary
     public String toString() {
-        return modifiersToString() + MatcherBuilder.rangesToString(tree);
+        return "tree " + modifiersToString() + MatcherBuilder.rangesToString(tree);
     }
 }

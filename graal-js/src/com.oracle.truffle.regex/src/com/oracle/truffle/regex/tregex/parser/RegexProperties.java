@@ -119,6 +119,7 @@ public class RegexProperties {
                         new DebugUtil.Value("Alternations", alternations),
                         new DebugUtil.Value("BackReferences", backReferences),
                         new DebugUtil.Value("CharClasses", charClasses),
+                        new DebugUtil.Value("CaptureGroups", captureGroups),
                         new DebugUtil.Value("LookAheadAssertions", lookAheadAssertions),
                         new DebugUtil.Value("ComplexLookAheadAssertions", complexLookAheadAssertions),
                         new DebugUtil.Value("LookBehindAssertions", lookBehindAssertions),

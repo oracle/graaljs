@@ -226,7 +226,7 @@ public final class TRegexEngine implements RegexEngine {
     private static void debugNFA(NFA nfa) {
         if (DebugUtil.DEBUG) {
             NFAExport.exportDot(nfa, "./nfa.gv", true);
-            NFAExport.exportLaTex(nfa, "./nfa.tex", true);
+            NFAExport.exportLaTex(nfa, "./nfa.tex", false);
             NFAExport.exportDotReverse(nfa, "./nfa_reverse.gv", true);
         }
     }

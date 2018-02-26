@@ -173,13 +173,16 @@ public final class DFAGenerator {
         }
         entryStates[0] = gen.lookupOrCreateState(new DFAStateTransitionBuilder(null, anchoredEntry)).getId();
         DFAAbstractStateNode[] states = gen.createFullDFA();
+        assert states[0] == null;
+        states[0] = new DFAInitialStateNode(entryStates, null, false, false);
         if (DebugUtil.DEBUG) {
             DFAExport.exportDot(gen.stateMap, entryStates, "./dfa_reverse.gv", false);
             System.out.println("REVERSE");
             gen.dumpDFA();
+            for (DFAAbstractStateNode s : states) {
+                System.out.println(s.toTable());
+            }
         }
-        assert states[0] == null;
-        states[0] = new DFAInitialStateNode(entryStates, null, false, false);
         if (TRegexOptions.TRegexEnableNodeSplitter) {
             states = tryMakeReducible(states);
         }

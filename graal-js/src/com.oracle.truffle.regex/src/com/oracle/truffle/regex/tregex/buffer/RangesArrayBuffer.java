@@ -28,4 +28,8 @@ public class RangesArrayBuffer extends CharArrayBuffer {
         add((char) rLo);
         add((char) rHi);
     }
+
+    public int sizeRanges() {
+        return size() / 2;
+    }
 }
