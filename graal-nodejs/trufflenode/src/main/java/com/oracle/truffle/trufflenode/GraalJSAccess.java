@@ -215,7 +215,7 @@ public final class GraalJSAccess {
     private static final TRegexUtil.TRegexCompiledRegexAccessor STATIC_COMPILED_REGEX_ACCESSOR = TRegexUtil.TRegexCompiledRegexAccessor.create();
     private static final TRegexUtil.TRegexFlagsAccessor STATIC_FLAGS_ACCESSOR = TRegexUtil.TRegexFlagsAccessor.create();
 
-    private GraalJSAccess(String[] args, long loopAddress) {
+    private GraalJSAccess(String[] args, long loopAddress) throws Exception {
         Options options = null;
         Context.Builder contextBuilder = null;
         try {
@@ -250,7 +250,7 @@ public final class GraalJSAccess {
         return mergedArgs;
     }
 
-    public static Object create(String[] args, long loopAddress) {
+    public static Object create(String[] args, long loopAddress) throws Exception {
         return new GraalJSAccess(args, loopAddress);
     }
 

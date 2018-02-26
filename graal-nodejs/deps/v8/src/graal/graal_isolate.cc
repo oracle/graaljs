@@ -215,11 +215,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
             fprintf(stderr, "Cannot find %s. Update GRAAL_SDK_JAR_PATH environment variable!\n", graal_sdk_jar_path.c_str());
             exit(1);
         }
-        std::string launcher_common_jar_path = getstdenv("LAUNCHER_COMMON_JAR_PATH");
-        if (!launcher_common_jar_path.empty() && access(launcher_common_jar_path.c_str(), F_OK) == -1) {
-            fprintf(stderr, "Cannot find %s. Update LAUNCHER_COMMON_JAR_PATH environment variable!\n", launcher_common_jar_path.c_str());
-            exit(1);
-        }
         std::string truffle_jar_path = getstdenv("TRUFFLE_JAR_PATH");
         if (!truffle_jar_path.empty() && access(truffle_jar_path.c_str(), F_OK) == -1) {
             fprintf(stderr, "Cannot find %s. Update TRUFFLE_JAR_PATH environment variable!\n", truffle_jar_path.c_str());
@@ -270,10 +265,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
             if (!graal_sdk_jar_path.empty()) {
                 boot_classpath += ":";
                 boot_classpath += graal_sdk_jar_path;
-            }
-            if (!launcher_common_jar_path.empty()) {
-                boot_classpath += ":";
-                boot_classpath += launcher_common_jar_path;
             }
             if (!truffle_jar_path.empty()) {
                 boot_classpath += ":";
