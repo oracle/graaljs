@@ -51,11 +51,11 @@ public class FunctionEnvironment extends Environment {
     private boolean needsParentFrame = false;
     private boolean frozen = false;
 
-    private int returnNodeCount;
     private int breakNodeCount;
     private int continueNodeCount;
-    private int yieldNodeCount;
-    private int awaitCount;
+    private boolean hasReturn;
+    private boolean hasYield;
+    private boolean hasAwait;
 
     private List<BreakTarget> jumpTargetStack;
     private boolean directArgumentsAccess;
@@ -246,28 +246,34 @@ public class FunctionEnvironment extends Environment {
         throw new NoSuchElementException("jump target not found");
     }
 
-    public int getReturnCount() {
-        return returnNodeCount;
+    public boolean hasReturn() {
+        return hasReturn;
     }
 
     public void addReturn() {
-        returnNodeCount++;
+        if (!hasReturn) {
+            hasReturn = true;
+        }
     }
 
-    public int getAwaitCount() {
-        return awaitCount;
+    public boolean hasAwait() {
+        return hasAwait;
     }
 
     public void addAwait() {
-        awaitCount++;
+        if (!hasAwait) {
+            hasAwait = true;
+        }
     }
 
-    public int getYieldCount() {
-        return yieldNodeCount;
+    public boolean hasYield() {
+        return hasYield;
     }
 
     public void addYield() {
-        yieldNodeCount++;
+        if (!hasYield) {
+            hasYield = true;
+        }
     }
 
     public void setDirectArgumentsAccess(boolean directArgumentsAccess) {

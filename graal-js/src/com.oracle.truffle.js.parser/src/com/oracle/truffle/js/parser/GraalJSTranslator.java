@@ -463,7 +463,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         VarRef asyncResultVar = environment.findAsyncResultVar();
         JSWriteFrameSlotNode writeResultNode = (JSWriteFrameSlotNode) asyncResultVar.createWriteNode(null);
         JSWriteFrameSlotNode writeContextNode = (JSWriteFrameSlotNode) asyncContextVar.createWriteNode(null);
-        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body, currentFunction().getAwaitCount());
+        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
         return factory.createAsyncFunctionBody(context, parameterInit, instrumentedBody, writeContextNode, writeResultNode);
     }
 
@@ -476,7 +476,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         VarRef yieldVar = environment.findYieldValueVar();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
         JSReadFrameSlotNode readYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
-        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body, currentFunction().getYieldCount());
+        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
         return factory.createGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode);
     }
 
@@ -490,15 +490,15 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         VarRef yieldVar = environment.findAsyncResultVar();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
         JSReadFrameSlotNode readYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
-        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body, currentFunction().getAwaitCount());
+        JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
         return factory.createAsyncGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode, writeAsyncContextNode);
     }
 
     /**
      * Instrument code paths leading to yield and await expressions.
      */
-    private JavaScriptNode instrumentSuspendNodes(JavaScriptNode body, int count) {
-        if (count == 0) {
+    private JavaScriptNode instrumentSuspendNodes(JavaScriptNode body) {
+        if (!currentFunction().hasYield() && !currentFunction().hasAwait()) {
             return body;
         }
         JavaScriptNode newBody = (JavaScriptNode) instrumentSuspendHelper(body, null);
@@ -627,10 +627,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode handleFunctionReturn(FunctionNode functionNode, JavaScriptNode body) {
         assert (currentFunction().isGlobal() || currentFunction().isEval()) == (functionNode.getKind() == FunctionNode.Kind.SCRIPT || functionNode.getKind() == FunctionNode.Kind.MODULE);
         if (currentFunction().returnsLastStatementResult()) {
-            assert currentFunction().getReturnCount() == 0;
+            assert !currentFunction().hasReturn();
             return wrapGetCompletionValue(body);
         }
-        if (currentFunction().getReturnCount() > 0) {
+        if (currentFunction().hasReturn()) {
             if (JSTruffleOptions.ReturnValueInFrame) {
                 return factory.createFrameReturnTarget(body, factory.createLocal(currentFunction().getReturnSlot(), 0, 0));
             } else {
