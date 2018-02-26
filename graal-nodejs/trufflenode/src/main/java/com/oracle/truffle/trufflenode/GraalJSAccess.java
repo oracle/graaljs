@@ -65,7 +65,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
@@ -210,7 +209,7 @@ public final class GraalJSAccess {
 
     private final List<Reference<FunctionTemplate>> functionTemplates = new ArrayList<>();
 
-    private boolean exposeGC = false;
+    private boolean exposeGC;
 
     // static accessors to JSRegExp properties (usually via nodes)
     private static final TRegexUtil.TRegexCompiledRegexAccessor STATIC_COMPILED_REGEX_ACCESSOR = TRegexUtil.TRegexCompiledRegexAccessor.create();
@@ -221,10 +220,7 @@ public final class GraalJSAccess {
         Context.Builder contextBuilder = null;
         try {
             options = Options.parseArguments(prepareArguments(args));
-            contextBuilder = options.isPolyglot() ? Context.newBuilder() : Context.newBuilder(JavaScriptLanguage.ID);
-            contextBuilder.options(options.getPolyglotOptions());
-            contextBuilder.allowHostAccess(!TruffleOptions.AOT);
-            contextBuilder.allowCreateThread(options.isPolyglot());
+            contextBuilder = options.getContextBuilder();
         } catch (IllegalArgumentException iaex) {
             System.err.println(iaex.getMessage());
             System.exit(1);

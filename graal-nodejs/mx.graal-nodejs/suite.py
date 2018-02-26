@@ -73,7 +73,8 @@ suite = {
       "subDir" : "mx.graal-nodejs",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "graal-js:GRAALJS"
+        "graal-js:GRAALJS",
+        "sdk:LAUNCHER_COMMON",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8",
@@ -104,7 +105,8 @@ suite = {
       "subdir" : "mx.graal-nodejs",
       "dependencies" : ["com.oracle.truffle.trufflenode"],
       "distDependencies" : [
-        "graal-js:GRAALJS"
+        "graal-js:GRAALJS",
+        "sdk:LAUNCHER_COMMON",
       ],
       "description" : "Graal Node.js",
       "maven" : {
