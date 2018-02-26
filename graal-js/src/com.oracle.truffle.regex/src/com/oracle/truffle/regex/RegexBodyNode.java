@@ -36,6 +36,7 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
         return source;
     }
 
+    @CompilerDirectives.TruffleBoundary
     @Override
     public SourceSection getSourceSection() {
         if (sourceSection == null) {

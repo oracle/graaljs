@@ -4,6 +4,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
@@ -110,6 +111,7 @@ public final class RegexParser {
         return new RegexParser(source, options).parse();
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static void validate(RegexSource source) throws RegexSyntaxException {
         new RegexParser(source, RegexOptions.DEFAULT).parseDryRun();
     }

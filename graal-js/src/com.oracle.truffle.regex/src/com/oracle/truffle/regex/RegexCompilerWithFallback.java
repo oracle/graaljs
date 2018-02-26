@@ -4,6 +4,7 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
@@ -20,6 +21,7 @@ public class RegexCompilerWithFallback extends RegexCompiler {
     }
 
     @Override
+    @CompilerDirectives.TruffleBoundary
     public TruffleObject compile(RegexSource regexSource) throws RegexSyntaxException {
         TruffleObject regex;
         long elapsedTimeMain = 0;
