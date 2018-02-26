@@ -688,11 +688,11 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder> {
         return size() == 1 && getLo(0) == Character.MIN_VALUE && getHi(0) == Character.MAX_VALUE;
     }
 
-    private int highByte(char c) {
+    private static int highByte(char c) {
         return c >> Byte.SIZE;
     }
 
-    private int lowByte(char c) {
+    private static int lowByte(char c) {
         return c & 0xff;
     }
 

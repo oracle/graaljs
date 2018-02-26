@@ -28,7 +28,7 @@ public class StateSetBackingSortedArray implements StateSetBackingSet {
     }
 
     @Override
-    public void create(StateIndex stateIndex) {
+    public void create(int stateIndexSize) {
         array = new short[8];
     }
 

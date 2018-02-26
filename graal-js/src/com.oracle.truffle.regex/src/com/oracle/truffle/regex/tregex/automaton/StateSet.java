@@ -52,7 +52,7 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
 
     private void checkSwitchToBitSet(int newSize) {
         if (!useBackingSet() && newSize > SWITCH_TO_BITSET_THRESHOLD) {
-            backingSet.create(stateIndex);
+            backingSet.create(stateIndex.getNumberOfStates());
             for (int i = 0; i < size(); i++) {
                 backingSet.addBatch(stateListElement(stateList));
                 stateList >>>= Short.SIZE;

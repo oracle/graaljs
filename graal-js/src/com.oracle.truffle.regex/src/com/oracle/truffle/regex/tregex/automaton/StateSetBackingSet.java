@@ -10,7 +10,7 @@ public interface StateSetBackingSet extends Iterable<Integer> {
 
     StateSetBackingSet copy();
 
-    void create(StateIndex stateIndex);
+    void create(int stateIndexSize);
 
     boolean isActive();
 
@@ -30,5 +30,6 @@ public interface StateSetBackingSet extends Iterable<Integer> {
 
     boolean isDisjoint(StateSetBackingSet other);
 
+    @Override
     PrimitiveIterator.OfInt iterator();
 }

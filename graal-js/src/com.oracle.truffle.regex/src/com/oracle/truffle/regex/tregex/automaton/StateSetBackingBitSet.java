@@ -25,9 +25,9 @@ public class StateSetBackingBitSet implements StateSetBackingSet {
     }
 
     @Override
-    public void create(StateIndex stateIndex) {
+    public void create(int stateIndexSize) {
         assert bitSet == null;
-        bitSet = new CompilationFinalBitSet(stateIndex.getNumberOfStates());
+        bitSet = new CompilationFinalBitSet(stateIndexSize);
     }
 
     @Override
