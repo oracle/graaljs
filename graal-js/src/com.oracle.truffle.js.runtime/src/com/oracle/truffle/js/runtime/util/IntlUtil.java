@@ -141,6 +141,9 @@ public class IntlUtil {
         addIfMissing(result, Locale.forLanguageTag("lt"));
         addIfMissing(result, Locale.forLanguageTag("tr"));
 
+        // default locale might be missing in the available locale list
+        addIfMissing(result, Locale.getDefault());
+
         return result;
     }
 
