@@ -14,6 +14,26 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
 
+/**
+ * {@link RegexEngineBuilder} is the entry point into using {@link RegexLanguage}. It is an
+ * executable {@link TruffleObject} that configures and returns a {@link RegexEngine}. When
+ * executing a {@link RegexEngineBuilder}, it accepts the following arguments:
+ * <ol>
+ * <li>{@link String} {@code options} (optional): a comma-separated list of options for the engine,
+ * the currently supported options include:</li>
+ * <ul>
+ * <li>{@code U180EWhitespace}: the U+180E Unicode character (MONGOLIAN VOWEL SEPARATOR) is to be
+ * treated as whitespace (Unicode versions before 6.3.0)</li>
+ * <li>{@code RegressionTestMode}: all compilation is done eagerly, so as to detect errors early
+ * during testing</li>
+ * </ul>
+ * <li>{@link RegexCompiler} {@code fallbackCompiler} (optional): an optional {@link RegexCompiler}
+ * to be used when compilation by {@link TRegexCompiler}, the native compiler of
+ * {@link RegexLanguage}, fails with an {@link UnsupportedRegexException}; {@code fallbackCompiler}
+ * does not have to be an instance of {@link RegexCompiler}, it can also be a {@link TruffleObject}
+ * with the same interop semantics as {@link RegexCompiler}</li>
+ * </ol>
+ */
 public class RegexEngineBuilder implements RegexLanguageObject {
 
     private final RegexLanguage language;
@@ -50,15 +70,15 @@ public class RegexEngineBuilder implements RegexLanguageObject {
                     }
                     options = RegexOptions.parse((String) args[0]);
                 }
-                TruffleObject fallbackEngine = null;
+                TruffleObject fallbackCompiler = null;
                 if (args.length >= 2) {
                     if (!(args[1] instanceof TruffleObject && ForeignAccess.sendIsExecutable(isExecutableNode, (TruffleObject) args[1]))) {
                         throw UnsupportedTypeException.raise(args);
                     }
-                    fallbackEngine = (TruffleObject) args[1];
+                    fallbackCompiler = (TruffleObject) args[1];
                 }
-                if (fallbackEngine != null) {
-                    return new RegexEngine(new CachingRegexCompiler(new RegexCompilerWithFallback(new TRegexCompiler(receiver.language, options), fallbackEngine)), options.isRegressionTestMode());
+                if (fallbackCompiler != null) {
+                    return new RegexEngine(new CachingRegexCompiler(new RegexCompilerWithFallback(new TRegexCompiler(receiver.language, options), fallbackCompiler)), options.isRegressionTestMode());
                 } else {
                     return new RegexEngine(new CachingRegexCompiler(new TRegexCompiler(receiver.language, options)), options.isRegressionTestMode());
                 }

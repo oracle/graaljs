@@ -13,6 +13,23 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 
+/**
+ * {@link RegexEngine} is an executable {@link TruffleObject} that compiles regular expressions and
+ * packages the results in {@link RegexObject}s. It takes the following arguments:
+ * <ol>
+ * <li>{@link String} {@code pattern}: the source of the regular expression to be compiled</li>
+ * <li>{@link String} {@code flags} (optional): a textual representation of the flags to be passed
+ * to the compiler (one letter per flag), see {@link RegexFlags} for the supported flags</li>
+ * </ol>
+ * Executing the {@link RegexEngine} can also lead to the following exceptions:
+ * <ul>
+ * <li>{@link RegexSyntaxException}: if the input regular expression is malformed</li>
+ * <li>{@link UnsupportedRegexException}: if the input regular expression cannot be compiled by this
+ * engine</li>
+ * </ul>
+ * <p>
+ * A {@link RegexEngine} can be obtained by executing the {@link RegexEngineBuilder}.
+ */
 public class RegexEngine implements RegexLanguageObject {
 
     private final RegexCompiler compiler;

@@ -10,6 +10,12 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
+/**
+ * {@link ForeignRegexCompiler} wraps a {@link TruffleObject} that is compatible with
+ * {@link RegexCompiler} and lets us use it as if it were an actual {@link RegexCompiler}.
+ * 
+ * @author Jirka Marsik <jiri.marsik@oracle.com>
+ */
 public class ForeignRegexCompiler extends RegexCompiler {
 
     private final TruffleObject foreignCompiler;
@@ -20,6 +26,11 @@ public class ForeignRegexCompiler extends RegexCompiler {
         this.foreignCompiler = foreignCompiler;
     }
 
+    /**
+     * Wraps the supplied {@link TruffleObject} in a {@link ForeignRegexCompiler}, unless it already
+     * is a {@link RegexCompiler}. Use this when accepting {@link RegexCompiler}s over Truffle
+     * interop.
+     */
     public static RegexCompiler importRegexCompiler(TruffleObject regexCompiler) {
         return regexCompiler instanceof RegexCompiler ? (RegexCompiler) regexCompiler : new ForeignRegexCompiler(regexCompiler);
     }

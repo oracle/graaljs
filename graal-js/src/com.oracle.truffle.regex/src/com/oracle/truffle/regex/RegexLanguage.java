@@ -4,12 +4,13 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 
@@ -18,43 +19,22 @@ import java.util.Collections;
 /**
  * Truffle Regular Expression Language
  * <p>
- * This language represents classic regular expressions, currently in JavaScript flavor only.
- * Accepted sources are single-line regular expressions in the form "/regex/flags". If the provided
- * source is a valid expression, it will return a {@link RegexObject}, which is executable.
+ * This language represents classic regular expressions, currently in JavaScript flavor only. By
+ * evaluating any source, or by importing the T_REGEX_ENGINE_BUILDER, you get access to the
+ * {@link RegexEngineBuilder}. By calling this builder, you can build your custom
+ * {@link RegexEngine} which implements your flavor of regular expressions and uses your fallback
+ * compiler for expressions not covered. The {@link RegexEngine} accepts regular expression patterns
+ * and flags and compiles them to {@link RegexObject}s, which you can use to match the regular
+ * expressions against strings.
  * <p>
- * {@link RegexObject} accepts two parameters:
- * <ol>
- * <li>{@link Object} {@code input}: the character sequence to search in. This may either be a
- * {@link String} or a {@link TruffleObject} that responds to {@link Message#GET_SIZE} and returns
- * {@link Character}s on indexed {@link Message#READ} requests.</li>
- * <li>{@link Number} {@code fromIndex}: the position to start searching from. This argument will be
- * cast to {@code int}, since a {@link String} can not be longer than {@link Integer#MAX_VALUE}. If
- * {@code fromIndex} is greater than {@link Integer#MAX_VALUE}, this method will immediately return
- * NO_MATCH.</li>
- * <li>The return value is a {@link RegexResult}, which has the following properties:
- * <ol>
- * <li>{@code Object input}: The input sequence this result was calculated from. If the result is no
- * match, this property is {@code null}.</li>
- * <li>{@code boolean isMatch}: {@code true} if a match was found, {@code false} otherwise.</li>
- * <li>{@code int groupCount}: number of capture groups present in the regular expression, including
- * group 0. If the result is no match, this property is {@code 0}.</li>
- * <li>{@link TruffleObject}{@code start}: array of positions where the beginning of the capture
- * group with the given number was found. If the result is no match, this property is an empty
- * array. Capture group number {@code 0} denotes the boundaries of the entire expression. If no
- * match was found for a particular capture group, the returned value at its respective index is
- * {@code -1}.</li>
- * <li>{@link TruffleObject}{@code end}: array of positions where the end of the capture group with
- * the given number was found. If the result is no match, this property is an empty array. Capture
- * group number {@code 0} denotes the boundaries of the entire expression. If no match was found for
- * a particular capture group, the returned value at its respective index is {@code -1}.</li>
- * </ol>
- * </li>
- * </ol>
  * 
  * <pre>
  * Usage example in JavaScript:
  * {@code
- * var pattern = Interop.eval("application/js-regex", "/(a|(b))c/i");
+ * var engineBuilder = Interop.eval("application/js-regex", "");
+ * // or var engineBuilder = Interop.import("T_REGEX_ENGINE_BUILDER"); after initializing the language
+ * var engine = engineBuilder();
+ * var pattern = engine("(a|(b))c", "i");
  * var result = pattern.exec("xacy", 0);
  * print(result.isMatch);    // true
  * print(result.input);      // "xacy"
@@ -85,8 +65,15 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     public final RegexEngineBuilder engineBuilder = new RegexEngineBuilder(this);
     private final Iterable<Scope> tRegexGlobalsScope = Collections.singleton(Scope.newBuilder("global", new TRegexScopeObject(this)).build());
 
+    private final CallTarget getEngineBuilderCT = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(engineBuilder));
+
     public static void validateRegex(String pattern, String flags) throws RegexSyntaxException {
         RegexParser.validate(new RegexSource(pattern, RegexFlags.parseFlags(flags)));
+    }
+
+    @Override
+    protected CallTarget parse(ParsingRequest parsingRequest) {
+        return getEngineBuilderCT;
     }
 
     @Override
