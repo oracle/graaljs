@@ -862,7 +862,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         protected Object executeCallImpl(TruffleObject function, Object[] extractedUserArguments) {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                callNode = insert(JSInteropUtil.createCall(extractedUserArguments.length));
+                callNode = insert(JSInteropUtil.createCall());
             }
             return JSInteropNodeUtil.call(function, extractedUserArguments, callNode);
         }
@@ -880,7 +880,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         protected Object executeCallImpl(TruffleObject receiver, Object[] extractedUserArguments) {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                callNode = insert(JSInteropUtil.createInvoke(extractedUserArguments.length));
+                callNode = insert(JSInteropUtil.createInvoke());
             }
             return JSInteropNodeUtil.invoke(receiver, functionName, extractedUserArguments, callNode);
         }

@@ -62,7 +62,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSharedArrayBuffer(thisObj)")
         protected static DynamicObject error(Object thisObj, Object begin0, Object end0) {
-            throw Errors.createTypeError("Cannot execute on non-shared array", thisObj);
+            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
 
         @Specialization(guards = "isJSSharedArrayBuffer(thisObj)")

@@ -1090,7 +1090,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             } catch (UnknownIdentifierException e) {
                 return Undefined.instance;
             } catch (UnsupportedMessageException e) {
-                return Null.instance;
+                return Errors.createTypeErrorInteropException(thisObj, e, Message.READ, this);
             }
         }
 
@@ -1103,7 +1103,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 Object foreignResult = ForeignAccess.sendGetSize(getSize, thisObj);
                 return toJSType.executeWithTarget(foreignResult);
             } catch (UnsupportedMessageException e) {
-                return Null.instance;
+                return Errors.createTypeErrorInteropException(thisObj, e, Message.GET_SIZE, this);
             }
         }
 

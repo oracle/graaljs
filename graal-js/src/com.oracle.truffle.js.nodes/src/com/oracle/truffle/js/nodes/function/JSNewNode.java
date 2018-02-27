@@ -155,7 +155,7 @@ public abstract class JSNewNode extends JavaScriptNode {
 
     @Specialization(guards = {"isForeignObject(target)"})
     public Object doNewForeignObject(VirtualFrame frame, TruffleObject target,
-                    @Cached("createNewCache(frame)") Node newNode,
+                    @Cached("createNewCache()") Node newNode,
                     @Cached("create()") ExportValueNode convert) {
         int count = arguments.getCount(frame);
         Object[] args = new Object[count];
@@ -167,8 +167,8 @@ public abstract class JSNewNode extends JavaScriptNode {
         return JSInteropNodeUtil.construct(target, args, newNode, this);
     }
 
-    protected Node createNewCache(VirtualFrame frame) {
-        return JSInteropUtil.createNew(arguments.getCount(frame));
+    protected Node createNewCache() {
+        return JSInteropUtil.createNew();
     }
 
     @Specialization(guards = {"!isJSFunction(target)", "!isJavaClass(target)", "!isJSAdapter(target)", "!isJavaPackage(target)", "!isJavaConstructor(target)", "!isForeignObject(target)"})
