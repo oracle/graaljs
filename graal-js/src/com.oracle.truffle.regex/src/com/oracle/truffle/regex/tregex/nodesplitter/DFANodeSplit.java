@@ -22,9 +22,7 @@ import java.util.Set;
 /**
  * Implementation of a node splitting algorithm presented by Sebastian Unger and Frank Mueller in
  * "Handling Irreducible Loops: Optimized Node Splitting vs. DJ-Graphs" (2001) and "Transforming
- * Irreducible Regions of Control Flow into Reducible Regions by Optimized Node Splitting" (1998),
- * with the dominance algorithm by Keith D. Cooper, Timothy J. Harvey, and Ken Kennedy presented in
- * "A Simple, Fast Dominance Algorithm"
+ * Irreducible Regions of Control Flow into Reducible Regions by Optimized Node Splitting" (1998).
  */
 public final class DFANodeSplit implements StateIndex<GraphNode> {
 

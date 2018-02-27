@@ -15,6 +15,10 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Set;
 
+/**
+ * Abstract graph node wrapper with lots of extra fields used by the dominator tree algorithm in
+ * {@link DominatorTree} and the node splitting algorithm implemented in {@link DFANodeSplit}.
+ */
 final class GraphNode implements Comparable<GraphNode>, IndexedState {
 
     private static final short[] NO_DOM_CHILDREN = new short[0];
@@ -50,6 +54,7 @@ final class GraphNode implements Comparable<GraphNode>, IndexedState {
         this.predecessorSet = cpy.predecessorSet.copy();
         this.backEdges = cpy.backEdges.copy();
         this.domChildren = cpy.domChildren == NO_DOM_CHILDREN ? NO_DOM_CHILDREN : Arrays.copyOf(cpy.domChildren, cpy.domChildren.length);
+        this.nDomChildren = cpy.nDomChildren;
         this.header = cpy.header;
         this.postOrderIndex = cpy.postOrderIndex;
         this.domTreeDepth = cpy.domTreeDepth;

@@ -7,6 +7,10 @@ package com.oracle.truffle.regex.tregex.matchers;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
+/**
+ * Specialized {@link BitSetMatcher} that exists simply because ascii bit set matchers occur often
+ * and we can save one comparison when the high byte is {@code 0x00}.
+ */
 public final class NullHighByteBitSetMatcher extends ProfiledCharMatcher {
 
     private final CompilationFinalBitSet bitSet;

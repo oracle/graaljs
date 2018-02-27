@@ -10,17 +10,32 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
-public class HybridBitSetMatcher extends ProfiledCharMatcher {
+/**
+ * Character matcher that uses a sorted list of bit sets (like {@link BitSetMatcher}) in conjunction
+ * with another {@link CharMatcher} to cover all characters not covered by the bit sets.
+ */
+public final class HybridBitSetMatcher extends ProfiledCharMatcher {
 
     @CompilationFinal(dimensions = 1) private final byte[] highBytes;
     @CompilationFinal(dimensions = 1) private final CompilationFinalBitSet[] bitSets;
     private final CharMatcher restMatcher;
 
+    /**
+     * Constructs a new {@link HybridBitSetMatcher}.
+     * 
+     * @param invert see {@link ProfiledCharMatcher}.
+     * @param highBytes the respective high bytes of the bit sets.
+     * @param bitSets the bit sets that match the low bytes if the character under inspection has
+     *            the corresponding high byte.
+     * @param restMatcher any {@link CharMatcher}, to cover the characters not covered by the bit
+     *            sets.
+     */
     public HybridBitSetMatcher(boolean invert, byte[] highBytes, CompilationFinalBitSet[] bitSets, CharMatcher restMatcher) {
         super(invert);
         this.highBytes = highBytes;
         this.bitSets = bitSets;
         this.restMatcher = restMatcher;
+        assert isSortedUnsigned(highBytes);
     }
 
     @Override
@@ -47,5 +62,17 @@ public class HybridBitSetMatcher extends ProfiledCharMatcher {
             sb.append(String.format("  %02x: ", Byte.toUnsignedInt(highBytes[i]))).append(bitSets[i]).append("\n");
         }
         return sb.append("  rest: ").append(restMatcher).append("\n]").toString();
+    }
+
+    private static boolean isSortedUnsigned(byte[] array) {
+        int prev = Integer.MIN_VALUE;
+        for (byte b : array) {
+            int i = Byte.toUnsignedInt(b);
+            if (prev > i) {
+                return false;
+            }
+            prev = i;
+        }
+        return true;
     }
 }

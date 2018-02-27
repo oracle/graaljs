@@ -8,12 +8,15 @@ import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 
 import java.util.ArrayList;
 
-public class Graph implements StateIndex<GraphNode> {
+/**
+ * An abstract graph wrapper used by {@link DFANodeSplit}.
+ */
+class Graph implements StateIndex<GraphNode> {
 
     private GraphNode start;
     private final ArrayList<GraphNode> nodes;
 
-    public Graph(int initialCapacity) {
+    Graph(int initialCapacity) {
         this.nodes = new ArrayList<>(initialCapacity);
     }
 

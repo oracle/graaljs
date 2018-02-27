@@ -9,6 +9,10 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+/**
+ * Dominance algorithm as described in "A Simple, Fast Dominance Algorithm" by Keith D. Cooper,
+ * Timothy J. Harvey, and Ken Kennedy. Used by {@link DFANodeSplit}.
+ */
 final class DominatorTree {
 
     private final Graph graph;

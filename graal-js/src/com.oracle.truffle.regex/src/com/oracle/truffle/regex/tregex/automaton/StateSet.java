@@ -12,9 +12,16 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+/**
+ * A specialized set for sequentially indexed objects. The objects stored in this set must implement
+ * {@link IndexedState}, they are referenced by {@link IndexedState#getId()}. Up to a size of four,
+ * this set uses a list of {@code short} values compressed into one {@code long} to store the
+ * indices. When the set grows larger than four elements, the indices are stored in a
+ * {@link StateSetBackingSet}, which can be set in the constructor.
+ */
 public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
 
-    private static final int SWITCH_TO_BITSET_THRESHOLD = 4;
+    private static final int SWITCH_TO_BACKING_SET_THRESHOLD = 4;
 
     private static final byte FLAG_HASH_COMPUTED = 1;
     private static final byte FLAG_STATE_LIST_SORTED = 1 << 1;
@@ -51,7 +58,7 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
     }
 
     private void checkSwitchToBitSet(int newSize) {
-        if (!useBackingSet() && newSize > SWITCH_TO_BITSET_THRESHOLD) {
+        if (!useBackingSet() && newSize > SWITCH_TO_BACKING_SET_THRESHOLD) {
             backingSet.create(stateIndex.getNumberOfStates());
             for (int i = 0; i < size(); i++) {
                 backingSet.addBatch(stateListElement(stateList));
@@ -346,7 +353,7 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
     public int hashCode() {
         if (!isHashComputed()) {
             if (useBackingSet()) {
-                if (size <= SWITCH_TO_BITSET_THRESHOLD) {
+                if (size <= SWITCH_TO_BACKING_SET_THRESHOLD) {
                     long hashStateList = 0;
                     int shift = 0;
                     for (int i : backingSet) {
@@ -362,9 +369,9 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
                     cachedHash = 0;
                 } else {
                     requireStateListSorted();
-                    if (size < SWITCH_TO_BITSET_THRESHOLD) {
+                    if (size < SWITCH_TO_BACKING_SET_THRESHOLD) {
                         // clear unused slots in stateList
-                        stateList &= (~0L >>> (Short.SIZE * (SWITCH_TO_BITSET_THRESHOLD - size)));
+                        stateList &= (~0L >>> (Short.SIZE * (SWITCH_TO_BACKING_SET_THRESHOLD - size)));
                     }
                     cachedHash = Long.hashCode(stateList);
                 }
