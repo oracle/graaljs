@@ -204,9 +204,9 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), realm, (DynamicObject) innerFunction, thisArg, args, proto, false);
 
             int length = 0;
-            boolean targetHasLength = JSObject.hasOwnProperty(target, JSFunction.LENGTH);
+            boolean targetHasLength = JSObject.hasOwnProperty(thisObj, JSFunction.LENGTH);
             if (targetHasLength) {
-                Object targetLen = JSObject.get(target, JSFunction.LENGTH);
+                Object targetLen = JSObject.get(thisObj, JSFunction.LENGTH);
                 if (JSRuntime.isNumber(targetLen)) {
                     int targetLenInt = (int) JSRuntime.toInteger(targetLen);
                     length = Math.max(0, targetLenInt - args.length);
