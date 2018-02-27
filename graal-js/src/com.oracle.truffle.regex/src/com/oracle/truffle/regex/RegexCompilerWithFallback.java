@@ -13,6 +13,7 @@ public class RegexCompilerWithFallback extends RegexCompiler {
     private final RegexCompiler mainCompiler;
     private final RegexCompiler fallbackCompiler;
 
+    private final DebugUtil.DebugLogger logBailout = new DebugUtil.DebugLogger("Bailout: ", DebugUtil.LOG_BAILOUT_MESSAGES);
     private final DebugUtil.Timer timer = DebugUtil.LOG_TOTAL_COMPILATION_TIME ? new DebugUtil.Timer() : null;
 
     public RegexCompilerWithFallback(TruffleObject mainCompiler, TruffleObject fallbackCompiler) {
@@ -35,6 +36,7 @@ public class RegexCompilerWithFallback extends RegexCompiler {
                 elapsedTimeMain = timer.getElapsed();
             }
         } catch (UnsupportedRegexException mainBailout) {
+            logBailout.log(mainBailout.getMessage() + ": " + regexSource);
             try {
                 if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
                     timer.start();

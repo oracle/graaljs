@@ -17,7 +17,7 @@ import com.oracle.truffle.api.source.SourceSection;
 @GenerateWrapper
 public abstract class RegexBodyNode extends ExecutableNode implements InstrumentableNode {
 
-    private final RegexSource source;
+    protected final RegexSource source;
     private final RegexLanguage language;
 
     private SourceSection sourceSection;

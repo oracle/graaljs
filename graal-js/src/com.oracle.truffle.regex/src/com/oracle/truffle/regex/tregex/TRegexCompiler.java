@@ -149,26 +149,22 @@ public final class TRegexCompiler extends RegexCompiler {
 
     @CompilerDirectives.TruffleBoundary
     public TRegexDFAExecutorNode compileEagerDFAExecutor(RegexSource source) {
-        try {
-            CompilationBuffer compilationBuffer = new CompilationBuffer();
-            phaseStart("Parser");
-            RegexAST ast = new RegexParser(source, options).parse();
-            phaseEnd("Parser");
-            RegexProperties properties = ast.getProperties();
-            assert isSupported(properties);
-            assert properties.hasCaptureGroups() || properties.hasLookAroundAssertions();
-            assert !ast.getRoot().isDead();
-            phaseStart("NFA");
-            NFA nfa = NFAGenerator.createNFA(ast, compilationBuffer);
-            phaseEnd("NFA");
-            phaseStart("CG Eager DFA");
-            TRegexDFAExecutorNode eagerCaptureGroupExecutor = DFAGenerator.createForwardDFAExecutor(nfa, createExecutorProperties(true, true, true, nfa.getAst().getNumberOfCaptureGroups()),
-                            compilationBuffer);
-            phaseEnd("CG Eager DFA");
-            return eagerCaptureGroupExecutor;
-        } catch (RegexSyntaxException e) {
-            throw new RuntimeException(e);
-        }
+        CompilationBuffer compilationBuffer = new CompilationBuffer();
+        phaseStart("Parser");
+        RegexAST ast = new RegexParser(source, options).parse();
+        phaseEnd("Parser");
+        RegexProperties properties = ast.getProperties();
+        assert isSupported(properties);
+        assert properties.hasCaptureGroups() || properties.hasLookAroundAssertions();
+        assert !ast.getRoot().isDead();
+        phaseStart("NFA");
+        NFA nfa = NFAGenerator.createNFA(ast, compilationBuffer);
+        phaseEnd("NFA");
+        phaseStart("CG Eager DFA");
+        TRegexDFAExecutorNode eagerCaptureGroupExecutor = DFAGenerator.createForwardDFAExecutor(nfa, createExecutorProperties(true, true, true, nfa.getAst().getNumberOfCaptureGroups()),
+                        compilationBuffer);
+        phaseEnd("CG Eager DFA");
+        return eagerCaptureGroupExecutor;
     }
 
     private static boolean isSupported(RegexProperties properties) {
