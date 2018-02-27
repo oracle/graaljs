@@ -6,6 +6,10 @@ package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -343,4 +347,20 @@ public final class Errors {
         return createTypeError("proxy has been revoked");
     }
 
+    @TruffleBoundary
+    public static JSException createTypeErrorInteropException(TruffleObject receiver, InteropException cause, Message message, Node originatingNode) {
+        String reason = cause.getMessage();
+        if (reason == null) {
+            reason = cause.getClass().getSimpleName();
+        }
+        String receiverStr = "foreign object";
+        if (JavaInterop.isJavaObject(receiver)) {
+            try {
+                receiverStr = receiver.toString();
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+        return JSException.create(JSErrorType.TypeError, message + " on " + receiverStr + " failed due to: " + reason, cause, originatingNode);
+    }
 }

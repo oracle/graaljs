@@ -9,10 +9,10 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -85,7 +85,7 @@ public final class JSInteropNodeUtil {
         try {
             return ForeignAccess.sendGetSize(getSizeNode, obj);
         } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeError("cannot get the size of this foreign object due to: %s", e.getMessage());
+            throw Errors.createTypeErrorInteropException(obj, e, Message.GET_SIZE, null);
         }
     }
 
@@ -115,10 +115,8 @@ public final class JSInteropNodeUtil {
     public static Object read(TruffleObject obj, Object key, Node readNode) {
         try {
             return ForeignAccess.sendRead(readNode, obj, key);
-        } catch (UnknownIdentifierException e) {
-            throw Errors.createTypeError("failed to read property %s", key);
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeError("cannot read from foreign object due to: %s", e.getMessage());
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(obj, e, Message.READ, null);
         }
     }
 
@@ -130,12 +128,8 @@ public final class JSInteropNodeUtil {
     public static Object write(TruffleObject obj, Object key, Object value, Node writeNode) {
         try {
             return ForeignAccess.sendWrite(writeNode, obj, key, value);
-        } catch (UnknownIdentifierException e) {
-            throw Errors.createTypeError("failed to write property %s", key);
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeError("cannot write from foreign object due to: %s", e.getMessage());
-        } catch (UnsupportedTypeException e) {
-            throw Errors.createTypeError("cannot write to foreign object due to unsupported type: %s", e.getMessage());
+        } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(obj, e, Message.WRITE, null);
         }
     }
 
@@ -148,15 +142,14 @@ public final class JSInteropNodeUtil {
         return keys(obj, keysNode, readNode, getSizeNode, false);
     }
 
-    @SuppressWarnings("unchecked")
     public static List<Object> keys(TruffleObject obj, Node keysNode, Node readNode, Node getSizeNode, boolean lenient) {
         try {
             return keysThrowsUME(obj, keysNode, readNode, getSizeNode);
         } catch (UnsupportedMessageException e) {
             if (lenient) {
-                return Collections.EMPTY_LIST;
+                return Collections.emptyList();
             }
-            throw Errors.createTypeError("cannot retrieve keys of foreign object due to: %s", e.getMessage());
+            throw Errors.createTypeErrorInteropException(obj, e, Message.KEYS, null);
         }
     }
 
@@ -182,7 +175,7 @@ public final class JSInteropNodeUtil {
         } catch (UnknownIdentifierException e) {
             return false;
         } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeError("cannot read from foreign object due to: %s", e.getMessage());
+            throw Errors.createTypeErrorInteropException(obj, e, Message.READ, null);
         }
     }
 
@@ -198,10 +191,8 @@ public final class JSInteropNodeUtil {
         try {
             ForeignAccess.sendRemove(removeNode, obj, key);
             return true;
-        } catch (UnknownIdentifierException e) {
-            throw Errors.createTypeError("failed to write property %s", key);
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeError("cannot write from foreign object due to: %s", e.getMessage());
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(obj, e, Message.REMOVE, null);
         }
     }
 
@@ -212,7 +203,7 @@ public final class JSInteropNodeUtil {
 
     @TruffleBoundary
     public static Object call(TruffleObject function, Object[] args) {
-        return JSRuntime.importValue(call(function, JSRuntime.exportValueArray(args), JSInteropUtil.createCall(args.length)));
+        return JSRuntime.importValue(call(function, JSRuntime.exportValueArray(args), JSInteropUtil.createCall()));
     }
 
     /**
@@ -223,13 +214,13 @@ public final class JSInteropNodeUtil {
         try {
             return ForeignAccess.sendExecute(callNode, function, args);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw Errors.createTypeError("cannot call foreign object due to: %s", e.getMessage());
+            throw Errors.createTypeErrorInteropException(function, e, JSInteropUtil.EXECUTE, null);
         }
     }
 
     @TruffleBoundary
     public static Object invoke(TruffleObject receiver, String functionName, Object[] args) {
-        return JSRuntime.importValue(invoke(receiver, functionName, JSRuntime.exportValueArray(args), JSInteropUtil.createInvoke(args.length)));
+        return JSRuntime.importValue(invoke(receiver, functionName, JSRuntime.exportValueArray(args), JSInteropUtil.createInvoke()));
     }
 
     /**
@@ -240,24 +231,20 @@ public final class JSInteropNodeUtil {
         try {
             return ForeignAccess.sendInvoke(callNode, receiver, functionName, args);
         } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
-            throw Errors.createTypeError("cannot invoke foreign object due to: %s", e.getMessage());
+            throw Errors.createTypeErrorInteropException(receiver, e, JSInteropUtil.INVOKE, null);
         }
     }
 
     @TruffleBoundary
     public static Object construct(TruffleObject target, Object[] args) {
-        return JSRuntime.importValue(construct(target, JSRuntime.exportValueArray(args), JSInteropUtil.createNew(args.length), null));
+        return JSRuntime.importValue(construct(target, JSRuntime.exportValueArray(args), JSInteropUtil.createNew(), null));
     }
 
     public static Object construct(TruffleObject target, Object[] args, Node newNode, Node parentNode) {
         try {
             return ForeignAccess.sendNew(newNode, target, args);
-        } catch (UnsupportedTypeException e) {
-            throw Errors.createTypeError("unsupported type on new", parentNode);
-        } catch (ArityException e) {
-            throw Errors.createTypeError("unsupported number of arguments on new", parentNode);
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeError("foreign object does not accept 'new' message", parentNode);
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(target, e, JSInteropUtil.NEW, parentNode);
         }
     }
 
@@ -279,8 +266,7 @@ public final class JSInteropNodeUtil {
         try {
             return ForeignAccess.sendUnbox(unboxNode, obj);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw Errors.createTypeError(e.getMessage());
+            throw Errors.createTypeErrorInteropException(obj, e, Message.UNBOX, null);
         }
     }
 
