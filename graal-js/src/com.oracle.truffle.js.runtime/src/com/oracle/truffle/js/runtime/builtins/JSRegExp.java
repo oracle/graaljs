@@ -29,7 +29,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.RegexCompiler;
+import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -197,7 +197,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), ctx.getEcmaScriptVersion() < 6 ? JSRegExp.INSTANCE : JSUserObject.INSTANCE);
 
         if (ctx.getEcmaScriptVersion() < 6) {
-            JSObjectUtil.putHiddenProperty(prototype, COMPILED_REGEX_PROPERTY, RegexCompiler.compile("", "", ctx));
+            JSObjectUtil.putHiddenProperty(prototype, COMPILED_REGEX_PROPERTY, RegexCompilerInterface.compile("", "", ctx));
             JSObjectUtil.putDataProperty(ctx, prototype, LAST_INDEX_PROPERTY, 0);
         }
         JSObjectUtil.putConstantAccessorProperty(ctx, prototype, FLAGS, createFlagsGetterFunction(realm), Undefined.instance, JSAttributes.configurableNotEnumerableNotWritable());

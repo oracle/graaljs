@@ -7,31 +7,36 @@ package com.oracle.truffle.js.runtime;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.nashorn.regexp.RegExpScanner;
 
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-public final class RegexCompiler {
+public final class RegexCompilerInterface {
     private static final String REPEATED_REG_EXP_FLAG_MSG = "Repeated RegExp flag: %c";
     private static final String UNSUPPORTED_REG_EXP_FLAG_MSG = "Invalid regular expression flags";
     private static final String UNSUPPORTED_REG_EXP_FLAG_MSG_NASHORN = "Unsupported RegExp flag: %c";
 
-    private static final Node ENGINE_EXEC_NODE = Message.createExecute(2).createNode();
+    public static Node createExecuteCompilerNode() {
+        return JSInteropUtil.createCall();
+    }
+
+    public static TruffleObject compile(String pattern, String flags, JSContext context) {
+        return compile(pattern, flags, context, createExecuteCompilerNode());
+    }
 
     @TruffleBoundary
-    public static TruffleObject compile(String pattern, String flags, JSContext context) {
+    public static TruffleObject compile(String pattern, String flags, JSContext context, Node executeCompilerNode) {
         try {
             // RegexLanguage does its own validation of the flags. This call to validateFlags only
             // serves the purpose of mimicking the error messages of Nashorn and V8.
             validateFlags(flags, context.getEcmaScriptVersion());
-            return (TruffleObject) ForeignAccess.sendExecute(ENGINE_EXEC_NODE, context.getRegexEngine(), pattern, flags);
+            return (TruffleObject) ForeignAccess.sendExecute(executeCompilerNode, context.getRegexEngine(), pattern, flags);
         } catch (RegexSyntaxException syntaxException) {
             throw Errors.createSyntaxError(syntaxException.getMessage());
         } catch (InteropException ex) {
@@ -41,20 +46,9 @@ public final class RegexCompiler {
 
     @TruffleBoundary
     public static void validate(String pattern, String flags, int ecmaScriptVersion) {
-        boolean validated = false;
         // We cannot use the TRegex parser in Nashorn compatibility mode, since the Nashorn
         // parser produces different error messages.
-        if (!JSTruffleOptions.NashornCompatibilityMode) {
-            try {
-                RegexLanguage.validateRegex(pattern, flags);
-                validated = true;
-            } catch (final RegexSyntaxException e) {
-                throw Errors.createSyntaxError(e.getMessage());
-            } catch (UnsupportedRegexException e) {
-                // validated is false now
-            }
-        }
-        if (!validated) {
+        if (JSTruffleOptions.NashornCompatibilityMode) {
             try {
                 try {
                     RegExpScanner.scan(pattern);
@@ -69,6 +63,12 @@ public final class RegexCompiler {
             }
             if (!flags.isEmpty()) {
                 validateFlags(flags, ecmaScriptVersion);
+            }
+        } else {
+            try {
+                RegexLanguage.validateRegex(pattern, flags);
+            } catch (final RegexSyntaxException e) {
+                throw Errors.createSyntaxError(e.getMessage());
             }
         }
     }

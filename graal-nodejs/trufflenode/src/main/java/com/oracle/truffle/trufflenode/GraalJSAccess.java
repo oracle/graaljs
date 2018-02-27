@@ -105,7 +105,7 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
-import com.oracle.truffle.js.runtime.RegexCompiler;
+import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -2201,7 +2201,7 @@ public final class GraalJSAccess {
 
     public Object regexpNew(Object context, Object pattern, int flags) {
         JSContext jsContext = (JSContext) context;
-        TruffleObject compiledRegexp = RegexCompiler.compile((String) pattern, regexpFlagsToString(flags), jsContext);
+        TruffleObject compiledRegexp = RegexCompilerInterface.compile((String) pattern, regexpFlagsToString(flags), jsContext);
         return JSRegExp.create(jsContext, compiledRegexp);
     }
 
