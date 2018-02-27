@@ -27,7 +27,7 @@ class RegexObjectExecMethodMessageResolution {
             try {
                 return ForeignAccess.sendExecute(executeNode, receiver.getRegexObject().getCompiledRegexObject(), receiver.getRegexObject(), args[0], args[1]);
             } catch (InteropException ex) {
-                throw new RuntimeException(ex);
+                throw ex.raise();
             }
         }
     }

@@ -771,7 +771,7 @@ public class JSContext implements ShapeContext {
                 try {
                     regexEngine = (TruffleObject) ForeignAccess.sendExecute(Message.createExecute(2).createNode(), regexEngineBuilder, regexOptions, joniCompiler);
                 } catch (InteropException ex) {
-                    throw new RuntimeException(ex);
+                    throw ex.raise();
                 }
             } else {
                 regexEngine = new RegexEngine(joniCompiler, JSTruffleOptions.RegexRegressionTestMode);

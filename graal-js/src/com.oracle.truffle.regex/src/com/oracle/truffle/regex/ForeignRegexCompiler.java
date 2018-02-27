@@ -40,7 +40,7 @@ public class ForeignRegexCompiler extends RegexCompiler {
         try {
             return (TruffleObject) ForeignAccess.sendExecute(executeNode, foreignCompiler, source.getPattern(), source.getFlags().toString());
         } catch (InteropException ex) {
-            throw new RuntimeException(ex);
+            throw ex.raise();
         }
     }
 }

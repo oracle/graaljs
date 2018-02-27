@@ -40,7 +40,7 @@ public final class RegexCompilerInterface {
         } catch (RegexSyntaxException syntaxException) {
             throw Errors.createSyntaxError(syntaxException.getMessage());
         } catch (InteropException ex) {
-            throw new RuntimeException(ex);
+            throw ex.raise();
         }
     }
 

@@ -106,7 +106,7 @@ public class RegexObjectMessageResolution {
             try {
                 return ForeignAccess.sendExecute(executeNode, receiver.getCompiledRegexObject(), receiver, args[0], args[1]);
             } catch (InteropException ex) {
-                throw new RuntimeException(ex);
+                throw ex.raise();
             }
         }
     }
