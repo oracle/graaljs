@@ -1085,9 +1085,11 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 this.foreignGet = insert(Message.READ.createNode());
             }
             try {
-                Object foreinResult = ForeignAccess.sendRead(foreignGet, thisObj, key);
-                return toJSType.executeWithTarget(foreinResult);
-            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                Object foreignResult = ForeignAccess.sendRead(foreignGet, thisObj, key);
+                return toJSType.executeWithTarget(foreignResult);
+            } catch (UnknownIdentifierException e) {
+                return Undefined.instance;
+            } catch (UnsupportedMessageException e) {
                 return Null.instance;
             }
         }
@@ -1098,8 +1100,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 this.getSize = insert(Message.GET_SIZE.createNode());
             }
             try {
-                Object foreinResult = ForeignAccess.sendGetSize(getSize, thisObj);
-                return toJSType.executeWithTarget(foreinResult);
+                Object foreignResult = ForeignAccess.sendGetSize(getSize, thisObj);
+                return toJSType.executeWithTarget(foreignResult);
             } catch (UnsupportedMessageException e) {
                 return Null.instance;
             }
@@ -1119,15 +1121,10 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             if (isMethod && !isGlobal) {
                 return thisObj;
             }
-            if (isLength) {
-                if (hasSizeProperty(thisObj)) {
-                    return getSize(thisObj);
-                } else {
-                    return foreignGet(thisObj);
-                }
-            } else {
-                return foreignGet(thisObj);
+            if (isLength && hasSizeProperty(thisObj)) {
+                return getSize(thisObj);
             }
+            return foreignGet(thisObj);
         }
     }
 
