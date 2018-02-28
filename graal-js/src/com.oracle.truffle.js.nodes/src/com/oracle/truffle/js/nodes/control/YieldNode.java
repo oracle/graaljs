@@ -103,12 +103,12 @@ public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendN
     }
 
     public abstract static class YieldResultNode extends JavaScriptBaseNode {
-        public abstract YieldException generatorYield(VirtualFrame frame, DynamicObject value);
+        public abstract YieldException generatorYield(VirtualFrame frame, Object value);
     }
 
     public static final class ExceptionYieldResultNode extends YieldResultNode {
         @Override
-        public YieldException generatorYield(VirtualFrame frame, DynamicObject value) {
+        public YieldException generatorYield(VirtualFrame frame, Object value) {
             throw new YieldException(value);
         }
     }
@@ -121,7 +121,7 @@ public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendN
         }
 
         @Override
-        public YieldException generatorYield(VirtualFrame frame, DynamicObject value) {
+        public YieldException generatorYield(VirtualFrame frame, Object value) {
             writeYieldValueNode.executeWrite(frame, value);
             throw YieldException.YIELD_NULL;
         }

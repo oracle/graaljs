@@ -85,10 +85,9 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
                 asyncGeneratorResolveNode.execute(frame, generatorObject, result, true);
             } catch (YieldException e) {
                 if (e.isYield()) {
+                    setGeneratorState.setValue(generatorObject, state = AsyncGeneratorState.SuspendedYield);
                     asyncGeneratorResolveNode.execute(frame, generatorObject, e.getResult(), false);
                 }
-                // state = AsyncGeneratorState.SuspendedYield;
-                // setGeneratorState.setValue(generatorObject, state);
             } catch (GraalJSException e) {
                 Object reason = e.getErrorObjectEager(context);
                 asyncGeneratorRejectNode.execute(generatorFrame, generatorObject, reason);

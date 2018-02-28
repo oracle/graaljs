@@ -13,9 +13,10 @@ import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode.FrameReturnNode;
+import com.oracle.truffle.js.nodes.control.YieldNode.ExceptionYieldResultNode;
+import com.oracle.truffle.js.nodes.control.YieldNode.YieldResultNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
@@ -23,19 +24,17 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.UserScriptException;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorYieldNode extends AwaitNode {
     @Child protected ReturnNode returnNode;
-    @Child protected PropertySetNode setGeneratorState;
+    @Child private YieldResultNode generatorYieldNode;
 
     protected AsyncGeneratorYieldNode(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readYieldResultNode, ReturnNode returnNode) {
         super(context, expression, readAsyncContextNode, readYieldResultNode);
         this.returnNode = returnNode;
-        this.setGeneratorState = PropertySetNode.create(JSFunction.GENERATOR_STATE_ID, false, context, false);
+        this.generatorYieldNode = new ExceptionYieldResultNode();
     }
 
     public static AsyncGeneratorYieldNode createYield(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode,
@@ -98,9 +97,7 @@ public class AsyncGeneratorYieldNode extends AwaitNode {
     }
 
     protected final Object suspendYield(VirtualFrame frame, Object awaited) {
-        DynamicObject generator = (DynamicObject) ((Object[]) readAsyncContextNode.execute(frame))[1];
-        setGeneratorState.setValue(generator, AsyncGeneratorState.SuspendedYield);
-        throw new YieldException(awaited);
+        return generatorYieldNode.generatorYield(frame, awaited);
     }
 
     protected final Completion resumeYield(VirtualFrame frame) {
