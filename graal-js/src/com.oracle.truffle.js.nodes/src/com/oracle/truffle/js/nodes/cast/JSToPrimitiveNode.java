@@ -153,7 +153,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         return (javaObject == null) ? Null.instance : doGeneric(javaObject);
     }
 
-    @Specialization(guards = {"!isJSType(object)", "!isTruffleJavaObject(object)"})
+    @Specialization(guards = {"isForeignObject(object)", "!isTruffleJavaObject(object)"})
     protected Object doCrossLanguage(TruffleObject object,
                     @Cached("create()") JSUnboxOrGetNode unboxOrGet) {
         return unboxOrGet.executeWithTarget(object);
