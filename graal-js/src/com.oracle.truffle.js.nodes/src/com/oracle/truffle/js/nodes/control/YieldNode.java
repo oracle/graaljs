@@ -230,7 +230,7 @@ class YieldStarNode extends YieldNode {
             }
             return saveStateAndYield(frame, iterator, innerResult);
         } else {
-            JSException error = Errors.createTypeError("yield* protocol violation: iterator does not have a throw method");
+            JSException error = Errors.createTypeErrorYieldStarThrowMethodMissing();
             iteratorCloseNode.executeAbrupt(iterator);
             throw error; // should happen inside iteratorClose
         }

@@ -188,7 +188,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         protected Object next(DynamicObject thisObj) {
             DynamicObject promiseCapability = createPromiseCapability();
             if (!isAsyncFromSyncIterator(thisObj)) {
-                JSException typeError = Errors.createTypeError("wrong type");
+                JSException typeError = Errors.createTypeErrorIncompatibleReceiver(thisObj);
                 promiseCapabilityReject(promiseCapability, typeError);
                 return getPromise(promiseCapability);
             }
@@ -239,7 +239,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         protected Object doMethod(VirtualFrame frame, DynamicObject thisObj) {
             DynamicObject promiseCapability = createPromiseCapability();
             if (!isAsyncFromSyncIterator(thisObj)) {
-                JSException typeError = Errors.createTypeError("wrong type");
+                JSException typeError = Errors.createTypeErrorIncompatibleReceiver(thisObj);
                 promiseCapabilityReject(promiseCapability, typeError);
                 return getPromise(promiseCapability);
             }
@@ -248,13 +248,13 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             DynamicObject syncIterator = (DynamicObject) getGeneratorTarget.getValue(thisObj);
             Object method = getMethod().executeWithTarget(syncIterator);
             if (method == Undefined.instance) {
-                DynamicObject iterResult = createIterResult.execute(frame, /* value? */Undefined.instance, true);
+                DynamicObject iterResult = createIterResult.execute(frame, Undefined.instance, true);
                 promiseCapabilityResolve(promiseCapability, iterResult);
                 return getPromise(promiseCapability);
             }
             DynamicObject returnResult = (DynamicObject) executeReturnMethod.executeCall(JSArguments.create(syncIterator, method));
             if (!JSObject.isJSObject(returnResult)) {
-                promiseCapabilityReject(promiseCapability, Errors.createTypeError("Wrong type"));
+                promiseCapabilityReject(promiseCapability, Errors.createTypeErrorNotAnObject(returnResult));
                 return getPromise(promiseCapability);
             }
             try {

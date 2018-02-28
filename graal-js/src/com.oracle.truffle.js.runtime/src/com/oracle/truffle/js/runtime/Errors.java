@@ -325,6 +325,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorYieldStarThrowMethodMissing() {
+        return createTypeError("yield* protocol violation: iterator does not have a throw method");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorCannotDeletePropertyOf(Object propertyKey, Object object) {
         assert JSRuntime.isPropertyKey(propertyKey);
         return createTypeError("Cannot delete property " + JSRuntime.quote(JSRuntime.javaToString(propertyKey)) + " of " + JSRuntime.safeToString(object));

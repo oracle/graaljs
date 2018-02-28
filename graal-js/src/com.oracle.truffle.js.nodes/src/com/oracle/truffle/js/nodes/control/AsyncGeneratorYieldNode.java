@@ -204,7 +204,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                                 }
                                 awaited = awaitWithNext(frame, returnResult, throwAwaitReturnResult);
                             }
-                            throw Errors.createTypeError("yield* protocol violation: iterator does not have a throw method");
+                            throw Errors.createTypeErrorYieldStarThrowMethodMissing();
                         }
                     } else {
                         assert received.isReturn();
@@ -287,7 +287,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                 case throwAwaitReturnResult: {
                     // AsyncIteratorClose: handle Await(innerResult) throw completion.
                     awaited = resumeAwait(frame);
-                    throw Errors.createTypeError("yield* protocol violation: iterator does not have a throw method");
+                    throw Errors.createTypeErrorYieldStarThrowMethodMissing();
                 }
                 default:
                     throw Errors.shouldNotReachHere();
