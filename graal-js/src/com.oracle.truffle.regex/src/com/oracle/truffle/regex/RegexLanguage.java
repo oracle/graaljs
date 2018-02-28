@@ -31,7 +31,7 @@ import java.util.Collections;
  * <pre>
  * Usage example in JavaScript:
  * {@code
- * var engineBuilder = Interop.eval("application/js-regex", "");
+ * var engineBuilder = Interop.eval("application/tregex", "");
  * // or var engineBuilder = Interop.import("T_REGEX_ENGINE_BUILDER"); after initializing the language
  * var engine = engineBuilder();
  * var pattern = engine("(a|(b))c", "i");
@@ -57,7 +57,7 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
 
     public static final String NAME = "REGEX";
     public static final String ID = "regex";
-    public static final String MIME_TYPE = "application/js-regex";
+    public static final String MIME_TYPE = "application/tregex";
 
     static final String NO_MATCH_RESULT_IDENTIFIER = "T_REGEX_NO_MATCH_RESULT";
     public static final RegexResult EXPORT_NO_MATCH_RESULT = RegexResult.NO_MATCH;
@@ -80,17 +80,6 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     protected Void createContext(Env env) {
         env.exportSymbol(NO_MATCH_RESULT_IDENTIFIER, EXPORT_NO_MATCH_RESULT);
         env.exportSymbol(ENGINE_BUILDER_IDENTIFIER, engineBuilder);
-        return null;
-    }
-
-    @Override
-    protected Object findExportedSymbol(Void context, String globalName, boolean onlyExplicit) {
-        if (globalName.equals(NO_MATCH_RESULT_IDENTIFIER)) {
-            return EXPORT_NO_MATCH_RESULT;
-        }
-        if (globalName.equals(ENGINE_BUILDER_IDENTIFIER)) {
-            return engineBuilder;
-        }
         return null;
     }
 
