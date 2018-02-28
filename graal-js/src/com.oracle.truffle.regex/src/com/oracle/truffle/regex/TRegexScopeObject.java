@@ -7,6 +7,7 @@ package com.oracle.truffle.regex;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -14,12 +15,11 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * A TruffleObject that provides the TRegex globals: the no-match-result and the engine
- * configurator.
+ * A TruffleObject that provides the TRegex globals: the no-match-result and the engine builder.
  */
 class TRegexScopeObject implements TruffleObject {
 
-    private RegexLanguage language;
+    private final RegexLanguage language;
 
     TRegexScopeObject(RegexLanguage language) {
         this.language = language;
@@ -50,12 +50,14 @@ class TRegexScopeObject implements TruffleObject {
         @Resolve(message = "KEY_INFO")
         abstract static class TRegexScopeObjectKeyInfoNode extends Node {
 
+            private static final int READABLE_KEY_INFO = KeyInfo.newBuilder().setReadable(true).build();
+
             @SuppressWarnings("unused")
             public Object access(TRegexScopeObject o, String name) {
                 if (RegexLanguage.NO_MATCH_RESULT_IDENTIFIER.equals(name)) {
-                    return 3;
+                    return READABLE_KEY_INFO;
                 } else if (RegexLanguage.ENGINE_BUILDER_IDENTIFIER.equals(name)) {
-                    return 3;
+                    return READABLE_KEY_INFO;
                 } else {
                     return 0;
                 }
