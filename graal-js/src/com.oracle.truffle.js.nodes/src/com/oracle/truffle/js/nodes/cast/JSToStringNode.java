@@ -10,6 +10,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -121,7 +122,17 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization(guards = "isForeignObject(object)")
+    @Specialization(guards = "isTruffleJavaObject(object)")
+    protected String doTruffleJavaObject(TruffleObject object) {
+        String result = null;
+        Object javaObject = JavaInterop.asJavaObject(object);
+        if (javaObject != null) {
+            result = Boundaries.javaToString(javaObject);
+        }
+        return (result == null) ? Null.NAME : result;
+    }
+
+    @Specialization(guards = {"isForeignObject(object)", "!isTruffleJavaObject(object)"})
     protected String doTruffleObject(TruffleObject object,
                     @Cached("create()") JSUnboxOrGetNode interopUnboxNode) {
         return getToStringNode().executeString(interopUnboxNode.executeWithTarget(object));
