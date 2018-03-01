@@ -47,9 +47,9 @@ public class FunctionEnvironment extends Environment {
 
     private String functionName = "";
     private String internalFunctionName = "";
-    private boolean isNamedExpression = false;
-    private boolean needsParentFrame = false;
-    private boolean frozen = false;
+    private boolean isNamedExpression;
+    private boolean needsParentFrame;
+    private boolean frozen;
 
     private int breakNodeCount;
     private int continueNodeCount;
@@ -88,7 +88,6 @@ public class FunctionEnvironment extends Environment {
 
         this.frameDescriptor = factory.createFrameDescriptor();
         this.parameters = new ArrayList<>();
-        this.isDynamicallyScoped = false;
         this.isGlobal = parent == null || isDirectEval && (!isStrictMode && parent.function().isGlobal());
         this.inDirectEval = isDirectEval || (parent != null && parent.function() != null && parent.function().inDirectEval());
     }
@@ -251,9 +250,7 @@ public class FunctionEnvironment extends Environment {
     }
 
     public void addReturn() {
-        if (!hasReturn) {
-            hasReturn = true;
-        }
+        hasReturn = true;
     }
 
     public boolean hasAwait() {
@@ -261,9 +258,7 @@ public class FunctionEnvironment extends Environment {
     }
 
     public void addAwait() {
-        if (!hasAwait) {
-            hasAwait = true;
-        }
+        hasAwait = true;
     }
 
     public boolean hasYield() {
@@ -271,9 +266,7 @@ public class FunctionEnvironment extends Environment {
     }
 
     public void addYield() {
-        if (!hasYield) {
-            hasYield = true;
-        }
+        hasYield = true;
     }
 
     public void setDirectArgumentsAccess(boolean directArgumentsAccess) {
