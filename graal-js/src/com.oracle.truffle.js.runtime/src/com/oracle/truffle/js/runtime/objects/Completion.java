@@ -9,20 +9,17 @@ import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
 @ValueType
 public final class Completion {
+
     public enum Type {
         Normal,
         Return,
         Throw,
     }
 
-    static final int NORMAL = Type.Normal.ordinal();
-    static final int RETURN = Type.Return.ordinal();
-    static final int THROW = Type.Throw.ordinal();
-
-    final int type;
+    final Type type;
     final Object value;
 
-    Completion(int completionType, Object completionValue) {
+    Completion(Type completionType, Object completionValue) {
         this.type = completionType;
         this.value = completionValue;
     }
@@ -32,40 +29,40 @@ public final class Completion {
     }
 
     public boolean isNormal() {
-        return type == NORMAL;
+        return type == Type.Normal;
     }
 
     public boolean isAbruptCompletion() {
-        return type != NORMAL;
+        return type != Type.Normal;
     }
 
     public boolean isReturn() {
-        return type == RETURN;
+        return type == Type.Return;
     }
 
     public boolean isThrow() {
-        return type == THROW;
+        return type == Type.Throw;
     }
 
     public static Completion forNormal(Object value) {
-        return new Completion(NORMAL, value);
+        return new Completion(Type.Normal, value);
     }
 
     public static Completion forReturn(Object value) {
-        return new Completion(RETURN, value);
+        return new Completion(Type.Return, value);
     }
 
     public static Completion forThrow(Object value) {
-        return new Completion(THROW, value);
+        return new Completion(Type.Throw, value);
     }
 
     public static Completion create(Type type, Object value) {
-        return new Completion(type.ordinal(), value);
+        return new Completion(type, value);
     }
 
     @Override
     public String toString() {
         CompilerAsserts.neverPartOfCompilation();
-        return "Completion[type=" + Type.values()[type].name() + ", value=" + value + "]";
+        return "Completion[type=" + type + ", value=" + value + "]";
     }
 }
