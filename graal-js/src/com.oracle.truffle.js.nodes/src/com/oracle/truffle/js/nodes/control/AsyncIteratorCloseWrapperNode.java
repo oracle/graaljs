@@ -7,7 +7,6 @@ package com.oracle.truffle.js.nodes.control;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -25,7 +24,6 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
     @Child private JavaScriptNode loopNode;
     @Child private GetMethodNode getReturnNode;
     @Child private JSFunctionCallNode methodCallNode;
-    @Child private IsObjectNode isObjectNode;
     @Child private JavaScriptNode iteratorNode;
     @Child private JavaScriptNode doneNode;
 
@@ -38,9 +36,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
         this.doneNode = doneNode;
 
         this.getReturnNode = GetMethodNode.create(context, null, "return");
-
         this.methodCallNode = JSFunctionCallNode.createCall();
-        this.isObjectNode = IsObjectNode.create();
 
         this.readAsyncResultNode = asyncResultNode;
         this.readAsyncContextNode = asyncContextNode;
