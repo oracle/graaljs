@@ -9,7 +9,6 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -48,8 +47,6 @@ public final class IfNode extends StatementNode implements ResumableNode {
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == JSTags.ControlFlowStatementRootTag.class) {
-            return true;
-        } else if (tag == StandardTags.StatementTag.class) {
             return true;
         }
         return super.hasTag(tag);

@@ -9,7 +9,6 @@ import java.util.Set;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -55,9 +54,7 @@ public final class WhileNode extends StatementNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == StandardTags.StatementTag.class) {
-            return true;
-        } else if (tag == ControlFlowStatementRootTag.class) {
+        if (tag == ControlFlowStatementRootTag.class) {
             return true;
         }
         return super.hasTag(tag);

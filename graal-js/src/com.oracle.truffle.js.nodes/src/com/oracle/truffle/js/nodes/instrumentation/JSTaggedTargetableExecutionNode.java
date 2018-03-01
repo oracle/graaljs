@@ -133,7 +133,7 @@ public final class JSTaggedTargetableExecutionNode extends JSTargetableNode {
 
         private final Object nodeObjectValue;
 
-        public TargetValueEchoNode(Object nodeObject) {
+        TargetValueEchoNode(Object nodeObject) {
             this.nodeObjectValue = nodeObject;
         }
 

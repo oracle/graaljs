@@ -37,7 +37,7 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("FunctionCallExpression")
-    public static class FunctionCallExpressionTag extends Tag {
+    public static final class FunctionCallExpressionTag extends Tag {
         private FunctionCallExpressionTag() {
         }
     }
@@ -57,7 +57,7 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("ObjectAllocationExpression")
-    public static class ObjectAllocationExpressionTag extends Tag {
+    public static final class ObjectAllocationExpressionTag extends Tag {
         private ObjectAllocationExpressionTag() {
         }
     }
@@ -85,8 +85,8 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("LiteralExpression")
-    public static class LiteralExpressionTag extends Tag {
-        public static enum Type {
+    public static final class LiteralExpressionTag extends Tag {
+        public enum Type {
             ObjectLiteral,
             ArrayLiteral,
             FunctionLiteral,
@@ -120,7 +120,7 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("UnaryExpression")
-    public static class UnaryExpressionTag extends Tag {
+    public static final class UnaryExpressionTag extends Tag {
         private UnaryExpressionTag() {
         }
     }
@@ -146,7 +146,7 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("BinaryExpression")
-    public static class BinaryExpressionTag extends Tag {
+    public static final class BinaryExpressionTag extends Tag {
         private BinaryExpressionTag() {
         }
     }
@@ -168,7 +168,7 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("WriteVariableExpression")
-    public static class WriteVariableExpressionTag extends Tag {
+    public static final class WriteVariableExpressionTag extends Tag {
         private WriteVariableExpressionTag() {
         }
     }
@@ -185,7 +185,7 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("ReadVariableExpression")
-    public static class ReadVariableExpressionTag extends Tag {
+    public static final class ReadVariableExpressionTag extends Tag {
         private ReadVariableExpressionTag() {
         }
     }
@@ -205,7 +205,7 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("WriteElementExpression")
-    public static class WriteElementExpressionTag extends Tag {
+    public static final class WriteElementExpressionTag extends Tag {
         private WriteElementExpressionTag() {
         }
     }
@@ -224,7 +224,7 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("ReadElementExpression")
-    public static class ReadElementExpressionTag extends Tag {
+    public static final class ReadElementExpressionTag extends Tag {
         private ReadElementExpressionTag() {
         }
     }
@@ -248,7 +248,7 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("WritePropertyExpression")
-    public static class WritePropertyExpressionTag extends Tag {
+    public static final class WritePropertyExpressionTag extends Tag {
         private WritePropertyExpressionTag() {
         }
     }
@@ -271,7 +271,7 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("ReadPropertyExpression")
-    public static class ReadPropertyExpressionTag extends Tag {
+    public static final class ReadPropertyExpressionTag extends Tag {
         private ReadPropertyExpressionTag() {
         }
     }
@@ -294,7 +294,7 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("ControlFlowStatementRoot")
-    public static class ControlFlowStatementRootTag extends Tag {
+    public static final class ControlFlowStatementRootTag extends Tag {
         private ControlFlowStatementRootTag() {
         }
     }
@@ -316,7 +316,7 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("ControlFlowConditionStatement")
-    public static class ControlFlowConditionStatementTag extends Tag {
+    public static final class ControlFlowConditionStatementTag extends Tag {
         private ControlFlowConditionStatementTag() {
         }
     }
@@ -339,7 +339,7 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("ControlFlowBlockStatement")
-    public static class ControlFlowBlockStatementTag extends Tag {
+    public static final class ControlFlowBlockStatementTag extends Tag {
         private ControlFlowBlockStatementTag() {
         }
     }
@@ -364,7 +364,7 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("BuiltinRoot")
-    public static class BuiltinRootTag extends Tag {
+    public static final class BuiltinRootTag extends Tag {
         private BuiltinRootTag() {
         }
     }
@@ -381,7 +381,7 @@ public class JSTags {
      * </p>
      */
     @Tag.Identifier("EvalCall")
-    public static class EvalCallTag extends Tag {
+    public static final class EvalCallTag extends Tag {
         private EvalCallTag() {
         }
     }

@@ -13,7 +13,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
  * wrapping nodes with this class, tagging can be performed lazily, rather than at parsing time.
  *
  */
-public class JSTaggedExecutionNode extends JavaScriptNode {
+public final class JSTaggedExecutionNode extends JavaScriptNode {
 
     @Child private JavaScriptNode child;
 

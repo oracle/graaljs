@@ -2229,13 +2229,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode enterBinaryTransformNode(BinaryNode binaryNode) {
         JavaScriptNode assignedValue = transform(binaryNode.getAssignmentSource());
-        return result(transformAssignment(binaryNode.getAssignmentDest(), assignedValue, tokenTypeToBinaryOperation(binaryNode.tokenType()), false, false, false));
+        return ensureHasSourceSection(result(transformAssignment(binaryNode.getAssignmentDest(), assignedValue, tokenTypeToBinaryOperation(binaryNode.tokenType()), false, false, false)), binaryNode);
     }
 
     private JavaScriptNode enterBinaryAssignNode(BinaryNode binaryNode) {
         Expression assignmentDest = binaryNode.getAssignmentDest();
         JavaScriptNode assignedValue = transform(binaryNode.getAssignmentSource());
         JavaScriptNode assignment = transformAssignment(assignmentDest, assignedValue, null, false, false, binaryNode.isTokenType(TokenType.ASSIGN_INIT));
+        ensureHasSourceSection(assignment, binaryNode);
         return result(assignment);
     }
 
@@ -2411,7 +2412,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     rhs = assignedValue;
                 }
 
-                assignedNode = ensureHasSourceSection(factory.createWriteProperty(target, accessNode.getProperty(), rhs, context, environment.isStrictMode()), accessNode);
+                assignedNode = factory.createWriteProperty(target, accessNode.getProperty(), rhs, context, environment.isStrictMode());
                 break;
             }
             case ARRAY: {
@@ -2503,6 +2504,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assignedNode = factory.createDual(context, prev, assignedNode);
         }
         if (resultTemp != null) {
+            ensureHasSourceSection(assignedNode, lhsExpression);
             assignedNode = factory.createDual(context, assignedNode, resultTemp.createReadNode());
         }
         return assignedNode;
@@ -2535,7 +2537,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             // e.g.: lhs *= rhs => lhs = lhs * rhs
             // If lhs is a side-effecting getter that deletes lhs, we must not throw
             // ReferenceError at the lhs assignment since the lhs reference is already resolved.
-            return ensureHasSourceSection(scopeVar.withRequired(false).createWriteNode(ensureHasSourceSection(rhs, identNode)), identNode);
+            return scopeVar.withRequired(false).createWriteNode(ensureHasSourceSection(rhs, identNode));
         } else {
             // if scopeVar is const, the assignment will never succeed and is only there to perform
             // the temporal dead zone check and throw a ReferenceError instead of a TypeError

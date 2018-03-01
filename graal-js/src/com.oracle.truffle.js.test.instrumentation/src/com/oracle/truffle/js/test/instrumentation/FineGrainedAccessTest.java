@@ -113,7 +113,7 @@ public abstract class FineGrainedAccessTest {
     private EventBinding<ExecutionEventNodeFactory> binding;
 
     protected static class Event {
-        public static enum Kind {
+        enum Kind {
             INPUT,
             RETURN,
             ENTER,
@@ -160,7 +160,7 @@ public abstract class FineGrainedAccessTest {
         private final Class<? extends Tag> tag;
         private final FineGrainedAccessTest test;
 
-        public AssertedEvent(FineGrainedAccessTest test, Class<? extends Tag> tag) {
+        AssertedEvent(FineGrainedAccessTest test, Class<? extends Tag> tag) {
             this.tag = tag;
             this.test = test;
         }

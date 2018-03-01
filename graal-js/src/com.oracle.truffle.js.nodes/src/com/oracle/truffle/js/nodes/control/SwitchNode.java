@@ -9,7 +9,6 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -58,8 +57,6 @@ public final class SwitchNode extends StatementNode {
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == ControlFlowStatementRootTag.class) {
-            return true;
-        } else if (tag == StatementTag.class) {
             return true;
         }
         return super.hasTag(tag);
