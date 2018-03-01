@@ -446,10 +446,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/harmony/async-from-sync-iterator.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
     "filePath" : "mjsunit/harmony/async-generators-basic.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"

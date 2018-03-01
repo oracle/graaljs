@@ -73,8 +73,9 @@ public class Test262Runnable extends TestRunnable {
         Set<String> flags = getFlags(scriptCodeList);
         boolean runStrict = flags.contains(ONLY_STRICT_FLAG);
         boolean asyncTest = isAsyncTest(scriptCodeList);
-        assert !asyncTest || !negative : "async test must not be negative: " + testFile.getFilePath();
         boolean module = flags.contains(MODULE_FLAG);
+
+        assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();
 
         String prefix = runStrict ? "\"use strict\";" : "";
         org.graalvm.polyglot.Source testSource = createSource(file, prefix + TestSuite.toPrintableCode(scriptCodeList), module);
@@ -105,13 +106,13 @@ public class Test262Runnable extends TestRunnable {
         final String ecmaVersionSuffix = " (ES" + ecmaVersion + ")";
         suite.logVerbose(getName() + ecmaVersionSuffix);
         TestFile.Result testResult;
-        OutputStream outputStream = new ByteArrayOutputStream();
-        // Writer writer = new OutputStreamWriter(outputStream);
 
+        OutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        OutputStream outputStream = byteArrayOutputStream;
         if (getConfig().isPrintFullOutput()) {
-            // writer = makeDualWriter(writer, new OutputStreamWriter(System.out));
-            outputStream = makeDualStream(outputStream, System.out);
+            outputStream = makeDualStream(byteArrayOutputStream, System.out);
         }
+
         Source[] harnessSources = getHarnessSources(ecmaVersion, runStrict);
         TestCallable tc = new TestCallable(suite, harnessSources, testSource, file, ecmaVersion, commonOptions);
         tc.setOutput(outputStream);
@@ -153,8 +154,8 @@ public class Test262Runnable extends TestRunnable {
             }
         }
 
-        if (asyncTest) {
-            String stdout = outputStream.toString();
+        if (asyncTest && !negative) {
+            String stdout = byteArrayOutputStream.toString();
             if (!stdout.contains(ASYNC_TEST_COMPLETE)) {
                 testResult = TestFile.Result.failed("async test failed" + ecmaVersionSuffix);
                 suite.logFail(testFile, "FAILED" + ecmaVersionSuffix, String.format("async test; expected output: '%s' actual: '%s'", ASYNC_TEST_COMPLETE, stdout));

@@ -140,7 +140,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     protected DynamicObject doArrayBuffer(DynamicObject newTarget, DynamicObject arrayBuffer, Object byteOffset0, Object length0,
                     @Cached("createBinaryProfile()") ConditionProfile lengthCondition) {
         if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
-            throw Errors.createTypeError("detached buffer cannot be used");
+            throw Errors.createTypeErrorDetachedBuffer();
         }
         byte[] byteArray = JSArrayBuffer.getByteArray(arrayBuffer);
         int arrayBufferLength = byteArray.length;
@@ -151,7 +151,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     protected DynamicObject doDirectArrayBuffer(DynamicObject newTarget, DynamicObject arrayBuffer, Object byteOffset0, Object length0,
                     @Cached("createBinaryProfile()") ConditionProfile lengthCondition) {
         if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
-            throw Errors.createTypeError("detached buffer cannot be used");
+            throw Errors.createTypeErrorDetachedBuffer();
         }
         ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
         int arrayBufferLength = byteBuffer.limit();
@@ -166,7 +166,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         rangeCheckIsMultipleOfElementSize(byteOffset % elementSize == 0, "start offset", factory.getName(), elementSize);
 
         if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
-            throw Errors.createTypeError("detached buffer cannot be used");
+            throw Errors.createTypeErrorDetachedBuffer();
         }
 
         final long length;

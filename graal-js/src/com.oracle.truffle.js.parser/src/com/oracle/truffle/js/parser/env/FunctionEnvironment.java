@@ -47,15 +47,15 @@ public class FunctionEnvironment extends Environment {
 
     private String functionName = "";
     private String internalFunctionName = "";
-    private boolean isNamedExpression = false;
-    private boolean needsParentFrame = false;
-    private boolean frozen = false;
+    private boolean isNamedExpression;
+    private boolean needsParentFrame;
+    private boolean frozen;
 
-    private int returnNodeCount;
     private int breakNodeCount;
     private int continueNodeCount;
-    private int yieldNodeCount;
-    private int awaitCount;
+    private boolean hasReturn;
+    private boolean hasYield;
+    private boolean hasAwait;
 
     private List<BreakTarget> jumpTargetStack;
     private boolean directArgumentsAccess;
@@ -66,6 +66,7 @@ public class FunctionEnvironment extends Environment {
     private final boolean isArrowFunction;
     private final boolean isGeneratorFunction;
     private final boolean isDerivedConstructor;
+    private final boolean isAsyncFunction;
     private boolean hasRestParameter;
     private boolean simpleParameterList = true;
     private boolean isDynamicallyScoped;
@@ -74,9 +75,10 @@ public class FunctionEnvironment extends Environment {
     private Map<String, ImportBindingRef> importBindings;
 
     public FunctionEnvironment(Environment parent, NodeFactory factory, JSContext context,
-                    boolean isStrictMode, boolean isEval, boolean isDirectEval, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor) {
+                    boolean isStrictMode, boolean isEval, boolean isDirectEval, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor, boolean isAsyncFunction) {
         super(parent, factory, context);
         this.isDirectEval = isDirectEval;
+        this.isAsyncFunction = isAsyncFunction;
         this.isStrictMode = isStrictMode || (parent != null && parent.isStrictMode());
         this.isEval = isEval;
         this.isArrowFunction = isArrowFunction;
@@ -86,7 +88,6 @@ public class FunctionEnvironment extends Environment {
 
         this.frameDescriptor = factory.createFrameDescriptor();
         this.parameters = new ArrayList<>();
-        this.isDynamicallyScoped = false;
         this.isGlobal = parent == null || isDirectEval && (!isStrictMode && parent.function().isGlobal());
         this.inDirectEval = isDirectEval || (parent != null && parent.function() != null && parent.function().inDirectEval());
     }
@@ -244,28 +245,28 @@ public class FunctionEnvironment extends Environment {
         throw new NoSuchElementException("jump target not found");
     }
 
-    public int getReturnCount() {
-        return returnNodeCount;
+    public boolean hasReturn() {
+        return hasReturn;
     }
 
     public void addReturn() {
-        returnNodeCount++;
+        hasReturn = true;
     }
 
-    public int getAwaitCount() {
-        return awaitCount;
+    public boolean hasAwait() {
+        return hasAwait;
     }
 
     public void addAwait() {
-        awaitCount++;
+        hasAwait = true;
     }
 
-    public int getYieldCount() {
-        return yieldNodeCount;
+    public boolean hasYield() {
+        return hasYield;
     }
 
     public void addYield() {
-        yieldNodeCount++;
+        hasYield = true;
     }
 
     public void setDirectArgumentsAccess(boolean directArgumentsAccess) {
@@ -540,6 +541,14 @@ public class FunctionEnvironment extends Environment {
 
     public int getArrowFunctionLevel() {
         return isArrowFunction ? 1 + getParentFunction().getArrowFunctionLevel() : 0;
+    }
+
+    public boolean isAsyncFunction() {
+        return isAsyncFunction;
+    }
+
+    public boolean isAsyncGeneratorFunction() {
+        return isAsyncFunction && isGeneratorFunction;
     }
 
     public void addImportBinding(String localName, JSModuleRecord module, String bindingName) {

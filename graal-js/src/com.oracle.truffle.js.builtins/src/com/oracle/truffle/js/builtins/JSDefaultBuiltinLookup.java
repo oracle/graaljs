@@ -94,7 +94,10 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
             defineBuiltins(new SharedArrayBufferPrototypeBuiltins());
             defineBuiltins(new SharedArrayBufferFunctionBuiltins());
             defineBuiltins(new AtomicsBuiltins());
+        }
+        if (JSTruffleOptions.MaxECMAScriptVersion >= 9) {
             defineBuiltins(new AsyncFromSyncIteratorPrototypeBuiltins());
+            defineBuiltins(new AsyncGeneratorPrototypeBuiltins());
         }
 
         if (JSTruffleOptions.Test262Mode) {

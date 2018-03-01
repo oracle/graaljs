@@ -30,10 +30,9 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunction.GeneratorResumeMethod;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.GeneratorState;
+import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.Pair;
 
 public final class GeneratorBodyNode extends JavaScriptNode {
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of generator functions in JavaScript.")
@@ -63,31 +62,32 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         public Object executeAndSetRealm(VirtualFrame frame) {
             DynamicObject generatorObject = (DynamicObject) frame.getArguments()[0];
             Object value = frame.getArguments()[1];
-            GeneratorResumeMethod method = (GeneratorResumeMethod) frame.getArguments()[2];
+            Completion.Type completionType = (Completion.Type) frame.getArguments()[2];
 
             VirtualFrame generatorFrame = JSFrameUtil.castMaterializedFrame(getGeneratorContext.getValue(generatorObject));
             GeneratorState generatorState = generatorValidate(generatorObject);
 
-            if (method == GeneratorResumeMethod.Next) {
+            if (completionType == Completion.Type.Normal) {
                 if (GeneratorState.Completed.equals(generatorState)) {
                     return createIterResultObject.execute(frame, Undefined.instance, true);
                 }
                 assert GeneratorState.SuspendedStart.equals(generatorState) || GeneratorState.SuspendedYield.equals(generatorState);
             } else {
-                assert method == GeneratorResumeMethod.Throw || method == GeneratorResumeMethod.Return;
+                Completion completion = Completion.create(completionType, value);
+                assert completion.isThrow() || completion.isReturn();
                 if (GeneratorState.SuspendedStart.equals(generatorState)) {
                     setGeneratorState.setValue(generatorObject, generatorState = GeneratorState.Completed);
                 }
                 if (GeneratorState.Completed.equals(generatorState)) {
-                    if (method == GeneratorResumeMethod.Return) {
-                        return createIterResultObject.execute(frame, value, true);
+                    if (completion.isReturn()) {
+                        return createIterResultObject.execute(frame, completion.getValue(), true);
                     } else {
-                        assert method == GeneratorResumeMethod.Throw;
-                        throw UserScriptException.create(value, this);
+                        assert completion.isThrow();
+                        throw UserScriptException.create(completion.getValue(), this);
                     }
                 }
                 assert GeneratorState.SuspendedYield.equals(generatorState);
-                value = new Pair<>(value, method);
+                value = completion;
             }
 
             setGeneratorState.setValue(generatorObject, generatorState = GeneratorState.Executing);

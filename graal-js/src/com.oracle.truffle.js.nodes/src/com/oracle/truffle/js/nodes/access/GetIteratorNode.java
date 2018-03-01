@@ -25,7 +25,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
- * ES8 7.4.1 GetIterator(obj, hint == false).
+ * GetIterator(obj, hint = sync).
  */
 @ImportStatic(JSInteropUtil.class)
 @NodeChild(value = "iteratedObject", type = JavaScriptNode.class)

@@ -4,10 +4,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -15,24 +13,20 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 /**
  * ES6 7.4.3 IteratorComplete(iterResult).
  */
-public abstract class IteratorCompleteNode extends JavaScriptBaseNode {
-    @Child private PropertyNode getDoneNode;
+public class IteratorCompleteNode extends JavaScriptBaseNode {
+    @Child private PropertyGetNode getDoneNode;
     @Child private JSToBooleanNode toBooleanNode;
 
     protected IteratorCompleteNode(JSContext context) {
-        NodeFactory factory = NodeFactory.getInstance(context);
-        this.getDoneNode = factory.createProperty(context, null, JSRuntime.DONE);
+        this.getDoneNode = PropertyGetNode.create(JSRuntime.DONE, false, context);
         this.toBooleanNode = JSToBooleanNode.create();
     }
 
     public static IteratorCompleteNode create(JSContext context) {
-        return IteratorCompleteNodeGen.create(context);
+        return new IteratorCompleteNode(context);
     }
 
-    @Specialization
-    protected boolean doIteratorNext(DynamicObject iterResult) {
-        return toBooleanNode.executeBoolean(getDoneNode.executeWithTarget(iterResult));
+    public boolean execute(DynamicObject iterResult) {
+        return toBooleanNode.executeBoolean(getDoneNode.getValue(iterResult));
     }
-
-    public abstract boolean execute(DynamicObject iterResult);
 }

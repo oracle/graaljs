@@ -25,11 +25,10 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.UserScriptException;
-import com.oracle.truffle.js.runtime.builtins.JSFunction.GeneratorResumeMethod;
+import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.Pair;
 
-public class YieldNode extends JavaScriptNode implements ResumableNode {
+public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendNode {
 
     @Child protected JavaScriptNode expression;
     @Child private CreateIterResultObjectNode createIterResultObjectNode;
@@ -51,8 +50,8 @@ public class YieldNode extends JavaScriptNode implements ResumableNode {
         return new YieldNode(context, expression, yieldValue, returnNode, writeYieldResultNode);
     }
 
-    public static YieldNode createDelegatingYield(JSContext context, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
-        return new DelegatingYieldNode(context, expression, yieldValue, returnNode, writeYieldResultNode);
+    public static YieldNode createYieldStar(JSContext context, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
+        return new YieldStarNode(context, expression, yieldValue, returnNode, writeYieldResultNode);
     }
 
     @Override
@@ -78,14 +77,13 @@ public class YieldNode extends JavaScriptNode implements ResumableNode {
             assert index == 1;
             setState(frame, 0);
             Object value = yieldValue.execute(frame);
-            if (value instanceof Pair) {
-                @SuppressWarnings("unchecked")
-                Pair<Object, GeneratorResumeMethod> completion = (Pair<Object, GeneratorResumeMethod>) value;
-                value = completion.getFirst();
-                if (completion.getSecond() == GeneratorResumeMethod.Throw) {
+            if (value instanceof Completion) {
+                Completion completion = (Completion) value;
+                value = completion.getValue();
+                if (completion.isThrow()) {
                     return throwValue(value);
                 } else {
-                    assert completion.getSecond() == GeneratorResumeMethod.Return;
+                    assert completion.isReturn();
                     return returnValue(frame, value);
                 }
             }
@@ -105,18 +103,17 @@ public class YieldNode extends JavaScriptNode implements ResumableNode {
     }
 
     public abstract static class YieldResultNode extends JavaScriptBaseNode {
-        public abstract YieldException generatorYield(VirtualFrame frame, DynamicObject value);
+        public abstract YieldException generatorYield(VirtualFrame frame, Object value);
     }
 
     public static final class ExceptionYieldResultNode extends YieldResultNode {
         @Override
-        public YieldException generatorYield(VirtualFrame frame, DynamicObject value) {
+        public YieldException generatorYield(VirtualFrame frame, Object value) {
             throw new YieldException(value);
         }
     }
 
     public static final class FrameYieldResultNode extends YieldResultNode {
-        private static final YieldException YIELD_EXCEPTION = new YieldException(null);
         @Child private JSWriteFrameSlotNode writeYieldValueNode;
 
         public FrameYieldResultNode(JSWriteFrameSlotNode writeYieldValueNode) {
@@ -124,9 +121,9 @@ public class YieldNode extends JavaScriptNode implements ResumableNode {
         }
 
         @Override
-        public YieldException generatorYield(VirtualFrame frame, DynamicObject value) {
+        public YieldException generatorYield(VirtualFrame frame, Object value) {
             writeYieldValueNode.executeWrite(frame, value);
-            throw YIELD_EXCEPTION;
+            throw YieldException.YIELD_NULL;
         }
     }
 
@@ -136,15 +133,15 @@ public class YieldNode extends JavaScriptNode implements ResumableNode {
         JavaScriptNode yieldValueCopy = cloneUninitialized(yieldValue);
         ReturnNode returnCopy = cloneUninitialized(returnNode);
         JSWriteFrameSlotNode writeYieldValueCopy = cloneUninitialized(generatorYieldNode instanceof FrameYieldResultNode ? ((FrameYieldResultNode) generatorYieldNode).writeYieldValueNode : null);
-        if (this instanceof DelegatingYieldNode) {
-            return createDelegatingYield(context, expressionCopy, yieldValueCopy, returnCopy, writeYieldValueCopy);
+        if (this instanceof YieldStarNode) {
+            return createYieldStar(context, expressionCopy, yieldValueCopy, returnCopy, writeYieldValueCopy);
         } else {
             return createYield(context, expressionCopy, yieldValueCopy, returnCopy, writeYieldValueCopy);
         }
     }
 }
 
-class DelegatingYieldNode extends YieldNode {
+class YieldStarNode extends YieldNode {
     @Child private GetIteratorNode getIteratorNode;
     @Child private IteratorNextNode iteratorNextNode;
     @Child private IteratorCompleteNode iteratorCompleteNode;
@@ -155,7 +152,7 @@ class DelegatingYieldNode extends YieldNode {
     @Child private JSFunctionCallNode callReturnNode;
     @Child private IteratorCloseNode iteratorCloseNode;
 
-    protected DelegatingYieldNode(JSContext context, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
+    protected YieldStarNode(JSContext context, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
         super(context, expression, yieldValue, returnNode, writeYieldResultNode);
         this.getIteratorNode = GetIteratorNode.create(context);
         this.iteratorNextNode = IteratorNextNode.create(context);
@@ -192,20 +189,19 @@ class DelegatingYieldNode extends YieldNode {
         } else {
             setState(frame, Undefined.instance);
             Object received = yieldValue.execute(frame);
-            if (!(received instanceof Pair)) {
+            if (!(received instanceof Completion)) {
                 DynamicObject innerResult = iteratorNextNode.execute(iterator, received);
                 if (iteratorCompleteNode.execute(innerResult)) {
                     return iteratorValueNode.execute(innerResult);
                 }
                 return saveStateAndYield(frame, iterator, innerResult);
             } else {
-                @SuppressWarnings("unchecked")
-                Pair<Object, GeneratorResumeMethod> completion = (Pair<Object, GeneratorResumeMethod>) received;
-                received = completion.getFirst();
-                if (completion.getSecond() == GeneratorResumeMethod.Throw) {
+                Completion completion = (Completion) received;
+                received = completion.getValue();
+                if (completion.isThrow()) {
                     return resumeThrow(frame, iterator, received);
                 } else {
-                    assert completion.getSecond() == GeneratorResumeMethod.Return;
+                    assert completion.isReturn();
                     return resumeReturn(frame, iterator, received);
                 }
             }
@@ -234,7 +230,7 @@ class DelegatingYieldNode extends YieldNode {
             }
             return saveStateAndYield(frame, iterator, innerResult);
         } else {
-            JSException error = Errors.createTypeError("yield* protocol violation: iterator does not have a throw method");
+            JSException error = Errors.createTypeErrorYieldStarThrowMethodMissing();
             iteratorCloseNode.executeAbrupt(iterator);
             throw error; // should happen inside iteratorClose
         }

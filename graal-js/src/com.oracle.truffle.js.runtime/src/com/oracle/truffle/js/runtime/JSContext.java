@@ -19,7 +19,9 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.WeakHashMap;
+import java.util.function.Function;
 
 import org.graalvm.options.OptionValues;
 
@@ -64,7 +66,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
-import java.util.Objects;
 
 public class JSContext implements ShapeContext {
     private final Evaluator evaluator;
@@ -154,6 +155,16 @@ public class JSContext implements ShapeContext {
     private volatile CallTarget boundFunctionConstructTargetCache;
     private volatile CallTarget boundFunctionConstructNewTargetCache;
 
+    public enum BuiltinFunctionKey {
+        AwaitFulfilled,
+        AwaitRejected,
+        AsyncGeneratorReturnFulfilled,
+        AsyncGeneratorReturnRejected,
+        AsyncFromSyncIteratorValueUnwrap,
+    }
+
+    @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionDataCache;
+
     private volatile JSFunctionData boundFunctionData;
     private volatile JSFunctionData boundConstructorFunctionData;
 
@@ -236,6 +247,8 @@ public class JSContext implements ShapeContext {
 
         this.emptyFunctionCallTarget = createEmptyFunctionCallTarget(lang);
         this.speciesGetterFunctionCallTarget = createSpeciesGetterFunctionCallTarget(lang);
+
+        this.builtinFunctionDataCache = new JSFunctionData[BuiltinFunctionKey.values().length];
 
         this.timeProfiler = JSTruffleOptions.ProfileTime ? new TimeProfiler() : null;
         this.javaWrapperFactory = JSTruffleOptions.NashornJavaInterop ? JSJavaWrapper.makeShape(this).createFactory() : null;
@@ -682,15 +695,6 @@ public class JSContext implements ShapeContext {
     @Override
     public DynamicObjectFactory getModuleNamespaceFactory() {
         return moduleNamespaceFactory;
-    }
-
-    public Object getAsyncFunctionAwait() {
-        return asyncFunctionAwait;
-    }
-
-    public void setAsyncFunctionAwait(Object asyncFunctionAwait) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.asyncFunctionAwait = asyncFunctionAwait;
     }
 
     public void setPerformPromiseThen(DynamicObject promiseThen) {
@@ -1335,4 +1339,20 @@ public class JSContext implements ShapeContext {
         promiseHook.promiseChanged(changeType, promise, parent);
     }
 
+    public final JSFunctionData getOrCreateBuiltinFunctionData(BuiltinFunctionKey key, Function<JSContext, JSFunctionData> factory) {
+        final int index = key.ordinal();
+        JSFunctionData callTarget = builtinFunctionDataCache[index];
+        if (callTarget != null) {
+            return callTarget;
+        }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        synchronized (this) {
+            callTarget = builtinFunctionDataCache[index];
+            if (callTarget == null) {
+                callTarget = factory.apply(this);
+                builtinFunctionDataCache[index] = callTarget;
+            }
+            return callTarget;
+        }
+    }
 }

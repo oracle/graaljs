@@ -6,17 +6,17 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.GeneratorPrototypeBuiltinsFactory.GeneratorResumeNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.function.InternalCallNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunction.GeneratorResumeMethod;
+import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -48,16 +48,16 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GeneratorPrototype builtinEnum) {
         assert context.getEcmaScriptVersion() >= 6;
-        GeneratorResumeMethod resumeMethod;
+        Completion.Type resumeMethod;
         switch (builtinEnum) {
             case next:
-                resumeMethod = GeneratorResumeMethod.Next;
+                resumeMethod = Completion.Type.Normal;
                 break;
             case return_:
-                resumeMethod = GeneratorResumeMethod.Return;
+                resumeMethod = Completion.Type.Return;
                 break;
             case throw_:
-                resumeMethod = GeneratorResumeMethod.Throw;
+                resumeMethod = Completion.Type.Throw;
                 break;
             default:
                 return null;
@@ -66,15 +66,15 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
     }
 
     public abstract static class GeneratorResumeNode extends JSBuiltinNode {
-        private final GeneratorResumeMethod method;
+        private final Completion.Type resumeType;
         @Child private PropertyGetNode getGeneratorTarget;
-        @Child private IndirectCallNode callNode;
+        @Child private InternalCallNode callNode;
 
-        public GeneratorResumeNode(JSContext context, JSBuiltin builtin, GeneratorResumeMethod method) {
+        public GeneratorResumeNode(JSContext context, JSBuiltin builtin, Completion.Type resumeType) {
             super(context, builtin);
-            this.method = method;
+            this.resumeType = resumeType;
             this.getGeneratorTarget = PropertyGetNode.create(JSFunction.GENERATOR_TARGET_ID, false, context);
-            this.callNode = IndirectCallNode.create();
+            this.callNode = InternalCallNode.create();
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
@@ -82,7 +82,7 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
             Object generatorTarget = getGeneratorTarget.getValue(thisObj);
             if (generatorTarget != Undefined.instance) {
                 CallTarget callTarget = (CallTarget) generatorTarget;
-                return callNode.call(callTarget, new Object[]{thisObj, value, method});
+                return callNode.execute(callTarget, new Object[]{thisObj, value, resumeType});
             } else {
                 throw Errors.createTypeError("not a generator function");
             }
