@@ -206,7 +206,7 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 if (ecmaScriptVersion < 6) {
                     return result;
                 }
-                return getMatchResult(result, input);
+                return getMatchResult(result, input, compiledRegexAccessor.namedCaptureGroups(JSRegExp.getCompiledRegex(regExp)));
             } else {
                 if (ecmaScriptVersion < 8 || global || sticky) {
                     setLastIndex(regExp, 0);
@@ -228,8 +228,8 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         // converts RegexResult into DynamicObject
-        private DynamicObject getMatchResult(TruffleObject result, String inputStr) {
-            return JSArray.createLazyRegexArray(context, regexResultAccessor.groupCount(result), result, inputStr);
+        private DynamicObject getMatchResult(TruffleObject result, String inputStr, TruffleObject namedCaptureGroups) {
+            return JSArray.createLazyRegexArray(context, regexResultAccessor.groupCount(result), result, inputStr, namedCaptureGroups);
         }
 
         private long getLastIndex(DynamicObject regExp) {

@@ -1211,6 +1211,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
         return JSProperty.isProxy(property) && JSProperty.getConstantProxy(property) instanceof JSRegExp.LazyRegexResultIndexProxyProperty;
     }
 
+    protected static boolean isLazyRegexResultGroupsProperty(Property property) {
+        return JSProperty.isProxy(property) && JSProperty.getConstantProxy(property) instanceof JSRegExp.LazyRegexResultGroupsProxyProperty;
+    }
+
     static CharSequence reasonShapeAssumptionInvalidated(Object key) {
         CompilerAsserts.neverPartOfCompilation();
         if (TruffleOptions.TraceRewrites) {

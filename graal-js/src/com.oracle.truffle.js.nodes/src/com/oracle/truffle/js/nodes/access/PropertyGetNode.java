@@ -95,6 +95,7 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
@@ -111,8 +112,10 @@ import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
 
 /**
  * ES6 9.1.8 [[Get]] (P, Receiver).
@@ -1532,6 +1535,29 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
     }
 
+    public static final class LazyRegexResultGroupsPropertyGetNode extends LinkedPropertyGetNode {
+
+        private final JSContext context;
+
+        @Child private Node keysNode = JSInteropUtil.createKeys();
+        @Child private Node sizeNode = JSInteropUtil.createGetSize();
+        @Child private Node isNullNode = JSInteropUtil.createIsNull();
+        @Child private Node readGroupNameNode = JSInteropUtil.createRead();
+        @Child private Node readGroupNumberNode = JSInteropUtil.createRead();
+        @Child private TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.create();
+
+        public LazyRegexResultGroupsPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, JSContext context) {
+            super(property.getKey(), receiverCheck);
+            this.context = context;
+        }
+
+        @Override
+        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+            DynamicObject store = receiverCheck.getStore(thisObj);
+            return JSRegExp.LazyRegexResultGroupsProxyProperty.getImpl(context, keysNode, sizeNode, isNullNode, readGroupNameNode, readGroupNumberNode, materializeNode, store);
+        }
+    }
+
     public static final class MapPropertyGetNode extends LinkedPropertyGetNode {
         public MapPropertyGetNode(Object key, ReceiverCheckNode receiverCheck) {
             super(key, receiverCheck);
@@ -1664,6 +1690,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 return new StringLengthPropertyGetNode(dataProperty, receiverCheck);
             } else if (isLazyRegexResultIndexProperty(property)) {
                 return new LazyRegexResultIndexPropertyGetNode(dataProperty, receiverCheck);
+            } else if (isLazyRegexResultGroupsProperty(property)) {
+                return new LazyRegexResultGroupsPropertyGetNode(dataProperty, receiverCheck, context);
             } else {
                 return new ObjectPropertyGetNode(dataProperty, receiverCheck);
             }
