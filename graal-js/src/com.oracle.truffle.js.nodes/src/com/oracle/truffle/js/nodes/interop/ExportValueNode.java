@@ -6,12 +6,14 @@ package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -24,6 +26,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
  *
  * @see JSRuntime#exportValue(Object)
  */
+@ImportStatic(JSTruffleOptions.class)
 public abstract class ExportValueNode extends JavaScriptBaseNode {
     ExportValueNode() {
     }
@@ -35,19 +38,19 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
         return function;
     }
 
-    @Specialization(guards = {"isJSFunction(function)", "!isUndefined(thiz)", "!isBoundJSFunction(function)"})
-    protected static TruffleObject doUnboundFunction(DynamicObject function, Object thiz) {
+    @Specialization(guards = {"isJSFunction(function)", "!isUndefined(thiz)", "!isBoundJSFunction(function)", "!BindProgramResult"})
+    protected static TruffleObject doNotBindUnboundFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
+        return function;
+    }
+
+    @Specialization(guards = {"isJSFunction(function)", "!isUndefined(thiz)", "!isBoundJSFunction(function)", "BindProgramResult"})
+    protected static TruffleObject doBindUnboundFunction(DynamicObject function, Object thiz) {
         return new InteropBoundFunction(function, thiz);
     }
 
     @Specialization(guards = {"isJSFunction(function)", "isBoundJSFunction(function)"})
     protected static TruffleObject doBoundFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
         return function;
-    }
-
-    @Specialization
-    protected static String doLazyString(JSLazyString value, @SuppressWarnings("unused") Object thiz) {
-        return value.toString();
     }
 
     @Specialization

@@ -48,7 +48,6 @@ import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
-import com.oracle.truffle.js.nodes.unary.FlattenNode;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.foreign.InteropBoundFunctionMRForeign;
@@ -133,8 +132,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     @CompilationFinal private volatile JSContext cachedContext;
                     @CompilationFinal(dimensions = 0) private Object[] arguments;
                     @Child private DirectCallNode directCallNode;
-                    @Child private ExportValueNode exportFunctionNode;
-                    @Child private FlattenNode flattenNode;
+                    @Child private ExportValueNode exportValueNode;
                     @Child private IndirectCallNode indirectCallNode;
 
                     @Override
@@ -160,14 +158,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                             context.interopBoundaryExit();
                         }
 
-                        if (JSTruffleOptions.BindProgramResult) {
-                            // export does bind+flatten
-                            result = export(result);
-                        } else {
-                            result = flatten(result);
-                        }
-
-                        return result;
+                        return export(result);
                     }
 
                     private void parseAndCache(JSContext context) {
@@ -201,20 +192,12 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                         return ScriptNode.fromFunctionData(context, JSFunction.createEmptyFunctionData(context));
                     }
 
-                    private Object flatten(Object value) {
-                        if (flattenNode == null) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            flattenNode = insert(FlattenNode.create());
-                        }
-                        return flattenNode.execute(value);
-                    }
-
                     private Object export(Object value) {
-                        if (exportFunctionNode == null) {
+                        if (exportValueNode == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
-                            exportFunctionNode = insert(ExportValueNode.create());
+                            exportValueNode = insert(ExportValueNode.create());
                         }
-                        return exportFunctionNode.executeWithTarget(value, Undefined.instance);
+                        return exportValueNode.executeWithTarget(value, Undefined.instance);
                     }
                 };
             } else {
@@ -232,7 +215,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             private final ContextReference<JSContext> contextRef = getContextReference();
             @CompilationFinal private volatile JSContext cachedContext;
             @Child private JavaScriptNode expression;
-            @Child private FlattenNode flattenNode = FlattenNode.create();
+            @Child private ExportValueNode exportValueNode = ExportValueNode.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -250,7 +233,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 } else {
                     result = parseAndEval(context, frame.materialize());
                 }
-                return flattenNode.execute(result);
+                return exportValueNode.executeWithTarget(result, Undefined.instance);
             }
 
             private void parseAndCache(JSContext context) {
