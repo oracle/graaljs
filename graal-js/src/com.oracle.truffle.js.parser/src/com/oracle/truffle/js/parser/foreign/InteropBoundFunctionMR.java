@@ -5,7 +5,9 @@
 package com.oracle.truffle.js.parser.foreign;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
@@ -42,11 +44,18 @@ public class InteropBoundFunctionMR {
         @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createExecute();
         @Child private ExportValueNode export = ExportValueNode.create();
 
+        @CompilationFinal ContextReference<JSContext> contextRef;
+
         public Object access(InteropBoundFunction target, Object[] args) {
-            Object result = null;
-            JSContext context = JSObject.getJSContext(target.getFunction());
+            DynamicObject function = target.getFunction();
+            if (contextRef == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                contextRef = JSObject.getJSContext(function).getLanguage().getContextReference();
+            }
+            JSContext context = contextRef.get();
             context.interopBoundaryEnter();
-            boolean asyncFunction = isAsyncFunction(target.getFunction());
+            Object result = null;
+            boolean asyncFunction = isAsyncFunction(function);
             try {
                 result = export.executeWithTarget(callNode.executeInterop(target, args), Undefined.instance);
             } finally {
@@ -87,9 +96,15 @@ public class InteropBoundFunctionMR {
         @Child private JSInteropInvokeNode callNode;
         @Child private ExportValueNode export = ExportValueNode.create();
 
+        @CompilationFinal ContextReference<JSContext> contextRef;
+
         public Object access(InteropBoundFunction target, String id, Object[] args) {
             DynamicObject function = target.getFunction();
-            JSContext context = JSObject.getJSContext(function);
+            if (contextRef == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                contextRef = JSObject.getJSContext(function).getLanguage().getContextReference();
+            }
+            JSContext context = contextRef.get();
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callNode = insert(JSInteropInvokeNode.create(context));
@@ -109,9 +124,15 @@ public class InteropBoundFunctionMR {
         @Child private ExportValueNode export = ExportValueNode.create();
         @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createNew();
 
+        @CompilationFinal ContextReference<JSContext> contextRef;
+
         public Object access(InteropBoundFunction target, Object[] args) {
             DynamicObject function = target.getFunction();
-            JSContext context = JSObject.getJSContext(function);
+            if (contextRef == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                contextRef = JSObject.getJSContext(function).getLanguage().getContextReference();
+            }
+            JSContext context = contextRef.get();
             context.interopBoundaryEnter();
             try {
                 return export.executeWithTarget(callNode.executeInterop(function, args), Undefined.instance);
