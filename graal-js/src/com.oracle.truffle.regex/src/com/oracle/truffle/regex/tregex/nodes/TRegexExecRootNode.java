@@ -14,6 +14,7 @@ import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.RegexProfile;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.result.LazyCaptureGroupsResult;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
@@ -41,10 +42,10 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
                     TRegexDFAExecutorNode forwardExecutor,
                     TRegexDFAExecutorNode backwardExecutor,
                     TRegexDFAExecutorNode captureGroupExecutor) {
-        super(language, forwardExecutor.getProperties().getFrameDescriptor(), source);
+        super(language, source);
         lazySearchNode = new LazyCaptureGroupRegexSearchNode(language, source, preCalculatedResults, forwardExecutor, backwardExecutor, captureGroupExecutor);
         runRegexSearchNode = insert(lazySearchNode);
-        regexCallTarget = Truffle.getRuntime().createCallTarget(this);
+        regexCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, forwardExecutor.getProperties().getFrameDescriptor(), this));
         if (source.getOptions().isRegressionTestMode() && captureGroupExecutor != null) {
             compileEagerSearchNode();
         }
@@ -159,15 +160,15 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
                 assert singlePreCalcResult();
                 backwardCallTarget = null;
             } else {
-                backwardCallTarget = Truffle.getRuntime().createCallTarget(
-                                new TRegexLazyFindStartRootNode(language, source, forwardNode.getPrefixLength(), backwardNode));
+                backwardCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, backwardNode.getProperties().getFrameDescriptor(),
+                                new TRegexLazyFindStartRootNode(language, source, forwardNode.getPrefixLength(), backwardNode)));
             }
             this.captureGroupExecutorNode = captureGroupExecutor;
             if (captureGroupExecutor == null) {
                 captureGroupCallTarget = null;
             } else {
-                captureGroupCallTarget = Truffle.getRuntime().createCallTarget(
-                                new TRegexLazyCaptureGroupsRootNode(language, source, captureGroupExecutor));
+                captureGroupCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, captureGroupExecutor.getProperties().getFrameDescriptor(),
+                                new TRegexLazyCaptureGroupsRootNode(language, source, captureGroupExecutor)));
             }
         }
 

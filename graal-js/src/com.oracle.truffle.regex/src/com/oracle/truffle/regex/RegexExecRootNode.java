@@ -4,21 +4,16 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.nodes.input.InputCharAtNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 import com.oracle.truffle.regex.util.NumberConversion;
 
-public abstract class RegexExecRootNode extends RegexRootNode {
+public abstract class RegexExecRootNode extends RegexBodyNode {
 
     @Child private InputLengthNode inputLengthNode = InputLengthNode.create();
     @Child private InputCharAtNode inputCharAtNode = InputCharAtNode.create();
-
-    public RegexExecRootNode(RegexLanguage language, FrameDescriptor frameDescriptor, RegexSource source) {
-        super(language, frameDescriptor, source);
-    }
 
     public RegexExecRootNode(RegexLanguage language, RegexSource source) {
         super(language, source);

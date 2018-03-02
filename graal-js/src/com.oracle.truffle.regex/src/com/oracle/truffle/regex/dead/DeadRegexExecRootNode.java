@@ -11,6 +11,7 @@ import com.oracle.truffle.regex.CompiledRegex;
 import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexObject;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.result.RegexResult;
 
@@ -24,7 +25,7 @@ public final class DeadRegexExecRootNode extends RegexExecRootNode implements Co
 
     public DeadRegexExecRootNode(RegexLanguage language, RegexSource source) {
         super(language, source);
-        regexCallTarget = Truffle.getRuntime().createCallTarget(this);
+        regexCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, this));
     }
 
     @Override

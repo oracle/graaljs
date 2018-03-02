@@ -6,18 +6,18 @@ package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.regex.RegexBodyNode;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexProfile;
-import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.result.LazyCaptureGroupsResult;
 
-public class TRegexLazyCaptureGroupsRootNode extends RegexRootNode {
+public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
 
     @Child private TRegexDFAExecutorNode executorNode;
 
     public TRegexLazyCaptureGroupsRootNode(RegexLanguage language, RegexSource source, TRegexDFAExecutorNode captureGroupNode) {
-        super(language, captureGroupNode.getProperties().getFrameDescriptor(), source);
+        super(language, source);
         this.executorNode = captureGroupNode;
     }
 

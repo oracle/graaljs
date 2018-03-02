@@ -57,7 +57,7 @@ public class NodeObjectDescriptorFactory {
 
     @Resolve(message = "KEY_INFO")
     abstract static class KeyInfoMR extends Node {
-
+        @TruffleBoundary
         public Object access(NodeObjectDescriptor target, Object key) {
             if (key instanceof String && target.hasProperty((String) key)) {
                 return KeyInfo.newBuilder().setInternal(false).setInvocable(false).setWritable(false).setReadable(true).build();

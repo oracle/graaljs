@@ -11,6 +11,7 @@ import com.oracle.truffle.regex.CompiledRegex;
 import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexObject;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.result.RegexResult;
@@ -33,7 +34,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
         super(language, source);
         this.literal = preCalcResultVisitor.getLiteral();
         this.resultFactory = preCalcResultVisitor.getResultFactory();
-        regexCallTarget = Truffle.getRuntime().createCallTarget(this);
+        regexCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, this));
     }
 
     @Override
