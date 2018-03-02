@@ -11,6 +11,7 @@ import com.oracle.truffle.regex.CompiledRegex;
 import com.oracle.truffle.regex.RegexEngine;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.nashorn.regexp.RegExpScanner;
@@ -36,28 +37,28 @@ public final class JoniRegexEngine implements RegexEngine {
 
     private CallTarget searchSimpleCallTarget() {
         if (searchSimpleCallTarget == null) {
-            searchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexExecRootNode.Simple(language, false));
+            searchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new JoniRegexExecRootNode.Simple(language, false)));
         }
         return searchSimpleCallTarget;
     }
 
     private CallTarget searchGroupCallTarget() {
         if (searchGroupCallTarget == null) {
-            searchGroupCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexExecRootNode.Groups(language, false));
+            searchGroupCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new JoniRegexExecRootNode.Groups(language, false)));
         }
         return searchGroupCallTarget;
     }
 
     private CallTarget matchSimpleCallTarget() {
         if (matchSimpleCallTarget == null) {
-            matchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexExecRootNode.Simple(language, true));
+            matchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new JoniRegexExecRootNode.Simple(language, true)));
         }
         return matchSimpleCallTarget;
     }
 
     private CallTarget matchGroupCallTarget() {
         if (matchGroupCallTarget == null) {
-            matchGroupCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexExecRootNode.Groups(language, true));
+            matchGroupCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new JoniRegexExecRootNode.Groups(language, true)));
         }
         return matchGroupCallTarget;
     }

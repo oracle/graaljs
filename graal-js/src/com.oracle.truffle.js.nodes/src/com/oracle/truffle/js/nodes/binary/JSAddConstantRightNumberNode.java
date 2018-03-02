@@ -7,17 +7,26 @@ package com.oracle.truffle.js.nodes.binary;
 import static com.oracle.truffle.js.nodes.JSGuards.isString;
 
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
+import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantDoubleNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
@@ -41,9 +50,39 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
         }
     }
 
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == BinaryExpressionTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
+        NodeInfo annotation = getClass().getAnnotation(NodeInfo.class);
+        descriptor.addProperty("operator", annotation.shortName());
+        return descriptor;
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(BinaryExpressionTag.class)) {
+            JSConstantNode constantNode = isInt ? JSConstantIntegerNode.create(rightInt) : JSConstantDoubleNode.create(rightDouble);
+            JavaScriptNode node = JSAddNodeGen.create(truncate, getOperand(), constantNode);
+            transferSourceSection(this, constantNode);
+            transferSourceSection(this, node);
+            return node;
+        } else {
+            return this;
+        }
+    }
+
     public abstract Object execute(Object a);
 
-    protected Number getRightValue() {
+    public Number getRightValue() {
         return isInt ? rightInt : rightDouble;
     }
 

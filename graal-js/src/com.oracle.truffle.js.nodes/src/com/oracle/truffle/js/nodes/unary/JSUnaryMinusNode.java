@@ -6,11 +6,15 @@ package com.oracle.truffle.js.nodes.unary;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 @NodeInfo(shortName = "-")
@@ -30,6 +34,22 @@ public abstract class JSUnaryMinusNode extends JSUnaryNode {
 
     protected static JSUnaryMinusNode create() {
         return JSUnaryMinusNodeGen.create(null);
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == UnaryExpressionTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
+        descriptor.addProperty("operator", getClass().getAnnotation(NodeInfo.class).shortName());
+        return descriptor;
     }
 
     public abstract Object execute(Object value);

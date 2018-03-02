@@ -7,6 +7,7 @@ package com.oracle.truffle.trufflenode.node;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -83,7 +84,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     }
 
     @Override
-    public boolean isTaggedWith(Class<?> tag) {
+    public boolean hasTag(Class<? extends Tag> tag) {
         return (tag == StandardTags.RootTag.class);
     }
 

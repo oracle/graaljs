@@ -25,7 +25,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameHolder {
 
     private final JSContext context;
-    @Child private JSFunctionExpressionNode constructorFunctionNode;
+    @Child private JavaScriptNode constructorFunctionNode;
     @Child private JavaScriptNode classHeritageNode;
     @Children private final ObjectLiteralMemberNode[] memberNodes;
 
@@ -132,6 +132,7 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(context, cloneUninitialized(constructorFunctionNode), cloneUninitialized(classHeritageNode), ObjectLiteralMemberNode.cloneUninitialized(memberNodes), hasName);
+        return create(context, (JSFunctionExpressionNode) cloneUninitialized(constructorFunctionNode), cloneUninitialized(classHeritageNode), ObjectLiteralMemberNode.cloneUninitialized(memberNodes),
+                        hasName);
     }
 }

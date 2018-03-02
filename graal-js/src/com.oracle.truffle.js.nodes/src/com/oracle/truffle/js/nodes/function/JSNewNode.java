@@ -4,15 +4,20 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -25,6 +30,10 @@ import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.function.JSNewNodeGen.CachedPrototypeShapeNodeGen;
 import com.oracle.truffle.js.nodes.function.JSNewNodeGen.SpecializedNewObjectNodeGen;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -52,16 +61,46 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
  * 11.2.2 The new Operator.
  */
 @ImportStatic(value = {JSProxy.class})
-@NodeChildren({@NodeChild(value = "target", type = JavaScriptNode.class)})
 public abstract class JSNewNode extends JavaScriptNode {
+
+    @Child @Executed protected JavaScriptNode targetNode;
 
     @Child private JSFunctionCallNode callNew;
     @Child private JSFunctionCallNode callNewTarget;
     @Child private AbstractFunctionArgumentsNode arguments;
 
-    protected JSNewNode(AbstractFunctionArgumentsNode arguments, JSFunctionCallNode callNew) {
+    protected JSNewNode(AbstractFunctionArgumentsNode arguments, JSFunctionCallNode callNew, JavaScriptNode targetNode) {
         this.callNew = callNew;
         this.arguments = arguments;
+        this.targetNode = targetNode;
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == ObjectAllocationExpressionTag.class) {
+            return true;
+        } else if (tag == FunctionCallExpressionTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
+        descriptor.addProperty("isNew", true);
+        descriptor.addProperty("isInvoke", false);
+        return descriptor;
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(ObjectAllocationExpressionTag.class)) {
+            JavaScriptNode newNew = create(cloneUninitialized(getTarget()), AbstractFunctionArgumentsNode.materializeArgumentsNode(arguments, getSourceSection()));
+            transferSourceSection(this, newNew);
+            return newNew;
+        }
+        return super.materializeInstrumentableNodes(materializedTags);
     }
 
     public static JSNewNode create(JavaScriptNode function, AbstractFunctionArgumentsNode arguments) {
@@ -69,7 +108,9 @@ public abstract class JSNewNode extends JavaScriptNode {
         return JSNewNodeGen.create(arguments, callNew, function);
     }
 
-    public abstract JavaScriptNode getTarget();
+    public JavaScriptNode getTarget() {
+        return targetNode;
+    }
 
     public AbstractFunctionArgumentsNode getArguments() {
         return arguments;

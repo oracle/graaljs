@@ -48,6 +48,9 @@ public class JSLauncher extends AbstractLanguageLauncher {
         return "js";
     }
 
+    protected void preEval(@SuppressWarnings("unused") Context context) {
+    }
+
     @Override
     protected List<String> preprocessArguments(List<String> arguments, Map<String, String> polyglotOptions) {
         final List<String> unrecognizedOptions = new ArrayList<>();
@@ -274,6 +277,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
         if (hasSources()) {
             contextBuilder.arguments("js", programArgs);
             context = contextBuilder.build();
+            preEval(context);
             // Every engine runs different Source objects.
             Source[] sources = parseSources();
             status = -1;
@@ -301,6 +305,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
             }
         } else {
             context = contextBuilder.build();
+            preEval(context);
             status = runREPL(context);
         }
         context.close();

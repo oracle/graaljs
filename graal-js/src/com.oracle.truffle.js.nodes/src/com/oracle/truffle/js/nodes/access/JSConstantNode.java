@@ -9,9 +9,13 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -43,6 +47,32 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
         } else {
             return new JSConstantObjectNode(value);
         }
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == LiteralExpressionTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
+        if (this instanceof JSConstantDoubleNode || this instanceof JSConstantIntegerNode) {
+            descriptor.addProperty("type", LiteralExpressionTag.Type.NumericLiteral.name());
+        } else if (this instanceof JSConstantBooleanNode) {
+            descriptor.addProperty("type", LiteralExpressionTag.Type.BooleanLiteral.name());
+        } else if (this instanceof JSConstantStringNode) {
+            descriptor.addProperty("type", LiteralExpressionTag.Type.StringLiteral.name());
+        } else if (this instanceof JSConstantNullNode) {
+            descriptor.addProperty("type", LiteralExpressionTag.Type.NullLiteral.name());
+        } else if (this instanceof JSConstantUndefinedNode) {
+            descriptor.addProperty("type", LiteralExpressionTag.Type.UndefinedLiteral.name());
+        }
+        return descriptor;
     }
 
     public static JSConstantNode createUndefined() {
@@ -180,6 +210,15 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
         public Object getValue() {
             return objectValue;
         }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            if (tag == JSTags.LiteralExpressionTag.class) {
+                return false;
+            } else {
+                return super.hasTag(tag);
+            }
+        }
     }
 
     private static final class JSConstantJSObjectNode extends JSConstantNode {
@@ -207,6 +246,15 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
         @Override
         public Object getValue() {
             return objectValue;
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            if (tag == JSTags.LiteralExpressionTag.class) {
+                return false;
+            } else {
+                return super.hasTag(tag);
+            }
         }
     }
 

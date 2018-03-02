@@ -5,16 +5,20 @@
 package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
@@ -37,6 +41,29 @@ public abstract class JSRightShiftConstantNode extends JSUnaryNode {
         }
         Truncatable.truncate(left);
         return JSRightShiftConstantNodeGen.create(left, shiftValue);
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == BinaryExpressionTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(BinaryExpressionTag.class)) {
+            // need to call the generated factory directly to avoid constant optimizations
+            JSConstantNode constantNode = JSConstantIntegerNode.create(getShiftValue());
+            JavaScriptNode node = JSRightShiftNodeGen.create(getOperand(), constantNode);
+            transferSourceSection(this, constantNode);
+            transferSourceSection(this, node);
+            return node;
+        } else {
+            return this;
+        }
     }
 
     public abstract int executeInt(int a);

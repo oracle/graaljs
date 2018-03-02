@@ -4,13 +4,22 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -33,6 +42,29 @@ public final class IfNode extends StatementNode implements ResumableNode {
             return new IfNode(operand, elsePart, thenPart);
         }
         return new IfNode(condition, thenPart, elsePart);
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == JSTags.ControlFlowStatementRootTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(ControlFlowStatementRootTag.class) || materializedTags.contains(ControlFlowConditionStatementTag.class) ||
+                        materializedTags.contains(ControlFlowBlockStatementTag.class)) {
+            JavaScriptNode newElsePart = elsePart != null ? JSTaggedExecutionNode.createFor(elsePart, JSTags.ControlFlowBlockStatementTag.class) : null;
+            JavaScriptNode newThenPart = thenPart != null ? JSTaggedExecutionNode.createFor(thenPart, JSTags.ControlFlowBlockStatementTag.class) : null;
+            JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(condition, JSTags.ControlFlowConditionStatementTag.class);
+            JavaScriptNode newIf = IfNode.create(newCondition, newThenPart, newElsePart);
+            transferSourceSection(this, newIf);
+            return newIf;
+        } else {
+            return this;
+        }
     }
 
     private IfNode(JavaScriptNode condition, JavaScriptNode thenPart, JavaScriptNode elsePart) {

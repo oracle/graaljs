@@ -5,17 +5,17 @@
 package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.regex.RegexBodyNode;
 import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 
-public class TRegexLazyFindStartRootNode extends RegexRootNode {
+public class TRegexLazyFindStartRootNode extends RegexBodyNode {
 
     private final int prefixLength;
     @Child private TRegexDFAExecutorNode executorNode;
 
     public TRegexLazyFindStartRootNode(RegexLanguage language, RegexSource source, int prefixLength, TRegexDFAExecutorNode backwardNode) {
-        super(language, backwardNode.getProperties().getFrameDescriptor(), source);
+        super(language, source);
         this.prefixLength = prefixLength;
         this.executorNode = backwardNode;
     }

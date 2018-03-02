@@ -7,12 +7,14 @@ package com.oracle.truffle.js.nodes.binary;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 /**
@@ -30,6 +32,15 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
             return JSUnsignedRightShiftConstantNode.create(left, right);
         }
         return JSUnsignedRightShiftNodeGen.create(left, right);
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == BinaryExpressionTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
     }
 
     protected static boolean rvalZero(int b) {

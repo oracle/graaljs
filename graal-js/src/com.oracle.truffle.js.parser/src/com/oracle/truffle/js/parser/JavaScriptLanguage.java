@@ -47,6 +47,22 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
@@ -77,7 +93,31 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 
-@ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, DebuggerTags.AlwaysHalt.class, StandardTags.RootTag.class})
+@ProvidedTags({StandardTags.CallTag.class,
+                StandardTags.StatementTag.class,
+                DebuggerTags.AlwaysHalt.class,
+                StandardTags.RootTag.class,
+                StandardTags.ExpressionTag.class,
+                // Expressions
+                ObjectAllocationExpressionTag.class,
+                BinaryExpressionTag.class,
+                UnaryExpressionTag.class,
+                WriteVariableExpressionTag.class,
+                ReadElementExpressionTag.class,
+                WriteElementExpressionTag.class,
+                ReadPropertyExpressionTag.class,
+                WritePropertyExpressionTag.class,
+                ReadVariableExpressionTag.class,
+                LiteralExpressionTag.class,
+                FunctionCallExpressionTag.class,
+                // Statements and builtins
+                BuiltinRootTag.class,
+                EvalCallTag.class,
+                ControlFlowStatementRootTag.class,
+                ControlFlowConditionStatementTag.class,
+                ControlFlowBlockStatementTag.class
+})
+
 @TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, mimeType = {
                 JavaScriptLanguage.TEXT_MIME_TYPE, JavaScriptLanguage.APPLICATION_MIME_TYPE})
 public class JavaScriptLanguage extends AbstractJavaScriptLanguage {

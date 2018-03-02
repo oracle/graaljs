@@ -7,9 +7,11 @@ package com.oracle.truffle.js.nodes;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
-import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -21,8 +23,8 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
-@Instrumentable(factory = JavaScriptNodeWrapper.class)
-public abstract class JavaScriptNode extends JavaScriptBaseNode {
+@GenerateWrapper
+public abstract class JavaScriptNode extends JavaScriptBaseNode implements InstrumentableNode {
     /** Source or SourceSection. */
     private Object source;
     private int charIndex;
@@ -43,6 +45,16 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode {
 
     protected JavaScriptNode(SourceSection sourceSection) {
         setSourceSection(sourceSection);
+    }
+
+    @Override
+    public boolean isInstrumentable() {
+        return hasSourceSection();
+    }
+
+    @Override
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new JavaScriptNodeWrapper(this, probe);
     }
 
     /**
@@ -268,7 +280,7 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode {
     }
 
     @Override
-    public boolean isTaggedWith(Class<?> tag) {
+    public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == StandardTags.StatementTag.class) {
             return (charLength & STATEMENT_TAG_BIT) != 0;
         } else if (tag == StandardTags.CallTag.class) {
@@ -277,6 +289,9 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode {
             return (charIndex & ROOT_TAG_BIT) != 0;
         } else if (tag == DebuggerTags.AlwaysHalt.class) {
             return (charIndex & ALWAYS_HALT_TAG_BIT) != 0;
+        } else if (tag == StandardTags.ExpressionTag.class) {
+            // Non-expression nodes override and return false.
+            return true;
         } else {
             return false;
         }
@@ -330,6 +345,10 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode {
             }
             return copy;
         }
+    }
+
+    public void removeSourceSection() {
+        this.source = null;
     }
 
     public String expressionToString() {

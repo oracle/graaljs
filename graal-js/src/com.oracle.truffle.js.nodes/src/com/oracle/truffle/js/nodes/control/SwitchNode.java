@@ -4,11 +4,19 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
 
 /**
  * Switch.
@@ -44,6 +52,33 @@ public final class SwitchNode extends StatementNode {
 
     public static SwitchNode create(JavaScriptNode[] caseExpressions, int[] jumptable, JavaScriptNode[] statements) {
         return new SwitchNode(caseExpressions, jumptable, statements);
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == ControlFlowStatementRootTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(ControlFlowStatementRootTag.class)) {
+            JavaScriptNode[] newCaseExpressions = new JavaScriptNode[caseExpressions.length];
+            for (int i = 0; i < caseExpressions.length; i++) {
+                InstrumentableNode materialized = caseExpressions[i].materializeInstrumentableNodes(materializedTags);
+                newCaseExpressions[i] = JSTaggedExecutionNode.createFor((JavaScriptNode) materialized, ControlFlowConditionStatementTag.class);
+            }
+            JavaScriptNode[] newStatements = new JavaScriptNode[statements.length];
+            for (int i = 0; i < statements.length; i++) {
+                InstrumentableNode materialized = statements[i].materializeInstrumentableNodes(materializedTags);
+                newStatements[i] = JSTaggedExecutionNode.createFor((JavaScriptNode) materialized, ControlFlowBlockStatementTag.class);
+            }
+            return SwitchNode.create(newCaseExpressions, jumptable, newStatements);
+        } else {
+            return this;
+        }
     }
 
     @Override

@@ -1211,10 +1211,10 @@ public class Recording {
                         insts.add(new FixUpNodeSourceSectionInst(nodeInst.asVar(), dumpSource(sourceSection.getSource()).asVar(), sourceSection));
                     }
                     if (FIXUP_TAGS) {
-                        boolean hasStatementTag = jsnode.isTaggedWith(StandardTags.StatementTag.class);
-                        boolean hasCallTag = jsnode.isTaggedWith(StandardTags.CallTag.class);
-                        boolean hasAlwaysHaltTag = jsnode.isTaggedWith(DebuggerTags.AlwaysHalt.class);
-                        boolean hasRootTag = jsnode.isTaggedWith(StandardTags.RootTag.class);
+                        boolean hasStatementTag = jsnode.hasTag(StandardTags.StatementTag.class);
+                        boolean hasCallTag = jsnode.hasTag(StandardTags.CallTag.class);
+                        boolean hasAlwaysHaltTag = jsnode.hasTag(DebuggerTags.AlwaysHalt.class);
+                        boolean hasRootTag = jsnode.hasTag(StandardTags.RootTag.class);
                         if (hasStatementTag || hasCallTag || hasAlwaysHaltTag || hasRootTag) {
                             insts.add(new FixUpNodeTagsInst(nodeInst.asVar(), hasStatementTag, hasCallTag, hasAlwaysHaltTag, hasRootTag));
                         }

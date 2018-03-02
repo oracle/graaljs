@@ -10,8 +10,12 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
@@ -24,6 +28,22 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
     private final JSBuiltin builtin;
     boolean construct;
     boolean newTarget;
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == BuiltinRootTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public Object getNodeObject() {
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
+        descriptor.addProperty("name", getBuiltin().getFullName());
+        return descriptor;
+    }
 
     protected JSBuiltinNode(JSContext context, JSBuiltin builtin) {
         this.context = context;
