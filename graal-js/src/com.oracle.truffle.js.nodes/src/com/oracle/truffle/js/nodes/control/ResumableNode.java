@@ -5,17 +5,17 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public interface ResumableNode {
     Object resume(VirtualFrame frame);
 
-    @SuppressWarnings("deprecation")
     static GeneratorWrapperNode parent(ResumableNode node) {
         Node parent = ((Node) node).getParent();
-        if (parent instanceof com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode) {
-            assert ((com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode) parent).getDelegateNode() == node;
+        if (parent instanceof WrapperNode) {
+            assert ((WrapperNode) parent).getDelegateNode() == node;
             parent = parent.getParent();
         }
         return (GeneratorWrapperNode) parent;
