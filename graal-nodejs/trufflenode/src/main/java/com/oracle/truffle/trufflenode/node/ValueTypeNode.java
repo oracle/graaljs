@@ -49,6 +49,7 @@ import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
@@ -297,6 +298,9 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
 
     @Fallback
     protected static int doFallback(Object value) {
+        if (JSTruffleOptions.NashornJavaInterop) {
+            return ORDINARY_OBJECT;
+        }
         GraalJSAccess.valueTypeError(value);
         return UNKNOWN_TYPE;
     }
