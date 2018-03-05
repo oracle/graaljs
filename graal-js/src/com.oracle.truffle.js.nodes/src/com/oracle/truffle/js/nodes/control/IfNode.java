@@ -9,6 +9,7 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -55,11 +56,12 @@ public final class IfNode extends StatementNode implements ResumableNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ControlFlowStatementRootTag.class) || materializedTags.contains(ControlFlowConditionStatementTag.class) ||
-                        materializedTags.contains(ControlFlowBlockStatementTag.class)) {
+                        materializedTags.contains(ControlFlowBlockStatementTag.class) || materializedTags.contains(StatementTag.class)) {
             JavaScriptNode newElsePart = elsePart != null ? JSTaggedExecutionNode.createFor(elsePart, JSTags.ControlFlowBlockStatementTag.class) : null;
             JavaScriptNode newThenPart = thenPart != null ? JSTaggedExecutionNode.createFor(thenPart, JSTags.ControlFlowBlockStatementTag.class) : null;
             JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(condition, JSTags.ControlFlowConditionStatementTag.class);
             JavaScriptNode newIf = IfNode.create(newCondition, newThenPart, newElsePart);
+            newIf.addStatementTag();
             transferSourceSection(this, newIf);
             return newIf;
         } else {

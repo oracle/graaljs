@@ -369,6 +369,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             this.argumentsNode = argumentsNode;
             this.functionTargetNode = createEventEmittingWrapper(functionTargetNode);
             this.targetNode = functionTargetNode.getTarget();
+            transferSourceSection(functionTargetNode, this.targetNode);
+            transferSourceSection(functionTargetNode, this.functionTargetNode);
         }
 
         private JSTargetableNode createEventEmittingWrapper(JSTargetableNode functionTarget) {

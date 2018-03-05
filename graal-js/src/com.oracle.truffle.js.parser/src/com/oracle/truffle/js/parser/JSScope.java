@@ -23,6 +23,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
@@ -355,7 +356,6 @@ public abstract class JSScope {
 
                 private JSWriteFrameSlotNode wn; // The current write node containing a slot
 
-                @SuppressWarnings("deprecation")
                 @Override
                 public boolean visit(Node node) {
                     if (node instanceof JSWriteFrameSlotNode) {
@@ -373,7 +373,7 @@ public abstract class JSScope {
                         }
                         return true;
                     } else if (!(node instanceof JavaScriptBaseNode) || (node instanceof AbstractBlockNode) || (node instanceof FunctionBodyNode) ||
-                                    (node instanceof com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode)) {
+                                    (node instanceof WrapperNode)) {
                         // Visit children of blocks or unknown nodes
                         return NodeUtil.forEachChild(node, this);
                     } else {
