@@ -580,10 +580,15 @@ public final class GraalJSAccess {
     }
 
     public Object objectGet(Object object, Object key) {
-        DynamicObject dynamicObject = (DynamicObject) object;
+        TruffleObject truffleObject;
+        if (object instanceof TruffleObject) {
+            truffleObject = (TruffleObject) object;
+        } else {
+            truffleObject = JSRuntime.toObject(mainJSContext, object);
+        }
         Object value;
         if (key instanceof HiddenKey) {
-            Object hiddenValue = dynamicObject.get(key);
+            Object hiddenValue = ((DynamicObject) truffleObject).get(key);
             if (hiddenValue == null) {
                 if (JSPromise.isJSPromise(object)) {
                     value = 0;
@@ -594,7 +599,7 @@ public final class GraalJSAccess {
                 value = hiddenValue;
             }
         } else {
-            value = JSObject.get(dynamicObject, JSRuntime.toPropertyKey(key));
+            value = JSObject.get(truffleObject, JSRuntime.toPropertyKey(key));
         }
         Object flatten = valueFlatten(value);
         resetSharedBuffer();
