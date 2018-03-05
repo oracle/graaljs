@@ -1374,7 +1374,7 @@ loop:
                     next();
                 }
                 boolean generator = false;
-                if (!async && ES6_GENERATOR_FUNCTION && type == MUL) {
+                if (type == MUL && ES6_GENERATOR_FUNCTION && isES6()) {
                     generator = true;
                     next();
                 }
@@ -3373,7 +3373,7 @@ loop:
             next();
         }
         boolean generator = false;
-        if (!async && ES6_GENERATOR_FUNCTION && type == MUL && isES6()) {
+        if (type == MUL && ES6_GENERATOR_FUNCTION && isES6()) {
             generator = true;
             next();
         }
@@ -6034,13 +6034,14 @@ loop:
     private boolean lookaheadIsAsyncMethod() {
         assert isAsync();
         // find [no LineTerminator here] PropertyName
+        // find [no LineTerminator here] *
         for (int i = 1;; i++) {
             long currentToken = getToken(k + i);
             TokenType t = Token.descType(currentToken);
             if (t == COMMENT) {
                 continue;
             } else {
-                return isPropertyName(currentToken);
+                return isPropertyName(currentToken) || t == MUL;
             }
         }
     }
