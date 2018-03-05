@@ -300,6 +300,9 @@ public final class GraalJSAccess {
         } else if (value instanceof Symbol) {
             return SYMBOL_VALUE;
         }
+        if (JSTruffleOptions.NashornJavaInterop) {
+            return ORDINARY_OBJECT;
+        }
         if (value instanceof Throwable) {
             valueTypeError(value);
         }
