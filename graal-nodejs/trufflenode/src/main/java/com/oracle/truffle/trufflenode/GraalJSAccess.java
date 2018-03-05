@@ -539,17 +539,22 @@ public final class GraalJSAccess {
     }
 
     public boolean objectSetPrivate(Object context, Object object, Object key, Object value) {
-        DynamicObject dynamicObject = (DynamicObject) object;
-        Object privateValues = dynamicObject.get(PRIVATE_VALUES_KEY);
-        if (privateValues == null) {
-            privateValues = objectNew(context);
-            dynamicObject.define(PRIVATE_VALUES_KEY, privateValues);
+        if (JSRuntime.isObject(object)) {
+            DynamicObject dynamicObject = (DynamicObject) object;
+            Object privateValues = dynamicObject.get(PRIVATE_VALUES_KEY);
+            if (privateValues == null) {
+                privateValues = objectNew(context);
+                dynamicObject.define(PRIVATE_VALUES_KEY, privateValues);
+            }
+            JSObject.set((DynamicObject) privateValues, key, value);
         }
-        JSObject.set((DynamicObject) privateValues, key, value);
         return true;
     }
 
     public Object objectGetPrivate(Object object, Object key) {
+        if (!JSObject.isJSObject(object)) {
+            return null;
+        }
         DynamicObject dynamicObject = (DynamicObject) object;
         DynamicObject privateValues = (DynamicObject) dynamicObject.get(PRIVATE_VALUES_KEY);
         if (privateValues == null) {
@@ -562,6 +567,9 @@ public final class GraalJSAccess {
     }
 
     public boolean objectDeletePrivate(Object object, Object key) {
+        if (!JSObject.isJSObject(object)) {
+            return true;
+        }
         DynamicObject dynamicObject = (DynamicObject) object;
         Object privateValues = dynamicObject.get(PRIVATE_VALUES_KEY);
         if (privateValues == null) {
