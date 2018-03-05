@@ -12,7 +12,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRo
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class IfStatementTest extends FineGrainedAccessTest {
 
@@ -33,7 +32,6 @@ public class IfStatementTest extends FineGrainedAccessTest {
                 ifbody.input(false);
                 // no branch is executed; body returns
             }).exit();
-            write.input(Undefined.instance);
         }).exit();
     }
 
@@ -62,7 +60,6 @@ public class IfStatementTest extends FineGrainedAccessTest {
                 }).exit();
                 ifbody.input(3);
             }).exit();
-            write.input(3);
         }).exit();
     }
 
