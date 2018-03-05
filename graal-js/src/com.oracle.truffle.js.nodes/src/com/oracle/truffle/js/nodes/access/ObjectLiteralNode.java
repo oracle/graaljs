@@ -10,6 +10,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -19,14 +20,16 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
 import com.oracle.truffle.js.nodes.function.FunctionNameHolder;
 import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -94,7 +97,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
     public abstract static class ObjectLiteralMemberNode extends JavaScriptBaseNode {
 
-        public static ObjectLiteralMemberNode[] EMPTY = {};
+        public static final ObjectLiteralMemberNode[] EMPTY = {};
 
         protected final boolean isStatic;
         protected final boolean enumerable;
@@ -446,6 +449,47 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
     }
 
+    private static class ObjectLiteralSpreadMemberNode extends ObjectLiteralMemberNode {
+        @Child private JavaScriptNode valueNode;
+        @Child private JSToObjectNode toObjectNode;
+
+        ObjectLiteralSpreadMemberNode(boolean isStatic, boolean enumerable, JavaScriptNode valueNode) {
+            super(isStatic, enumerable);
+            this.valueNode = valueNode;
+        }
+
+        @Override
+        public final void executeVoid(VirtualFrame frame, DynamicObject target, JSContext context) {
+            Object sourceValue = valueNode.execute(frame);
+            if (JSGuards.isNullOrUndefined(sourceValue)) {
+                return;
+            }
+            if (toObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toObjectNode = insert(JSToObjectNode.createToObjectNoCheckNoForeign(context));
+            }
+            DynamicObject from = (DynamicObject) toObjectNode.executeTruffleObject(sourceValue);
+            copyDataProperties(target, from);
+        }
+
+        @TruffleBoundary
+        private static void copyDataProperties(DynamicObject target, DynamicObject from) {
+            Iterable<Object> ownPropertyKeys = JSObject.ownPropertyKeys(from);
+            for (Object nextKey : ownPropertyKeys) {
+                PropertyDescriptor desc = JSObject.getOwnProperty(from, nextKey);
+                if (desc != null && desc.getEnumerable()) {
+                    Object propValue = JSObject.get(from, nextKey);
+                    JSRuntime.createDataProperty(target, nextKey, propValue);
+                }
+            }
+        }
+
+        @Override
+        protected ObjectLiteralMemberNode copyUninitialized() {
+            return new ObjectLiteralSpreadMemberNode(isStatic, enumerable, JavaScriptNode.cloneUninitialized(valueNode));
+        }
+    }
+
     private static class DictionaryObjectDataMemberNode extends ObjectLiteralMemberNode {
         private final String name;
         @Child private JavaScriptNode valueNode;
@@ -488,6 +532,10 @@ public class ObjectLiteralNode extends JavaScriptNode {
     public static ObjectLiteralMemberNode newProtoMember(String name, boolean isStatic, boolean enumerable, JavaScriptNode valueNode) {
         assert JSObject.PROTO.equals(name);
         return new ObjectLiteralProtoMemberNode(isStatic, enumerable, valueNode);
+    }
+
+    public static ObjectLiteralMemberNode newSpreadObjectMember(boolean isStatic, boolean enumerable, JavaScriptNode valueNode) {
+        return new ObjectLiteralSpreadMemberNode(isStatic, enumerable, valueNode);
     }
 
     @Children private final ObjectLiteralMemberNode[] members;
