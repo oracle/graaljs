@@ -1161,11 +1161,12 @@ loop:
                 // ES6 B.3.2 Labelled Function Declarations
                 // It is a Syntax Error if any strict mode source code matches this rule:
                 // LabelledItem : FunctionDeclaration.
+                // ES6 B.3.4 FunctionDeclarations in IfStatement Statement Clauses
                 if (isStrictMode || !mayBeFunctionDeclaration) {
                     throw error(AbstractParser.message("expected.stmt", "function declaration"), token);
                 }
             }
-            functionExpression(true, topLevel || labelledStatement);
+            functionExpression(true, topLevel || labelledStatement, singleStatement);
             return;
         default:
             statementDefault(topLevel, reparseFlags, singleStatement, labelledStatement, mayBeFunctionDeclaration);
@@ -3987,11 +3988,15 @@ loop:
         assert isAsync() && lookaheadIsAsyncFunction();
         long asyncToken = token;
         nextOrEOL();
-        return functionExpression(isStatement, topLevel, true, Token.recast(asyncToken, FUNCTION));
+        return functionExpression(isStatement, topLevel, true, Token.recast(asyncToken, FUNCTION), false);
     }
 
     private Expression functionExpression(final boolean isStatement, final boolean topLevel) {
-        return functionExpression(isStatement, topLevel, false, token);
+        return functionExpression(isStatement, topLevel, false, token, false);
+    }
+
+    private Expression functionExpression(final boolean isStatement, final boolean topLevel, final boolean expressionStatement) {
+        return functionExpression(isStatement, topLevel, false, token, expressionStatement);
     }
 
     /**
@@ -4008,14 +4013,17 @@ loop:
      *
      * @return Expression node.
      */
-    private Expression functionExpression(final boolean isStatement, final boolean topLevel, final boolean async, final long functionToken) {
+    private Expression functionExpression(final boolean isStatement, final boolean topLevel, final boolean async, final long functionToken, final boolean expressionStatement) {
         final int functionLine = line;
         // FUNCTION is tested in caller.
         assert type == FUNCTION;
         next();
 
         boolean generator = false;
-        if (ES6_GENERATOR_FUNCTION && type == MUL && isES6()) {
+        if (type == MUL && ES6_GENERATOR_FUNCTION && isES6()) {
+            if (expressionStatement) {
+                throw error(AbstractParser.message("expected.stmt", "generator function declaration"), token);
+            }
             generator = true;
             next();
         }
