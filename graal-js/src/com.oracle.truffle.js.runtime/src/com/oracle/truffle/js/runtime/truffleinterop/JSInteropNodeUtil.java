@@ -21,6 +21,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Utility class for interop operations.
@@ -115,7 +116,9 @@ public final class JSInteropNodeUtil {
     public static Object read(TruffleObject obj, Object key, Node readNode) {
         try {
             return ForeignAccess.sendRead(readNode, obj, key);
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+        } catch (UnknownIdentifierException e) {
+            return Undefined.instance;
+        } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInteropException(obj, e, Message.READ, null);
         }
     }
