@@ -39,6 +39,7 @@ import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropInvokeNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -70,7 +71,7 @@ public class JSForeignAccessFactory {
         @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createExecute();
         @Child private ExportValueNode export = ExportValueNode.create();
 
-        @CompilationFinal ContextReference<JSContext> contextRef;
+        @CompilationFinal ContextReference<JSRealm> contextRef;
 
         public Object access(DynamicObject target, Object[] args) {
             if (JSRuntime.isCallable(target)) {
@@ -78,7 +79,7 @@ public class JSForeignAccessFactory {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     contextRef = JSObject.getJSContext(target).getLanguage().getContextReference();
                 }
-                JSContext context = contextRef.get();
+                JSContext context = contextRef.get().getContext();
                 context.interopBoundaryEnter();
                 Object result = null;
                 boolean asyncFunction = isAsyncFunction(target);
@@ -125,7 +126,7 @@ public class JSForeignAccessFactory {
         @Child private JSInteropInvokeNode callNode;
         @Child private ExportValueNode export = ExportValueNode.create();
 
-        @CompilationFinal ContextReference<JSContext> contextRef;
+        @CompilationFinal ContextReference<JSRealm> contextRef;
 
         public Object access(DynamicObject target, String id, Object[] args) {
             if (callNode == null) {
@@ -136,7 +137,7 @@ public class JSForeignAccessFactory {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 contextRef = JSObject.getJSContext(target).getLanguage().getContextReference();
             }
-            JSContext context = contextRef.get();
+            JSContext context = contextRef.get().getContext();
             context.interopBoundaryEnter();
             try {
                 return export.executeWithTarget(callNode.execute(target, id, args), Undefined.instance);
@@ -152,14 +153,14 @@ public class JSForeignAccessFactory {
         @Child private ExportValueNode export = ExportValueNode.create();
         @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createNew();
 
-        @CompilationFinal ContextReference<JSContext> contextRef;
+        @CompilationFinal ContextReference<JSRealm> contextRef;
 
         public Object access(DynamicObject target, Object[] args) {
             if (contextRef == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 contextRef = JSObject.getJSContext(target).getLanguage().getContextReference();
             }
-            JSContext context = contextRef.get();
+            JSContext context = contextRef.get().getContext();
             context.interopBoundaryEnter();
             try {
                 return export.executeWithTarget(callNode.executeInterop(target, args), Undefined.instance);
