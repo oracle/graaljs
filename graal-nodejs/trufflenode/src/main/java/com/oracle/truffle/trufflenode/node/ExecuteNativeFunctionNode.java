@@ -268,6 +268,12 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         public String getName() {
             return JSFunction.getFunctionData(template.getFunctionObject()).getName();
         }
+
+        @Override
+        public boolean isFunction() {
+            return true;
+        }
+
     }
 
 }
