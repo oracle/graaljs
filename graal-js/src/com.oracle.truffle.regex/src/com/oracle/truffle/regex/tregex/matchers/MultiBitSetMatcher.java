@@ -9,6 +9,11 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.Arrays;
 
+/**
+ * Character matcher that uses an array of 256 bit sets to fully cover the 16 bit character space.
+ * This matcher can take up to 8 kilobytes of space, so it should be used only when the set of
+ * characters to match is very large and sparse.
+ */
 public final class MultiBitSetMatcher extends ProfiledCharMatcher {
 
     private static final int BYTE_RANGE = 256;
@@ -22,6 +27,16 @@ public final class MultiBitSetMatcher extends ProfiledCharMatcher {
         MATCH_ALL.invert();
     }
 
+    /**
+     * Constructs a new {@link MultiBitSetMatcher}.
+     * 
+     * @param inverse see {@link ProfiledCharMatcher}.
+     * @param ranges a sorted array of character ranges in the form [lower inclusive bound of range
+     *            0, higher inclusive bound of range 0, lower inclusive bound of range 1, higher
+     *            inclusive bound of range 1, ...]. The array contents are not modified by this
+     *            method.
+     * @return a new {@link MultiBitSetMatcher}.
+     */
     public static MultiBitSetMatcher fromRanges(boolean inverse, char[] ranges) {
         CompilationFinalBitSet[] bitSets = new CompilationFinalBitSet[BYTE_RANGE];
         Arrays.fill(bitSets, MATCH_NONE);

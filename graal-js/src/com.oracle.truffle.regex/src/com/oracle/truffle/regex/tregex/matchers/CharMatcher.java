@@ -8,5 +8,11 @@ public interface CharMatcher {
 
     CharMatcher[] EMPTY = {};
 
+    /**
+     * Check if a given character matches this {@link CharMatcher}.
+     * 
+     * @param c any character.
+     * @return {@code true} if the character matches.
+     */
     boolean match(char c);
 }

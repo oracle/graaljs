@@ -6,12 +6,21 @@ package com.oracle.truffle.regex.tregex.matchers;
 
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
+/**
+ * Abstract character matcher that profiles the results of {@link #match(char)} with a binary
+ * {@link ConditionProfile}.
+ */
 public abstract class ProfiledCharMatcher implements CharMatcher {
 
     private final boolean invert;
 
     private final ConditionProfile profile = ConditionProfile.createBinaryProfile();
 
+    /**
+     * Construct a new {@link ProfiledCharMatcher}.
+     * 
+     * @param invert if this is set to true, the result of {@link #match(char)} is always inverted.
+     */
     protected ProfiledCharMatcher(boolean invert) {
         this.invert = invert;
     }

@@ -11,9 +11,9 @@ package com.oracle.truffle.regex.tregex.buffer;
  * 
  * <pre>
  * [
- *     inclusive lower bound of range 1, exclusive upper bound of range 1,
- *     inclusive lower bound of range 2, exclusive upper bound of range 2,
- *     inclusive lower bound of range 3, exclusive upper bound of range 3,
+ *     inclusive lower bound of range 1, inclusive upper bound of range 1,
+ *     inclusive lower bound of range 2, inclusive upper bound of range 2,
+ *     inclusive lower bound of range 3, inclusive upper bound of range 3,
  *     ...
  * ]
  * </pre>
@@ -27,5 +27,9 @@ public class RangesArrayBuffer extends CharArrayBuffer {
     public void addRange(int rLo, int rHi) {
         add((char) rLo);
         add((char) rHi);
+    }
+
+    public int sizeRanges() {
+        return size() / 2;
     }
 }

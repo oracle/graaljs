@@ -23,6 +23,7 @@ import com.oracle.truffle.regex.result.SingleResult;
 import com.oracle.truffle.regex.result.SingleResultLazyStart;
 import com.oracle.truffle.regex.result.TraceFinderResult;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
+import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -49,6 +50,9 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         if (source.getOptions().isRegressionTestMode() && captureGroupExecutor != null) {
             compileEagerSearchNode();
         }
+        if (DebugUtil.DEBUG_ALWAYS_EAGER) {
+            switchToEagerSearch(null);
+        }
     }
 
     @Override
@@ -58,10 +62,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         if (CompilerDirectives.inInterpreter() && runRegexSearchNode == lazySearchNode) {
             RegexProfile profile = regex.getRegexProfile();
             if (profile.atEvaluationTripPoint() && profile.shouldUseEagerMatching()) {
-                compileEagerSearchNode();
-                if (eagerSearchNode != EAGER_SEARCH_BAILED_OUT) {
-                    runRegexSearchNode = insert(eagerSearchNode);
-                }
+                switchToEagerSearch(profile);
             }
             profile.incCalls();
             if (result != RegexResult.NO_MATCH) {
@@ -69,6 +70,16 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
             }
         }
         return result;
+    }
+
+    private void switchToEagerSearch(RegexProfile profile) {
+        compileEagerSearchNode();
+        if (eagerSearchNode != EAGER_SEARCH_BAILED_OUT) {
+            if (DebugUtil.LOG_SWITCH_TO_EAGER) {
+                System.out.println("regex " + getSource() + ": switching to eager matching." + (profile == null ? "" : "profile: " + profile));
+            }
+            runRegexSearchNode = insert(eagerSearchNode);
+        }
     }
 
     private boolean eagerAndLazySearchNodesProduceSameResult(VirtualFrame frame, RegexObject regex, Object input, int fromIndex, RegexResult resultOfCurrentSearchNode) {

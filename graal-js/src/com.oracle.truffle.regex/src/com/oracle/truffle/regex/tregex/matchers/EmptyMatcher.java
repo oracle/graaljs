@@ -4,6 +4,9 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
+/**
+ * A character matcher that never matches.
+ */
 public final class EmptyMatcher implements CharMatcher {
 
     private EmptyMatcher() {

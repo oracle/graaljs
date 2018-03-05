@@ -11,6 +11,16 @@ import com.oracle.truffle.api.CompilerDirectives;
  */
 public final class RangeTreeMatcher extends ProfiledCharMatcher {
 
+    /**
+     * Constructs a new {@link RangeTreeMatcher}.
+     * 
+     * @param invert see {@link ProfiledCharMatcher}.
+     * @param ranges a sorted array of character ranges in the form [lower inclusive bound of range
+     *            0, higher inclusive bound of range 0, lower inclusive bound of range 1, higher
+     *            inclusive bound of range 1, ...]. The array contents are not modified by this
+     *            method.
+     * @return a new {@link RangeTreeMatcher}.
+     */
     public static RangeTreeMatcher fromRanges(boolean invert, char[] ranges) {
         char[] tree = new char[ranges.length];
         buildTree(tree, 0, ranges, 0, ranges.length / 2);
@@ -98,6 +108,6 @@ public final class RangeTreeMatcher extends ProfiledCharMatcher {
     @Override
     @CompilerDirectives.TruffleBoundary
     public String toString() {
-        return modifiersToString() + MatcherBuilder.rangesToString(tree);
+        return "tree " + modifiersToString() + MatcherBuilder.rangesToString(tree);
     }
 }

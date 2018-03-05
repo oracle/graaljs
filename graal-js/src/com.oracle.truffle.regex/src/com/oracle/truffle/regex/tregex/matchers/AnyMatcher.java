@@ -4,6 +4,9 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
+/**
+ * A character matcher that always matches.
+ */
 public final class AnyMatcher implements CharMatcher {
 
     private AnyMatcher() {

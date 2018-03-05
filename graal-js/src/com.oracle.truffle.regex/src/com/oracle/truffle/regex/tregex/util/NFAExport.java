@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 public final class NFAExport {
 
@@ -127,8 +128,16 @@ public final class NFAExport {
 
     private void exportLaTex() throws IOException {
         NFAStateSet visited = new NFAStateSet(nfa);
-        writer.write("\\begin{tikzpicture}[>=stealth',auto,node distance=1.5cm]");
-        writer.newLine();
+        writer.write("\\documentclass{standalone}\n" +
+                        "\\usepackage[utf8]{inputenc}\n" +
+                        "\\usepackage[T1]{fontenc}\n" +
+                        "\\usepackage{tikz}\n" +
+                        "\n" +
+                        "\\usetikzlibrary{automata}\n" +
+                        "\\usetikzlibrary{arrows}\n" +
+                        "\n" +
+                        "\\begin{document}\n" +
+                        "\\begin{tikzpicture}[>=stealth',auto,node distance=2.5cm]\n");
         writer.newLine();
         ArrayList<NFAState> curStates = new ArrayList<>();
         ArrayList<NFAState> nextStates = new ArrayList<>();
@@ -171,6 +180,8 @@ public final class NFAExport {
         writer.newLine();
         writer.write("\\end{tikzpicture}");
         writer.newLine();
+        writer.write("\\end{document}");
+        writer.newLine();
     }
 
     private void printLaTexState(NFAState state, NFAState relativeTo, String direction) throws IOException {
@@ -183,7 +194,14 @@ public final class NFAExport {
     }
 
     private void printLaTexTransition(NFAStateTransition t, int priority) throws IOException {
-        writer.write(String.format("(s%d) edge [] node {%s} (s%d)", t.getSource().getId(), LaTexExport.escape(labelTransition(t, priority)), t.getTarget().getId()));
+        ArrayList<String> options = new ArrayList<>();
+        if (t.getSource() == t.getTarget()) {
+            options.add("loop above");
+        }
+        writer.write(String.format("(s%d) edge [%s] node {%s} (s%d)", t.getSource().getId(),
+                        options.stream().collect(Collectors.joining(", ")),
+                        LaTexExport.escape(labelTransition(t, priority)),
+                        t.getTarget().getId()));
         writer.newLine();
     }
 
@@ -207,8 +225,8 @@ public final class NFAExport {
 
     private String labelTransition(NFAStateTransition transition, int priority) {
         StringBuilder sb = new StringBuilder();
-        if (!(transition.getSource(!reverse) instanceof NFAAbstractFinalState)) {
-            sb.append(transition.getSource(!reverse));
+        if (!(transition.getTarget(!reverse) instanceof NFAAbstractFinalState)) {
+            sb.append(transition.getTarget(!reverse));
         }
         if (fullLabels) {
             sb.append(", p").append(priority).append(", ").append(transition.getGroupBoundaries());

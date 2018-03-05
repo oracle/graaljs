@@ -27,9 +27,10 @@ import com.oracle.truffle.regex.tregex.nodes.DFAStateNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorProperties;
 import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
+import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplitBailoutException;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.util.DFAExport;
-import com.oracle.truffle.regex.tregex.util.DFANodeSplit;
+import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 import java.util.ArrayDeque;
@@ -172,13 +173,16 @@ public final class DFAGenerator {
         }
         entryStates[0] = gen.lookupOrCreateState(new DFAStateTransitionBuilder(null, anchoredEntry)).getId();
         DFAAbstractStateNode[] states = gen.createFullDFA();
+        assert states[0] == null;
+        states[0] = new DFAInitialStateNode(entryStates, null, false, false);
         if (DebugUtil.DEBUG) {
             DFAExport.exportDot(gen.stateMap, entryStates, "./dfa_reverse.gv", false);
             System.out.println("REVERSE");
             gen.dumpDFA();
+            for (DFAAbstractStateNode s : states) {
+                System.out.println(s.toTable());
+            }
         }
-        assert states[0] == null;
-        states[0] = new DFAInitialStateNode(entryStates, null, false, false);
         if (TRegexOptions.TRegexEnableNodeSplitter) {
             states = tryMakeReducible(states);
         }
@@ -188,7 +192,7 @@ public final class DFAGenerator {
     private static DFAAbstractStateNode[] tryMakeReducible(DFAAbstractStateNode[] states) {
         try {
             return DFANodeSplit.createReducibleGraph(states);
-        } catch (DFANodeSplit.DFANodeSplitBailoutException e) {
+        } catch (DFANodeSplitBailoutException e) {
             return states;
         }
     }

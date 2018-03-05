@@ -5,7 +5,10 @@
 package com.oracle.truffle.regex.tregex.matchers;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.RangesArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.CodePointRange;
 import com.oracle.truffle.regex.tregex.parser.CodePointSet;
@@ -318,6 +321,9 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder> {
 
     private void addRangeBulkTo(RangesArrayBuffer rangesArrayBuffer, int startIndex, int endIndex) {
         int bulkLength = (endIndex - startIndex) * 2;
+        if (bulkLength == 0) {
+            return;
+        }
         int newSize = rangesArrayBuffer.size() + bulkLength;
         rangesArrayBuffer.ensureCapacity(newSize);
         System.arraycopy(ranges, startIndex * 2, rangesArrayBuffer.getBuffer(), rangesArrayBuffer.size(), bulkLength);
@@ -682,13 +688,21 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder> {
         return size() == 1 && getLo(0) == Character.MIN_VALUE && getHi(0) == Character.MAX_VALUE;
     }
 
+    private static int highByte(char c) {
+        return c >> Byte.SIZE;
+    }
+
+    private static int lowByte(char c) {
+        return c & 0xff;
+    }
+
     private boolean allSameHighByte() {
         if (matchesNothing()) {
             return true;
         }
-        int highByte = getLo(0) >> Byte.SIZE;
-        for (int ia = 0; ia < size(); ia++) {
-            if (getLo(ia) >> Byte.SIZE != highByte || getHi(ia) >> Byte.SIZE != highByte) {
+        int highByte = highByte(getLo(0));
+        for (int i = 0; i < size(); i++) {
+            if (highByte(getLo(i)) != highByte || highByte(getHi(i)) != highByte) {
                 return false;
             }
         }
@@ -698,12 +712,12 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder> {
     public CharMatcher createMatcher(CompilationBuffer compilationBuffer) {
         MatcherBuilder inverse = createInverse(compilationBuffer);
         if (inverse.size() < size() || !allSameHighByte() && inverse.allSameHighByte()) {
-            return inverse.createMatcher(true);
+            return inverse.createMatcher(compilationBuffer, true, true);
         }
-        return createMatcher(false);
+        return createMatcher(compilationBuffer, false, true);
     }
 
-    private CharMatcher createMatcher(boolean inverse) {
+    private CharMatcher createMatcher(CompilationBuffer compilationBuffer, boolean inverse, boolean tryHybrid) {
         if (matchesNothing()) {
             return EmptyMatcher.create(inverse);
         }
@@ -720,25 +734,112 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder> {
             return new TwoCharMatcher(inverse, getLo(0), getLo(1));
         }
         if (allSameHighByte()) {
-            int highByte = getLo(0) >> Byte.SIZE;
-            int highestLowByte = getHi(size() - 1) & 0xff;
-            assert highestLowByte > 0;
-            CompilationFinalBitSet bs = new CompilationFinalBitSet(Integer.highestOneBit(highestLowByte) << 1);
-            for (int i = 0; i < size(); i++) {
-                bs.setRange(getLo(i) & 0xff, getHi(i) & 0xff);
-            }
-            if (highByte == 0) {
-                return new NullHighByteBitSetMatcher(inverse, bs);
-            }
-            return new BitSetMatcher(inverse, highByte, bs);
-        }
-        if (size() <= 10) {
-            return new RangeListMatcher(inverse, ranges);
+            CompilationFinalBitSet bs = convertToBitSet(0, size());
+            int highByte = highByte(getLo(0));
+            return BitSetMatcher.create(inverse, highByte, bs);
         }
         if (size() > 100) {
             return MultiBitSetMatcher.fromRanges(inverse, ranges);
         }
-        return RangeTreeMatcher.fromRanges(inverse, ranges);
+        if (tryHybrid) {
+            return createHybridMatcher(compilationBuffer, inverse);
+        } else {
+            if (size() <= 10) {
+                return new RangeListMatcher(inverse, ranges);
+            } else {
+                assert size() <= 100;
+                return RangeTreeMatcher.fromRanges(inverse, ranges);
+            }
+        }
+    }
+
+    private CompilationFinalBitSet convertToBitSet(int iMinArg, int iMaxArg) {
+        assert iMaxArg - iMinArg > 1;
+        int highByte = highByte(getLo(iMaxArg - 1));
+        CompilationFinalBitSet bs;
+        int iMax = iMaxArg;
+        if (rangeCrossesPlanes(iMaxArg - 1)) {
+            bs = new CompilationFinalBitSet(256);
+            iMax--;
+            bs.setRange(lowByte(getLo(iMaxArg - 1)), 0xff);
+        } else {
+            bs = new CompilationFinalBitSet(Integer.highestOneBit(lowByte(getHi(iMaxArg - 1))) << 1);
+        }
+        int iMin = iMinArg;
+        if (rangeCrossesPlanes(iMinArg)) {
+            assert highByte(getHi(iMinArg)) == highByte;
+            iMin++;
+            bs.setRange(0, lowByte(getHi(iMinArg)));
+        }
+        for (int i = iMin; i < iMax; i++) {
+            assert highByte(getLo(i)) == highByte && highByte(getHi(i)) == highByte;
+            bs.setRange(lowByte(getLo(i)), lowByte(getHi(i)));
+        }
+        return bs;
+    }
+
+    private CharMatcher createHybridMatcher(CompilationBuffer compilationBuffer, boolean inverse) {
+        assert size() > 1;
+        RangesArrayBuffer rest = compilationBuffer.getRangesArrayBuffer1();
+        ByteArrayBuffer highBytes = compilationBuffer.getByteArrayBuffer();
+        ObjectArrayBuffer bitSets = compilationBuffer.getObjectBuffer1();
+        int lowestRangeOnCurPlane = 0;
+        boolean lowestRangeCanBeDeleted = !rangeCrossesPlanes(0);
+        int curPlane = highByte(getHi(0));
+        for (int i = 1; i < size(); i++) {
+            if (highByte(getLo(i)) != curPlane) {
+                if (i - lowestRangeOnCurPlane >= TRegexOptions.TRegexRangeToBitSetConversionThreshold) {
+                    highBytes.add((byte) curPlane);
+                    bitSets.add(convertToBitSet(lowestRangeOnCurPlane, i));
+                    if (!lowestRangeCanBeDeleted) {
+                        addRangeTo(rest, lowestRangeOnCurPlane);
+                    }
+                } else {
+                    addRangeBulkTo(rest, lowestRangeOnCurPlane, i);
+                }
+                curPlane = highByte(getLo(i));
+                lowestRangeOnCurPlane = i;
+                lowestRangeCanBeDeleted = !rangeCrossesPlanes(i);
+            }
+            if (highByte(getHi(i)) != curPlane) {
+                if (lowestRangeOnCurPlane != i) {
+                    if ((i + 1) - lowestRangeOnCurPlane >= TRegexOptions.TRegexRangeToBitSetConversionThreshold) {
+                        highBytes.add((byte) curPlane);
+                        bitSets.add(convertToBitSet(lowestRangeOnCurPlane, i + 1));
+                        if (!lowestRangeCanBeDeleted) {
+                            addRangeTo(rest, lowestRangeOnCurPlane);
+                        }
+                        lowestRangeCanBeDeleted = highByte(getHi(i)) - highByte(getLo(i)) == 1;
+                    } else {
+                        addRangeBulkTo(rest, lowestRangeOnCurPlane, i);
+                        lowestRangeCanBeDeleted = !rangeCrossesPlanes(i);
+                    }
+                } else {
+                    lowestRangeCanBeDeleted = !rangeCrossesPlanes(i);
+                }
+                curPlane = highByte(getHi(i));
+                lowestRangeOnCurPlane = i;
+            }
+        }
+        if (size() - lowestRangeOnCurPlane >= TRegexOptions.TRegexRangeToBitSetConversionThreshold) {
+            highBytes.add((byte) curPlane);
+            bitSets.add(convertToBitSet(lowestRangeOnCurPlane, size()));
+            if (!lowestRangeCanBeDeleted) {
+                addRangeTo(rest, lowestRangeOnCurPlane);
+            }
+        } else {
+            addRangeBulkTo(rest, lowestRangeOnCurPlane, size());
+        }
+        if (highBytes.size() == 0) {
+            assert rest.size() == ranges.length;
+            return createMatcher(compilationBuffer, inverse, false);
+        }
+        CharMatcher restMatcher = MatcherBuilder.create(rest).createMatcher(compilationBuffer, false, false);
+        return new HybridBitSetMatcher(inverse, highBytes.toArray(), bitSets.toArray(new CompilationFinalBitSet[bitSets.size()]), restMatcher);
+    }
+
+    private boolean rangeCrossesPlanes(int i) {
+        return highByte(getLo(i)) != highByte(getHi(i));
     }
 
     @Override

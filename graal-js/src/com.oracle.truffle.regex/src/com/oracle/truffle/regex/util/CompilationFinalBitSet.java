@@ -165,19 +165,18 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
 
     @Override
     public PrimitiveIterator.OfInt iterator() {
-        return new CompilationFinalBitSetIterator(words);
+        return new CompilationFinalBitSetIterator();
     }
 
-    private static final class CompilationFinalBitSetIterator implements PrimitiveIterator.OfInt {
+    private final class CompilationFinalBitSetIterator implements PrimitiveIterator.OfInt {
 
-        private final long[] words;
         private int wordIndex = 0;
         private byte bitIndex = 0;
         private long curWord;
+        private int last;
 
-        private CompilationFinalBitSetIterator(long[] words) {
-            this.words = words;
-            curWord = this.words[0];
+        private CompilationFinalBitSetIterator() {
+            curWord = words[0];
             findNext();
         }
 
@@ -231,11 +230,16 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
         @Override
         public int nextInt() {
             assert hasNext();
-            int ret = (wordIndex * 64) + bitIndex;
+            last = (wordIndex * 64) + bitIndex;
             curWord >>>= 1;
             bitIndex++;
             findNext();
-            return ret;
+            return last;
+        }
+
+        @Override
+        public void remove() {
+            clear(last);
         }
     }
 

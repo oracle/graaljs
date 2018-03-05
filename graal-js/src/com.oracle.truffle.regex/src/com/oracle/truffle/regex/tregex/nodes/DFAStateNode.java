@@ -142,6 +142,9 @@ public class DFAStateNode extends DFAAbstractStateNode {
         final char c = executor.getChar(frame);
         executor.advance(frame);
         for (int i = 0; i < matchers.length; i++) {
+            if (DebugUtil.DEBUG_STEP_EXECUTION) {
+                System.out.println("check " + matchers[i]);
+            }
             if (matchers[i].match(c)) {
                 CompilerAsserts.partialEvaluationConstant(i);
                 successorFound1(frame, executor, i);
@@ -173,6 +176,9 @@ public class DFAStateNode extends DFAAbstractStateNode {
         final char c = executor.getChar(frame);
         executor.advance(frame);
         for (int i = 0; i < matchers.length; i++) {
+            if (DebugUtil.DEBUG_STEP_EXECUTION) {
+                System.out.println("check " + matchers[i]);
+            }
             if (matchers[i].match(c)) {
                 executor.setSuccessorIndex(frame, i);
                 if (i != loopToSelf) {
@@ -214,6 +220,9 @@ public class DFAStateNode extends DFAAbstractStateNode {
         final char c = executor.getChar(frame);
         executor.advance(frame);
         for (int i = 0; i < matchers.length; i++) {
+            if (DebugUtil.DEBUG_STEP_EXECUTION) {
+                System.out.println("check " + matchers[i]);
+            }
             if (matchers[i].match(c)) {
                 executor.setSuccessorIndex(frame, i);
                 if (i != loopToSelf) {

@@ -42,6 +42,9 @@ public final class DFACaptureGroupPartialTransitionNode extends Node {
     }
 
     public void apply(DFACaptureGroupTrackingData d, final int currentIndex) {
+        if (DebugUtil.DEBUG_STEP_EXECUTION) {
+            System.out.println("applying " + this);
+        }
         CompilerAsserts.partialEvaluationConstant(this);
         if (newOrder != null) {
             System.arraycopy(d.currentResultOrder, 0, d.swap, 0, newOrder.length);
@@ -53,6 +56,9 @@ public final class DFACaptureGroupPartialTransitionNode extends Node {
     }
 
     public void applyFinalStateTransition(DFACaptureGroupTrackingData d, boolean searching, final int currentIndex) {
+        if (DebugUtil.DEBUG_STEP_EXECUTION) {
+            System.out.println("applying final state transition " + this);
+        }
         CompilerAsserts.partialEvaluationConstant(this);
         if (!searching) {
             apply(d, currentIndex);
@@ -153,6 +159,42 @@ public final class DFACaptureGroupPartialTransitionNode extends Node {
         result = prime * result + Arrays.deepHashCode(indexUpdates);
         result = prime * result + Arrays.deepHashCode(indexClears);
         return result;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("DfaCGTransition");
+        if (newOrder != null && newOrder.length > 0) {
+            sb.append(System.lineSeparator()).append("newOrder: ").append(Arrays.toString(newOrder));
+        }
+        if (arrayCopies.length > 0) {
+            sb.append(System.lineSeparator()).append("arrayCopies: ");
+            for (int i = 0; i < arrayCopies.length; i += 2) {
+                final int source = Byte.toUnsignedInt(arrayCopies[i]);
+                final int target = Byte.toUnsignedInt(arrayCopies[i + 1]);
+                sb.append(System.lineSeparator()).append("    ").append(source).append(" -> ").append(target);
+            }
+        }
+        indexManipulationsToString(sb, indexUpdates, "indexUpdates");
+        indexManipulationsToString(sb, indexClears, "indexClears");
+        return sb.toString();
+    }
+
+    private static void indexManipulationsToString(StringBuilder sb, byte[][] indexManipulations, String name) {
+        if (indexManipulations.length > 0) {
+            sb.append(System.lineSeparator()).append(name).append(": ");
+            for (byte[] indexManipulation : indexManipulations) {
+                final int targetArray = Byte.toUnsignedInt(indexManipulation[0]);
+                sb.append(System.lineSeparator()).append("    ").append(targetArray).append(" <- [");
+                for (int i = 1; i < indexManipulation.length; i++) {
+                    if (i > 1) {
+                        sb.append(", ");
+                    }
+                    sb.append(Byte.toUnsignedInt(indexManipulation[i]));
+                }
+                sb.append("]");
+            }
+        }
     }
 
     public DebugUtil.Table toTable() {
