@@ -43,4 +43,30 @@ describe('Arguments', function () {
             assert.strictEqual(actualHolder, expectedThis);
         });
     });
+    describe('arg[0]', function () {
+        it('should be returned as it is from the identity function', function() {
+            var lazyString = 'aaaaaaaaaaaaaaaaaaaa';
+            lazyString += 'bbbbbbbbbbbbbbbbbbbbbbb';
+            var values = [
+                true,
+                false,
+                0,
+                Infinity,
+                -Infinity,
+                Math.PI,
+                'string',
+                lazyString,
+                Symbol.toStringTag,
+                { foo: 'bar'},
+                [1,2,3]
+            ];
+            if (typeof Java !== 'undefined') {
+                values.push(new (Java.type('java.awt.Point'))(42, 211));
+                values.push(new (Java.type('java.math.BigDecimal'))(3.14));
+            }
+            values.forEach(function(value) {
+                assert.strictEqual(module.Arguments_Identity(value), value);
+            });
+        });
+    });
 });

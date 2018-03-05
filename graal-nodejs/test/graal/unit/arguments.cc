@@ -29,4 +29,8 @@ EXPORT_TO_JS(FunctionWithArguments) {
     args.GetReturnValue().Set(func);
 }
 
+EXPORT_TO_JS(Identity) {
+    args.GetReturnValue().Set(args[0]);
+}
+
 #undef SUITE
