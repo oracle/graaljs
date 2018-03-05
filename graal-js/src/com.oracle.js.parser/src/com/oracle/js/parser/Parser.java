@@ -1186,6 +1186,9 @@ loop:
             classDeclaration(inGeneratorFunction(), inAsyncFunction(), false);
             return;
         } else if (isAsync() && lookaheadIsAsyncFunction()) {
+            if (singleStatement) {
+                throw error(AbstractParser.message("expected.stmt", "async function declaration"), token);
+            }
             asyncFunctionExpression(true, topLevel || labelledStatement);
             return;
         }
