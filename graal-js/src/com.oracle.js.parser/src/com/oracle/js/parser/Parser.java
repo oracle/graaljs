@@ -2128,11 +2128,14 @@ loop:
                 break;
             default:
                 if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration(true) || type == CONST)) {
-                    if (type == LET) {
-                        flags |= ForNode.PER_ITERATION_SCOPE;
-                    }
                     // LET/CONST declaration captured in container block created above.
                     varDeclList = variableDeclarationList(varType = type, false, forStart);
+                    if (varType == LET) {
+                        // Per-iteration scope not needed if BindingPattern is empty
+                        if (!forNode.getStatements().isEmpty()) {
+                            flags |= ForNode.PER_ITERATION_SCOPE;
+                        }
+                    }
                     break;
                 }
                 if (env.constAsVar && type == CONST) {
