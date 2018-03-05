@@ -3054,11 +3054,11 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/rest-parameters/array-pattern.js",
-    "status" : "SKIP",
+    "status" : "FAIL",
     "comment" : "ES7 tests"
   }, {
     "filePath" : "language/rest-parameters/object-pattern.js",
-    "status" : "SKIP",
+    "status" : "FAIL",
     "comment" : "ES7 tests"
   }, {
     "filePath" : "language/statements/async-generator/dflt-params-ref-later.js",
