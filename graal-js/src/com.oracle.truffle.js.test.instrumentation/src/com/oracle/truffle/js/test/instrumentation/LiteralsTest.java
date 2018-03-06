@@ -19,7 +19,6 @@ public class LiteralsTest extends FineGrainedAccessTest {
 
     protected void testLiteral(String src, LiteralExpressionTag.Type expectedTagType, Object expectedValue) {
         evalAllTags(src);
-        assertEngineInit();
 
         enter(WriteVariableExpressionTag.class, (e, var) -> {
             assertAttribute(e, NAME, "<return>");

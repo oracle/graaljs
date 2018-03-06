@@ -20,8 +20,6 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
     public void read() {
         evalAllTags("var a = {x:42}; a.x;");
 
-        assertEngineInit();
-
         // var a = {x:42}
         enter(WritePropertyExpressionTag.class, (e, write) -> {
             assertAttribute(e, KEY, "a");
@@ -46,8 +44,6 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
     @Test
     public void nestedRead() {
         evalAllTags("var a = {x:{y:42}}; a.x.y;");
-
-        assertEngineInit();
 
         // var a = {x:{y:42}}
         enter(WritePropertyExpressionTag.class, (e, write) -> {
@@ -78,8 +74,6 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
     @Test
     public void write() {
         evalAllTags("var a = {}; a.x = 42;");
-
-        assertEngineInit();
 
         // var a = {}
         enter(WritePropertyExpressionTag.class, (e, write) -> {

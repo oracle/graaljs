@@ -21,8 +21,6 @@ public class BuiltinOperationTest extends FineGrainedAccessTest {
     public void mathRandom() {
         evalAllTags("var a = Math.random; a();");
 
-        assertEngineInit();
-
         // var a = Math.random
         enter(WritePropertyExpressionTag.class, (e, write) -> {
             assertAttribute(e, KEY, "a");
@@ -58,8 +56,6 @@ public class BuiltinOperationTest extends FineGrainedAccessTest {
                         "Object.defineProperty(foo, 'bar', {" +
                         "  value: 42" +
                         "});");
-
-        assertEngineInit();
 
         // const foo = {}
         enter(WriteVariableExpressionTag.class, (e, w) -> {

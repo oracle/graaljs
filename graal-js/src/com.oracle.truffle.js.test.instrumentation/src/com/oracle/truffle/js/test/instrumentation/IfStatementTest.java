@@ -19,8 +19,6 @@ public class IfStatementTest extends FineGrainedAccessTest {
     public void basicNoBranch() {
         evalAllTags("if (!true) {};");
 
-        assertEngineInit();
-
         // JS will write the result to <return>
         enter(WriteVariableExpressionTag.class, (e, write) -> {
             enter(ControlFlowStatementRootTag.class, (e1, ifbody) -> {
@@ -38,8 +36,6 @@ public class IfStatementTest extends FineGrainedAccessTest {
     @Test
     public void basicBranch() {
         evalAllTags("if (true) { 3; };");
-
-        assertEngineInit();
 
         // JS will write the result to <return>
         enter(WriteVariableExpressionTag.class, (e, write) -> {

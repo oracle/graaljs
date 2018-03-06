@@ -105,6 +105,7 @@ public abstract class FineGrainedAccessTest {
     }
 
     private Context context;
+    private boolean collecting;
     private ArrayList<Event> events;
     private Stack<JavaScriptNode> stack;
     private Instrumenter instrumenter;
@@ -144,15 +145,6 @@ public abstract class FineGrainedAccessTest {
         assertFalse("empty queue!", events.isEmpty());
         Event event = events.remove(0);
         return event;
-    }
-
-    protected void assertEngineInit() {
-        // By default, we perform some operations to load Promises and other builtins written in js.
-        for (int i = 0; i < 4; i++) {
-            enter(BuiltinRootTag.class, (b) -> {
-                assertAttribute(b, NAME, "Object.create");
-            }).exit();
-        }
     }
 
     static class AssertedEvent {
@@ -235,18 +227,41 @@ public abstract class FineGrainedAccessTest {
 
                     @Override
                     public void onEnter(VirtualFrame frame) {
+                        /*
+                         * Internal sources are executed at engine startup time. Such sources
+                         * include internal code for the registration of builtins like Promise. We
+                         * skip all these internal events to ensure that tests are deterministic.
+                         */
+                        if (!collecting && c.getInstrumentedSourceSection().getSource().isInternal()) {
+                            return;
+                        } else if (!collecting && !c.getInstrumentedSourceSection().getSource().isInternal()) {
+                            /*
+                             * as soon as we see a non-internal source, we start collecting events
+                             * for all available sources. This ensures that we can trace all
+                             * internal events (like builtin calls) and ensures that we trace
+                             * interesting tagged internal events, but we do not trace other events
+                             * (e.g. those coming from de-sugared internal nodes).
+                             */
+                            collecting = true;
+                        }
                         events.add(new Event(c, Event.Kind.ENTER, (JavaScriptNode) c.getInstrumentedNode(), null));
                         stack.push((JavaScriptNode) c.getInstrumentedNode());
                     }
 
                     @Override
                     protected void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
+                        if (!collecting) {
+                            return;
+                        }
                         events.add(new Event(c, Event.Kind.INPUT, (JavaScriptNode) c.getInstrumentedNode(), inputValue));
                         saveInputValue(frame, inputIndex, inputValue);
                     }
 
                     @Override
                     protected void onReturnValue(VirtualFrame frame, Object result) {
+                        if (!collecting) {
+                            return;
+                        }
                         Object[] values = getSavedInputValues(frame);
                         assertTrue(values != null);
                         if (values.length > 0) {
@@ -304,6 +319,7 @@ public abstract class FineGrainedAccessTest {
 
     @Before
     public void initTest() {
+        collecting = false;
         context = Context.create("js");
         instrument = context.getEngine().getInstruments().get(TestingExecutionInstrument.ID).lookup(TestingExecutionInstrument.class);
         instrumenter = instrument.environment.getInstrumenter();
