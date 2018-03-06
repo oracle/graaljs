@@ -2467,14 +2467,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 if (propertyExpressions.isEmpty()) {
                     return factory.createRequireObjectCoercible(assignedValue);
                 }
-                JavaScriptNode[] initElements = javaScriptNodeArray(propertyExpressions.size());
+
+                int numberOfProperties = propertyExpressions.size();
+                boolean hasRest = propertyExpressions.get(numberOfProperties - 1).isRest();
+                boolean requireObjectCoercible = hasRest && numberOfProperties == 1;
+                JavaScriptNode[] initElements = javaScriptNodeArray(numberOfProperties);
+                JavaScriptNode[] excludedKeys = hasRest ? javaScriptNodeArray(numberOfProperties - 1) : null;
+
                 VarRef valueTempVar = environment.createTempVar();
-                JavaScriptNode initValueTempVar = valueTempVar.createWriteNode(assignedValue);
+                JavaScriptNode initValueTempVar = valueTempVar.createWriteNode(requireObjectCoercible ? factory.createRequireObjectCoercible(assignedValue) : assignedValue);
 
-                boolean hasRest = propertyExpressions.get(propertyExpressions.size() - 1).isRest();
-                JavaScriptNode[] excludedKeys = javaScriptNodeArray(propertyExpressions.size() - 1);
-
-                for (int i = 0; i < propertyExpressions.size(); i++) {
+                for (int i = 0; i < numberOfProperties; i++) {
                     PropertyNode property = propertyExpressions.get(i);
                     Expression lhsExpr;
                     Expression init = null;
