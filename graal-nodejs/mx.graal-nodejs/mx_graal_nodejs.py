@@ -380,7 +380,7 @@ def parse_js_args(args):
     if profileJniArg in progArgs:
         mx.log('Running with native profiling agent enabled. The argument is handled by mx and not passed as program argument')
         progArgs.remove(profileJniArg)
-        vmArgs += ['-javaagent:' + join(_suite.dir, 'build', 'trufflenode-jniboundaryprofiler.jar')]
+        vmArgs += ['-javaagent:{}'.format(mx.distribution('TRUFFLENODE_JNI_BOUNDARY_PROFILER').path)]
 
     return vmArgs, progArgs
 
