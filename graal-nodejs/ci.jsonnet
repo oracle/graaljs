@@ -7,7 +7,7 @@ local common = import '../common.jsonnet';
     ],
   },
 
-  local gateCmd = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
+  local gateCmd = ['mx', '--strict-compliance', 'gate', '--strict-mode'],
 
   local gateGraalImport = {
     downloads+: {
@@ -35,7 +35,17 @@ local common = import '../common.jsonnet';
 
   local gateGraalTip = buildGraalTip + {
     run+: [
-      gateCmd,
+      gateCmd + ['--tags', 'all'],
+    ],
+    timelimit: '30:00',
+  },
+
+  local gateSubstrateVmTip = buildGraalTip + {
+    run+: [
+      ['mx', '-p', '../../graal/substratevm', 'build', '--force-javac'],
+      ['mx', '--dynamicimports', '/substratevm', 'buildsvmimage'],
+      ['mx', '--dynamicimports', '/substratevm', 'svmnode', '-e', 'console.log(\'Hello, World!\')'],
+      ['mx', '--dynamicimports', '/substratevm', 'svmnpm', '--version'],
     ],
     timelimit: '30:00',
   },
@@ -58,6 +68,8 @@ local common = import '../common.jsonnet';
   builds: [
     // gates
     graalNodeJs + common.jdk8 + gateGraalImport                                                                        + common.gate + common.linux + {name: 'nodejs-gate-graal-import-jdk8-linux-amd64'},
+    graalNodeJs + common.jdk8 + gateGraalTip                                                                           + common.gate + common.linux + {name: 'nodejs-gate-graal-tip-jdk8-linux-amd64'},
+    graalNodeJs + common.jdk8 + gateSubstrateVmTip                                                                     + common.gate + common.linux + {name: 'nodejs-gate-substratevm-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8 + testNodeGraalTip + buildAddons + {environment+: {SUITE: 'addons', PART: '-r0,1'}}      + common.gate + common.linux + {name: 'nodejs-gate-addons-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8 + testNodeGraalTip + buildAddons + {environment+: {SUITE: 'addons-napi', PART: '-r0,1'}} + common.gate + common.linux + {name: 'nodejs-gate-addons-napi-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'async-hooks', PART: '-r0,1'}} + common.gate + common.linux + {name: 'nodejs-gate-async-hooks-graal-tip-jdk8-linux-amd64'},

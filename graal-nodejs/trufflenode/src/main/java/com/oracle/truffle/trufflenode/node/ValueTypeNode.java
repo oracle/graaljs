@@ -128,7 +128,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     @Specialization(guards = "isNumber(value)", replaces = {"doInt", "doDouble"})
     protected final int doNumber(Object value) {
         if (useSharedBuffer) {
-            graalAccess.getSharedBuffer().putDouble(((Number) value).doubleValue());
+            graalAccess.getSharedBuffer().putDouble(JSRuntime.doubleValue((Number) value));
         }
         return NUMBER_VALUE;
     }
