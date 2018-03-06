@@ -257,7 +257,7 @@ public abstract class FineGrainedAccessTest {
                         } else {
                             events.add(new Event(c, Event.Kind.RETURN, (JavaScriptNode) c.getInstrumentedNode(), new Object[]{result}));
                         }
-                        assert stack.pop() == c.getInstrumentedNode();
+                        stack.pop();
                     }
                 };
             }

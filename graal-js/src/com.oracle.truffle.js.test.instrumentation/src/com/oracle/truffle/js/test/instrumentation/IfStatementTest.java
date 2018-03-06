@@ -10,6 +10,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatem
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 
 public class IfStatementTest extends FineGrainedAccessTest {
@@ -74,6 +75,23 @@ public class IfStatementTest extends FineGrainedAccessTest {
             enter(ControlFlowConditionStatementTag.class).exit(assertReturnValue(true));
             // enter if branch
             enter(ControlFlowBlockStatementTag.class).exit();
+        }).exit();
+    }
+
+    @Test
+    public void writeWithTernary() {
+        String src = "var a = {x:0}; a.x = 100 > 0 ? 1 : 0;";
+        evalWithTag(src, WritePropertyExpressionTag.class);
+
+        enter(WritePropertyExpressionTag.class, (e1, pw1) -> {
+            assertAttribute(e1, KEY, "a");
+            pw1.input(assertGlobalObjectInput);
+            pw1.input(assertJSObjectInput);
+        }).exit();
+        enter(WritePropertyExpressionTag.class, (e1, pw1) -> {
+            assertAttribute(e1, KEY, "x");
+            pw1.input(assertJSObjectInput);
+            pw1.input(1);
         }).exit();
     }
 

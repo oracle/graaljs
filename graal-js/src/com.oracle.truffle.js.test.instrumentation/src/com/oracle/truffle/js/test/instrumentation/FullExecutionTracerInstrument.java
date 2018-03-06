@@ -4,6 +4,12 @@
  */
 package com.oracle.truffle.js.test.instrumentation;
 
+import java.io.File;
+import java.io.IOException;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -34,6 +40,12 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
     public static final String ID = "FullExecutionTracerInstrument";
 
     public Env environment;
+
+    public static void main(String[] args) throws IOException {
+        Context c = Context.create("js");
+        c.getEngine().getInstruments().get(ID).lookup(FullExecutionTracerInstrument.class);
+        c.eval(Source.newBuilder("js", new File(args[0])).build());
+    }
 
     @Override
     protected void onCreate(Env env) {

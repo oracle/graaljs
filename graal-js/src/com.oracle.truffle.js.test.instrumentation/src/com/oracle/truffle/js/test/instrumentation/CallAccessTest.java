@@ -223,4 +223,59 @@ public class CallAccessTest extends FineGrainedAccessTest {
         });
     }
 
+    @Test
+    public void changeFunc() {
+        String src = "function foo(a){return a;}" +
+                        "function bar(b){return b;}" +
+                        "function run() {this.f();}" +
+                        "function T() {this.f = foo;this.r = run;}" +
+                        "for(var i = 0; i < 2; i++) {" +
+                        " var t = new T();" +
+                        " t.r();" +
+                        " t.f = bar;" +
+                        " t.r();" +
+                        "}";
+        evalWithTag(src, FunctionCallExpressionTag.class);
+
+        // Invoke operations perform the two read operations independently.
+        // 1. read the target object
+        enter(FunctionCallExpressionTag.class, (e, call) -> {
+            call.input(assertJSFunctionInput);
+        }).exit();
+        enter(FunctionCallExpressionTag.class, (e, call) -> {
+            call.input(assertJSObjectInput);
+            call.input(assertJSFunctionInput);
+            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                call2.input(assertJSObjectInput);
+                call2.input(assertJSFunctionInput);
+            }).exit();
+        }).exit();
+        enter(FunctionCallExpressionTag.class, (e, call) -> {
+            call.input(assertJSObjectInput);
+            call.input(assertJSFunctionInput);
+            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                call2.input(assertJSObjectInput);
+                call2.input(assertJSFunctionInput);
+            }).exit();
+        }).exit();
+        enter(FunctionCallExpressionTag.class, (e, call) -> {
+            call.input(assertJSFunctionInput);
+        }).exit();
+        enter(FunctionCallExpressionTag.class, (e, call) -> {
+            call.input(assertJSObjectInput);
+            call.input(assertJSFunctionInput);
+            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                call2.input(assertJSObjectInput);
+                call2.input(assertJSFunctionInput);
+            }).exit();
+        }).exit();
+        enter(FunctionCallExpressionTag.class, (e, call) -> {
+            call.input(assertJSObjectInput);
+            call.input(assertJSFunctionInput);
+            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                call2.input(assertJSObjectInput);
+                call2.input(assertJSFunctionInput);
+            }).exit();
+        }).exit();
+    }
 }
