@@ -190,10 +190,6 @@
     "filePath" : "mjsunit/es6/computed-property-names-classes.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/computed-property-names-object-literals-methods.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
-  }, {
     "filePath" : "mjsunit/es6/computed-property-names-super.js",
     "status" : "FAIL"
   }, {
@@ -637,12 +633,6 @@
     "filePath" : "mjsunit/harmony/modules-skip-large2.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
-  }, {
-    "filePath" : "mjsunit/harmony/object-rest-basic.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/harmony/object-spread-basic.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/harmony/private-symbols.js",
     "status" : "FAIL"

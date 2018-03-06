@@ -2467,11 +2467,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 if (propertyExpressions.isEmpty()) {
                     return factory.createRequireObjectCoercible(assignedValue);
                 }
-                JavaScriptNode[] initElements = javaScriptNodeArray(propertyExpressions.size());
-                VarRef valueTempVar = environment.createTempVar();
-                JavaScriptNode initValueTempVar = valueTempVar.createWriteNode(assignedValue);
 
-                for (int i = 0; i < propertyExpressions.size(); i++) {
+                int numberOfProperties = propertyExpressions.size();
+                boolean hasRest = propertyExpressions.get(numberOfProperties - 1).isRest();
+                boolean requireObjectCoercible = hasRest && numberOfProperties == 1;
+                JavaScriptNode[] initElements = javaScriptNodeArray(numberOfProperties);
+                JavaScriptNode[] excludedKeys = hasRest ? javaScriptNodeArray(numberOfProperties - 1) : null;
+
+                VarRef valueTempVar = environment.createTempVar();
+                JavaScriptNode initValueTempVar = valueTempVar.createWriteNode(requireObjectCoercible ? factory.createRequireObjectCoercible(assignedValue) : assignedValue);
+
+                for (int i = 0; i < numberOfProperties; i++) {
                     PropertyNode property = propertyExpressions.get(i);
                     Expression lhsExpr;
                     Expression init = null;
@@ -2479,14 +2485,31 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         assert property.getValue().isTokenType(TokenType.ASSIGN) || property.getValue().isTokenType(TokenType.ASSIGN_INIT);
                         lhsExpr = ((BinaryNode) property.getValue()).lhs();
                         init = ((BinaryNode) property.getValue()).rhs();
+                    } else if (property.isRest()) {
+                        assert hasRest;
+                        lhsExpr = ((UnaryNode) property.getKey()).getExpression();
                     } else {
                         lhsExpr = property.getValue();
                     }
                     JavaScriptNode rhsNode;
-                    if (property.getKey() instanceof IdentNode) {
-                        rhsNode = factory.createReadProperty(context, valueTempVar.createReadNode(), property.getKeyName());
+                    if (property.isRest()) {
+                        JavaScriptNode restObj = factory.createObjectLiteral(context, new ArrayList<>());
+                        JavaScriptNode excludedItemsArray = excludedKeys.length == 0 ? null : factory.createArrayLiteral(context, excludedKeys);
+                        rhsNode = factory.createCopyDataProperties(restObj, valueTempVar.createReadNode(), excludedItemsArray);
+                    } else if (property.getKey() instanceof IdentNode && !property.isComputed()) {
+                        String keyName = property.getKeyName();
+                        if (hasRest) {
+                            excludedKeys[i] = factory.createConstantString(keyName);
+                        }
+                        rhsNode = factory.createReadProperty(context, valueTempVar.createReadNode(), keyName);
                     } else {
-                        rhsNode = factory.createReadElementNode(context, valueTempVar.createReadNode(), transform(property.getKey()));
+                        JavaScriptNode key = transform(property.getKey());
+                        if (hasRest) {
+                            VarRef keyTempVar = environment.createTempVar();
+                            excludedKeys[i] = keyTempVar.createReadNode();
+                            key = keyTempVar.createWriteNode(factory.createToPropertyKey(key));
+                        }
+                        rhsNode = factory.createReadElementNode(context, valueTempVar.createReadNode(), key);
                     }
                     if (init != null) {
                         rhsNode = factory.createNotUndefinedOr(rhsNode, transform(init));
@@ -2605,6 +2628,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             final ObjectLiteralMemberNode member;
             if (property.getValue() != null) {
                 member = enterObjectPropertyNode(property, keyName, isClass);
+            } else if (property.isRest()) {
+                member = factory.createSpreadObjectMember(property.isStatic(), !isClass, transform(((UnaryNode) property.getKey()).getExpression()));
             } else {
                 member = enterObjectAccessorNode(property, keyName, isClass);
             }

@@ -19,6 +19,7 @@ import com.oracle.truffle.js.annotations.GenerateDecoder;
 import com.oracle.truffle.js.annotations.GenerateProxy;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.AsyncIteratorNextNode;
+import com.oracle.truffle.js.nodes.access.CopyDataPropertiesNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalFunctionNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalLexicalVariableNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
@@ -98,6 +99,7 @@ import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
 import com.oracle.truffle.js.nodes.binary.JSUnsignedRightShiftNode;
 import com.oracle.truffle.js.nodes.cast.JSPrepareThisNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
+import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode.JSToStringWrapperNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.control.AsyncFunctionBodyNode;
@@ -684,6 +686,10 @@ public class NodeFactory {
         return ObjectLiteralNode.newComputedAccessorMember(key, isStatic, enumerable, getter, setter);
     }
 
+    public ObjectLiteralMemberNode createSpreadObjectMember(boolean isStatic, boolean enumerable, JavaScriptNode value) {
+        return ObjectLiteralNode.newSpreadObjectMember(isStatic, enumerable, value);
+    }
+
     public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members, String className) {
         if (className != null) {
             constructorFunction.setFunctionName(className);
@@ -990,6 +996,14 @@ public class NodeFactory {
                 return copy();
             }
         };
+    }
+
+    public JavaScriptNode createCopyDataProperties(JavaScriptNode targetObj, JavaScriptNode source, JavaScriptNode excludedNames) {
+        return CopyDataPropertiesNode.create(targetObj, source, excludedNames);
+    }
+
+    public JavaScriptNode createToPropertyKey(JavaScriptNode key) {
+        return JSToPropertyKeyWrapperNode.create(key);
     }
 
     public IfNode copyIfWithCondition(IfNode origIfNode, JavaScriptNode condition) {

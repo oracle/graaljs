@@ -25,6 +25,7 @@
 
 package com.oracle.js.parser.ir;
 
+import com.oracle.js.parser.TokenType;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
@@ -250,5 +251,9 @@ public final class PropertyNode extends Node {
 
     public boolean isProto() {
         return proto;
+    }
+
+    public boolean isRest() {
+        return key != null && key.isTokenType(TokenType.SPREAD_OBJECT);
     }
 }

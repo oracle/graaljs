@@ -193,7 +193,7 @@ public class Parser extends AbstractParser {
 
     private static final boolean ES8_TRAILING_COMMA = Options.getBooleanProperty("parser.trailing.comma", true);
     private static final boolean ES8_ASYNC_FUNCTION = Options.getBooleanProperty("parser.async.function", true);
-    private static final boolean ES8_REST_SPREAD_PROPERTY = Options.getBooleanProperty("parser.rest.spread.property", false);
+    private static final boolean ES8_REST_SPREAD_PROPERTY = Options.getBooleanProperty("parser.rest.spread.property", true);
     private static final boolean ES8_FOR_AWAIT_OF = Options.getBooleanProperty("parser.for.await.of", true);
 
     private static final int REPARSE_IS_PROPERTY_ACCESSOR = 1 << 0;
@@ -1161,11 +1161,12 @@ loop:
                 // ES6 B.3.2 Labelled Function Declarations
                 // It is a Syntax Error if any strict mode source code matches this rule:
                 // LabelledItem : FunctionDeclaration.
+                // ES6 B.3.4 FunctionDeclarations in IfStatement Statement Clauses
                 if (isStrictMode || !mayBeFunctionDeclaration) {
                     throw error(AbstractParser.message("expected.stmt", "function declaration"), token);
                 }
             }
-            functionExpression(true, topLevel || labelledStatement);
+            functionExpression(true, topLevel || labelledStatement, singleStatement);
             return;
         default:
             statementDefault(topLevel, reparseFlags, singleStatement, labelledStatement, mayBeFunctionDeclaration);
@@ -1186,6 +1187,9 @@ loop:
             classDeclaration(inGeneratorFunction(), inAsyncFunction(), false);
             return;
         } else if (isAsync() && lookaheadIsAsyncFunction()) {
+            if (singleStatement) {
+                throw error(AbstractParser.message("expected.stmt", "async function declaration"), token);
+            }
             asyncFunctionExpression(true, topLevel || labelledStatement);
             return;
         }
@@ -1370,7 +1374,7 @@ loop:
                     next();
                 }
                 boolean generator = false;
-                if (!async && ES6_GENERATOR_FUNCTION && type == MUL) {
+                if (type == MUL && ES6_GENERATOR_FUNCTION && isES6()) {
                     generator = true;
                     next();
                 }
@@ -2128,11 +2132,14 @@ loop:
                 break;
             default:
                 if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration(true) || type == CONST)) {
-                    if (type == LET) {
-                        flags |= ForNode.PER_ITERATION_SCOPE;
-                    }
                     // LET/CONST declaration captured in container block created above.
                     varDeclList = variableDeclarationList(varType = type, false, forStart);
+                    if (varType == LET) {
+                        // Per-iteration scope not needed if BindingPattern is empty
+                        if (!forNode.getStatements().isEmpty()) {
+                            flags |= ForNode.PER_ITERATION_SCOPE;
+                        }
+                    }
                     break;
                 }
                 if (env.constAsVar && type == CONST) {
@@ -3366,7 +3373,7 @@ loop:
             next();
         }
         boolean generator = false;
-        if (!async && ES6_GENERATOR_FUNCTION && type == MUL && isES6()) {
+        if (type == MUL && ES6_GENERATOR_FUNCTION && isES6()) {
             generator = true;
             next();
         }
@@ -3981,11 +3988,15 @@ loop:
         assert isAsync() && lookaheadIsAsyncFunction();
         long asyncToken = token;
         nextOrEOL();
-        return functionExpression(isStatement, topLevel, true, Token.recast(asyncToken, FUNCTION));
+        return functionExpression(isStatement, topLevel, true, Token.recast(asyncToken, FUNCTION), false);
     }
 
     private Expression functionExpression(final boolean isStatement, final boolean topLevel) {
-        return functionExpression(isStatement, topLevel, false, token);
+        return functionExpression(isStatement, topLevel, false, token, false);
+    }
+
+    private Expression functionExpression(final boolean isStatement, final boolean topLevel, final boolean expressionStatement) {
+        return functionExpression(isStatement, topLevel, false, token, expressionStatement);
     }
 
     /**
@@ -4002,14 +4013,17 @@ loop:
      *
      * @return Expression node.
      */
-    private Expression functionExpression(final boolean isStatement, final boolean topLevel, final boolean async, final long functionToken) {
+    private Expression functionExpression(final boolean isStatement, final boolean topLevel, final boolean async, final long functionToken, final boolean expressionStatement) {
         final int functionLine = line;
         // FUNCTION is tested in caller.
         assert type == FUNCTION;
         next();
 
         boolean generator = false;
-        if (ES6_GENERATOR_FUNCTION && type == MUL && isES6()) {
+        if (type == MUL && ES6_GENERATOR_FUNCTION && isES6()) {
+            if (expressionStatement) {
+                throw error(AbstractParser.message("expected.stmt", "generator function declaration"), token);
+            }
             generator = true;
             next();
         }
@@ -6020,13 +6034,14 @@ loop:
     private boolean lookaheadIsAsyncMethod() {
         assert isAsync();
         // find [no LineTerminator here] PropertyName
+        // find [no LineTerminator here] *
         for (int i = 1;; i++) {
             long currentToken = getToken(k + i);
             TokenType t = Token.descType(currentToken);
             if (t == COMMENT) {
                 continue;
             } else {
-                return isPropertyName(currentToken);
+                return isPropertyName(currentToken) || t == MUL;
             }
         }
     }
