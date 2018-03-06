@@ -31,6 +31,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -199,6 +200,8 @@ public class JSContext implements ShapeContext {
      * Temporary field until transition is complete.
      */
     @CompilationFinal private JSRealm realm;
+
+    @CompilationFinal private ContextReference<JSRealm> contextRef;
 
     /**
      * ECMA2017 8.7 Agent object.
@@ -542,12 +545,20 @@ public class JSContext implements ShapeContext {
     }
 
     public JSRealm getRealm() {
-        assert realm != null;
-        return realm;
+        if (contextRef == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (getLanguage() != null) {  // could be uninitialized
+                contextRef = getLanguage().getContextReference();
+            } else {
+                return realm;
+            }
+        }
+        JSRealm realm2 = contextRef.get();
+        return realm2 != null ? realm2 : realm;
     }
 
     public boolean hasRealm() {
-        return realm != null;
+        return getRealm() != null;
     }
 
     @Override

@@ -50,9 +50,9 @@ public final class JavaPackage extends JSBuiltinObject {
         assert !JSTruffleOptions.SubstrateVM;
     }
 
-    public static DynamicObject create(JSContext context, String packageName) {
-        DynamicObject obj = JSObject.create(context, context.getRealm().getJavaPackageFactory(), packageName);
-        JSObjectUtil.putDataProperty(obj, Symbol.SYMBOL_TO_PRIMITIVE, context.getRealm().getJavaPackageToPrimitiveFunction(), JSAttributes.notConfigurableNotEnumerableNotWritable());
+    public static DynamicObject create(JSRealm realm, String packageName) {
+        DynamicObject obj = JSObject.create(realm.getContext(), realm.getJavaPackageFactory(), packageName);
+        JSObjectUtil.putDataProperty(obj, Symbol.SYMBOL_TO_PRIMITIVE, realm.getJavaPackageToPrimitiveFunction(), JSAttributes.notConfigurableNotEnumerableNotWritable());
         assert isJavaPackage(obj);
         return obj;
     }
@@ -96,8 +96,8 @@ public final class JavaPackage extends JSBuiltinObject {
         return null;
     }
 
-    public static DynamicObject subpackage(JSContext context, DynamicObject thisObj, String name) {
-        return create(context, prependPackageName(thisObj, name));
+    public static DynamicObject subpackage(JSRealm realm, DynamicObject thisObj, String name) {
+        return create(realm, prependPackageName(thisObj, name));
     }
 
     public static Object getJavaClassOrConstructorOrSubPackage(JSContext context, DynamicObject thisObj, String name) {
@@ -114,15 +114,15 @@ public final class JavaPackage extends JSBuiltinObject {
                 }
             }
         }
-        return getJavaClassOrSubPackage(context, thisObj, name);
+        return getJavaClassOrSubPackage(context.getRealm(), thisObj, name);
     }
 
-    private static Object getJavaClassOrSubPackage(JSContext context, DynamicObject thisObj, String name) {
+    private static Object getJavaClassOrSubPackage(JSRealm realm, DynamicObject thisObj, String name) {
         Object javaClass = getClass(thisObj, name, JSTruffleOptions.NashornJavaInterop ? JavaClass.class : Object.class);
         if (javaClass != null) {
             return javaClass;
         }
-        return subpackage(context, thisObj, name);
+        return subpackage(realm, thisObj, name);
     }
 
     @TruffleBoundary
