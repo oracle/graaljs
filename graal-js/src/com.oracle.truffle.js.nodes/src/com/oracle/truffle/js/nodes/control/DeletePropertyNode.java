@@ -31,6 +31,7 @@ import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -102,6 +103,12 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
             propertyKey = toPropertyKeyNode.execute(key);
         }
         return JSObject.delete(targetObject, propertyKey, strict, jsclassProfile);
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization
+    protected static boolean doSymbol(Symbol target, Object property) {
+        return true;
     }
 
     @SuppressWarnings("unused")
