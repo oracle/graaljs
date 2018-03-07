@@ -37,6 +37,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
     boolean printResult = false;
     String[] programArgs;
     final List<UnparsedSource> unparsedSources = new LinkedList<>();
+    private VersionAction versionAction = VersionAction.None;
 
     @Override
     protected void launch(Context.Builder contextBuilder) {
@@ -135,6 +136,12 @@ public class JSLauncher extends AbstractLanguageLauncher {
             case "printResult":
             case "print-result":
                 printResult = true;
+                return Consumed;
+            case "show-version":
+                versionAction = VersionAction.PrintAndContinue;
+                return Consumed;
+            case "version":
+                versionAction = VersionAction.PrintAndExit;
                 return Consumed;
             case "syntax-extensions":
                 polyglotOptions.put("js.syntax-extensions", "true");
@@ -244,6 +251,8 @@ public class JSLauncher extends AbstractLanguageLauncher {
         printOption("--print-result",       "print the return value of each FILE");
         printOption("--scripting",          "enable scripting features (Nashorn compatibility option)");
         printOption("--strict",             "run in strict mode");
+        printOption("--version",            "print the version and exit");
+        printOption("--show-version",       "print the version and continue");
     }
 
 
@@ -256,6 +265,8 @@ public class JSLauncher extends AbstractLanguageLauncher {
                         "--no-shebang",
                         "--syntax-extensions",
                         "--print-result",
+                        "--version",
+                        "--show-version",
                         "--scripting",
                         "--strict"));
     }
@@ -273,11 +284,11 @@ public class JSLauncher extends AbstractLanguageLauncher {
 
     protected int executeScripts(Context.Builder contextBuilder) {
         int status;
-        Context context;
+        contextBuilder.arguments("js", programArgs);
+        Context context = contextBuilder.build();
+        runVersionAction(versionAction, context.getEngine());
+        preEval(context);
         if (hasSources()) {
-            contextBuilder.arguments("js", programArgs);
-            context = contextBuilder.build();
-            preEval(context);
             // Every engine runs different Source objects.
             Source[] sources = parseSources();
             status = -1;
@@ -304,8 +315,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
                 }
             }
         } else {
-            context = contextBuilder.build();
-            preEval(context);
             status = runREPL(context);
         }
         context.close();
