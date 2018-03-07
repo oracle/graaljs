@@ -31,7 +31,9 @@ import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
@@ -106,8 +108,19 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     @SuppressWarnings("unused")
     @Specialization
-    protected static boolean doString(String target, Object property) {
-        return false;
+    protected static boolean doSymbol(Symbol target, Object property) {
+        return true;
+    }
+
+    @Specialization
+    protected static boolean doString(String target, Object property,
+                    @Cached("create()") ToArrayIndexNode toArrayIndexNode) {
+        Object objIndex = toArrayIndexNode.execute(property);
+        if (objIndex instanceof Long) {
+            long index = (Long) objIndex;
+            return (index < 0) || (target.length() <= index);
+        }
+        return !JSString.LENGTH.equals(objIndex);
     }
 
     @TruffleBoundary

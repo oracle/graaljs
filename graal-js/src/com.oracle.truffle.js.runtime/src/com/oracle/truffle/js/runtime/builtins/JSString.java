@@ -36,7 +36,7 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     public static final String CLASS_NAME = "String";
     public static final String PROTOTYPE_NAME = "String.prototype";
 
-    private static final String LENGTH = "length";
+    public static final String LENGTH = "length";
 
     private static final HiddenKey STRING_ID = new HiddenKey("string");
     private static final Property STRING_PROPERTY;
