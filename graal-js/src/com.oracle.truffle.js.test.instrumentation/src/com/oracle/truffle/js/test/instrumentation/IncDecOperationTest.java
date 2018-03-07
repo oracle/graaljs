@@ -18,7 +18,6 @@ public class IncDecOperationTest extends FineGrainedAccessTest {
     public void inc() {
         evalAllTags("var a = 42; a++;");
 
-        assertEngineInit();
         assertGlobalVarDeclaration("a", 42);
 
         // Inc operation de-sugared to a = a + 1;
@@ -45,7 +44,6 @@ public class IncDecOperationTest extends FineGrainedAccessTest {
     public void dec() {
         evalAllTags("var a = 42; a--;");
 
-        assertEngineInit();
         assertGlobalVarDeclaration("a", 42);
 
         // Dec operation de-sugared to tmp = tmp - 1;

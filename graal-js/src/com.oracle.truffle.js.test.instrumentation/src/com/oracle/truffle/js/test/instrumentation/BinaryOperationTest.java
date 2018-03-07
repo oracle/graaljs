@@ -17,8 +17,6 @@ public class BinaryOperationTest extends FineGrainedAccessTest {
     public void fullAnd() {
         evalAllTags("var a = 42; var b = 43; var c = a + b;");
 
-        assertEngineInit();
-
         // var a = 42
         assertGlobalVarDeclaration("a", 42);
         // var a = 43

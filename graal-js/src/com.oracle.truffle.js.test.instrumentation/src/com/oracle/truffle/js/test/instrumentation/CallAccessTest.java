@@ -22,8 +22,6 @@ public class CallAccessTest extends FineGrainedAccessTest {
     public void callOneArg() {
         evalAllTags("function foo(a) {}; foo(42);");
 
-        assertEngineInit();
-
         // declaration
         assertGlobalFunctionExpressionDeclaration("foo");
 
@@ -44,8 +42,6 @@ public class CallAccessTest extends FineGrainedAccessTest {
     @Test
     public void callTwoArgs() {
         evalAllTags("function foo(a,b) {}; foo(42,24);");
-
-        assertEngineInit();
 
         // declaration
         assertGlobalFunctionExpressionDeclaration("foo");
@@ -68,8 +64,6 @@ public class CallAccessTest extends FineGrainedAccessTest {
     @Test
     public void methodCall() {
         evalAllTags("var foo = {x:function foo(a,b) {}}; foo.x(42,24);");
-
-        assertEngineInit();
 
         // var foo = ...
         enter(WritePropertyExpressionTag.class, (e, write) -> {
@@ -111,8 +105,6 @@ public class CallAccessTest extends FineGrainedAccessTest {
     public void methodCallOneArg() {
         evalAllTags("var foo = {x:function foo(a,b) {}}; foo.x(42);");
 
-        assertEngineInit();
-
         // var foo = ...
         enter(WritePropertyExpressionTag.class, (e, write) -> {
             assertAttribute(e, KEY, "foo");
@@ -150,8 +142,6 @@ public class CallAccessTest extends FineGrainedAccessTest {
     @Test
     public void methodCallElementArg() {
         evalAllTags("var a = {x:[function(){}]}; a.x[0](42);");
-
-        assertEngineInit();
 
         // var a = ...
         enter(WritePropertyExpressionTag.class, (e, write) -> {

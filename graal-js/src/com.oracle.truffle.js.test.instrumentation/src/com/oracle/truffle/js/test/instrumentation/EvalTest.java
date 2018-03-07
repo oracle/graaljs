@@ -19,8 +19,6 @@ public class EvalTest extends FineGrainedAccessTest {
     public void eval() {
         evalAllTags("eval('var a = 42;')");
 
-        assertEngineInit();
-
         enter(WriteVariableExpressionTag.class, (v, var) -> {
             enter(EvalCallTag.class, (e, eval) -> {
                 enter(ReadPropertyExpressionTag.class, assertPropertyReadName("eval")).input(assertGlobalObjectInput).exit();

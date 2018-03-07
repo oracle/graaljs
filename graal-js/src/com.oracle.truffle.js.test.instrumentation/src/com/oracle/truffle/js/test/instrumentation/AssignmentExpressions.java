@@ -60,8 +60,6 @@ public class AssignmentExpressions extends FineGrainedAccessTest {
     public void plusEqualElem() {
         evalAllTags("var a = [42]; a[0] += 1;");
 
-        assertEngineInit();
-
         // var a = [42];
         enter(WritePropertyExpressionTag.class, (e, write) -> {
             assertAttribute(e, KEY, "a");
@@ -98,7 +96,6 @@ public class AssignmentExpressions extends FineGrainedAccessTest {
     private void assertDesugaredOperation(String operation, String desugaredOperator, int initial, int operand, int result) {
         evalAllTags("var a = " + initial + "; a " + operation + " " + operand + ";");
 
-        assertEngineInit();
         assertGlobalVarDeclaration("a", initial);
 
         // '+=' operation de-sugared to e.g. 'a = a + 3';

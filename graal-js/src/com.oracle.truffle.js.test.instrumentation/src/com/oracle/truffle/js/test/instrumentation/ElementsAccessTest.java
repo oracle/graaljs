@@ -22,7 +22,6 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
     public void read() {
         evalAllTags("var a = [1]; a[0];");
 
-        assertEngineInit();
         assertGlobalArrayLiteralDeclaration("a");
 
         enter(ReadElementExpressionTag.class, (e, elem) -> {
@@ -39,7 +38,6 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
     public void nestedRead() {
         evalAllTags("var a = [0]; a[a[0]];");
 
-        assertEngineInit();
         assertGlobalArrayLiteralDeclaration("a");
 
         enter(ReadElementExpressionTag.class, (e, elem) -> {
@@ -65,7 +63,6 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
     public void write() {
         evalAllTags("var a = []; a[1] = 'foo';");
 
-        assertEngineInit();
         assertGlobalArrayLiteralDeclaration("a");
         // write element
         enter(WriteElementExpressionTag.class, (e, elem) -> {

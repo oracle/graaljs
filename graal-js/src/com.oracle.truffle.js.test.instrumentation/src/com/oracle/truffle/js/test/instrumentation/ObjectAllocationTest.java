@@ -23,8 +23,6 @@ public class ObjectAllocationTest extends FineGrainedAccessTest {
     public void basic() {
         evalAllTags("var a = new Object(); var b = {}; var c = [];");
 
-        assertEngineInit();
-
         enter(WritePropertyExpressionTag.class, (e, write) -> {
             assertAttribute(e, KEY, "a");
             write.input(assertGlobalObjectInput);
@@ -66,8 +64,6 @@ public class ObjectAllocationTest extends FineGrainedAccessTest {
     @Test
     public void nested() {
         evalAllTags("var a = {x:{}}; var b = [[]]; var c = {x:[]}");
-
-        assertEngineInit();
 
         enter(WritePropertyExpressionTag.class, (e, prop) -> {
             assertAttribute(e, KEY, "a");

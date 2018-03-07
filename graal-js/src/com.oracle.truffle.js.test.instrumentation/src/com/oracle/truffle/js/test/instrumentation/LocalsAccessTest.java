@@ -19,8 +19,6 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
     public void write() {
         evalAllTags("(function() { var a = 42; })();");
 
-        assertEngineInit();
-
         enter(WriteVariableExpressionTag.class, (e, write) -> {
             enter(FunctionCallExpressionTag.class, (e1, call) -> {
                 // fetch the target for the call (which is undefined)
@@ -46,8 +44,6 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
     @Test
     public void writeScope() {
         evalAllTags("(function() { var level; (function() { (function() { level = 42; })(); })();})();");
-
-        assertEngineInit();
 
         enter(WriteVariableExpressionTag.class, (e, write) -> {
             // first call
@@ -98,8 +94,6 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
     @Test
     public void read() {
         evalAllTags("(function() { var a = 42; return a; })();");
-
-        assertEngineInit();
 
         enter(WriteVariableExpressionTag.class, (e, write) -> {
             enter(FunctionCallExpressionTag.class, (e1, call) -> {

@@ -23,8 +23,6 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
     public void typeof() {
         evalAllTags("var b = typeof Uint8Array;");
 
-        assertEngineInit();
-
         enter(WritePropertyExpressionTag.class, (e, write) -> {
             assertAttribute(e, KEY, "b");
             write.input(assertGlobalObjectInput);
@@ -46,8 +44,6 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
     @Test
     public void voidMethod() {
         evalAllTags("void function foo() {}();");
-
-        assertEngineInit();
 
         enter(WriteVariableExpressionTag.class, (e, var) -> {
             assertAttribute(e, NAME, "<return>");
@@ -88,8 +84,6 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
 
     private void assertBasicUnaryOperation(String src, Object expectedPostUnaryOpValue) {
         evalAllTags(src);
-
-        assertEngineInit();
 
         assertGlobalVarDeclaration("x", true);
 
