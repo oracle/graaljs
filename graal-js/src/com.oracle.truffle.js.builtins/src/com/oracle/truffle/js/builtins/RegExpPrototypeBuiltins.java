@@ -617,15 +617,18 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private PropertyGetNode getUnicodeNode;
         @Child private PropertyGetNode getLengthNode;
         @Child private PropertyGetNode getIndexNode;
+        @Child private PropertyGetNode getGroupsNode;
         @Child private TRegexUtil.TRegexResultAccessor readLazyLengthNode;
         @Child private JSToLengthNode toLengthNode;
         @Child private JSToIntegerNode toIntegerNode;
         @Child private JSToStringNode toString2Node;
         @Child private JSToStringNode toString3Node;
+        @Child private JSToStringNode toString4Node;
         @Child private JSFunctionCallNode functionCallNode;
         @Child private JSToBooleanNode toBoolean1Node;
         @Child private JSToBooleanNode toBoolean2Node;
         @Child private IsCallableNode isCallableNode;
+        @Child private ReadElementNode readNamedCaptureGroupNode;
 
         private final ConditionProfile unicodeProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile globalProfile = ConditionProfile.createBinaryProfile();
@@ -742,7 +745,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     if (replaceRawProfile.profile(replaceRaw)) {
                         accumulatedResult.append(replaceString);
                     } else {
-                        appendSubstitution(accumulatedResult, result, matchLength, s, position, replaceString);
+                        Object namedCaptures = getGroups(result);
+                        if (namedCaptures != Undefined.instance) {
+                            namedCaptures = JSRuntime.toObject(getContext(), namedCaptures);
+                        }
+                        appendSubstitution(accumulatedResult, result, (DynamicObject) namedCaptures, matchLength, s, position, replaceString);
                     }
                 }
                 return position + matchLength;
@@ -754,7 +761,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             int position = Math.max(Math.min(toIntegerNode.executeInt(getIndexNode.getValue(result)), s.length()), 0);
 
             int resultsLength = (int) toLength(getLength(result));
-            Object[] arguments = new Object[resultsLength + 4];
+            Object namedCaptures = getGroups(result);
+            Object[] arguments = new Object[resultsLength + 4 + (namedCaptures != Undefined.instance ? 1 : 0)];
             arguments[0] = Undefined.instance;
             arguments[1] = replaceFunction;
             for (int i = 0; i < resultsLength; i++) {
@@ -762,6 +770,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             arguments[resultsLength + 2] = position;
             arguments[resultsLength + 3] = s;
+            if (namedCaptures != Undefined.instance) {
+                arguments[resultsLength + 4] = namedCaptures;
+            }
             Object callResult = getFunctionCallNode().executeCall(arguments);
 
             String replacement = getToString2Node().executeString(callResult);
@@ -777,13 +788,13 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return nextSourcePosition;
         }
 
-        private void appendSubstitution(DelimitedStringBuilder accumulatedResult, DynamicObject result, int matchLength, String str, int position, String replacement) {
+        private void appendSubstitution(DelimitedStringBuilder accumulatedResult, DynamicObject result, DynamicObject namedCaptures, int matchLength, String str, int position, String replacement) {
             int dollarPos = Boundaries.stringIndexOf(replacement, '$');
             int tailPos = position + matchLength;
             accumulatedResult.append(replacement, 0, dollarPos);
             int pos = dollarPos;
             while (pos != -1) {
-                pos = appendSubstitutionIntl(accumulatedResult, str, pos + 1, position, tailPos, replacement, result);
+                pos = appendSubstitutionIntl(accumulatedResult, str, pos + 1, position, tailPos, replacement, result, namedCaptures);
                 pos = nextDollar(accumulatedResult, pos, replacement);
             }
         }
@@ -795,7 +806,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return pos;
         }
 
-        private int appendSubstitutionIntl(DelimitedStringBuilder sb, String input, int pos, int startPos, int endPos, String replaceStr, DynamicObject result) {
+        private int appendSubstitutionIntl(DelimitedStringBuilder sb, String input, int pos, int startPos, int endPos, String replaceStr, DynamicObject result, DynamicObject namedCaptures) {
             if (pos == replaceStr.length()) {
                 sb.append('$');
                 return pos;
@@ -815,6 +826,28 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 case '\'':
                     if (endPos < input.length()) {
                         sb.append(input, endPos, input.length());
+                    }
+                    break;
+                case '<':
+                    if (namedCaptures == Undefined.instance) {
+                        sb.append("$<");
+                    } else {
+                        int groupNameStart = retPos;
+                        while (retPos < replaceStr.length() && replaceStr.charAt(retPos) != '>') {
+                            retPos++;
+                        }
+                        if (retPos == replaceStr.length()) {
+                            sb.append("$<");
+                            retPos = groupNameStart;
+                        } else {
+                            assert replaceStr.charAt(retPos) == '>';
+                            String groupName = replaceStr.substring(groupNameStart, retPos);
+                            retPos++;
+                            Object capture = readNamedCaptureGroup(namedCaptures, groupName);
+                            if (capture != Undefined.instance) {
+                                sb.append(getToString4Node().executeString(capture));
+                            }
+                        }
                     }
                     break;
                 default:
@@ -885,6 +918,14 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toString3Node;
         }
 
+        private JSToStringNode getToString4Node() {
+            if (toString4Node == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toString4Node = insert(JSToStringNode.create());
+            }
+            return toString4Node;
+        }
+
         protected int getLazyLength(DynamicObject obj) {
             if (readLazyLengthNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -923,6 +964,22 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 toBoolean2Node = insert(JSToBooleanNode.create());
             }
             return toBoolean2Node;
+        }
+
+        private Object getGroups(Object regexResult) {
+            if (getGroupsNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getGroupsNode = insert(PropertyGetNode.create(JSRegExp.GROUPS, false, getContext()));
+            }
+            return getGroupsNode.getValue(regexResult);
+        }
+
+        private Object readNamedCaptureGroup(Object namedCaptureGroups, String groupName) {
+            if (readNamedCaptureGroupNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                readNamedCaptureGroupNode = insert(ReadElementNode.create(getContext()));
+            }
+            return readNamedCaptureGroupNode.executeWithTargetAndIndex(namedCaptureGroups, groupName);
         }
     }
 
