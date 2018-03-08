@@ -220,6 +220,15 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         }
     }
 
+    public static void transferSourceSectionNoTags(JavaScriptNode fromNode, JavaScriptNode toNode) {
+        if (!toNode.hasSourceSection() && fromNode.hasSourceSection()) {
+            // Pass on the source section to the new node, but do not propagate tags.
+            toNode.source = fromNode.source;
+            toNode.charIndex = 0;
+            toNode.charLength = 0;
+        }
+    }
+
     public final boolean hasSourceSection() {
         return source != null;
     }

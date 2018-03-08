@@ -225,7 +225,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                     JavaScriptNode materializedTargetNode = JSConstantUndefinedNode.createUndefined();
                     AbstractFunctionArgumentsNode materializedArgumentsNode = AbstractFunctionArgumentsNode.materializeArgumentsNode(argumentsNode, getSourceSection());
                     JavaScriptNode call = CallNode.create(functionNode, materializedTargetNode, materializedArgumentsNode, isNew(flags), isNewTarget(flags));
-                    transferSourceSection(this, materializedTargetNode);
+                    transferSourceSectionNoTags(this, materializedTargetNode);
                     transferSourceSection(this, call);
                     return call;
                 }
