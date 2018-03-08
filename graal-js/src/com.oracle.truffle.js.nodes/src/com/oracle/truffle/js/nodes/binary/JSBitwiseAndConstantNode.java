@@ -43,7 +43,7 @@ public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
             // need to call the generated factory directly to avoid constant optimizations
             JSConstantNode constantNode = JSConstantIntegerNode.create(getRightValue());
             JavaScriptNode node = JSBitwiseAndNodeGen.create(getOperand(), constantNode);
-            transferSourceSection(this, constantNode);
+            transferSourceSectionNoTags(this, constantNode);
             transferSourceSection(this, node);
             return node;
         } else {

@@ -55,7 +55,7 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
             // need to call the generated factory directly to avoid constant optimizations
             JSConstantNode constantNode = JSConstantIntegerNode.create(getShiftValue());
             JavaScriptNode node = JSLeftShiftNodeGen.create(getOperand(), constantNode);
-            transferSourceSection(this, constantNode);
+            transferSourceSectionNoTags(this, constantNode);
             transferSourceSection(this, node);
             return node;
         } else {

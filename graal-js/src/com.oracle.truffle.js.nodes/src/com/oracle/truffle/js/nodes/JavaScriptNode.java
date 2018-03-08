@@ -224,8 +224,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         if (!toNode.hasSourceSection() && fromNode.hasSourceSection()) {
             // Pass on the source section to the new node, but do not propagate tags.
             toNode.source = fromNode.source;
-            toNode.charIndex = 0;
-            toNode.charLength = 0;
+            toNode.charIndex = fromNode.charIndex & CHAR_INDEX_MASK;
+            toNode.charLength = fromNode.charLength & CHAR_LENGTH_MASK;
         }
     }
 
