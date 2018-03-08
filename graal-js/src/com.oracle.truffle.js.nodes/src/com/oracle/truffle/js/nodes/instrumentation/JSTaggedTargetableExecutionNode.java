@@ -45,7 +45,7 @@ public final class JSTaggedTargetableExecutionNode extends JSTargetableNode {
         if (originalNode instanceof ReadElementNode) {
             expectedTag = ReadElementExpressionTag.class;
             ReadElementNode originalRead = (ReadElementNode) originalNode;
-            JSTargetableNode clonedTarget = (JSTargetableNode) cloneUninitializedNoSourceSection(originalRead.getTarget());
+            JavaScriptNode clonedTarget = cloneUninitializedNoSourceSection(originalRead.getTarget());
             JavaScriptNode clonedIndex = JSTaggedExecutionNode.createFor(cloneUninitialized(originalRead.getElement()), StandardTags.ExpressionTag.class);
             clone = ReadElementNode.create(clonedTarget, clonedIndex, originalRead.getContext());
         } else {

@@ -108,8 +108,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             JavaScriptNode clonedIndex = indexNode.hasSourceSection() ? cloneUninitialized(indexNode) : JSTaggedExecutionNode.createFor(indexNode, ExpressionTag.class);
             JavaScriptNode cloned = ReadElementNode.create(clonedTarget, clonedIndex, getContext());
             transferSourceSection(this, cloned);
-            transferSourceSection(this, clonedTarget);
-            transferSourceSection(this, clonedIndex);
+            transferSourceSectionNoTags(this, clonedTarget);
+            transferSourceSectionNoTags(this, clonedIndex);
             return cloned;
         }
         return this;

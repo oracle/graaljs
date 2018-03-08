@@ -268,4 +268,19 @@ public class CallAccessTest extends FineGrainedAccessTest {
             }).exit();
         }).exit();
     }
+
+    @Test
+    public void castCrash() {
+        String src = "function foo(){var fArr = [function (){}];for(i in fArr) {fArr[i]();}} foo();";
+        evalWithTag(src, FunctionCallExpressionTag.class);
+
+        enter(FunctionCallExpressionTag.class, (e, call) -> {
+            call.input(assertJSObjectInput);
+            call.input(assertJSFunctionInput);
+            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                call2.input(assertJSArrayInput);
+                call2.input(assertJSFunctionInput);
+            }).exit();
+        }).exit();
+    }
 }

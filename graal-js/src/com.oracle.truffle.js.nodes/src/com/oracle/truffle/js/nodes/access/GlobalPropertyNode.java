@@ -67,7 +67,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
             GlobalObjectNode globalObject = GlobalObjectNode.create(context);
             PropertyNode propertyNode = PropertyNode.createProperty(context, globalObject, getPropertyKey());
             transferSourceSection(this, propertyNode);
-            transferSourceSection(this, globalObject);
+            transferSourceSectionNoTags(this, globalObject);
             return propertyNode;
         } else {
             return this;
