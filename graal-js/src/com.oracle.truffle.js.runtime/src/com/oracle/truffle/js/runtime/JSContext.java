@@ -184,6 +184,8 @@ public class JSContext implements ShapeContext {
 
     private final boolean isChildContext;
 
+    private boolean isRealmInitialized = false;
+
     /**
      * According to ECMA2017 8.4 the queue of pending jobs (promises reactions) must be processed
      * when the current stack is empty. For Interop, we assume that the stack is empty when (1) we
@@ -405,6 +407,7 @@ public class JSContext implements ShapeContext {
         if (initRealmBuiltinObject) {
             newRealm.initRealmBuiltinObject();
         }
+        newRealm.getContext().setRealmInitialized();
         return newRealm;
     }
 
@@ -548,7 +551,7 @@ public class JSContext implements ShapeContext {
     }
 
     public JSRealm getRealm() {
-        if (isChildContext) {
+        if (isChildContext || !isRealmInitialized) {
             return realm; // childContext Realm cannot be shared among Engines (GR-8695)
         }
         if (contextRef == null) {
@@ -1414,5 +1417,9 @@ public class JSContext implements ShapeContext {
             }
             return callTarget;
         }
+    }
+
+    public void setRealmInitialized() {
+        this.isRealmInitialized = true;
     }
 }
