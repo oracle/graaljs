@@ -69,9 +69,4 @@ public final class ScriptNode {
     public JSFunctionData getFunctionData() {
         return functionData;
     }
-
-    @Override
-    public String toString() {
-        return "ScriptNode";
-    }
 }

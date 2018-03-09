@@ -7,8 +7,6 @@ package com.oracle.truffle.js.parser;
 import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE;
 import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.MODULE_SOURCE_NAME_PREFIX;
 
-import java.io.File;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,7 +42,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.parser.date.DateParser;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.env.EvalEnvironment;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -235,20 +232,6 @@ public final class GraalJSEvaluator implements JSParser {
         };
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(rootNode), 0, "");
         return ScriptNode.fromFunctionData(context, functionData);
-    }
-
-    @Override
-    public ScriptNode parseScriptNode(JSContext context, File sourceFile) throws IOException {
-        GraalJSParserOptions po = ((GraalJSParserOptions) context.getParserOptions());
-        return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, AbstractJavaScriptLanguage.sourceFromFileName(linuxSlashes(sourceFile.toString())), po.isStrict());
-    }
-
-    /**
-     * This is here to accommodate Nashorn tests that expect Linux-like slashes (even on Windows
-     * machines, where backslashes are used).
-     */
-    public static String linuxSlashes(String string) {
-        return string.replace("\\", "/");
     }
 
     @Override
