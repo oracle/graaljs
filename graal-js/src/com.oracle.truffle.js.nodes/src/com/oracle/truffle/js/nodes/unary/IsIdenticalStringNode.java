@@ -13,7 +13,8 @@ public abstract class IsIdenticalStringNode extends JSUnaryNode {
 
     private final String string;
 
-    protected IsIdenticalStringNode(String string) {
+    protected IsIdenticalStringNode(String string, JavaScriptNode operand) {
+        super(operand);
         this.string = string;
     }
 
@@ -38,6 +39,6 @@ public abstract class IsIdenticalStringNode extends JSUnaryNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return IsIdenticalStringNode.create(string, cloneUninitialized(getOperand()));
+        return create(string, cloneUninitialized(getOperand()));
     }
 }

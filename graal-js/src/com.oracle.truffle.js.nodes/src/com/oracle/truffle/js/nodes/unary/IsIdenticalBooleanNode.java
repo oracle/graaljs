@@ -12,7 +12,8 @@ public abstract class IsIdenticalBooleanNode extends JSUnaryNode {
 
     private final boolean bool;
 
-    protected IsIdenticalBooleanNode(boolean bool) {
+    protected IsIdenticalBooleanNode(JavaScriptNode operand, boolean bool) {
+        super(operand);
         this.bool = bool;
     }
 
@@ -27,7 +28,7 @@ public abstract class IsIdenticalBooleanNode extends JSUnaryNode {
     }
 
     public static IsIdenticalBooleanNode create(boolean bool, JavaScriptNode operand) {
-        return IsIdenticalBooleanNodeGen.create(bool, operand);
+        return IsIdenticalBooleanNodeGen.create(operand, bool);
     }
 
     @Override

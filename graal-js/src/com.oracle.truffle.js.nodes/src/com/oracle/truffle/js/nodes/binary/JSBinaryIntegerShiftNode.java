@@ -4,6 +4,7 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.*;
 import com.oracle.truffle.js.runtime.*;
 
@@ -12,6 +13,10 @@ import com.oracle.truffle.js.runtime.*;
  * {@link JSToIntegerNode}.
  */
 public abstract class JSBinaryIntegerShiftNode extends JSBinaryNode {
+
+    protected JSBinaryIntegerShiftNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
+    }
 
     protected static boolean largerThan2e32(double d) {
         return Math.abs(d) >= JSRuntime.TWO32;

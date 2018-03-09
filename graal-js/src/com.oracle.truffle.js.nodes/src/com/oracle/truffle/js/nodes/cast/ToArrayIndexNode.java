@@ -122,7 +122,12 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
     }
 
     public abstract static class ToArrayIndexWrapperNode extends JSUnaryNode {
+
         @Child private ToArrayIndexNode toArrayIndexNode;
+
+        protected ToArrayIndexWrapperNode(JavaScriptNode operand) {
+            super(operand);
+        }
 
         public static ToArrayIndexWrapperNode create(JavaScriptNode operand) {
             return ToArrayIndexWrapperNodeGen.create(operand);

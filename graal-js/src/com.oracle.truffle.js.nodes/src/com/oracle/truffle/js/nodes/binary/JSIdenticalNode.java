@@ -36,6 +36,10 @@ public abstract class JSIdenticalNode extends JSCompareNode {
     protected static final int SAME_VALUE = 1;
     protected static final int SAME_VALUE_ZERO = 2;
 
+    protected JSIdenticalNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
+    }
+
     public static JSIdenticalNode createStrictEqualityComparison() {
         return JSIdenticalNodeGen.create(null, null, STRICT_EQUALITY_COMPARISON);
     }

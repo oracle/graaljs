@@ -117,7 +117,12 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     }
 
     public abstract static class JSToNumberWrapperNode extends JSUnaryNode {
+
         @Child private JSToNumberNode toNumberNode;
+
+        protected JSToNumberWrapperNode(JavaScriptNode operand) {
+            super(operand);
+        }
 
         public static JavaScriptNode create(JavaScriptNode child) {
             if (child.isResultAlwaysOfType(Number.class) || child.isResultAlwaysOfType(int.class) || child.isResultAlwaysOfType(double.class)) {

@@ -22,6 +22,10 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 @NodeInfo(shortName = ">>")
 public abstract class JSRightShiftNode extends JSBinaryIntegerShiftNode {
 
+    protected JSRightShiftNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
+    }
+
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         Truncatable.truncate(left);
         Truncatable.truncate(right);

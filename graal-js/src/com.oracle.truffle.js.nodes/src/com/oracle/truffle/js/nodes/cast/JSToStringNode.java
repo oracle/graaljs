@@ -173,6 +173,10 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
 
         @Child private JSToStringNode toStringNode;
 
+        protected JSToStringWrapperNode(JavaScriptNode operand) {
+            super(operand);
+        }
+
         public static JSToStringWrapperNode create(JavaScriptNode child) {
             return JSToStringWrapperNodeGen.create(child);
         }

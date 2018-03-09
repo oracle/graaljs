@@ -15,6 +15,10 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 @NodeInfo(shortName = "~")
 public abstract class JSComplementNode extends JSUnaryNode {
 
+    protected JSComplementNode(JavaScriptNode operand) {
+        super(operand);
+    }
+
     public static JSComplementNode create(JavaScriptNode operand) {
         Truncatable.truncate(operand);
         return JSComplementNodeGen.create(JSToInt32Node.create(operand));

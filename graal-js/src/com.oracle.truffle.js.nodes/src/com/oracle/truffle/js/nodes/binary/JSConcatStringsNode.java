@@ -24,6 +24,10 @@ public abstract class JSConcatStringsNode extends JSBinaryNode {
     protected final ConditionProfile rightProfile1 = ConditionProfile.createBinaryProfile();
     protected final ConditionProfile rightProfile2 = ConditionProfile.createBinaryProfile();
 
+    protected JSConcatStringsNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
+    }
+
     public static JSConcatStringsNode create() {
         return create(null, null);
     }

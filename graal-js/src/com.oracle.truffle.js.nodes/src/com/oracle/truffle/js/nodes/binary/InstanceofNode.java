@@ -49,7 +49,8 @@ public abstract class InstanceofNode extends JSBinaryNode {
     protected final JSContext context;
     @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
 
-    InstanceofNode(JSContext context) {
+    protected InstanceofNode(JSContext context, JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
         this.context = context;
     }
 

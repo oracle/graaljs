@@ -6,7 +6,7 @@ package com.oracle.truffle.js.nodes.unary;
 
 import java.util.Objects;
 
-import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -16,10 +16,22 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 
 @GenerateWrapper
-@NodeChild(value = "operand")
 public abstract class JSUnaryNode extends JavaScriptNode {
+    @Child @Executed protected JavaScriptNode operandNode;
 
-    public abstract JavaScriptNode getOperand();
+    protected JSUnaryNode(JavaScriptNode operand) {
+        this.operandNode = operand;
+    }
+
+    /**
+     * For instrumentation {@link #createWrapper wrapper}.
+     */
+    protected JSUnaryNode() {
+    }
+
+    public final JavaScriptNode getOperand() {
+        return operandNode;
+    }
 
     public abstract Object execute(VirtualFrame frame, Object operandValue);
 

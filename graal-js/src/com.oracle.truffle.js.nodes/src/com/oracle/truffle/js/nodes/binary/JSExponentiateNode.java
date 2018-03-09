@@ -13,6 +13,10 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 @NodeInfo(shortName = "**")
 public abstract class JSExponentiateNode extends JSBinaryNode {
 
+    protected JSExponentiateNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
+    }
+
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         return JSExponentiateNodeGen.create(left, right);
     }

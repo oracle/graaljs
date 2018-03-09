@@ -69,7 +69,8 @@ public abstract class IsObjectNode extends JavaScriptBaseNode {
 
         @Child private IsObjectNode isObjectNode;
 
-        protected IsObjectWrappedNode() {
+        protected IsObjectWrappedNode(JavaScriptNode operand) {
+            super(operand);
             this.isObjectNode = IsObjectNode.create();
         }
 

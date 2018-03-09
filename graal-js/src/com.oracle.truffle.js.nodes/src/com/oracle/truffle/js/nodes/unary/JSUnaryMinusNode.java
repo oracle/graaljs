@@ -20,6 +20,10 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 @NodeInfo(shortName = "-")
 public abstract class JSUnaryMinusNode extends JSUnaryNode {
 
+    protected JSUnaryMinusNode(JavaScriptNode operand) {
+        super(operand);
+    }
+
     public static JavaScriptNode create(JavaScriptNode operand) {
         if (JSTruffleOptions.UseSuperOperations && operand instanceof JSConstantIntegerNode) {
             int value = ((JSConstantIntegerNode) operand).executeInt(null);

@@ -16,6 +16,10 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 @NodeInfo(shortName = "&")
 public abstract class JSBitwiseAndNode extends JSBinaryNode {
 
+    protected JSBitwiseAndNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
+    }
+
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         Truncatable.truncate(left);
         if (JSTruffleOptions.UseSuperOperations && right instanceof JSConstantIntegerNode) {

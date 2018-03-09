@@ -35,6 +35,10 @@ public abstract class JSEqualNode extends JSCompareNode {
     @Child protected JSEqualNode equalNode;
     @Child protected JSToPrimitiveNode toPrimitiveNode;
 
+    protected JSEqualNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
+    }
+
     public static JSEqualNode create() {
         return JSEqualNodeGen.create(null, null);
     }

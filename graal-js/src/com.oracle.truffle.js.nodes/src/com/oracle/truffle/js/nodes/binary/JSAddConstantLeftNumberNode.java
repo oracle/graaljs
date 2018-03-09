@@ -37,12 +37,13 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
     protected final boolean isInt;
     protected final boolean isSafeLong;
 
-    public JSAddConstantLeftNumberNode(boolean truncate, Number leftValue) {
+    protected JSAddConstantLeftNumberNode(Number leftValue, JavaScriptNode right, boolean truncate) {
+        super(right);
         this.truncate = truncate;
-        leftDouble = leftValue.doubleValue();
-        leftInt = (int) leftValue.longValue(); // avoid narrowing
-        isSafeLong = JSRuntime.doubleIsRepresentableAsLong(leftDouble) && JSRuntime.isSafeInteger(leftDouble);
-        isInt = leftValue instanceof Integer || JSRuntime.doubleIsRepresentableAsInt(leftDouble);
+        this.leftDouble = leftValue.doubleValue();
+        this.leftInt = (int) leftValue.longValue(); // avoid narrowing
+        this.isSafeLong = JSRuntime.doubleIsRepresentableAsLong(leftDouble) && JSRuntime.isSafeInteger(leftDouble);
+        this.isInt = leftValue instanceof Integer || JSRuntime.doubleIsRepresentableAsInt(leftDouble);
     }
 
     @Override
@@ -133,7 +134,7 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSAddConstantLeftNumberNodeGen.create(truncate, getLeftValue(), cloneUninitialized(getOperand()));
+        return JSAddConstantLeftNumberNodeGen.create(getLeftValue(), cloneUninitialized(getOperand()), truncate);
     }
 
     @Override

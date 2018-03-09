@@ -51,6 +51,10 @@ public abstract class JSToPropertyKeyNode extends JavaScriptBaseNode {
     public abstract static class JSToPropertyKeyWrapperNode extends JSUnaryNode {
         @Child private JSToPropertyKeyNode toPropertyKeyNode;
 
+        protected JSToPropertyKeyWrapperNode(JavaScriptNode operand) {
+            super(operand);
+        }
+
         public static JavaScriptNode create(JavaScriptNode key) {
             if (key.isResultAlwaysOfType(String.class) || key.isResultAlwaysOfType(Symbol.class)) {
                 return key;

@@ -20,7 +20,8 @@ public abstract class InNode extends JSBinaryNode {
     protected final JSContext context;
     @Child private JSHasPropertyNode hasPropertyNode;
 
-    protected InNode(JSContext context) {
+    protected InNode(JSContext context, JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
         this.context = context;
     }
 

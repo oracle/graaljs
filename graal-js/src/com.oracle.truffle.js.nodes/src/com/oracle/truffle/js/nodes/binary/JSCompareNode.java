@@ -6,9 +6,14 @@ package com.oracle.truffle.js.nodes.binary;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode.JSStringToNumberWithTrimNode;
 
 public abstract class JSCompareNode extends JSBinaryNode {
+
+    protected JSCompareNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
+    }
 
     @Child private JSStringToNumberWithTrimNode stringToNumberNode;
 

@@ -18,6 +18,10 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @NodeInfo(shortName = "void", cost = NodeCost.NONE)
 public abstract class VoidNode extends JSUnaryNode {
 
+    protected VoidNode(JavaScriptNode operand) {
+        super(operand);
+    }
+
     public static JavaScriptNode create(JavaScriptNode operand) {
         if (operand.isResultAlwaysOfType(Undefined.class)) {
             return operand;

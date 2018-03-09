@@ -17,6 +17,10 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 @NodeInfo(shortName = "*")
 public abstract class JSMultiplyNode extends JSBinaryNode {
 
+    protected JSMultiplyNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
+    }
+
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         if (left instanceof JSConstantIntegerNode && right instanceof JSConstantIntegerNode) {
             int leftValue = ((JSConstantIntegerNode) left).executeInt(null);

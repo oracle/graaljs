@@ -38,15 +38,16 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
     private final int rightInt;
     protected final boolean isInt;
 
-    public JSAddConstantRightNumberNode(boolean truncate, Number rightValue) {
+    protected JSAddConstantRightNumberNode(JavaScriptNode left, Number rightValue, boolean truncate) {
+        super(left);
         this.truncate = truncate;
-        rightDouble = rightValue.doubleValue();
+        this.rightDouble = rightValue.doubleValue();
         if (rightValue instanceof Integer || JSRuntime.doubleIsRepresentableAsInt(rightDouble)) {
-            isInt = true;
-            rightInt = rightValue.intValue();
+            this.isInt = true;
+            this.rightInt = rightValue.intValue();
         } else {
-            isInt = false;
-            rightInt = 0;
+            this.isInt = false;
+            this.rightInt = 0;
         }
     }
 
@@ -146,7 +147,7 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSAddConstantRightNumberNodeGen.create(truncate, getRightValue(), cloneUninitialized(getOperand()));
+        return JSAddConstantRightNumberNodeGen.create(cloneUninitialized(getOperand()), getRightValue(), truncate);
     }
 
     @Override

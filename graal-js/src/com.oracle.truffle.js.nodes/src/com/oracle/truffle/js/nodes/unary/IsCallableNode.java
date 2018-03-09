@@ -17,6 +17,10 @@ import com.oracle.truffle.js.runtime.JSRuntime;
  */
 public abstract class IsCallableNode extends JSUnaryNode {
 
+    protected IsCallableNode(JavaScriptNode operand) {
+        super(operand);
+    }
+
     @Override
     public abstract boolean executeBoolean(VirtualFrame frame);
 

@@ -28,6 +28,10 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 public abstract class JSToBooleanNode extends JSUnaryNode {
     protected static final int MAX_CLASSES = 3;
 
+    protected JSToBooleanNode(JavaScriptNode operand) {
+        super(operand);
+    }
+
     @Override
     public final Object execute(VirtualFrame frame) {
         return executeBoolean(frame);

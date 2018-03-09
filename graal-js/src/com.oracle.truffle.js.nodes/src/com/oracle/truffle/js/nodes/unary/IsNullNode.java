@@ -10,6 +10,10 @@ import com.oracle.truffle.js.runtime.objects.Null;
 
 public abstract class IsNullNode extends JSUnaryNode {
 
+    protected IsNullNode(JavaScriptNode operand) {
+        super(operand);
+    }
+
     @Specialization
     protected static boolean doCached(Object operand) {
         return operand == Null.instance;

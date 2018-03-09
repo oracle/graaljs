@@ -195,7 +195,8 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     public abstract static class JSToObjectWrapperNode extends JSUnaryNode {
         @Child private JSToObjectNode toObjectNode;
 
-        protected JSToObjectWrapperNode(JSToObjectNode toObjectNode) {
+        protected JSToObjectWrapperNode(JavaScriptNode operand, JSToObjectNode toObjectNode) {
+            super(operand);
             this.toObjectNode = toObjectNode;
         }
 
@@ -206,11 +207,11 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
          * {@code create} it does not check the child and try to omit unnecessary cast nodes.
          */
         public static JSToObjectWrapperNode createToObject(JSContext context, JavaScriptNode child) {
-            return JSToObjectWrapperNodeGen.create(JSToObjectNode.createToObject(context), child);
+            return JSToObjectWrapperNodeGen.create(child, JSToObjectNode.createToObject(context));
         }
 
         public static JSToObjectWrapperNode createToObjectFromWith(JSContext context, JavaScriptNode child, boolean checkForNullOrUndefined) {
-            return JSToObjectWrapperNodeGen.create(JSToObjectNodeGen.create(context, checkForNullOrUndefined, true, true), child);
+            return JSToObjectWrapperNodeGen.create(child, JSToObjectNodeGen.create(context, checkForNullOrUndefined, true, true));
         }
 
         @Override
@@ -226,7 +227,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         @Override
         protected JavaScriptNode copyUninitialized() {
             JSToObjectNode clonedToObject = JSToObjectNodeGen.create(toObjectNode.getContext(), toObjectNode.isCheckForNullOrUndefined(), toObjectNode.isFromWith(), toObjectNode.isAllowForeign());
-            return JSToObjectWrapperNodeGen.create(clonedToObject, cloneUninitialized(getOperand()));
+            return JSToObjectWrapperNodeGen.create(cloneUninitialized(getOperand()), clonedToObject);
         }
     }
 }

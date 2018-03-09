@@ -30,6 +30,10 @@ import com.oracle.truffle.js.runtime.LargeInteger;
 @NodeField(name = "rightValue", type = int.class)
 public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
 
+    protected JSUnsignedRightShiftConstantNode(JavaScriptNode operand) {
+        super(operand);
+    }
+
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         assert right instanceof JSConstantIntegerNode;
         int rightValue = ((JSConstantIntegerNode) right).executeInt(null);

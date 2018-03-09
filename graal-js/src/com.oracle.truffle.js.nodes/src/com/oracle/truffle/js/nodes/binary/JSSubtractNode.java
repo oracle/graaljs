@@ -18,7 +18,8 @@ public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable
 
     @CompilationFinal boolean truncate;
 
-    public JSSubtractNode(boolean truncate) {
+    protected JSSubtractNode(boolean truncate, JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
         this.truncate = truncate;
     }
 
