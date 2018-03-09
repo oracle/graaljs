@@ -17,7 +17,7 @@ public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSConte
     public static final String APPLICATION_MIME_TYPE = "application/javascript";
     public static final String MODULE_SOURCE_NAME_PREFIX = "module:";
 
-    public static final String VERSION_NUMBER = "0.9";
+    public static final String VERSION_NUMBER = "0.33"; // also in GraalJSEngineFactory
     public static final String NAME = "JavaScript";
     public static final String ID = "js";
 
