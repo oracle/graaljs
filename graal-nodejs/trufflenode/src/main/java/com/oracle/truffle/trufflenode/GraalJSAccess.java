@@ -95,6 +95,7 @@ import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -225,8 +226,12 @@ public final class GraalJSAccess {
             System.err.println(iaex.getMessage());
             System.exit(1);
         }
+
+        contextBuilder.option(JSContextOptions.DIRECT_BYTE_BUFFER_NAME, "true");
+        contextBuilder.option(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
+        contextBuilder.option(GraalJSParserOptions.SYNTAX_EXTENSIONS_NAME, "false");
+
         exposeGC = options.isGCExposed();
-        assert contextBuilder != null;
         evaluator = contextBuilder.build();
         mainJSContext = JavaScriptLanguage.getJSContext(evaluator);
         assert mainJSContext != null : "JSContext initialized";
