@@ -9,7 +9,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag;
 
 /**
@@ -38,9 +37,7 @@ public final class BreakNode extends StatementNode {
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        descriptor.addProperty("type", ControlFlowBranchStatementTag.Type.Break.name());
-        return descriptor;
+        return JSTags.createNodeObjectDescriptor("type", ControlFlowBranchStatementTag.Type.Break.name());
     }
 
     @Override

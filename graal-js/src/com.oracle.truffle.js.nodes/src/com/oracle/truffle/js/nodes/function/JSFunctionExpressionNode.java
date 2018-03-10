@@ -9,7 +9,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -53,9 +52,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        descriptor.addProperty("type", LiteralExpressionTag.Type.FunctionLiteral.name());
-        return descriptor;
+        return JSTags.createNodeObjectDescriptor("type", LiteralExpressionTag.Type.FunctionLiteral.name());
     }
 
     public JSFunctionData getFunctionData() {

@@ -54,10 +54,7 @@ public abstract class JSBinaryNode extends JavaScriptNode {
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        NodeInfo annotation = getClass().getAnnotation(NodeInfo.class);
-        descriptor.addProperty("operator", annotation.shortName());
-        return descriptor;
+        return JSTags.createNodeObjectDescriptor("operator", getClass().getAnnotation(NodeInfo.class).shortName());
     }
 
 }

@@ -22,7 +22,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.EmptyNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -65,9 +64,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        descriptor.addProperty("type", LiteralExpressionTag.Type.ArrayLiteral.name());
-        return descriptor;
+        return JSTags.createNodeObjectDescriptor("type", LiteralExpressionTag.Type.ArrayLiteral.name());
     }
 
     @Override
