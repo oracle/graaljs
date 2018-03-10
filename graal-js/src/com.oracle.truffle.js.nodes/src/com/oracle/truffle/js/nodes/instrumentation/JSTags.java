@@ -344,6 +344,12 @@ public class JSTags {
         }
     }
 
+    @Tag.Identifier("ControlFlowBranchStatementTag")
+    public static final class ControlFlowBranchStatementTag extends Tag {
+        private ControlFlowBranchStatementTag() {
+        }
+    }
+
     // ##### ECMA Builtin operations
 
     /**

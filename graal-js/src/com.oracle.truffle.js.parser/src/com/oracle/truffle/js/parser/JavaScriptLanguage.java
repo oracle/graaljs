@@ -50,6 +50,7 @@ import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
@@ -115,7 +116,8 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
                 EvalCallTag.class,
                 ControlFlowStatementRootTag.class,
                 ControlFlowConditionStatementTag.class,
-                ControlFlowBlockStatementTag.class
+                ControlFlowBlockStatementTag.class,
+                ControlFlowBranchStatementTag.class
 })
 
 @TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, mimeType = {
