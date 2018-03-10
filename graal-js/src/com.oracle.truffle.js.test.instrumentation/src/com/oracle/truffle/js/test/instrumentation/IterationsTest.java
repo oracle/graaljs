@@ -7,7 +7,7 @@ package com.oracle.truffle.js.test.instrumentation;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
 
 public class IterationsTest extends FineGrainedAccessTest {
@@ -18,16 +18,16 @@ public class IterationsTest extends FineGrainedAccessTest {
 
         evalWithTags(src, new Class[]{
                         ControlFlowStatementRootTag.class,
-                        ControlFlowConditionStatementTag.class,
+                        ControlFlowBranchStatementTag.class,
                         ControlFlowBlockStatementTag.class
         }, new Class[]{/* no input events */});
 
         enter(ControlFlowStatementRootTag.class, (e) -> {
             for (int a = 0; a < 3; a++) {
-                enter(ControlFlowConditionStatementTag.class).exit(assertReturnValue(true));
+                enter(ControlFlowBranchStatementTag.class).exit(assertReturnValue(true));
                 enter(ControlFlowBlockStatementTag.class).exit();
             }
-            enter(ControlFlowConditionStatementTag.class).exit(assertReturnValue(false));
+            enter(ControlFlowBranchStatementTag.class).exit(assertReturnValue(false));
         }).exit();
     }
 
@@ -37,16 +37,16 @@ public class IterationsTest extends FineGrainedAccessTest {
 
         evalWithTags(src, new Class[]{
                         ControlFlowStatementRootTag.class,
-                        ControlFlowConditionStatementTag.class,
+                        ControlFlowBranchStatementTag.class,
                         ControlFlowBlockStatementTag.class
         }, new Class[]{/* no input events */});
 
         enter(ControlFlowStatementRootTag.class, (e) -> {
             for (int a = 0; a < 3; a++) {
-                enter(ControlFlowConditionStatementTag.class).exit(assertReturnValue(true));
+                enter(ControlFlowBranchStatementTag.class).exit(assertReturnValue(true));
                 enter(ControlFlowBlockStatementTag.class).exit();
             }
-            enter(ControlFlowConditionStatementTag.class).exit(assertReturnValue(false));
+            enter(ControlFlowBranchStatementTag.class).exit(assertReturnValue(false));
         }).exit();
     }
 

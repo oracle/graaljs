@@ -14,9 +14,11 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag.Type;
 
 /**
  * Switch.
@@ -68,7 +70,8 @@ public final class SwitchNode extends StatementNode {
             JavaScriptNode[] newCaseExpressions = new JavaScriptNode[caseExpressions.length];
             for (int i = 0; i < caseExpressions.length; i++) {
                 InstrumentableNode materialized = caseExpressions[i].materializeInstrumentableNodes(materializedTags);
-                newCaseExpressions[i] = JSTaggedExecutionNode.createFor((JavaScriptNode) materialized, ControlFlowConditionStatementTag.class);
+                newCaseExpressions[i] = JSTaggedExecutionNode.createFor((JavaScriptNode) materialized, ControlFlowBranchStatementTag.class,
+                                JSTags.createNodeObjectDescriptor("type", Type.Condition.name()));
             }
             JavaScriptNode[] newStatements = new JavaScriptNode[statements.length];
             for (int i = 0; i < statements.length; i++) {

@@ -7,7 +7,7 @@ package com.oracle.truffle.js.test.instrumentation;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
@@ -23,7 +23,9 @@ public class IfStatementTest extends FineGrainedAccessTest {
         enter(WriteVariableExpressionTag.class, (e, write) -> {
             enter(ControlFlowStatementRootTag.class, (e1, ifbody) -> {
                 // condition
-                enter(ControlFlowConditionStatementTag.class, (e2, ifstatement) -> {
+                enter(ControlFlowBranchStatementTag.class, (e2, ifstatement) -> {
+                    assertAttribute(e2, TYPE, ControlFlowBranchStatementTag.Type.Condition.name());
+
                     enter(LiteralExpressionTag.class).exit();
                     ifstatement.input(false);
                 }).exit(assertReturnValue(false));
@@ -41,7 +43,9 @@ public class IfStatementTest extends FineGrainedAccessTest {
         enter(WriteVariableExpressionTag.class, (e, write) -> {
             enter(ControlFlowStatementRootTag.class, (e1, ifbody) -> {
                 // condition
-                enter(ControlFlowConditionStatementTag.class, (e2, ifstatement) -> {
+                enter(ControlFlowBranchStatementTag.class, (e2, ifstatement) -> {
+                    assertAttribute(e2, TYPE, ControlFlowBranchStatementTag.Type.Condition.name());
+
                     enter(LiteralExpressionTag.class).exit();
                     ifstatement.input(true);
                 }).exit(assertReturnValue(true));
@@ -63,12 +67,14 @@ public class IfStatementTest extends FineGrainedAccessTest {
     public void basicFilter() {
         String src = "if (true) { 3; };";
 
-        evalWithTags(src, new Class[]{ControlFlowStatementRootTag.class, ControlFlowBlockStatementTag.class, ControlFlowConditionStatementTag.class},
+        evalWithTags(src, new Class[]{ControlFlowStatementRootTag.class, ControlFlowBlockStatementTag.class, ControlFlowBranchStatementTag.class},
                         new Class[]{});
 
         enter(ControlFlowStatementRootTag.class, (e1) -> {
             // condition
-            enter(ControlFlowConditionStatementTag.class).exit(assertReturnValue(true));
+            enter(ControlFlowBranchStatementTag.class, (e) -> {
+                assertAttribute(e, TYPE, ControlFlowBranchStatementTag.Type.Condition.name());
+            }).exit(assertReturnValue(true));
             // enter if branch
             enter(ControlFlowBlockStatementTag.class).exit();
         }).exit();

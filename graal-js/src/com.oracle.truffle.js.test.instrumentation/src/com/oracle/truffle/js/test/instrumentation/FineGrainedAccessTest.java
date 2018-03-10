@@ -39,7 +39,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
@@ -83,7 +82,6 @@ public abstract class FineGrainedAccessTest {
                     BuiltinRootTag.class,
                     EvalCallTag.class,
                     ControlFlowStatementRootTag.class,
-                    ControlFlowConditionStatementTag.class,
                     ControlFlowBlockStatementTag.class,
                     ControlFlowBranchStatementTag.class,
     };

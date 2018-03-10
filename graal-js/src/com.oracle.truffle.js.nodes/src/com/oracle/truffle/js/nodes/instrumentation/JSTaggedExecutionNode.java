@@ -18,6 +18,7 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
     @Child private JavaScriptNode child;
 
     private final Class<? extends Tag> expectedTag;
+    private final NodeObjectDescriptor descriptor;
 
     public static JavaScriptNode createFor(JavaScriptNode originalNode, Class<? extends Tag> expectedTag) {
         JavaScriptNode clone = cloneUninitialized(originalNode);
@@ -26,13 +27,28 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
         return wrapper;
     }
 
+    public static JavaScriptNode createFor(JavaScriptNode originalNode, Class<? extends Tag> expectedTag, NodeObjectDescriptor descriptor) {
+        JavaScriptNode clone = cloneUninitialized(originalNode);
+        JavaScriptNode wrapper = new JSTaggedExecutionNode(clone, expectedTag, descriptor);
+        wrapper.setSourceSection(originalNode.getSourceSection());
+        return wrapper;
+    }
+
     private JSTaggedExecutionNode(JavaScriptNode child, Class<? extends Tag> expectedTag) {
+        this(child, expectedTag, null);
+    }
+
+    public JSTaggedExecutionNode(JavaScriptNode child, Class<? extends Tag> expectedTag, NodeObjectDescriptor descriptor) {
         this.child = child;
+        this.descriptor = descriptor;
         this.expectedTag = expectedTag;
     }
 
     @Override
     public Object getNodeObject() {
+        if (descriptor != null) {
+            return descriptor;
+        }
         return child.getNodeObject();
     }
 

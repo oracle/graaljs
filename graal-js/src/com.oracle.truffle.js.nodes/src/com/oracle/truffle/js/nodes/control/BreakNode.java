@@ -39,7 +39,7 @@ public final class BreakNode extends StatementNode {
     @Override
     public Object getNodeObject() {
         NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        descriptor.addProperty("kind", "break");
+        descriptor.addProperty("type", ControlFlowBranchStatementTag.Type.Break.name());
         return descriptor;
     }
 

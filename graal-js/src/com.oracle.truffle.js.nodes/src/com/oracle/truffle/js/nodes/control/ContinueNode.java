@@ -39,7 +39,7 @@ public final class ContinueNode extends StatementNode {
     @Override
     public Object getNodeObject() {
         NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        descriptor.addProperty("kind", "continue");
+        descriptor.addProperty("type", ControlFlowBranchStatementTag.Type.Continue.name());
         return descriptor;
     }
 

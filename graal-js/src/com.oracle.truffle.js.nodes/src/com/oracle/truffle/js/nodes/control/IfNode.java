@@ -19,7 +19,8 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag.Type;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
@@ -60,11 +61,11 @@ public final class IfNode extends StatementNode implements ResumableNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ControlFlowStatementRootTag.class) || materializedTags.contains(ControlFlowConditionStatementTag.class) ||
+        if (materializedTags.contains(ControlFlowStatementRootTag.class) || materializedTags.contains(ControlFlowBranchStatementTag.class) ||
                         materializedTags.contains(ControlFlowBlockStatementTag.class) || materializedTags.contains(StatementTag.class)) {
             JavaScriptNode newElsePart = elsePart != null ? JSTaggedExecutionNode.createFor(elsePart, JSTags.ControlFlowBlockStatementTag.class) : null;
             JavaScriptNode newThenPart = thenPart != null ? JSTaggedExecutionNode.createFor(thenPart, JSTags.ControlFlowBlockStatementTag.class) : null;
-            JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(condition, JSTags.ControlFlowConditionStatementTag.class);
+            JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(condition, ControlFlowBranchStatementTag.class, JSTags.createNodeObjectDescriptor("type", Type.Condition.name()));
             JavaScriptNode newIf = IfNode.create(newCondition, newThenPart, newElsePart);
             transferSourceSection(this, newIf);
             return newIf;

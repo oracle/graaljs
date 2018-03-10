@@ -16,9 +16,11 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag.Type;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -63,11 +65,12 @@ public final class WhileNode extends StatementNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ControlFlowStatementRootTag.class) || materializedTags.contains(ControlFlowBlockStatementTag.class) ||
-                        materializedTags.contains(ControlFlowConditionStatementTag.class)) {
+                        materializedTags.contains(ControlFlowBranchStatementTag.class)) {
             if (loop.getRepeatingNode() instanceof AbstractRepeatingNode) {
                 AbstractRepeatingNode repeatingNode = (AbstractRepeatingNode) loop.getRepeatingNode();
                 JavaScriptNode bodyNode = JSTaggedExecutionNode.createFor(repeatingNode.bodyNode, ControlFlowBlockStatementTag.class);
-                JavaScriptNode conditionNode = JSTaggedExecutionNode.createFor(repeatingNode.conditionNode, ControlFlowConditionStatementTag.class);
+                JavaScriptNode conditionNode = JSTaggedExecutionNode.createFor(repeatingNode.conditionNode, ControlFlowBranchStatementTag.class,
+                                JSTags.createNodeObjectDescriptor("type", Type.Condition.name()));
                 transferSourceSection(this, bodyNode);
                 WhileNode materialized;
                 if (repeatingNode instanceof DoWhileRepeatingNode) {

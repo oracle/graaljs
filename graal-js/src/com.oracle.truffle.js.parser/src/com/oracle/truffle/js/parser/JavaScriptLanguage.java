@@ -51,7 +51,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
@@ -115,7 +114,6 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
                 BuiltinRootTag.class,
                 EvalCallTag.class,
                 ControlFlowStatementRootTag.class,
-                ControlFlowConditionStatementTag.class,
                 ControlFlowBlockStatementTag.class,
                 ControlFlowBranchStatementTag.class
 })

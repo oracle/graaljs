@@ -8,7 +8,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
 
 public class SwitchStatementTest extends FineGrainedAccessTest {
@@ -29,19 +29,19 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
 
         evalWithTags(src, new Class[]{
                         ControlFlowStatementRootTag.class,
-                        ControlFlowConditionStatementTag.class,
+                        ControlFlowBranchStatementTag.class,
                         ControlFlowBlockStatementTag.class
         }, new Class[]{/* no input events */});
 
         enter(ControlFlowStatementRootTag.class, (e, r) -> {
             // first 'if' statement condition is false
-            enter(ControlFlowConditionStatementTag.class).exit(assertReturnValue(false));
+            enter(ControlFlowBranchStatementTag.class).exit(assertReturnValue(false));
             // we enter the first 'else' branch
             enter(ControlFlowBlockStatementTag.class, (e1, b) -> {
                 // a nested if is executed for the second case
                 enter(ControlFlowStatementRootTag.class, (e2, r2) -> {
                     // second case returns true
-                    enter(ControlFlowConditionStatementTag.class).exit(assertReturnValue(true));
+                    enter(ControlFlowBranchStatementTag.class).exit(assertReturnValue(true));
                     // we enter the 'case 2' branch
                     enter(ControlFlowBlockStatementTag.class, (e3, b2) -> {
                         // the branch returns. The statement evaluates '42'
@@ -67,19 +67,19 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
 
         evalWithTags(src, new Class[]{
                         ControlFlowStatementRootTag.class,
-                        ControlFlowConditionStatementTag.class,
+                        ControlFlowBranchStatementTag.class,
                         ControlFlowBlockStatementTag.class
         }, new Class[]{/* no input events */});
 
         enter(ControlFlowStatementRootTag.class, (e) -> {
             // first 'if' statement condition is false
-            enter(ControlFlowConditionStatementTag.class).exit(assertReturnValue(false));
+            enter(ControlFlowBranchStatementTag.class).exit(assertReturnValue(false));
             // we enter the first 'else' branch
             enter(ControlFlowBlockStatementTag.class, (e1) -> {
                 // a nested if is executed for the second case
                 enter(ControlFlowStatementRootTag.class, (e2) -> {
                     // second case returns true
-                    enter(ControlFlowConditionStatementTag.class).exit(assertReturnValue(false));
+                    enter(ControlFlowBranchStatementTag.class).exit(assertReturnValue(false));
                     // the innermost 'else' is the default branch
                     enter(ControlFlowBlockStatementTag.class, (e3) -> {
                         // the default branch evaluates '42'

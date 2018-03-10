@@ -300,10 +300,10 @@ public class JSTags {
     }
 
     /**
-     * Control flow condition statement.
+     * Control flow branch statement.
      *
-     * Marks all code locations where a conditional statement that might change the control flow of
-     * an application is declared.
+     * Marks all code locations where a statement might change the control flow of an application is
+     * declared.
      *
      * <p>
      * Examples of such statements are:
@@ -312,12 +312,22 @@ public class JSTags {
      * <li>ECMA2018 13.7 Repeating conditions for iteration statements such as <code>while</code>,
      * <code>for</code>, etc.</li>
      * <li>ECMA2018 13.12 The <code>case</code> expressions in <code>switch</code> statements.</li>
+     * <li>ECMA2018 13.8 The <code>continue</code> statement.</li>
+     * <li>ECMA2018 13.9 The <code>break</code> statement.</li>
+     * <li>ECMA2018 13.14 The <code>throw</code> statement.</li>
      * </ul>
      * </p>
      */
-    @Tag.Identifier("ControlFlowConditionStatement")
-    public static final class ControlFlowConditionStatementTag extends Tag {
-        private ControlFlowConditionStatementTag() {
+    @Tag.Identifier("ControlFlowBranchStatementTag")
+    public static final class ControlFlowBranchStatementTag extends Tag {
+        public enum Type {
+            Condition,
+            Continue,
+            Break,
+            Throw,
+        }
+
+        private ControlFlowBranchStatementTag() {
         }
     }
 
@@ -341,12 +351,6 @@ public class JSTags {
     @Tag.Identifier("ControlFlowBlockStatement")
     public static final class ControlFlowBlockStatementTag extends Tag {
         private ControlFlowBlockStatementTag() {
-        }
-    }
-
-    @Tag.Identifier("ControlFlowBranchStatementTag")
-    public static final class ControlFlowBranchStatementTag extends Tag {
-        private ControlFlowBranchStatementTag() {
         }
     }
 
@@ -396,5 +400,11 @@ public class JSTags {
 
     public static NodeObjectDescriptor createNodeObjectDescriptor() {
         return new NodeObjectDescriptor();
+    }
+
+    public static NodeObjectDescriptor createNodeObjectDescriptor(String name, Object value) {
+        NodeObjectDescriptor desc = new NodeObjectDescriptor();
+        desc.addProperty(name, value);
+        return desc;
     }
 }
