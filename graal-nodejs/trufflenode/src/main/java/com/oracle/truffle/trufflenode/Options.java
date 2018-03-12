@@ -94,6 +94,10 @@ public final class Options {
         @Override
         public Object[] apply(String[] args) {
             launch(args);
+            if (contextBuilder == null) {
+                // launch(Context.Builder) was not called (i.e. help was printed) => exit
+                System.exit(0);
+            }
             return new Object[]{contextBuilder, exposeGC};
         }
 
