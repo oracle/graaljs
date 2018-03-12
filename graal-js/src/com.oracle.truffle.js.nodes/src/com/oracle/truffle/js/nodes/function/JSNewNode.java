@@ -35,6 +35,7 @@ import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -197,7 +198,8 @@ public abstract class JSNewNode extends JavaScriptNode {
     @Specialization(guards = {"isForeignObject(target)"})
     public Object doNewForeignObject(VirtualFrame frame, TruffleObject target,
                     @Cached("createNewCache()") Node newNode,
-                    @Cached("create()") ExportValueNode convert) {
+                    @Cached("create()") ExportValueNode convert,
+                    @Cached("create()") JSForeignToJSTypeNode toJSType) {
         int count = arguments.getCount(frame);
         Object[] args = new Object[count];
         args = arguments.executeFillObjectArray(frame, args, 0);
@@ -205,7 +207,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         for (int i = 0; i < args.length; i++) {
             args[i] = convert.executeWithTarget(args[i], Undefined.instance);
         }
-        return JSInteropNodeUtil.construct(target, args, newNode, this);
+        return toJSType.executeWithTarget(JSInteropNodeUtil.construct(target, args, newNode, this));
     }
 
     protected Node createNewCache() {
