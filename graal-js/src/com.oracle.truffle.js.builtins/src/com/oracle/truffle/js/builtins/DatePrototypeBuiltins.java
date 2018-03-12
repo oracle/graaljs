@@ -353,7 +353,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
         }
 
-        @Specialization(guards = "!isForeignObject(thisDate)")
+        @Specialization(guards = {"!isForeignObject(thisDate)", "!isJSObject(thisDate)"})
         protected String doOperationDefault(Object thisDate) {
             asDateMillis(thisDate); // throws
             return JSDate.INVALID_DATE_STRING;
@@ -384,7 +384,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             return JSDateTimeFormat.format(formatter, t);
         }
 
-        @Specialization(guards = "!isForeignObject(thisDate)")
+        @Specialization(guards = {"!isForeignObject(thisDate)", "!isJSObject(thisDate)"})
         @SuppressWarnings("unused")
         protected String doOperationDefault(Object thisDate, Object locales, Object options) {
             asDateMillis(thisDate); // throws
