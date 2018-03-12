@@ -612,9 +612,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private static Iterable<Node> getChildrenInExecutionOrder(Node parent) {
-        if (parent instanceof JSNewNode) {
-            return Arrays.asList(((JSNewNode) parent).getTarget(), ((JSNewNode) parent).getArguments());
-        }
+        // Note: Child and Children fields must be declared in execution order.
         return parent.getChildren();
     }
 

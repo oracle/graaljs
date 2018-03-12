@@ -110,10 +110,6 @@ public abstract class JSNewNode extends JavaScriptNode {
         return targetNode;
     }
 
-    public AbstractFunctionArgumentsNode getArguments() {
-        return arguments;
-    }
-
     @Specialization(guards = "isJSFunction(target)")
     public Object doNewReturnThis(VirtualFrame frame, DynamicObject target) {
         int userArgumentCount = arguments.getCount(frame);
