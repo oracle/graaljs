@@ -107,7 +107,8 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
 
     protected static boolean notArrayIndex(Object o) {
         assert !(o instanceof HiddenKey);
-        return (!(o instanceof Integer) || !JSGuards.isIntArrayIndex((int) o)) && (!(o instanceof Double) || !doubleIsUintIndex((double) o)) && !(o instanceof String) && !(o instanceof Symbol);
+        return (!(o instanceof Integer) || !JSGuards.isIntArrayIndex((int) o)) && (!(o instanceof Double) || !doubleIsUintIndex((double) o)) &&
+                        (!(o instanceof Long) || !JSGuards.isLongArrayIndex((long) o)) && !(o instanceof String) && !(o instanceof Symbol);
     }
 
     @Specialization(guards = {"!convertToString", "notArrayIndex(value)"})
