@@ -5,7 +5,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -15,14 +15,15 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 /**
  * ES6 7.4.5 IteratorStep(iterator).
  */
-@NodeChild(value = "iterator", type = JavaScriptNode.class)
 public abstract class IteratorStepNode extends JavaScriptNode {
+    @Child @Executed JavaScriptNode iteratorNode;
     @Child private IteratorNextNode iteratorNextNode;
     @Child private IteratorCompleteNode iteratorCompleteNode;
     private final JSContext context;
 
-    protected IteratorStepNode(JSContext context) {
+    protected IteratorStepNode(JSContext context, JavaScriptNode iteratorNode) {
         this.context = context;
+        this.iteratorNode = iteratorNode;
     }
 
     public static IteratorStepNode create(JSContext context) {
@@ -54,10 +55,8 @@ public abstract class IteratorStepNode extends JavaScriptNode {
 
     public abstract Object execute(DynamicObject iterator);
 
-    abstract JavaScriptNode getIterator();
-
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return IteratorStepNodeGen.create(context, cloneUninitialized(getIterator()));
+        return IteratorStepNodeGen.create(context, cloneUninitialized(iteratorNode));
     }
 }

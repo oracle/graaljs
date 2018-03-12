@@ -28,8 +28,8 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
 
     private final ConditionProfile asyncToSync = ConditionProfile.createBinaryProfile();
 
-    protected GetAsyncIteratorNode(JSContext context) {
-        super(context);
+    protected GetAsyncIteratorNode(JSContext context, JavaScriptNode objectNode) {
+        super(context, objectNode);
         this.setState = PropertySetNode.create(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, false, context, false);
         this.getAsyncIteratorMethodNode = GetMethodNode.create(context, null, Symbol.SYMBOL_ASYNC_ITERATOR);
     }
@@ -50,7 +50,7 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return GetAsyncIteratorNodeGen.create(context, cloneUninitialized(getIteratedObject()));
+        return GetAsyncIteratorNodeGen.create(context, cloneUninitialized(objectNode));
     }
 
     private DynamicObject createAsyncFromSyncIterator(Object syncIterator) {

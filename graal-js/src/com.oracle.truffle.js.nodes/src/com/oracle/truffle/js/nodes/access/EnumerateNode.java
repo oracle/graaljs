@@ -11,8 +11,8 @@ import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -44,15 +44,16 @@ import com.oracle.truffle.js.runtime.util.IteratorUtil;
  * ES6 [[Enumerate]]().
  */
 @ImportStatic(JSInteropUtil.class)
-@NodeChild(value = "target", type = JavaScriptNode.class)
 public abstract class EnumerateNode extends JavaScriptNode {
     /** Enumerate values instead of keys (used by for-each-in loop). */
     private final boolean values;
     protected final JSContext context;
+    @Child @Executed protected JavaScriptNode targetNode;
 
-    protected EnumerateNode(JSContext context, boolean values) {
+    protected EnumerateNode(JSContext context, boolean values, JavaScriptNode targetNode) {
         this.context = context;
         this.values = values;
+        this.targetNode = targetNode;
     }
 
     public static EnumerateNode create(JSContext context, JavaScriptNode target, boolean values) {
@@ -72,11 +73,9 @@ public abstract class EnumerateNode extends JavaScriptNode {
 
     public abstract DynamicObject execute(Object iteratedObject);
 
-    abstract JavaScriptNode getTarget();
-
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return EnumerateNodeGen.create(context, values, cloneUninitialized(getTarget()));
+        return EnumerateNodeGen.create(context, values, cloneUninitialized(targetNode));
     }
 
     @Specialization(guards = {"isJSType(iteratedObject)", "!isJSAdapter(iteratedObject)", "!isJSJavaWrapper(iteratedObject)"})

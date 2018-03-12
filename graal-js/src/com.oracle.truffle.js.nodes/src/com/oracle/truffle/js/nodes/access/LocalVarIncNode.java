@@ -5,7 +5,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -17,7 +17,6 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
-@NodeChild(value = "levelFrameNode", type = ScopeFrameNode.class)
 public abstract class LocalVarIncNode extends FrameSlotNode {
     public enum Op {
         Inc(new IncOp()),
@@ -106,11 +105,13 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
 
     protected final LocalVarOp op;
     private final boolean hasTemporalDeadZone;
+    @Child @Executed protected ScopeFrameNode scopeFrameNode;
 
-    protected LocalVarIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone) {
+    protected LocalVarIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode) {
         super(frameSlot);
         this.op = op;
         this.hasTemporalDeadZone = hasTemporalDeadZone;
+        this.scopeFrameNode = scopeFrameNode;
     }
 
     public static LocalVarIncNode createPrefix(Op op, FrameSlotNode frameSlotNode) {
@@ -127,6 +128,11 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
     }
 
     @Override
+    public final ScopeFrameNode getLevelFrameNode() {
+        return scopeFrameNode;
+    }
+
+    @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
         return clazz == Number.class;
     }
@@ -134,8 +140,8 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
 
 abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
 
-    protected LocalVarPostfixIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone) {
-        super(op, frameSlot, hasTemporalDeadZone);
+    protected LocalVarPostfixIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode) {
+        super(op, frameSlot, hasTemporalDeadZone, scopeFrameNode);
     }
 
     @Specialization(guards = {"isBoolean(frame)", "isIntegerKind(frame)"})
@@ -247,8 +253,8 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
 
 abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
 
-    protected LocalVarPrefixIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone) {
-        super(op, frameSlot, hasTemporalDeadZone);
+    protected LocalVarPrefixIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode) {
+        super(op, frameSlot, hasTemporalDeadZone, scopeFrameNode);
     }
 
     @Specialization(guards = {"isBoolean(frame)", "isIntegerKind(frame)"})

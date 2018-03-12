@@ -7,7 +7,7 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -20,23 +20,20 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 /**
  * Absorb iterator to new array.
  */
-@NodeChild(value = "iterator", type = JavaScriptNode.class)
 public abstract class IteratorToArrayNode extends JavaScriptNode {
     private final JSContext context;
+    @Child @Executed JavaScriptNode iteratorNode;
     @Child private IteratorStepSpecialNode iteratorStepNode;
 
-    protected IteratorToArrayNode(JSContext context, JavaScriptNode writeDone) {
+    protected IteratorToArrayNode(JSContext context, JavaScriptNode iteratorNode, IteratorStepSpecialNode iteratorStepNode) {
         this.context = context;
-        this.iteratorStepNode = IteratorStepSpecialNode.create(context, null, ExprBlockNode.createExprBlock(new JavaScriptNode[]{writeDone, JSConstantNode.create(null)}), true);
-    }
-
-    protected IteratorToArrayNode(JSContext context, IteratorStepSpecialNode iteratorStepNode) {
-        this.context = context;
+        this.iteratorNode = iteratorNode;
         this.iteratorStepNode = iteratorStepNode;
     }
 
     public static IteratorToArrayNode create(JSContext context, JavaScriptNode iterator, JavaScriptNode writeDone) {
-        return IteratorToArrayNodeGen.create(context, writeDone, iterator);
+        IteratorStepSpecialNode iteratorStep = IteratorStepSpecialNode.create(context, null, ExprBlockNode.createExprBlock(new JavaScriptNode[]{writeDone, JSConstantNode.create(null)}), true);
+        return IteratorToArrayNodeGen.create(context, iterator, iteratorStep);
     }
 
     @Specialization
@@ -51,10 +48,8 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
 
     public abstract Object execute(VirtualFrame frame, DynamicObject iterator);
 
-    abstract JavaScriptNode getIterator();
-
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return IteratorToArrayNodeGen.create(context, cloneUninitialized(iteratorStepNode), cloneUninitialized(getIterator()));
+        return IteratorToArrayNodeGen.create(context, cloneUninitialized(iteratorNode), cloneUninitialized(iteratorStepNode));
     }
 }

@@ -5,9 +5,8 @@
 package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -24,14 +23,17 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @ImportStatic(JSTruffleOptions.class)
-@NodeChildren({@NodeChild("object"), @NodeChild("value")})
 public abstract class CreateMethodPropertyNode extends JavaScriptNode {
     private final JSContext context;
     protected final Object key;
+    @Child @Executed JavaScriptNode objectNode;
+    @Child @Executed JavaScriptNode valueNode;
 
-    protected CreateMethodPropertyNode(JSContext context, Object key) {
+    protected CreateMethodPropertyNode(JSContext context, Object key, JavaScriptNode objectNode, JavaScriptNode valueNode) {
         this.context = context;
         this.key = key;
+        this.objectNode = objectNode;
+        this.valueNode = valueNode;
     }
 
     public static CreateMethodPropertyNode create(JSContext context, Object key) {
@@ -72,12 +74,8 @@ public abstract class CreateMethodPropertyNode extends JavaScriptNode {
         }
     }
 
-    abstract JavaScriptNode getObject();
-
-    abstract JavaScriptNode getValue();
-
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(context, key, cloneUninitialized(getObject()), cloneUninitialized(getValue()));
+        return create(context, key, cloneUninitialized(objectNode), cloneUninitialized(valueNode));
     }
 }

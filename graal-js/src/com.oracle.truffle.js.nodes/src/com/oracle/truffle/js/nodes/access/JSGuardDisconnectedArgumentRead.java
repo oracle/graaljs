@@ -5,7 +5,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -15,13 +15,14 @@ import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-@NodeChild("argumentsArray")
 public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode implements RepeatableNode, ReadNode {
     private final int index;
+    @Child @Executed JavaScriptNode argumentsArrayNode;
     @Child private ReadElementNode readElementNode;
 
-    JSGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode) {
+    JSGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray) {
         this.index = index;
+        this.argumentsArrayNode = argumentsArray;
         this.readElementNode = readElementNode;
     }
 
@@ -55,10 +56,8 @@ public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode imp
         }
     }
 
-    abstract JavaScriptNode getArgumentsArray();
-
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSGuardDisconnectedArgumentReadNodeGen.create(index, cloneUninitialized(readElementNode), cloneUninitialized(getArgumentsArray()));
+        return JSGuardDisconnectedArgumentReadNodeGen.create(index, cloneUninitialized(readElementNode), cloneUninitialized(argumentsArrayNode));
     }
 }

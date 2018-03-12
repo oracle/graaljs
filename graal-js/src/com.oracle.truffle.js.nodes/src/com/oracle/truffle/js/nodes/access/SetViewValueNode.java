@@ -5,8 +5,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -22,18 +21,25 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-@NodeChildren({@NodeChild("view"), @NodeChild("requestIndex"), @NodeChild("isLittleEndian"), @NodeChild("value")})
 public abstract class SetViewValueNode extends JavaScriptNode {
     private final TypedArrayFactory factory;
     private final JSContext context;
+    @Child @Executed protected JavaScriptNode viewNode;
+    @Child @Executed protected JavaScriptNode requestIndexNode;
+    @Child @Executed protected JavaScriptNode isLittleEndianNode;
+    @Child @Executed protected JavaScriptNode valueNode;
 
-    protected SetViewValueNode(JSContext context, String type) {
-        this(context, GetViewValueNode.typedArrayFactoryFromType(type));
+    protected SetViewValueNode(JSContext context, String type, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian, JavaScriptNode value) {
+        this(context, GetViewValueNode.typedArrayFactoryFromType(type), view, requestIndex, isLittleEndian, value);
     }
 
-    protected SetViewValueNode(JSContext context, TypedArrayFactory factory) {
+    protected SetViewValueNode(JSContext context, TypedArrayFactory factory, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian, JavaScriptNode value) {
         this.factory = factory;
         this.context = context;
+        this.viewNode = view;
+        this.requestIndexNode = requestIndex;
+        this.isLittleEndianNode = isLittleEndian;
+        this.valueNode = value;
     }
 
     @Specialization
@@ -76,17 +82,8 @@ public abstract class SetViewValueNode extends JavaScriptNode {
         return SetViewValueNodeGen.create(context, type, view, requestIndex, isLittleEndian, value);
     }
 
-    abstract JavaScriptNode getView();
-
-    abstract JavaScriptNode getRequestIndex();
-
-    abstract JavaScriptNode getIsLittleEndian();
-
-    abstract JavaScriptNode getValue();
-
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return SetViewValueNodeGen.create(context, factory, cloneUninitialized(getView()), cloneUninitialized(getRequestIndex()), cloneUninitialized(getIsLittleEndian()),
-                        cloneUninitialized(getValue()));
+        return SetViewValueNodeGen.create(context, factory, cloneUninitialized(viewNode), cloneUninitialized(requestIndexNode), cloneUninitialized(isLittleEndianNode), cloneUninitialized(valueNode));
     }
 }

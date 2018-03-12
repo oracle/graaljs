@@ -5,8 +5,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -14,14 +13,17 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 
-@NodeChildren({@NodeChild("argumentsArray"), @NodeChild("rhs")})
 public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode implements WriteNode {
     private final int index;
-    @Child private WriteElementNode argumentsArrayAccess;
+    @Child @Executed JavaScriptNode argumentsArrayNode;
+    @Child @Executed JavaScriptNode rhsNode;
+    @Child private WriteElementNode writeArgumentsElementNode;
 
-    JSGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess) {
+    JSGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs) {
         this.index = index;
-        this.argumentsArrayAccess = argumentsArrayAccess;
+        this.argumentsArrayNode = argumentsArray;
+        this.rhsNode = rhs;
+        this.writeArgumentsElementNode = argumentsArrayAccess;
     }
 
     public static JSGuardDisconnectedArgumentWrite create(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs) {
@@ -35,7 +37,7 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
             unconnectedBranch.enter();
             JSArgumentsObject.disconnectIndex(argumentsArray, index, value);
         } else {
-            argumentsArrayAccess.executeWithTargetAndIndexAndValue(argumentsArray, index, value);
+            writeArgumentsElementNode.executeWithTargetAndIndexAndValue(argumentsArray, index, value);
         }
         return value;
     }
@@ -48,7 +50,7 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
         } else if (index >= JSArgumentsObject.getConnectedArgumentCount(argumentsArray)) {
             JSArgumentsObject.disconnectIndex(argumentsArray, index, value);
         } else {
-            argumentsArrayAccess.executeWithTargetAndIndexAndValue(argumentsArray, index, value);
+            writeArgumentsElementNode.executeWithTargetAndIndexAndValue(argumentsArray, index, value);
         }
         return value;
     }
@@ -58,10 +60,13 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
         throw new UnsupportedOperationException();
     }
 
-    abstract JavaScriptNode getArgumentsArray();
+    @Override
+    public JavaScriptNode getRhs() {
+        return rhsNode;
+    }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSGuardDisconnectedArgumentWriteNodeGen.create(index, cloneUninitialized(argumentsArrayAccess), cloneUninitialized(getArgumentsArray()), cloneUninitialized(getRhs()));
+        return JSGuardDisconnectedArgumentWriteNodeGen.create(index, cloneUninitialized(writeArgumentsElementNode), cloneUninitialized(argumentsArrayNode), cloneUninitialized(rhsNode));
     }
 }

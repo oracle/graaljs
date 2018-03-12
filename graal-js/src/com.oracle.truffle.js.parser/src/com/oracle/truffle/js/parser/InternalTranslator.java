@@ -9,8 +9,7 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -655,8 +654,16 @@ final class InternalTranslator extends GraalJSTranslator {
         }
     }
 
-    @NodeChildren({@NodeChild("value"), @NodeChild("search"), @NodeChild("replacement")})
     public abstract static class InternalStringReplaceNode extends JavaScriptNode {
+        @Child @Executed JavaScriptNode valueNode;
+        @Child @Executed JavaScriptNode searchNode;
+        @Child @Executed JavaScriptNode replacementNode;
+
+        protected InternalStringReplaceNode(JavaScriptNode valueNode, JavaScriptNode searchNode, JavaScriptNode replacementNode) {
+            this.valueNode = valueNode;
+            this.searchNode = searchNode;
+            this.replacementNode = replacementNode;
+        }
 
         public static InternalStringReplaceNode create(JavaScriptNode valueNode, JavaScriptNode searchNode, JavaScriptNode replacementNode) {
             return InternalStringReplaceNodeGen.create(valueNode, searchNode, replacementNode);
@@ -677,15 +684,9 @@ final class InternalTranslator extends GraalJSTranslator {
             return valueStr.replace(searchStr, replacementStr);
         }
 
-        abstract JavaScriptNode getValue();
-
-        abstract JavaScriptNode getSearch();
-
-        abstract JavaScriptNode getReplacement();
-
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return create(cloneUninitialized(getValue()), cloneUninitialized(getSearch()), cloneUninitialized(getReplacement()));
+            return create(cloneUninitialized(valueNode), cloneUninitialized(searchNode), cloneUninitialized(replacementNode));
         }
     }
 
