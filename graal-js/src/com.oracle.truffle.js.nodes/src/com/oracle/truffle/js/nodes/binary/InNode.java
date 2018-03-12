@@ -14,6 +14,7 @@ import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.JSProxyHasPropertyNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Symbol;
 
 public abstract class InNode extends JSBinaryNode {
 
@@ -49,8 +50,23 @@ public abstract class InNode extends JSBinaryNode {
         return getHasPropertyNode().executeBoolean(haystack, needle);
     }
 
-    @Specialization(guards = "!isJSObject(haystack)")
-    protected static Object doNotObject(@SuppressWarnings("unused") Object needle, Object haystack) {
+    @Specialization(guards = "isNullOrUndefined(haystack)")
+    protected static Object doNullOrUndefined(@SuppressWarnings("unused") Object needle, Object haystack) {
+        throw Errors.createTypeErrorNotAnObject(haystack);
+    }
+
+    @Specialization
+    protected static Object doSymbol(@SuppressWarnings("unused") Object needle, Symbol haystack) {
+        throw Errors.createTypeErrorNotAnObject(haystack);
+    }
+
+    @Specialization
+    protected static Object doString(@SuppressWarnings("unused") Object needle, String haystack) {
+        throw Errors.createTypeErrorNotAnObject(haystack);
+    }
+
+    @Specialization(guards = "!isTruffleObject(haystack)")
+    protected static Object doNotTruffleObject(@SuppressWarnings("unused") Object needle, Object haystack) {
         throw Errors.createTypeErrorNotAnObject(haystack);
     }
 

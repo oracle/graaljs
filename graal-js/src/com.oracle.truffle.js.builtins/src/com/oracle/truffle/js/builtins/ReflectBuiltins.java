@@ -362,7 +362,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             return JSProxy.checkProxySetTrapInvariants(proxyObj, key, value);
         }
 
-        @Specialization
+        @Specialization(guards = "!isProxy(args)")
         protected boolean reflectSet(Object[] args,
                         @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
             Object target = JSRuntime.getArgOrUndefined(args, 0);
