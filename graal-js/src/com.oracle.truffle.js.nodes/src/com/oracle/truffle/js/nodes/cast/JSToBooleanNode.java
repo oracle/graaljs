@@ -132,7 +132,7 @@ public abstract class JSToBooleanNode extends JSUnaryNode {
 
     @Specialization(guards = {"isJavaNumber(value)"}, replaces = "doNumberCached")
     protected boolean doNumber(Object value) {
-        return JSRuntime.doubleValue((Number) value) != 0;
+        return doDouble(JSRuntime.doubleValue((Number) value));
     }
 
     @Specialization(guards = {"cachedClass != null", "value.getClass() == cachedClass"}, limit = "MAX_CLASSES")
