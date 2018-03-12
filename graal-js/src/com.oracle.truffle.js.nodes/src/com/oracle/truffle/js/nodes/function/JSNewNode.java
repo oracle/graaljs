@@ -214,7 +214,8 @@ public abstract class JSNewNode extends JavaScriptNode {
         return JSInteropUtil.createNew();
     }
 
-    @Specialization(guards = {"!isJSFunction(target)", "!isJavaClass(target)", "!isJSAdapter(target)", "!isJavaPackage(target)", "!isJavaConstructor(target)", "!isForeignObject(target)"})
+    @Specialization(guards = {"!isJSFunction(target)", "!isJavaClass(target)", "!isJSAdapter(target)", "!isProxy(target)", "!isJavaPackage(target)", "!isJavaConstructor(target)",
+                    "!isForeignObject(target)"})
     public Object createFunctionTypeError(Object target) {
         throw Errors.createTypeErrorNotAFunction(target, this);
     }
