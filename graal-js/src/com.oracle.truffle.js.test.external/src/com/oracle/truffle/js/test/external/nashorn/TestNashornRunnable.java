@@ -131,7 +131,8 @@ public class TestNashornRunnable extends TestRunnable {
 
     private static Source[] createHarnessSources() {
         // @formatter:off
-        String printErrorSource = "Object.defineProperty(this, \"printError\", {\n" +
+        String harnessSource = "(function(global){" +
+                "Object.defineProperty(global, 'printError', {\n" +
                 "    configurable: true,\n" +
                 "    enumerable: false,\n" +
                 "    writable: true,\n" +
@@ -147,17 +148,18 @@ public class TestNashornRunnable extends TestRunnable {
                 "        str += msg.substring(msg.indexOf(' ') + 1);\n" +
                 "        print(str);\n" +
                 "    }\n" +
-                "});\n";
-        String failSource = "Object.defineProperty(this, \"fail\", {\n" +
+                "});\n" +
+                "Object.defineProperty(global, 'fail', {\n" +
                 "    configurable: true,\n" +
                 "    enumerable: false,\n" +
                 "    writable: true,\n" +
                 "    value: function (message, error) {\n" +
+                "        var Throwable = Java.type('java.lang.Throwable');" +
                 "        var throwable = null;\n" +
                 "        if (typeof error != 'undefined') {\n" +
-                "            if (error instanceof java.lang.Throwable) {\n" +
+                "            if (error instanceof Throwable) {\n" +
                 "                throwable = error;\n" +
-                "            } else if (error.nashornException instanceof java.lang.Throwable) {\n" +
+                "            } else if (error.nashornException instanceof Throwable) {\n" +
                 "                throwable = error.nashornException;\n" +
                 "            }\n" +
                 "        }\n" +
@@ -167,26 +169,28 @@ public class TestNashornRunnable extends TestRunnable {
                 "            throw new TypeError(message);\n" +
                 "        }\n" +
                 "    }\n" +
-                "});\n";
-        String assertSource = "Object.defineProperty(this, \"Assert\", {\n" +
+                "});\n" +
+                "  var Assert = Java.type('org.junit.Assert');\n" +
+                "  Object.defineProperty(global, 'Assert', {\n" +
                 "    configurable: true,\n" +
                 "    enumerable: false,\n" +
                 "    writable: true,\n" +
                 "    value: {\n" +
-                "        fail: Packages.org.junit.Assert.fail,\n" +
-                "        assertTrue: Packages.org.junit.Assert.assertTrue,\n" +
-                "        assertFalse: Packages.org.junit.Assert.assertFalse,\n" +
-                "        assertSame: Packages.org.junit.Assert.assertSame,\n" +
+                "        fail: Assert.fail,\n" +
+                "        assertTrue: Assert.assertTrue,\n" +
+                "        assertFalse: Assert.assertFalse,\n" +
+                "        assertSame: Assert.assertSame,\n" +
                 "        assertEquals: function(a, b) {\n" +
-                "            if (typeof a == 'number') Packages.org.junit.Assert.assertTrue('expected:<'+a+'> but was:<'+b+'>',\n" +
+                "            if (typeof a == 'number') Assert.assertTrue('expected:<'+a+'> but was:<'+b+'>',\n" +
                 "                                      typeof b == 'number' && (a === b && (a !== 0 || (1 / a) === (1 / b)) || isNaN(a) && isNaN(b)));\n" +
-                "            else Packages.org.junit.Assert.assertEquals(a, b);\n" +
+                "            else Assert.assertEquals(a, b);\n" +
                 "        },\n" +
-                "        'assertEquals(float, float, float)': Packages.org.junit.Assert['assertEquals(float,float,float)'],\n" +
+                "        'assertEquals(float, float, float)': Assert['assertEquals(float,float,float)'],\n" +
                 "    }\n" +
-                "});\n";
+                "  });\n" +
+                "})(this);\n";
         // @formatter:on
-        return new Source[]{Source.newBuilder(JavaScriptLanguage.ID, printErrorSource + failSource + assertSource, "assert.js").buildLiteral()};
+        return new Source[]{Source.newBuilder(JavaScriptLanguage.ID, harnessSource, "assert.js").buildLiteral()};
     }
 
 }

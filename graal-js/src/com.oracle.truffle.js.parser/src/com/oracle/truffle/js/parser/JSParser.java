@@ -4,8 +4,6 @@
  */
 package com.oracle.truffle.js.parser;
 
-import java.io.File;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.source.Source;
@@ -18,8 +16,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 public interface JSParser extends NodeEvaluator {
 
     ScriptNode parseScriptNode(JSContext context, Source source);
-
-    ScriptNode parseScriptNode(JSContext context, File sourceFile) throws IOException;
 
     ScriptNode parseScriptNode(JSContext context, String sourceString);
 

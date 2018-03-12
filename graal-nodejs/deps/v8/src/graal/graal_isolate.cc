@@ -312,11 +312,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
             options.push_back({const_cast<char*>(classpath.c_str()), nullptr});
         }
 
-        options.push_back({const_cast<char*>("-Dtruffle.js.DirectByteBuffer=true"), nullptr});
-        options.push_back({const_cast<char*>("-Dpolyglot.js.v8-compatibility-mode=true"), nullptr});
-        options.push_back({const_cast<char*>("-Dpolyglot.js.syntax-extensions=false"), nullptr});
-        options.push_back({const_cast<char*>("-Dtruffle.js.U180EWhitespace=true"), nullptr});
-
     // The object model requires a lot of malloc memory; we must shift he heap base further away
     // to give room for the native heap GR-1570
     #if defined(__sparc__)

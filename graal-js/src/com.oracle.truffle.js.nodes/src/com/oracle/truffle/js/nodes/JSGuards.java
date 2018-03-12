@@ -415,10 +415,6 @@ public final class JSGuards {
         return JSArgumentsObject.hasDisconnectedIndices(argumentsArray);
     }
 
-    public static boolean isDoubleInfinite(double d) {
-        return Double.isInfinite(d);
-    }
-
     public static Class<? extends Number> getJavaNumberClass(Object value) {
         if (value != null && isJavaNumber(value)) {
             return ((Number) value).getClass();
