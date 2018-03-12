@@ -160,7 +160,7 @@ public abstract class TypeOfNode extends JSUnaryNode {
         return JSUserObject.TYPE_NAME;
     }
 
-    @Specialization(guards = "isJavaObject(operand)", replaces = "doOtherCached")
+    @Specialization(guards = {"isJavaObject(operand)", "!isJavaClass(operand)", "!isJavaMethod(operand)"}, replaces = "doOtherCached")
     protected String doOther(Object operand) {
         return JSUserObject.TYPE_NAME;
     }
