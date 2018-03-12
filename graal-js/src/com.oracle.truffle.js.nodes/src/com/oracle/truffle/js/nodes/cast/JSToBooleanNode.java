@@ -68,22 +68,22 @@ public abstract class JSToBooleanNode extends JSUnaryNode {
     }
 
     @Specialization(guards = "isJSNull(value)")
-    protected boolean doBooleanNull(@SuppressWarnings("unused") Object value) {
+    protected boolean doNull(@SuppressWarnings("unused") Object value) {
         return false;
     }
 
     @Specialization(guards = "isUndefined(value)")
-    protected boolean doBooleanUndefined(@SuppressWarnings("unused") Object value) {
+    protected boolean doUndefined(@SuppressWarnings("unused") Object value) {
         return false;
     }
 
     @Specialization
-    protected boolean doBoolean(int value) {
+    protected boolean doInt(int value) {
         return value != 0;
     }
 
     @Specialization
-    protected boolean doBoolean(double value) {
+    protected boolean doDouble(double value) {
         return value != 0.0 && !Double.isNaN(value);
     }
 
