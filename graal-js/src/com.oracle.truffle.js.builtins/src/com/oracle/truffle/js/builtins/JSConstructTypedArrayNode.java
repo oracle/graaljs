@@ -11,6 +11,7 @@ import java.util.NoSuchElementException;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
@@ -52,6 +53,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 /**
  * The %TypedArray% intrinsic constructor function object (ES6 22.2.1).
  */
+@ImportStatic(JSArrayBuffer.class)
 public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @Child private JSToIndexNode toIndexNode;
     // for TypedArray(factory)
@@ -291,7 +293,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * [[TypedArrayName]] or an [[ArrayBufferData]] internal slot.
      */
     @SuppressWarnings("unused")
-    @Specialization(guards = {"isJSFunction(newTarget)", "isJSObject(object)", "!isJSHeapArrayBuffer(object)", "!isJSDirectArrayBuffer(object)", "!isJSArrayBufferView(object)", "!isJSArray(object)"})
+    @Specialization(guards = {"isJSFunction(newTarget)", "isJSObject(object)", "!isJSAbstractBuffer(object)", "!isJSArrayBufferView(object)", "!isJSArray(object)"})
     protected DynamicObject doObject(DynamicObject newTarget, DynamicObject object, Object byteOffset0, Object length0,
                     @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
                     @Cached("createBinaryProfile()") ConditionProfile isIterableProfile,
