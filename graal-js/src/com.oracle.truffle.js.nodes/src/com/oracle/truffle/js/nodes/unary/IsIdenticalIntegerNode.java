@@ -30,8 +30,8 @@ public abstract class IsIdenticalIntegerNode extends JSUnaryNode {
     // long etc could come via Interop
     @Specialization(guards = "isJavaNumber(a)")
     protected boolean doJavaNumber(Object a) {
-        long lValue = JSRuntime.toInteger(a);
-        return JSRuntime.longIsRepresentableAsInt(lValue) && integer == lValue;
+        double doubleValue = JSRuntime.toDouble(a);
+        return doubleValue == integer;
     }
 
     @Fallback
