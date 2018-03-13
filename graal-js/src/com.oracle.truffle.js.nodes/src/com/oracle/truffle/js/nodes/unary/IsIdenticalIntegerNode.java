@@ -13,7 +13,8 @@ public abstract class IsIdenticalIntegerNode extends JSUnaryNode {
 
     private final int integer;
 
-    protected IsIdenticalIntegerNode(int integer) {
+    protected IsIdenticalIntegerNode(JavaScriptNode operand, int integer) {
+        super(operand);
         this.integer = integer;
     }
 
@@ -40,11 +41,11 @@ public abstract class IsIdenticalIntegerNode extends JSUnaryNode {
     }
 
     public static IsIdenticalIntegerNode create(int integer, JavaScriptNode operand) {
-        return IsIdenticalIntegerNodeGen.create(integer, operand);
+        return IsIdenticalIntegerNodeGen.create(operand, integer);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return IsIdenticalIntegerNode.create(integer, cloneUninitialized(getOperand()));
+        return create(integer, cloneUninitialized(getOperand()));
     }
 }

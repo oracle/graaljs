@@ -6,8 +6,8 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -28,14 +28,15 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
  * GetIterator(obj, hint = sync).
  */
 @ImportStatic(JSInteropUtil.class)
-@NodeChild(value = "iteratedObject", type = JavaScriptNode.class)
 public abstract class GetIteratorNode extends JavaScriptNode {
+    @Child @Executed protected JavaScriptNode objectNode;
     @Child private GetMethodNode getIteratorMethodNode;
 
     protected final JSContext context;
 
-    protected GetIteratorNode(JSContext context) {
+    protected GetIteratorNode(JSContext context, JavaScriptNode objectNode) {
         this.context = context;
+        this.objectNode = objectNode;
     }
 
     public static GetIteratorNode create(JSContext context) {
@@ -94,11 +95,9 @@ public abstract class GetIteratorNode extends JavaScriptNode {
 
     public abstract DynamicObject execute(Object iteratedObject);
 
-    abstract JavaScriptNode getIteratedObject();
-
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return GetIteratorNodeGen.create(getContext(), cloneUninitialized(getIteratedObject()));
+        return GetIteratorNodeGen.create(getContext(), cloneUninitialized(objectNode));
     }
 
     protected GetMethodNode getIteratorMethodNode() {

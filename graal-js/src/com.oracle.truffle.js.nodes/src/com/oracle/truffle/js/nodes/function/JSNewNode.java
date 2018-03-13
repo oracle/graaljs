@@ -12,8 +12,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -31,9 +29,9 @@ import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.function.JSNewNodeGen.CachedPrototypeShapeNodeGen;
 import com.oracle.truffle.js.nodes.function.JSNewNodeGen.SpecializedNewObjectNodeGen;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -111,10 +109,6 @@ public abstract class JSNewNode extends JavaScriptNode {
 
     public JavaScriptNode getTarget() {
         return targetNode;
-    }
-
-    public AbstractFunctionArgumentsNode getArguments() {
-        return arguments;
     }
 
     @Specialization(guards = "isJSFunction(target)")
@@ -239,26 +233,32 @@ public abstract class JSNewNode extends JavaScriptNode {
         return create(cloneUninitialized(getTarget()), AbstractFunctionArgumentsNode.cloneUninitialized(arguments));
     }
 
-    @NodeChildren({@NodeChild(value = "target", type = JavaScriptNode.class), @NodeChild(value = "shape", type = CachedPrototypeShapeNode.class, executeWith = "target")})
     public abstract static class SpecializedNewObjectNode extends JSTargetableNode {
         private final JSContext context;
         protected final boolean isBuiltin;
         protected final boolean isConstructor;
         protected final boolean isGenerator;
 
-        public SpecializedNewObjectNode(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator) {
+        @Child @Executed protected JavaScriptNode targetNode;
+        @Child @Executed(with = "targetNode") protected CachedPrototypeShapeNode cachedShapeNode;
+
+        public SpecializedNewObjectNode(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, JavaScriptNode targetNode) {
             this.context = context;
             this.isBuiltin = isBuiltin;
             this.isConstructor = isConstructor;
             this.isGenerator = isGenerator;
+            this.targetNode = targetNode;
+            this.cachedShapeNode = CachedPrototypeShapeNode.create(context);
         }
 
         public static SpecializedNewObjectNode create(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, JavaScriptNode target) {
-            return SpecializedNewObjectNodeGen.create(context, isBuiltin, isConstructor, isGenerator, target, CachedPrototypeShapeNode.create(context));
+            return SpecializedNewObjectNodeGen.create(context, isBuiltin, isConstructor, isGenerator, target);
         }
 
         @Override
-        public abstract JavaScriptNode getTarget();
+        public JavaScriptNode getTarget() {
+            return targetNode;
+        }
 
         @Override
         public final Object evaluateTarget(VirtualFrame frame) {
@@ -296,7 +296,7 @@ public abstract class JSNewNode extends JavaScriptNode {
 
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return create(context, isBuiltin, isConstructor, isGenerator, cloneUninitialized(getTarget()));
+            return create(context, isBuiltin, isConstructor, isGenerator, cloneUninitialized(targetNode));
         }
     }
 

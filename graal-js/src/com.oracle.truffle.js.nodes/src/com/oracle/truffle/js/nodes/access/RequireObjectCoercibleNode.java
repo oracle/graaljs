@@ -62,6 +62,10 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
 
         @Child private RequireObjectCoercibleNode requireObjectCoercibleNode = RequireObjectCoercibleNode.create();
 
+        protected RequireObjectCoercibleWrapperNode(JavaScriptNode operand) {
+            super(operand);
+        }
+
         public static RequireObjectCoercibleWrapperNode create(JavaScriptNode child) {
             return RequireObjectCoercibleWrapperNodeGen.create(child);
         }

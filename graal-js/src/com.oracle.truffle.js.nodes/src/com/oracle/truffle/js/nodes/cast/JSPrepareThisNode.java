@@ -37,7 +37,8 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
 
     final JSContext context;
 
-    protected JSPrepareThisNode(JSContext context) {
+    protected JSPrepareThisNode(JSContext context, JavaScriptNode child) {
+        super(child);
         this.context = context;
     }
 

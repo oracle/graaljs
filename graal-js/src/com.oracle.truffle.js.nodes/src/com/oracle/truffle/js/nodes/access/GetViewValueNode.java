@@ -5,8 +5,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -20,19 +19,23 @@ import com.oracle.truffle.js.runtime.array.TypedArray.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 
-@NodeChildren({@NodeChild("view"), @NodeChild("requestIndex"), @NodeChild("isLittleEndian")})
 public abstract class GetViewValueNode extends JavaScriptNode {
     private final TypedArrayFactory factory;
     private final JSContext context;
+    @Child @Executed protected JavaScriptNode viewNode;
+    @Child @Executed protected JavaScriptNode requestIndexNode;
+    @Child @Executed protected JavaScriptNode isLittleEndianNode;
 
-    protected GetViewValueNode(JSContext context, String type) {
-        this.factory = typedArrayFactoryFromType(type);
-        this.context = context;
+    protected GetViewValueNode(JSContext context, String type, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian) {
+        this(context, typedArrayFactoryFromType(type), view, requestIndex, isLittleEndian);
     }
 
-    protected GetViewValueNode(JSContext context, TypedArrayFactory factory) {
+    protected GetViewValueNode(JSContext context, TypedArrayFactory factory, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian) {
         this.factory = factory;
         this.context = context;
+        this.viewNode = view;
+        this.requestIndexNode = requestIndex;
+        this.isLittleEndianNode = isLittleEndian;
     }
 
     static TypedArrayFactory typedArrayFactoryFromType(String type) {
@@ -82,14 +85,8 @@ public abstract class GetViewValueNode extends JavaScriptNode {
         return GetViewValueNodeGen.create(context, type, view, requestIndex, isLittleEndian);
     }
 
-    abstract JavaScriptNode getView();
-
-    abstract JavaScriptNode getRequestIndex();
-
-    abstract JavaScriptNode getIsLittleEndian();
-
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return GetViewValueNodeGen.create(context, factory, cloneUninitialized(getView()), cloneUninitialized(getRequestIndex()), cloneUninitialized(getIsLittleEndian()));
+        return GetViewValueNodeGen.create(context, factory, cloneUninitialized(viewNode), cloneUninitialized(requestIndexNode), cloneUninitialized(isLittleEndianNode));
     }
 }

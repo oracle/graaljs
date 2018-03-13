@@ -24,6 +24,10 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 @NodeField(name = "rightValue", type = int.class)
 public abstract class JSBitwiseXorConstantNode extends JSUnaryNode {
 
+    protected JSBitwiseXorConstantNode(JavaScriptNode operand) {
+        super(operand);
+    }
+
     public static JavaScriptNode create(JavaScriptNode left, int rightValue) {
         return JSBitwiseXorConstantNodeGen.create(left, rightValue);
     }

@@ -17,6 +17,10 @@ import com.oracle.truffle.js.runtime.LargeInteger;
 @NodeInfo(shortName = ">")
 public abstract class JSGreaterThanNode extends JSCompareNode {
 
+    protected JSGreaterThanNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
+    }
+
     public static JSGreaterThanNode create(JavaScriptNode left, JavaScriptNode right) {
         return JSGreaterThanNodeGen.create(left, right);
     }

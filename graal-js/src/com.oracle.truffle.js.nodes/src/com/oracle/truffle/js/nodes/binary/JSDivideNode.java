@@ -13,6 +13,10 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 @NodeInfo(shortName = "/")
 public abstract class JSDivideNode extends JSBinaryNode {
 
+    protected JSDivideNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
+    }
+
     public static JSDivideNode create(JavaScriptNode left, JavaScriptNode right) {
         return JSDivideNodeGen.create(left, right);
     }

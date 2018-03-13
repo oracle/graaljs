@@ -33,6 +33,10 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     protected static final int MAX_TYPE_COUNT = 1;
     protected static final int MAX_CLASSES = 3;
 
+    protected JSIsNullOrUndefinedNode(JavaScriptNode operand) {
+        super(operand);
+    }
+
     @Specialization(guards = "isJSNull(operand)")
     protected static boolean doNull(@SuppressWarnings("unused") Object operand) {
         return true;

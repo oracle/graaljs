@@ -6,21 +6,30 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Objects;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 
-@NodeChildren({@NodeChild("left"), @NodeChild("right")})
 public abstract class JSBinaryNode extends JavaScriptNode {
+    @Child @Executed protected JavaScriptNode leftNode;
+    @Child @Executed protected JavaScriptNode rightNode;
 
-    protected abstract JavaScriptNode getLeft();
+    protected JSBinaryNode(JavaScriptNode left, JavaScriptNode right) {
+        this.leftNode = left;
+        this.rightNode = right;
+    }
 
-    protected abstract JavaScriptNode getRight();
+    public final JavaScriptNode getLeft() {
+        return leftNode;
+    }
+
+    public final JavaScriptNode getRight() {
+        return rightNode;
+    }
 
     @Override
     public String expressionToString() {

@@ -105,7 +105,8 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
 
         @Child private IsArrayNode isArrayNode;
 
-        protected IsArrayWrappedNode(IsArrayNode isArrayNode) {
+        protected IsArrayWrappedNode(JavaScriptNode operandNode, IsArrayNode isArrayNode) {
+            super(operandNode);
             this.isArrayNode = isArrayNode;
         }
 
@@ -119,7 +120,7 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
         }
 
         public static JavaScriptNode createIsArray(JavaScriptNode operand) {
-            return IsArrayWrappedNodeGen.create(IsArrayNode.createIsArray(), operand);
+            return IsArrayWrappedNodeGen.create(operand, IsArrayNode.createIsArray());
         }
 
         @Override

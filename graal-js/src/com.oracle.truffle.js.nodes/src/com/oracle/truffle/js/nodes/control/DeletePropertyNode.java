@@ -11,9 +11,8 @@ import javax.script.Bindings;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -42,14 +41,17 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 /**
  * 11.4.1 The delete Operator ({@code delete object[property]}).
  */
-@NodeChildren({@NodeChild(value = "target", type = JavaScriptNode.class), @NodeChild(value = "property", type = JavaScriptNode.class)})
 @NodeInfo(shortName = "delete")
 @ImportStatic(value = JSInteropUtil.class)
 public abstract class DeletePropertyNode extends JSTargetableNode {
     private final boolean strict;
+    @Child @Executed protected JavaScriptNode targetNode;
+    @Child @Executed protected JavaScriptNode propertyNode;
 
-    protected DeletePropertyNode(boolean strict) {
+    protected DeletePropertyNode(boolean strict, JavaScriptNode targetNode, JavaScriptNode propertyNode) {
         this.strict = strict;
+        this.targetNode = targetNode;
+        this.propertyNode = propertyNode;
     }
 
     public static DeletePropertyNode create(boolean strict) {
@@ -65,7 +67,9 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     }
 
     @Override
-    public abstract JavaScriptNode getTarget();
+    public final JavaScriptNode getTarget() {
+        return targetNode;
+    }
 
     @Override
     public final Object execute(VirtualFrame frame) {
@@ -150,11 +154,9 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         return true;
     }
 
-    abstract JavaScriptNode getProperty();
-
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(getTarget()), cloneUninitialized(getProperty()), strict);
+        return create(cloneUninitialized(getTarget()), cloneUninitialized(propertyNode), strict);
     }
 
     @Override

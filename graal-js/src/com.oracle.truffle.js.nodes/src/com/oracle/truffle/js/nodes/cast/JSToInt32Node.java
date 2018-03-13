@@ -31,6 +31,10 @@ import com.oracle.truffle.js.runtime.Symbol;
  */
 public abstract class JSToInt32Node extends JSUnaryNode {
 
+    protected JSToInt32Node(JavaScriptNode operand) {
+        super(operand);
+    }
+
     @Override
     public final Object execute(VirtualFrame frame) {
         return executeInt(frame);

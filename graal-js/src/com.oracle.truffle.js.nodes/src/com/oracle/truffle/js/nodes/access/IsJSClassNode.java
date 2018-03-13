@@ -18,7 +18,8 @@ public abstract class IsJSClassNode extends JSUnaryNode {
 
     private final JSClass jsclass;
 
-    protected IsJSClassNode(JSClass jsclass) {
+    protected IsJSClassNode(JSClass jsclass, JavaScriptNode operand) {
+        super(operand);
         this.jsclass = jsclass;
     }
 
@@ -52,7 +53,7 @@ public abstract class IsJSClassNode extends JSUnaryNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return IsJSClassNodeGen.create(jsclass, cloneUninitialized(getOperand()));
+        return create(jsclass, cloneUninitialized(getOperand()));
     }
 
     @Override

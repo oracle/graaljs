@@ -60,7 +60,8 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
 
     private final Type type;
 
-    protected JSTypeofIdenticalNode(Type type) {
+    protected JSTypeofIdenticalNode(JavaScriptNode childNode, Type type) {
+        super(childNode);
         this.type = type;
     }
 
@@ -69,7 +70,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     }
 
     public static JSTypeofIdenticalNode create(JavaScriptNode childNode, String string) {
-        return JSTypeofIdenticalNodeGen.create(typeStringToEnum(string), childNode);
+        return JSTypeofIdenticalNodeGen.create(childNode, typeStringToEnum(string));
     }
 
     private static Type typeStringToEnum(String string) {
@@ -208,6 +209,6 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSTypeofIdenticalNodeGen.create(type, cloneUninitialized(getOperand()));
+        return JSTypeofIdenticalNodeGen.create(cloneUninitialized(getOperand()), type);
     }
 }

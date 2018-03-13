@@ -24,6 +24,10 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 @NodeInfo(shortName = "!")
 public abstract class JSNotNode extends JSUnaryNode {
 
+    protected JSNotNode(JavaScriptNode operand) {
+        super(operand);
+    }
+
     public static JavaScriptNode create(JavaScriptNode operand) {
         if (JSTruffleOptions.UseSuperOperations && operand instanceof JSNotNode) {
             // optimize "!!operand", but retain conversion to boolean if operand != boolean

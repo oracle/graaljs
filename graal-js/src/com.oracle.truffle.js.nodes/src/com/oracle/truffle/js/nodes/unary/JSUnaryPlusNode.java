@@ -4,20 +4,30 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
-import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode.JSToNumberWrapperNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 
 @NodeInfo(shortName = "+")
-@NodeChild(value = "operand", type = JavaScriptNode.class)
 public abstract class JSUnaryPlusNode extends JSToNumberWrapperNode {
+
+    protected JSUnaryPlusNode(JavaScriptNode operand) {
+        super(operand);
+    }
+
     public static JSUnaryPlusNode create(JavaScriptNode operand) {
         return JSUnaryPlusNodeGen.create(operand);
+    }
+
+    @Specialization
+    @Override
+    protected Object doDefault(Object value) {
+        return super.doDefault(value);
     }
 
     @Override

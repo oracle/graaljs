@@ -10,16 +10,12 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 
 public abstract class JSLogicalNode extends JSBinaryNode {
-
-    @Child private JavaScriptNode left;
-    @Child private JavaScriptNode right;
     @Child private JSToBooleanNode toBooleanCast;
 
     protected final ConditionProfile canShortCircuit = ConditionProfile.createBinaryProfile();
 
     public JSLogicalNode(JavaScriptNode left, JavaScriptNode right) {
-        this.left = left;
-        this.right = right;
+        super(left, right);
     }
 
     protected boolean toBoolean(Object operand) {
@@ -28,15 +24,5 @@ public abstract class JSLogicalNode extends JSBinaryNode {
             toBooleanCast = insert(JSToBooleanNode.create());
         }
         return toBooleanCast.executeBoolean(operand);
-    }
-
-    @Override
-    public JavaScriptNode getLeft() {
-        return left;
-    }
-
-    @Override
-    public JavaScriptNode getRight() {
-        return right;
     }
 }

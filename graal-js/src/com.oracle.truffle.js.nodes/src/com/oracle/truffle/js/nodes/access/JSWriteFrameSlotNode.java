@@ -4,7 +4,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -60,12 +60,14 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements Writ
     }
 }
 
-@NodeChild(value = "levelFrameNode", type = ScopeFrameNode.class)
-@NodeChild(value = "rhs", type = JavaScriptNode.class)
 abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
+    @Child @Executed ScopeFrameNode scopeFrameNode;
+    @Child @Executed JavaScriptNode rhsNode;
 
-    protected JSWriteScopeFrameSlotNode(FrameSlot frameSlot) {
+    protected JSWriteScopeFrameSlotNode(FrameSlot frameSlot, ScopeFrameNode scopeFrameNode, JavaScriptNode rhsNode) {
         super(frameSlot);
+        this.scopeFrameNode = scopeFrameNode;
+        this.rhsNode = rhsNode;
     }
 
     @Specialization(guards = "isBooleanKind(levelFrame)")
@@ -117,7 +119,14 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
     }
 
     @Override
-    public abstract ScopeFrameNode getLevelFrameNode();
+    public ScopeFrameNode getLevelFrameNode() {
+        return scopeFrameNode;
+    }
+
+    @Override
+    public JavaScriptNode getRhs() {
+        return rhsNode;
+    }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
@@ -125,11 +134,12 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
     }
 }
 
-@NodeChild(value = "rhs", type = JavaScriptNode.class)
 abstract class JSWriteCurrentFrameSlotNode extends JSWriteFrameSlotNode {
+    @Child @Executed JavaScriptNode rhsNode;
 
-    protected JSWriteCurrentFrameSlotNode(FrameSlot frameSlot) {
+    protected JSWriteCurrentFrameSlotNode(FrameSlot frameSlot, JavaScriptNode rhsNode) {
         super(frameSlot);
+        this.rhsNode = rhsNode;
     }
 
     @Specialization(guards = "isBooleanKind(frame)")
@@ -178,6 +188,11 @@ abstract class JSWriteCurrentFrameSlotNode extends JSWriteFrameSlotNode {
     @Override
     public final Object executeWrite(VirtualFrame frame, Object value) {
         return executeEvaluated(frame, value);
+    }
+
+    @Override
+    public JavaScriptNode getRhs() {
+        return rhsNode;
     }
 
     @Override

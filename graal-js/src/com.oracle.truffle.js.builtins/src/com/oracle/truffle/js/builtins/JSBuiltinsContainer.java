@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.js.builtins;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.function.Consumer;
+
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.js.nodes.function.BuiltinArgumentBuilder;
 import com.oracle.truffle.js.nodes.function.BuiltinNodeFactory;
@@ -22,7 +22,7 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
  */
 public abstract class JSBuiltinsContainer {
     private final String name;
-    final Map<String, JSBuiltin> builtins = new LinkedHashMap<>();
+    final EconomicMap<String, JSBuiltin> builtins = EconomicMap.create();
 
     protected JSBuiltinsContainer(String name) {
         this.name = name;
@@ -37,7 +37,7 @@ public abstract class JSBuiltinsContainer {
     }
 
     public final void forEachBuiltin(Consumer<? super JSBuiltin> consumer) {
-        builtins.values().forEach(consumer);
+        builtins.getValues().forEach(consumer);
     }
 
     protected static BuiltinArgumentBuilder args() {

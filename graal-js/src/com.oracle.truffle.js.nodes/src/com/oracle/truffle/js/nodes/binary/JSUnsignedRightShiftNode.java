@@ -23,6 +23,10 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 @NodeInfo(shortName = ">>>")
 public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
 
+    protected JSUnsignedRightShiftNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
+    }
+
     @Child private JSToUInt32Node toUInt32Node;
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {

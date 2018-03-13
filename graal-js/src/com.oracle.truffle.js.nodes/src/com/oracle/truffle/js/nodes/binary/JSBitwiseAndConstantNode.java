@@ -24,6 +24,10 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 @NodeField(name = "rightValue", type = int.class)
 public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
 
+    protected JSBitwiseAndConstantNode(JavaScriptNode operand) {
+        super(operand);
+    }
+
     public static JSBitwiseAndConstantNode create(JavaScriptNode left, int right) {
         return JSBitwiseAndConstantNodeGen.create(left, right);
     }

@@ -36,7 +36,8 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
     @Child private JSDoubleToStringNode doubleToStringNode;
     @Child private JSConcatStringsNode concatStringsNode;
 
-    public JSAddNode(boolean truncate) {
+    protected JSAddNode(boolean truncate, JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
         this.truncate = truncate;
     }
 
@@ -52,12 +53,12 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
                 // can't swap operands here, could be string concat
             } else if (right instanceof JSConstantIntegerNode || right instanceof JSConstantDoubleNode) {
                 Object rightValue = ((JSConstantNode) right).execute(null);
-                return JSAddConstantRightNumberNodeGen.create(truncate, (Number) rightValue, left);
+                return JSAddConstantRightNumberNodeGen.create(left, (Number) rightValue, truncate);
             } else if (left instanceof JSConstantStringNode && right instanceof JSConstantStringNode) {
                 return JSConstantNode.createString((String) left.execute(null) + (String) right.execute(null));
             } else if (left instanceof JSConstantIntegerNode || left instanceof JSConstantDoubleNode) {
                 Object leftValue = ((JSConstantNode) left).execute(null);
-                return JSAddConstantLeftNumberNodeGen.create(truncate, (Number) leftValue, right);
+                return JSAddConstantLeftNumberNodeGen.create((Number) leftValue, right, truncate);
             }
         }
         return JSAddNodeGen.create(truncate, left, right);

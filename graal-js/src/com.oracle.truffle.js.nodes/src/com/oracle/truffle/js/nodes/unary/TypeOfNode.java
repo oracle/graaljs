@@ -48,6 +48,10 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 public abstract class TypeOfNode extends JSUnaryNode {
     protected static final int MAX_CLASSES = 3;
 
+    protected TypeOfNode(JavaScriptNode operand) {
+        super(operand);
+    }
+
     public static TypeOfNode create(JavaScriptNode operand) {
         return TypeOfNodeGen.create(operand);
     }

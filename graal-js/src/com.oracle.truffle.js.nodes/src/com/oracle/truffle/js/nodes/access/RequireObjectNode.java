@@ -6,7 +6,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -15,9 +15,14 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
 
-@NodeChild("operand")
 public abstract class RequireObjectNode extends JavaScriptNode {
     protected static final int MAX_SHAPE_COUNT = 1;
+
+    @Child @Executed protected JavaScriptNode operandNode;
+
+    protected RequireObjectNode(JavaScriptNode operand) {
+        this.operandNode = operand;
+    }
 
     public abstract Object execute(Object obj);
 
@@ -54,10 +59,8 @@ public abstract class RequireObjectNode extends JavaScriptNode {
         return RequireObjectNodeGen.create(operand);
     }
 
-    abstract JavaScriptNode getOperand();
-
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return RequireObjectNodeGen.create(cloneUninitialized(getOperand()));
+        return RequireObjectNodeGen.create(cloneUninitialized(operandNode));
     }
 }

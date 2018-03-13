@@ -4,11 +4,10 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -24,19 +23,22 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-@NodeChildren({@NodeChild(value = "function"), @NodeChild(value = "source")})
 public abstract class EvalNode extends JavaScriptNode {
     private final JSContext context;
     private final Object currEnv;
+    @Child @Executed protected JavaScriptNode functionNode;
+    @Child @Executed protected JavaScriptNode sourceNode;
     @Child private JavaScriptNode thisObject;
     @Child private AbstractFunctionArgumentsNode otherArguments;
     private final BranchProfile hasOtherArguments = BranchProfile.create();
 
-    protected EvalNode(JSContext context, Object currEnv, JavaScriptNode thisObject, AbstractFunctionArgumentsNode otherArguments) {
+    protected EvalNode(JSContext context, Object currEnv, JavaScriptNode function, JavaScriptNode source, JavaScriptNode thisObject, AbstractFunctionArgumentsNode otherArguments) {
         assert currEnv != null;
 
         this.context = context;
         this.currEnv = currEnv;
+        this.functionNode = function;
+        this.sourceNode = source;
         this.thisObject = thisObject;
         this.otherArguments = otherArguments;
     }
@@ -100,7 +102,7 @@ public abstract class EvalNode extends JavaScriptNode {
     }
 
     @Specialization(guards = {"isEvalOverridden(evalFunction)"})
-    protected Object directEvalOverridden(VirtualFrame frame, Object evalFunction, Object arg0, //
+    protected Object directEvalOverridden(VirtualFrame frame, Object evalFunction, Object arg0,
                     @Cached("createCall()") JSFunctionCallNode redirectCall) {
 
         Object[] evaluatedArgs = new Object[1 + otherArguments.getCount(frame)];
@@ -131,16 +133,12 @@ public abstract class EvalNode extends JavaScriptNode {
      * to be evaluated for the sake of side-effects.
      */
     public static EvalNode create(JSContext context, Object env, JavaScriptNode sourceArg, JavaScriptNode[] args, JavaScriptNode functionNode, JavaScriptNode thisObject) {
-        return EvalNodeGen.create(context, env, thisObject, JSFunctionArgumentsNode.create(args), functionNode, sourceArg);
+        return EvalNodeGen.create(context, env, functionNode, sourceArg, thisObject, JSFunctionArgumentsNode.create(args));
     }
-
-    abstract JavaScriptNode getFunction();
-
-    abstract JavaScriptNode getSource();
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return EvalNodeGen.create(context, currEnv, cloneUninitialized(thisObject), AbstractFunctionArgumentsNode.cloneUninitialized(otherArguments), cloneUninitialized(getFunction()),
-                        cloneUninitialized(getSource()));
+        return EvalNodeGen.create(context, currEnv, cloneUninitialized(functionNode), cloneUninitialized(sourceNode), cloneUninitialized(thisObject),
+                        AbstractFunctionArgumentsNode.cloneUninitialized(otherArguments));
     }
 }

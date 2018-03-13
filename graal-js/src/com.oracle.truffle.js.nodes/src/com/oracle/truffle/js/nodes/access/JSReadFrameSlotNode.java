@@ -5,8 +5,8 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -19,8 +19,8 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
 @ImportStatic(FrameSlotKind.class)
@@ -73,10 +73,12 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
     }
 }
 
-@NodeChild(value = "levelFrameNode", type = ScopeFrameNode.class)
 abstract class JSReadScopeFrameSlotNode extends JSReadFrameSlotNode {
-    JSReadScopeFrameSlotNode(FrameSlot slot) {
+    @Child @Executed ScopeFrameNode scopeFrameNode;
+
+    JSReadScopeFrameSlotNode(FrameSlot slot, ScopeFrameNode scopeFrameNode) {
         super(slot);
+        this.scopeFrameNode = scopeFrameNode;
     }
 
     @Specialization(guards = "levelFrame.isBoolean(frameSlot)")
@@ -105,14 +107,19 @@ abstract class JSReadScopeFrameSlotNode extends JSReadFrameSlotNode {
     }
 
     @Override
+    public ScopeFrameNode getLevelFrameNode() {
+        return scopeFrameNode;
+    }
+
+    @Override
     protected JavaScriptNode copyUninitialized() {
         return JSReadScopeFrameSlotNodeGen.create(frameSlot, NodeUtil.cloneNode(getLevelFrameNode()));
     }
 }
 
 abstract class JSReadScopeFrameSlotWithTDZNode extends JSReadScopeFrameSlotNode {
-    JSReadScopeFrameSlotWithTDZNode(FrameSlot slot) {
-        super(slot);
+    JSReadScopeFrameSlotWithTDZNode(FrameSlot slot, ScopeFrameNode scopeFrameNode) {
+        super(slot, scopeFrameNode);
     }
 
     @Override

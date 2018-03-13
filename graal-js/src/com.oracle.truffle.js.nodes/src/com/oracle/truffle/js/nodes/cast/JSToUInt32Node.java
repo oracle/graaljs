@@ -128,6 +128,10 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
     public abstract static class JSToUInt32WrapperNode extends JSUnaryNode {
         @Child private JSToUInt32Node toUInt32Node;
 
+        protected JSToUInt32WrapperNode(JavaScriptNode operand) {
+            super(operand);
+        }
+
         public static JavaScriptNode create(JavaScriptNode child) {
             if (child instanceof JSConstantIntegerNode) {
                 int value = ((JSConstantIntegerNode) child).executeInt(null);

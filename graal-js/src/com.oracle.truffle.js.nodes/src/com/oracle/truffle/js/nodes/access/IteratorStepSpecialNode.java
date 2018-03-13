@@ -4,7 +4,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -22,8 +22,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
  * Note that this node returns the value instead of the result, thus is non-standard! For the
  * standard-compliant version, see {@link IteratorStepNode}.
  */
-@NodeChild(value = "iterator", type = JavaScriptNode.class)
 public abstract class IteratorStepSpecialNode extends JavaScriptNode {
+    @Child @Executed JavaScriptNode iteratorNode;
     @Child private PropertyGetNode getNextNode;
     @Child private PropertyGetNode getValueNode;
     @Child private PropertyGetNode getDoneNode;
@@ -33,7 +33,8 @@ public abstract class IteratorStepSpecialNode extends JavaScriptNode {
     @Child private JSToBooleanNode toBooleanNode;
     private final boolean setDoneOnError;
 
-    protected IteratorStepSpecialNode(JSContext context, JavaScriptNode doneNode, boolean setDoneOnError) {
+    protected IteratorStepSpecialNode(JSContext context, JavaScriptNode iteratorNode, JavaScriptNode doneNode, boolean setDoneOnError) {
+        this.iteratorNode = iteratorNode;
         this.getNextNode = PropertyGetNode.create(JSRuntime.NEXT, false, context);
         this.getValueNode = PropertyGetNode.create(JSRuntime.VALUE, false, context);
         this.getDoneNode = PropertyGetNode.create(JSRuntime.DONE, false, context);
@@ -45,7 +46,7 @@ public abstract class IteratorStepSpecialNode extends JavaScriptNode {
     }
 
     public static IteratorStepSpecialNode create(JSContext context, JavaScriptNode iterator, JavaScriptNode doneNode, boolean setDoneOnError) {
-        return IteratorStepSpecialNodeGen.create(context, doneNode, setDoneOnError, iterator);
+        return IteratorStepSpecialNodeGen.create(context, iterator, doneNode, setDoneOnError);
     }
 
     @Specialization
@@ -72,10 +73,8 @@ public abstract class IteratorStepSpecialNode extends JavaScriptNode {
 
     public abstract Object execute(VirtualFrame frame, DynamicObject iterator);
 
-    abstract JavaScriptNode getIterator();
-
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(getNextNode.getContext(), cloneUninitialized(getIterator()), cloneUninitialized(doneNode), setDoneOnError);
+        return create(getNextNode.getContext(), cloneUninitialized(iteratorNode), cloneUninitialized(doneNode), setDoneOnError);
     }
 }

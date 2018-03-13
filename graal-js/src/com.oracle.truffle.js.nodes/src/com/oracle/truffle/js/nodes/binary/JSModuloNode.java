@@ -13,6 +13,11 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 
 @NodeInfo(shortName = "%")
 public abstract class JSModuloNode extends JSBinaryNode {
+
+    protected JSModuloNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
+    }
+
     public static JSModuloNode create(JavaScriptNode left, JavaScriptNode right) {
         return JSModuloNodeGen.create(left, right);
     }

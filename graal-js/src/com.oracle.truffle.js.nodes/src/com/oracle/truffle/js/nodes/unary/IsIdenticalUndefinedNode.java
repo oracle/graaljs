@@ -10,7 +10,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class IsIdenticalUndefinedNode extends JSUnaryNode {
 
-    protected IsIdenticalUndefinedNode() {
+    protected IsIdenticalUndefinedNode(JavaScriptNode operand) {
+        super(operand);
     }
 
     @Specialization
@@ -24,6 +25,6 @@ public abstract class IsIdenticalUndefinedNode extends JSUnaryNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return IsIdenticalUndefinedNode.create(cloneUninitialized(getOperand()));
+        return create(cloneUninitialized(getOperand()));
     }
 }
