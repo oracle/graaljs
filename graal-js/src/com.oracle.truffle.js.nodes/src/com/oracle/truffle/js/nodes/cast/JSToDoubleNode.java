@@ -76,7 +76,7 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value");
     }
 
-    @Specialization(guards = "!isDynamicObject(object)")
+    @Specialization(guards = "isForeignObject(object)")
     protected double doCrossLanguageToDouble(TruffleObject object,
                     @Cached("create()") JSUnboxOrGetNode interopUnboxNode) {
         return getToDoubleNode().executeDouble(interopUnboxNode.executeWithTarget(object));
