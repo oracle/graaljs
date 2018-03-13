@@ -40,7 +40,7 @@ public abstract class GetNumberOptionNode extends JavaScriptBaseNode {
     @TruffleBoundary
     private void ensureSelectedValueIsValid(Number value, Number minimum) {
         if (JSRuntime.isNaN(value) || minimum.doubleValue() > value.doubleValue() || maximum.doubleValue() < value.doubleValue()) {
-            throw Errors.createRangeError(String.format("invalid value %d found where only values between %d and %d are allowed", value, minimum, maximum));
+            throw Errors.createRangeError(String.format("invalid value %s found where only values between %s and %s are allowed", value, minimum, maximum));
         }
     }
 
