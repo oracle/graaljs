@@ -60,7 +60,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isJSArrayBufferView(target)"})
     public Object sliceAbort(Object target, Object start, Object end) {
-        throw Errors.createTypeError("Typed array expected");
+        throw Errors.createTypeErrorArrayBufferViewExpected();
     }
 
     private Object doNativeFallback(DynamicObject target, Object start, Object end) {

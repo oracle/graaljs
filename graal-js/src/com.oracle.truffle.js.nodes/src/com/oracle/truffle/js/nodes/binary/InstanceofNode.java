@@ -296,14 +296,14 @@ public abstract class InstanceofNode extends JSBinaryNode {
         }
 
         @TruffleBoundary
-        private static RuntimeException typeErrorInvalidPrototype(DynamicObject obj, Object proto) {
+        private RuntimeException typeErrorInvalidPrototype(DynamicObject obj, Object proto) {
             String name;
             if (JSFunction.isJSFunction(obj)) {
                 name = functionToString(obj);
             } else {
                 name = obj.toString();
             }
-            throw Errors.createTypeError("\"prototype\" of " + name + " is not an Object, it is " + JSRuntime.safeToString(proto));
+            throw Errors.createTypeError("\"prototype\" of " + name + " is not an Object, it is " + JSRuntime.safeToString(proto), this);
         }
     }
 

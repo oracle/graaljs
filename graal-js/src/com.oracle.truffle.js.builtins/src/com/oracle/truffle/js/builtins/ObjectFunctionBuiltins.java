@@ -339,7 +339,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"!isJSNull(prototype)", "!isJSObject(prototype)"})
         protected DynamicObject createInvalidPrototype(Object prototype, Object properties) {
             assert prototype != null;
-            throw Errors.createTypeError("Object prototype may only be an Object or null: " + JSRuntime.safeToString(prototype));
+            throw Errors.createTypeErrorInvalidPrototype(prototype);
         }
 
         @Specialization(guards = {"isJSObject(prototype)", "isJSObject(properties)"})
@@ -606,7 +606,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected Object setPrototypeOfInvalidNewProto(Object thisObj, Object newProto) {
             assert newProto != null;
             asObject(thisObj);
-            throw Errors.createTypeErrorNotAnObject(newProto);
+            throw Errors.createTypeErrorInvalidPrototype(newProto);
         }
 
         protected final Object requireObjectCoercible(Object target) {

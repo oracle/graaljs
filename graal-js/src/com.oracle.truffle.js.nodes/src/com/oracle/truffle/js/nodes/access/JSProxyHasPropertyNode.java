@@ -46,9 +46,9 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
 
     public abstract boolean executeWithTargetAndKeyBoolean(Object shared, Object key);
 
-    private static void checkTrapResult(boolean accessible, boolean trapResult) {
+    private void checkTrapResult(boolean accessible, boolean trapResult) {
         if (!accessible && !trapResult) {
-            throw Errors.createTypeError("Proxy can't successfully access a non-writable, non-configurable property");
+            throw Errors.createTypeError("Proxy can't successfully access a non-writable, non-configurable property", this);
         }
     }
 

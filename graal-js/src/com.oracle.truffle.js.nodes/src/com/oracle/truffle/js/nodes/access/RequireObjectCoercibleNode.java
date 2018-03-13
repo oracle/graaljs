@@ -16,6 +16,10 @@ import com.oracle.truffle.js.runtime.Errors;
  * Implementation of the abstract operation RequireObjectCoercible(argument) (ES6 7.2.1).
  */
 public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
+
+    protected RequireObjectCoercibleNode() {
+    }
+
     public static RequireObjectCoercibleNode create() {
         return RequireObjectCoercibleNodeGen.create();
     }
@@ -23,37 +27,32 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
     public abstract Object execute(Object operand);
 
     @Specialization
-    public Object doInt(int value) {
+    protected Object doInt(int value) {
         return value;
     }
 
     @Specialization
-    public Object doDouble(double value) {
+    protected Object doDouble(double value) {
         return value;
     }
 
     @Specialization
-    public Object doCharSequence(CharSequence value) {
+    protected Object doCharSequence(CharSequence value) {
         return value;
     }
 
     @Specialization
-    public Object doBoolean(boolean value) {
+    protected Object doBoolean(boolean value) {
         return value;
     }
 
-    @Specialization(guards = "isJSNull(object)")
-    public Object doNull(@SuppressWarnings("unused") DynamicObject object) {
-        throw Errors.createTypeErrorNotObjectCoercible();
+    @Specialization(guards = "isNullOrUndefined(object)")
+    protected Object doNullOrUndefined(DynamicObject object) {
+        throw Errors.createTypeErrorNotObjectCoercible(object, this);
     }
 
-    @Specialization(guards = "isUndefined(object)")
-    public Object doUndefined(@SuppressWarnings("unused") DynamicObject object) {
-        throw Errors.createTypeErrorNotObjectCoercible();
-    }
-
-    @Specialization(guards = {"!isUndefined(object)", "!isJSNull(object)"})
-    public Object doCoercible(Object object) {
+    @Specialization(guards = {"!isNullOrUndefined(object)"})
+    protected Object doCoercible(Object object) {
         assert object != null;
         return object;
     }

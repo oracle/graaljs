@@ -57,7 +57,7 @@ public abstract class IteratorStepSpecialNode extends JavaScriptNode {
             next = getNextNode.getValue(iterator);
             result = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, next));
             if (!isObjectNode.executeBoolean(result)) {
-                throw Errors.createNotAnObjectError(this);
+                throw Errors.createTypeErrorIterResultNotAnObject(result, this);
             }
         } catch (Exception ex) {
             if (setDoneOnError) {

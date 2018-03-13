@@ -17,18 +17,9 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 public abstract class AbstractJSClass extends JSClass {
 
-    private static JSException typeError() {
-        return Errors.createNotAnObjectError(null);
-    }
-
     @TruffleBoundary
     private static JSException cannotDoPropertyOf(String doWhat, Object index, Object thisObj) {
         return Errors.createTypeErrorFormat("Cannot %s property \"%s\" of %s", doWhat, index, JSRuntime.safeToString(thisObj));
-    }
-
-    @TruffleBoundary
-    protected final JSException typeErrorNoSuchFunction(DynamicObject thisObj, Object name) {
-        return Errors.createTypeErrorFormat("%s has no such function \"%s\"", defaultToString(thisObj), name);
     }
 
     @TruffleBoundary
@@ -60,12 +51,12 @@ public abstract class AbstractJSClass extends JSClass {
 
     @Override
     public boolean hasOwnProperty(DynamicObject thisObj, Object propName) {
-        throw typeError();
+        throw Errors.createTypeErrorNotAnObject(thisObj);
     }
 
     @Override
     public boolean hasOwnProperty(DynamicObject thisObj, long propIdx) {
-        throw typeError();
+        throw Errors.createTypeErrorNotAnObject(thisObj);
     }
 
     @Override
@@ -131,12 +122,12 @@ public abstract class AbstractJSClass extends JSClass {
 
     @Override
     public boolean preventExtensions(DynamicObject thisObj) {
-        throw typeError();
+        throw Errors.createTypeErrorNotAnObject(thisObj);
     }
 
     @Override
     public boolean isExtensible(DynamicObject thisObj) {
-        throw typeError();
+        throw Errors.createTypeErrorNotAnObject(thisObj);
     }
 
     @Override
@@ -158,6 +149,6 @@ public abstract class AbstractJSClass extends JSClass {
 
     @Override
     public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object propertyKey) {
-        throw typeError();
+        throw Errors.createTypeErrorNotAnObject(thisObj);
     }
 }

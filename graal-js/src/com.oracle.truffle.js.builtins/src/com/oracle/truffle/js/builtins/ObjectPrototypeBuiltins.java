@@ -10,6 +10,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -383,7 +384,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } catch (UnknownIdentifierException e) {
                 return false;
             } catch (UnsupportedMessageException e) {
-                throw Errors.createError("foreign object does not respond to READ message");
+                throw Errors.createTypeErrorInteropException(thisObj, e, Message.READ, this);
             }
             return (value != null && value != Null.instance);
         }

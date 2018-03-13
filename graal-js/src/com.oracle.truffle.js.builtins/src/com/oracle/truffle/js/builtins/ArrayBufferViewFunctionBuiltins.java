@@ -64,7 +64,7 @@ public final class ArrayBufferViewFunctionBuiltins extends JSBuiltinsContainer.S
         @Specialization
         protected DynamicObject arrayOf(Object thisObj, Object... args) {
             if (!isTypedArrayConstructor(thisObj)) {
-                throw Errors.createTypeError("TypedArray expected");
+                throw Errors.createTypeErrorConstructorExpected();
             }
             int len = args.length;
             DynamicObject newObj = getArraySpeciesConstructorNode().typedArrayCreate((DynamicObject) thisObj, len);
@@ -92,7 +92,7 @@ public final class ArrayBufferViewFunctionBuiltins extends JSBuiltinsContainer.S
             Object thisArg = JSRuntime.getArgOrUndefined(args, 2);
 
             if (!JSFunction.isConstructor(thisObj)) {
-                throw Errors.createTypeError("constructor expected");
+                throw Errors.createTypeErrorConstructorExpected();
             }
             return arrayFromIntl(thisObj, source, mapFn, thisArg, false);
         }

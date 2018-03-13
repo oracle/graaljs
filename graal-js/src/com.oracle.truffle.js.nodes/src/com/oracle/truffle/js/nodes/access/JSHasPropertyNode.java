@@ -8,6 +8,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -104,7 +105,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         } catch (UnknownIdentifierException e) {
             return false; // read did not work, so HAS == false;
         } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeError("cannot read from foreign object due to: " + e.getMessage());
+            throw Errors.createTypeErrorInteropException(object, e, Message.READ, this);
         }
     }
 

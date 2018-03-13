@@ -363,7 +363,7 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
         protected boolean executeError(Object obj, Object name) {
-            throw Errors.createTypeError("cannot call READ on a non-interop object");
+            throw Errors.createTypeErrorNotATruffleObject(Message.READ);
         }
     }
 
@@ -393,7 +393,7 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
         protected boolean executeError(Object obj, Object name, Object value) {
-            throw Errors.createTypeError("cannot call WRITE on a non-interop object");
+            throw Errors.createTypeErrorNotATruffleObject(Message.WRITE);
         }
     }
 
@@ -422,7 +422,7 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
         protected boolean executeError(Object obj, Object key) {
-            throw Errors.createTypeError("cannot call REMOVE on a non-interop object");
+            throw Errors.createTypeErrorNotATruffleObject(Message.REMOVE);
         }
     }
 
@@ -456,7 +456,7 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isTruffleObject(obj)", "!isJavaPrimitive(obj)"})
         protected boolean executeError(Object obj) {
-            throw Errors.createTypeError("cannot call UNBOX on a non-interop object");
+            throw Errors.createTypeErrorNotATruffleObject(Message.UNBOX);
         }
 
         private Object toJSType(Object value) {
@@ -481,7 +481,7 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         protected Object execute(TruffleObject obj, Object[] arguments) {
             if (execute == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                execute = insert(Message.createExecute(arguments.length).createNode());
+                execute = insert(JSInteropUtil.EXECUTE.createNode());
             }
             try {
                 TruffleObject target = (TruffleObject) exportValue.executeWithTarget(obj, Undefined.instance);
@@ -498,7 +498,7 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
         protected boolean executeError(Object obj, Object[] arguments) {
-            throw Errors.createTypeError("Cannot execute a non-interop object");
+            throw Errors.createTypeErrorNotATruffleObject(JSInteropUtil.EXECUTE);
         }
     }
 
@@ -514,7 +514,7 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         protected Object construct(TruffleObject obj, Object[] arguments) {
             if (construct == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                construct = insert(Message.createNew(arguments.length).createNode());
+                construct = insert(JSInteropUtil.NEW.createNode());
             }
             try {
                 TruffleObject target = (TruffleObject) exportValue.executeWithTarget(obj, Undefined.instance);
@@ -531,7 +531,7 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
         protected boolean executeError(Object obj, Object[] arguments) {
-            throw Errors.createTypeError("Cannot construct a non-interop object");
+            throw Errors.createTypeErrorNotATruffleObject(JSInteropUtil.NEW);
         }
     }
 
@@ -558,7 +558,7 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
         protected boolean executeError(Object obj) {
-            throw Errors.createTypeError("cannot call GET_SIZE on a non-interop object");
+            throw Errors.createTypeErrorNotATruffleObject(Message.GET_SIZE);
         }
     }
 
@@ -697,14 +697,14 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
             try {
                 return ForeignAccess.sendKeys(keysNode, obj);
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorFormat("cannot retrieve keys of foreign object due to: %s", e.getMessage());
+                throw Errors.createTypeErrorInteropException(obj, e, Message.KEYS, this);
             }
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
         protected boolean executeError(Object obj) {
-            throw Errors.createTypeError("cannot call KEYS on a non-interop object");
+            throw Errors.createTypeErrorNotATruffleObject(Message.KEYS);
         }
     }
 

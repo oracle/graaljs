@@ -364,7 +364,7 @@ public class WriteElementNode extends JSTargetableNode {
             } else if (target instanceof Number) {
                 return new NumberWriteElementTypeCacheNode(context, isStrict, target.getClass(), writeOwn);
             } else if (target instanceof Symbol && isStrict) {
-                throw Errors.createTypeError("cannot set element on Symbol in strict mode");
+                throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
             } else if (target instanceof TruffleObject && !(target instanceof Symbol)) {
                 return new TruffleObjectWriteElementTypeCacheNode(context, isStrict, (Class<? extends TruffleObject>) target.getClass(), writeOwn);
             } else if (target instanceof Map) {
@@ -713,14 +713,14 @@ public class WriteElementNode extends JSTargetableNode {
                     if (nr >= 0 && nr <= 65535) {
                         return (char) nr;
                     } else {
-                        throw Errors.createTypeError("Cannot convert number to character; it is out of 0-65535 range");
+                        throw Errors.createTypeError("Cannot convert number to character; it is out of 0-65535 range", this);
                     }
                 } else {
                     String str = valueToString(value);
                     if (str.length() == 1) {
                         return str.charAt(0);
                     } else {
-                        throw Errors.createTypeError("Cannot convert string to character; its length must be exactly 1");
+                        throw Errors.createTypeError("Cannot convert string to character; its length must be exactly 1", this);
                     }
                 }
             } else if (array instanceof short[] || array instanceof Short[]) {

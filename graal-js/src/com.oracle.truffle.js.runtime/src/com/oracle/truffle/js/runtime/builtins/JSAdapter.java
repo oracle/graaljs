@@ -317,8 +317,13 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         if (JSFunction.isJSFunction(call)) {
             return JSFunction.bind(JSFunction.getRealm((DynamicObject) call), (DynamicObject) call, store, new Object[]{name});
         } else {
-            throw typeErrorNoSuchFunction(store, name);
+            throw createTypeErrorNoSuchFunction(store, name);
         }
+    }
+
+    @TruffleBoundary
+    private JSException createTypeErrorNoSuchFunction(DynamicObject thisObj, Object name) {
+        return Errors.createTypeErrorFormat("%s has no such function \"%s\"", defaultToString(thisObj), name);
     }
 
     @Override

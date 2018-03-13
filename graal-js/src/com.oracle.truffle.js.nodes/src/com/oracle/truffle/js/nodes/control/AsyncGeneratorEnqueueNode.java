@@ -54,7 +54,7 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
     public Object execute(VirtualFrame frame, DynamicObject generator, Completion completion) {
         DynamicObject promiseCapability = newPromiseCapability();
         if (!JSGuards.isJSObject(generator) || !hasAsyncGeneratorInternalSlots.executeHasHiddenKey(generator)) {
-            Object badGeneratorError = Errors.createTypeError("Not an async generator object").getErrorObjectEager(context);
+            Object badGeneratorError = Errors.createTypeErrorAsyncGeneratorObjectExpected().getErrorObjectEager(context);
             Object reject = getPromiseReject.getValue(generator);
             callPromiseRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, reject, badGeneratorError));
             return getPromise.getValue(promiseCapability);

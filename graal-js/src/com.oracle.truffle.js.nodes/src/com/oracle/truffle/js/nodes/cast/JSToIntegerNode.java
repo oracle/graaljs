@@ -71,8 +71,8 @@ public abstract class JSToIntegerNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static int doSymbol(@SuppressWarnings("unused") Symbol value) {
-        throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value");
+    protected final int doSymbol(@SuppressWarnings("unused") Symbol value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
     }
 
     @Specialization

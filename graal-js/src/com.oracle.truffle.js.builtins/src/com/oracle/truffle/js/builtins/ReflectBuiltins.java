@@ -127,7 +127,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         protected void ensureCallable(Object target) {
             if (!JSRuntime.isCallable(target)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("callable expected");
+                throw Errors.createTypeErrorCallableExpected();
             }
         }
 
@@ -189,7 +189,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             ensureObject(obj);
             DynamicObject constrObj = (DynamicObject) (obj);
             if (!JSRuntime.isConstructor(constrObj)) {
-                throw Errors.createTypeError("constructor expected");
+                throw Errors.createTypeErrorConstructorExpected();
             }
         }
     }
@@ -385,7 +385,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         protected boolean reflectSetPrototypeOf(Object target, Object proto) {
             ensureObject(target);
             if (!(JSObject.isJSObject(proto) || proto == Null.instance) || proto == Undefined.instance) {
-                throw Errors.createTypeErrorObjectExpected();
+                throw Errors.createTypeErrorInvalidPrototype(proto);
             }
             return JSObject.setPrototype((DynamicObject) target, (DynamicObject) proto);
         }

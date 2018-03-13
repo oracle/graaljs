@@ -541,12 +541,12 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
 
             if (!JSArrayBufferView.isJSArrayBufferView(tarray)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("TypedArray expected");
+                throw Errors.createTypeErrorArrayBufferViewExpected();
             }
             DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(tarray);
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("type error");
+                throw Errors.createTypeErrorDetachedBuffer();
             }
             byte[] block;
             final boolean isHeapArrayBuffer = JSArrayBuffer.isJSHeapArrayBuffer(arrayBuffer);
@@ -601,7 +601,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
 
             if (!JSArrayBufferView.isJSArrayBufferView(tarray)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("TypedArray expected");
+                throw Errors.createTypeErrorArrayBufferViewExpected();
             }
             DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(tarray);
             if (arrayBuffer == null || arrayBuffer == Undefined.instance) {
@@ -610,7 +610,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             }
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("type error");
+                throw Errors.createTypeErrorDetachedBuffer();
             }
             if (!JSArrayBufferView.isJSArrayBufferView(tarray)) {
                 errorBranch.enter();
@@ -2160,7 +2160,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         protected Object doStore(DynamicObject tarray, Object index, DynamicObject simd) {
             if (!JSArrayBufferView.isJSArrayBufferView(tarray)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("TypedArray expected");
+                throw Errors.createTypeErrorArrayBufferViewExpected();
             }
             if (!JSSIMD.isJSSIMD(simd)) {
                 errorBranch.enter();

@@ -91,7 +91,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
             setState(frame, 0);
             Object innerResult = resumeAwait(frame);
             if (!JSObject.isJSObject(innerResult)) {
-                throw Errors.createTypeError("not an object");
+                throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
             }
             return innerResult;
         }

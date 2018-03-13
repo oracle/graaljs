@@ -1699,7 +1699,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 Object adder = getAdderFn(setObj, "add");
                 if (!JSFunction.isJSFunction(adder)) {
                     errorBranch.enter();
-                    throw Errors.createTypeError("function set not callable");
+                    throw Errors.createTypeError("function add not callable");
                 }
                 DynamicObject adderFn = (DynamicObject) adder;
                 DynamicObject iter = getIterator(iterable);

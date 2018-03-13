@@ -55,7 +55,7 @@ public class AsyncIteratorNextNode extends AwaitNode {
             setState(frame, 0);
             Object result = resumeAwait(frame);
             if (!JSObject.isJSObject(result)) {
-                throw Errors.createTypeError("Iterator Result not an object");
+                throw Errors.createTypeErrorIterResultNotAnObject(result, this);
             }
             return result;
         }

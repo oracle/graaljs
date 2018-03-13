@@ -230,7 +230,7 @@ class YieldStarNode extends YieldNode {
             }
             return saveStateAndYield(frame, iterator, innerResult);
         } else {
-            JSException error = Errors.createTypeErrorYieldStarThrowMethodMissing();
+            JSException error = Errors.createTypeErrorYieldStarThrowMethodMissing(this);
             iteratorCloseNode.executeAbrupt(iterator);
             throw error; // should happen inside iteratorClose
         }
@@ -239,7 +239,7 @@ class YieldStarNode extends YieldNode {
     private DynamicObject callThrowMethod(DynamicObject iterator, Object received, Object throwMethod) {
         Object innerResult = callThrowNode.executeCall(JSArguments.createOneArg(iterator, throwMethod, received));
         if (!JSRuntime.isObject(innerResult)) {
-            throw Errors.createTypeErrorNotAnObject(innerResult);
+            throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
         }
         return (DynamicObject) innerResult;
     }
@@ -247,7 +247,7 @@ class YieldStarNode extends YieldNode {
     private DynamicObject callReturnMethod(DynamicObject iterator, Object received, Object returnMethod) {
         Object innerResult = callReturnNode.executeCall(JSArguments.createOneArg(iterator, returnMethod, received));
         if (!JSRuntime.isObject(innerResult)) {
-            throw Errors.createTypeErrorNotAnObject(innerResult);
+            throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
         }
         return (DynamicObject) innerResult;
     }

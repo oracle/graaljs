@@ -104,7 +104,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
             Object[] trapArgs = new Object[]{pxTarget, JSArray.createConstant(context, constructorArguments), newTarget};
             Object result = callTrapNode.executeCall(JSArguments.create(pxHandler, pxTrapFun, trapArgs));
             if (!JSRuntime.isObject(result)) {
-                throw Errors.createTypeErrorObjectExpected();
+                throw Errors.createTypeErrorNotAnObject(result, this);
             }
             return result;
         }

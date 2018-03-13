@@ -89,9 +89,9 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     @TruffleBoundary
     private JSException createTypeError(DynamicObject value) {
         if (fromWith) {
-            return Errors.createTypeError("Cannot apply \"with\" to " + JSRuntime.safeToString(value));
+            return Errors.createTypeError("Cannot apply \"with\" to " + JSRuntime.safeToString(value), this);
         }
-        return Errors.createTypeErrorNotObjectCoercible(value);
+        return Errors.createTypeErrorNotObjectCoercible(value, this);
     }
 
     @Specialization
@@ -155,7 +155,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isForeignObject(object)")
     protected DynamicObject doForeignDynamicObject(@SuppressWarnings("unused") DynamicObject object) {
-        throw Errors.createTypeError("Foreign DynamicObjects not supported");
+        throw Errors.createTypeError("Foreign DynamicObjects not supported", this);
     }
 
     @Specialization(guards = {"isForeignObject(obj)", "!isDynamicObject(obj)"})
@@ -163,7 +163,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         if (allowForeign) {
             return obj;
         } else {
-            throw Errors.createTypeError("Foreign TruffleObject not supported");
+            throw Errors.createTypeError("Foreign TruffleObject not supported", this);
         }
     }
 
@@ -184,12 +184,12 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private static void throwWithError() {
+    private void throwWithError() {
         String message = "Cannot apply \"with\" to non script object";
         if (JSTruffleOptions.NashornCompatibilityMode) {
             message += ". Consider using \"with(Object.bindProperties({}, nonScriptObject))\".";
         }
-        throw Errors.createTypeError(message);
+        throw Errors.createTypeError(message, this);
     }
 
     public abstract static class JSToObjectWrapperNode extends JSUnaryNode {

@@ -204,7 +204,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                                 }
                                 awaited = awaitWithNext(frame, returnResult, throwAwaitReturnResult);
                             }
-                            throw Errors.createTypeErrorYieldStarThrowMethodMissing();
+                            throw Errors.createTypeErrorYieldStarThrowMethodMissing(this);
                         }
                     } else {
                         assert received.isReturn();
@@ -287,7 +287,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                 case throwAwaitReturnResult: {
                     // AsyncIteratorClose: handle Await(innerResult) throw completion.
                     awaited = resumeAwait(frame);
-                    throw Errors.createTypeErrorYieldStarThrowMethodMissing();
+                    throw Errors.createTypeErrorYieldStarThrowMethodMissing(this);
                 }
                 default:
                     throw Errors.shouldNotReachHere();
@@ -320,9 +320,9 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         return callReturnNode.executeCall(JSArguments.createOneArg(iterator, returnMethod, received));
     }
 
-    private static DynamicObject checkcastIterResult(Object iterResult) {
+    private DynamicObject checkcastIterResult(Object iterResult) {
         if (!JSRuntime.isObject(iterResult)) {
-            throw Errors.createTypeError("Iterator Result not an object");
+            throw Errors.createTypeErrorIterResultNotAnObject(iterResult, this);
         }
         return (DynamicObject) iterResult;
     }

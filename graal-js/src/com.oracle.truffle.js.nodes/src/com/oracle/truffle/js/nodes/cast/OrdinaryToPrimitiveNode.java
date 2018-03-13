@@ -81,7 +81,7 @@ public class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             }
         }
 
-        throw Errors.createTypeErrorCannotConvertToPrimitiveValue();
+        throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }
 
     protected Object doHintNumber(DynamicObject object) {
@@ -102,7 +102,7 @@ public class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
             }
         }
 
-        throw Errors.createTypeErrorCannotConvertToPrimitiveValue();
+        throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }
 
     private PropertyNode getToString() {
