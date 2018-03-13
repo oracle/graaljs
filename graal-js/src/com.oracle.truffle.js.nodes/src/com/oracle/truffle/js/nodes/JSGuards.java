@@ -211,6 +211,10 @@ public final class JSGuards {
         return JSRuntime.isJavaNumber(operand);
     }
 
+    public static boolean isJavaObject(Object operand) {
+        return JSRuntime.isJavaObject(operand);
+    }
+
     public static boolean isNumberInteger(Object thisObj) {
         return thisObj instanceof Integer;
     }
