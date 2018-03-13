@@ -1448,7 +1448,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected final DynamicObject call() {
-            throw Errors.createTypeError("Constructor %s requires 'new'", getBuiltin().getName());
+            throw Errors.createTypeErrorFormat("Constructor %s requires 'new'", getBuiltin().getName());
         }
     }
 

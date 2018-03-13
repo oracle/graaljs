@@ -503,7 +503,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 if (isJavaArrayClass(toType)) {
                     return toArray(jsObj, (TruffleObject) toType);
                 } else {
-                    throw Errors.createTypeError("Unsupported type: %s", toType);
+                    throw Errors.createTypeErrorFormat("Unsupported type: %s", toType);
                 }
             } else if (toType == Undefined.instance) {
                 if (JSTruffleOptions.NashornJavaInterop) {
@@ -521,7 +521,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 } else if (isJavaArrayClass(javaType)) {
                     return toArray(jsObj, (TruffleObject) javaType);
                 } else {
-                    throw Errors.createTypeError("Unsupported type: %s", className);
+                    throw Errors.createTypeErrorFormat("Unsupported type: %s", className);
                 }
             }
             assert JSTruffleOptions.NashornJavaInterop;
@@ -530,7 +530,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             } else if (isListCondition.profile(targetType == List.class)) {
                 return toList(jsObj);
             } else {
-                throw Errors.createTypeError("Unsupported type: %s", targetType);
+                throw Errors.createTypeErrorFormat("Unsupported type: %s", targetType);
             }
         }
 
@@ -622,7 +622,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             } else if (componentType == String.class) {
                 return isNull(element) ? null : JSRuntime.toString(element);
             } else {
-                throw Errors.createTypeError("Unsupported component type: %s", componentType);
+                throw Errors.createTypeErrorFormat("Unsupported component type: %s", componentType);
             }
         }
 

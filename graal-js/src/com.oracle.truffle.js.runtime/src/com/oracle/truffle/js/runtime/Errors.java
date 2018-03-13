@@ -46,7 +46,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeError(String message, Object... args) {
+    public static JSException createTypeErrorFormat(String message, Object... args) {
         return JSException.create(JSErrorType.TypeError, String.format(message, args));
     }
 
@@ -213,14 +213,14 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorCannotRedefineProperty(Object key) {
         assert JSRuntime.isPropertyKey(key);
-        return Errors.createTypeError("Cannot redefine property %s", key);
+        return Errors.createTypeErrorFormat("Cannot redefine property %s", key);
     }
 
     @TruffleBoundary
     public static JSException createTypeErrorCannotSetPropertyOf(Object key, Object object) {
         assert JSRuntime.isPropertyKey(key);
         if (JSTruffleOptions.NashornCompatibilityMode) {
-            return Errors.createTypeError("Cannot set property \"%s\" of %s", key, JSRuntime.safeToString(object));
+            return Errors.createTypeErrorFormat("Cannot set property \"%s\" of %s", key, JSRuntime.safeToString(object));
         } else {
             return Errors.createTypeErrorCannotRedefineProperty(key);
         }
@@ -230,9 +230,9 @@ public final class Errors {
     public static JSException createTypeErrorCannotSetAccessorProperty(Object key, DynamicObject store) {
         assert JSRuntime.isPropertyKey(key);
         if (JSTruffleOptions.NashornCompatibilityMode) {
-            return Errors.createTypeError("Cannot set property \"%s\" of %s that has only a getter", key, JSObject.defaultToString(store));
+            return Errors.createTypeErrorFormat("Cannot set property \"%s\" of %s that has only a getter", key, JSObject.defaultToString(store));
         } else {
-            return Errors.createTypeError("Cannot redefine property %s which has only a getter", key);
+            return Errors.createTypeErrorFormat("Cannot redefine property %s which has only a getter", key);
         }
     }
 

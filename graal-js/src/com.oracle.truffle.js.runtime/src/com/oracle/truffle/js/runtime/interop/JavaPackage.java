@@ -110,7 +110,7 @@ public final class JavaPackage extends JSBuiltinObject {
                 if (javaClass != null) {
                     return javaClass.getBestConstructor(Boundaries.substring(name, openParen + 1, name.length() - 1));
                 } else {
-                    throw Errors.createTypeError("No such Java class: %s", prependPackageName(thisObj, className));
+                    throw Errors.createTypeErrorFormat("No such Java class: %s", prependPackageName(thisObj, className));
                 }
             }
         }

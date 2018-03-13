@@ -148,7 +148,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         protected final JSException createTypeErrorCalledOnNonObject(Object value) {
             assert !JSRuntime.isObject(value);
-            return Errors.createTypeError("Object.%s called on non-object", getBuiltin().getName());
+            return Errors.createTypeErrorFormat("Object.%s called on non-object", getBuiltin().getName());
         }
     }
 

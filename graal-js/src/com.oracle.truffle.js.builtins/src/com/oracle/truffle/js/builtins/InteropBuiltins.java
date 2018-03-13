@@ -697,7 +697,7 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
             try {
                 return ForeignAccess.sendKeys(keysNode, obj);
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeError("cannot retrieve keys of foreign object due to: %s", e.getMessage());
+                throw Errors.createTypeErrorFormat("cannot retrieve keys of foreign object due to: %s", e.getMessage());
             }
         }
 

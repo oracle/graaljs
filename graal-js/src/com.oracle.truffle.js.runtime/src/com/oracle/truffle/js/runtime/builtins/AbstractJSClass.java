@@ -23,12 +23,12 @@ public abstract class AbstractJSClass extends JSClass {
 
     @TruffleBoundary
     private static JSException cannotDoPropertyOf(String doWhat, Object index, Object thisObj) {
-        return Errors.createTypeError("Cannot %s property \"%s\" of %s", doWhat, index, JSRuntime.safeToString(thisObj));
+        return Errors.createTypeErrorFormat("Cannot %s property \"%s\" of %s", doWhat, index, JSRuntime.safeToString(thisObj));
     }
 
     @TruffleBoundary
     protected final JSException typeErrorNoSuchFunction(DynamicObject thisObj, Object name) {
-        return Errors.createTypeError("%s has no such function \"%s\"", defaultToString(thisObj), name);
+        return Errors.createTypeErrorFormat("%s has no such function \"%s\"", defaultToString(thisObj), name);
     }
 
     @TruffleBoundary
