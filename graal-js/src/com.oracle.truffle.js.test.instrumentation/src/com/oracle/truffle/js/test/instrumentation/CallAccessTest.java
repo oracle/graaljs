@@ -283,4 +283,22 @@ public class CallAccessTest extends FineGrainedAccessTest {
             }).exit();
         }).exit();
     }
+
+    @Test
+    public void callForeignTest() {
+        String src = "var r = Interop.import('run'); r.run();";
+        declareInteropSymbol("run", new ForeignTestObject());
+        evalWithTag(src, FunctionCallExpressionTag.class);
+
+        enter(FunctionCallExpressionTag.class, (e, call) -> {
+            call.input(assertJSObjectInput);
+            call.input(assertJSFunctionInput);
+            call.input("run");
+        }).exit();
+        enter(FunctionCallExpressionTag.class, (e, call) -> {
+            call.input(assertTruffleObject);
+            call.input(assertTruffleObject);
+        }).exit();
+    }
+
 }

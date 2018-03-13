@@ -309,6 +309,10 @@ public abstract class FineGrainedAccessTest {
         context.eval("js", src);
     }
 
+    protected void declareInteropSymbol(String name, ForeignTestObject foreignObject) {
+        context.exportSymbol(name, foreignObject);
+    }
+
     @After
     public void disposeAgent() {
         assertTrue(events.isEmpty());
@@ -374,6 +378,10 @@ public abstract class FineGrainedAccessTest {
         assertTrue(!JSFunction.isJSFunction(e.val));
         assertTrue(!JSArray.isJSArray(e.val));
         assertTrue(JSObject.isJSObject(e.val));
+    };
+
+    protected static final Consumer<Event> assertTruffleObject = (e) -> {
+        assertTrue(e.val instanceof TruffleObject);
     };
 
     protected static final Consumer<Event> assertJSArrayInput = (e) -> {

@@ -145,6 +145,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         return this instanceof InvokeNode;
     }
 
+    protected abstract Object getPropertyKey();
+
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == FunctionCallExpressionTag.class) {
@@ -261,6 +263,14 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         public String expressionToString() {
             return Objects.toString(functionNode.expressionToString(), INTERMEDIATE_VALUE) + "(...)";
         }
+
+        @Override
+        protected Object getPropertyKey() {
+            if (functionNode instanceof PropertyNode) {
+                return ((PropertyNode) functionNode).getPropertyKey();
+            }
+            return null;
+        }
     }
 
     /**
@@ -352,6 +362,14 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 return this;
             }
         }
+
+        @Override
+        protected Object getPropertyKey() {
+            if (functionTargetNode instanceof PropertyNode) {
+                return ((PropertyNode) functionTargetNode).getPropertyKey();
+            }
+            return null;
+        }
     }
 
     /**
@@ -410,6 +428,28 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         protected JavaScriptNode copyUninitialized() {
             return new MaterializedInvokeNode(cloneUninitialized(getFunctionTargetNode()), AbstractFunctionArgumentsNode.cloneUninitialized(getArgumentsNode()), flags);
         }
+
+        @Override
+        protected Object getPropertyKey() {
+            if (functionTargetNode instanceof JSTaggedTargetableExecutionNode) {
+                return maybeGetPropertyKey(((JSTaggedTargetableExecutionNode) functionTargetNode).getChild());
+            } else if (functionTargetNode instanceof WrapperNode) {
+                return maybeGetPropertyKey(((WrapperNode) functionTargetNode).getDelegateNode());
+            } else {
+                return maybeGetPropertyKey(functionTargetNode);
+            }
+        }
+
+        private static Object maybeGetPropertyKey(Node node) {
+            if (node instanceof JSTaggedTargetableExecutionNode) {
+                return maybeGetPropertyKey(((JSTaggedTargetableExecutionNode) node).getChild());
+            } else if (node instanceof WrapperNode) {
+                return maybeGetPropertyKey((((WrapperNode) node).getDelegateNode()));
+            } else if (node instanceof PropertyNode) {
+                return ((PropertyNode) node).getPropertyKey();
+            }
+            return null;
+        }
     }
 
     static class ExecuteCallNode extends JSFunctionCallNode {
@@ -430,6 +470,11 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Override
         protected JavaScriptNode copyUninitialized() {
             return new ExecuteCallNode(flags);
+        }
+
+        @Override
+        protected Object getPropertyKey() {
+            return null;
         }
     }
 
@@ -753,21 +798,17 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 while (parent instanceof AbstractCacheNode) {
                     parent = parent.getParent();
                 }
-                JSFunctionCallNode functionCallNode = (JSFunctionCallNode) parent;
-                JavaScriptNode functionNode = null;
-                if (functionCallNode instanceof CallNode) {
-                    functionNode = ((CallNode) functionCallNode).functionNode;
-                } else if (functionCallNode instanceof InvokeNode) {
-                    functionNode = ((InvokeNode) functionCallNode).getFunctionTargetNode();
-                }
 
-                if (functionNode instanceof PropertyNode) {
-                    String functionName = (String) ((PropertyNode) functionNode).getPropertyKey();
-                    return replace(new CallForeignTargetCacheNode(true, new ForeignInvokeNode(ExportArgumentsNode.create(userArgumentCount), functionName), createUninitialized()));
+                JSFunctionCallNode functionCallNode = (JSFunctionCallNode) parent;
+                Object propertyKey = functionCallNode.getPropertyKey();
+                if (propertyKey != null && propertyKey instanceof String) {
+                    return replace(new CallForeignTargetCacheNode(true, new ForeignInvokeNode(ExportArgumentsNode.create(userArgumentCount), (String) propertyKey),
+                                    createUninitialized()));
                 }
             }
             return replace(new CallForeignTargetCacheNode(false, new ForeignExecuteNode(ExportArgumentsNode.create(userArgumentCount)), createUninitialized()));
         }
+
     }
 
     private static final class BoundCallNode extends JSDirectCallNode {
