@@ -50,8 +50,6 @@ public class TruffleJSONParser {
             throwStackError();
         } catch (JSException ex) {
             throw ex;
-        } catch (AssertionError ex) {
-            throwSyntaxError(ex.getMessage());
         } catch (StringIndexOutOfBoundsException ex) {
             throwSyntaxError(unexpectedEndOfInputMessage());
         } catch (Exception ex) {
@@ -466,7 +464,6 @@ public class TruffleJSONParser {
     }
 
     protected char get(int posParam) {
-        assert len > posParam : unexpectedEndOfInputMessage();
         return parseStr.charAt(posParam);
     }
 
