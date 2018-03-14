@@ -10,13 +10,16 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
-import com.oracle.truffle.js.runtime.RegexCompiler;
+import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 
 @ImportStatic(JSTruffleOptions.class)
 @NodeField(name = "context", type = JSContext.class)
 public abstract class CompileRegexNode extends JavaScriptBaseNode {
+
+    @Child private Node executeCompilerNode = RegexCompilerInterface.createExecuteCompilerNode();
 
     public static CompileRegexNode create(JSContext context) {
         return CompileRegexNodeGen.create(context);
@@ -56,6 +59,6 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
 
     @Specialization(replaces = {"getCached"})
     protected Object doCompile(String pattern, String flags) {
-        return RegexCompiler.compile(pattern, flags, getContext());
+        return RegexCompilerInterface.compile(pattern, flags, getContext(), executeCompilerNode);
     }
 }

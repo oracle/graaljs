@@ -36,7 +36,11 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.LocationModifier;
@@ -56,6 +60,7 @@ import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 import com.oracle.truffle.js.runtime.interop.DefaultJavaInteropWorker;
 import com.oracle.truffle.js.runtime.interop.DefaultJavaInteropWorker.DefaultMainWorker;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
+import com.oracle.truffle.js.runtime.joni.JoniRegexCompiler;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -66,6 +71,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
+import com.oracle.truffle.regex.RegexCompiler;
+import com.oracle.truffle.regex.RegexEngine;
 
 public class JSContext implements ShapeContext {
     private final Evaluator evaluator;
@@ -136,6 +143,8 @@ public class JSContext implements ShapeContext {
 
     private final Shape dictionaryShapeNullPrototype;
 
+    /** The RegExp engine, as obtained from RegexLanguage. */
+    private TruffleObject regexEngine;
     /** Support for RegExp.$1. */
     private TruffleObject regexResult;
 
@@ -736,6 +745,39 @@ public class JSContext implements ShapeContext {
 
     public DynamicObjectFactory getJavaWrapperFactory() {
         return javaWrapperFactory;
+    }
+
+    private static String createRegexEngineOptions() {
+        StringBuilder options = new StringBuilder(30);
+        if (JSTruffleOptions.U180EWhitespace) {
+            options.append("U180EWhitespace=true");
+        }
+        if (JSTruffleOptions.RegexRegressionTestMode) {
+            if (options.length() > 0) {
+                options.append(",");
+            }
+            options.append("RegressionTestMode=true");
+        }
+        return options.toString();
+    }
+
+    public TruffleObject getRegexEngine() {
+        if (regexEngine == null) {
+            RegexCompiler joniCompiler = new JoniRegexCompiler(null);
+            if (JSTruffleOptions.UseTRegex) {
+                LanguageInfo regexLanguage = getEnv().getLanguages().get("regex");
+                TruffleObject regexEngineBuilder = (TruffleObject) getEnv().lookupSymbol(regexLanguage, "T_REGEX_ENGINE_BUILDER");
+                String regexOptions = createRegexEngineOptions();
+                try {
+                    regexEngine = (TruffleObject) ForeignAccess.sendExecute(Message.createExecute(2).createNode(), regexEngineBuilder, regexOptions, joniCompiler);
+                } catch (InteropException ex) {
+                    throw ex.raise();
+                }
+            } else {
+                regexEngine = new RegexEngine(joniCompiler, JSTruffleOptions.RegexRegressionTestMode);
+            }
+        }
+        return regexEngine;
     }
 
     public TruffleObject getRegexResult() {

@@ -5,15 +5,15 @@
 package com.oracle.truffle.regex.tregex.buffer;
 
 import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.tregex.TRegexEngine;
+import com.oracle.truffle.regex.tregex.TRegexCompiler;
 
 /**
  * This class is instantiated once per compilation of a regular expression in
- * {@link TRegexEngine#compile(RegexSource)} and is supposed to reduce the amount of allocations
+ * {@link TRegexCompiler#compile(RegexSource)} and is supposed to reduce the amount of allocations
  * during automaton generation. It provides various "scratch-pad" buffers for the creation of arrays
  * of unknown size. When using these buffers, take extra care not to use them in two places
- * simultaneously! {@link TRegexEngine#compile(RegexSource)} is designed to be run single-threaded,
- * but nested functions may still lead to "simultaneous" use of these buffers.
+ * simultaneously! {@link TRegexCompiler#compile(RegexSource)} is designed to be run
+ * single-threaded, but nested functions may still lead to "simultaneous" use of these buffers.
  *
  * @see ObjectArrayBuffer
  * @see ByteArrayBuffer

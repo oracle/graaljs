@@ -2,13 +2,14 @@
  * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
-package com.oracle.truffle.regex.joni;
+package com.oracle.truffle.js.runtime.joni;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.regex.CompiledRegex;
-import com.oracle.truffle.regex.RegexEngine;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.regex.CompiledRegexObject;
+import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexRootNode;
@@ -22,7 +23,7 @@ import com.oracle.truffle.regex.nashorn.regexp.joni.exception.JOniException;
 
 import java.util.regex.PatternSyntaxException;
 
-public final class JoniRegexEngine implements RegexEngine {
+public final class JoniRegexCompiler extends RegexCompiler {
 
     private final RegexLanguage language;
     // For Joni, we want to share call targets to avoid excessive splitting.
@@ -31,7 +32,7 @@ public final class JoniRegexEngine implements RegexEngine {
     private CallTarget matchSimpleCallTarget;
     private CallTarget matchGroupCallTarget;
 
-    public JoniRegexEngine(RegexLanguage language) {
+    public JoniRegexCompiler(RegexLanguage language) {
         this.language = language;
     }
 
@@ -65,7 +66,7 @@ public final class JoniRegexEngine implements RegexEngine {
 
     @CompilerDirectives.TruffleBoundary
     @Override
-    public CompiledRegex compile(RegexSource source) throws RegexSyntaxException {
+    public TruffleObject compile(RegexSource source) throws RegexSyntaxException {
         Regex implementation = createJoniRegex(source.getPattern(), source.getFlags());
         CallTarget callTarget;
         boolean group = PatternAnalyzer.containsGroup(source.getPattern());
@@ -74,7 +75,7 @@ public final class JoniRegexEngine implements RegexEngine {
         } else {
             callTarget = group ? searchGroupCallTarget() : searchSimpleCallTarget();
         }
-        return new JoniCompiledRegex(implementation, callTarget);
+        return new CompiledRegexObject(new JoniCompiledRegex(implementation, callTarget));
     }
 
     @CompilerDirectives.TruffleBoundary

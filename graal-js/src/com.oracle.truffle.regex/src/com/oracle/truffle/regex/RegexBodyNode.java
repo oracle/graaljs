@@ -11,13 +11,16 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExecutableNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 @GenerateWrapper
 public abstract class RegexBodyNode extends ExecutableNode implements InstrumentableNode {
 
-    private final RegexSource source;
+    protected final RegexSource source;
     private final RegexLanguage language;
+
+    private SourceSection sourceSection;
 
     protected RegexBodyNode(RegexLanguage language, RegexSource source) {
         super(language);
@@ -33,9 +36,15 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
         return source;
     }
 
+    @CompilerDirectives.TruffleBoundary
     @Override
     public SourceSection getSourceSection() {
-        return source.getSourceSection();
+        if (sourceSection == null) {
+            String patternSrc = "/" + source.getPattern() + "/" + source.getFlags().toString();
+            Source src = Source.newBuilder(patternSrc).name(source.getPattern()).mimeType("application/js-regex").build();
+            sourceSection = src.createSection(0, patternSrc.length());
+        }
+        return sourceSection;
     }
 
     @Override

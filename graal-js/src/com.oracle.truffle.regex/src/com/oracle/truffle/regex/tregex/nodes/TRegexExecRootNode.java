@@ -16,29 +16,37 @@ import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.RegexProfile;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.result.LazyCaptureGroupsResult;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.result.SingleResult;
 import com.oracle.truffle.regex.result.SingleResultLazyStart;
 import com.oracle.truffle.regex.result.TraceFinderResult;
+import com.oracle.truffle.regex.tregex.TRegexCompiler;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 import java.util.Arrays;
-import java.util.Objects;
 
 public class TRegexExecRootNode extends RegexExecRootNode implements CompiledRegex {
+
+    private static final DebugUtil.DebugLogger LOG_BAILOUT = new DebugUtil.DebugLogger("TRegex Bailout: ", DebugUtil.LOG_BAILOUT_MESSAGES);
 
     private static final EagerCaptureGroupRegexSearchNode EAGER_SEARCH_BAILED_OUT = new EagerCaptureGroupRegexSearchNode(null);
 
     private final CallTarget regexCallTarget;
     private final LazyCaptureGroupRegexSearchNode lazySearchNode;
     private EagerCaptureGroupRegexSearchNode eagerSearchNode;
+    private final TRegexCompiler tRegexCompiler;
+    private final boolean eagerCompilation;
 
     @Child private RunRegexSearchNode runRegexSearchNode;
 
-    public TRegexExecRootNode(RegexLanguage language, RegexSource source,
+    public TRegexExecRootNode(RegexLanguage language,
+                    TRegexCompiler tRegexCompiler,
+                    RegexSource source,
+                    boolean eagerCompilation,
                     PreCalculatedResultFactory[] preCalculatedResults,
                     TRegexDFAExecutorNode forwardExecutor,
                     TRegexDFAExecutorNode backwardExecutor,
@@ -47,7 +55,9 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         lazySearchNode = new LazyCaptureGroupRegexSearchNode(language, source, preCalculatedResults, forwardExecutor, backwardExecutor, captureGroupExecutor);
         runRegexSearchNode = insert(lazySearchNode);
         regexCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, forwardExecutor.getProperties().getFrameDescriptor(), this));
-        if (source.getOptions().isRegressionTestMode() && captureGroupExecutor != null) {
+        this.tRegexCompiler = tRegexCompiler;
+        this.eagerCompilation = eagerCompilation;
+        if (eagerCompilation && captureGroupExecutor != null) {
             compileEagerSearchNode();
         }
         if (DebugUtil.DEBUG_ALWAYS_EAGER) {
@@ -58,7 +68,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
     @Override
     public final RegexResult execute(VirtualFrame frame, RegexObject regex, Object input, int fromIndex) {
         final RegexResult result = runRegexSearchNode.run(frame, regex, input, fromIndex);
-        assert !getSource().getOptions().isRegressionTestMode() || eagerAndLazySearchNodesProduceSameResult(frame, regex, input, fromIndex, result);
+        assert !eagerCompilation || eagerAndLazySearchNodesProduceSameResult(frame, regex, input, fromIndex, result);
         if (CompilerDirectives.inInterpreter() && runRegexSearchNode == lazySearchNode) {
             RegexProfile profile = regex.getRegexProfile();
             if (profile.atEvaluationTripPoint() && profile.shouldUseEagerMatching()) {
@@ -119,11 +129,12 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
 
     private void compileEagerSearchNode() {
         if (eagerSearchNode == null) {
-            TRegexDFAExecutorNode executorNode = Objects.requireNonNull(getLanguage(RegexLanguage.class)).getTRegexEngine().compileEagerDFAExecutor(getSource());
-            if (executorNode == null) {
-                eagerSearchNode = EAGER_SEARCH_BAILED_OUT;
-            } else {
+            try {
+                TRegexDFAExecutorNode executorNode = tRegexCompiler.compileEagerDFAExecutor(getSource());
                 eagerSearchNode = new EagerCaptureGroupRegexSearchNode(executorNode);
+            } catch (UnsupportedRegexException e) {
+                LOG_BAILOUT.log(e.getMessage() + ": " + source);
+                eagerSearchNode = EAGER_SEARCH_BAILED_OUT;
             }
         }
     }

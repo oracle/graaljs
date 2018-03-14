@@ -199,7 +199,7 @@ public class JSTruffleOptions {
     public static final boolean TruffleInterop = booleanOption("TruffleInterop", true, OPTION_LANGUAGE_FEATURE);
     public static final boolean BindProgramResult = booleanOption("BindProgramResult", true, OPTION_SETUP);
 
-    public static final String RegexEngine = stringOption("regex", "", OPTION_SETUP | OPTION_PERFORMANCE);
+    public static final boolean UseTRegex = booleanOption("UseTRegex", true, OPTION_SETUP | OPTION_PERFORMANCE);
     public static final boolean RegexRegressionTestMode = booleanOption("RegexRegressionTestMode", false, OPTION_SETUP);
 
     public static final boolean GraalBuiltin = booleanOption("GraalBuiltin", true, OPTION_SETUP);

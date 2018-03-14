@@ -27,7 +27,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
-import com.oracle.truffle.js.runtime.RegexCompiler;
+import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 
 public class GraalJSParserHelper {
 
@@ -104,7 +104,7 @@ public class GraalJSParserHelper {
                     // validate regular expression
                     if (JSTruffleOptions.ValidateRegExpLiterals) {
                         try {
-                            RegexCompiler.validate(regex.getExpression(), regex.getOptions(), parserOptions.getEcmaScriptVersion());
+                            RegexCompilerInterface.validate(regex.getExpression(), regex.getOptions(), parserOptions.getEcmaScriptVersion());
                         } catch (JSException e) {
                             throw error(e.getRawMessage());
                         }

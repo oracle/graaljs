@@ -14,7 +14,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.RegexCompiler;
+import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 
 public class RegExpLiteralNode extends JavaScriptNode {
@@ -54,7 +54,7 @@ public class RegExpLiteralNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         if (regex == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            regex = RegexCompiler.compile(pattern, flags, context);
+            regex = RegexCompilerInterface.compile(pattern, flags, context);
         }
         return JSRegExp.create(context, regex);
     }

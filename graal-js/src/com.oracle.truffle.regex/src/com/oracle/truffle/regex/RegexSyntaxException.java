@@ -4,7 +4,9 @@
  */
 package com.oracle.truffle.regex;
 
-public class RegexSyntaxException extends Exception {
+import com.oracle.truffle.api.CompilerDirectives;
+
+public class RegexSyntaxException extends RuntimeException {
 
     private static final String template = "Invalid regular expression: /%s/%s: %s";
     private static final String templateNoFlags = "Invalid regular expression: %s: %s";
@@ -13,14 +15,17 @@ public class RegexSyntaxException extends Exception {
         super(msg);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public RegexSyntaxException(String pattern, String msg) {
         super(String.format(templateNoFlags, pattern, msg));
     }
 
+    @CompilerDirectives.TruffleBoundary
     public RegexSyntaxException(String pattern, RegexFlags flags, String msg) {
         super(String.format(template, pattern, flags, msg));
     }
 
+    @CompilerDirectives.TruffleBoundary
     public RegexSyntaxException(String pattern, RegexFlags flags, String msg, Throwable ex) {
         super(String.format(template, pattern, flags, msg), ex);
     }

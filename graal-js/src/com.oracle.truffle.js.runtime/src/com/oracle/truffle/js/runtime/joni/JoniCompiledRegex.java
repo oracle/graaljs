@@ -2,7 +2,7 @@
  * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
-package com.oracle.truffle.regex.joni;
+package com.oracle.truffle.js.runtime.joni;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.regex.CompiledRegex;

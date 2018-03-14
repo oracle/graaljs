@@ -110,6 +110,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.js.runtime.doubleconv",
         "com.oracle.truffle.regex",
+        "com.oracle.truffle.regex.nashorn",
         "mx:ASM_DEBUG_ALL",
         "ICU4J",
       ],
@@ -249,7 +250,6 @@ suite = {
       "dependencies" : [
         "truffle:TRUFFLE_API",
         "sdk:GRAAL_SDK",
-        "com.oracle.truffle.regex.nashorn",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js.runtime",

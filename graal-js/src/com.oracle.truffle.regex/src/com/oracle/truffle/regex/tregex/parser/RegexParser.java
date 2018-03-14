@@ -4,10 +4,12 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -26,6 +28,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.DeleteVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.util.Constants;
+import java.util.ArrayList;
+import java.util.List;
 
 import java.util.function.Function;
 
@@ -83,9 +87,9 @@ public final class RegexParser {
     private Group curGroup;
     private Term curTerm;
 
-    public RegexParser(RegexSource source) {
+    public RegexParser(RegexSource source, RegexOptions options) {
         this.source = source;
-        this.lexer = new RegexLexer(source);
+        this.lexer = new RegexLexer(source, options);
         this.ast = new RegexAST(source);
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
@@ -95,7 +99,7 @@ public final class RegexParser {
 
     private static Group parseRootLess(String pattern) throws RegexSyntaxException {
         try {
-            return new RegexParser(new RegexSource(null, pattern, RegexFlags.DEFAULT, RegexOptions.DEFAULT)).parse(false);
+            return new RegexParser(new RegexSource(pattern, RegexFlags.DEFAULT), RegexOptions.DEFAULT).parse(false);
         } catch (Throwable e) {
             e.printStackTrace();
             System.out.flush();
@@ -103,12 +107,13 @@ public final class RegexParser {
         }
     }
 
-    public static RegexAST parse(RegexSource source) throws RegexSyntaxException {
-        return new RegexParser(source).parse();
+    public static RegexAST parse(RegexSource source, RegexOptions options) throws RegexSyntaxException {
+        return new RegexParser(source, options).parse();
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static void validate(RegexSource source) throws RegexSyntaxException {
-        new RegexParser(source).parse(true);
+        new RegexParser(source, RegexOptions.DEFAULT).parseDryRun();
     }
 
     public RegexAST parse() throws RegexSyntaxException {
@@ -500,4 +505,92 @@ public final class RegexParser {
     private RegexSyntaxException syntaxError(String msg) {
         return new RegexSyntaxException(source.getPattern(), source.getFlags(), msg);
     }
+
+    /**
+     * A type representing an entry in the stack of currently open parenthesized expressions in a
+     * RegExp.
+     */
+    private enum RegexStackElem {
+        Group,
+        LookAroundAssertion
+    }
+
+    /**
+     * Information about the state of the {@link #curTerm} field. The field can be either null,
+     * point to a lookaround assertion node or to some other non-null node.
+     */
+    private enum CurTermState {
+        Null,
+        LookAroundAssertion,
+        Other
+    }
+
+    /**
+     * Like {@link #parse(boolean)}, but does not construct any AST, only checks for syntax errors.
+     * <p>
+     * This method simulates the state of {@link RegexParser} as it runs {@link #parse(boolean)}.
+     * Most of the syntax errors are handled by {@link RegexLexer}. In order to correctly identify
+     * the remaining syntax errors, we need to track only a fraction of the parser's state (the
+     * stack of open parenthesized expressions and a short characterization of the last term).
+     * <p>
+     * Unlike {@link #parse(boolean)}, this method will never throw an
+     * {@link UnsupportedRegexException}.
+     * 
+     * @throws RegexSyntaxException when a syntax error is detected in the RegExp
+     */
+    private void parseDryRun() throws RegexSyntaxException {
+        List<RegexStackElem> syntaxStack = new ArrayList<>();
+        CurTermState curTermState = CurTermState.Null;
+        while (lexer.hasNext()) {
+            Token token = lexer.next();
+            switch (token.kind) {
+                case caret:
+                case dollar:
+                case wordBoundary:
+                case nonWordBoundary:
+                case backReference:
+                case charClass:
+                    curTermState = CurTermState.Other;
+                    break;
+                case quantifier:
+                    if (curTermState == CurTermState.Null) {
+                        throw syntaxError(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
+                    }
+                    if (source.getFlags().isUnicode() && curTermState == CurTermState.LookAroundAssertion) {
+                        throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKAROUND_ASSERTION);
+                    }
+                    curTermState = CurTermState.Other;
+                    break;
+                case alternation:
+                    curTermState = CurTermState.Null;
+                    break;
+                case captureGroupBegin:
+                case nonCaptureGroupBegin:
+                    syntaxStack.add(RegexStackElem.Group);
+                    curTermState = CurTermState.Null;
+                    break;
+                case lookAheadAssertionBegin:
+                case lookBehindAssertionBegin:
+                case negativeLookAheadAssertionBegin:
+                    syntaxStack.add(RegexStackElem.LookAroundAssertion);
+                    curTermState = CurTermState.Null;
+                    break;
+                case groupEnd:
+                    if (syntaxStack.isEmpty()) {
+                        throw syntaxError(ErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
+                    }
+                    RegexStackElem poppedElem = syntaxStack.remove(syntaxStack.size() - 1);
+                    if (poppedElem == RegexStackElem.LookAroundAssertion) {
+                        curTermState = CurTermState.LookAroundAssertion;
+                    } else { // poppedElem == RegexStackElem.Group
+                        curTermState = CurTermState.Other;
+                    }
+                    break;
+            }
+        }
+        if (!syntaxStack.isEmpty()) {
+            throw syntaxError(ErrorMessages.UNTERMINATED_GROUP);
+        }
+    }
+
 }
