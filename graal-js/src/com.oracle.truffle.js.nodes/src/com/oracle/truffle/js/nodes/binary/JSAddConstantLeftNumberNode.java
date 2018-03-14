@@ -128,7 +128,9 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
         CompilerAsserts.neverPartOfCompilation();
         if (truncate == false) {
             truncate = true;
-            Truncatable.truncate(getOperand());
+            if (isInt) {
+                Truncatable.truncate(getOperand());
+            }
         }
     }
 
