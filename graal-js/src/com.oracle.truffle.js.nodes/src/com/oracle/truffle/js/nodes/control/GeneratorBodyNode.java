@@ -111,7 +111,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         private GeneratorState generatorValidate(DynamicObject generatorObject) {
             Object generatorState = getGeneratorState.getValue(generatorObject);
             if (generatorState == Undefined.instance) {
-                throw Errors.createTypeError("not a generator");
+                throw Errors.createTypeErrorGeneratorObjectExpected();
             } else if (GeneratorState.Executing.equals(generatorState)) {
                 throw Errors.createTypeError("generator is already executing");
             }

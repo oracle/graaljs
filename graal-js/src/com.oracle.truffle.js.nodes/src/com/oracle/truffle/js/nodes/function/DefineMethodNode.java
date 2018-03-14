@@ -88,8 +88,8 @@ public class DefineMethodNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = "!isJSObject(prototype)")
-        protected static DynamicObject doNonObject(@SuppressWarnings("unused") Object prototype) {
-            throw Errors.createTypeError("functionPrototype not an object");
+        protected final DynamicObject doNonObject(@SuppressWarnings("unused") Object prototype) {
+            throw Errors.createTypeError("functionPrototype not an object", this);
         }
     }
 }

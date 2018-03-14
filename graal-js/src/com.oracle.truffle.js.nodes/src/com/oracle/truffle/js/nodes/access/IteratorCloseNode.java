@@ -44,7 +44,7 @@ public class IteratorCloseNode extends JavaScriptNode {
         if (returnMethod != Undefined.instance) {
             Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
             if (!isObjectNode.executeBoolean(innerResult)) {
-                throw Errors.createNotAnObjectError(this);
+                throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
             }
         }
     }

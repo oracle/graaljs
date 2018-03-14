@@ -66,7 +66,7 @@ public abstract class JSToStringOrNumberNode extends JavaScriptBaseNode {
 
     @Specialization
     protected Object doSymbol(@SuppressWarnings("unused") Symbol value) {
-        throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value");
+        throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
     }
 
     @Specialization(guards = "isUndefined(value)")

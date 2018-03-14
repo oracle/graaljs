@@ -47,7 +47,7 @@ public class GetMethodNode extends JSTargetableNode {
             return Undefined.instance;
         } else {
             notCallableBranch.enter();
-            throw Errors.createTypeErrorNotAFunction(method);
+            throw Errors.createTypeErrorNotAFunction(method, this);
         }
     }
 

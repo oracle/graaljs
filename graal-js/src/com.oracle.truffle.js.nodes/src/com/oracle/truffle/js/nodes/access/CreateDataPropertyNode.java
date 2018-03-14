@@ -47,8 +47,8 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "!isJSObject(object)")
-    protected static void doNonObject(@SuppressWarnings("unused") Object object, @SuppressWarnings("unused") Object value) {
-        throw Errors.createTypeErrorObjectExpected();
+    protected final void doNonObject(Object object, @SuppressWarnings("unused") Object value) {
+        throw Errors.createTypeErrorNotAnObject(object, this);
     }
 
     protected final PropertySetNode makeDefinePropertyCache(DynamicObject object) {

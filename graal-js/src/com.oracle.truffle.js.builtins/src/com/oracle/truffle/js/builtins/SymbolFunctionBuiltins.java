@@ -99,7 +99,7 @@ public final class SymbolFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @TruffleBoundary
         @Specialization(guards = {"!isSymbol(argument)"})
         protected static Symbol valueOf(Object argument) {
-            throw Errors.createTypeError("Not a symbol: %s", JSRuntime.safeToString(argument));
+            throw Errors.createTypeErrorFormat("Not a symbol: %s", JSRuntime.safeToString(argument));
         }
     }
 }

@@ -68,7 +68,7 @@ public abstract class GetIteratorNode extends JavaScriptNode {
         if (isObjectNode.executeBoolean(iterator)) {
             return (DynamicObject) iterator;
         } else {
-            throw Errors.createNotAnObjectError(origin);
+            throw Errors.createTypeErrorNotAnObject(iterator, origin);
         }
     }
 

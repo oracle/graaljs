@@ -206,7 +206,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSSet(thisObj)", "!isCallable(callback)"})
         protected static Object forEachFunctionNoFunction(Object thisObj, Object callback, Object thisArg) {
-            throw Errors.createTypeError("Callable expected");
+            throw Errors.createTypeErrorCallableExpected();
         }
 
         @SuppressWarnings("unused")

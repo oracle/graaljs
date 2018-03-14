@@ -1995,7 +1995,7 @@ public final class GraalJSAccess {
     }
 
     public void isolateThrowStackOverflowError() {
-        throw Errors.createCallStackSizeExceededError();
+        throw Errors.createRangeErrorStackOverflow();
     }
 
     public void isolateGetHeapStatistics() {

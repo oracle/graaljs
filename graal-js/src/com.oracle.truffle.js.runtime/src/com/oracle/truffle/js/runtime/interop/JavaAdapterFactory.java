@@ -45,7 +45,7 @@ public final class JavaAdapterFactory {
                 if (superClass != null) {
                     throwCannotExtendMultipleClassesError(superClass, t);
                 } else if (Modifier.isFinal(mod)) {
-                    throw Errors.createTypeError("Can not extend final class %s.", t.getCanonicalName());
+                    throw Errors.createTypeErrorFormat("Can not extend final class %s.", t.getCanonicalName());
                 } else {
                     superClass = t;
                 }
@@ -58,7 +58,7 @@ public final class JavaAdapterFactory {
             }
 
             if (!Modifier.isPublic(mod)) {
-                throw Errors.createTypeError("Class not public: %s.", t.getCanonicalName());
+                throw Errors.createTypeErrorFormat("Class not public: %s.", t.getCanonicalName());
             }
         }
         superClass = superClass != null ? superClass : Object.class;
@@ -91,7 +91,7 @@ public final class JavaAdapterFactory {
 
     @TruffleBoundary
     private static void throwCannotExtendMultipleClassesError(Class<?> superClass, Class<?> t) {
-        throw Errors.createTypeError("Can not extend multiple classes %s and %s. At most one of the specified types can be a class, the rest must all be interfaces.", t.getCanonicalName(),
+        throw Errors.createTypeErrorFormat("Can not extend multiple classes %s and %s. At most one of the specified types can be a class, the rest must all be interfaces.", t.getCanonicalName(),
                         superClass.getCanonicalName());
     }
 
@@ -128,7 +128,7 @@ public final class JavaAdapterFactory {
         } else if (classLoaderCanSee(INTERNAL_CLASS.getClassLoader(), superType)) {
             return INTERNAL_CLASS.getClassLoader();
         } else {
-            throw Errors.createTypeError("Could not determine a class loader with access to the JS engine and %s", superType);
+            throw Errors.createTypeErrorFormat("Could not determine a class loader with access to the JS engine and %s", superType);
         }
     }
 
@@ -140,6 +140,6 @@ public final class JavaAdapterFactory {
                 return getClassLoaderWithAccessTo(type);
             }
         }
-        throw Errors.createTypeError("Could not determine a class loader that can see all types: %s", Arrays.toString(types));
+        throw Errors.createTypeErrorFormat("Could not determine a class loader that can see all types: %s", Arrays.toString(types));
     }
 }

@@ -36,6 +36,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createRangeError(String message, Node originatingNode) {
+        return JSException.create(JSErrorType.RangeError, message, originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createURIError(String message) {
         return JSException.create(JSErrorType.URIError, message);
     }
@@ -46,7 +51,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeError(String message, Object... args) {
+    public static JSException createTypeErrorFormat(String message, Object... args) {
         return JSException.create(JSErrorType.TypeError, String.format(message, args));
     }
 
@@ -107,26 +112,36 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorNotObjectCoercible() {
-        return Errors.createTypeError("Cannot convert undefined or null to object");
+    public static JSException createTypeErrorNotObjectCoercible(Object value) {
+        return createTypeErrorNotObjectCoercible(value, null);
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorNotObjectCoercible(Object value) {
+    public static JSException createTypeErrorNotObjectCoercible(Object value, Node originatingNode) {
         if (JSTruffleOptions.NashornCompatibilityMode) {
-            return Errors.createTypeErrorNotAnObject(value);
+            return Errors.createTypeErrorNotAnObject(value, originatingNode);
         }
-        return Errors.createTypeError("Cannot convert undefined or null to object: " + JSRuntime.safeToString(value));
+        return Errors.createTypeError("Cannot convert undefined or null to object: " + JSRuntime.safeToString(value), originatingNode);
     }
 
     @TruffleBoundary
     public static JSException createTypeErrorNotAnObject(Object value) {
-        return Errors.createTypeError(JSRuntime.safeToString(value) + " is not an Object");
+        return Errors.createTypeErrorNotAnObject(value, null);
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorObjectExpected() {
-        return Errors.createTypeError("object expected");
+    public static JSException createTypeErrorNotAnObject(Object value, Node originatingNode) {
+        return Errors.createTypeError(JSRuntime.safeToString(value) + " is not an Object", originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorIterResultNotAnObject(Object value, Node originatingNode) {
+        return Errors.createTypeErrorNotAnObject(value, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorInvalidPrototype(Object value) {
+        return Errors.createTypeError("Object prototype may only be an Object or null: " + JSRuntime.safeToString(value));
     }
 
     @TruffleBoundary
@@ -145,18 +160,28 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotConvertToPrimitiveValue(String what) {
-        return Errors.createTypeError("Cannot convert " + what + " object to primitive value");
+    public static JSException createTypeErrorCannotConvertToPrimitiveValue(Node originatingNode) {
+        return Errors.createTypeError("Cannot convert object to primitive value", originatingNode);
     }
 
     @TruffleBoundary
     public static JSException createTypeErrorCannotConvertToString(String what) {
-        return Errors.createTypeError("Cannot convert " + what + " to a string");
+        return Errors.createTypeErrorCannotConvertToString(what, null);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorCannotConvertToString(String what, Node originatingNode) {
+        return Errors.createTypeError("Cannot convert " + what + " to a string", originatingNode);
     }
 
     @TruffleBoundary
     public static JSException createTypeErrorCannotConvertToNumber(String what) {
-        return Errors.createTypeError("Cannot convert " + what + " to a number");
+        return Errors.createTypeErrorCannotConvertToNumber(what, null);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorCannotConvertToNumber(String what, Node originatingNode) {
+        return Errors.createTypeError("Cannot convert " + what + " to a number", originatingNode);
     }
 
     @TruffleBoundary
@@ -213,14 +238,14 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorCannotRedefineProperty(Object key) {
         assert JSRuntime.isPropertyKey(key);
-        return Errors.createTypeError("Cannot redefine property %s", key);
+        return Errors.createTypeErrorFormat("Cannot redefine property %s", key);
     }
 
     @TruffleBoundary
     public static JSException createTypeErrorCannotSetPropertyOf(Object key, Object object) {
         assert JSRuntime.isPropertyKey(key);
         if (JSTruffleOptions.NashornCompatibilityMode) {
-            return Errors.createTypeError("Cannot set property \"%s\" of %s", key, JSRuntime.safeToString(object));
+            return Errors.createTypeErrorFormat("Cannot set property \"%s\" of %s", key, JSRuntime.safeToString(object));
         } else {
             return Errors.createTypeErrorCannotRedefineProperty(key);
         }
@@ -230,9 +255,9 @@ public final class Errors {
     public static JSException createTypeErrorCannotSetAccessorProperty(Object key, DynamicObject store) {
         assert JSRuntime.isPropertyKey(key);
         if (JSTruffleOptions.NashornCompatibilityMode) {
-            return Errors.createTypeError("Cannot set property \"%s\" of %s that has only a getter", key, JSObject.defaultToString(store));
+            return Errors.createTypeErrorFormat("Cannot set property \"%s\" of %s that has only a getter", key, JSObject.defaultToString(store));
         } else {
-            return Errors.createTypeError("Cannot redefine property %s which has only a getter", key);
+            return Errors.createTypeErrorFormat("Cannot redefine property %s which has only a getter", key);
         }
     }
 
@@ -268,7 +293,27 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorArrayBufferViewExpected() {
-        return Errors.createTypeError("ArrayBufferView expected");
+        return Errors.createTypeError("TypedArray expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorCallableExpected() {
+        return Errors.createTypeError("Callable expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorConstructorExpected() {
+        return Errors.createTypeError("Constructor expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorGeneratorObjectExpected() {
+        return Errors.createTypeError("Not a generator object");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorAsyncGeneratorObjectExpected() {
+        return Errors.createTypeError("Not an async generator object");
     }
 
     @TruffleBoundary
@@ -277,13 +322,33 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createCallStackSizeExceededError() {
+    public static JSException createTypeErrorGlobalObjectNotExtensible(Node originatingNode) {
+        return Errors.createTypeError("Global object is not extensible", originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorTooManyArguments() {
         return Errors.createRangeError("Maximum call stack size exceeded");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorStackOverflow() {
+        return Errors.createRangeError("Maximum call stack size exceeded");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorStackOverflow(StackOverflowError e) {
+        return JSException.create(JSErrorType.RangeError, "Maximum call stack size exceeded", e, null);
     }
 
     @TruffleBoundary
     public static JSException createRangeErrorInvalidStringLength() {
         return Errors.createRangeError("Invalid string length");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorInvalidStringLength(Node originatingNode) {
+        return Errors.createRangeError("Invalid string length", originatingNode);
     }
 
     @TruffleBoundary
@@ -314,6 +379,11 @@ public final class Errors {
         throw new IllegalStateException("should not reach here");
     }
 
+    public static RuntimeException shouldNotReachHere(String message) {
+        CompilerDirectives.transferToInterpreter();
+        throw new IllegalStateException("should not reach here: " + message);
+    }
+
     @TruffleBoundary
     public static JSException createTypeErrorConfigurableExpected() {
         return createTypeError("configurable expected");
@@ -325,8 +395,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorYieldStarThrowMethodMissing() {
-        return createTypeError("yield* protocol violation: iterator does not have a throw method");
+    public static JSException createTypeErrorYieldStarThrowMethodMissing(Node originatingNode) {
+        return createTypeError("yield* protocol violation: iterator does not have a throw method", originatingNode);
     }
 
     @TruffleBoundary
@@ -337,10 +407,6 @@ public final class Errors {
 
     public static JSException createTypeErrorJSObjectExpected() {
         return createTypeError("only JavaScript objects are supported by this operation");
-    }
-
-    public static JSException createNotAnObjectError(Node origin) {
-        return createTypeError("not an object", origin);
     }
 
     @TruffleBoundary
@@ -367,5 +433,10 @@ public final class Errors {
             }
         }
         return JSException.create(JSErrorType.TypeError, message + " on " + receiverStr + " failed due to: " + reason, cause, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorNotATruffleObject(Message message) {
+        return Errors.createTypeError("cannot call " + message + " on a non-interop object");
     }
 }

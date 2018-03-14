@@ -159,7 +159,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Lamb
             }
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(resObj)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("cannot slice detached buffer");
+                throw Errors.createTypeErrorDetachedBuffer();
             }
             if (resObj == thisObj) {
                 errorBranch.enter();
@@ -173,7 +173,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Lamb
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(thisObj)) {
                 // yes, check again! see clause 22 of ES 6 24.1.4.3.
                 errorBranch.enter();
-                throw Errors.createTypeError("cannot slice detached buffer");
+                throw Errors.createTypeErrorDetachedBuffer();
             }
         }
 

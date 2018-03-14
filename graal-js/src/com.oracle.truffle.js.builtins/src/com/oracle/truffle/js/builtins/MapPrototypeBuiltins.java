@@ -233,7 +233,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSMap(thisObj)", "!isCallable(callback)"})
         protected static Object forEachFunctionNoFunction(Object thisObj, Object callback, Object thisArg) {
-            throw Errors.createTypeError("Callable expected");
+            throw Errors.createTypeErrorCallableExpected();
         }
 
         @SuppressWarnings("unused")

@@ -35,7 +35,7 @@ public class DeclareGlobalFunctionNode extends DeclareGlobalNode {
         PropertyDescriptor desc = JSObject.getOwnProperty(globalObject, varName, classProfile);
         if (desc == null && JSGlobalObject.isJSGlobalObject(globalObject)) {
             if (!JSObject.isExtensible(globalObject, classProfile)) {
-                throw Errors.createTypeError("cannot define global variable");
+                throw Errors.createTypeErrorGlobalObjectNotExtensible(this);
             }
             JSObjectUtil.putDeclaredDataProperty(context, globalObject, varName, value,
                             configurable ? JSAttributes.configurableEnumerableWritable() : JSAttributes.notConfigurableEnumerableWritable());

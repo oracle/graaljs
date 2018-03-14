@@ -121,7 +121,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
             if (isPrimitive.executeBoolean(result)) {
                 return result;
             }
-            throw Errors.createTypeError("[Symbol.toPrimitive] method returned a non-primitive object");
+            throw Errors.createTypeError("[Symbol.toPrimitive] method returned a non-primitive object", this);
         }
 
         return ordinaryToPrimitive.execute(object);

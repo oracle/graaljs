@@ -491,7 +491,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
                     return DEFAULT_RETURN;
                 }
             }
-            throw Errors.createTypeErrorObjectExpected();
+            throw Errors.createTypeErrorIncompatibleReceiver(obj);
         }
     }
 
@@ -520,7 +520,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
                     return defaultReturn;
                 }
             }
-            throw Errors.createTypeErrorObjectExpected();
+            throw Errors.createTypeErrorIncompatibleReceiver(obj);
         }
     }
 
@@ -547,7 +547,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
      * Returns the number of extra characters that need to be inserted into {@code pattern} in order
      * for it to be correctly escaped for use in a RegExp literal (according to the requirements of
      * EscapeRegExpPattern).
-     * 
+     *
      * This method satisfies the following property: if its return value is 0, the pattern does not
      * need to be modified by EscapeRegExpPattern. In order to satisfy this property, this method
      * can sometimes return a result that is 1 higher than the advertised value. This is the case
@@ -609,7 +609,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     /**
      * Implements the EscapeRegExpPattern abstract operation from the ECMAScript spec.
-     * 
+     *
      * @param pattern the input pattern, which is assumed to be non-empty
      * @param extraChars an estimate on the difference of sizes between the original pattern and the
      *            escaped pattern

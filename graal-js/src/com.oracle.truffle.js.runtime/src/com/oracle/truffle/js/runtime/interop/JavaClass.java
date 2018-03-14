@@ -338,7 +338,7 @@ public final class JavaClass {
     public AbstractJavaMethod getBestConstructor(String paramTypeString) {
         AbstractJavaMethod ctor = JavaMethod.fromOverloads(constructors()).lookupOverloadByParamTypeString(paramTypeString);
         if (ctor == null) {
-            throw Errors.createTypeError("No such Java constructor: %s(%s)", type.getSimpleName(), paramTypeString);
+            throw Errors.createTypeErrorFormat("No such Java constructor: %s(%s)", type.getSimpleName(), paramTypeString);
         }
         return ctor;
     }

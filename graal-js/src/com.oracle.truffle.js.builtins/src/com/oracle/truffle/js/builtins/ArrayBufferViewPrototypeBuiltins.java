@@ -263,7 +263,6 @@ public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.
         private final ValueProfile sinkArrayProf = ValueProfile.createIdentityProfile();
         private final JSClassProfile sourceArrayClassProfile = JSClassProfile.create();
 
-        private final ConditionProfile thisIsArrayBuffer = ConditionProfile.createBinaryProfile();
         private final ConditionProfile arrayIsObject = ConditionProfile.createBinaryProfile();
         private final ConditionProfile arrayIsArray = ConditionProfile.createBinaryProfile();
         private final ConditionProfile arrayIsArrayBufferView = ConditionProfile.createBinaryProfile();
@@ -297,34 +296,32 @@ public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.
          * @param offset destination array offset
          * @return void
          */
-        @Specialization
+        @Specialization(guards = "isJSArrayBufferView(targetObj)")
         protected Object set(DynamicObject targetObj, Object source, Object offset) {
-            if (thisIsArrayBuffer.profile(JSArrayBufferView.isJSArrayBufferView(targetObj))) {
-                if (arrayIsObject.profile(JSObject.isDynamicObject(source))) {
-                    DynamicObject sourceObj = (DynamicObject) source;
-                    long targetOffsetLong = toInteger(offset);
-                    if (targetOffsetLong < 0 || targetOffsetLong > Integer.MAX_VALUE) {
-                        throw Errors.createRangeError("out of bounds");
-                    }
-                    checkHasDetachedBuffer(targetObj);
-                    int targetOffset = (int) targetOffsetLong;
-                    if (arrayIsArrayBufferView.profile(JSArrayBufferView.isJSArrayBufferView(sourceObj))) {
-                        setArrayBufferView(targetObj, sourceObj, targetOffset);
-                    } else if (arrayIsArray.profile(JSArray.isJSArray(sourceObj))) {
-                        setArray(targetObj, sourceObj, targetOffset);
-                    } else {
-                        setObject(targetObj, sourceObj, targetOffset);
-                    }
-                    return Undefined.instance;
+            if (arrayIsObject.profile(JSObject.isDynamicObject(source))) {
+                DynamicObject sourceObj = (DynamicObject) source;
+                long targetOffsetLong = toInteger(offset);
+                if (targetOffsetLong < 0 || targetOffsetLong > Integer.MAX_VALUE) {
+                    throw Errors.createRangeError("out of bounds");
                 }
+                checkHasDetachedBuffer(targetObj);
+                int targetOffset = (int) targetOffsetLong;
+                if (arrayIsArrayBufferView.profile(JSArrayBufferView.isJSArrayBufferView(sourceObj))) {
+                    setArrayBufferView(targetObj, sourceObj, targetOffset);
+                } else if (arrayIsArray.profile(JSArray.isJSArray(sourceObj))) {
+                    setArray(targetObj, sourceObj, targetOffset);
+                } else {
+                    setObject(targetObj, sourceObj, targetOffset);
+                }
+                return Undefined.instance;
             }
             throw Errors.createTypeError("array expected");
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSObject(thisObj)")
+        @Specialization(guards = "!isJSArrayBufferView(thisObj)")
         protected Object set(Object thisObj, Object array, Object offset) {
-            throw Errors.createTypeError("array expected");
+            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
 
         private void setArray(DynamicObject thisObj, DynamicObject array, int offset) {
@@ -425,7 +422,7 @@ public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.
             }
         }
 
-        protected long objectGetLength(DynamicObject thisObject) {
+        private long objectGetLength(DynamicObject thisObject) {
             if (getLengthNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getLengthNode = insert(JSGetLengthNode.create(getContext()));

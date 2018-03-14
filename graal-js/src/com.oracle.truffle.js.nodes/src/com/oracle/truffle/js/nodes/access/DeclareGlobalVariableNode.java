@@ -30,7 +30,7 @@ public class DeclareGlobalVariableNode extends DeclareGlobalNode {
         DynamicObject globalObject = GlobalObjectNode.getGlobalObject(context);
         if (!JSObject.hasOwnProperty(globalObject, varName, classProfile)) {
             if (!JSObject.isExtensible(globalObject, classProfile)) {
-                throw Errors.createTypeError("cannot define global variable");
+                throw Errors.createTypeErrorGlobalObjectNotExtensible(this);
             }
             if (JSGlobalObject.isJSGlobalObject(globalObject)) {
                 JSObjectUtil.putDeclaredDataProperty(context, globalObject, varName, Undefined.instance,

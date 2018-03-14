@@ -52,8 +52,8 @@ public abstract class CopyDataPropertiesNode extends JavaScriptNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isNullOrUndefined(value)", "!isJSObject(value)"})
-    protected static Object doOther(Object object, Object value) {
-        throw Errors.createTypeErrorNotAnObject(value);
+    protected final Object doOther(Object object, Object value) {
+        throw Errors.createTypeErrorNotAnObject(value, this);
     }
 
     @TruffleBoundary

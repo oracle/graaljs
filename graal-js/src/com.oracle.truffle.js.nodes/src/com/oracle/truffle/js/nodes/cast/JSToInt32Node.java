@@ -137,8 +137,8 @@ public abstract class JSToInt32Node extends JSUnaryNode {
     }
 
     @Specialization
-    protected static int doSymbol(@SuppressWarnings("unused") Symbol value) {
-        throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value");
+    protected final int doSymbol(@SuppressWarnings("unused") Symbol value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
     }
 
     @Specialization(guards = "isJSObject(value)")

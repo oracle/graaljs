@@ -923,7 +923,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
             if (isObject.profile(JSObject.isDynamicObject(thisObj))) {
                 setValueInDynamicObject(thisObj, value, receiver);
             } else if (isStrictSymbol.profile(isStrict() && thisObj instanceof Symbol)) {
-                throw Errors.createTypeError("cannot assign to Symbol property");
+                throw Errors.createTypeError("Cannot create property on symbol", this);
             } else if (isMap.profile(thisObj instanceof Map)) {
                 if (converter == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();

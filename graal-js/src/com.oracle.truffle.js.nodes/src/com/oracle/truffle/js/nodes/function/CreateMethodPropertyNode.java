@@ -61,8 +61,8 @@ public abstract class CreateMethodPropertyNode extends JavaScriptNode {
     }
 
     @Specialization(guards = "!isJSObject(object)")
-    protected static Object doNonObject(@SuppressWarnings("unused") Object object, @SuppressWarnings("unused") Object value) {
-        throw Errors.createTypeErrorObjectExpected();
+    protected final Object doNonObject(Object object, @SuppressWarnings("unused") Object value) {
+        throw Errors.createTypeErrorNotAnObject(object, this);
     }
 
     protected final PropertySetNode makeDefinePropertyCache(DynamicObject object) {

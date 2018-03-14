@@ -423,7 +423,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             if (!JSFunction.isConstructor(c)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("constructor expected");
+                throw Errors.createTypeErrorConstructorExpected();
             }
             return construct((DynamicObject) c, JSRuntime.longToIntOrDouble(length));
         }
@@ -456,17 +456,18 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             if (!JSObject.isJSObject(c)) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorObjectExpected();
+                throw Errors.createTypeErrorNotAnObject(c);
             }
             Object s = getSpeciesProperty(c);
             if (s == Undefined.instance || s == Null.instance) {
                 defaultConstructorBranch.enter();
                 return defaultConstructor;
             }
-            if (JSFunction.isConstructor(s)) {
-                return (DynamicObject) s;
+            if (!JSFunction.isConstructor(s)) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorConstructorExpected();
             }
-            throw Errors.createTypeError("constructor expected");
+            return (DynamicObject) s;
         }
 
         private Object getConstructorProperty(Object obj) {
@@ -1821,7 +1822,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object obj = getArraySpeciesConstructorNode().typedArraySpeciesCreate(thisJSObj, JSRuntime.longToIntOrDouble(resultLen));
             if (!JSObject.isJSObject(obj)) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorObjectExpected();
+                throw Errors.createTypeErrorNotAnObject(obj);
             }
             DynamicObject typedResult = (DynamicObject) obj;
             TypedArray typedArray = arrayTypeProfile.profile(JSArrayBufferView.typedArrayGetArrayType(typedResult));
@@ -2197,7 +2198,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 if (isTypedArrayImplementation) {
                     if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBufferObj)) {
                         errorBranch.enter();
-                        throw Errors.createTypeError("cannot sort detached buffer");
+                        throw Errors.createTypeErrorDetachedBuffer();
                     }
                 }
                 double d = JSRuntime.toDouble(retObj);

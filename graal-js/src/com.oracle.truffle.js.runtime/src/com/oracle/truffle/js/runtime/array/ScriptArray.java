@@ -70,7 +70,7 @@ public abstract class ScriptArray {
     @TruffleBoundary
     private static void setElementStrict(long index) {
         if (JSTruffleOptions.NashornCompatibilityMode) {
-            throw Errors.createTypeError("Cannot set property \"%d\" of frozen array", index);
+            throw Errors.createTypeErrorFormat("Cannot set property \"%d\" of frozen array", index);
         } else {
             throw Errors.createTypeErrorCannotRedefineProperty(String.valueOf(index));
         }
@@ -85,7 +85,7 @@ public abstract class ScriptArray {
     public final ScriptArray deleteElement(DynamicObject object, long index, boolean strict, boolean condition) {
         if (isSealed()) {
             if (strict) {
-                throw Errors.createTypeError("Cannot delete property \"%d\" of sealed array", index);
+                throw Errors.createTypeErrorFormat("Cannot delete property \"%d\" of sealed array", index);
             }
             return this;
         }
@@ -376,7 +376,7 @@ public abstract class ScriptArray {
     public final ScriptArray removeRange(DynamicObject object, long start, long end) {
         assert start >= 0 && start <= end;
         if (isSealed()) {
-            throw Errors.createTypeError("Cannot delete property \"%d\" of sealed array", start);
+            throw Errors.createTypeErrorFormat("Cannot delete property \"%d\" of sealed array", start);
         }
         return removeRangeImpl(object, start, end);
     }
@@ -385,7 +385,7 @@ public abstract class ScriptArray {
         assert start >= 0 && start <= end;
         if (isSealed()) {
             errorBranch.enter();
-            throw Errors.createTypeError("Cannot delete property \"%d\" of sealed array", start);
+            throw Errors.createTypeErrorFormat("Cannot delete property \"%d\" of sealed array", start);
         }
         return removeRangeImpl(object, start, end);
     }

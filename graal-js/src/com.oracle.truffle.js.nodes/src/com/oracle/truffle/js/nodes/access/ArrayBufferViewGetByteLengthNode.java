@@ -52,7 +52,7 @@ public abstract class ArrayBufferViewGetByteLengthNode extends JavaScriptBaseNod
 
     @Specialization(guards = "!isJSArrayBufferView(obj)")
     protected int getByteLengthNoObj(@SuppressWarnings("unused") DynamicObject obj) {
-        throw Errors.createTypeError("TypedArray expected");
+        throw Errors.createTypeErrorArrayBufferViewExpected();
     }
 
     protected static TypedArray getArrayType(DynamicObject obj) {

@@ -85,8 +85,8 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static Number doSymbol(@SuppressWarnings("unused") Symbol value) {
-        throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value");
+    protected final Number doSymbol(@SuppressWarnings("unused") Symbol value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
     }
 
     @Specialization(guards = "isForeignObject(object)")

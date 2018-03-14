@@ -84,14 +84,14 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 CallTarget callTarget = (CallTarget) generatorTarget;
                 return callNode.execute(callTarget, new Object[]{thisObj, value, resumeType});
             } else {
-                throw Errors.createTypeError("not a generator function");
+                throw Errors.createTypeErrorGeneratorObjectExpected();
             }
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSObject(thisObj)")
         protected Object resume(Object thisObj, Object value) {
-            throw Errors.createTypeErrorObjectExpected();
+            throw Errors.createTypeErrorGeneratorObjectExpected();
         }
     }
 }

@@ -110,9 +110,8 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
                         }
                         return getDirectByteLength(buffer);
                     }
-                    throw Errors.createTypeErrorArrayBufferExpected();
                 }
-                throw Errors.createTypeErrorObjectExpected();
+                throw Errors.createTypeErrorArrayBufferExpected();
             }
         });
     }

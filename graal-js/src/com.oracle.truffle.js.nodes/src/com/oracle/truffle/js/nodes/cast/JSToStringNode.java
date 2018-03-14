@@ -118,7 +118,7 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         if (symbolToString) {
             return value.toString();
         } else {
-            throw Errors.createTypeErrorCannotConvertToString("a Symbol value");
+            throw Errors.createTypeErrorCannotConvertToString("a Symbol value", this);
         }
     }
 

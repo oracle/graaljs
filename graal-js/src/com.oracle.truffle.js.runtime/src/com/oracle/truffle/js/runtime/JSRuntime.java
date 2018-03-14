@@ -1395,7 +1395,7 @@ public final class JSRuntime {
      */
     public static void checkObjectCoercible(Object thisObj) {
         if (thisObj == Undefined.instance || thisObj == Null.instance) {
-            throw Errors.createTypeErrorNotObjectCoercible();
+            throw Errors.createTypeErrorNotObjectCoercible(thisObj);
         }
     }
 
@@ -1408,7 +1408,7 @@ public final class JSRuntime {
     public static PropertyDescriptor toPropertyDescriptor(Object property) {
         // 1.
         if (!isObject(property)) {
-            throw Errors.createTypeErrorObjectExpected();
+            throw Errors.createTypeErrorNotAnObject(property);
         }
         DynamicObject obj = (DynamicObject) property;
         PropertyDescriptor desc = PropertyDescriptor.createEmpty();
@@ -2429,8 +2429,8 @@ public final class JSRuntime {
     // ES2015: 7.3.17 CreateListFromArrayLike
     @TruffleBoundary
     public static List<Object> createListFromArrayLikeAllowSymbolString(Object obj) {
-        if (!JSObject.isDynamicObject(obj)) {
-            throw Errors.createTypeErrorObjectExpected();
+        if (!isObject(obj)) {
+            throw Errors.createTypeErrorNotAnObject(obj);
         }
         DynamicObject jsObj = (DynamicObject) obj;
         long len = JSRuntime.toLength(JSObject.get(jsObj, JSAbstractArray.LENGTH));

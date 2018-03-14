@@ -156,7 +156,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         Object[] trapArgs = new Object[]{target, JSArray.createConstantObjectArray(JSShape.getJSContext(proxy.getShape()), args), proxy};
         Object result = JSFunction.call(trap, handler, trapArgs);
         if (!JSRuntime.isObject(result)) {
-            throw Errors.createTypeErrorObjectExpected();
+            throw Errors.createTypeErrorNotAnObject(result, this);
         }
         return result;
     }

@@ -81,7 +81,7 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
                         return JSArrayBuffer.getDirectByteLength(buffer);
                     }
                 }
-                throw Errors.createTypeErrorObjectExpected();
+                throw Errors.createTypeErrorIncompatibleReceiver(obj);
             }
         });
     }

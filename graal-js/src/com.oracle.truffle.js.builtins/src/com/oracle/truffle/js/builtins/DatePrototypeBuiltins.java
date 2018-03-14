@@ -889,7 +889,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Specialization
         protected Object toPrimitive(Object obj, Object hint) {
             if (!isObjectNode.executeBoolean(obj)) {
-                throw Errors.createTypeErrorObjectExpected();
+                throw Errors.createTypeErrorNotAnObject(obj);
             }
             if (isHintNumber.profile(JSRuntime.HINT_NUMBER.equals(hint))) {
                 if (ordinaryToPrimitiveHintNumber == null) {

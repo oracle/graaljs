@@ -73,8 +73,8 @@ public abstract class JSConcatStringsNode extends JSBinaryNode {
     }
 
     @Specialization(guards = "!concatStringLengthValid(left, right)")
-    protected static CharSequence doInvalidLength(CharSequence left, CharSequence right) {
-        throw Errors.createRangeErrorInvalidStringLength();
+    protected final CharSequence doInvalidLength(CharSequence left, CharSequence right) {
+        throw Errors.createRangeErrorInvalidStringLength(this);
     }
 
     protected boolean concatGuard(CharSequence left, CharSequence right) {
