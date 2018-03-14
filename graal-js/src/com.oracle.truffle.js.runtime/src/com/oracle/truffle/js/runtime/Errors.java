@@ -327,8 +327,18 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createCallStackSizeExceededError() {
+    public static JSException createRangeErrorTooManyArguments() {
         return Errors.createRangeError("Maximum call stack size exceeded");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorStackOverflow() {
+        return Errors.createRangeError("Maximum call stack size exceeded");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorStackOverflow(StackOverflowError e) {
+        return JSException.create(JSErrorType.RangeError, "Maximum call stack size exceeded", e, null);
     }
 
     @TruffleBoundary

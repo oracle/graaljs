@@ -68,7 +68,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
         long len = getLengthNode.executeLong(obj);
         if (len > JSTruffleOptions.MaxApplyArgumentLength) {
             CompilerDirectives.transferToInterpreter();
-            throw Errors.createCallStackSizeExceededError();
+            throw Errors.createRangeErrorTooManyArguments();
         }
         int iLen = (int) len;
         assert JSRuntime.longIsRepresentableAsInt(len);
@@ -130,7 +130,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     protected static Object[] passArray(Object[] array) {
         if (array.length > JSTruffleOptions.MaxApplyArgumentLength) {
             CompilerDirectives.transferToInterpreter();
-            throw Errors.createCallStackSizeExceededError();
+            throw Errors.createRangeErrorTooManyArguments();
         }
         return array;
     }
@@ -141,7 +141,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
         List<?> list = ((List<?>) value);
         if (list.size() > JSTruffleOptions.MaxApplyArgumentLength) {
             CompilerDirectives.transferToInterpreter();
-            throw Errors.createCallStackSizeExceededError();
+            throw Errors.createRangeErrorTooManyArguments();
         }
         return list.toArray();
     }
@@ -162,7 +162,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
             long len = JSRuntime.toUInt32(toNumberNode.executeNumber(ForeignAccess.sendGetSize(getSizeNode, obj)));
             if (len > JSTruffleOptions.MaxApplyArgumentLength) {
                 CompilerDirectives.transferToInterpreter();
-                throw Errors.createCallStackSizeExceededError();
+                throw Errors.createRangeErrorTooManyArguments();
             }
             int iLen = (int) len;
             Object[] arr = new Object[iLen];

@@ -43,7 +43,7 @@ public abstract class JavaScriptRealmBoundaryRootNode extends JavaScriptRootNode
             throw ex;
         } catch (StackOverflowError ex) {
             CompilerDirectives.transferToInterpreter();
-            throw Errors.createCallStackSizeExceededError().setRealm(getRealm());
+            throw Errors.createRangeErrorStackOverflow(ex).setRealm(getRealm());
         }
     }
 
