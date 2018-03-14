@@ -9,7 +9,6 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -39,9 +38,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
 
-@NodeField(name = "context", type = JSContext.class)
 public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
 
+    private final JSContext context;
     @Child private PropertyGetNode getToJSONProperty;
     @Child private JSFunctionCallNode callToJSONFunction;
     @Child private Node hasSizeNode;
@@ -51,9 +50,11 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     @Child private Node isNullNode;
     @Child private Node isBoxedNode;
 
-    public abstract Object execute(Object data, String key, DynamicObject holder);
+    protected JSONStringifyStringNode(JSContext context) {
+        this.context = context;
+    }
 
-    public abstract JSContext getContext();
+    public abstract Object execute(Object data, String key, DynamicObject holder);
 
     public static JSONStringifyStringNode create(JSContext context) {
         return JSONStringifyStringNodeGen.create(context);
@@ -196,7 +197,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         assert JSRuntime.isPropertyKey(key);
         if (getToJSONProperty == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getToJSONProperty = insert(PropertyGetNode.create("toJSON", false, getContext()));
+            getToJSONProperty = insert(PropertyGetNode.create("toJSON", false, context));
         }
         Object toJSON = getToJSONProperty.getValue(valueObj);
         if (JSFunction.isJSFunction(toJSON)) {

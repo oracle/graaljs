@@ -7,7 +7,6 @@ package com.oracle.truffle.js.nodes;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -16,10 +15,14 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 
 @ImportStatic(JSTruffleOptions.class)
-@NodeField(name = "context", type = JSContext.class)
 public abstract class CompileRegexNode extends JavaScriptBaseNode {
 
     @Child private Node executeCompilerNode = RegexCompilerInterface.createExecuteCompilerNode();
+    private final JSContext context;
+
+    protected CompileRegexNode(JSContext context) {
+        this.context = context;
+    }
 
     public static CompileRegexNode create(JSContext context) {
         return CompileRegexNodeGen.create(context);
@@ -34,8 +37,6 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
     }
 
     protected abstract Object executeCompile(CharSequence pattern, String flags);
-
-    protected abstract JSContext getContext();
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"stringEquals(pattern, cachedPattern)", "stringEquals(flags, cachedFlags)"}, limit = "MaxCompiledRegexCacheLength")
@@ -59,6 +60,6 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
 
     @Specialization(replaces = {"getCached"})
     protected Object doCompile(String pattern, String flags) {
-        return RegexCompilerInterface.compile(pattern, flags, getContext(), executeCompilerNode);
+        return RegexCompilerInterface.compile(pattern, flags, context, executeCompilerNode);
     }
 }

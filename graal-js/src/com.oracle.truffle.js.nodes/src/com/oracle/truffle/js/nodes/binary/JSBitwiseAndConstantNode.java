@@ -8,7 +8,6 @@ import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -21,11 +20,13 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 
 @NodeInfo(shortName = "&")
-@NodeField(name = "rightValue", type = int.class)
 public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
 
-    protected JSBitwiseAndConstantNode(JavaScriptNode operand) {
-        super(operand);
+    protected final int rightValue;
+
+    protected JSBitwiseAndConstantNode(JavaScriptNode left, int rightValue) {
+        super(left);
+        this.rightValue = rightValue;
     }
 
     public static JSBitwiseAndConstantNode create(JavaScriptNode left, int right) {
@@ -45,7 +46,7 @@ public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(BinaryExpressionTag.class)) {
             // need to call the generated factory directly to avoid constant optimizations
-            JSConstantNode constantNode = JSConstantIntegerNode.create(getRightValue());
+            JSConstantNode constantNode = JSConstantIntegerNode.create(rightValue);
             JavaScriptNode node = JSBitwiseAndNodeGen.create(getOperand(), constantNode);
             transferSourceSectionNoTags(this, constantNode);
             transferSourceSection(this, node);
@@ -57,8 +58,6 @@ public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
 
     public abstract int executeInt(Object a);
 
-    public abstract int getRightValue();
-
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
         return clazz == int.class;
@@ -66,7 +65,7 @@ public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
 
     @Specialization
     protected int doInteger(int a) {
-        return a & getRightValue();
+        return a & rightValue;
     }
 
     @Specialization(replaces = "doInteger")
@@ -77,13 +76,13 @@ public abstract class JSBitwiseAndConstantNode extends JSUnaryNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSBitwiseAndConstantNodeGen.create(cloneUninitialized(getOperand()), getRightValue());
+        return JSBitwiseAndConstantNodeGen.create(cloneUninitialized(getOperand()), rightValue);
     }
 
     @Override
     public String expressionToString() {
         if (getOperand() != null) {
-            return "(" + Objects.toString(getOperand().expressionToString(), INTERMEDIATE_VALUE) + " & " + getRightValue() + ")";
+            return "(" + Objects.toString(getOperand().expressionToString(), INTERMEDIATE_VALUE) + " & " + rightValue + ")";
         }
         return null;
     }

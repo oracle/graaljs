@@ -7,7 +7,6 @@ package com.oracle.truffle.js.nodes.binary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -28,7 +27,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 
 @NodeInfo(shortName = "===")
 @ImportStatic(JSRuntime.class)
-@NodeField(name = "type", type = int.class)
 public abstract class JSIdenticalNode extends JSCompareNode {
     protected static final int MAX_CLASSES = 3;
 
@@ -36,8 +34,11 @@ public abstract class JSIdenticalNode extends JSCompareNode {
     protected static final int SAME_VALUE = 1;
     protected static final int SAME_VALUE_ZERO = 2;
 
-    protected JSIdenticalNode(JavaScriptNode left, JavaScriptNode right) {
+    protected final int type;
+
+    protected JSIdenticalNode(JavaScriptNode left, JavaScriptNode right, int type) {
         super(left, right);
+        this.type = type;
     }
 
     public static JSIdenticalNode createStrictEqualityComparison() {
@@ -83,8 +84,6 @@ public abstract class JSIdenticalNode extends JSCompareNode {
 
     public abstract boolean executeBoolean(Object left, Object right);
 
-    protected abstract int getType();
-
     @Specialization
     protected static boolean doInt(int a, int b) {
         return a == b;
@@ -92,9 +91,9 @@ public abstract class JSIdenticalNode extends JSCompareNode {
 
     @Specialization
     protected boolean doDouble(double a, double b) {
-        if (getType() == STRICT_EQUALITY_COMPARISON) {
+        if (type == STRICT_EQUALITY_COMPARISON) {
             return a == b;
-        } else if (getType() == SAME_VALUE) {
+        } else if (type == SAME_VALUE) {
             if (Double.isNaN(a)) {
                 return Double.isNaN(b);
             }
@@ -103,7 +102,7 @@ public abstract class JSIdenticalNode extends JSCompareNode {
             }
             return a == b;
         } else {
-            assert getType() == SAME_VALUE_ZERO;
+            assert type == SAME_VALUE_ZERO;
             if (Double.isNaN(a)) {
                 return Double.isNaN(b);
             }
@@ -241,6 +240,6 @@ public abstract class JSIdenticalNode extends JSCompareNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSIdenticalNodeGen.create(cloneUninitialized(getLeft()), cloneUninitialized(getRight()), getType());
+        return JSIdenticalNodeGen.create(cloneUninitialized(getLeft()), cloneUninitialized(getRight()), type);
     }
 }

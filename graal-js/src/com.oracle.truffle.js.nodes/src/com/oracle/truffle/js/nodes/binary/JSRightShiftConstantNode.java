@@ -8,7 +8,6 @@ import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -27,14 +26,14 @@ import com.oracle.truffle.js.runtime.LargeInteger;
  * integer value.
  */
 @NodeInfo(shortName = ">>")
-@NodeField(name = "shiftValue", type = int.class)
 public abstract class JSRightShiftConstantNode extends JSUnaryNode {
 
-    protected JSRightShiftConstantNode(JavaScriptNode operand) {
-        super(operand);
-    }
+    protected final int shiftValue;
 
-    public abstract int getShiftValue();
+    protected JSRightShiftConstantNode(JavaScriptNode operand, int shiftValue) {
+        super(operand);
+        this.shiftValue = shiftValue;
+    }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         assert right instanceof JSConstantIntegerNode;
@@ -60,7 +59,7 @@ public abstract class JSRightShiftConstantNode extends JSUnaryNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(BinaryExpressionTag.class)) {
             // need to call the generated factory directly to avoid constant optimizations
-            JSConstantNode constantNode = JSConstantIntegerNode.create(getShiftValue());
+            JSConstantNode constantNode = JSConstantIntegerNode.create(shiftValue);
             JavaScriptNode node = JSRightShiftNodeGen.create(getOperand(), constantNode);
             transferSourceSectionNoTags(this, constantNode);
             transferSourceSection(this, node);
@@ -74,18 +73,18 @@ public abstract class JSRightShiftConstantNode extends JSUnaryNode {
 
     @Specialization
     protected int doInteger(int a) {
-        return a >> getShiftValue();
+        return a >> shiftValue;
     }
 
     @Specialization
     protected int doLargeInteger(LargeInteger a) {
-        return a.intValue() >> getShiftValue();
+        return a.intValue() >> shiftValue;
     }
 
     @Specialization(replaces = "doInteger")
     protected int doGeneric(Object a,
                     @Cached("create()") JSToInt32Node leftInt32) {
-        return leftInt32.executeInt(a) >> getShiftValue();
+        return leftInt32.executeInt(a) >> shiftValue;
     }
 
     @Override
@@ -95,13 +94,13 @@ public abstract class JSRightShiftConstantNode extends JSUnaryNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSRightShiftConstantNodeGen.create(cloneUninitialized(getOperand()), getShiftValue());
+        return JSRightShiftConstantNodeGen.create(cloneUninitialized(getOperand()), shiftValue);
     }
 
     @Override
     public String expressionToString() {
         if (getOperand() != null) {
-            return "(" + Objects.toString(getOperand().expressionToString(), INTERMEDIATE_VALUE) + " >> " + getShiftValue() + ")";
+            return "(" + Objects.toString(getOperand().expressionToString(), INTERMEDIATE_VALUE) + " >> " + shiftValue + ")";
         }
         return null;
     }
