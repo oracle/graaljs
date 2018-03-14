@@ -331,7 +331,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = "isJSNull(prototype)")
         protected DynamicObject createPrototypeNull(Object prototype, Object properties) {
             DynamicObject ret = JSObject.create(getContext(), getContext().getEmptyShape());
-            return createIntl(properties, ret);
+            return objectDefineProperties(ret, properties);
         }
 
         @TruffleBoundary
@@ -349,19 +349,19 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return ret;
         }
 
-        @Specialization(guards = {"isJSObject(prototype)", "!isJSNull(prototype)"})
+        @Specialization(guards = {"isJSObject(prototype)", "!isJSNull(properties)"})
         protected DynamicObject create(VirtualFrame frame, DynamicObject prototype, Object properties) {
             DynamicObject ret = createObjectWithPrototype(frame, prototype);
-            return createIntl(properties, ret);
+            return objectDefineProperties(ret, properties);
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isJSObject(prototype)", "isJSNull(prototype)"})
+        @Specialization(guards = {"isJSObject(prototype)", "isJSNull(properties)"})
         protected DynamicObject createNull(DynamicObject prototype, Object properties) {
-            throw Errors.createTypeError("cannot convert to object");
+            throw Errors.createTypeErrorNotObjectCoercible(properties);
         }
 
-        private DynamicObject createIntl(Object properties, DynamicObject ret) {
+        private DynamicObject objectDefineProperties(DynamicObject ret, Object properties) {
             if (properties != Undefined.instance) {
                 needDefineProperties.enter();
                 intlDefineProperties(ret, toObject(properties));
