@@ -153,12 +153,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         return object;
     }
 
-    @Specialization(guards = "isForeignObject(object)")
-    protected DynamicObject doForeignDynamicObject(@SuppressWarnings("unused") DynamicObject object) {
-        throw Errors.createTypeError("Foreign DynamicObjects not supported", this);
-    }
-
-    @Specialization(guards = {"isForeignObject(obj)", "!isDynamicObject(obj)"})
+    @Specialization(guards = {"isForeignObject(obj)"})
     protected TruffleObject doForeignTruffleObject(TruffleObject obj) {
         if (allowForeign) {
             return obj;
