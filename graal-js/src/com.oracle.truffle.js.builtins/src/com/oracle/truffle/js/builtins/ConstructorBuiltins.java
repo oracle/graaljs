@@ -726,7 +726,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         private double getDateValue(Object arg0) {
             if (getContext().getEcmaScriptVersion() >= 6 && isDateProfile.profile(JSDate.isJSDate(arg0))) {
-                return JSDate.valueOf((DynamicObject) arg0);
+                return JSDate.getTimeMillisField((DynamicObject) arg0);
             } else {
                 Object value = toPrimitive(arg0);
                 if (stringOrNumberProfile.profile(JSRuntime.isString(value))) {

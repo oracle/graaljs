@@ -330,7 +330,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Specialization
         protected double doOperation(Object thisDate) {
-            return JSDate.valueOf(asDate(thisDate));
+            return JSDate.getTimeMillisField(asDate(thisDate));
         }
     }
 
@@ -524,7 +524,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Specialization
         protected double doOperation(Object thisDate) {
-            return JSDate.valueOf(asDate(thisDate));
+            return JSDate.getTimeMillisField(asDate(thisDate));
         }
     }
 
