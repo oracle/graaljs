@@ -1,3 +1,4 @@
+
 suite = {
   "mxversion" : "5.115.0",
   "name" : "graal-nodejs",
@@ -47,27 +48,8 @@ suite = {
         "coremodules",
       ],
       "class" : "GraalNodeJsProject",
-      "output" : ".",
-      "results" : [
-        "out/Release/node",
-        "common.gypi",
-        "src/node.h",
-        "src/node_buffer.h",
-        "src/node_object_wrap.h",
-        "src/node_version.h",
-        "deps/uv/include",
-        "deps/v8/include",
-        "deps/v8/src/graal/graal_handle_content.h",
-        "deps/npm",
-      ],
-    },
-    "trufflenodeJNIConfig" : {
-      "class" : "GraalNodeJsArchiveProject",
-      "outputDir" : ".",
-      "prefix": "",
-      "results" : [
-        "svmnodejs.jniconfig"
-      ],
+      "results" : ["node"],
+      "output" : "."
     },
     "com.oracle.truffle.trufflenode" : {
       "subDir" : "mx.graal-nodejs",
@@ -131,14 +113,36 @@ suite = {
       "relpath" : True,
       "description" : "Graal Node.js native components",
     },
-    "TRUFFLENODE_JNICONFIG" : {
-      "dependencies" : ["trufflenodeJNIConfig"],
+    "TRUFFLENODE_GRAALVM_DOCS" : {
       "native" : True,
-      "relpath" : True,
-      "description" : "Graal.nodejs JNI config file for SubstrateVM images",
-      "maven" : {
-        "artifactId" : "graal-nodejs-jniconfig",
-      }
+      "description" : "Graal.nodejs documentation files for the GraalVM",
+      "layout" : {
+        "README_GRAAL_NODEJS.md" : "file:README.md",
+      },
+    },
+    "TRUFFLENODE_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "platformDependent" : True,
+      "description" : "Graal.nodejs support distribution for the GraalVM",
+      "layout" : {
+        "LICENSE_GRAAL_NODEJS" : "file:LICENSE",
+        "THIRDPARTYLICENSE_GRAAL_NODEJS" : "file:THIRDPARTYLICENSE",
+        "./" : "file:deps/npm",
+        "bin/" : [
+          "dependency:trufflenodeNative/node"
+        ],
+        "bin/npm" : "file:mx.graal-nodejs/graalvm_launchers/npm",
+        "include/node/" : [
+          "file:common.gypi",
+          "file:src/node.h",
+          "file:src/node_buffer.h",
+          "file:src/node_object_wrap.h",
+          "file:src/node_version.h",
+          "file:deps/uv/include/*",
+          "file:deps/v8/include/*",
+        ],
+        "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
+      },
     },
   },
 }

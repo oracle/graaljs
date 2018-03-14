@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+source="${BASH_SOURCE[0]}"
+while [ -h "$source" ] ; do
+    prev_source="$source"
+    source="$(readlink "$source")";
+    if [[ "$source" != /* ]]; then
+        # if the link was relative, it was relative to where it came from
+        dir="$( cd -P "$( dirname "$prev_source" )" && pwd )"
+        source="$dir/$source"
+    fi
+done
+bin_dir="$( cd -P "$( dirname "$source" )" && pwd )"
+parent_bin_dir="$( dirname "$bin_dir" )"
+
+VM_ARGS=()
+PROGRAM_ARGS=()
+
+NODE_DIR="--nodedir=${parent_bin_dir}/languages/js"
+
+for opt in "${@:1}"; do
+    case "${opt}" in
+        --nodedir=*)
+            NODE_DIR="${opt}" ;;
+        --jvm*|--native*)
+            VM_ARGS+=("${opt}") ;;
+        *)
+            PROGRAM_ARGS+=("${opt}") ;;
+    esac
+done
+
+PATH="${bin_dir}:$PATH"
+
+if [ "$(uname -s)" == "SunOS" ]; then
+    # node packages typically expect to run with gnu tools
+    if [ "${GNU_BINDIR}x" == "x" ]; then
+        GNU_BINDIR="/usr/gnu/bin"
+    fi
+    PATH="${GNU_BINDIR}:${PATH}"
+    # Use GCC instead of Solaris Studio Compiler
+    export CC="gcc"
+    export CXX="g++"
+    export CFLAGS="-m64 -U__EXTENSIONS__"
+    export CXXFLAGS="$CFLAGS"
+    export LDFLAGS="-m64"
+fi
+export PATH
+
+exec "${bin_dir}/node" "${VM_ARGS[@]}" "${parent_bin_dir}/npm/bin/npm-cli.js" "${NODE_DIR}" "${PROGRAM_ARGS[@]}"

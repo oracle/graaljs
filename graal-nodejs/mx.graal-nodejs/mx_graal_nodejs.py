@@ -24,7 +24,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import mx, mx_gate, mx_graal_js, os, re, shutil, tarfile, tempfile
+import mx, mx_gate, mx_subst, mx_sdk, mx_graal_js, os, re, shutil, tarfile, tempfile
 
 from mx import BinarySuite, VC
 from mx_gate import Task, Tags
@@ -87,7 +87,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
 mx_gate.prepend_gate_runner(_suite, _graal_nodejs_pre_gate_runner)
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 
-def _build(args, debug, shared_library, threading, parallelism, debug_mode):
+def _build(args, debug, shared_library, threading, parallelism, debug_mode, output_dir):
     _mxrun(['./configure',
             '--partly-static',
             '--build-only-native',
@@ -116,15 +116,11 @@ class GraalNodeJsProject(mx.NativeProject):
     def getBuildTask(self, args):
         return GraalNodeJsBuildTask(self, args)
 
-    def getResults(self, replaceVar=mx._replaceResultsVar):
-        res = []
-        for rt in self.results:
-            r = re.sub(r'<(.+?)>', replaceVar, rt)
-            result = join(self.suite.dir, self.getOutput(replaceVar), r)
-            if exists(result):
-                res.append(result)
-            else:
-                mx.log('GraalNodeJsProject %s in %s did not find %s' % (self.name, self.suite.name, result))
+    def getResults(self, replaceVar=mx_subst.results_substitutions):
+        res = super(GraalNodeJsProject, self).getResults(replaceVar)
+        for result in res:
+            if not exists(result):
+                mx.warn('GraalNodeJsProject %s in %s did not find %s' % (self.name, self.suite.name, result))
         return res
 
 class GraalNodeJsBuildTask(mx.NativeBuildTask):
@@ -141,7 +137,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         sharedlibrary = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
         threading = ['--enable-threading'] if hasattr(self.args, 'threading') and self.args.threading else []
 
-        _build(args=[], debug=debug, shared_library=sharedlibrary, threading=threading, parallelism=self.parallelism, debug_mode=debugMode)
+        _build(args=[], debug=debug, shared_library=sharedlibrary, threading=threading, parallelism=self.parallelism, debug_mode=debugMode, output_dir=self.subject.output)
 
     def needsBuild(self, newestInput):
         return (True, None) # Let make decide
@@ -499,29 +495,28 @@ def overrideBuild():
 if _suite.primary:
     overrideBuild()
 
-@contextmanager
 def _import_substratevm():
     try:
         import mx_substratevm
+        return mx_substratevm
     except:
         mx.abort("Cannot import 'mx_substratevm'. Did you forget to dynamically import SubstrateVM?")
-    yield mx_substratevm
 
 def buildSvmImage(args):
     """build a shared SubstrateVM library to run Graal.nodejs"""
-    with _import_substratevm() as _svm:
-        _svm.flag_suitename_map['nodejs'] = ('graal-nodejs', ['TRUFFLENODE'], ['TRUFFLENODE_NATIVE'], 'js')
-        _js_version = VC.get_vc(_suite.vc_dir).parent(_suite.vc_dir)
-        mx.logv('Fetch JS version {}'.format(_js_version))
-        for _lang in ['js', 'nodejs']:
-            _svm.fetch_languages(['--language:{}=version={}'.format(_lang, _js_version)])
-        with _svm.native_image_context() as _native_image:
-            _native_image(['--language:nodejs', '-H:JNIConfigurationFiles={}'.format(join(_suite.dir, 'svmnodejs.jniconfig'))] + args)
+    _svm = _import_substratevm()
+    _svm.flag_suitename_map['nodejs'] = ('graal-nodejs', ['TRUFFLENODE'], ['TRUFFLENODE_NATIVE'], 'js')
+    _js_version = VC.get_vc(_suite.vc_dir).parent(_suite.vc_dir)
+    mx.logv('Fetch JS version {}'.format(_js_version))
+    for _lang in ['js', 'nodejs']:
+        _svm.fetch_languages(['--language:{}=version={}'.format(_lang, _js_version)])
+    with _svm.native_image_context() as _native_image:
+        _native_image(['--language:nodejs', '-H:JNIConfigurationFiles={}'.format(join(_suite.dir, 'svmnodejs.jniconfig'))] + args)
 
 def _prepare_svm_env():
     setLibraryPath()
-    with _import_substratevm() as _svm:
-        _setEnvVar('NODE_JVM_LIB', join(_svm.svmbuild_dir(), mx.add_lib_suffix('nodejs')))
+    _svm = _import_substratevm()
+    _setEnvVar('NODE_JVM_LIB', join(_svm.svmbuild_dir(), mx.add_lib_suffix('nodejs')))
 
 def testsvmnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     _prepare_svm_env()
@@ -535,6 +530,28 @@ def svmnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
 def svmnpm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     """run 'npm' with Graal.nodejs on SubstrateVM"""
     return svmnode([join(_suite.dir, 'deps', 'npm', 'bin', 'npm-cli.js')] + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+    name='Graal.nodejs',
+    short_name='nodejs',
+    dir_name='js',
+    documentation_files=['extracted-dependency:graal-nodejs:TRUFFLENODE_GRAALVM_DOCS/README_GRAAL_NODEJS.md'],
+    license_files=['link:<support>/LICENSE_GRAAL_NODEJS'],
+    third_party_license_files=['link:<support>/THIRDPARTYLICENSE_GRAAL_NODEJS'],
+    truffle_jars=['dependency:graal-nodejs:TRUFFLENODE'],
+    support_distributions=['extracted-dependency:graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT'],
+    provided_executables=[
+        'link:<support>/bin/node',
+        'link:<support>/bin/npm',
+    ],
+    polyglot_lib_build_args=[
+        "-H:JNIConfigurationResources=svmnodejs.jniconfig",
+    ],
+    polyglot_lib_jar_dependencies=[
+        "dependency:graal-nodejs:TRUFFLENODE"
+    ],
+    has_polyglot_lib_entrypoints=True,
+), _suite)
 
 mx.update_commands(_suite, {
     'node' : [node, ''],
