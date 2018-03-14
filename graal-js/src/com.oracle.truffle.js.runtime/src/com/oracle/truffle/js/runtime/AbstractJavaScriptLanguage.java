@@ -24,8 +24,6 @@ public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm
     protected static final ThreadLocal<JSContext> contextHolder = new ThreadLocal<>();
     protected static final String GET_JSCONTEXT_NAME = "<get graal-js context>";
 
-    public abstract JSRealm findRealm();
-
     public static Source sourceFromFileName(String fileName) throws IOException {
         return Source.newBuilder(new File(fileName)).name(fileName).mimeType(APPLICATION_MIME_TYPE).build();
     }

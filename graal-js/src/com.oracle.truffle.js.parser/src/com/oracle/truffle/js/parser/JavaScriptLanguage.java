@@ -495,11 +495,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         return OPTION_DESCRIPTORS;
     }
 
-    @Override
-    public JSRealm findRealm() {
-        return super.getContextReference().get();
-    }
-
     private CallTarget createGetJSContextCallTarget() {
         return Truffle.getRuntime().createCallTarget(new ContextRootNode() {
             @Override

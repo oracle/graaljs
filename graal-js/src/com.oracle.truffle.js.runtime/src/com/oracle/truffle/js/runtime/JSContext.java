@@ -567,7 +567,8 @@ public class JSContext implements ShapeContext {
     }
 
     public boolean hasRealm() {
-        return getRealm() != null;
+        assert (getRealm() != null) == isRealmInitialized;
+        return this.isRealmInitialized;
     }
 
     @Override
