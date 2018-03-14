@@ -5,7 +5,6 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -13,8 +12,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 final class NullOrUndefinedForeignAccessFactory implements ForeignAccess.Factory, ForeignAccess.StandardFactory {
 
@@ -49,12 +47,12 @@ final class NullOrUndefinedForeignAccessFactory implements ForeignAccess.Factory
 
     @Override
     public CallTarget accessExecute(int argumentsLength) {
-        return createCallTarget(new TypeErrorNode(InteropEvent.EXECUTE));
+        return createCallTarget(new UnsupportedMessageNode(JSInteropUtil.EXECUTE));
     }
 
     @Override
     public CallTarget accessInvoke(int argumentsLength) {
-        return createCallTarget(new TypeErrorNode(InteropEvent.INVOKE));
+        return createCallTarget(new UnsupportedMessageNode(JSInteropUtil.INVOKE));
     }
 
     @Override
@@ -74,7 +72,7 @@ final class NullOrUndefinedForeignAccessFactory implements ForeignAccess.Factory
 
     @Override
     public CallTarget accessGetSize() {
-        return createCallTarget(new ValueNode(0));
+        return null;
     }
 
     @Override
@@ -89,7 +87,7 @@ final class NullOrUndefinedForeignAccessFactory implements ForeignAccess.Factory
 
     @Override
     public CallTarget accessNew(int argumentsLength) {
-        return createCallTarget(new TypeErrorNode(InteropEvent.NEW));
+        return createCallTarget(new UnsupportedMessageNode(JSInteropUtil.NEW));
     }
 
     @Override
@@ -104,20 +102,6 @@ final class NullOrUndefinedForeignAccessFactory implements ForeignAccess.Factory
 
     private static CallTarget createCallTarget(RootNode node) {
         return Truffle.getRuntime().createCallTarget(node);
-    }
-
-    private static class TypeErrorNode extends RootNode {
-        private final InteropEvent event;
-
-        TypeErrorNode(InteropEvent event) {
-            super(null, null);
-            this.event = event;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            throw Errors.createTypeError(getErrorMessage(frame, event));
-        }
     }
 
     private static class UnsupportedMessageNode extends RootNode {
@@ -146,39 +130,5 @@ final class NullOrUndefinedForeignAccessFactory implements ForeignAccess.Factory
         public Object execute(VirtualFrame frame) {
             return value;
         }
-    }
-
-    private static String getErrorMessage(VirtualFrame frame, InteropEvent event) {
-        Object receiver = ForeignAccess.getReceiver(frame);
-        assert receiver == Null.instance || receiver == Undefined.instance;
-        String receiverName = JSObject.defaultToString((DynamicObject) receiver);
-        return getErrorMessageIntl(event, receiverName);
-    }
-
-    @TruffleBoundary
-    private static String getErrorMessageIntl(InteropEvent event, String receiverName) {
-        switch (event) {
-            case READ:
-                return "Cannot read properties of " + receiverName;
-            case WRITE:
-                return "Cannot write properties of " + receiverName;
-            case KEYS:
-                return "Cannot get property keys of " + receiverName;
-            case NEW:
-            case EXECUTE:
-            case INVOKE:
-                return receiverName + " is not a function";
-            default:
-                return "";
-        }
-    }
-
-    private enum InteropEvent {
-        READ,
-        WRITE,
-        EXECUTE,
-        INVOKE,
-        NEW,
-        KEYS,
     }
 }
