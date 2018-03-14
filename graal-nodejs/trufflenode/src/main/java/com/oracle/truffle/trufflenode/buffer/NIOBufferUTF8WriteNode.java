@@ -79,7 +79,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
         return JSFunction.call(nativeUtf8Write, target, new Object[]{str, destOffset, bytes});
     }
 
-    @Specialization
+    @Specialization(guards = {"!isJSArrayBufferView(target)"})
     @SuppressWarnings("unused")
     public Object writeAbort(Object target, Object str, Object destOffset, Object bytes) {
         throw Errors.createTypeError("Typed array expected");

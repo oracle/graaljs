@@ -5,6 +5,7 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.Source;
@@ -208,7 +209,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
             return Undefined.instance;
         }
 
-        @Specialization
+        @Fallback
         protected Object doSleep(@SuppressWarnings("unused") Object time) {
             throw Errors.createTypeError("Integer expected");
         }

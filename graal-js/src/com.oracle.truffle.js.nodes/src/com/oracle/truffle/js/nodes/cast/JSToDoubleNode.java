@@ -76,7 +76,7 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value");
     }
 
-    @Specialization(guards = "!isDynamicObject(object)")
+    @Specialization(guards = "isForeignObject(object)")
     protected double doCrossLanguageToDouble(TruffleObject object,
                     @Cached("create()") JSUnboxOrGetNode interopUnboxNode) {
         return getToDoubleNode().executeDouble(interopUnboxNode.executeWithTarget(object));
@@ -91,7 +91,13 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isJavaNumber(value)")
-    protected static double doJavaObject(Object value) {
+    protected static double doJavaNumber(Object value) {
         return JSRuntime.doubleValue((Number) value);
     }
+
+    @Specialization(guards = "isJavaObject(value)")
+    protected static double doJavaObject(@SuppressWarnings("unused") Object value) {
+        return Double.NaN;
+    }
+
 }

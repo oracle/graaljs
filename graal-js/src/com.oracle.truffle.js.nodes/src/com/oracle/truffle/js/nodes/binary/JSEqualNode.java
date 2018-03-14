@@ -170,8 +170,14 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = "isSymbol(a) != isSymbol(b)")
-    protected static boolean doSymbolNotSymbol(Object a, Object b) {
+    @Specialization(guards = {"!isSymbol(b)", "!isObject(b)"})
+    protected static boolean doSymbolNotSymbol(Symbol a, Object b) {
+        return false;
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"!isSymbol(a)", "!isObject(a)"})
+    protected static boolean doSymbolNotSymbol(Object a, Symbol b) {
         return false;
     }
 

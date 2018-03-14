@@ -84,7 +84,8 @@ public final class JSException extends GraalJSException {
     public Object getErrorObjectEager(JSContext context) {
         if (exceptionObj == null) { // not thread safe, but should be all right in this case
             JSRealm innerRealm = this.realm == null ? context.getRealm() : this.realm;
-            exceptionObj = JSError.createFromJSException(this, innerRealm, getRawMessage());
+            String message = getRawMessage();
+            exceptionObj = JSError.createFromJSException(this, innerRealm, (message == null) ? "" : message);
         }
         return exceptionObj;
     }

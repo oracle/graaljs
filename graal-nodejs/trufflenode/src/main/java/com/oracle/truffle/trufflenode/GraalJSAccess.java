@@ -1549,7 +1549,6 @@ public final class GraalJSAccess {
         JSContext jsContext = (JSContext) context;
         if (!(throwable instanceof GraalJSException)) {
             isolateInternalErrorCheck(throwable);
-            throwable.printStackTrace();
             throwable = JSException.create(JSErrorType.Error, throwable.getMessage(), throwable, null);
         }
         GraalJSException truffleException = (GraalJSException) throwable;
