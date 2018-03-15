@@ -8,7 +8,6 @@ import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -26,12 +25,16 @@ import com.oracle.truffle.js.runtime.LargeInteger;
  * 11.7.3 The Unsigned Right Shift Operator (>>>).
  */
 @NodeInfo(shortName = ">>>")
-@NodeField(name = "shiftValue", type = int.class)
-@NodeField(name = "rightValue", type = int.class)
 public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
 
-    protected JSUnsignedRightShiftConstantNode(JavaScriptNode operand) {
+    protected final int shiftValue;
+    protected final int rightValue;
+
+    protected JSUnsignedRightShiftConstantNode(JavaScriptNode operand, int shiftValue, int rightValue) {
         super(operand);
+        assert shiftValue > 0;
+        this.shiftValue = shiftValue;
+        this.rightValue = rightValue;
     }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
@@ -61,7 +64,7 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(BinaryExpressionTag.class)) {
             // need to call the generated factory directly to avoid constant optimizations
-            JSConstantNode constantNode = JSConstantIntegerNode.create(getRightValue());
+            JSConstantNode constantNode = JSConstantIntegerNode.create(rightValue);
             JavaScriptNode node = JSUnsignedRightShiftNodeGen.create(getOperand(), constantNode);
             transferSourceSectionNoTags(this, constantNode);
             transferSourceSection(this, node);
@@ -71,26 +74,20 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
         }
     }
 
-    protected abstract int getShiftValue();
-
-    protected abstract int getRightValue();
-
     @Specialization
     protected int doInteger(int a) {
-        assert getShiftValue() > 0;
-        return a >>> getShiftValue();
+        return a >>> shiftValue;
     }
 
     @Specialization
     protected int doLargeInteger(LargeInteger a) {
-        assert getShiftValue() > 0;
-        return a.intValue() >>> getShiftValue();
+        return a.intValue() >>> shiftValue;
     }
 
     @Specialization
     protected int doDouble(double a,
                     @Cached("create()") JSToUInt32Node toUInt32Node) {
-        return (int) (toUInt32Node.executeLong(a) >>> getShiftValue());
+        return (int) (toUInt32Node.executeLong(a) >>> shiftValue);
     }
 
     @Specialization(guards = "!isHandled(lval)")
@@ -98,9 +95,9 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
                     @Cached("create()") JSToUInt32Node toUInt32Node) {
         long lnum = toUInt32Node.executeLong(lval);
         if (lnum >= Integer.MAX_VALUE || lnum <= Integer.MIN_VALUE) {
-            return (double) (lnum >>> getShiftValue());
+            return (double) (lnum >>> shiftValue);
         }
-        return (int) (lnum >>> getShiftValue());
+        return (int) (lnum >>> shiftValue);
     }
 
     protected static boolean isHandled(Object lval) {
@@ -114,13 +111,13 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSUnsignedRightShiftConstantNodeGen.create(cloneUninitialized(getOperand()), getShiftValue(), getRightValue());
+        return JSUnsignedRightShiftConstantNodeGen.create(cloneUninitialized(getOperand()), shiftValue, rightValue);
     }
 
     @Override
     public String expressionToString() {
         if (getOperand() != null) {
-            return "(" + Objects.toString(getOperand().expressionToString(), INTERMEDIATE_VALUE) + " >>> " + getShiftValue() + ")";
+            return "(" + Objects.toString(getOperand().expressionToString(), INTERMEDIATE_VALUE) + " >>> " + rightValue + ")";
         }
         return null;
     }
