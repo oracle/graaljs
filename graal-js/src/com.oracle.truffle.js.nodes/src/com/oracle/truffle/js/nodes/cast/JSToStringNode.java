@@ -12,6 +12,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNodeGen.JSToStringWrapperNodeGen;
@@ -67,8 +68,9 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     public abstract String executeString(Object operand);
 
     @Specialization
-    protected String doLazyString(JSLazyString value) {
-        return value.toString();
+    protected String doLazyString(JSLazyString value,
+                    @Cached("createBinaryProfile()") ConditionProfile flattenProfile) {
+        return value.toString(flattenProfile);
     }
 
     @Specialization

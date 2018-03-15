@@ -8,6 +8,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -132,6 +133,13 @@ public final class JSLazyString implements CharSequence, TruffleObject {
     @Override
     public String toString() {
         if (!isFlat()) {
+            flatten();
+        }
+        return (String) left;
+    }
+
+    public String toString(ConditionProfile profile) {
+        if (profile.profile(!isFlat())) {
             flatten();
         }
         return (String) left;
