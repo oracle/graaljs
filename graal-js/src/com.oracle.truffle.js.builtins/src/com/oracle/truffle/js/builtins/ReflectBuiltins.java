@@ -124,13 +124,6 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             super(context, builtin);
         }
 
-        protected void ensureCallable(Object target) {
-            if (!JSRuntime.isCallable(target)) {
-                errorBranch.enter();
-                throw Errors.createTypeErrorCallableExpected();
-            }
-        }
-
         protected void ensureObject(Object target) {
             if (!JSRuntime.isObject(target)) {
                 errorBranch.enter();
@@ -139,7 +132,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
     }
 
-    public abstract static class ReflectApplyNode extends ReflectOperation {
+    public abstract static class ReflectApplyNode extends JSBuiltinNode {
 
         @Child private JSFunctionCallNode call = JSFunctionCallNode.createCall();
         @Child private JSToObjectArrayNode toObjectArray;
@@ -149,12 +142,22 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             this.toObjectArray = JSToObjectArrayNodeGen.create(getContext());
         }
 
-        @Specialization
-        protected Object reflectApply(Object target, Object thisArgument, Object argumentsList) {
-            ensureCallable(target);
+        @Specialization(guards = "isJSFunction(target)")
+        protected final Object applyFunction(DynamicObject target, Object thisArgument, Object argumentsList) {
+            return applyCallable(target, thisArgument, argumentsList);
+        }
+
+        @Specialization(guards = "isCallable(target)", replaces = "applyFunction")
+        protected final Object applyCallable(Object target, Object thisArgument, Object argumentsList) {
             Object[] applyUserArgs = toObjectArray.executeObjectArray(argumentsList);
             Object[] passedOnArguments = JSArguments.create(thisArgument, target, applyUserArgs);
             return call.executeCall(passedOnArguments);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isCallable(target)")
+        protected static Object error(Object target, Object thisArgument, Object argumentsList) {
+            throw Errors.createTypeErrorCallableExpected();
         }
     }
 
