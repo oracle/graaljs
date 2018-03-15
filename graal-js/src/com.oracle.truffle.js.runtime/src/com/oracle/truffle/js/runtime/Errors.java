@@ -405,6 +405,11 @@ public final class Errors {
         return createTypeError("Cannot delete property " + JSRuntime.quote(JSRuntime.javaToString(propertyKey)) + " of " + JSRuntime.safeToString(object));
     }
 
+    @TruffleBoundary
+    public static JSException createTypeErrorCannotDeletePropertyOfSealedArray(long index) {
+        return createTypeErrorFormat("Cannot delete property \"%d\" of sealed array", index);
+    }
+
     public static JSException createTypeErrorJSObjectExpected() {
         return createTypeError("only JavaScript objects are supported by this operation");
     }

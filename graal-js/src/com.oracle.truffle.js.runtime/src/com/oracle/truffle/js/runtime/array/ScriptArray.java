@@ -85,7 +85,7 @@ public abstract class ScriptArray {
     public final ScriptArray deleteElement(DynamicObject object, long index, boolean strict, boolean condition) {
         if (isSealed()) {
             if (strict) {
-                throw Errors.createTypeErrorFormat("Cannot delete property \"%d\" of sealed array", index);
+                throw Errors.createTypeErrorCannotDeletePropertyOfSealedArray(index);
             }
             return this;
         }
@@ -376,7 +376,7 @@ public abstract class ScriptArray {
     public final ScriptArray removeRange(DynamicObject object, long start, long end) {
         assert start >= 0 && start <= end;
         if (isSealed()) {
-            throw Errors.createTypeErrorFormat("Cannot delete property \"%d\" of sealed array", start);
+            throw Errors.createTypeErrorCannotDeletePropertyOfSealedArray(start);
         }
         return removeRangeImpl(object, start, end);
     }
@@ -385,7 +385,7 @@ public abstract class ScriptArray {
         assert start >= 0 && start <= end;
         if (isSealed()) {
             errorBranch.enter();
-            throw Errors.createTypeErrorFormat("Cannot delete property \"%d\" of sealed array", start);
+            throw Errors.createTypeErrorCannotDeletePropertyOfSealedArray(start);
         }
         return removeRangeImpl(object, start, end);
     }

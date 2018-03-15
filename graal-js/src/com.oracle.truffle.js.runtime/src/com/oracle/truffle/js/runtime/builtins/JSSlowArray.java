@@ -66,6 +66,12 @@ public final class JSSlowArray extends JSAbstractArray {
     public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
         ScriptArray array = arrayGetArrayType(thisObj);
         if (array.hasElement(thisObj, index)) {
+            if (array.isSealed()) {
+                if (isStrict) {
+                    throw Errors.createTypeErrorCannotDeletePropertyOfSealedArray(index);
+                }
+                return false;
+            }
             arraySetArrayType(thisObj, array.deleteElement(thisObj, index, isStrict));
             return true;
         } else {
