@@ -74,7 +74,7 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
         return isInt ? leftInt : leftDouble;
     }
 
-    @Specialization(guards = {"truncate", "isInt || isSafeLong"})
+    @Specialization(guards = {"truncate", "isInt"})
     protected int doIntTruncate(int right) {
         return leftInt + right;
     }
@@ -128,7 +128,9 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
         CompilerAsserts.neverPartOfCompilation();
         if (truncate == false) {
             truncate = true;
-            Truncatable.truncate(getOperand());
+            if (isInt) {
+                Truncatable.truncate(getOperand());
+            }
         }
     }
 
