@@ -405,7 +405,7 @@ public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.
 
         private DynamicObject cloneArrayBufferView(DynamicObject sourceView, TypedArray sourceArray) {
             int length = (int) sourceArray.length(sourceView);
-            int byteLength = length * sourceArray.getFactory().bytesPerElement();
+            int byteLength = length * sourceArray.bytesPerElement();
             TypedArray sinkArray = sourceArray.getFactory().createArrayType(sourceArray.isDirect(), false);
             DynamicObject clonedArrayBuffer = sinkArray.isDirect() ? JSArrayBuffer.createDirectArrayBuffer(getContext(), byteLength) : JSArrayBuffer.createArrayBuffer(getContext(), byteLength);
             DynamicObject sinkView = JSArrayBufferView.createArrayBufferView(getContext(), clonedArrayBuffer, sinkArray, 0, length);

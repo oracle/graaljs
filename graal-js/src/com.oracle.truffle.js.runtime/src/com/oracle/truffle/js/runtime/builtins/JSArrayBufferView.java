@@ -32,7 +32,7 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.TypedArray;
-import com.oracle.truffle.js.runtime.array.TypedArray.TypedArrayFactory;
+import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -134,7 +134,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     }
 
     private static String typedArrayGetName(DynamicObject thisObj) {
-        return typedArrayGetArrayType(thisObj).getFactory().getName();
+        return typedArrayGetArrayType(thisObj).getName();
     }
 
     private JSArrayBufferView() {

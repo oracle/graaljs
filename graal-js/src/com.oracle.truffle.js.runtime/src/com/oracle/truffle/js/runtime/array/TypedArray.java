@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 package com.oracle.truffle.js.runtime.array;
@@ -15,7 +15,6 @@ import java.nio.ByteOrder;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -30,9 +29,15 @@ public abstract class TypedArray extends ScriptArray {
     // protected final byte[] buffer;
 
     private final boolean offset;
+    private final int bytesPerElement;
+    private final String name;
+    private final TypedArrayFactory factory;
 
-    protected TypedArray(boolean offset) {
+    protected TypedArray(TypedArrayFactory factory, boolean offset) {
         this.offset = offset;
+        this.bytesPerElement = factory.bytesPerElement();
+        this.name = factory.getName();
+        this.factory = factory;
     }
 
     @Override
@@ -117,10 +122,16 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    public abstract TypedArrayFactory getFactory();
+    public final TypedArrayFactory getFactory() {
+        return factory;
+    }
 
     public final int bytesPerElement() {
-        return getFactory().bytesPerElement();
+        return bytesPerElement;
+    }
+
+    public final String getName() {
+        return name;
     }
 
     @Override
@@ -201,8 +212,8 @@ public abstract class TypedArray extends ScriptArray {
     public abstract void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Number value);
 
     public abstract static class TypedIntArray extends TypedArray {
-        protected TypedIntArray(boolean offset) {
-            super(offset);
+        protected TypedIntArray(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -233,18 +244,11 @@ public abstract class TypedArray extends ScriptArray {
         public abstract void setInt(DynamicObject object, int index, int value, boolean condition);
     }
 
-    private static final int INT8_BYTES_PER_ELEMENT = 1;
-    public static final TypedArrayFactory INT8_FACTORY = new TypedArrayFactory(INT8_BYTES_PER_ELEMENT, "Int8Array",
-                    new Int8Array(false), new Int8Array(true), new DirectInt8Array(false), new DirectInt8Array(true));
+    static final int INT8_BYTES_PER_ELEMENT = 1;
 
     public static final class Int8Array extends TypedIntArray {
-        private Int8Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return INT8_FACTORY;
+        Int8Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -269,13 +273,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectInt8Array extends TypedIntArray {
-        private DirectInt8Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return INT8_FACTORY;
+        DirectInt8Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -304,18 +303,11 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    private static final int UINT8_BYTES_PER_ELEMENT = 1;
-    public static final TypedArrayFactory UINT8_FACTORY = new TypedArrayFactory(UINT8_BYTES_PER_ELEMENT, "Uint8Array",
-                    new Uint8Array(false), new Uint8Array(true), new DirectUint8Array(false), new DirectUint8Array(true));
+    static final int UINT8_BYTES_PER_ELEMENT = 1;
 
     public static final class Uint8Array extends TypedIntArray {
-        private Uint8Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return UINT8_FACTORY;
+        Uint8Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -340,13 +332,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectUint8Array extends TypedIntArray {
-        private DirectUint8Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return UINT8_FACTORY;
+        DirectUint8Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -375,18 +362,9 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    private static final int UINT8_CLAMPED_BYTES_PER_ELEMENT = 1;
-    public static final TypedArrayFactory UINT8_CLAMPED_FACTORY = new TypedArrayFactory(UINT8_CLAMPED_BYTES_PER_ELEMENT, "Uint8ClampedArray",
-                    new Uint8ClampedArray(false), new Uint8ClampedArray(true), new DirectUint8ClampedArray(false), new DirectUint8ClampedArray(true));
-
     public abstract static class AbstractUint8ClampedArray extends TypedIntArray {
-        private AbstractUint8ClampedArray(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return UINT8_CLAMPED_FACTORY;
+        private AbstractUint8ClampedArray(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -417,44 +395,34 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class Uint8ClampedArray extends AbstractUint8ClampedArray {
-        private Uint8ClampedArray(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return UINT8_CLAMPED_FACTORY;
+        Uint8ClampedArray(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
         public int getInt(DynamicObject object, int index, boolean floatingCondition) {
-            return NATIVE_ORDER.getUint8(getByteArray(object, floatingCondition), getOffset(object, floatingCondition), index, UINT8_CLAMPED_BYTES_PER_ELEMENT, floatingCondition);
+            return NATIVE_ORDER.getUint8(getByteArray(object, floatingCondition), getOffset(object, floatingCondition), index, UINT8_BYTES_PER_ELEMENT, floatingCondition);
         }
 
         @Override
         public void setInt(DynamicObject object, int index, int value, boolean condition) {
-            NATIVE_ORDER.putInt8(getByteArray(object, condition), getOffset(object, condition), index, UINT8_CLAMPED_BYTES_PER_ELEMENT, clamp(value));
+            NATIVE_ORDER.putInt8(getByteArray(object, condition), getOffset(object, condition), index, UINT8_BYTES_PER_ELEMENT, clamp(value));
         }
     }
 
     public static final class DirectUint8ClampedArray extends AbstractUint8ClampedArray {
-        private DirectUint8ClampedArray(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return UINT8_CLAMPED_FACTORY;
+        DirectUint8ClampedArray(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
         public int getInt(DynamicObject object, int index, boolean condition) {
-            return getByteBuffer(object, condition).get(getOffset(object, condition) + index * UINT8_CLAMPED_BYTES_PER_ELEMENT) & 0xff;
+            return getByteBuffer(object, condition).get(getOffset(object, condition) + index * UINT8_BYTES_PER_ELEMENT) & 0xff;
         }
 
         @Override
         public void setInt(DynamicObject object, int index, int value, boolean condition) {
-            getByteBuffer(object, condition).put(getOffset(object, condition) + index * UINT8_CLAMPED_BYTES_PER_ELEMENT, (byte) clamp(value));
+            getByteBuffer(object, condition).put(getOffset(object, condition) + index * UINT8_BYTES_PER_ELEMENT, (byte) clamp(value));
         }
 
         @Override
@@ -463,18 +431,11 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    private static final int INT16_BYTES_PER_ELEMENT = 2;
-    public static final TypedArrayFactory INT16_FACTORY = new TypedArrayFactory(INT16_BYTES_PER_ELEMENT, "Int16Array",
-                    new Int16Array(false), new Int16Array(true), new DirectInt16Array(false), new DirectInt16Array(true));
+    static final int INT16_BYTES_PER_ELEMENT = 2;
 
     public static final class Int16Array extends TypedIntArray {
-        private Int16Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return INT16_FACTORY;
+        Int16Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -499,13 +460,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectInt16Array extends TypedIntArray {
-        private DirectInt16Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return INT16_FACTORY;
+        DirectInt16Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -534,18 +490,11 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    private static final int UINT16_BYTES_PER_ELEMENT = 2;
-    public static final TypedArrayFactory UINT16_FACTORY = new TypedArrayFactory(UINT16_BYTES_PER_ELEMENT, "Uint16Array",
-                    new Uint16Array(false), new Uint16Array(true), new DirectUint16Array(false), new DirectUint16Array(true));
+    static final int UINT16_BYTES_PER_ELEMENT = 2;
 
     public static final class Uint16Array extends TypedIntArray {
-        private Uint16Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return UINT16_FACTORY;
+        Uint16Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -570,13 +519,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectUint16Array extends TypedIntArray {
-        private DirectUint16Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return UINT16_FACTORY;
+        DirectUint16Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -605,18 +549,11 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    private static final int INT32_BYTES_PER_ELEMENT = 4;
-    public static final TypedArrayFactory INT32_FACTORY = new TypedArrayFactory(INT32_BYTES_PER_ELEMENT, "Int32Array",
-                    new Int32Array(false), new Int32Array(true), new DirectInt32Array(false), new DirectInt32Array(true));
+    static final int INT32_BYTES_PER_ELEMENT = 4;
 
     public static final class Int32Array extends TypedIntArray {
-        private Int32Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return INT32_FACTORY;
+        Int32Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -641,13 +578,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectInt32Array extends TypedIntArray {
-        private DirectInt32Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return INT32_FACTORY;
+        DirectInt32Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -676,13 +608,11 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    private static final int UINT32_BYTES_PER_ELEMENT = 4;
-    public static final TypedArrayFactory UINT32_FACTORY = new TypedArrayFactory(UINT32_BYTES_PER_ELEMENT, "Uint32Array",
-                    new Uint32Array(false), new Uint32Array(true), new DirectUint32Array(false), new DirectUint32Array(true));
+    static final int UINT32_BYTES_PER_ELEMENT = 4;
 
     public abstract static class AbstractUint32Array extends TypedIntArray {
-        private AbstractUint32Array(boolean offset) {
-            super(offset);
+        private AbstractUint32Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -711,13 +641,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class Uint32Array extends AbstractUint32Array {
-        private Uint32Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return UINT32_FACTORY;
+        Uint32Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -742,13 +667,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectUint32Array extends AbstractUint32Array {
-        private DirectUint32Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return UINT32_FACTORY;
+        DirectUint32Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -778,8 +698,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public abstract static class TypedFloatArray extends TypedArray {
-        protected TypedFloatArray(boolean offset) {
-            super(offset);
+        protected TypedFloatArray(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -810,18 +730,11 @@ public abstract class TypedArray extends ScriptArray {
         public abstract void setDouble(DynamicObject object, int index, double value, boolean condition);
     }
 
-    private static final int FLOAT32_BYTES_PER_ELEMENT = 4;
-    public static final TypedArrayFactory FLOAT32_FACTORY = new TypedArrayFactory(FLOAT32_BYTES_PER_ELEMENT, "Float32Array",
-                    new Float32Array(false), new Float32Array(true), new DirectFloat32Array(false), new DirectFloat32Array(true));
+    static final int FLOAT32_BYTES_PER_ELEMENT = 4;
 
     public static final class Float32Array extends TypedFloatArray {
-        private Float32Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return FLOAT32_FACTORY;
+        Float32Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -846,13 +759,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectFloat32Array extends TypedFloatArray {
-        private DirectFloat32Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return FLOAT32_FACTORY;
+        DirectFloat32Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -881,18 +789,11 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    private static final int FLOAT64_BYTES_PER_ELEMENT = 8;
-    public static final TypedArrayFactory FLOAT64_FACTORY = new TypedArrayFactory(FLOAT64_BYTES_PER_ELEMENT, "Float64Array",
-                    new Float64Array(false), new Float64Array(true), new DirectFloat64Array(false), new DirectFloat64Array(true));
+    static final int FLOAT64_BYTES_PER_ELEMENT = 8;
 
     public static final class Float64Array extends TypedFloatArray {
-        private Float64Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return FLOAT64_FACTORY;
+        Float64Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -917,13 +818,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public static final class DirectFloat64Array extends TypedFloatArray {
-        private DirectFloat64Array(boolean offset) {
-            super(offset);
-        }
-
-        @Override
-        public TypedArrayFactory getFactory() {
-            return FLOAT64_FACTORY;
+        DirectFloat64Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
         }
 
         @Override
@@ -949,54 +845,6 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Number value) {
             getByteBufferFromBuffer(buffer, littleEndian, condition).putDouble(index, JSRuntime.doubleValue(value));
-        }
-    }
-
-    public static final class TypedArrayFactory {
-        private final int bytesPerElement;
-        @CompilationFinal private int factoryIndex;
-        private final String name;
-        private final TypedArray arrayType;
-        private final TypedArray arrayTypeWithOffset;
-        private final TypedArray directArrayType;
-        private final TypedArray directArrayTypeWithOffset;
-
-        TypedArrayFactory(int bytesPerElement, String name, TypedArray arrayType, TypedArray arrayTypeWithOffset, TypedArray directArrayType, TypedArray directArrayTypeWithOffset) {
-            this.bytesPerElement = bytesPerElement;
-            this.name = name;
-            this.arrayType = arrayType;
-            this.arrayTypeWithOffset = arrayTypeWithOffset;
-            this.directArrayType = directArrayType;
-            this.directArrayTypeWithOffset = directArrayTypeWithOffset;
-            assert !arrayType.hasOffset() && arrayTypeWithOffset.hasOffset() && !directArrayType.hasOffset() && directArrayTypeWithOffset.hasOffset();
-        }
-
-        public TypedArray createArrayType(boolean direct, boolean offset) {
-            if (direct) {
-                if (offset) {
-                    return directArrayTypeWithOffset;
-                } else {
-                    return directArrayType;
-                }
-            } else {
-                if (offset) {
-                    return arrayTypeWithOffset;
-                } else {
-                    return arrayType;
-                }
-            }
-        }
-
-        public int bytesPerElement() {
-            return bytesPerElement;
-        }
-
-        public int getFactoryIndex() {
-            return factoryIndex;
-        }
-
-        public String getName() {
-            return name;
         }
     }
 
@@ -1278,14 +1126,5 @@ public abstract class TypedArray extends ScriptArray {
     static final BufferAccess NATIVE_ORDER = new SunMiscUnsafeNativeOrderBufferAccess();
     private static final BufferAccess LITTLE_ENDIAN_ORDER = new LittleEndianBufferAccess();
     private static final BufferAccess BIG_ENDIAN_ORDER = new BigEndianBufferAccess();
-    public static final TypedArrayFactory[] FACTORIES = createFactories();
-
-    private static TypedArrayFactory[] createFactories() {
-        TypedArrayFactory[] factories = new TypedArrayFactory[]{INT8_FACTORY, UINT8_FACTORY, UINT8_CLAMPED_FACTORY, INT16_FACTORY, UINT16_FACTORY, INT32_FACTORY, UINT32_FACTORY,
-                        FLOAT32_FACTORY, FLOAT64_FACTORY};
-        for (int i = 0; i < factories.length; i++) {
-            factories[i].factoryIndex = i;
-        }
-        return factories;
-    }
+    public static final TypedArrayFactory[] FACTORIES = TypedArrayFactory.values();
 }

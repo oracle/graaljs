@@ -41,7 +41,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.TypedArray;
-import com.oracle.truffle.js.runtime.array.TypedArray.TypedArrayFactory;
+import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -64,15 +64,15 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @Child private ArraySpeciesConstructorNode arraySpeciesConstructorNode;
     private final BranchProfile errorBranch = BranchProfile.create();
 
-    private final TypedArray.TypedArrayFactory factory;
+    private final TypedArrayFactory factory;
 
     public JSConstructTypedArrayNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
         this.factory = findTypedArrayFactory(builtin.getName());
     }
 
-    private static TypedArray.TypedArrayFactory findTypedArrayFactory(String name) {
-        for (TypedArray.TypedArrayFactory typedArrayFactory : TypedArray.FACTORIES) {
+    private static TypedArrayFactory findTypedArrayFactory(String name) {
+        for (TypedArrayFactory typedArrayFactory : TypedArray.FACTORIES) {
             if (typedArrayFactory.getName().equals(name)) {
                 return typedArrayFactory;
             }
@@ -451,7 +451,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
     abstract static class IntegerIndexedObjectCreateNode extends JavaScriptBaseNode {
         private final JSContext context;
-        private final TypedArray.TypedArrayFactory factory;
+        private final TypedArrayFactory factory;
 
         IntegerIndexedObjectCreateNode(JSContext context, TypedArrayFactory factory) {
             this.context = context;

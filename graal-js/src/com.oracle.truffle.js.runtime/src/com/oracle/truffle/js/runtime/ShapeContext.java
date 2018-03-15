@@ -6,7 +6,7 @@ package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.array.TypedArray.TypedArrayFactory;
+import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 

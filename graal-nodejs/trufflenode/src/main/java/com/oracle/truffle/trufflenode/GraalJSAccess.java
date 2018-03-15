@@ -111,6 +111,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
+import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -857,7 +858,7 @@ public final class GraalJSAccess {
         return JSArrayBufferView.typedArrayGetLength((DynamicObject) typedArray);
     }
 
-    private Object typedArrayNew(Object arrayBuffer, int offset, int length, TypedArray.TypedArrayFactory factory) {
+    private Object typedArrayNew(Object arrayBuffer, int offset, int length, TypedArrayFactory factory) {
         TypedArray arrayType = factory.createArrayType(true, offset != 0);
         DynamicObject dynamicObject = (DynamicObject) arrayBuffer;
         JSContext context = JSObject.getJSContext(dynamicObject);
@@ -865,39 +866,39 @@ public final class GraalJSAccess {
     }
 
     public Object uint8ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, TypedArray.UINT8_FACTORY);
+        return typedArrayNew(arrayBuffer, offset, length, TypedArrayFactory.Uint8Array);
     }
 
     public Object uint8ClampedArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, TypedArray.UINT8_CLAMPED_FACTORY);
+        return typedArrayNew(arrayBuffer, offset, length, TypedArrayFactory.Uint8ClampedArray);
     }
 
     public Object int8ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, TypedArray.INT8_FACTORY);
+        return typedArrayNew(arrayBuffer, offset, length, TypedArrayFactory.Int8Array);
     }
 
     public Object uint16ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, TypedArray.UINT16_FACTORY);
+        return typedArrayNew(arrayBuffer, offset, length, TypedArrayFactory.Uint16Array);
     }
 
     public Object int16ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, TypedArray.INT16_FACTORY);
+        return typedArrayNew(arrayBuffer, offset, length, TypedArrayFactory.Int16Array);
     }
 
     public Object uint32ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, TypedArray.UINT32_FACTORY);
+        return typedArrayNew(arrayBuffer, offset, length, TypedArrayFactory.Uint32Array);
     }
 
     public Object int32ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, TypedArray.INT32_FACTORY);
+        return typedArrayNew(arrayBuffer, offset, length, TypedArrayFactory.Int32Array);
     }
 
     public Object float32ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, TypedArray.FLOAT32_FACTORY);
+        return typedArrayNew(arrayBuffer, offset, length, TypedArrayFactory.Float32Array);
     }
 
     public Object float64ArrayNew(Object arrayBuffer, int offset, int length) {
-        return typedArrayNew(arrayBuffer, offset, length, TypedArray.FLOAT64_FACTORY);
+        return typedArrayNew(arrayBuffer, offset, length, TypedArrayFactory.Float64Array);
     }
 
     public Object dataViewNew(Object arrayBuffer, int offset, int length) {
