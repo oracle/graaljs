@@ -291,6 +291,7 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
         progArgs += ['-m', 'debug']
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-Xrs'] + vmArgs))
     _setEnvVar('NODE_STACK_SIZE', '4000000')
+    _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
     return mx.run([join(_suite.mxDir, 'python2', 'python'), 'tools/test.py'] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
 
 def setLibraryPath(additionalPath=None):
