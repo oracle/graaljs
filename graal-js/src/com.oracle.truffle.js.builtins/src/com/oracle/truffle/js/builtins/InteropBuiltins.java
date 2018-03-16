@@ -267,266 +267,230 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         }
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropIsExecutableNode extends JSBuiltinNode {
-        @Child private Node isExecutable;
 
         InteropIsExecutableNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected boolean execute(TruffleObject obj) {
-            if (isExecutable == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isExecutable = insert(Message.IS_EXECUTABLE.createNode());
-            }
+        protected boolean truffleObject(TruffleObject obj,
+                        @Cached("createIsExecutable()") Node isExecutable) {
             return ForeignAccess.sendIsExecutable(isExecutable, obj);
         }
 
         @Specialization(guards = "isJavaPrimitive(obj)")
-        protected boolean executeJavaPrimitive(@SuppressWarnings("unused") Object obj) {
+        protected boolean primitive(@SuppressWarnings("unused") Object obj) {
             return false;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isTruffleObject(obj)", "!isJavaPrimitive(obj)"})
-        protected boolean executeError(Object obj) {
+        protected boolean unsupported(Object obj) {
             return false;
         }
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropIsBoxedPrimitiveNode extends JSBuiltinNode {
-        @Child private Node isBoxedPrimitive;
 
         InteropIsBoxedPrimitiveNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected boolean execute(TruffleObject obj) {
-            if (isBoxedPrimitive == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isBoxedPrimitive = insert(Message.IS_BOXED.createNode());
-            }
-            return ForeignAccess.sendIsBoxed(isBoxedPrimitive, obj);
+        protected boolean truffleObject(TruffleObject obj,
+                        @Cached("createIsBoxed()") Node isBoxed) {
+            return ForeignAccess.sendIsBoxed(isBoxed, obj);
         }
 
         @Specialization(guards = "isJavaPrimitive(obj)")
-        protected boolean executeJavaPrimitive(@SuppressWarnings("unused") Object obj) {
+        protected boolean primitive(@SuppressWarnings("unused") Object obj) {
             return false;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isTruffleObject(obj)", "!isJavaPrimitive(obj)"})
-        protected boolean executeError(Object obj) {
+        protected boolean unsupported(Object obj) {
             return false;
         }
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropIsNullNode extends JSBuiltinNode {
-        @Child private Node isNull;
 
         InteropIsNullNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected boolean execute(TruffleObject obj) {
-            if (isNull == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isNull = insert(Message.IS_NULL.createNode());
-            }
+        protected boolean truffleObject(TruffleObject obj,
+                        @Cached("createIsNull()") Node isNull) {
             return ForeignAccess.sendIsNull(isNull, obj);
         }
 
         @Specialization(guards = "isJavaPrimitive(obj)")
-        protected boolean executeJavaPrimitive(@SuppressWarnings("unused") Object obj) {
+        protected boolean primitive(@SuppressWarnings("unused") Object obj) {
             return false;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isTruffleObject(obj)", "!isJavaPrimitive(obj)"})
-        protected boolean executeError(Object obj) {
+        protected boolean unsupported(Object obj) {
             return false;
         }
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropHasSizeNode extends JSBuiltinNode {
-        @Child private Node hasSize;
 
         InteropHasSizeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected boolean execute(TruffleObject obj) {
-            if (hasSize == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                hasSize = insert(Message.HAS_SIZE.createNode());
-            }
+        protected boolean truffleObject(TruffleObject obj,
+                        @Cached("createHasSize()") Node hasSize) {
             return ForeignAccess.sendHasSize(hasSize, obj);
         }
 
         @Specialization(guards = "isJavaPrimitive(obj)")
-        protected boolean executeJavaPrimitive(@SuppressWarnings("unused") Object obj) {
+        protected boolean primitive(@SuppressWarnings("unused") Object obj) {
             return false;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isTruffleObject(obj)", "!isJavaPrimitive(obj)"})
-        protected boolean executeError(Object obj) {
+        protected boolean unsupported(Object obj) {
             return false;
         }
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropReadNode extends JSBuiltinNode {
-        @Child private Node read;
-        @Child private JSForeignToJSTypeNode foreignConvert;
 
         InteropReadNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object execute(TruffleObject obj, Object name) {
-            if (read == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                read = insert(Message.READ.createNode());
-            }
-            if (foreignConvert == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                foreignConvert = insert(JSForeignToJSTypeNode.create());
-            }
+        protected Object read(TruffleObject obj, Object name,
+                        @Cached("createRead()") Node read,
+                        @Cached("create()") JSForeignToJSTypeNode foreignConvert) {
             try {
                 return foreignConvert.executeWithTarget(ForeignAccess.sendRead(read, obj, name));
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            } catch (UnknownIdentifierException e) {
                 return Null.instance;
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(obj, e, Message.READ, this);
             }
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
-        protected boolean executeError(Object obj, Object name) {
+        protected boolean unsupported(Object obj, Object name) {
             throw Errors.createTypeErrorNotATruffleObject(Message.READ);
         }
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropWriteNode extends JSBuiltinNode {
-        @Child private Node write;
-        @Child ExportValueNode exportValue = ExportValueNode.create();
 
         InteropWriteNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object execute(TruffleObject obj, Object name, Object value) {
-            if (write == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                write = insert(Message.WRITE.createNode());
-            }
+        protected Object write(TruffleObject obj, Object name, Object value,
+                        @Cached("createWrite()") Node write,
+                        @Cached("create()") ExportValueNode exportValue) {
             try {
                 Object identifier = exportValue.executeWithTarget(name, Undefined.instance);
                 Object convertedValue = exportValue.executeWithTarget(value, Undefined.instance);
                 return ForeignAccess.sendWrite(write, obj, identifier, convertedValue);
             } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
-                return Null.instance;
+                throw Errors.createTypeErrorInteropException(obj, e, Message.WRITE, this);
             }
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
-        protected boolean executeError(Object obj, Object name, Object value) {
+        protected boolean unsupported(Object obj, Object name, Object value) {
             throw Errors.createTypeErrorNotATruffleObject(Message.WRITE);
         }
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropRemoveNode extends JSBuiltinNode {
-        @Child private Node remove;
-        @Child ExportValueNode exportValue = ExportValueNode.create();
 
         InteropRemoveNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object execute(TruffleObject obj, Object key) {
-            if (remove == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                remove = insert(Message.REMOVE.createNode());
-            }
+        protected Object remove(TruffleObject obj, Object key,
+                        @Cached("createRemove()") Node remove,
+                        @Cached("create()") ExportValueNode exportValue) {
             try {
                 Object exportedKey = exportValue.executeWithTarget(key, Undefined.instance);
                 return ForeignAccess.sendRemove(remove, obj, exportedKey);
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            } catch (UnknownIdentifierException e) {
                 return Null.instance;
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(obj, e, Message.REMOVE, this);
             }
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
-        protected boolean executeError(Object obj, Object key) {
+        protected boolean unsupported(Object obj, Object key) {
             throw Errors.createTypeErrorNotATruffleObject(Message.REMOVE);
         }
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropUnboxValueNode extends JSBuiltinNode {
-        @Child private Node unbox;
-        @Child JSForeignToJSTypeNode foreignConvertNode;
 
         InteropUnboxValueNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object execute(TruffleObject obj) {
-            if (unbox == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                unbox = insert(Message.UNBOX.createNode());
-            }
+        protected Object truffleObject(TruffleObject obj,
+                        @Cached("createUnbox()") Node unbox,
+                        @Cached("create()") JSForeignToJSTypeNode foreignConvertNode) {
             try {
-                return toJSType(ForeignAccess.sendUnbox(unbox, obj));
+                return foreignConvertNode.executeWithTarget(ForeignAccess.sendUnbox(unbox, obj));
             } catch (UnsupportedMessageException e) {
                 return Null.instance;
             }
         }
 
         @Specialization(guards = "isJavaPrimitive(obj)")
-        protected Object executeJavaPrimitive(Object obj) {
+        protected Object primitive(Object obj) {
             // identity function
             return obj;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isTruffleObject(obj)", "!isJavaPrimitive(obj)"})
-        protected boolean executeError(Object obj) {
+        protected boolean unsupported(Object obj) {
             throw Errors.createTypeErrorNotATruffleObject(Message.UNBOX);
         }
-
-        private Object toJSType(Object value) {
-            if (foreignConvertNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                foreignConvertNode = insert(JSForeignToJSTypeNode.create());
-            }
-            return foreignConvertNode.executeWithTarget(value);
-        }
-
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropExecuteNode extends JSBuiltinNode {
-        @Child private Node execute;
-        @Child ExportValueNode exportValue = ExportValueNode.create();
 
         InteropExecuteNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object execute(TruffleObject obj, Object[] arguments) {
-            if (execute == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                execute = insert(JSInteropUtil.EXECUTE.createNode());
-            }
+        protected Object execute(TruffleObject obj, Object[] arguments,
+                        @Cached("createCall()") Node execute,
+                        @Cached("create()") ExportValueNode exportValue) {
             try {
                 TruffleObject target = (TruffleObject) exportValue.executeWithTarget(obj, Undefined.instance);
                 Object[] convertedArgs = new Object[arguments.length];
@@ -535,63 +499,57 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
                 }
                 return ForeignAccess.sendExecute(execute, target, convertedArgs);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                return Null.instance;
+                throw Errors.createTypeErrorInteropException(obj, e, JSInteropUtil.EXECUTE, this);
             }
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
-        protected boolean executeError(Object obj, Object[] arguments) {
+        protected boolean unsupported(Object obj, Object[] arguments) {
             throw Errors.createTypeErrorNotATruffleObject(JSInteropUtil.EXECUTE);
         }
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropConstructNode extends JSBuiltinNode {
-        @Child private Node construct;
-        @Child ExportValueNode exportValue = ExportValueNode.create();
 
         InteropConstructNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object construct(TruffleObject obj, Object[] arguments) {
-            if (construct == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                construct = insert(JSInteropUtil.NEW.createNode());
-            }
+        protected Object doNew(TruffleObject obj, Object[] arguments,
+                        @Cached("createNew()") Node newNode,
+                        @Cached("create()") ExportValueNode exportValue) {
             try {
                 TruffleObject target = (TruffleObject) exportValue.executeWithTarget(obj, Undefined.instance);
                 Object[] convertedArgs = new Object[arguments.length];
                 for (int i = 0; i < arguments.length; i++) {
                     convertedArgs[i] = exportValue.executeWithTarget(arguments[i], Undefined.instance);
                 }
-                return ForeignAccess.sendNew(construct, target, convertedArgs);
+                return ForeignAccess.sendNew(newNode, target, convertedArgs);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                return Null.instance;
+                throw Errors.createTypeErrorInteropException(obj, e, JSInteropUtil.NEW, this);
             }
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
-        protected boolean executeError(Object obj, Object[] arguments) {
+        protected boolean unsupported(Object obj, Object[] arguments) {
             throw Errors.createTypeErrorNotATruffleObject(JSInteropUtil.NEW);
         }
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropGetSizeNode extends JSBuiltinNode {
-        @Child private Node getSize;
 
         InteropGetSizeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object execute(TruffleObject obj) {
-            if (getSize == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getSize = insert(Message.GET_SIZE.createNode());
-            }
+        protected Object getSize(TruffleObject obj,
+                        @Cached("createGetSize()") Node getSize) {
             try {
                 return ForeignAccess.sendGetSize(getSize, obj);
             } catch (UnsupportedMessageException e) {
@@ -601,7 +559,7 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
-        protected boolean executeError(Object obj) {
+        protected boolean unsupported(Object obj) {
             throw Errors.createTypeErrorNotATruffleObject(Message.GET_SIZE);
         }
     }
@@ -703,41 +661,35 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         }
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropHasKeysNode extends JSBuiltinNode {
-        @Child private Node hasKeysNode;
 
         InteropHasKeysNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected boolean execute(TruffleObject obj) {
-            if (hasKeysNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                hasKeysNode = insert(Message.HAS_KEYS.createNode());
-            }
-            return ForeignAccess.sendHasKeys(hasKeysNode, obj);
+        protected boolean hasKeys(TruffleObject obj,
+                        @Cached("createHasKeys()") Node hasKeys) {
+            return ForeignAccess.sendHasKeys(hasKeys, obj);
         }
 
         @Specialization(guards = "!isTruffleObject(obj)")
-        protected boolean executeError(@SuppressWarnings("unused") Object obj) {
+        protected boolean unsupported(@SuppressWarnings("unused") Object obj) {
             return false;
         }
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropKeysNode extends JSBuiltinNode {
-        @Child private Node keysNode;
 
         InteropKeysNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected TruffleObject execute(TruffleObject obj) {
-            if (keysNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                keysNode = insert(Message.KEYS.createNode());
-            }
+        protected TruffleObject keys(TruffleObject obj,
+                        @Cached("createKeys()") Node keysNode) {
             try {
                 return ForeignAccess.sendKeys(keysNode, obj);
             } catch (UnsupportedMessageException e) {
@@ -747,29 +699,26 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
-        protected boolean executeError(Object obj) {
+        protected boolean unsupported(Object obj) {
             throw Errors.createTypeErrorNotATruffleObject(Message.KEYS);
         }
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropIsInstantiableNode extends JSBuiltinNode {
-        @Child private Node isInstantiable;
 
         InteropIsInstantiableNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected boolean execute(TruffleObject obj) {
-            if (isInstantiable == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isInstantiable = insert(Message.IS_INSTANTIABLE.createNode());
-            }
+        protected boolean isInstantiable(TruffleObject obj,
+                        @Cached("createIsInstantiable()") Node isInstantiable) {
             return ForeignAccess.sendIsInstantiable(isInstantiable, obj);
         }
 
         @Specialization(guards = "!isTruffleObject(obj)")
-        protected boolean executeNonObject(@SuppressWarnings("unused") Object obj) {
+        protected boolean unsupported(@SuppressWarnings("unused") Object obj) {
             return false;
         }
     }
