@@ -13,6 +13,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -49,7 +50,6 @@ import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropToInteropVal
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropToJSValueNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropUnboxValueNodeGen;
 import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropWriteNodeGen;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
@@ -59,7 +59,6 @@ import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
-import com.oracle.truffle.js.runtime.TruffleGlobalScopeImpl;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -175,51 +174,96 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         return null;
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropExportNode extends JSBuiltinNode {
-        @Child ExportValueNode export = ExportValueNode.create();
+        @Child private ExportValueNode export = ExportValueNode.create();
+        @Child private Node writeBinding = Message.WRITE.createNode();
 
         InteropExportNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected TruffleObject execute(String identifier, TruffleObject value) {
-            TruffleObject result = (TruffleObject) export.executeWithTarget(value, Undefined.instance);
-            getContext().getInteropRuntime().getMultilanguageGlobal().exportTruffleObject(identifier, result);
-            return result;
+        protected Object doString(String identifier, Object value) {
+            TruffleObject polyglotBindings = (TruffleObject) getContext().getEnv().getPolyglotBindings();
+            Object exportedValue = export.executeWithTarget(value, Undefined.instance);
+            try {
+                ForeignAccess.sendWrite(writeBinding, polyglotBindings, identifier, exportedValue);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(polyglotBindings, e, Message.WRITE, this);
+            }
+            return exportedValue;
         }
 
-        @Specialization(guards = "!isTruffleObject(value)")
+        @Specialization(guards = {"!isString(identifier)"})
+        protected Object doMaybeUnbox(TruffleObject identifier, Object value,
+                        @Cached("createIsBoxed()") Node isBoxedNode,
+                        @Cached("createUnbox()") Node unboxNode) {
+            if (ForeignAccess.sendIsBoxed(isBoxedNode, identifier)) {
+                Object unboxed;
+                try {
+                    unboxed = ForeignAccess.sendUnbox(unboxNode, identifier);
+                } catch (UnsupportedMessageException e) {
+                    throw Errors.createTypeErrorInteropException(identifier, e, Message.UNBOX, this);
+                }
+                if (unboxed instanceof String) {
+                    return doString((String) unboxed, value);
+                }
+            }
+            return doInvalid(identifier, value);
+        }
+
+        @Specialization(guards = "!isString(identifier)")
         @TruffleBoundary
-        protected TruffleObject execute(@SuppressWarnings("unused") String identifier, Object value) {
-            throw Errors.createTypeError("Cannot export " + value);
+        protected Object doInvalid(Object identifier, @SuppressWarnings("unused") Object value) {
+            throw Errors.createTypeErrorInvalidIdentifier(identifier);
         }
-
-        @Specialization(guards = "!isJavaLangString(identifier)")
-        @TruffleBoundary
-        protected TruffleObject execute(Object identifier, @SuppressWarnings("unused") TruffleObject value) {
-            throw Errors.createTypeError("Invalid identifier " + identifier);
-        }
-
-        @Specialization(guards = {"!isTruffleObject(value)", "!isJavaLangString(identifier)"})
-        @TruffleBoundary
-        protected TruffleObject execute(Object identifier, Object value) {
-            throw Errors.createTypeError("Invalid identifier " + identifier + " and value " + value);
-        }
-
     }
 
+    @ImportStatic({JSInteropUtil.class})
     abstract static class InteropImportNode extends JSBuiltinNode {
+        @Child private Node readBinding = Message.READ.createNode();
+
         InteropImportNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object execute(Object identifier,
-                        @Cached("create()") JSToStringNode toStringNode) {
-            TruffleGlobalScopeImpl multilanguageGlobal = getContext().getInteropRuntime().getMultilanguageGlobal();
-            Object truffleObj = multilanguageGlobal.getTruffleObject(toStringNode.executeString(identifier));
-            return truffleObj == null ? Null.instance : truffleObj;
+        protected Object doString(String identifier) {
+            TruffleObject polyglotBindings = (TruffleObject) getContext().getEnv().getPolyglotBindings();
+            Object value;
+            try {
+                value = ForeignAccess.sendRead(readBinding, polyglotBindings, identifier);
+            } catch (UnknownIdentifierException e) {
+                value = Null.instance;
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(polyglotBindings, e, Message.READ, this);
+            }
+            return value;
+        }
+
+        @Specialization(guards = {"!isString(identifier)"})
+        protected Object doMaybeUnbox(TruffleObject identifier,
+                        @Cached("createIsBoxed()") Node isBoxedNode,
+                        @Cached("createUnbox()") Node unboxNode) {
+            if (ForeignAccess.sendIsBoxed(isBoxedNode, identifier)) {
+                Object unboxed;
+                try {
+                    unboxed = ForeignAccess.sendUnbox(unboxNode, identifier);
+                } catch (UnsupportedMessageException e) {
+                    throw Errors.createTypeErrorInteropException(identifier, e, Message.UNBOX, this);
+                }
+                if (unboxed instanceof String) {
+                    return doString((String) unboxed);
+                }
+            }
+            return doInvalid(identifier);
+        }
+
+        @Specialization(guards = {"!isString(identifier)", "!isTruffleObject(identifier)"})
+        @TruffleBoundary
+        protected Object doInvalid(Object identifier) {
+            throw Errors.createTypeErrorInvalidIdentifier(identifier);
         }
     }
 

@@ -447,7 +447,7 @@ public abstract class JSScope {
                         return 0;
                     }
 
-                    return KeyInfo.newBuilder().setReadable(true).setWritable(slot.isWritable()).setInvocable(false).setInternal(false).build();
+                    return KeyInfo.READABLE | (slot.isWritable() ? KeyInfo.MODIFIABLE : 0);
                 }
             }
 

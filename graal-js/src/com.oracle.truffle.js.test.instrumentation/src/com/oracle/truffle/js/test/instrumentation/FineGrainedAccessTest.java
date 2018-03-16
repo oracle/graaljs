@@ -310,7 +310,7 @@ public abstract class FineGrainedAccessTest {
     }
 
     protected void declareInteropSymbol(String name, ForeignTestObject foreignObject) {
-        context.exportSymbol(name, foreignObject);
+        context.getPolyglotBindings().putMember(name, foreignObject);
     }
 
     @After

@@ -315,18 +315,20 @@ public class JSForeignAccessFactory {
         @Child protected JSToPropertyKeyNode toKey = JSToPropertyKeyNode.create();
         @Child protected JSForeignToJSTypeNode cast = JSForeignToJSTypeNode.create();
 
-        @TruffleBoundary
         public Object access(DynamicObject target, Object key) {
             PropertyDescriptor desc = JSObject.getOwnProperty(target, toKey.execute(cast.executeWithTarget(key)));
             if (desc == null) {
+                if (JSObject.isExtensible(target)) {
+                    return KeyInfo.INSERTABLE;
+                }
                 return 0;
             }
+
             boolean readable = true;
             boolean writable = desc.getIfHasWritable(true);
             boolean invocable = desc.isDataDescriptor() & JSRuntime.isCallable(desc.getValue());
             boolean removable = desc.getIfHasConfigurable(false);
-
-            return KeyInfo.newBuilder().setInternal(false).setInvocable(invocable).setWritable(writable).setReadable(readable).setRemovable(removable).build();
+            return (readable ? KeyInfo.READABLE : 0) | (writable ? KeyInfo.MODIFIABLE : 0) | (invocable ? KeyInfo.INVOCABLE : 0) | (removable ? KeyInfo.REMOVABLE : 0);
         }
     }
 

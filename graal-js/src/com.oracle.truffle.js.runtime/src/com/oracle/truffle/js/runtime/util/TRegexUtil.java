@@ -56,6 +56,7 @@ public final class TRegexUtil {
         public static final String NO_MATCH_RESULT_IDENTIFIER = "T_REGEX_NO_MATCH_RESULT";
     }
 
+    @SuppressWarnings("deprecation")
     public static TruffleObject getTRegexEmptyResult(JSContext context) {
         // TODO: remove this when test262 and testv8 have been refactored to use PolyglotEngine!
         if (context.getInteropRuntime() == null) {

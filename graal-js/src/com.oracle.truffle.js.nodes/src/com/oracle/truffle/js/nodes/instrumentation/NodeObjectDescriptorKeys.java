@@ -13,7 +13,7 @@ public class NodeObjectDescriptorKeys implements TruffleObject {
 
     private final Object[] keys;
 
-    public NodeObjectDescriptorKeys(Map<String, Object> from) {
+    NodeObjectDescriptorKeys(Map<String, Object> from) {
         this.keys = from.keySet().toArray();
     }
 
@@ -30,4 +30,7 @@ public class NodeObjectDescriptorKeys implements TruffleObject {
         return keys.length;
     }
 
+    static boolean isInstance(TruffleObject object) {
+        return object instanceof NodeObjectDescriptorKeys;
+    }
 }

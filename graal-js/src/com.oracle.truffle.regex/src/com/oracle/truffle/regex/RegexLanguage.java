@@ -27,7 +27,7 @@ import java.util.Collections;
  * and flags and compiles them to {@link RegexObject}s, which you can use to match the regular
  * expressions against strings.
  * <p>
- * 
+ *
  * <pre>
  * Usage example in JavaScript:
  * {@code
@@ -89,11 +89,6 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     }
 
     @Override
-    protected Object getLanguageGlobal(Void context) {
-        return null;
-    }
-
-    @Override
     protected boolean isObjectOfLanguage(Object object) {
         return object instanceof RegexLanguageObject;
     }
@@ -103,7 +98,7 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
      * parallel access to all {@link RegexLanguageObject}s. Parallel access to
      * {@link com.oracle.truffle.regex.result.LazyCaptureGroupsResult} objects may lead to duplicate
      * execution of code, but no wrong results.
-     * 
+     *
      * @param thread the thread that accesses the context for the first time.
      * @param singleThreaded <code>true</code> if the access is considered single-threaded,
      *            <code>false</code> if more than one thread is active at the same time.

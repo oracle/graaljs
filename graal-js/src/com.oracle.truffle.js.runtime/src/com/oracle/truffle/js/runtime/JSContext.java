@@ -761,6 +761,7 @@ public class JSContext implements ShapeContext {
         return options.toString();
     }
 
+    @SuppressWarnings("deprecation")
     public TruffleObject getRegexEngine() {
         if (regexEngine == null) {
             RegexCompiler joniCompiler = new JoniRegexCompiler(null);
