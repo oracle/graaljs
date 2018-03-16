@@ -48,6 +48,19 @@ public final class ForNode extends StatementNode implements ResumableNode {
     }
 
     @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == ControlFlowStatementRootTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor("type", ControlFlowStatementRootTag.Type.Iteration.name());
+    }
+
+    @Override
     public Object execute(VirtualFrame frame) {
         executeVoid(frame);
         return EMPTY;

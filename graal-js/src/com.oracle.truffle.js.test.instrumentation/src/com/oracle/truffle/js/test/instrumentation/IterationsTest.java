@@ -23,6 +23,7 @@ public class IterationsTest extends FineGrainedAccessTest {
         }, new Class[]{/* no input events */});
 
         enter(ControlFlowStatementRootTag.class, (e) -> {
+            assertAttribute(e, TYPE, ControlFlowStatementRootTag.Type.Iteration.name());
             for (int a = 0; a < 3; a++) {
                 enter(ControlFlowBranchStatementTag.class).exit(assertReturnValue(true));
                 enter(ControlFlowBlockStatementTag.class).exit();
@@ -42,6 +43,7 @@ public class IterationsTest extends FineGrainedAccessTest {
         }, new Class[]{/* no input events */});
 
         enter(ControlFlowStatementRootTag.class, (e) -> {
+            assertAttribute(e, TYPE, ControlFlowStatementRootTag.Type.Iteration.name());
             for (int a = 0; a < 3; a++) {
                 enter(ControlFlowBranchStatementTag.class).exit(assertReturnValue(true));
                 enter(ControlFlowBlockStatementTag.class).exit();

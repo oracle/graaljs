@@ -22,6 +22,7 @@ public class IfStatementTest extends FineGrainedAccessTest {
         // JS will write the result to <return>
         enter(WriteVariableExpressionTag.class, (e, write) -> {
             enter(ControlFlowStatementRootTag.class, (e1, ifbody) -> {
+                assertAttribute(e1, TYPE, ControlFlowStatementRootTag.Type.Conditional.name());
                 // condition
                 enter(ControlFlowBranchStatementTag.class, (e2, ifstatement) -> {
                     assertAttribute(e2, TYPE, ControlFlowBranchStatementTag.Type.Condition.name());
@@ -42,6 +43,7 @@ public class IfStatementTest extends FineGrainedAccessTest {
         // JS will write the result to <return>
         enter(WriteVariableExpressionTag.class, (e, write) -> {
             enter(ControlFlowStatementRootTag.class, (e1, ifbody) -> {
+                assertAttribute(e1, TYPE, ControlFlowStatementRootTag.Type.Conditional.name());
                 // condition
                 enter(ControlFlowBranchStatementTag.class, (e2, ifstatement) -> {
                     assertAttribute(e2, TYPE, ControlFlowBranchStatementTag.Type.Condition.name());
@@ -71,6 +73,7 @@ public class IfStatementTest extends FineGrainedAccessTest {
                         new Class[]{});
 
         enter(ControlFlowStatementRootTag.class, (e1) -> {
+            assertAttribute(e1, TYPE, ControlFlowStatementRootTag.Type.Conditional.name());
             // condition
             enter(ControlFlowBranchStatementTag.class, (e) -> {
                 assertAttribute(e, TYPE, ControlFlowBranchStatementTag.Type.Condition.name());

@@ -60,6 +60,11 @@ public final class IfNode extends StatementNode implements ResumableNode {
     }
 
     @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor("type", ControlFlowStatementRootTag.Type.Conditional.name());
+    }
+
+    @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ControlFlowStatementRootTag.class) || materializedTags.contains(ControlFlowBranchStatementTag.class) ||
                         materializedTags.contains(ControlFlowBlockStatementTag.class) || materializedTags.contains(StatementTag.class)) {

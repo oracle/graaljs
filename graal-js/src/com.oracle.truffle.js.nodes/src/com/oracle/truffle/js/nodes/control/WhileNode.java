@@ -63,6 +63,11 @@ public final class WhileNode extends StatementNode {
     }
 
     @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor("type", ControlFlowStatementRootTag.Type.Iteration.name());
+    }
+
+    @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ControlFlowStatementRootTag.class) || materializedTags.contains(ControlFlowBlockStatementTag.class) ||
                         materializedTags.contains(ControlFlowBranchStatementTag.class)) {

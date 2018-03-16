@@ -65,6 +65,11 @@ public final class SwitchNode extends StatementNode {
     }
 
     @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor("type", ControlFlowStatementRootTag.Type.Conditional.name());
+    }
+
+    @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ControlFlowStatementRootTag.class)) {
             JavaScriptNode[] newCaseExpressions = new JavaScriptNode[caseExpressions.length];

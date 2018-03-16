@@ -291,10 +291,27 @@ public class JSTags {
      * <li>ECMA2018 13.7 Iteration statements.</li>
      * <li>ECMA2018 13.12 The <code>switch</code> statement.</li>
      * </ul>
+     *
+     * Tagged nodes provide the following metadata:
+     * <ul>
+     * <li><b>type</b> A <code>String</code> describing the control flow construct type. Possible
+     * values are:
+     * <ul>
+     * <li><b>Conditional</b> A conditional branch statement (e.g., <code>if</code> or
+     * <code>switch</code> statements.</li>
+     * <li><b>Iteration</b> An iterative block (e.g., <code>for</code> or <code>while</code> loop
+     * statements.</li>
+     * </ul>
      * </p>
+     **
      */
     @Tag.Identifier("ControlFlowStatementRoot")
     public static final class ControlFlowStatementRootTag extends Tag {
+        public enum Type {
+            Conditional,
+            Iteration,
+        }
+
         private ControlFlowStatementRootTag() {
         }
     }
@@ -316,6 +333,20 @@ public class JSTags {
      * <li>ECMA2018 13.9 The <code>break</code> statement.</li>
      * <li>ECMA2018 13.14 The <code>throw</code> statement.</li>
      * </ul>
+     *
+     * Tagged nodes provide the following metadata:
+     * <ul>
+     * <li><b>type</b> A <code>String</code> describing the control flow construct type. Possible
+     * values are:
+     * <ul>
+     * <li><b>Condition</b> The control condition of a conditional branch statement (e.g.,
+     * <code>if</code> or <code>switch</code> statements.</li>
+     * <li><b>Continue</b> The <code>continue</code> statement.</li>
+     * <li><b>Break</b> The <code>break</code> statement.</li>
+     * <li><b>Throw</b> The <code>throw</code> statement.</li>
+     * </ul>
+     * </p>
+     *
      * </p>
      */
     @Tag.Identifier("ControlFlowBranchStatementTag")
