@@ -224,29 +224,24 @@ The functions of the `Interop` object allow to interact with values from other p
 
 #### `Interop.export(key, value)`
 
-Exports the JavaScript `value` under the name `key` to the polyglot scope.
+Exports the JavaScript `value` under the name `key` (a string) to the polyglot scope.
 
     function helloWorld() { print("Hello, JavaScript world"); };
     Interop.export("helloJSWorld", helloWorld);
 
-If the polyglot scope already had a value identified by `key`, it is overwritten by the new value.
-Graal.js exports the value as *bound function*, ensuring it can be called from all polyglot languages alike without the necessity of providing a *this* value.
-Use `Interop.exportUnbound()` to export an unbound function.
+If the polyglot scope already had a value identified by `key`, it is overwritten with the new value.
+Throws a `TypeError` if `key` is not a string or missing.
+The `value` may be any valid Interop value.
 
 #### `Interop.import(key)`
 
-Imports the value identified by `key` from the polyglot scope and returns it as an object.
+Imports the value identified by `key` (a string) from the polyglot scope and returns it.
 
     var rubyHelloWorld = Interop.import("helloRubyWorld");
     rubyHelloWorld();
 
 If no language has exported a value identified by `key`, `null` is returned.
-
-#### `Interop.exportUnbound(key, value)`
-
-Exports the JavaScript `value` under the name `key` to the polyglot scope.
-In contrast to `Interop.export`, the function is **not** bound.
-Using `Interop.export` is the preferred method of exporting a JavaScript function, but the unbound variant might be necessary under certain circumstances. 
+Throws a `TypeError` if `key` is not a string or missing.
 
 #### `Interop.eval(mimeType, sourceCode)`
 
@@ -312,11 +307,8 @@ Note: The `obj` should answer to `READ` messages for all keys between `0` and `s
 Sends the `READ` message to `obj`.
 See JavaDoc [Message.READ](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#READ).
 The source language of `obj` determines and returns the value of the property `key` of `obj`.
-
-`Interop.read` is very lenient regarding errors.
-It returns `null` when the value cannot be read from `obj`.
-This happens when `obj` does not answer the `READ` message, or cannot provide a `key` property.
-Reading the property in plain JavaScript syntax might expose such exceptions.
+Returns `null` when `obj` does not contain `key`.
+Throws a `TypeError` when `obj` does not support the `READ` message.
 
 Graal.js returns the value according to JavaScript semantics: it converts `key` to a String if necessary, it calls getter functions when appropriate. 
 Prototypes are considered when reading; if `key` cannot be found in `obj`, the prototype chain of `obj` is queried for `key`.
@@ -327,11 +319,8 @@ Sends the `WRITE` message to `obj`.
 See JavaDoc [Message.WRITE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#WRITE).
 The source language of `obj` will set `obj`'s `key` property to `value`, if possible.
 This method might throw an exception, if setting the property is not possible.
-
-`Interop.write` is very lenient regarding errors.
-It returns `null` when the value cannot be written to `obj`.
-This happens when `obj` does not answer the `WRITE` message, when it does not have (or cannot write to) the `key` property, or the type of `value` does not match what `obj.key` expects.
-Writing the property in plain JavaScript syntax might expose such exceptions.
+Returns the response of the `WRITE` message.
+Throws a `TypeError` when `obj` does not support the `WRITE` message, when the `key` property is not writable, or when `value` is of an unsupported type for this `obj` or `key`.
 
 Graal.js sets the value according to JavaScript semantics on the object: it converts `key` to a String if necessary, it calls setter functions when appropriate, it adheres to non-configurable properties or frozen/sealed objects, etc.
 The property is always set on `obj` itself, even when a `key` property already exists in the prototype chain of `obj`.
@@ -341,11 +330,8 @@ The property is always set on `obj` itself, even when a `key` property already e
 Sends the `REMOVE` message to `obj`.
 See JavaDoc [Message.REMOVE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#REMOVE).
 The source language of `obj` will try to remove the `key` property, if possible.
-
-`Interop.remove` is very lenient regarding errors.
-It returns `null` when the value cannot be deleted from `obj`.
-This happens when `obj` does not answer the `REMOVE` message, when `obj` does not have a `key` property, or when removing the `key` property is not allowed by language semantics.
-Trying to remove a property in pure JavaScript semantics (e.g. with the `delete` keyword) might expose such errors.
+Returns the boolean response of the `REMOVE` message (`true` if the property was successfully removed), or `null` when `obj` does not contain `key`.
+Throws a `TypeError` when `obj` does not support the `REMOVE` message.
 
 Graal.js removes the property according to JavaScript semantics of the object: it converts `key` to a property key value, and adheres to limitations imposed by e.g. the `configurable` attribute of properties.
 
@@ -406,12 +392,14 @@ Graal.js answers `true` for objects that can be constructed, i.e., that have a `
 Executes the `obj` by sending the `EXECUTE` interop message to it.
 The arguments `args` are provided as arguments to the callee.
 This function returns the value returned from the executed function.
+Throws a `TypeError` when `obj` does not support the `EXECUTE` message (i.e., `obj` is not executable), an unexpected number of arguments is provided, or any illegal argument types are provided.
 
 #### `Interop.construct(obj, ...args)`
 
 Executes the `obj` by sending the `NEW` interop message to it.
 The arguments `args` are provided as arguments to the constructor.
 This function returns the value returned from the executed function, which typically is the constructed object.
+Throws a `TypeError` when `obj` does not support the `NEW` message (i.e., `obj` is not instantiable), an unexpected number of arguments is provided, or any illegal argument types are provided.
 
 #### `Interop.createForeignObject()`
 
