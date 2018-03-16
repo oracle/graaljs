@@ -65,6 +65,9 @@ local common = import '../common.jsonnet';
     timelimit: '30:00',
   },
 
+  local parallelHttp2 = 'parallel/test-http2-.*',
+  local parallelNoHttp2 = 'parallel/(?!test-http2-).*',
+
   builds: [
     // gates
     graalNodeJs + common.jdk8 + gateGraalImport                                                                        + common.gate + common.linux + {name: 'nodejs-gate-graal-import-jdk8-linux-amd64'},
@@ -75,10 +78,11 @@ local common = import '../common.jsonnet';
     graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'async-hooks', PART: '-r0,1'}} + common.gate + common.linux + {name: 'nodejs-gate-async-hooks-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'es-module', PART: '-r0,1'}}   + common.gate + common.linux + {name: 'nodejs-gate-es-module-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'sequential', PART: '-r0,1'}}  + common.gate + common.linux + {name: 'nodejs-gate-sequential-graal-tip-jdk8-linux-amd64'},
-    graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'parallel', PART: '-r0,5'}}    + common.gate + common.linux + {name: 'nodejs-gate-parallel-1-graal-tip-jdk8-linux-amd64'},
-    graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'parallel', PART: '-r1,5'}}    + common.gate + common.linux + {name: 'nodejs-gate-parallel-2-graal-tip-jdk8-linux-amd64'},
-    graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'parallel', PART: '-r2,5'}}    + common.gate + common.linux + {name: 'nodejs-gate-parallel-3-graal-tip-jdk8-linux-amd64'},
-    graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'parallel', PART: '-r3,5'}}    + common.gate + common.linux + {name: 'nodejs-gate-parallel-4-graal-tip-jdk8-linux-amd64'},
-    graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'parallel', PART: '-r4,5'}}    + common.gate + common.linux + {name: 'nodejs-gate-parallel-5-graal-tip-jdk8-linux-amd64'},
+    graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: parallelNoHttp2, PART: '-r0,5'}} + common.gate + common.linux + {name: 'nodejs-gate-parallel-1-graal-tip-jdk8-linux-amd64'},
+    graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: parallelNoHttp2, PART: '-r1,5'}} + common.gate + common.linux + {name: 'nodejs-gate-parallel-2-graal-tip-jdk8-linux-amd64'},
+    graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: parallelNoHttp2, PART: '-r2,5'}} + common.gate + common.linux + {name: 'nodejs-gate-parallel-3-graal-tip-jdk8-linux-amd64'},
+    graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: parallelNoHttp2, PART: '-r3,5'}} + common.gate + common.linux + {name: 'nodejs-gate-parallel-4-graal-tip-jdk8-linux-amd64'},
+    graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: parallelNoHttp2, PART: '-r4,5'}} + common.gate + common.linux + {name: 'nodejs-gate-parallel-5-graal-tip-jdk8-linux-amd64'},
+    graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: parallelHttp2, PART: '-r0,1'}} + common.postMerge + common.linux + {name: 'nodejs-postmerge-parallel-http2-graal-tip-jdk8-linux-amd64'},
   ],
 }
