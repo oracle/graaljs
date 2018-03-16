@@ -923,7 +923,7 @@ public final class GraalJSAccess {
     }
 
     public double dateValueOf(Object date) {
-        return JSDate.valueOf((DynamicObject) date);
+        return JSDate.getTimeMillisField((DynamicObject) date);
     }
 
     public Object symbolNew(Object name) {

@@ -156,19 +156,6 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         return secureNegativeModulo(t, MS_PER_DAY);
     }
 
-    private static double daysInYear(double y) {
-        if (y % 4 != 0) {
-            return 365;
-        }
-        if (y % 100 != 0) {
-            return 366;
-        }
-        if (y % 400 != 0) {
-            return 365;
-        }
-        return 366;
-    }
-
     private static double dayFromYear(double y) {
         return 365 * (y - 1970) + floor((y - 1969) / 4) - floor((y - 1901) / 100) + floor((y - 1601) / 400);
     }
@@ -180,9 +167,7 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     @TruffleBoundary
     public static double yearFromTime(double t) {
         // the largest integer y (closest to positive infinity) such that TimeFromYear(y) <= t
-        if (Double.isNaN(t)) {
-            return Double.NaN;
-        }
+        assert !Double.isNaN(t);
         double y = JSRuntime.mathFloor(t / MS_PER_DAY / 365) + 1970;
         y += floor((t - timeFromYear(y)) / MS_PER_DAY / 365); // correct leap year errors
 
@@ -196,74 +181,121 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         return y - 1;
     }
 
-    private static double inLeapYear(double t) {
-        if (daysInYear(yearFromTime(t)) == 365) {
-            return 0;
+    private static boolean isLeapYear(double year) {
+        if (year % 4 != 0) {
+            return false;
         }
-        return 1;
+        if (year % 100 != 0) {
+            return true;
+        }
+        if (year % 400 != 0) {
+            return false;
+        }
+        return true;
     }
 
     // 15.9.1.4
     @TruffleBoundary
-    public static double monthFromTime(double t) {
-        if (Double.isNaN(t)) {
-            return Double.NaN;
-        }
-        double leap = inLeapYear(t);
-        double day = dayWithinYear(t);
+    public static int monthFromTime(double t) {
+        assert !Double.isNaN(t);
+        double year = yearFromTime(t);
+        boolean leapYear = isLeapYear(year);
+        int day = dayWithinYear(t, year);
 
-        assert (0 <= day) && (day < (365 + leap)) : "should not reach here";
+        return monthFromTimeIntl(leapYear, day);
+    }
+
+    private static int monthFromTimeIntl(boolean leapYear, int day) {
+        assert (0 <= day) && (day < (365 + (leapYear ? 1 : 0))) : "should not reach here";
 
         if (day < 31) {
             return 0;
         }
-        if (day < (59 + leap)) {
-            return 1;
+        if (!leapYear) {
+            if (day < 59) {
+                return 1;
+            }
+            if (day < 90) {
+                return 2;
+            }
+            if (day < 120) {
+                return 3;
+            }
+            if (day < 151) {
+                return 4;
+            }
+            if (day < 181) {
+                return 5;
+            }
+            if (day < 212) {
+                return 6;
+            }
+            if (day < 243) {
+                return 7;
+            }
+            if (day < 273) {
+                return 8;
+            }
+            if (day < 304) {
+                return 9;
+            }
+            if (day < 334) {
+                return 10;
+            }
+            return 11;
+        } else {
+            if (day < 60) {
+                return 1;
+            }
+            if (day < 91) {
+                return 2;
+            }
+            if (day < 121) {
+                return 3;
+            }
+            if (day < 152) {
+                return 4;
+            }
+            if (day < 182) {
+                return 5;
+            }
+            if (day < 213) {
+                return 6;
+            }
+            if (day < 244) {
+                return 7;
+            }
+            if (day < 274) {
+                return 8;
+            }
+            if (day < 305) {
+                return 9;
+            }
+            if (day < 335) {
+                return 10;
+            }
+            return 11;
         }
-        if (day < (90 + leap)) {
-            return 2;
-        }
-        if (day < (120 + leap)) {
-            return 3;
-        }
-        if (day < (151 + leap)) {
-            return 4;
-        }
-        if (day < (181 + leap)) {
-            return 5;
-        }
-        if (day < (212 + leap)) {
-            return 6;
-        }
-        if (day < (243 + leap)) {
-            return 7;
-        }
-        if (day < (273 + leap)) {
-            return 8;
-        }
-        if (day < (304 + leap)) {
-            return 9;
-        }
-        if (day < (334 + leap)) {
-            return 10;
-        }
-        return 11;
     }
 
     // 15.9.1.4
-    private static double dayWithinYear(double t) {
-        return day(t) - dayFromYear(yearFromTime(t));
+    private static int dayWithinYear(double t, double year) {
+        return (int) (day(t) - dayFromYear(year));
     }
 
     // 15.9.1.5
     @TruffleBoundary
     public static double dateFromTime(double t) {
-        double leap = inLeapYear(t);
-        double day = dayWithinYear(t);
-        double dayMinusLeap = day - leap;
-        switch ((int) monthFromTime(t)) {
-            case 0:
-                return day + 1;
+        assert !Double.isNaN(t);
+        double year = yearFromTime(t);
+        int day = dayWithinYear(t, year);
+        if (day < 31) {
+            return day + 1;
+        }
+        boolean leapYear = isLeapYear(year);
+        int dayMinusLeap = day - (leapYear ? 1 : 0);
+        switch (monthFromTimeIntl(leapYear, day)) {
+            // case 0: //handled above
             case 1:
                 return day - 30;
             case 2:
@@ -292,7 +324,6 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     }
 
     // 15.9.1.6
-    @TruffleBoundary
     public static double weekDay(double t) {
         int result = ((int) day(t) + 4) % 7; // cast to int to avoid -0.0
         return result >= 0 ? result : result + 7;
@@ -387,9 +418,7 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     }
 
     private static long doubleToLong(double value) {
-        if (Double.isNaN(value)) {
-            return 0;
-        }
+        assert !Double.isNaN(value);
         return (long) value;
     }
 
@@ -419,17 +448,13 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     /**
      * Implementation of ECMAScript 5.1 15.9.1.14 TimeClip.
      */
-    @TruffleBoundary
     public static double timeClip(double time) {
-        if (Double.isInfinite(time) || Double.isNaN(time)) {
-            return Double.NaN;
-        }
-        if (Math.abs(time) > MAX_DATE) {
+        if (Double.isInfinite(time) || Double.isNaN(time) || Math.abs(time) > MAX_DATE) {
             return Double.NaN;
         }
         // The standard expects only integer values, cf. 15.9.1.1
         // it does not state, however, WHERE the conversion should happen
-        return JSRuntime.toInteger(time);
+        return ((Double) time).longValue();
     }
 
     // helper function
@@ -446,10 +471,6 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         DynamicObject obj = JSObject.create(context, context.getDateFactory(), timeMillis);
         assert isJSDate(obj);
         return obj;
-    }
-
-    public static double valueOf(DynamicObject thisObj) {
-        return getTimeMillisField(thisObj);
     }
 
     public static double setTime(DynamicObject thisDate, double time) {
@@ -498,19 +519,28 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
 
     public static double setDate(DynamicObject thisDate, double date, boolean isUTC, JSContext context) {
         double t = localTime(getTimeMillisField(thisDate), isUTC, context);
-        double newDate = makeDate(makeDay(yearFromTime(t), monthFromTime(t), date), timeWithinDay(t));
-        double u = timeClip(utc(newDate, isUTC, context));
+        double u;
+        if (Double.isNaN(t)) {
+            u = Double.NaN;
+        } else {
+            double newDate = makeDate(makeDay(yearFromTime(t), monthFromTime(t), date), timeWithinDay(t));
+            u = timeClip(utc(newDate, isUTC, context));
+        }
         setTimeMillisField(thisDate, u);
         return u;
     }
 
     public static double setMonth(DynamicObject thisDate, double month, double date, boolean dateSpecified, boolean isUTC, JSContext context) {
         double t = localTime(getTimeMillisField(thisDate), isUTC, context);
-        double dt = dateSpecified ? date : dateFromTime(t);
-        double newDate = utc(makeDate(makeDay(yearFromTime(t), month, dt), timeWithinDay(t)), isUTC, context);
-        double u = timeClip(newDate);
-        setTimeMillisField(thisDate, u);
-        return u;
+        double newDate;
+        if (Double.isNaN(t)) {
+            newDate = Double.NaN;
+        } else {
+            double dt = dateSpecified ? date : dateFromTime(t);
+            newDate = timeClip(utc(makeDate(makeDay(yearFromTime(t), month, dt), timeWithinDay(t)), isUTC, context));
+        }
+        setTimeMillisField(thisDate, newDate);
+        return newDate;
     }
 
     public static double setFullYear(DynamicObject thisDate, double year, double month, boolean monthSpecified, double date, boolean dateSpecified, boolean isUTC, JSContext context) {

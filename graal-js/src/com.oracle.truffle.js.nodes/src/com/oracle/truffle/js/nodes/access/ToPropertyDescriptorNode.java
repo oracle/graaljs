@@ -42,6 +42,8 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
     @Child private HasPropertyCacheNode hasSetNode;
     @Child private HasPropertyCacheNode hasGetNode;
 
+    private final BranchProfile errorBranch = BranchProfile.create();
+
     public abstract Object execute(Object operand);
 
     public static ToPropertyDescriptorNode create(JSContext context) {
@@ -124,6 +126,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
             hasGetBranch.enter();
             Object getter = getGet(obj);
             if (!JSRuntime.isCallable(getter) && getter != Undefined.instance) {
+                errorBranch.enter();
                 throw Errors.createTypeError("Getter must be a function");
             }
             desc.setGet((DynamicObject) getter);
@@ -134,12 +137,14 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
             hasSetBranch.enter();
             Object setter = getSet(obj);
             if (!JSRuntime.isCallable(setter) && setter != Undefined.instance) {
+                errorBranch.enter();
                 throw Errors.createTypeError("Setter must be a function");
             }
             desc.setSet((DynamicObject) setter);
         }
         // 9.
         if ((hasGet || hasSet) && (hasValue || hasWritable)) {
+            errorBranch.enter();
             throw Errors.createTypeError("Invalid property. A property cannot both have accessors and be writable or have a value");
         }
         return desc;
