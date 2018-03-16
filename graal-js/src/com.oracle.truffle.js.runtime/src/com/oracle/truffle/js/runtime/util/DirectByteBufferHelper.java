@@ -7,6 +7,7 @@ package com.oracle.truffle.js.runtime.util;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class DirectByteBufferHelper {
@@ -16,11 +17,15 @@ public final class DirectByteBufferHelper {
     }
 
     @TruffleBoundary
-    public static ByteBuffer allocateDirect(int length) {
+    private static ByteBuffer allocateDirectImpl(int length) {
         return ByteBuffer.allocateDirect(length).order(ByteOrder.nativeOrder());
     }
 
+    public static ByteBuffer allocateDirect(int length) {
+        return cast(allocateDirectImpl(length));
+    }
+
     public static ByteBuffer cast(ByteBuffer buffer) {
-        return DIRECT_BYTE_BUFFER_CLASS.cast(buffer);
+        return CompilerDirectives.castExact(buffer, DIRECT_BYTE_BUFFER_CLASS);
     }
 }
