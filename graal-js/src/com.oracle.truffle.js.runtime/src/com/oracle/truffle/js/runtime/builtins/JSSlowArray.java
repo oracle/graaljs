@@ -66,6 +66,12 @@ public final class JSSlowArray extends JSAbstractArray {
     public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
         ScriptArray array = arrayGetArrayType(thisObj);
         if (array.hasElement(thisObj, index)) {
+            if (array.isSealed()) {
+                if (isStrict) {
+                    throw Errors.createTypeErrorCannotDeletePropertyOfSealedArray(index);
+                }
+                return false;
+            }
             arraySetArrayType(thisObj, array.deleteElement(thisObj, index, isStrict));
             return true;
         } else {
@@ -130,17 +136,22 @@ public final class JSSlowArray extends JSAbstractArray {
         }
         long oldLen = getLength(thisObj);
         long newLen = length;
+        ScriptArray internalArray = arrayGetArrayType(thisObj);
+        boolean sealed = internalArray.isSealed();
         boolean deleteSucceeded = true;
         if (newLen < oldLen) {
             for (long idx = oldLen - 1; idx >= newLen; idx--) {
-                deleteSucceeded = JSUserObject.INSTANCE.delete(thisObj, idx, false);
+                if (internalArray.hasElement(thisObj, idx)) {
+                    deleteSucceeded = !sealed;
+                } else {
+                    deleteSucceeded = JSUserObject.INSTANCE.delete(thisObj, idx, false);
+                }
                 if (!deleteSucceeded) {
                     newLen = idx + 1;
                     break;
                 }
             }
         }
-        ScriptArray internalArray = arrayGetArrayType(thisObj);
         if (newLen > Integer.MAX_VALUE && !(internalArray instanceof SparseArray)) {
             internalArray = SparseArray.makeSparseArray(thisObj, internalArray);
         }
