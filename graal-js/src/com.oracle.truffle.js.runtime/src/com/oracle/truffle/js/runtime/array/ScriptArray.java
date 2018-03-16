@@ -443,11 +443,11 @@ public abstract class ScriptArray {
         return false;
     }
 
-    public abstract ScriptArray seal(DynamicObject object);
+    public abstract ScriptArray seal();
 
-    public abstract ScriptArray freeze(DynamicObject object);
+    public abstract ScriptArray freeze();
 
-    public abstract ScriptArray setLengthNotWritable(DynamicObject object);
+    public abstract ScriptArray setLengthNotWritable();
 
     public abstract boolean isStatelessType();
 

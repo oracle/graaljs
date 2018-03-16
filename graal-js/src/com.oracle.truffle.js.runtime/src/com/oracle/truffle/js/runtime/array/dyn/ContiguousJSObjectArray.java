@@ -13,7 +13,7 @@ public final class ContiguousJSObjectArray extends AbstractContiguousJSObjectArr
     private static final ContiguousJSObjectArray CONTIGUOUS_JSOBJECT_ARRAY = new ContiguousJSObjectArray(INTEGRITY_LEVEL_NONE, createCache());
 
     public static ContiguousJSObjectArray makeContiguousJSObjectArray(DynamicObject object, long length, DynamicObject[] array, long indexOffset, int arrayOffset, int usedLength, int integrityLevel) {
-        ContiguousJSObjectArray arrayType = createContiguousJSObjectArray().setIntegrityLevel(object, integrityLevel);
+        ContiguousJSObjectArray arrayType = createContiguousJSObjectArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
         return arrayType;
     }

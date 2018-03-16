@@ -14,7 +14,7 @@ public final class ContiguousIntArray extends AbstractContiguousIntArray {
     private static final ContiguousIntArray CONTIGUOUS_INT_ARRAY = new ContiguousIntArray(INTEGRITY_LEVEL_NONE, createCache());
 
     public static ContiguousIntArray makeContiguousIntArray(DynamicObject object, long length, int[] array, long indexOffset, int arrayOffset, int usedLength, int integrityLevel) {
-        ContiguousIntArray arrayType = createContiguousIntArray().setIntegrityLevel(object, integrityLevel);
+        ContiguousIntArray arrayType = createContiguousIntArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
         return arrayType;
     }

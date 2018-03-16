@@ -17,7 +17,7 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
     private static final ZeroBasedJSObjectArray ZERO_BASED_JSOBJECT_ARRAY = new ZeroBasedJSObjectArray(INTEGRITY_LEVEL_NONE, createCache());
 
     public static <T> ZeroBasedJSObjectArray makeZeroBasedJSObjectArray(DynamicObject object, int length, int usedLength, T[] array, int integrityLevel) {
-        ZeroBasedJSObjectArray arrayType = createZeroBasedJSObjectArray().setIntegrityLevel(object, integrityLevel);
+        ZeroBasedJSObjectArray arrayType = createZeroBasedJSObjectArray().setIntegrityLevel(integrityLevel);
         arraySetLength(object, length);
         arraySetUsedLength(object, usedLength);
         arraySetArray(object, array);

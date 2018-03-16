@@ -7,7 +7,6 @@ package com.oracle.truffle.js.runtime.array;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.object.DynamicObject;
 
 /**
  * Common base class for all dynamic (i.e., non-typed) JavaScript arrays. Encapsulates information
@@ -46,8 +45,8 @@ public abstract class DynamicArray extends ScriptArray {
 
     protected abstract DynamicArray withIntegrityLevel(int newIntegrityLevel);
 
-    @SuppressWarnings({"unchecked", "unused"})
-    protected final <T extends ScriptArray> T setIntegrityLevel(DynamicObject object, int integrityLevel) {
+    @SuppressWarnings({"unchecked"})
+    protected final <T extends ScriptArray> T setIntegrityLevel(int integrityLevel) {
         if (this.integrityLevel == integrityLevel) {
             return (T) this;
         } else {
@@ -81,18 +80,18 @@ public abstract class DynamicArray extends ScriptArray {
     }
 
     @Override
-    public ScriptArray seal(DynamicObject object) {
-        return isSealed() ? this : setIntegrityLevel(object, INTEGRITY_LEVEL_SEALED | (integrityLevel & ~INTEGRITY_LEVEL_MASK));
+    public ScriptArray seal() {
+        return isSealed() ? this : setIntegrityLevel(INTEGRITY_LEVEL_SEALED | (integrityLevel & ~INTEGRITY_LEVEL_MASK));
     }
 
     @Override
-    public ScriptArray freeze(DynamicObject object) {
-        return isFrozen() ? this : setIntegrityLevel(object, INTEGRITY_LEVEL_FROZEN | (integrityLevel & ~INTEGRITY_LEVEL_MASK));
+    public ScriptArray freeze() {
+        return isFrozen() ? this : setIntegrityLevel(INTEGRITY_LEVEL_FROZEN | (integrityLevel & ~INTEGRITY_LEVEL_MASK));
     }
 
     @Override
-    public ScriptArray setLengthNotWritable(DynamicObject object) {
-        return isLengthNotWritable() ? this : setIntegrityLevel(object, LENGTH_NOT_WRITABLE | (integrityLevel & ~LENGTH_WRITABLE_MASK));
+    public ScriptArray setLengthNotWritable() {
+        return isLengthNotWritable() ? this : setIntegrityLevel(LENGTH_NOT_WRITABLE | (integrityLevel & ~LENGTH_WRITABLE_MASK));
     }
 
     @Override

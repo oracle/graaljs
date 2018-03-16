@@ -22,7 +22,7 @@ public final class HolesIntArray extends AbstractContiguousIntArray {
     }
 
     public static HolesIntArray makeHolesIntArray(DynamicObject object, int length, int[] array, long indexOffset, int arrayOffset, int usedLength, int holeCount, int integrityLevel) {
-        HolesIntArray arrayType = createHolesIntArray().setIntegrityLevel(object, integrityLevel);
+        HolesIntArray arrayType = createHolesIntArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
         arraySetHoleCount(object, holeCount);
         assert holeCount == arrayType.countHoles(object) : String.format("holeCount, %d, differs from the actual count, %d", holeCount, arrayType.countHoles(object));

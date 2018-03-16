@@ -159,17 +159,17 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     @Override
-    public ScriptArray seal(DynamicObject object) {
+    public ScriptArray seal() {
         return this;
     }
 
     @Override
-    public ScriptArray freeze(DynamicObject object) {
+    public ScriptArray freeze() {
         return this;
     }
 
     @Override
-    public ScriptArray setLengthNotWritable(DynamicObject object) {
+    public ScriptArray setLengthNotWritable() {
         return this;
     }
 
