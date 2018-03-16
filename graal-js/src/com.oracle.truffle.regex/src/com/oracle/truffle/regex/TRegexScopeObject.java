@@ -50,14 +50,12 @@ class TRegexScopeObject implements TruffleObject {
         @Resolve(message = "KEY_INFO")
         abstract static class TRegexScopeObjectKeyInfoNode extends Node {
 
-            private static final int READABLE_KEY_INFO = KeyInfo.newBuilder().setReadable(true).build();
-
             @SuppressWarnings("unused")
             public Object access(TRegexScopeObject o, String name) {
                 if (RegexLanguage.NO_MATCH_RESULT_IDENTIFIER.equals(name)) {
-                    return READABLE_KEY_INFO;
+                    return KeyInfo.READABLE;
                 } else if (RegexLanguage.ENGINE_BUILDER_IDENTIFIER.equals(name)) {
-                    return READABLE_KEY_INFO;
+                    return KeyInfo.READABLE;
                 } else {
                     return 0;
                 }

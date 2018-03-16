@@ -33,6 +33,7 @@ import org.graalvm.polyglot.proxy.Proxy;
  */
 public final class GraalJSScriptEngine extends AbstractScriptEngine implements Compilable, Invocable {
 
+    private static final String ID = "js";
     private static final String POLYGLOT_CONTEXT = "polyglot.context";
     private static final String OUT_SYMBOL = "$$internal.out$$";
     private static final String IN_SYMBOL = "$$internal.in$$";
@@ -53,7 +54,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         Context.Builder contextConfigToUse = contextConfig;
         if (contextConfigToUse == null) {
             // default config
-            contextConfigToUse = Context.newBuilder("js").allowHostAccess(true).allowCreateThread(true);
+            contextConfigToUse = Context.newBuilder(ID).allowHostAccess(true).allowCreateThread(true);
         }
         this.factory = new GraalJSEngineFactory(engineToUse);
         this.contextConfig = contextConfigToUse.engine(engineToUse);
@@ -72,9 +73,9 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         evalInternal(ctx, "Object.defineProperty(this,'__engine',{enumerable:false,iterable:false})");
         global.putMember("arguments", evalInternal(ctx, "new Array(0)"));
         global.putMember("__engine", this);
-        ctx.exportSymbol(OUT_SYMBOL, out);
-        ctx.exportSymbol(ERR_SYMBOL, err);
-        ctx.exportSymbol(IN_SYMBOL, in);
+        ctx.getPolyglotBindings().putMember(OUT_SYMBOL, out);
+        ctx.getPolyglotBindings().putMember(ERR_SYMBOL, err);
+        ctx.getPolyglotBindings().putMember(IN_SYMBOL, in);
         return ctx;
     }
 
@@ -105,7 +106,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     }
 
     static Value evalInternal(Context context, String script) {
-        return context.eval(Source.newBuilder("js", script, "internal-script").internal(true).buildLiteral());
+        return context.eval(Source.newBuilder(ID, script, "internal-script").internal(true).buildLiteral());
     }
 
     @Override
@@ -120,7 +121,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     private static Source createSource(Reader reader) throws ScriptException {
         try {
-            return Source.newBuilder("js", reader, "eval-source").build();
+            return Source.newBuilder(ID, reader, "eval-source").build();
         } catch (IOException e) {
             throw new ScriptException(e);
         }
@@ -132,14 +133,14 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     }
 
     private static Source createSource(String script) {
-        return Source.newBuilder("js", script, "eval-source").buildLiteral();
+        return Source.newBuilder(ID, script, "eval-source").buildLiteral();
     }
 
     private Object eval(Source source, ScriptContext scriptContext) throws ScriptException {
         Context polyglotContext = getOrCreateContext(scriptContext);
-        ((DelegatingOutputStream) polyglotContext.importSymbol(OUT_SYMBOL).asProxyObject()).setWriter(scriptContext.getWriter());
-        ((DelegatingOutputStream) polyglotContext.importSymbol(ERR_SYMBOL).asProxyObject()).setWriter(scriptContext.getErrorWriter());
-        ((DelegatingInputStream) polyglotContext.importSymbol(IN_SYMBOL).asProxyObject()).setReader(scriptContext.getReader());
+        ((DelegatingOutputStream) polyglotContext.getPolyglotBindings().getMember(OUT_SYMBOL).asProxyObject()).setWriter(scriptContext.getWriter());
+        ((DelegatingOutputStream) polyglotContext.getPolyglotBindings().getMember(ERR_SYMBOL).asProxyObject()).setWriter(scriptContext.getErrorWriter());
+        ((DelegatingInputStream) polyglotContext.getPolyglotBindings().getMember(IN_SYMBOL).asProxyObject()).setReader(scriptContext.getReader());
         try {
             return polyglotContext.eval(source).as(Object.class);
         } catch (PolyglotException e) {
@@ -186,7 +187,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     @Override
     public Object invokeFunction(String name, Object... args) throws ScriptException, NoSuchMethodException {
-        Value value = getOrCreateContext(context).lookup("js", name);
+        Value value = getOrCreateContext(context).getBindings(ID).getMember(name);
         return invoke(name, value, args);
     }
 

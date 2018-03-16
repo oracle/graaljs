@@ -5,10 +5,8 @@
 package com.oracle.truffle.js.nodes.instrumentation;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
 @MessageResolution(receiverType = NodeObjectDescriptorKeys.class)
@@ -17,8 +15,8 @@ public class NodeObjectDescriptorKeysFactory {
     @Resolve(message = "READ")
     abstract static class Read extends Node {
         @TruffleBoundary
-        public Object access(NodeObjectDescriptorKeys target, Number key) {
-            return target.getKeyAt(key.intValue());
+        public Object access(NodeObjectDescriptorKeys target, Number index) {
+            return target.getKeyAt(index.intValue());
         }
     }
 
@@ -37,13 +35,4 @@ public class NodeObjectDescriptorKeysFactory {
             return target.size();
         }
     }
-
-    @CanResolve
-    public abstract static class CanResolveNode extends Node {
-
-        protected boolean test(TruffleObject receiver) {
-            return receiver instanceof NodeObjectDescriptor;
-        }
-    }
-
 }

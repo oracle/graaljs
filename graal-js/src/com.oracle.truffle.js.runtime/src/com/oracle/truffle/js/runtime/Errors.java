@@ -444,4 +444,9 @@ public final class Errors {
     public static JSException createTypeErrorNotATruffleObject(Message message) {
         return Errors.createTypeError("cannot call " + message + " on a non-interop object");
     }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorInvalidIdentifier(Object identifier) {
+        return Errors.createTypeError("Invalid identifier: " + JSRuntime.safeToString(identifier));
+    }
 }

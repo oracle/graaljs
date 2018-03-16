@@ -37,6 +37,10 @@ public final class JSInteropUtil {
         return Message.WRITE.createNode();
     }
 
+    public static Node createHasKeys() {
+        return Message.HAS_KEYS.createNode();
+    }
+
     public static Node createKeys() {
         return Message.KEYS.createNode();
     }
@@ -73,4 +77,7 @@ public final class JSInteropUtil {
         return Message.IS_EXECUTABLE.createNode();
     }
 
+    public static Node createIsInstantiable() {
+        return Message.IS_INSTANTIABLE.createNode();
+    }
 }

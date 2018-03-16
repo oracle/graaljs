@@ -16,14 +16,16 @@ import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
 
 public class TestScriptEngineInterop {
 
+    private static final String ID = "js";
+
     @Test
     public void testInterop() throws ScriptException {
-        GraalJSScriptEngine engine = GraalJSScriptEngine.create(null, Context.newBuilder("js"));
+        GraalJSScriptEngine engine = GraalJSScriptEngine.create(null, Context.newBuilder(ID));
         Object result = engine.eval("a = 42");
         Assert.assertEquals(42, result);
         Assert.assertEquals(42, engine.get("a"));
         engine.getContext().setAttribute("a", 43, ScriptContext.ENGINE_SCOPE);
-        Assert.assertEquals(43, engine.getPolyglotContext().lookup("js", "a").asInt());
+        Assert.assertEquals(43, engine.getPolyglotContext().getBindings(ID).getMember("a").asInt());
 
         SimpleScriptContext context = new SimpleScriptContext();
 

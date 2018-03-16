@@ -4,18 +4,15 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ForeignAccess;
 
 public class JSInteropRuntime {
     private final ForeignAccess foreignAccess;
     private final ForeignAccess interopObjectForeignAccess;
-    private final TruffleGlobalScopeImpl multilanguageGlobal;
 
-    public JSInteropRuntime(ForeignAccess foreignAccess, ForeignAccess interopObjectForeignAccess, TruffleLanguage.Env env) {
+    public JSInteropRuntime(ForeignAccess foreignAccess, ForeignAccess interopObjectForeignAccess) {
         this.foreignAccess = foreignAccess;
         this.interopObjectForeignAccess = interopObjectForeignAccess;
-        this.multilanguageGlobal = new TruffleGlobalScopeImpl(env);
     }
 
     public ForeignAccess getForeignAccessFactory() {
@@ -24,9 +21,5 @@ public class JSInteropRuntime {
 
     public ForeignAccess getInteropObjectForeignAccess() {
         return interopObjectForeignAccess;
-    }
-
-    public TruffleGlobalScopeImpl getMultilanguageGlobal() {
-        return multilanguageGlobal;
     }
 }

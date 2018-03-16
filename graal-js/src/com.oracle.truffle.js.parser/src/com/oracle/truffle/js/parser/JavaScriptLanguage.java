@@ -134,11 +134,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     @Override
-    public TruffleObject getLanguageGlobal(JSContext context) {
-        return context.getRealm().getGlobalObject();
-    }
-
-    @Override
     public boolean isObjectOfLanguage(Object o) {
         return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof JSLazyString || o instanceof InteropBoundFunction;
     }
@@ -430,12 +425,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     @Override
-    public Object findExportedSymbol(JSContext context, String globalName, boolean onlyExplicit) {
-        Object obj = context.getInteropRuntime().getMultilanguageGlobal().getTruffleObject(globalName, false);
-        return isObjectOfLanguage(obj) ? obj : null;
-    }
-
-    @Override
     protected JSContext createContext(Env env) {
         JSContext context = JSEngine.createJSContext(this, env);
 
@@ -454,7 +443,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(env.getOptions())).toZoneId());
         }
 
-        context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionMRForeign.ACCESS, env));
+        context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionMRForeign.ACCESS));
         context.activateAllocationReporter();
         return context;
     }
@@ -497,7 +486,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(newEnv.getOptions())).toZoneId());
         }
 
-        context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionMRForeign.ACCESS, newEnv));
+        context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionMRForeign.ACCESS));
         context.getRealm().setArguments(newEnv.getApplicationArguments());
 
         if (((GraalJSParserOptions) context.getParserOptions()).isScripting()) {
