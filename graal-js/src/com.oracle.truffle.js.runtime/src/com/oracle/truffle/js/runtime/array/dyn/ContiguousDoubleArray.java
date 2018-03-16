@@ -13,7 +13,7 @@ public final class ContiguousDoubleArray extends AbstractContiguousDoubleArray {
     private static final ContiguousDoubleArray CONTIGUOUS_DOUBLE_ARRAY = new ContiguousDoubleArray(INTEGRITY_LEVEL_NONE, createCache());
 
     public static ContiguousDoubleArray makeContiguousDoubleArray(DynamicObject object, long length, double[] array, long indexOffset, int arrayOffset, int usedLength, int integrityLevel) {
-        ContiguousDoubleArray arrayType = createContiguousDoubleArray().setIntegrityLevel(object, integrityLevel);
+        ContiguousDoubleArray arrayType = createContiguousDoubleArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
         return arrayType;
     }

@@ -571,7 +571,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     private static void setLengthNotWritable(DynamicObject thisObj) {
-        arraySetArrayType(thisObj, arrayGetArrayType(thisObj).setLengthNotWritable(thisObj));
+        arraySetArrayType(thisObj, arrayGetArrayType(thisObj).setLengthNotWritable());
     }
 
     private boolean deleteElementsAfterShorteningWrapper(DynamicObject thisObj, PropertyDescriptor descriptor, boolean doThrow, long newLen, PropertyDescriptor lenDesc, long startPos) {
@@ -673,7 +673,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     public boolean setIntegrityLevel(DynamicObject thisObj, boolean freeze) {
         boolean result = super.setIntegrityLevel(thisObj, freeze);
         ScriptArray arr = arrayGetArrayType(thisObj);
-        arraySetArrayType(thisObj, freeze ? arr.freeze(thisObj) : arr.seal(thisObj));
+        arraySetArrayType(thisObj, freeze ? arr.freeze() : arr.seal());
         assert testIntegrityLevel(thisObj, freeze);
         return result;
     }

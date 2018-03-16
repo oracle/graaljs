@@ -17,7 +17,7 @@ public final class ZeroBasedDoubleArray extends AbstractDoubleArray {
     private static final ZeroBasedDoubleArray ZERO_BASED_DOUBLE_ARRAY = new ZeroBasedDoubleArray(INTEGRITY_LEVEL_NONE, createCache());
 
     public static ZeroBasedDoubleArray makeZeroBasedDoubleArray(DynamicObject object, int length, int usedLength, double[] array, int integrityLevel) {
-        ZeroBasedDoubleArray arrayType = createZeroBasedDoubleArray().setIntegrityLevel(object, integrityLevel);
+        ZeroBasedDoubleArray arrayType = createZeroBasedDoubleArray().setIntegrityLevel(integrityLevel);
         arraySetLength(object, length);
         arraySetUsedLength(object, usedLength);
         arraySetArray(object, array);

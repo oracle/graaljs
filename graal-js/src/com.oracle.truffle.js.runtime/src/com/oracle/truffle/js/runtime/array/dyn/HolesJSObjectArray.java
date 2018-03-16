@@ -22,7 +22,7 @@ public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
 
     public static HolesJSObjectArray makeHolesJSObjectArray(DynamicObject object, int length, DynamicObject[] array, long indexOffset, int arrayOffset, int usedLength, int holeCount,
                     int integrityLevel) {
-        HolesJSObjectArray arrayType = createHolesJSObjectArray().setIntegrityLevel(object, integrityLevel);
+        HolesJSObjectArray arrayType = createHolesJSObjectArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
         arraySetHoleCount(object, holeCount);
         assert holeCount == arrayType.countHoles(object);

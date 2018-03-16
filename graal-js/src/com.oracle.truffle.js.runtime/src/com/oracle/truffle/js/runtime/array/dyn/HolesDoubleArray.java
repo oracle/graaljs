@@ -23,7 +23,7 @@ public final class HolesDoubleArray extends AbstractContiguousDoubleArray {
     }
 
     public static HolesDoubleArray makeHolesDoubleArray(DynamicObject object, int length, double[] array, long indexOffset, int arrayOffset, int usedLength, int holeCount, int integrityLevel) {
-        HolesDoubleArray arrayType = createHolesDoubleArray().setIntegrityLevel(object, integrityLevel);
+        HolesDoubleArray arrayType = createHolesDoubleArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
         arraySetHoleCount(object, holeCount);
         assert holeCount == arrayType.countHoles(object);

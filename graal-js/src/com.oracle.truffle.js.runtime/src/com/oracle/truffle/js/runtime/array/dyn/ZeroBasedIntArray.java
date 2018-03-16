@@ -18,7 +18,7 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     private static final ZeroBasedIntArray ZERO_BASED_INT_ARRAY = new ZeroBasedIntArray(INTEGRITY_LEVEL_NONE, createCache());
 
     public static ZeroBasedIntArray makeZeroBasedIntArray(DynamicObject object, int length, int usedLength, int[] array, int integrityLevel) {
-        ZeroBasedIntArray arrayType = createZeroBasedIntArray().setIntegrityLevel(object, integrityLevel);
+        ZeroBasedIntArray arrayType = createZeroBasedIntArray().setIntegrityLevel(integrityLevel);
         arraySetLength(object, length);
         arraySetUsedLength(object, usedLength);
         arraySetArray(object, array);
