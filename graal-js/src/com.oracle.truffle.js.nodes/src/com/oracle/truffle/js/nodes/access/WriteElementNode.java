@@ -1526,7 +1526,7 @@ public class WriteElementNode extends JSTargetableNode {
                 return (int) value;
             } else {
                 double doubleValue = toDouble(value);
-                return Uint8ClampedArray.clamp(doubleValue);
+                return Uint8ClampedArray.toInt(doubleValue);
             }
         }
 

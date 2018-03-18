@@ -386,27 +386,17 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public TypedIntArray<T> setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
             if (hasElement(object, index, condition)) {
-                setInt(object, (int) index, (int) JSRuntime.mathRint(JSRuntime.toDouble(value)), condition);
+                setInt(object, (int) index, toInt(JSRuntime.toDouble(value)), condition);
             }
             return this;
         }
 
-        protected static int clamp(int value) {
+        protected static int uint8Clamp(int value) {
             return value < 0 ? 0 : (value > 0xff ? 0xff : value);
         }
 
-        public static int clamp(double value) {
+        public static int toInt(double value) {
             return (int) JSRuntime.mathRint(value);
-        }
-
-        @Override
-        public final Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            throw Errors.shouldNotReachHere();
-        }
-
-        @Override
-        public final void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Number value) {
-            throw Errors.shouldNotReachHere();
         }
     }
 
@@ -422,7 +412,17 @@ public abstract class TypedArray extends ScriptArray {
 
         @Override
         public void setIntImpl(byte[] array, int offset, int index, int value) {
-            NATIVE_ORDER.putInt8(array, offset, index, UINT8_BYTES_PER_ELEMENT, clamp(value));
+            NATIVE_ORDER.putInt8(array, offset, index, UINT8_BYTES_PER_ELEMENT, uint8Clamp(value));
+        }
+
+        @Override
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
+            return getBufferAccess(littleEndian).getUint8(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1);
+        }
+
+        @Override
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Number value) {
+            getBufferAccess(littleEndian).putInt8(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, uint8Clamp(toInt(JSRuntime.toDouble(value))));
         }
     }
 
@@ -438,12 +438,22 @@ public abstract class TypedArray extends ScriptArray {
 
         @Override
         public void setIntImpl(ByteBuffer buffer, int offset, int index, int value) {
-            buffer.put(offset + index * UINT8_BYTES_PER_ELEMENT, (byte) clamp(value));
+            buffer.put(offset + index * UINT8_BYTES_PER_ELEMENT, (byte) uint8Clamp(value));
         }
 
         @Override
         public boolean isDirect() {
             return true;
+        }
+
+        @Override
+        public Number getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
+            return getByteBufferFromBuffer(buffer, littleEndian, condition).get(index) & 0xff;
+        }
+
+        @Override
+        public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Number value) {
+            getByteBufferFromBuffer(buffer, littleEndian, condition).put(index, (byte) uint8Clamp(toInt(JSRuntime.toDouble(value))));
         }
     }
 
