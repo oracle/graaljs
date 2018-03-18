@@ -377,16 +377,16 @@ public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.
             if (sourceArray instanceof TypedArray.TypedIntArray && sinkArray instanceof TypedArray.TypedIntArray) {
                 intToIntBranch.enter();
                 for (int i = 0; i < sourceLen; i++) {
-                    int value = ((TypedArray.TypedIntArray) sourceArray).getInt(sourceView, i, false);
+                    int value = ((TypedArray.TypedIntArray<?>) sourceArray).getInt(sourceView, i, false);
                     checkHasDetachedBuffer(sinkView);
-                    ((TypedArray.TypedIntArray) sinkArray).setInt(sinkView, i + offset, value, false);
+                    ((TypedArray.TypedIntArray<?>) sinkArray).setInt(sinkView, i + offset, value, false);
                 }
             } else if (sourceArray instanceof TypedArray.TypedFloatArray && sinkArray instanceof TypedArray.TypedFloatArray) {
                 floatToFloatBranch.enter();
                 for (int i = 0; i < sourceLen; i++) {
-                    double value = ((TypedArray.TypedFloatArray) sourceArray).getDouble(sourceView, i, false);
+                    double value = ((TypedArray.TypedFloatArray<?>) sourceArray).getDouble(sourceView, i, false);
                     checkHasDetachedBuffer(sinkView);
-                    ((TypedArray.TypedFloatArray) sinkArray).setDouble(sinkView, i + offset, value, false);
+                    ((TypedArray.TypedFloatArray<?>) sinkArray).setDouble(sinkView, i + offset, value, false);
                 }
             } else {
                 objectToObjectBranch.enter();

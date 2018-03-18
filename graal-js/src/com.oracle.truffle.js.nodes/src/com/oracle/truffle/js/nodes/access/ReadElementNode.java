@@ -1183,7 +1183,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, boolean arrayCondition) {
             checkDetachedArrayBuffer(target);
-            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
+            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
                 return typedArray.getInt(target, (int) index, arrayCondition);
             } else {
@@ -1194,7 +1194,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected int executeWithTargetAndArrayAndIndexUncheckedInt(DynamicObject target, ScriptArray array, long index, boolean arrayCondition) throws UnexpectedResultException {
             checkDetachedArrayBuffer(target);
-            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
+            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
                 return typedArray.getInt(target, (int) index, arrayCondition);
             } else {
@@ -1206,7 +1206,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected double executeWithTargetAndArrayAndIndexUncheckedDouble(DynamicObject target, ScriptArray array, long index, boolean arrayCondition)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target);
-            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
+            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
                 return typedArray.getInt(target, (int) index, arrayCondition);
             } else {
@@ -1225,7 +1225,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, boolean arrayCondition) {
             checkDetachedArrayBuffer(target);
-            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
+            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
                 int intValue = typedArray.getInt(target, (int) index, arrayCondition);
                 if (isSignedProfile.profile(intValue >= 0)) {
@@ -1241,7 +1241,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected int executeWithTargetAndArrayAndIndexUncheckedInt(DynamicObject target, ScriptArray array, long index, boolean arrayCondition) throws UnexpectedResultException {
             checkDetachedArrayBuffer(target);
-            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
+            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
                 int intValue = typedArray.getInt(target, (int) index, arrayCondition);
                 if (isSignedProfile.profile(intValue >= 0)) {
@@ -1258,7 +1258,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected double executeWithTargetAndArrayAndIndexUncheckedDouble(DynamicObject target, ScriptArray array, long index, boolean arrayCondition)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target);
-            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
+            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
                 return typedArray.getInt(target, (int) index, arrayCondition) & 0xffff_ffffL;
             } else {
@@ -1276,7 +1276,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, boolean arrayCondition) {
             checkDetachedArrayBuffer(target);
-            TypedArray.TypedFloatArray typedArray = (TypedArray.TypedFloatArray) cast(array);
+            TypedArray.TypedFloatArray<?> typedArray = (TypedArray.TypedFloatArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
                 return typedArray.getDouble(target, (int) index, arrayCondition);
             } else {
@@ -1288,7 +1288,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected double executeWithTargetAndArrayAndIndexUncheckedDouble(DynamicObject target, ScriptArray array, long index, boolean arrayCondition)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target);
-            TypedArray.TypedFloatArray typedArray = (TypedArray.TypedFloatArray) cast(array);
+            TypedArray.TypedFloatArray<?> typedArray = (TypedArray.TypedFloatArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
                 return typedArray.getDouble(target, (int) index, arrayCondition);
             } else {
