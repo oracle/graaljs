@@ -61,68 +61,68 @@
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "built-ins/Array/prototype/flatMap/array-like-objects.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/flatMap/bound-function-argument.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/flatMap/depth-always-one.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/flatMap/length.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/flatMap/name.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/flatMap/thisArg-argument.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/flatten/array-like-objects.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/flatten/bound-function-call.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/flatten/empty-array-elements.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/flatten/empty-object-elements.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/flatten/length.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/flatten/name.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/flatten/non-numeric-depth-should-not-throw.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/flatten/null-undefined-elements.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/flatten/positive-infinity.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/flatten/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
     "filePath" : "built-ins/Array/prototype/sort/comparefn-nonfunction-call-throws.js",
     "status" : "FAIL",
