@@ -1485,7 +1485,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected final void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
-            TypedIntArray typedArray = (TypedIntArray) cast(array);
+            TypedIntArray<?> typedArray = (TypedIntArray<?>) cast(array);
             int iValue = toInt(value); // could throw
             checkDetachedArrayBuffer(target);
             if (inBoundsProfile.profile(typedArray.hasElement(target, index, arrayCondition))) {
@@ -1526,7 +1526,7 @@ public class WriteElementNode extends JSTargetableNode {
                 return (int) value;
             } else {
                 double doubleValue = toDouble(value);
-                return Uint8ClampedArray.clamp(doubleValue);
+                return Uint8ClampedArray.toInt(doubleValue);
             }
         }
 
@@ -1576,7 +1576,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
-            TypedFloatArray typedArray = (TypedFloatArray) cast(array);
+            TypedFloatArray<?> typedArray = (TypedFloatArray<?>) cast(array);
             double dValue = toDouble(value); // could throw
             checkDetachedArrayBuffer(target);
             if (inBoundsProfile.profile(typedArray.hasElement(target, index, arrayCondition))) {

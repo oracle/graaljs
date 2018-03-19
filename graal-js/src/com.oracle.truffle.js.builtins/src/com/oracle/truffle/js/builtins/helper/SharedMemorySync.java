@@ -57,14 +57,14 @@ public class SharedMemorySync {
     public static int doVolatileGet(DynamicObject target, int intArrayOffset) {
         SyncUtils.loadFence();
         TypedArray array = typedArrayGetArrayType(target);
-        TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) array;
+        TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) array;
         return typedArray.getInt(target, intArrayOffset, true);
     }
 
     @TruffleBoundary
     public static void doVolatilePut(DynamicObject target, int index, int value) {
         TypedArray array = typedArrayGetArrayType(target);
-        TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) array;
+        TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) array;
         typedArray.setInt(target, index, value, true);
         SyncUtils.storeFence();
     }

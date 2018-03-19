@@ -7,6 +7,9 @@ package com.oracle.truffle.js.builtins;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetArrayType;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -258,14 +261,15 @@ public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         private final BranchProfile needErrorBranch = BranchProfile.create();
-        private final ConditionProfile sinkEqualsSource = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile sameBufferProf = ConditionProfile.createBinaryProfile();
         private final ValueProfile sourceArrayProf = ValueProfile.createIdentityProfile();
-        private final ValueProfile sinkArrayProf = ValueProfile.createIdentityProfile();
+        private final ValueProfile targetArrayProf = ValueProfile.createIdentityProfile();
         private final JSClassProfile sourceArrayClassProfile = JSClassProfile.create();
 
         private final ConditionProfile arrayIsObject = ConditionProfile.createBinaryProfile();
         private final ConditionProfile arrayIsArray = ConditionProfile.createBinaryProfile();
         private final ConditionProfile arrayIsArrayBufferView = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isDirectProf = ConditionProfile.createBinaryProfile();
         private final BranchProfile intToIntBranch = BranchProfile.create();
         private final BranchProfile floatToFloatBranch = BranchProfile.create();
         private final BranchProfile objectToObjectBranch = BranchProfile.create();
@@ -328,95 +332,119 @@ public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert JSArray.isJSArray(array);
             boolean sourceCondition = JSArray.isJSArray(array);
-            boolean sinkCondition = JSArrayBufferView.isJSArrayBufferView(thisObj);
+            boolean targetCondition = JSArrayBufferView.isJSArrayBufferView(thisObj);
             ScriptArray sourceArray = arrayGetArrayType(array, sourceCondition);
-            TypedArray sinkArray = JSArrayBufferView.typedArrayGetArrayType(thisObj, sinkCondition);
+            TypedArray targetArray = JSArrayBufferView.typedArrayGetArrayType(thisObj, targetCondition);
             long sourceLen = sourceArray.length(array, sourceCondition);
-            rangeCheck(0, sourceLen, offset, sinkArray.length(thisObj, sinkCondition));
+            rangeCheck(0, sourceLen, offset, targetArray.length(thisObj, targetCondition));
 
             for (int i = 0, j = offset; i < sourceLen; i++, j++) {
-                sinkArray.setElement(thisObj, j, sourceArray.getElement(array, i), false);
+                targetArray.setElement(thisObj, j, sourceArray.getElement(array, i), false);
             }
         }
 
         private void setObject(DynamicObject thisObj, DynamicObject array, int offset) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             assert !JSArray.isJSArray(array);
-            boolean sinkCondition = JSArrayBufferView.isJSArrayBufferView(thisObj);
+            boolean targetCondition = JSArrayBufferView.isJSArrayBufferView(thisObj);
             long len = objectGetLength(array);
-            TypedArray sinkArray = sinkArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj, sinkCondition));
+            TypedArray targetArray = targetArrayProf.profile(JSArrayBufferView.typedArrayGetArrayType(thisObj, targetCondition));
 
-            rangeCheck(0, len, offset, sinkArray.length(thisObj, sinkCondition));
+            rangeCheck(0, len, offset, targetArray.length(thisObj, targetCondition));
 
             for (int i = 0, j = offset; i < len; i++, j++) {
                 Object value = JSObject.get(array, i, sourceArrayClassProfile);
                 checkHasDetachedBuffer(thisObj);
-                sinkArray.setElement(thisObj, j, value, false);
+                targetArray.setElement(thisObj, j, value, false);
             }
         }
 
-        private void setArrayBufferView(DynamicObject sinkView, DynamicObject sourceView, int offset) {
-            assert JSArrayBufferView.isJSArrayBufferView(sinkView);
+        private void setArrayBufferView(DynamicObject targetView, DynamicObject sourceView, int offset) {
+            assert JSArrayBufferView.isJSArrayBufferView(targetView);
             assert JSArrayBufferView.isJSArrayBufferView(sourceView);
             checkHasDetachedBuffer(sourceView);
             boolean sourceCondition = JSArrayBufferView.isJSArrayBufferView(sourceView);
             TypedArray sourceArray = sourceArrayProf.profile(typedArrayGetArrayType(sourceView, sourceCondition));
-            boolean sinkCondition = JSArrayBufferView.isJSArrayBufferView(sinkView);
-            TypedArray sinkArray = sinkArrayProf.profile(typedArrayGetArrayType(sinkView, sinkCondition));
-            rangeCheck(0, sourceArray.length(sourceView, sourceCondition), offset, sinkArray.length(sinkView, sinkCondition));
+            boolean targetCondition = JSArrayBufferView.isJSArrayBufferView(targetView);
+            TypedArray targetArray = targetArrayProf.profile(typedArrayGetArrayType(targetView, targetCondition));
+            long sourceLength = sourceArray.length(sourceView, sourceCondition);
 
-            if (sinkEqualsSource.profile(JSArrayBufferView.getArrayBuffer(sourceView, sourceCondition) == JSArrayBufferView.getArrayBuffer(sinkView, sinkCondition))) {
-                setArrayBufferViewSameBuffer(sinkView, sourceView, offset, sinkArray, sourceArray);
+            rangeCheck(0, sourceLength, offset, targetArray.length(targetView, targetCondition));
+
+            int sourceLen = (int) sourceLength;
+            DynamicObject sourceBuffer = JSArrayBufferView.getArrayBuffer(sourceView, sourceCondition);
+            DynamicObject targetBuffer = JSArrayBufferView.getArrayBuffer(targetView, targetCondition);
+            int srcByteOffset = JSArrayBufferView.typedArrayGetOffset(sourceView);
+            int targetByteOffset = JSArrayBufferView.typedArrayGetOffset(targetView);
+
+            int srcByteIndex;
+            if (sameBufferProf.profile(sourceBuffer == targetBuffer)) {
+                int srcByteLength = sourceLen * sourceArray.bytesPerElement();
+                sourceBuffer = cloneArrayBuffer(sourceBuffer, sourceArray, srcByteLength, srcByteOffset);
+                srcByteIndex = 0;
             } else {
-                setArrayBufferViewDistinctBuffers(sinkView, sourceView, offset, sinkArray, sourceArray);
+                srcByteIndex = srcByteOffset;
             }
+            copyTypedArrayElementsDistinctBuffers(targetBuffer, sourceBuffer, targetArray, sourceArray, offset, targetByteOffset, sourceLen, srcByteIndex);
         }
 
-        private void setArrayBufferViewDistinctBuffers(DynamicObject sinkView, DynamicObject sourceView, int offset, TypedArray sinkArray, TypedArray sourceArray) {
-            long sourceLen = sourceArray.length(sourceView);
-            if (sourceArray instanceof TypedArray.TypedIntArray && sinkArray instanceof TypedArray.TypedIntArray) {
-                intToIntBranch.enter();
-                for (int i = 0; i < sourceLen; i++) {
-                    int value = ((TypedArray.TypedIntArray) sourceArray).getInt(sourceView, i, false);
-                    checkHasDetachedBuffer(sinkView);
-                    ((TypedArray.TypedIntArray) sinkArray).setInt(sinkView, i + offset, value, false);
+        @SuppressWarnings("unchecked")
+        private void copyTypedArrayElementsDistinctBuffers(DynamicObject targetBuffer, DynamicObject sourceBuffer, TypedArray targetType, TypedArray sourceType,
+                        int targetOffset, int targetByteOffset, int sourceLength, int sourceByteIndex) {
+            Object targetBackingBuffer = isDirectProf.profile(targetType.isDirect()) ? JSArrayBuffer.getDirectByteBuffer(targetBuffer) : JSArrayBuffer.getByteArray(targetBuffer);
+            Object sourceBackingBuffer = isDirectProf.profile(sourceType.isDirect()) ? JSArrayBuffer.getDirectByteBuffer(sourceBuffer) : JSArrayBuffer.getByteArray(sourceBuffer);
+            int targetElementSize = targetType.bytesPerElement();
+            int sourceElementSize = sourceType.bytesPerElement();
+            int targetByteIndex = targetByteOffset + targetOffset * targetElementSize;
+            int sourceByteLength = sourceByteIndex + sourceLength * sourceElementSize;
+            if (sourceType == targetType) {
+                // same element type => bulk copy
+                if (isDirectProf.profile(targetType.isDirect())) {
+                    ((ByteBuffer) ((ByteBuffer) targetBackingBuffer).duplicate().position(targetByteIndex)).put(
+                                    ((ByteBuffer) ((ByteBuffer) sourceBackingBuffer).duplicate().position(sourceByteIndex).limit(sourceByteIndex + sourceByteLength)).slice());
+                } else {
+                    System.arraycopy(sourceBackingBuffer, sourceByteIndex, targetBackingBuffer, targetByteIndex, sourceByteLength);
                 }
-            } else if (sourceArray instanceof TypedArray.TypedFloatArray && sinkArray instanceof TypedArray.TypedFloatArray) {
+            } else if (sourceType instanceof TypedArray.TypedIntArray && targetType instanceof TypedArray.TypedIntArray) {
+                intToIntBranch.enter();
+                for (int i = 0; i < sourceLength; i++) {
+                    int value = ((TypedArray.TypedIntArray<Object>) sourceType).getIntImpl(sourceBackingBuffer, sourceByteIndex, i);
+                    ((TypedArray.TypedIntArray<Object>) targetType).setIntImpl(targetBackingBuffer, targetByteOffset, i + targetOffset, value);
+                }
+            } else if (sourceType instanceof TypedArray.TypedFloatArray && targetType instanceof TypedArray.TypedFloatArray) {
                 floatToFloatBranch.enter();
-                for (int i = 0; i < sourceLen; i++) {
-                    double value = ((TypedArray.TypedFloatArray) sourceArray).getDouble(sourceView, i, false);
-                    checkHasDetachedBuffer(sinkView);
-                    ((TypedArray.TypedFloatArray) sinkArray).setDouble(sinkView, i + offset, value, false);
+                for (int i = 0; i < sourceLength; i++) {
+                    double value = ((TypedArray.TypedFloatArray<Object>) sourceType).getDoubleImpl(sourceBackingBuffer, sourceByteIndex, i);
+                    ((TypedArray.TypedFloatArray<Object>) targetType).setDoubleImpl(targetBackingBuffer, targetByteOffset, i + targetOffset, value);
                 }
             } else {
                 objectToObjectBranch.enter();
-                for (int i = 0; i < sourceLen; i++) {
-                    Object value = sourceArray.getElement(sourceView, i, false);
-                    checkHasDetachedBuffer(sinkView);
-                    sinkArray.setElement(sinkView, i + offset, value, false);
+                boolean littleEndian = ByteOrder.LITTLE_ENDIAN == ByteOrder.nativeOrder();
+                for (int i = 0; i < sourceLength; i++) {
+                    Number value = sourceType.getBufferElement(sourceBuffer, sourceByteIndex + i * sourceElementSize, littleEndian, false);
+                    targetType.setBufferElement(targetBuffer, targetByteIndex + i * targetElementSize, littleEndian, false, value);
                 }
             }
         }
 
-        private void setArrayBufferViewSameBuffer(DynamicObject sinkView, DynamicObject sourceView, int offset, TypedArray sinkArray, TypedArray sourceArray) {
-            DynamicObject clonedSourceView = cloneArrayBufferView(sourceView, sourceArray);
-            setArrayBufferViewDistinctBuffers(sinkView, clonedSourceView, offset, sinkArray, sourceArray);
+        private DynamicObject cloneArrayBuffer(DynamicObject sourceBuffer, TypedArray sourceArray, int srcByteLength, int srcByteOffset) {
+            DynamicObject clonedArrayBuffer;
+            if (isDirectProf.profile(sourceArray.isDirect())) {
+                clonedArrayBuffer = JSArrayBuffer.createDirectArrayBuffer(getContext(), srcByteLength);
+                ByteBuffer clonedBackingBuffer = JSArrayBuffer.getDirectByteBuffer(clonedArrayBuffer);
+                ByteBuffer sourceBackingBuffer = JSArrayBuffer.getDirectByteBuffer(sourceBuffer);
+                clonedBackingBuffer.duplicate().put(((ByteBuffer) sourceBackingBuffer.duplicate().position(srcByteOffset).limit(srcByteOffset + srcByteLength)).slice());
+            } else {
+                clonedArrayBuffer = JSArrayBuffer.createArrayBuffer(getContext(), srcByteLength);
+                byte[] clonedBackingBuffer = JSArrayBuffer.getByteArray(clonedArrayBuffer);
+                byte[] sourceBackingBuffer = JSArrayBuffer.getByteArray(sourceBuffer);
+                System.arraycopy(sourceBackingBuffer, srcByteOffset, clonedBackingBuffer, 0, srcByteLength);
+            }
+            return clonedArrayBuffer;
         }
 
-        private DynamicObject cloneArrayBufferView(DynamicObject sourceView, TypedArray sourceArray) {
-            int length = (int) sourceArray.length(sourceView);
-            int byteLength = length * sourceArray.getFactory().bytesPerElement();
-            TypedArray sinkArray = sourceArray.getFactory().createArrayType(sourceArray.isDirect(), false);
-            DynamicObject clonedArrayBuffer = sinkArray.isDirect() ? JSArrayBuffer.createDirectArrayBuffer(getContext(), byteLength) : JSArrayBuffer.createArrayBuffer(getContext(), byteLength);
-            DynamicObject sinkView = JSArrayBufferView.createArrayBufferView(getContext(), clonedArrayBuffer, sinkArray, 0, length);
-
-            setArrayBufferViewDistinctBuffers(sinkView, sourceView, 0, sinkArray, sourceArray);
-
-            return sinkView;
-        }
-
-        private void rangeCheck(long sourceStart, long sourceLength, long sinkStart, long sinkLength) {
-            if (!(sourceStart >= 0 && sinkStart >= 0 && sourceStart <= sourceLength && sinkStart <= sinkLength && sourceLength - sourceStart <= sinkLength - sinkStart)) {
+        private void rangeCheck(long sourceStart, long sourceLength, long targetStart, long targetLength) {
+            if (!(sourceStart >= 0 && targetStart >= 0 && sourceStart <= sourceLength && targetStart <= targetLength && sourceLength - sourceStart <= targetLength - targetStart)) {
                 needErrorBranch.enter();
                 throw Errors.createRangeError("out of bounds");
             }
