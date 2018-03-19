@@ -140,46 +140,49 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @Specialization(guards = {"isJSFunction(newTarget)", "isJSHeapArrayBuffer(arrayBuffer)"})
     protected DynamicObject doArrayBuffer(DynamicObject newTarget, DynamicObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached("createBinaryProfile()") ConditionProfile lengthCondition) {
+                    @Cached("createBinaryProfile()") ConditionProfile lengthIsUndefined) {
         if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             throw Errors.createTypeErrorDetachedBuffer();
         }
         byte[] byteArray = JSArrayBuffer.getByteArray(arrayBuffer);
         int arrayBufferLength = byteArray.length;
-        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, false, lengthCondition);
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, false, lengthIsUndefined);
     }
 
     @Specialization(guards = {"isJSFunction(newTarget)", "isJSDirectArrayBuffer(arrayBuffer)"})
     protected DynamicObject doDirectArrayBuffer(DynamicObject newTarget, DynamicObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached("createBinaryProfile()") ConditionProfile lengthCondition) {
+                    @Cached("createBinaryProfile()") ConditionProfile lengthIsUndefined) {
         if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             throw Errors.createTypeErrorDetachedBuffer();
         }
         ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
         int arrayBufferLength = byteBuffer.limit();
-        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, true, lengthCondition);
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, true, lengthIsUndefined);
     }
 
     private DynamicObject doArrayBufferImpl(DynamicObject arrayBuffer, Object byteOffset0, Object length0, DynamicObject newTarget, int bufferByteLength, boolean direct,
-                    ConditionProfile lengthCondition) {
+                    ConditionProfile lengthIsUndefinedProfile) {
         final int elementSize = factory.bytesPerElement();
 
         final long byteOffset = toIndex(byteOffset0);
         rangeCheckIsMultipleOfElementSize(byteOffset % elementSize == 0, "start offset", factory.getName(), elementSize);
 
+        long length = 0;
+        if (!lengthIsUndefinedProfile.profile(length0 == Undefined.instance)) {
+            length = toIndex(length0);
+            assert length >= 0;
+        }
+
         if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             throw Errors.createTypeErrorDetachedBuffer();
         }
 
-        final long length;
-        if (lengthCondition.profile(length0 == Undefined.instance)) {
+        if (lengthIsUndefinedProfile.profile(length0 == Undefined.instance)) {
             rangeCheckIsMultipleOfElementSize(bufferByteLength % elementSize == 0, "buffer.byteLength", factory.getName(), elementSize);
             length = ((bufferByteLength - byteOffset) / elementSize);
             rangeCheck(length >= 0, "length < 0");
-        } else {
-            length = toIndex(length0);
-            assert length >= 0;
         }
+
         checkLengthLimit(length, elementSize);
         final int byteLength = toByteLength((int) length, elementSize);
         rangeCheck(byteOffset + byteLength <= bufferByteLength, "length exceeds buffer bounds");
