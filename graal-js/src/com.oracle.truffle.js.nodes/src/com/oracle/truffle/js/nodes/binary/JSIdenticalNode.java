@@ -8,6 +8,8 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -224,6 +226,11 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         assert (a != null) && (b != null);
         assert JSRuntime.isJavaObject(a) || JSRuntime.isJavaObject(b);
         return a == b;
+    }
+
+    @Specialization(guards = {"isTruffleJavaObject(a)", "isTruffleJavaObject(b)"})
+    protected static boolean doTruffleJavaObjects(TruffleObject a, TruffleObject b) {
+        return JavaInterop.asJavaObject(a) == JavaInterop.asJavaObject(b);
     }
 
     @Fallback

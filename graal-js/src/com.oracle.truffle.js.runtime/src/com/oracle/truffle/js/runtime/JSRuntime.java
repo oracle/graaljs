@@ -1385,6 +1385,9 @@ public final class JSRuntime {
         if (isString(a) && isString(b)) {
             return a.toString().equals(b.toString());
         }
+        if (JavaInterop.isJavaObject(a) && JavaInterop.isJavaObject(b)) {
+            return JavaInterop.asJavaObject((TruffleObject) a) == JavaInterop.asJavaObject((TruffleObject) b);
+        }
         return false;
     }
 
