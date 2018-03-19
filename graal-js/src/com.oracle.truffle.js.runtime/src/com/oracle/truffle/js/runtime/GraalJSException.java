@@ -226,7 +226,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                                 skippingFrames = false;
                                 return null; // skip this frame as well
                             }
-                            JSRealm realm = functionData.getContext().getRealm();
+                            JSRealm realm = JSFunction.getRealm((DynamicObject) functionObj);
                             if (functionObj == realm.getApplyFunctionObject() || functionObj == realm.getCallFunctionObject()) {
                                 return null; // skip Function.apply and Function.call
                             }
@@ -313,8 +313,13 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                 targetSourceSection = target == null ? null : target.getSourceSection();
             }
         }
+        boolean global = isGlobalObject(thisObj, JSFunction.getRealm(functionObj));
 
-        return new JSStackTraceElement(fileName, functionName, callNodeSourceSection, thisObj, functionObj, targetSourceSection, inStrictMode, eval);
+        return new JSStackTraceElement(fileName, functionName, callNodeSourceSection, thisObj, functionObj, targetSourceSection, inStrictMode, eval, global);
+    }
+
+    private static boolean isGlobalObject(Object object, JSRealm realm) {
+        return JSObject.isJSObject(object) && (realm != null) && (realm.getGlobalObject() == object);
     }
 
     private static JSStackTraceElement processForeignFrame(Node node, boolean strict) {
@@ -329,7 +334,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         Object thisObj = null;
         Object functionObj = null;
 
-        return new JSStackTraceElement(fileName, functionName, sourceSection, thisObj, functionObj, null, strict, false);
+        return new JSStackTraceElement(fileName, functionName, sourceSection, thisObj, functionObj, null, strict, false, false);
     }
 
     private static String getPrimitiveConstructorName(Object thisObj) {
@@ -420,9 +425,10 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         private final SourceSection targetSourceSection;
         private final boolean strict;
         private final boolean eval;
+        private final boolean global;
 
         private JSStackTraceElement(String fileName, String functionName, SourceSection sourceSection, Object thisObj, Object functionObj, SourceSection targetSourceSection, boolean strict,
-                        boolean eval) {
+                        boolean eval, boolean global) {
             CompilerAsserts.neverPartOfCompilation();
             this.fileName = fileName;
             this.functionName = functionName;
@@ -432,6 +438,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             this.targetSourceSection = targetSourceSection;
             this.strict = strict;
             this.eval = eval;
+            this.global = global;
         }
 
         // This method is called from nashorn tests via java interop
@@ -453,15 +460,15 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         }
 
         @TruffleBoundary
-        public String getTypeName(boolean global) {
+        public String getTypeName(boolean checkGlobal) {
             if (JSTruffleOptions.NashornCompatibilityMode) {
                 return "<" + fileName + ">";
             } else {
-                if (global && isGlobalObject(getThisOrGlobal())) {
+                if (checkGlobal && global) {
                     return "global";
                 }
                 Object thisObject = getThis();
-                if (!JSRuntime.isNullOrUndefined(thisObject) && !isGlobalObject(thisObject)) {
+                if (!JSRuntime.isNullOrUndefined(thisObject) && !global) {
                     if (JSObject.isDynamicObject(thisObject)) {
                         return JSRuntime.getConstructorName((DynamicObject) thisObject);
                     } else if (JSRuntime.isJSPrimitive(thisObject)) {
@@ -470,14 +477,6 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                 }
                 return null;
             }
-        }
-
-        private static boolean isGlobalObject(Object object) {
-            if (JSObject.isJSObject(object)) {
-                JSContext context = JSObject.getJSContext((DynamicObject) object);
-                return (context != null) && (context.getRealm().getGlobalObject() == object);
-            }
-            return false;
         }
 
         public String getFunctionName() {
