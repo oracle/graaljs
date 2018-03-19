@@ -8,6 +8,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
 
 public class BranchStatementsTest extends FineGrainedAccessTest {
 
@@ -59,15 +60,18 @@ public class BranchStatementsTest extends FineGrainedAccessTest {
     @Test
     public void throwTest() {
         String src = "try {" +
-                        "throw 'foo';" +
+                        "  throw 'foo';" +
                         "} catch (e) {};";
 
-        evalWithTags(src, new Class[]{ControlFlowBlockStatementTag.class, ControlFlowBranchStatementTag.class});
+        evalWithTags(src, new Class[]{ControlFlowBlockStatementTag.class, ControlFlowStatementRootTag.class, ControlFlowBranchStatementTag.class});
 
-        enter(ControlFlowBranchStatementTag.class, (e, b) -> {
-            assertAttribute(e, TYPE, ControlFlowBranchStatementTag.Type.Throw.name());
-            b.input("foo");
-        }).exitExceptional();
+        enter(ControlFlowStatementRootTag.class, (e, b) -> {
+            assertAttribute(e, TYPE, ControlFlowStatementRootTag.Type.ExcetionHandler.name());
+            enter(ControlFlowBranchStatementTag.class, (e1, b1) -> {
+                assertAttribute(e1, TYPE, ControlFlowBranchStatementTag.Type.Throw.name());
+                b1.input("foo");
+            }).exitExceptional();
+        }).exit();
     }
 
 }

@@ -298,9 +298,10 @@ public class JSTags {
      * values are:
      * <ul>
      * <li><b>Conditional</b> A conditional branch statement (e.g., <code>if</code> or
-     * <code>switch</code> statements.</li>
+     * <code>switch</code> statements.)</li>
      * <li><b>Iteration</b> An iterative block (e.g., <code>for</code> or <code>while</code> loop
-     * statements.</li>
+     * statements.)</li>
+     * <li><b>ExceptionHandler</b> An exception handling block (e.g., <code>try</code>.)</li>
      * </ul>
      * </p>
      **
@@ -310,6 +311,7 @@ public class JSTags {
         public enum Type {
             Conditional,
             Iteration,
+            ExcetionHandler,
         }
 
         private ControlFlowStatementRootTag() {
