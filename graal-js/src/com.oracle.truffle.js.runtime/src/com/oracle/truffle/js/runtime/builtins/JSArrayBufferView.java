@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -273,6 +274,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     }
 
     public static DynamicObject createArrayBufferView(JSContext context, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
+        CompilerAsserts.partialEvaluationConstant(arrayType);
         assert JSArrayBuffer.isJSAbstractBuffer(arrayBuffer);
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             throw Errors.createTypeErrorDetachedBuffer();
@@ -287,8 +289,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     }
 
     private static DynamicObject createArrayBufferView(JSContext context, DynamicObjectFactory objectFactory, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length,
-                    Object backingStorage,
-                    boolean shareable) {
+                    Object backingStorage, boolean shareable) {
         assert offset >= 0 && offset + length * arrayType.bytesPerElement() <= (arrayType.isDirect() ? ((ByteBuffer) backingStorage).limit() : ((byte[]) backingStorage).length);
         assert offset != 0 == arrayType.hasOffset();
 
