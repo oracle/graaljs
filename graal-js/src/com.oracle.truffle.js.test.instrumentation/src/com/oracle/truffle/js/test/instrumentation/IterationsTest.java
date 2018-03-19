@@ -6,9 +6,9 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 
 public class IterationsTest extends FineGrainedAccessTest {
 
@@ -17,18 +17,18 @@ public class IterationsTest extends FineGrainedAccessTest {
         String src = "for (var a=0; a<3; a++) { 42;};";
 
         evalWithTags(src, new Class[]{
-                        ControlFlowStatementRootTag.class,
-                        ControlFlowBranchStatementTag.class,
-                        ControlFlowBlockStatementTag.class
+                        ControlFlowRootTag.class,
+                        ControlFlowBranchTag.class,
+                        ControlFlowBlockTag.class
         }, new Class[]{/* no input events */});
 
-        enter(ControlFlowStatementRootTag.class, (e) -> {
-            assertAttribute(e, TYPE, ControlFlowStatementRootTag.Type.Iteration.name());
+        enter(ControlFlowRootTag.class, (e) -> {
+            assertAttribute(e, TYPE, ControlFlowRootTag.Type.Iteration.name());
             for (int a = 0; a < 3; a++) {
-                enter(ControlFlowBranchStatementTag.class).exit(assertReturnValue(true));
-                enter(ControlFlowBlockStatementTag.class).exit();
+                enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
+                enter(ControlFlowBlockTag.class).exit();
             }
-            enter(ControlFlowBranchStatementTag.class).exit(assertReturnValue(false));
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
         }).exit();
     }
 
@@ -37,18 +37,18 @@ public class IterationsTest extends FineGrainedAccessTest {
         String src = "var a=0; while(a<3) { a++; };";
 
         evalWithTags(src, new Class[]{
-                        ControlFlowStatementRootTag.class,
-                        ControlFlowBranchStatementTag.class,
-                        ControlFlowBlockStatementTag.class
+                        ControlFlowRootTag.class,
+                        ControlFlowBranchTag.class,
+                        ControlFlowBlockTag.class
         }, new Class[]{/* no input events */});
 
-        enter(ControlFlowStatementRootTag.class, (e) -> {
-            assertAttribute(e, TYPE, ControlFlowStatementRootTag.Type.Iteration.name());
+        enter(ControlFlowRootTag.class, (e) -> {
+            assertAttribute(e, TYPE, ControlFlowRootTag.Type.Iteration.name());
             for (int a = 0; a < 3; a++) {
-                enter(ControlFlowBranchStatementTag.class).exit(assertReturnValue(true));
-                enter(ControlFlowBlockStatementTag.class).exit();
+                enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
+                enter(ControlFlowBlockTag.class).exit();
             }
-            enter(ControlFlowBranchStatementTag.class).exit(assertReturnValue(false));
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
         }).exit();
     }
 

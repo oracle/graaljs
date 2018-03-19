@@ -18,10 +18,9 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag.Type;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -49,7 +48,7 @@ public final class IfNode extends StatementNode implements ResumableNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ControlFlowStatementRootTag.class) {
+        if (tag == ControlFlowRootTag.class) {
             return true;
         } else if (tag == ExpressionTag.class) {
             // We assume that all if statements are expressions if not statements.
@@ -61,16 +60,17 @@ public final class IfNode extends StatementNode implements ResumableNode {
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("type", ControlFlowStatementRootTag.Type.Conditional.name());
+        return JSTags.createNodeObjectDescriptor("type", ControlFlowRootTag.Type.Conditional.name());
     }
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ControlFlowStatementRootTag.class) || materializedTags.contains(ControlFlowBranchStatementTag.class) ||
-                        materializedTags.contains(ControlFlowBlockStatementTag.class) || materializedTags.contains(StatementTag.class)) {
-            JavaScriptNode newElsePart = elsePart != null ? JSTaggedExecutionNode.createFor(elsePart, JSTags.ControlFlowBlockStatementTag.class) : null;
-            JavaScriptNode newThenPart = thenPart != null ? JSTaggedExecutionNode.createFor(thenPart, JSTags.ControlFlowBlockStatementTag.class) : null;
-            JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(condition, ControlFlowBranchStatementTag.class, JSTags.createNodeObjectDescriptor("type", Type.Condition.name()));
+        if (materializedTags.contains(ControlFlowRootTag.class) || materializedTags.contains(ControlFlowBranchTag.class) ||
+                        materializedTags.contains(ControlFlowBlockTag.class) || materializedTags.contains(StatementTag.class)) {
+            JavaScriptNode newElsePart = elsePart != null ? JSTaggedExecutionNode.createFor(elsePart, JSTags.ControlFlowBlockTag.class) : null;
+            JavaScriptNode newThenPart = thenPart != null ? JSTaggedExecutionNode.createFor(thenPart, JSTags.ControlFlowBlockTag.class) : null;
+            JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(condition, ControlFlowBranchTag.class,
+                            JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
             JavaScriptNode newIf = IfNode.create(newCondition, newThenPart, newElsePart);
             transferSourceSection(this, newIf);
             return newIf;

@@ -12,7 +12,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.UserScriptException;
@@ -37,7 +37,7 @@ public class ThrowNode extends StatementNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ControlFlowBranchStatementTag.class) {
+        if (tag == ControlFlowBranchTag.class) {
             return true;
         }
         return super.hasTag(tag);
@@ -45,7 +45,7 @@ public class ThrowNode extends StatementNode {
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("type", ControlFlowBranchStatementTag.Type.Throw.name());
+        return JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Throw.name());
     }
 
     @Override

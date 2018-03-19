@@ -279,13 +279,13 @@ public class JSTags {
     // ##### ECMA2018 13.x - JavaScript Statements
 
     /**
-     * Control flow root statement.
+     * Control flow root nodes.
      *
-     * Marks all code locations where a statement that affects the control flow of an application is
+     * Marks all code locations where a node that affects the control flow of an application is
      * declared.
      *
      * <p>
-     * Examples of such statements are:
+     * Examples are:
      * <ul>
      * <li>ECMA2018 13.6 The <code>if</code> statement.</li>
      * <li>ECMA2018 13.7 Iteration statements.</li>
@@ -306,26 +306,26 @@ public class JSTags {
      * </p>
      **
      */
-    @Tag.Identifier("ControlFlowStatementRoot")
-    public static final class ControlFlowStatementRootTag extends Tag {
+    @Tag.Identifier("ControlFlowRootTag")
+    public static final class ControlFlowRootTag extends Tag {
         public enum Type {
             Conditional,
             Iteration,
-            ExcetionHandler,
+            ExceptionHandler,
         }
 
-        private ControlFlowStatementRootTag() {
+        private ControlFlowRootTag() {
         }
     }
 
     /**
-     * Control flow branch statement.
+     * Control flow branch node.
      *
-     * Marks all code locations where a statement might change the control flow of an application is
-     * declared.
+     * Marks all code locations where a statement or expression that might change the control flow
+     * of an application is declared.
      *
      * <p>
-     * Examples of such statements are:
+     * Examples are:
      * <ul>
      * <li>ECMA2018 13.6 Condition of <code>if</code> statements.</li>
      * <li>ECMA2018 13.7 Repeating conditions for iteration statements such as <code>while</code>,
@@ -351,8 +351,8 @@ public class JSTags {
      *
      * </p>
      */
-    @Tag.Identifier("ControlFlowBranchStatementTag")
-    public static final class ControlFlowBranchStatementTag extends Tag {
+    @Tag.Identifier("ControlFlowBranchTag")
+    public static final class ControlFlowBranchTag extends Tag {
         public enum Type {
             Condition,
             Continue,
@@ -360,18 +360,18 @@ public class JSTags {
             Throw,
         }
 
-        private ControlFlowBranchStatementTag() {
+        private ControlFlowBranchTag() {
         }
     }
 
     /**
-     * Control flow block statement.
+     * Control flow block node.
      *
-     * Marks all code locations where a block whose execution depends on a conditional statement are
+     * Marks all code locations where a block whose execution depends on a runtime condition are
      * declared.
      *
      * <p>
-     * Examples of such block statements are:
+     * Examples are:
      * <ul>
      * <li>ECMA2018 13.6 The <code>if</code> or the <code>else</code> branches of an <code>if</code>
      * statement.</li>
@@ -381,9 +381,9 @@ public class JSTags {
      * </ul>
      * </p>
      */
-    @Tag.Identifier("ControlFlowBlockStatement")
-    public static final class ControlFlowBlockStatementTag extends Tag {
-        private ControlFlowBlockStatementTag() {
+    @Tag.Identifier("ControlFlowBlockTag")
+    public static final class ControlFlowBlockTag extends Tag {
+        private ControlFlowBlockTag() {
         }
     }
 

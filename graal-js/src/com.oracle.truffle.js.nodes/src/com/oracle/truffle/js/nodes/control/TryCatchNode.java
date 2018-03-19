@@ -27,7 +27,7 @@ import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
@@ -79,7 +79,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ControlFlowStatementRootTag.class) {
+        if (tag == ControlFlowRootTag.class) {
             return true;
         }
         return super.hasTag(tag);
@@ -87,7 +87,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("type", ControlFlowStatementRootTag.Type.ExcetionHandler.name());
+        return JSTags.createNodeObjectDescriptor("type", ControlFlowRootTag.Type.ExceptionHandler.name());
     }
 
     @Override

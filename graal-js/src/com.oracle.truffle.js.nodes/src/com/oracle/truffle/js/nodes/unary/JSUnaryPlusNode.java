@@ -11,7 +11,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode.JSToNumberWrapperNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 
 @NodeInfo(shortName = "+")
 public abstract class JSUnaryPlusNode extends JSToNumberWrapperNode {

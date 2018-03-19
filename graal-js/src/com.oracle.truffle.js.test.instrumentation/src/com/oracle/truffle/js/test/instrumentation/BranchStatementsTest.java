@@ -6,9 +6,9 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 
 public class BranchStatementsTest extends FineGrainedAccessTest {
 
@@ -21,36 +21,36 @@ public class BranchStatementsTest extends FineGrainedAccessTest {
                         "  continue;" +
                         "}";
 
-        evalWithTags(src, new Class[]{ControlFlowBlockStatementTag.class, ControlFlowBranchStatementTag.class});
+        evalWithTags(src, new Class[]{ControlFlowBlockTag.class, ControlFlowBranchTag.class});
 
-        enter(ControlFlowBranchStatementTag.class, (e, b) -> {
+        enter(ControlFlowBranchTag.class, (e, b) -> {
             b.input(true);
         }).exit();
 
-        enter(ControlFlowBlockStatementTag.class, (e, b) -> {
-            enter(ControlFlowBranchStatementTag.class, (e1, b1) -> {
-                assertAttribute(e1, TYPE, ControlFlowBranchStatementTag.Type.Condition.name());
+        enter(ControlFlowBlockTag.class, (e, b) -> {
+            enter(ControlFlowBranchTag.class, (e1, b1) -> {
+                assertAttribute(e1, TYPE, ControlFlowBranchTag.Type.Condition.name());
                 b1.input(false);
             }).exit();
-            enter(ControlFlowBranchStatementTag.class, (e1, b1) -> {
-                assertAttribute(e1, TYPE, ControlFlowBranchStatementTag.Type.Continue.name());
+            enter(ControlFlowBranchTag.class, (e1, b1) -> {
+                assertAttribute(e1, TYPE, ControlFlowBranchTag.Type.Continue.name());
             }).exitExceptional();
         }).exit();
 
-        enter(ControlFlowBranchStatementTag.class, (e, b) -> {
-            assertAttribute(e, TYPE, ControlFlowBranchStatementTag.Type.Condition.name());
+        enter(ControlFlowBranchTag.class, (e, b) -> {
+            assertAttribute(e, TYPE, ControlFlowBranchTag.Type.Condition.name());
             b.input(true);
         }).exit();
 
-        enter(ControlFlowBlockStatementTag.class, (e, b) -> {
-            enter(ControlFlowBranchStatementTag.class, (e1, b1) -> {
-                assertAttribute(e1, TYPE, ControlFlowBranchStatementTag.Type.Condition.name());
+        enter(ControlFlowBlockTag.class, (e, b) -> {
+            enter(ControlFlowBranchTag.class, (e1, b1) -> {
+                assertAttribute(e1, TYPE, ControlFlowBranchTag.Type.Condition.name());
                 b1.input(true);
             }).exit();
 
-            enter(ControlFlowBlockStatementTag.class, (e1, b1) -> {
-                enter(ControlFlowBranchStatementTag.class, (e2, b2) -> {
-                    assertAttribute(e2, TYPE, ControlFlowBranchStatementTag.Type.Break.name());
+            enter(ControlFlowBlockTag.class, (e1, b1) -> {
+                enter(ControlFlowBranchTag.class, (e2, b2) -> {
+                    assertAttribute(e2, TYPE, ControlFlowBranchTag.Type.Break.name());
 
                 }).exitExceptional();
             }).exitExceptional();
@@ -63,12 +63,12 @@ public class BranchStatementsTest extends FineGrainedAccessTest {
                         "  throw 'foo';" +
                         "} catch (e) {};";
 
-        evalWithTags(src, new Class[]{ControlFlowBlockStatementTag.class, ControlFlowStatementRootTag.class, ControlFlowBranchStatementTag.class});
+        evalWithTags(src, new Class[]{ControlFlowBlockTag.class, ControlFlowRootTag.class, ControlFlowBranchTag.class});
 
-        enter(ControlFlowStatementRootTag.class, (e, b) -> {
-            assertAttribute(e, TYPE, ControlFlowStatementRootTag.Type.ExcetionHandler.name());
-            enter(ControlFlowBranchStatementTag.class, (e1, b1) -> {
-                assertAttribute(e1, TYPE, ControlFlowBranchStatementTag.Type.Throw.name());
+        enter(ControlFlowRootTag.class, (e, b) -> {
+            assertAttribute(e, TYPE, ControlFlowRootTag.Type.ExceptionHandler.name());
+            enter(ControlFlowBranchTag.class, (e1, b1) -> {
+                assertAttribute(e1, TYPE, ControlFlowBranchTag.Type.Throw.name());
                 b1.input("foo");
             }).exitExceptional();
         }).exit();
