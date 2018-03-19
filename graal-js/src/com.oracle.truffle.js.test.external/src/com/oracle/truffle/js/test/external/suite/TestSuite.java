@@ -61,7 +61,7 @@ public abstract class TestSuite {
 
     private static final char LINE_SEPARATOR = '\n';
     private static final int MAX_IGNORE_TIMEOUT_COUNT = 3;
-    private static final int REPORTED_STACK_TRACE_ELEMENTS = 5;
+    private static final int REPORTED_STACK_TRACE_ELEMENTS = 10;
     private static final Pattern JS_FILE_PATTERN = Pattern.compile(".+\\.js$");
     private static final boolean PRINT_PROGRESS = System.console() != null;
 
