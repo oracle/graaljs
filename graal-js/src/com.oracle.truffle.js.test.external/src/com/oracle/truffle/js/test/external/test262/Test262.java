@@ -47,7 +47,6 @@ public class Test262 extends TestSuite {
                     "regExpUtils.js",
                     "sta.js",
                     "tcoHelper.js",
-                    "testBuiltInObject.js",
                     "testIntl.js",
                     "testTypedArray.js",
     };
