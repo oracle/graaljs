@@ -232,8 +232,10 @@ public final class JSJavaWrapper extends AbstractJSClass {
         TruffleLanguage.Env env = context.getEnv();
         if (env != null && env.isHostLookupAllowed()) {
             try {
-                env.lookupHostSymbol(Class.class.getName());
-                return false;
+                Object found = env.lookupHostSymbol(Class.class.getName());
+                if (found != null) {
+                    return false;
+                }
             } catch (Exception ex) {
             }
         }

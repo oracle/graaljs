@@ -449,4 +449,9 @@ public final class Errors {
     public static JSException createTypeErrorInvalidIdentifier(Object identifier) {
         return Errors.createTypeError("Invalid identifier: " + JSRuntime.safeToString(identifier));
     }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorClassNotFound(String className) {
+        return Errors.createTypeErrorFormat("Access to host class %s is not allowed or does not exist.", className);
+    }
 }

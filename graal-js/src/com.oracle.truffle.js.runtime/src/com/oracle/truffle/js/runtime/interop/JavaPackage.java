@@ -81,6 +81,9 @@ public final class JavaPackage extends JSBuiltinObject {
         } catch (Exception e) {
             return null;
         }
+        if (javaType == null) {
+            return null;
+        }
         if (JavaInterop.isJavaObject(javaType)) {
             Object clazz = JavaInterop.asJavaObject((TruffleObject) javaType);
             if (clazz instanceof Class<?>) {
