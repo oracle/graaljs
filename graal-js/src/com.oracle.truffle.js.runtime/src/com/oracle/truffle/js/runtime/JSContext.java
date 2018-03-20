@@ -523,20 +523,9 @@ public class JSContext implements ShapeContext {
         this.interopRuntime = interopRuntime;
     }
 
-    public void setTruffleLanguageEnv(TruffleLanguage.Env env) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (env != null && truffleLanguageEnv == null) {
-            setTruffleLanguageEnvImpl(env);
-        }
-    }
-
     public void patchTruffleLanguageEnv(TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
-        Objects.requireNonNull("env", "New env cannot be null.");
-        setTruffleLanguageEnvImpl(env);
-    }
-
-    private void setTruffleLanguageEnvImpl(TruffleLanguage.Env env) {
+        Objects.requireNonNull(env, "New env cannot be null.");
         truffleLanguageEnv = env;
         activateAllocationReporter();
         this.contextOptions.setEnv(env);
@@ -1055,14 +1044,13 @@ public class JSContext implements ShapeContext {
 
     @TruffleBoundary
     public JSContext createChildContext() {
-        JSContext childContext = new JSContext(getEvaluator(), getFunctionLookup(), contextOptions, getLanguage(), null, true);
+        JSContext childContext = new JSContext(getEvaluator(), getFunctionLookup(), contextOptions, getLanguage(), truffleLanguageEnv, true);
         childContext.setWriter(getWriter(), getWriterStream());
         childContext.setErrorWriter(getErrorWriter(), getErrorWriterStream());
         childContext.setLocalTimeZoneId(getLocalTimeZoneId());
         childContext.setSymbolRegistry(getSymbolRegistry());
         childContext.setRealmList(realmList);
         childContext.setInteropRuntime(interopRuntime);
-        childContext.setTruffleLanguageEnv(truffleLanguageEnv);
         childContext.typedArrayNotDetachedAssumption = this.typedArrayNotDetachedAssumption;
         // cannot leave Realm uninitialized
         JSRealm childRealm = childContext.createRealm(false);
