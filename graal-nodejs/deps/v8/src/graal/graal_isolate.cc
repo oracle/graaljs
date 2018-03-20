@@ -220,11 +220,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
             fprintf(stderr, "Cannot find %s. Update TRUFFLE_JAR_PATH environment variable!\n", truffle_jar_path.c_str());
             exit(1);
         }
-        std::string truffle_debug_jar_path = getstdenv("TRUFFLE_DEBUG_JAR_PATH");
-        if (!truffle_debug_jar_path.empty() && access(truffle_debug_jar_path.c_str(), F_OK) == -1) {
-            fprintf(stderr, "Cannot find %s. Update TRUFFLE_DEBUG_JAR_PATH environment variable!\n", truffle_debug_jar_path.c_str());
-            exit(1);
-        }
         std::string graaljs_jar_path = getstdenv("GRAALJS_JAR_PATH");
         if (!graaljs_jar_path.empty() && access(graaljs_jar_path.c_str(), F_OK) == -1) {
             fprintf(stderr, "Cannot find %s. Update GRAALJS_JAR_PATH environment variable!\n", graaljs_jar_path.c_str());
@@ -269,10 +264,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
             if (!truffle_jar_path.empty()) {
                 boot_classpath += ":";
                 boot_classpath += truffle_jar_path;
-            }
-            if (!truffle_debug_jar_path.empty()) {
-                boot_classpath += ":";
-                boot_classpath += truffle_debug_jar_path;
             }
             if (!truffleom_jar_path.empty()) {
                 boot_classpath += ":";
