@@ -8,9 +8,6 @@ import static com.oracle.truffle.js.nodes.JSNodeDecoder.BREAK_TARGET_LABEL;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.BREAK_TARGET_SWITCH;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.CONTINUE_TARGET_LOOP;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.CONTINUE_TARGET_UNLABELED_LOOP;
-import static com.oracle.truffle.js.nodes.JSNodeDecoder.FUNCTION_DATA_SET_CALL_TARGET;
-import static com.oracle.truffle.js.nodes.JSNodeDecoder.FUNCTION_DATA_SET_CONSTRUCT_NEWTARGET;
-import static com.oracle.truffle.js.nodes.JSNodeDecoder.FUNCTION_DATA_SET_CONSTRUCT_TARGET;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.getSingletonIndex;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_CALL_EXTRACTED;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_CALL_EXTRACTED_LAZY;
@@ -20,7 +17,7 @@ import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_COLLECT_LIST
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FRAME_DESCRIPTOR;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FRAME_SLOT;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FUNCTION_DATA;
-import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FUNCTION_DATA_FIXUP;
+import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FUNCTION_DATA_NAME_FIXUP;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_JUMP_TARGET;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_BOOLEAN;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_DOUBLE;
@@ -260,25 +257,10 @@ public class JSNodeEncoder {
         encodeReg(dest);
     }
 
-    public void encodeFunctionDataFixup(int functionDataArg, String methodName, int methodArg) {
-        putBytecode(ID_FUNCTION_DATA_FIXUP);
+    public void encodeFunctionDataNameFixup(int functionDataArg, String name) {
+        putBytecode(ID_FUNCTION_DATA_NAME_FIXUP);
         encodeReg(functionDataArg);
-        int methodIndex;
-        switch (methodName) {
-            case "setCallTarget":
-                methodIndex = FUNCTION_DATA_SET_CALL_TARGET;
-                break;
-            case "setConstructTarget":
-                methodIndex = FUNCTION_DATA_SET_CONSTRUCT_TARGET;
-                break;
-            case "setConstructNewTarget":
-                methodIndex = FUNCTION_DATA_SET_CONSTRUCT_NEWTARGET;
-                break;
-            default:
-                throw new IllegalArgumentException("unknown method name: " + methodName);
-        }
-        putInt(methodIndex);
-        encodeReg(methodArg);
+        putString(name);
     }
 
     public void encodeBreakTarget(int dest, BreakTarget target) {

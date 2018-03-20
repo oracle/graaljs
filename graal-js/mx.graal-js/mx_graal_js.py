@@ -52,6 +52,7 @@ def _graal_js_gate_runner(args, tasks):
         'directbytebuffer': ['gate', '-Dtruffle.js.DirectByteBuffer=true'],
         'cloneuninitialized': ['gate', '-Dtruffle.js.TestCloneUninitialized=true'],
         'lazytranslation': ['gate', '-Dtruffle.js.LazyTranslation=true'],
+        'nosnapshots': ['gate', '-Dtruffle.js.Snapshots=false'],
     }
 
     gateTestCommands = {

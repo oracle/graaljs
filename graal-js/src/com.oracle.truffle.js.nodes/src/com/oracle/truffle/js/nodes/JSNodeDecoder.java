@@ -9,7 +9,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -72,7 +71,7 @@ public class JSNodeDecoder {
         /** Create JSFunctionData. */
         ID_FUNCTION_DATA,
         /** Fix up JSFunctionData. */
-        ID_FUNCTION_DATA_FIXUP,
+        ID_FUNCTION_DATA_NAME_FIXUP,
 
         /** Create {@link BreakTarget} or {@link ContinueTarget}. */
         ID_JUMP_TARGET,
@@ -90,10 +89,6 @@ public class JSNodeDecoder {
     public static final int BREAK_TARGET_SWITCH = 2;
     public static final int CONTINUE_TARGET_LOOP = 3;
     public static final int CONTINUE_TARGET_UNLABELED_LOOP = 4;
-
-    public static final int FUNCTION_DATA_SET_CALL_TARGET = 1;
-    public static final int FUNCTION_DATA_SET_CONSTRUCT_TARGET = 2;
-    public static final int FUNCTION_DATA_SET_CONSTRUCT_NEWTARGET = 3;
 
     private static final boolean VERBOSE = false;
     private static final NodeDecoder<NodeFactory> GEN = NodeFactoryDecoderGen.create();
@@ -227,22 +222,10 @@ public class JSNodeDecoder {
                     storeResult(state, functionData);
                     break;
                 }
-                case ID_FUNCTION_DATA_FIXUP: {
+                case ID_FUNCTION_DATA_NAME_FIXUP: {
                     JSFunctionData functionData = (JSFunctionData) state.getObject();
-                    int index = state.getInt();
-                    switch (index) {
-                        case FUNCTION_DATA_SET_CALL_TARGET:
-                            functionData.setCallTarget((CallTarget) state.getObject());
-                            break;
-                        case FUNCTION_DATA_SET_CONSTRUCT_TARGET:
-                            functionData.setConstructTarget((CallTarget) state.getObject());
-                            break;
-                        case FUNCTION_DATA_SET_CONSTRUCT_NEWTARGET:
-                            functionData.setConstructNewTarget((CallTarget) state.getObject());
-                            break;
-                        default:
-                            throw new IllegalStateException("invalid index");
-                    }
+                    String name = state.getString();
+                    functionData.setName(name);
                     break;
                 }
                 case ID_JUMP_TARGET:
