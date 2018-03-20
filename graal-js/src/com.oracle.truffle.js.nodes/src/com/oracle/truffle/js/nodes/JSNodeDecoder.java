@@ -73,6 +73,7 @@ public class JSNodeDecoder {
         ID_FUNCTION_DATA,
         /** Fix up JSFunctionData. */
         ID_FUNCTION_DATA_FIXUP,
+        ID_FUNCTION_DATA_NAME_FIXUP,
 
         /** Create {@link BreakTarget} or {@link ContinueTarget}. */
         ID_JUMP_TARGET,
@@ -243,6 +244,12 @@ public class JSNodeDecoder {
                         default:
                             throw new IllegalStateException("invalid index");
                     }
+                    break;
+                }
+                case ID_FUNCTION_DATA_NAME_FIXUP: {
+                    JSFunctionData functionData = (JSFunctionData) state.getObject();
+                    String name = state.getString();
+                    functionData.setName(name);
                     break;
                 }
                 case ID_JUMP_TARGET:

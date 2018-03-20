@@ -21,6 +21,7 @@ import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FRAME_DESCRI
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FRAME_SLOT;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FUNCTION_DATA;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FUNCTION_DATA_FIXUP;
+import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FUNCTION_DATA_NAME_FIXUP;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_JUMP_TARGET;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_BOOLEAN;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_DOUBLE;
@@ -279,6 +280,12 @@ public class JSNodeEncoder {
         }
         putInt(methodIndex);
         encodeReg(methodArg);
+    }
+
+    public void encodeFunctionDataNameFixup(int functionDataArg, String name) {
+        putBytecode(ID_FUNCTION_DATA_NAME_FIXUP);
+        encodeReg(functionDataArg);
+        putString(name);
     }
 
     public void encodeBreakTarget(int dest, BreakTarget target) {

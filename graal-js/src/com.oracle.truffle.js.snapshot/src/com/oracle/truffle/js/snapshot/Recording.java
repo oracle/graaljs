@@ -745,6 +745,44 @@ public class Recording {
         Inst getFixUpTarget();
     }
 
+    private static class FixUpFunctionDataNameInst extends Inst implements FixUpInst {
+        private final Inst node;
+        private final String name;
+
+        FixUpFunctionDataNameInst(Inst node, String name) {
+            this.node = node;
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return node + ".setName(" + JSONParser.quote(name) + ")";
+        }
+
+        @Override
+        public String rhs() {
+            return "null";
+        }
+
+        @Override
+        public void accept(Visitor v) {
+            v.enterInst(this);
+            node.accept(v);
+            v.leaveInst(this);
+        }
+
+        @Override
+        public void encodeTo(JSNodeEncoder encoder) {
+            encoder.encodeFunctionDataNameFixup(node.getId(), name);
+        }
+
+        @Override
+        public Inst getFixUpTarget() {
+            return node;
+        }
+
+    }
+
     private static class FixUpNodeSourceSectionInst extends Inst implements FixUpInst {
         private final Inst node;
         private final Inst source;
@@ -1196,6 +1234,19 @@ public class Recording {
     }
 
     private void addNodeFixUps(NodeInst nodeInst, Object result) {
+        if (result instanceof JSFunctionData) {
+            JSFunctionData functionData = (JSFunctionData) result;
+            String originalName = functionData.getName();
+            addFixUp(() -> {
+                String currentName = functionData.getName();
+                boolean nameChanged = !originalName.equals(currentName);
+                if (nameChanged) {
+                    insts.add(new FixUpFunctionDataNameInst(nodeInst.asVar(), currentName));
+                }
+                return nameChanged;
+            });
+        }
+
         if (!FIXUP_SOURCE_SECTIONS) {
             if (!FIXUP_TAGS) {
                 return;
