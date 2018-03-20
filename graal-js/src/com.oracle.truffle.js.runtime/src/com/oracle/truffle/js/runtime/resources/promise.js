@@ -557,21 +557,21 @@ var promProtoFinally = function _finally(onFinally) {
 };
 
 function promThenFinally() {
-    var fun = function(value) {
-	    var onFinally = fun[PROMISE_ON_FINALLY];
-	    Internal.Assert(Internal.IsCallable(onFinally));
-	    var result = Internal.CallFunction(onFinally,undefined);
-	    var C = fun[PROMISE_FINALLY_CONSTRUCTOR];
-	    Internal.Assert(Internal.IsConstructor(C));
-	    var promise = PromiseResolve(C, result);
-	    var valueThunk = function() { return value; }
-	    return Internal.CallFunction(promise.then, promise, valueThunk);
-	}
-	return fun;
+    var fun = (0, function(value) {
+        var onFinally = fun[PROMISE_ON_FINALLY];
+        Internal.Assert(Internal.IsCallable(onFinally));
+        var result = Internal.CallFunction(onFinally,undefined);
+        var C = fun[PROMISE_FINALLY_CONSTRUCTOR];
+        Internal.Assert(Internal.IsConstructor(C));
+        var promise = PromiseResolve(C, result);
+        var valueThunk = function() { return value; }
+        return Internal.CallFunction(promise.then, promise, valueThunk);
+    });
+    return fun;
 }
 
 function promCatchFinally() {
-    var fun = function(reason) {
+    var fun = (0, function(reason) {
         var onFinally = fun[PROMISE_ON_FINALLY];
         Internal.Assert(Internal.IsCallable(onFinally));
         var result = Internal.CallFunction(onFinally,undefined);
@@ -579,7 +579,7 @@ function promCatchFinally() {
         Internal.Assert(Internal.IsConstructor(C));
         var promise = PromiseResolve(C, result);
         return Internal.CallFunction(promise.then, promise, () => { throw reason; });
-    }
+    });
     return fun;
 }
 
