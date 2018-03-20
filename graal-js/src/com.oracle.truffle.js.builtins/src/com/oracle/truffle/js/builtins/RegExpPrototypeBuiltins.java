@@ -221,7 +221,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             TruffleObject regex = compileRegexNode.compile(pattern, flags);
-            JSRegExp.updateCompilation(thisRegExp, regex);
+            JSRegExp.updateCompilation(getContext(), thisRegExp, regex);
             setLastIndexNode.setValueInt(thisRegExp, 0);
             return thisRegExp;
         }

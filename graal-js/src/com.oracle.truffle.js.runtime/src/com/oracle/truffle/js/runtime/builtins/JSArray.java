@@ -298,7 +298,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return create(context, SparseArray.createSparseArray(), SparseArray.createArrayMap(), length);
     }
 
-    public static DynamicObject createLazyRegexArray(JSContext context, int length, TruffleObject regexResult, String input, TruffleObject namedCaptureGroups) {
+    public static DynamicObject createLazyRegexArray(JSContext context, int length, TruffleObject regexResult, String input, DynamicObject groups) {
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
         DynamicObjectFactory factory = context.getRealm().getLazyRegexArrayFactory();
         ScriptArray arrayType = LazyRegexResultArray.createLazyRegexResultArray();
@@ -308,7 +308,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         int indexOffset = 0;
         int arrayOffset = 0;
         int holeCount = 0;
-        DynamicObject obj = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult, namedCaptureGroups, input);
+        DynamicObject obj = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult, input, groups);
         assert isJSArray(obj);
         return obj;
     }

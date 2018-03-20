@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins.helper;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -206,7 +207,8 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 if (ecmaScriptVersion < 6) {
                     return result;
                 }
-                return getMatchResult(result, input, compiledRegexAccessor.namedCaptureGroups(JSRegExp.getCompiledRegex(regExp)));
+                DynamicObjectFactory groupsFactory = JSRegExp.getGroupsFactory(regExp);
+                return getMatchResult(result, input, groupsFactory == null ? Undefined.instance : JSObject.create(context, groupsFactory, result));
             } else {
                 if (ecmaScriptVersion < 8 || global || sticky) {
                     setLastIndex(regExp, 0);
@@ -228,8 +230,8 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         // converts RegexResult into DynamicObject
-        private DynamicObject getMatchResult(TruffleObject result, String inputStr, TruffleObject namedCaptureGroups) {
-            return JSArray.createLazyRegexArray(context, regexResultAccessor.groupCount(result), result, inputStr, namedCaptureGroups);
+        private DynamicObject getMatchResult(TruffleObject result, String inputStr, DynamicObject groups) {
+            return JSArray.createLazyRegexArray(context, regexResultAccessor.groupCount(result), result, inputStr, groups);
         }
 
         private long getLastIndex(DynamicObject regExp) {

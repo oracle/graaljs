@@ -1029,9 +1029,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
      * Get the top-level cache node for this.
      */
     private T getTopCache() {
-        T cur = getBaseClass().cast(this);
-        while (getBaseClass().isInstance(cur.getParent())) {
-            cur = getBaseClass().cast(cur.getParent());
+        Class<T> base = getBaseClass();
+        T cur = base.cast(this);
+        while (base.isInstance(cur.getParent()) && base.cast(cur.getParent()).getNext() == cur) {
+            cur = base.cast(cur.getParent());
         }
         return cur;
     }
@@ -1042,9 +1043,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
      * @return The degree of polymorphism
      */
     private int getCachePolymorphism() {
+        Class<T> base = getBaseClass();
         int poly = 0;
-        T cur = getBaseClass().cast(this);
-        while (getBaseClass().isInstance(cur.getParent())) {
+        T cur = base.cast(this);
+        while (base.isInstance(cur.getParent()) && base.cast(cur.getParent()).getNext() == cur) {
             cur = getBaseClass().cast(cur.getParent());
             poly++;
         }
@@ -1211,8 +1213,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
         return JSProperty.isProxy(property) && JSProperty.getConstantProxy(property) instanceof JSRegExp.LazyRegexResultIndexProxyProperty;
     }
 
-    protected static boolean isLazyRegexResultGroupsProperty(Property property) {
-        return JSProperty.isProxy(property) && JSProperty.getConstantProxy(property) instanceof JSRegExp.LazyRegexResultGroupsProxyProperty;
+    protected static boolean isLazyNamedCaptureGroupProperty(Property property) {
+        return JSProperty.isProxy(property) && JSProperty.getConstantProxy(property) instanceof JSRegExp.LazyNamedCaptureGroupProperty;
     }
 
     static CharSequence reasonShapeAssumptionInvalidated(Object key) {

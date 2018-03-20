@@ -95,7 +95,6 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     private static final HiddenKey ARRAY_OFFSET_ID = new HiddenKey("arrayOffset");
     private static final HiddenKey HOLE_COUNT_ID = new HiddenKey("holeCount");
     private static final HiddenKey LAZY_REGEX_RESULT_ID = new HiddenKey("lazyRegexResult");
-    private static final HiddenKey LAZY_REGEX_GROUPS_ID = new HiddenKey("namedCaptureGroups");
     public static final Property ARRAY_PROPERTY;
     public static final Property ARRAY_TYPE_PROPERTY;
     private static final Property ALLOCATION_SITE_PROPERTY;
@@ -105,7 +104,6 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     private static final Property ARRAY_OFFSET_PROPERTY;
     private static final Property HOLE_COUNT_PROPERTY;
     public static final Property LAZY_REGEX_RESULT_PROPERTY;
-    public static final Property LAZY_REGEX_GROUPS_PROPERTY;
 
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
@@ -119,8 +117,6 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         HOLE_COUNT_PROPERTY = JSObjectUtil.makeHiddenProperty(HOLE_COUNT_ID, allocator.locationForType(int.class), false);
         LAZY_REGEX_RESULT_PROPERTY = JSObjectUtil.makeHiddenProperty(LAZY_REGEX_RESULT_ID,
                         allocator.locationForType(TruffleObject.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
-        LAZY_REGEX_GROUPS_PROPERTY = JSObjectUtil.makeHiddenProperty(LAZY_REGEX_GROUPS_ID,
-                        allocator.locationForType(TruffleObject.class, EnumSet.of(LocationModifier.Final)));
     }
 
     public static ScriptArray arrayGetArrayType(DynamicObject thisObj) {
@@ -230,14 +226,6 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
 
     public static TruffleObject arrayGetRegexResult(DynamicObject thisObj, boolean arrayCondition) {
         return (TruffleObject) LAZY_REGEX_RESULT_PROPERTY.get(thisObj, arrayCondition);
-    }
-
-    public static TruffleObject arrayGetRegexNamedCaptureGroups(DynamicObject thisObj) {
-        return arrayGetRegexNamedCaptureGroups(thisObj, JSArray.isJSArray(thisObj) && JSArray.arrayGetArrayType(thisObj) == LazyRegexResultArray.LAZY_REGEX_RESULT_ARRAY);
-    }
-
-    public static TruffleObject arrayGetRegexNamedCaptureGroups(DynamicObject thisObj, boolean arrayCondition) {
-        return (TruffleObject) LAZY_REGEX_GROUPS_PROPERTY.get(thisObj, arrayCondition);
     }
 
     public static void putArrayProperties(DynamicObject arrayPrototype, ScriptArray arrayType) {

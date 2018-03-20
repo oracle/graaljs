@@ -112,7 +112,6 @@ import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
@@ -1535,26 +1534,24 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
     }
 
-    public static final class LazyRegexResultGroupsPropertyGetNode extends LinkedPropertyGetNode {
+    public static final class LazyNamedCaptureGroupPropertyGetNode extends LinkedPropertyGetNode {
 
-        private final JSContext context;
-
-        @Child private Node keysNode = JSInteropUtil.createKeys();
-        @Child private Node sizeNode = JSInteropUtil.createGetSize();
-        @Child private Node isNullNode = JSInteropUtil.createIsNull();
-        @Child private Node readGroupNameNode = JSInteropUtil.createRead();
-        @Child private Node readGroupNumberNode = JSInteropUtil.createRead();
+        private int groupIndex;
+        @Child private PropertyGetNode getResultNode;
         @Child private TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.create();
 
-        public LazyRegexResultGroupsPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, JSContext context) {
+        public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, JSContext context, int groupIndex) {
             super(property.getKey(), receiverCheck);
-            this.context = context;
+            assert isLazyNamedCaptureGroupProperty(property);
+            this.groupIndex = groupIndex;
+            this.getResultNode = PropertyGetNode.create(JSRegExp.GROUPS_RESULT_ID, false, context);
         }
 
         @Override
         public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
             DynamicObject store = receiverCheck.getStore(thisObj);
-            return JSRegExp.LazyRegexResultGroupsProxyProperty.getImpl(context, keysNode, sizeNode, isNullNode, readGroupNameNode, readGroupNumberNode, materializeNode, store);
+            TruffleObject regexResult = (TruffleObject) getResultNode.getValue(store);
+            return materializeNode.materializeGroup(regexResult, groupIndex);
         }
     }
 
@@ -1690,8 +1687,9 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 return new StringLengthPropertyGetNode(dataProperty, receiverCheck);
             } else if (isLazyRegexResultIndexProperty(property)) {
                 return new LazyRegexResultIndexPropertyGetNode(dataProperty, receiverCheck);
-            } else if (isLazyRegexResultGroupsProperty(property)) {
-                return new LazyRegexResultGroupsPropertyGetNode(dataProperty, receiverCheck, context);
+            } else if (isLazyNamedCaptureGroupProperty(property)) {
+                int groupIndex = ((JSRegExp.LazyNamedCaptureGroupProperty) JSProperty.getConstantProxy(property)).getGroupIndex();
+                return new LazyNamedCaptureGroupPropertyGetNode(dataProperty, receiverCheck, context, groupIndex);
             } else {
                 return new ObjectPropertyGetNode(dataProperty, receiverCheck);
             }
