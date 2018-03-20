@@ -37,11 +37,6 @@ public class JSTruffleOptions {
 
     public static final boolean SubstrateVM = booleanOption("SubstrateVM", TruffleOptions.AOT, OPTION_PRIVATE | OPTION_SETUP, "Current execution happening on SubstrateVM");
 
-    /*
-     * Used with AOT compilation: prepare one JSContext ahead of time to save time during startup.
-     */
-    public static final boolean PrepareFirstContext = booleanOption("PrepareFirstContext", false, OPTION_PERFORMANCE);
-
     /** Parser options. */
     public static final boolean ReturnOptimizer = booleanOption("ReturnOptimizer", true, OPTION_PERFORMANCE);
     public static final boolean ReturnValueInFrame = booleanOption("ReturnValueInFrame", true, OPTION_PERFORMANCE);
