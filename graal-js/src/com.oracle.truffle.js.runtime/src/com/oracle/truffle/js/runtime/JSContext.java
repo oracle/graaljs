@@ -31,6 +31,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -181,6 +182,10 @@ public class JSContext implements ShapeContext {
 
     private volatile List<JSRealm> realmList;
 
+    private final boolean isChildContext;
+
+    private boolean isRealmInitialized = false;
+
     /**
      * According to ECMA2017 8.4 the queue of pending jobs (promises reactions) must be processed
      * when the current stack is empty. For Interop, we assume that the stack is empty when (1) we
@@ -199,6 +204,8 @@ public class JSContext implements ShapeContext {
      * Temporary field until transition is complete.
      */
     @CompilationFinal private JSRealm realm;
+
+    @CompilationFinal private ContextReference<JSRealm> contextRef;
 
     /**
      * ECMA2017 8.7 Agent object.
@@ -220,11 +227,12 @@ public class JSContext implements ShapeContext {
 
     private final JSContextOptions contextOptions;
 
-    public JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
+    public JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env, boolean isChildContext) {
         this.functionLookup = lookup;
         this.contextOptions = contextOptions;
         this.truffleLanguageEnv = env; // could still be null
         this.contextOptions.setEnv(env);
+        this.isChildContext = isChildContext;
 
         this.language = lang;
 
@@ -382,7 +390,7 @@ public class JSContext implements ShapeContext {
     }
 
     public static JSContext createContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
-        return new JSContext(evaluator, lookup, contextOptions, lang, env);
+        return new JSContext(evaluator, lookup, contextOptions, lang, env, false);
     }
 
     public JSRealm createRealm() {
@@ -399,6 +407,7 @@ public class JSContext implements ShapeContext {
         if (initRealmBuiltinObject) {
             newRealm.initRealmBuiltinObject();
         }
+        newRealm.getContext().setRealmInitialized();
         return newRealm;
     }
 
@@ -542,12 +551,24 @@ public class JSContext implements ShapeContext {
     }
 
     public JSRealm getRealm() {
-        assert realm != null;
-        return realm;
+        if (isChildContext || !isRealmInitialized || JSTruffleOptions.NashornCompatibilityMode) {
+            return realm; // childContext Realm cannot be shared among Engines (GR-8695)
+        }
+        if (contextRef == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (getLanguage() != null) {  // could be uninitialized
+                contextRef = getLanguage().getContextReference();
+            } else {
+                return realm;
+            }
+        }
+        JSRealm realm2 = contextRef.get();
+        return realm2 != null ? realm2 : realm;
     }
 
     public boolean hasRealm() {
-        return realm != null;
+        assert (getRealm() != null) == isRealmInitialized;
+        return this.isRealmInitialized;
     }
 
     @Override
@@ -1036,7 +1057,7 @@ public class JSContext implements ShapeContext {
 
     @TruffleBoundary
     public JSContext createChildContext() {
-        JSContext childContext = new JSContext(getEvaluator(), getFunctionLookup(), contextOptions, getLanguage(), null);
+        JSContext childContext = new JSContext(getEvaluator(), getFunctionLookup(), contextOptions, getLanguage(), null, true);
         childContext.setWriter(getWriter(), getWriterStream());
         childContext.setErrorWriter(getErrorWriter(), getErrorWriterStream());
         childContext.setLocalTimeZoneId(getLocalTimeZoneId());
@@ -1397,5 +1418,9 @@ public class JSContext implements ShapeContext {
             }
             return callTarget;
         }
+    }
+
+    public void setRealmInitialized() {
+        this.isRealmInitialized = true;
     }
 }

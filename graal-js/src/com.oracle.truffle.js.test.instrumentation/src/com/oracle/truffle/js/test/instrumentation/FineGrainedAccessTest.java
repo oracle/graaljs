@@ -104,7 +104,7 @@ public abstract class FineGrainedAccessTest {
         return tags;
     }
 
-    private Context context;
+    protected Context context;
     private boolean collecting;
     private ArrayList<Event> events;
     private Stack<JavaScriptNode> stack;
@@ -317,6 +317,7 @@ public abstract class FineGrainedAccessTest {
     public void disposeAgent() {
         assertTrue(events.isEmpty());
         assertTrue(stack.isEmpty());
+        context.leave();
         events.clear();
         binding.dispose();
     }
@@ -330,6 +331,7 @@ public abstract class FineGrainedAccessTest {
         events = new ArrayList<>();
         stack = new Stack<>();
         factory = getTestFactory();
+        context.enter();
     }
 
     private EventBinding<ExecutionEventNodeFactory> initAgent(Class<?>[] sourceSectionTags, Class<?>[] inputGeneratingTags) {

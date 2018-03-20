@@ -4,6 +4,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
+
 import java.util.Map;
 
 import com.oracle.truffle.api.Assumption;
@@ -75,8 +77,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
-
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
 
 /**
  * ES6 9.1.8 [[Get]] (P, Receiver).

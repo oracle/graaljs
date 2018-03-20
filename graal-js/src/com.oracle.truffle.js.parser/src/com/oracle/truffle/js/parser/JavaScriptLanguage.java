@@ -52,16 +52,16 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
@@ -139,14 +139,14 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     private abstract class ContextRootNode extends RootNode {
-        private final ContextReference<JSContext> contextRef = getContextReference();
+        private final ContextReference<JSRealm> contextRef = getContextReference();
 
         ContextRootNode() {
             super(null, null);
         }
 
         protected final JSContext getContext() {
-            return contextRef.get();
+            return contextRef.get().getContext();
         }
     }
 
@@ -247,14 +247,14 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         final Source source = request.getSource();
         final MaterializedFrame requestFrame = request.getFrame();
         final ExecutableNode executableNode = new ExecutableNode(this) {
-            private final ContextReference<JSContext> contextRef = getContextReference();
+            private final ContextReference<JSRealm> contextRef = getContextReference();
             @CompilationFinal private volatile JSContext cachedContext;
             @Child private JavaScriptNode expression;
             @Child private ExportValueNode exportValueNode = ExportValueNode.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
-                JSContext context = contextRef.get();
+                JSContext context = contextRef.get().getContext();
                 JSContext cachedCtx = cachedContext;
                 if (cachedCtx == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -326,7 +326,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @TruffleBoundary
     @Override
-    protected String toString(JSContext context, Object value) {
+    protected String toString(JSRealm realm, Object value) {
         if (value == null) {
             return "null";
         } else if (JSObject.isJSObject(value)) {
@@ -425,7 +425,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     @Override
-    protected JSContext createContext(Env env) {
+    protected JSRealm createContext(Env env) {
         JSContext context = JSEngine.createJSContext(this, env);
 
         /*
@@ -445,19 +445,13 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
         context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionMRForeign.ACCESS));
         context.activateAllocationReporter();
-        return context;
+        return context.createRealm();
     }
 
     @Override
-    protected void initializeContext(JSContext context) {
+    protected void initializeContext(JSRealm realm) {
+        JSContext context = realm.getContext();
         Env env = context.getEnv();
-        JSRealm realm;
-        if (context.hasRealm()) {
-            assert JSTruffleOptions.PrepareFirstContext;
-            realm = context.getRealm();
-        } else {
-            realm = context.createRealm();
-        }
 
         realm.setArguments(env.getApplicationArguments());
 
@@ -467,8 +461,9 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     @Override
-    protected boolean patchContext(JSContext context, Env newEnv) {
-        if (!JSContextOptions.optionsAllowPreInitializedContext(context, newEnv)) {
+    protected boolean patchContext(JSRealm realm, Env newEnv) {
+        JSContext context = realm.getContext();
+        if (!JSContextOptions.optionsAllowPreInitializedContext(realm.getContext(), newEnv)) {
             return false;
         }
 
@@ -500,11 +495,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         return OPTION_DESCRIPTORS;
     }
 
-    @Override
-    public JSContext findContext() {
-        return super.getContextReference().get();
-    }
-
     private CallTarget createGetJSContextCallTarget() {
         return Truffle.getRuntime().createCallTarget(new ContextRootNode() {
             @Override
@@ -517,11 +507,12 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @TruffleBoundary
     @Override
-    protected Object findMetaObject(JSContext context, Object value) {
+    protected Object findMetaObject(JSRealm realm, Object value) {
         String type;
         String subtype = null;
         String className = null;
         String description;
+        JSContext context = realm.getContext();
 
         if (JSObject.isJSObject(value)) {
             DynamicObject obj = (DynamicObject) value;
@@ -556,11 +547,11 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             assert !JSObject.isJSObject(value);
             TruffleObject truffleObject = (TruffleObject) value;
             if (JSInteropNodeUtil.isBoxed(truffleObject)) {
-                return findMetaObject(context, JSInteropNodeUtil.unbox(truffleObject));
+                return findMetaObject(realm, JSInteropNodeUtil.unbox(truffleObject));
             } else if (JavaInterop.isJavaObject(Symbol.class, truffleObject)) {
-                return findMetaObject(context, JavaInterop.asJavaObject(truffleObject));
+                return findMetaObject(realm, JavaInterop.asJavaObject(truffleObject));
             } else if (value instanceof InteropBoundFunction) {
-                return findMetaObject(context, ((InteropBoundFunction) value).getFunction());
+                return findMetaObject(realm, ((InteropBoundFunction) value).getFunction());
             }
             type = "object";
             className = "Foreign";
@@ -595,7 +586,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     @Override
-    protected SourceSection findSourceLocation(JSContext context, Object value) {
+    protected SourceSection findSourceLocation(JSRealm realm, Object value) {
         if (JSFunction.isJSFunction(value)) {
             DynamicObject func = (DynamicObject) value;
             CallTarget ct = JSFunction.getCallTarget(func);
@@ -612,18 +603,18 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     @Override
-    protected boolean isVisible(JSContext context, Object value) {
+    protected boolean isVisible(JSRealm realm, Object value) {
         return (value != Undefined.instance);
     }
 
     @Override
-    protected Iterable<Scope> findLocalScopes(JSContext context, Node node, Frame frame) {
+    protected Iterable<Scope> findLocalScopes(JSRealm realm, Node node, Frame frame) {
         return JSScope.createLocalScopes(node, frame.materialize());
     }
 
     @Override
-    protected Iterable<Scope> findTopScopes(JSContext context) {
-        return JSScope.createGlobalScopes(context.getRealm());
+    protected Iterable<Scope> findTopScopes(JSRealm realm) {
+        return JSScope.createGlobalScopes(realm);
     }
 
 }

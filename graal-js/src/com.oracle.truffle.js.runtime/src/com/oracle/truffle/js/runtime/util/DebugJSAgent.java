@@ -77,17 +77,21 @@ public class DebugJSAgent extends JSAgent {
 
                 barrier.countDown();
 
-                while (true) {
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        executor.executeBroadcastCallback();
+                try {
+                    polyglotContext.enter();
+                    while (true) {
+                        try {
+                            Thread.sleep(1000);
+                        } catch (InterruptedException e) {
+                            executor.executeBroadcastCallback();
+                        }
+                        if (executor.jsAgent.quit) {
+                            return;
+                        }
                     }
-                    if (executor.jsAgent.quit) {
-                        return;
-                    }
+                } finally {
+                    polyglotContext.leave();
                 }
-
             }
         });
         thread.setDaemon(true);

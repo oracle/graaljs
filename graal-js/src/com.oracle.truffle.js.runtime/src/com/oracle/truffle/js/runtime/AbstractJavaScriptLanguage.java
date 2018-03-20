@@ -12,7 +12,7 @@ import org.graalvm.polyglot.Context;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 
-public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSContext> {
+public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm> {
     public static final String TEXT_MIME_TYPE = "text/javascript";
     public static final String APPLICATION_MIME_TYPE = "application/javascript";
     public static final String MODULE_SOURCE_NAME_PREFIX = "module:";
@@ -23,8 +23,6 @@ public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSConte
 
     protected static final ThreadLocal<JSContext> contextHolder = new ThreadLocal<>();
     protected static final String GET_JSCONTEXT_NAME = "<get graal-js context>";
-
-    public abstract JSContext findContext();
 
     public static Source sourceFromFileName(String fileName) throws IOException {
         return Source.newBuilder(new File(fileName)).name(fileName).mimeType(APPLICATION_MIME_TYPE).build();
