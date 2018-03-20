@@ -174,6 +174,9 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @TruffleBoundary
         protected Object type(String name) {
             Object javaType = lookupJavaType(name, getContext());
+            if (javaType == null) {
+                throw Errors.createTypeErrorClassNotFound(name);
+            }
             if (JSTruffleOptions.NashornJavaInterop) {
                 return JavaClass.forClass(asJavaClass(javaType));
             }
@@ -195,17 +198,20 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             Env env = context.getEnv();
             if (env != null && env.isHostLookupAllowed()) {
                 try {
-                    return env.lookupHostSymbol(name);
+                    Object found = env.lookupHostSymbol(name);
+                    if (found != null) {
+                        return found;
+                    }
                 } catch (Exception ex) {
-                    return lookForSubclasses(name, Errors.createTypeError(ex.getMessage()), context);
                 }
+                return lookForSubclasses(name, env);
             } else {
                 throw Errors.createTypeError("Java Interop is not available");
             }
         }
 
         // The following code is taken from Nashorn's NativeJava.simpleType(...)
-        private static <E extends Throwable> Object lookForSubclasses(String className, E originalException, JSContext context) throws E {
+        private static Object lookForSubclasses(String className, Env env) {
             // The logic below compensates for a frequent user error - when people use dot notation
             // to separate inner class names, i.e. "java.lang.Character.UnicodeBlock"
             // vs."java.lang.Character$UnicodeBlock". The logic below will try alternative class
@@ -215,13 +221,17 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             for (;;) {
                 lastDot = nextName.lastIndexOf(".", lastDot - 1);
                 if (lastDot == -1) {
-                    // Exhausted the search space, class not found - rethrow the original exception.
-                    throw originalException;
+                    // Exhausted the search space, class not found - return null
+                    return null;
                 }
                 nextName.setCharAt(lastDot, '$');
                 try {
                     String innerClassName = nextName.toString();
-                    return context.getEnv().lookupHostSymbol(innerClassName);
+                    Object found = env.lookupHostSymbol(innerClassName);
+                    if (found == null) {
+                        continue;
+                    }
+                    return found;
                 } catch (Exception ex) {
                     // Intentionally ignored, so the loop retries with the next name
                 }
