@@ -325,7 +325,6 @@ def setupNodeEnvironment(args):
         _setEnvVar('GRAAL_SDK_JAR_PATH', mx.distribution('sdk:GRAAL_SDK').path)
         _setEnvVar('TRUFFLE_JAR_PATH', mx.distribution('truffle:TRUFFLE_API').path)
     _setEnvVar('LAUNCHER_COMMON_JAR_PATH', mx.distribution('sdk:LAUNCHER_COMMON').path)
-    _setEnvVar('TRUFFLE_DEBUG_JAR_PATH', mx.distribution('truffle:TRUFFLE_DEBUG').path)
     _setEnvVar('TRUFFLENODE_JAR_PATH', mx.distribution('TRUFFLENODE').path)
     _setEnvVar('NODE_JVM_CLASSPATH', mx.classpath(['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER']))
     setLibraryPath()
