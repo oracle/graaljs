@@ -266,12 +266,23 @@ def nashorn(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     return mx.run_java(_js_cmd_line(args, main_class='jdk.nashorn.tools.Shell'), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 def _fetch_test_suite(dest, library_names):
-    _force = False
+    def _get_lib_path(_lib_name):
+        return mx.library(_lib_name).get_path(resolve=True)
+
+    _extract = False
     for _lib_name in library_names:
-        _lib_path = mx.library(_lib_name).get_path(resolve=True)
-        if _force or not exists(dest) or getmtime(_lib_path) > getmtime(dest):
-            _force = True
-            with tarfile.open(_lib_path, 'r') as _tar:
+        if not exists(dest) or getmtime(_get_lib_path(_lib_name)) > getmtime(dest):
+            mx.logv('{} needs to be extracted'.format(_lib_name))
+            _extract = True
+            break
+
+    if _extract:
+        if exists(dest):
+            mx.logv('Deleting the old test directory {}'.format(dest))
+            shutil.rmtree(dest)
+            mx.ensure_dir_exists(dest)
+        for _lib_name in library_names:
+            with tarfile.open(_get_lib_path(_lib_name), 'r') as _tar:
                 _tar.extractall(dest)
 
 def _run_test_suite(location, library_names, custom_args, default_vm_args, max_heap, stack_size, main_class, nonZeroIsFatal, cwd):
