@@ -170,6 +170,7 @@ public class JSContext implements ShapeContext {
         AsyncGeneratorReturnFulfilled,
         AsyncGeneratorReturnRejected,
         AsyncFromSyncIteratorValueUnwrap,
+        ProxyRevokerFunction,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionDataCache;

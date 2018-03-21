@@ -1525,6 +1525,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getProxyConstructor().getPrototype();
         }
 
+        public abstract DynamicObject execute(DynamicObject newTarget, Object target, Object handler);
     }
 
     public abstract static class ConstructJavaImporterNode extends JSBuiltinNode {

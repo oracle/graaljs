@@ -116,8 +116,6 @@ final class InternalTranslator extends GraalJSTranslator {
                     return realm.getMapConstructor() == null ? null : realm.getMapConstructor().getFunctionObject();
                 case "Set":
                     return realm.getSetConstructor() == null ? null : realm.getSetConstructor().getFunctionObject();
-                case "Proxy":
-                    return realm.getProxyConstructor().getFunctionObject();
                 case "TypeError":
                     return realm.getErrorConstructor(JSErrorType.TypeError).getFunctionObject();
                 default:
@@ -223,8 +221,6 @@ final class InternalTranslator extends GraalJSTranslator {
                         return new InternalAdvanceMapCursorNode(arguments[0]);
                     case "GetMapCursor":
                         return new InternalGetMapCursorNode(arguments[0]);
-                    case "RevokeProxy":
-                        return new RevokeProxyNode(arguments[0]);
                     case "SetFunctionName":
                         return new InternalSetFunctionNameNode(arguments[0], arguments[1]);
                     case "StringReplace":
@@ -722,29 +718,6 @@ final class InternalTranslator extends GraalJSTranslator {
         @Override
         protected JavaScriptNode copyUninitialized() {
             return new InternalHasDetachedBufferNode(cloneUninitialized(arrayNode));
-        }
-    }
-
-    public static class RevokeProxyNode extends JavaScriptNode {
-        @Child private JavaScriptNode proxyNode;
-
-        RevokeProxyNode(JavaScriptNode proxyNode) {
-            this.proxyNode = proxyNode;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            try {
-                JSProxy.revoke(proxyNode.executeDynamicObject(frame));
-                return Undefined.instance;
-            } catch (UnexpectedResultException e) {
-                throw Errors.shouldNotReachHere();
-            }
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new RevokeProxyNode(cloneUninitialized(proxyNode));
         }
     }
 

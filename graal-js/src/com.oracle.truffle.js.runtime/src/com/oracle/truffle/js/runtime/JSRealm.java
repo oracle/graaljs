@@ -1032,7 +1032,6 @@ public class JSRealm implements ShapeContext {
                 loadInternal("iterator.js");
                 loadInternal("promise.js");
                 initPromiseFields();
-                loadInternal("proxy.js");
             }
         } catch (Exception ex) {
             throw new RuntimeException(ex);
