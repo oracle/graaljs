@@ -529,25 +529,30 @@ public class JSRealm implements ShapeContext {
         return initialStrictConstructorFactory;
     }
 
-    public final DynamicObjectFactory getFunctionFactory(boolean strictFunctionProperties, boolean isConstructor, boolean isGenerator, boolean isAsync, boolean isAnonymous) {
+    public final DynamicObjectFactory getFunctionFactory(JSFunctionData functionData) {
+        boolean isBuiltin = functionData.isBuiltin();
+        boolean strictFunctionProperties = functionData.hasStrictFunctionProperties();
+        boolean isConstructor = functionData.isConstructor();
+        boolean isGenerator = functionData.isGenerator();
+        boolean isAsync = functionData.isAsync();
+        boolean isAnonymous = functionData.getName().isEmpty();
+        assert !isBuiltin || (!isGenerator && !isAsync) : "built-in functions are never generator or async functions!";
         if (isAsync) {
             if (isGenerator) {
                 return isAnonymous ? initialAnonymousAsyncGeneratorFunctionFactory : initialAsyncGeneratorFunctionFactory;
             } else {
                 return isAnonymous ? initialAnonymousAsyncFunctionFactory : initialAsyncFunctionFactory;
             }
-        } else if (isConstructor) {
-            if (!isGenerator) {
-                if (strictFunctionProperties) {
-                    return isAnonymous ? initialAnonymousStrictConstructorFactory : initialStrictConstructorFactory;
-                } else {
-                    return isAnonymous ? initialAnonymousConstructorFactory : initialConstructorFactory;
-                }
+        } else if (isGenerator) {
+            return isAnonymous ? initialAnonymousGeneratorFactory : initialGeneratorFactory;
+        } else if (isConstructor && !isBuiltin) {
+            if (strictFunctionProperties) {
+                return isAnonymous ? initialAnonymousStrictConstructorFactory : initialStrictConstructorFactory;
             } else {
-                return isAnonymous ? initialAnonymousGeneratorFactory : initialGeneratorFactory;
+                return isAnonymous ? initialAnonymousConstructorFactory : initialConstructorFactory;
             }
         } else {
-            assert !isGenerator;
+            // Built-in constructor functions end up here due to the way they're initialized.
             if (strictFunctionProperties) {
                 return isAnonymous ? initialAnonymousStrictFunctionFactory : initialStrictFunctionFactory;
             } else {
