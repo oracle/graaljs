@@ -1087,10 +1087,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             try {
                 Object foreignResult = ForeignAccess.sendRead(foreignGet, thisObj, key);
                 return toJSType.executeWithTarget(foreignResult);
-            } catch (UnknownIdentifierException e) {
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 return Undefined.instance;
-            } catch (UnsupportedMessageException e) {
-                return Errors.createTypeErrorInteropException(thisObj, e, Message.READ, this);
             }
         }
 
