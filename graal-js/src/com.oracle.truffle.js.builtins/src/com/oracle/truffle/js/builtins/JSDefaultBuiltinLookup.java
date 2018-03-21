@@ -4,6 +4,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.js.builtins.PolyglotBuiltins.PolyglotInternalBuiltins;
 import com.oracle.truffle.js.builtins.math.MathBuiltins;
 import com.oracle.truffle.js.builtins.simd.SIMDBoolFunctionBuiltins;
 import com.oracle.truffle.js.builtins.simd.SIMDBuiltins;
@@ -110,7 +111,8 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
             defineBuiltins(new TestNashornBuiltins());
         }
         if (JSTruffleOptions.TruffleInterop) {
-            defineBuiltins(new InteropBuiltins());
+            defineBuiltins(new PolyglotBuiltins());
+            defineBuiltins(new PolyglotInternalBuiltins());
         }
         defineBuiltins(new DebugBuiltins());
         if (JSTruffleOptions.Extensions) {

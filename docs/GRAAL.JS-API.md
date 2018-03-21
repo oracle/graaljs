@@ -218,213 +218,52 @@ It returns `false` for all other arguments.
 The `typeName` method returns the Java `Class` name of `obj`.
 `obj` is expected to represent a Java `Class` instance, i.e., `isType(obj)` should return true; otherwise, `undefined` is returned.
 
-### Interop
+### Polyglot
 
-The functions of the `Interop` object allow to interact with values from other polyglot languages.
+The functions of the `Polyglot` object allow to interact with values from other polyglot languages.
 
-#### `Interop.export(key, value)`
+#### `Polyglot.export(key, value)`
 
-Exports the JavaScript `value` under the name `key` (a string) to the polyglot scope.
+Exports the JavaScript `value` under the name `key` (a string) to the polyglot bindings.
 
     function helloWorld() { print("Hello, JavaScript world"); };
-    Interop.export("helloJSWorld", helloWorld);
+    Polyglot.export("helloJSWorld", helloWorld);
 
-If the polyglot scope already had a value identified by `key`, it is overwritten with the new value.
+If the polyglot bindings already had a value identified by `key`, it is overwritten with the new value.
 Throws a `TypeError` if `key` is not a string or missing.
-The `value` may be any valid Interop value.
+The `value` may be any valid Polyglot value.
 
-#### `Interop.import(key)`
+#### `Polyglot.import(key)`
 
-Imports the value identified by `key` (a string) from the polyglot scope and returns it.
+Imports the value identified by `key` (a string) from the polyglot bindings and returns it.
 
-    var rubyHelloWorld = Interop.import("helloRubyWorld");
+    var rubyHelloWorld = Polyglot.import("helloRubyWorld");
     rubyHelloWorld();
 
 If no language has exported a value identified by `key`, `null` is returned.
 Throws a `TypeError` if `key` is not a string or missing.
 
-#### `Interop.eval(mimeType, sourceCode)`
+#### `Polyglot.eval(languageId, sourceCode)`
 
-Parses and evaluates the `sourceCode` with the interpreter identified by `mimeType`.
+Parses and evaluates the `sourceCode` with the interpreter identified by `languageId`.
 The value of `sourceCode` is expected to be a String (or convertable to one).
 Returns the evaluation result, depending on the `sourceCode` and/or the semantics of the language evaluated.
 
-    var rArray = Interop.eval('application/x-r', 'runif(1000)');
+    var rArray = Polyglot.eval('R', 'runif(1000)');
 
-Exceptions can occur when an invalid `mimeType` is passed, when the `sourceCode` cannot be evaluated by the language, or when the executed program throws one.
+Exceptions can occur when an invalid `languageId` is passed, when the `sourceCode` cannot be evaluated by the language, or when the executed program throws one.
 
-#### `Interop.parse(mimeType, sourceFileName)`
+#### `Polyglot.evalFile(languageId, sourceFileName)`
 
-Parses the file `sourceFileName` with the interpreter identified by `mimeType`.
+Parses the file `sourceFileName` with the interpreter identified by `languageId`.
 The value of `sourceFileName` is expected to be a String (or convertable to one), representing a file reachable by the current path.
 Returns an executable object, typically a function.
 
-    var rFunc = Interop.parse('application/x-r', 'myExample.r');
+    var rFunc = Polyglot.evalFile('R', 'myExample.r');
     var result = rFunc();
 
-Exceptions can occur when an invalid `mimeType` is passed, when the file identified by `sourceFileName` cannot be found, or when the language throws an exception during parsing (parse time errors, e.g. syntax errors).
+Exceptions can occur when an invalid `languageId` is passed, when the file identified by `sourceFileName` cannot be found, or when the language throws an exception during parsing (parse time errors, e.g. syntax errors).
 Exceptions thrown by the evaluated program are only thrown once the resulting function is evaluated.
-
-#### `Interop.isExecutable()`
-
-Sends the `IS_EXECUTABLE` message to `obj`.
-See JavaDoc [Message.IS_EXECUTABLE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#IS_EXECUTABLE).
-The source language of `obj` responds whether it can execute `obj`.
-
-Graal.js answers `true` for *function*s and callable *proxies*.
-
-#### `Interop.isNull(obj)`
-
-Sends the `IS_NULL` message to `obj`.
-See JavaDoc [Message.IS_NULL](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#IS_NULL).
-The source language of `obj` responds whether it considers `obj` to be a `null`-like value.
-
-Graal.js answers `true` for the values `null` and `undefined`, but `false` for all other JavaScript values.
-
-#### `Interop.hasSizeProperty(obj)`
-
-Send the `HAS_SIZE` message to `obj`.
-See JavaDoc [Message.HAS_SIZE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#HAS_SIZE).
-The source language of `obj` respons whether it can provide a *size* for `obj`.
-The answer is typically `true` for *arrays* and *collections*, but `false` for other types of objects.
-
-Graal.js answers `true` for *Array*s, *TypedArray*s, *Map*s and *Set*s.
-
-#### `Interop.getSize()`
-
-Sends the `GET_SIZE` message to `obj`.
-See JavaDoc [Message.GET_SIZE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#GET_SIZE).
-The source language of `obj` determines and returns the *size* of this object.
-
-This method can throw an exception if `obj` does not have a size. Use `HAS_SIZE` to check whether a size can be provided.
-
-Graal.js returns the size of *Array*s, *TypedArray*s, *Map*s and *Set*s. Other types do not answer to this message.
-
-Note: The `obj` should answer to `READ` messages for all keys between `0` and `size-1`, sent as integer numbers.
-
-#### `Interop.read(obj, key)`
-
-Sends the `READ` message to `obj`.
-See JavaDoc [Message.READ](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#READ).
-The source language of `obj` determines and returns the value of the property `key` of `obj`.
-Returns `null` when `obj` does not contain `key`.
-Throws a `TypeError` when `obj` does not support the `READ` message.
-
-Graal.js returns the value according to JavaScript semantics: it converts `key` to a String if necessary, it calls getter functions when appropriate. 
-Prototypes are considered when reading; if `key` cannot be found in `obj`, the prototype chain of `obj` is queried for `key`.
-
-#### `Interop.write(obj, key, value)`
-
-Sends the `WRITE` message to `obj`.
-See JavaDoc [Message.WRITE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#WRITE).
-The source language of `obj` will set `obj`'s `key` property to `value`, if possible.
-This method might throw an exception, if setting the property is not possible.
-Returns the response of the `WRITE` message.
-Throws a `TypeError` when `obj` does not support the `WRITE` message, when the `key` property is not writable, or when `value` is of an unsupported type for this `obj` or `key`.
-
-Graal.js sets the value according to JavaScript semantics on the object: it converts `key` to a String if necessary, it calls setter functions when appropriate, it adheres to non-configurable properties or frozen/sealed objects, etc.
-The property is always set on `obj` itself, even when a `key` property already exists in the prototype chain of `obj`.
-
-#### `Interop.remove(obj, key)`
-
-Sends the `REMOVE` message to `obj`.
-See JavaDoc [Message.REMOVE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#REMOVE).
-The source language of `obj` will try to remove the `key` property, if possible.
-Returns the boolean response of the `REMOVE` message (`true` if the property was successfully removed), or `null` when `obj` does not contain `key`.
-Throws a `TypeError` when `obj` does not support the `REMOVE` message.
-
-Graal.js removes the property according to JavaScript semantics of the object: it converts `key` to a property key value, and adheres to limitations imposed by e.g. the `configurable` attribute of properties.
-
-#### `Interop.isBoxedPrimitive()`
-
-Send the `IS_BOXED` message to `obj`.
-See JavaDoc [Message.IS_BOXED](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#IS_BOXED).
-The source language of `obj` responds whether it can unbox `obj`.
-
-Graal.js answers `true` for boxed primitive Objects *String*s, *Number*s, *Boolean*, and potentially other internal types that are only converted lazily.
-
-#### `Interop.unboxValue(obj)`
-
-Sends the `UNBOX` message to `obj`.
-See JavaDoc [Message.UNBOX](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#UNBOX).
-The source language of `obj` will return the unboxed primitive value stored in `obj`.
-
-Graal.js has special semantics for different kinds of objects.
-
-- boxed Number, String or Boolean objects
-- some JavaScript values, that are provided as boxed objects and are only converted lazily upon calling `UNBOX`.
-
-#### `Interop.hasKeys(obj)`
-
-Sends the `HAS_KEYS` message to `obj`.
-See JavaDoc [Message.HAS_KEYS](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#HAS_KEYS).
-The object responds whether it answers to the `KEYS` message.
-A boolean value is returned.
-
-#### `Interop.keys(obj)`
-
-Sends the `KEYS` message to `obj`.
-See JavaDoc [Message.KEYS](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#KEYS).
-An array-like object is returned, that has the keys stored in indices 0..(size-1).
-
-    var keys = Interop.keys(obj);
-    for (var idx in keys) {
-        console.log(keys[idx] + " " + obj[keys[idx]]);
-    }
-
-This operation throws an exception when the `KEYS` message is not handled by `obj`.
-Use `Interop.hasKeys(obj)` to prevent an exception.
-
-Graal.js answers the `KEYS` message as it would answer a call to `Object.keys()`.
-This implies that only "own properties" of `obj` are shown; the prototype chain of `obj` is ignored.
-
-#### `Interop.isInstantiable(obj)`
-
-Sends the `IS_INSTANTIABLE` message to `obj`.
-See JavaDoc [Message.IS_INSTANTIABLE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#IS_INSTANTIABLE).
-The object responds whether you can construct a new object based on `obj`.
-A boolean value is returned.
-
-Graal.js answers `true` for objects that can be constructed, i.e., that have a `[[Construct]]` internal method according to the ECMAScript specification.
-
-#### `Interop.execute(obj, ...args)`
-
-Executes the `obj` by sending the `EXECUTE` interop message to it.
-The arguments `args` are provided as arguments to the callee.
-This function returns the value returned from the executed function.
-Throws a `TypeError` when `obj` does not support the `EXECUTE` message (i.e., `obj` is not executable), an unexpected number of arguments is provided, or any illegal argument types are provided.
-
-#### `Interop.construct(obj, ...args)`
-
-Executes the `obj` by sending the `NEW` interop message to it.
-The arguments `args` are provided as arguments to the constructor.
-This function returns the value returned from the executed function, which typically is the constructed object.
-Throws a `TypeError` when `obj` does not support the `NEW` message (i.e., `obj` is not instantiable), an unexpected number of arguments is provided, or any illegal argument types are provided.
-
-#### `Interop.createForeignObject()`
-
-This method constructs an object that is non-native to JavaScript.
-The created object behaves mostly like a Map.
-Graal.js uses such objects for testing purposes, when no other foreign languages are available.
-
-#### `Interop.toJSValue(value)`
-
-This function forces the conversion of `value` to a primitive JavaScript compliant value.
-Primitive values are automatically converted to a type used by Graal.js, e.g. Java primitive types (like `short` or `float`, which are converted to `int` or `double`).
-This is done eagerly the language boundary.
-
-Some values are converted lazily.
-Most prominently, boxed primitive values are only unboxed when they are actually accessed.
-Same is true for the conversion of a foreign `null` value, encoded in a TruffleObject answering `true` to the `IS_NULL` message.
-
-It should never be necessary to call this conversion manually, as Graal.js does it automatically on access to such value.
-However, there are certain cornercases when manually converting this value results in better behaviour, e.g. when passing on objects to native code.
-
-#### `Interop.toInteropValue(value)`
-
-This function forces the conversion of `value` to a type supported by Interop.
-Whenever a value leaves Graal.js, this conversion is done automatically.
-It should never be necessary to manually call this function.
 
 ### Debug
 
@@ -480,17 +319,9 @@ Relevant difference is that the code is evaluated in a new global scope (`Realm`
 
 Source can be of type:
 
-* `java.lang.URL`: the URL is queried for the source code to execute. TODO does this work in TruffleInterop?
+* `java.lang.URL`: the URL is queried for the source code to execute.
 * a JavaScript object: the object is queried for a `name` and a `source` property.
 * all other types: the source is converted to a String.
 
 The value of `arguments` is provided to the loaded code upon execution.
 
-
-
-
-
-TODO
-
-* load accepts DynamicObject, URL, File, all other, while loadWithNewGlobal does not accept File?
-* document (or link to documentation of) different execution modes (and link where they are mentioned, e.g. JVM mode)

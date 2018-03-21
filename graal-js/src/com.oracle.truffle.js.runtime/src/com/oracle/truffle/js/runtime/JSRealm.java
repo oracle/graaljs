@@ -82,7 +82,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public class JSRealm implements ShapeContext {
 
     public static final String INTERNAL_JS_FILE_NAME_PREFIX = "internal:";
-    public static final String INTEROP_CLASS_NAME = "Interop";
+    public static final String POLYGLOT_CLASS_NAME = "Polyglot";
+    // used for non-public properties of Polyglot
+    public static final String POLYGLOT_INTERNAL_CLASS_NAME = "PolyglotInternal";
     public static final String REFLECT_CLASS_NAME = "Reflect";
     public static final String SHARED_ARRAY_BUFFER_CLASS_NAME = "SharedArrayBuffer";
     public static final String ATOMICS_CLASS_NAME = "Atomics";
@@ -929,7 +931,7 @@ public class JSRealm implements ShapeContext {
             putGlobalProperty(global, JSAdapter.CLASS_NAME, getJSAdapterConstructor().getFunctionObject());
         }
         if (JSTruffleOptions.TruffleInterop) {
-            setupTruffleInterop(global);
+            setupPolyglot(global);
         }
         if (isJavaInteropAvailable()) {
             setupJavaInterop(global);
@@ -1106,10 +1108,13 @@ public class JSRealm implements ShapeContext {
         }
     }
 
-    private void setupTruffleInterop(DynamicObject global) {
+    private void setupPolyglot(DynamicObject global) {
         DynamicObject obj = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
-        JSObjectUtil.putFunctionsFromContainer(this, obj, INTEROP_CLASS_NAME);
-        putGlobalProperty(global, INTEROP_CLASS_NAME, obj);
+        JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_CLASS_NAME);
+        if (getContext().isOptionDebugBuiltin()) {
+            JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_INTERNAL_CLASS_NAME);
+        }
+        putGlobalProperty(global, POLYGLOT_CLASS_NAME, obj);
     }
 
     private void putConsoleObject(DynamicObject global) {

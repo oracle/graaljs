@@ -31,8 +31,8 @@ import java.util.Collections;
  * <pre>
  * Usage example in JavaScript:
  * {@code
- * var engineBuilder = Interop.eval("application/tregex", "");
- * // or var engineBuilder = Interop.import("T_REGEX_ENGINE_BUILDER"); after initializing the language
+ * var engineBuilder = Polyglot.eval("application/tregex", "");
+ * // or var engineBuilder = Polyglot.import("T_REGEX_ENGINE_BUILDER"); after initializing the language
  * var engine = engineBuilder();
  * var pattern = engine("(a|(b))c", "i");
  * var result = pattern.exec("xacy", 0);
