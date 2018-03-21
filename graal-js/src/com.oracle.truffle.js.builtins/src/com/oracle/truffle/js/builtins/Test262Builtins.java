@@ -179,7 +179,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @TruffleBoundary
         private JSRealm createChildRealm() {
-            return getContext().createChildContext().getRealm();
+            return getContext().getRealm().createChildRealm();
         }
     }
 

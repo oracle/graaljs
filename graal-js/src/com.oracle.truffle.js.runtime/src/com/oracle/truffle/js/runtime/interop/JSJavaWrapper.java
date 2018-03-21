@@ -265,7 +265,7 @@ public final class JSJavaWrapper extends AbstractJSClass {
 
     public static boolean isClassFilterPresent(JSContext context) {
         assert JSTruffleOptions.NashornJavaInterop;
-        TruffleLanguage.Env env = context.getEnv();
+        TruffleLanguage.Env env = context.getRealm().getEnv();
         if (env != null && env.isHostLookupAllowed()) {
             try {
                 Object found = env.lookupHostSymbol(Class.class.getName());

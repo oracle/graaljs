@@ -480,14 +480,15 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
 
         context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionMRForeign.ACCESS));
-        context.activateAllocationReporter();
-        return context.createRealm();
+        JSRealm realm = context.createRealm(env);
+        realm.activateAllocationReporter();
+        return realm;
     }
 
     @Override
     protected void initializeContext(JSRealm realm) {
         JSContext context = realm.getContext();
-        Env env = context.getEnv();
+        Env env = realm.getEnv();
 
         realm.setArguments(env.getApplicationArguments());
 
@@ -499,12 +500,12 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     @Override
     protected boolean patchContext(JSRealm realm, Env newEnv) {
         JSContext context = realm.getContext();
-        if (!JSContextOptions.optionsAllowPreInitializedContext(realm.getContext(), newEnv)) {
+        if (!JSContextOptions.optionsAllowPreInitializedContext(realm, newEnv)) {
             return false;
         }
 
         assert context.getLanguage() == this;
-        context.patchTruffleLanguageEnv(newEnv);
+        realm.patchTruffleLanguageEnv(newEnv);
 
         if (newEnv.out() != context.getWriterStream()) {
             context.setWriter(null, newEnv.out());
@@ -518,10 +519,10 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
 
         context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionMRForeign.ACCESS));
-        context.getRealm().setArguments(newEnv.getApplicationArguments());
+        realm.setArguments(newEnv.getApplicationArguments());
 
         if (((GraalJSParserOptions) context.getParserOptions()).isScripting()) {
-            context.getRealm().addScriptingOptionsObject();
+            realm.addScriptingOptionsObject();
         }
         return true;
     }

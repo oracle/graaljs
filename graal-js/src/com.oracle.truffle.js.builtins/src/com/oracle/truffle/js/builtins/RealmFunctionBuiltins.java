@@ -120,7 +120,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Specialization
         protected Object createRealm() {
-            JSRealm newRealm = getContext().createChildContext().getRealm();
+            JSRealm newRealm = getContext().getRealm().createChildRealm();
             return getContext().getIndexFromRealmList(newRealm);
         }
     }

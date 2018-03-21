@@ -1057,7 +1057,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @TruffleBoundary
         private JSRealm createRealm() {
-            return getContext().createChildContext().getRealm();
+            return getContext().getRealm().createChildRealm();
         }
     }
 

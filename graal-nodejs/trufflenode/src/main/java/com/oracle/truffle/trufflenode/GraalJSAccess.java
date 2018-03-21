@@ -101,6 +101,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
@@ -1885,22 +1886,25 @@ public final class GraalJSAccess {
     }
 
     public <T> T lookupInstrument(String instrumentId, Class<T> instrumentClass) {
-        InstrumentInfo info = mainJSContext.getEnv().getInstruments().get(instrumentId);
-        return mainJSContext.getEnv().lookup(info, instrumentClass);
+        TruffleLanguage.Env env = mainJSContext.getRealm().getEnv();
+        InstrumentInfo info = env.getInstruments().get(instrumentId);
+        return env.lookup(info, instrumentClass);
     }
 
     private boolean createChildContext;
 
     public Object contextNew(Object templateObj) {
+        JSRealm realm;
         JSContext context;
         if (createChildContext) {
-            context = mainJSContext.createChildContext();
+            realm = mainJSContext.getRealm().createChildRealm();
+            context = realm.getContext();
         } else {
+            realm = mainJSContext.getRealm();
             context = mainJSContext;
             createChildContext = true;
         }
         context.setEmbedderData(new ContextData(context));
-        JSRealm realm = context.getRealm();
         DynamicObject global = realm.getGlobalObject();
         // Node.js does not have global arguments and load properties
         global.delete(JSRealm.ARGUMENTS_NAME);
@@ -2107,8 +2111,7 @@ public final class GraalJSAccess {
         }
     }
 
-    private void initDebugObject(JSContext context) {
-        JSRealm realm = context.getRealm();
+    private void initDebugObject(JSContext context, JSRealm realm) {
         DynamicObject debug = JSUserObject.create(context);
         DynamicObject global = realm.getGlobalObject();
 
@@ -2136,9 +2139,10 @@ public final class GraalJSAccess {
 
     public Object isolateGetDebugContext() {
         if (debugContext == null) {
-            debugContext = mainJSContext.createChildContext();
+            JSRealm debugRealm = mainJSContext.getRealm().createChildRealm();
+            debugContext = debugRealm.getContext();
             debugContext.setEmbedderData(new ContextData(debugContext));
-            initDebugObject(debugContext);
+            initDebugObject(debugContext, debugRealm);
         }
         return debugContext;
     }

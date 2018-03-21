@@ -246,7 +246,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
         @Specialization
         protected Object doString(String identifier, Object value) {
-            TruffleObject polyglotBindings = (TruffleObject) getContext().getEnv().getPolyglotBindings();
+            TruffleObject polyglotBindings = (TruffleObject) getContext().getRealm().getEnv().getPolyglotBindings();
             Object exportedValue = export.executeWithTarget(value, Undefined.instance);
             try {
                 ForeignAccess.sendWrite(writeBinding, polyglotBindings, identifier, exportedValue);
@@ -291,7 +291,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
         @Specialization
         protected Object doString(String identifier) {
-            TruffleObject polyglotBindings = (TruffleObject) getContext().getEnv().getPolyglotBindings();
+            TruffleObject polyglotBindings = (TruffleObject) getContext().getRealm().getEnv().getPolyglotBindings();
             Object value;
             try {
                 value = ForeignAccess.sendRead(readBinding, polyglotBindings, identifier);
@@ -641,7 +641,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             CallTarget callTarget;
 
             try {
-                callTarget = getContext().getEnv().parse(sourceObject);
+                callTarget = getContext().getRealm().getEnv().parse(sourceObject);
             } catch (Exception e) {
                 throw Errors.createError(e.getMessage());
             }
@@ -676,7 +676,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
             CallTarget callTarget;
             try {
-                callTarget = getContext().getEnv().parse(source);
+                callTarget = getContext().getRealm().getEnv().parse(source);
             } catch (Exception e) {
                 throw Errors.createError(e.getMessage());
             }

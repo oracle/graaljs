@@ -55,11 +55,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.WeakHashMap;
 import java.util.function.Function;
-
-import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -67,10 +64,10 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -165,7 +162,6 @@ public class JSContext implements ShapeContext {
     private final Object nodeFactory;
 
     private JSInteropRuntime interopRuntime;
-    private TruffleLanguage.Env truffleLanguageEnv;
     private final TimeProfiler timeProfiler;
 
     private final DynamicObjectFactory moduleNamespaceFactory;
@@ -246,8 +242,6 @@ public class JSContext implements ShapeContext {
      */
     @CompilationFinal private JSAgent agent;
 
-    @CompilationFinal private AllocationReporter allocationReporter;
-
     /**
      * Java Interop Workers factory.
      */
@@ -260,8 +254,7 @@ public class JSContext implements ShapeContext {
     public JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env, boolean isChildContext) {
         this.functionLookup = lookup;
         this.contextOptions = contextOptions;
-        this.truffleLanguageEnv = env; // could still be null
-        this.contextOptions.setEnv(env);
+        this.contextOptions.setEnv(env); // env could still be null
         this.isChildContext = isChildContext;
 
         this.language = lang;
@@ -383,10 +376,6 @@ public class JSContext implements ShapeContext {
         this.contextOptions.setParserOptions(parserOptions);
     }
 
-    public final OptionValues getOptionValues() {
-        return getEnv().getOptions();
-    }
-
     public final Object getEmbedderData() {
         return embedderData;
     }
@@ -423,12 +412,12 @@ public class JSContext implements ShapeContext {
         return new JSContext(evaluator, lookup, contextOptions, lang, env, false);
     }
 
-    public JSRealm createRealm() {
-        return createRealm(true);
+    public JSRealm createRealm(TruffleLanguage.Env env) {
+        return createRealm(env, true);
     }
 
-    private JSRealm createRealm(boolean initRealmBuiltinObject) {
-        JSRealm newRealm = new JSRealm(this);
+    JSRealm createRealm(TruffleLanguage.Env env, boolean initRealmBuiltinObject) {
+        JSRealm newRealm = new JSRealm(this, env);
         newRealm.setupGlobals();
         if (realmList == null) {
             realmList = new ArrayList<>();
@@ -551,18 +540,6 @@ public class JSContext implements ShapeContext {
     public void setInteropRuntime(JSInteropRuntime interopRuntime) {
         assert this.interopRuntime == null;
         this.interopRuntime = interopRuntime;
-    }
-
-    public void patchTruffleLanguageEnv(TruffleLanguage.Env env) {
-        CompilerAsserts.neverPartOfCompilation();
-        Objects.requireNonNull(env, "New env cannot be null.");
-        truffleLanguageEnv = env;
-        activateAllocationReporter();
-        this.contextOptions.setEnv(env);
-    }
-
-    public void activateAllocationReporter() {
-        this.allocationReporter = truffleLanguageEnv.lookup(AllocationReporter.class);
     }
 
     public TimeProfiler getTimeProfiler() {
@@ -757,10 +734,6 @@ public class JSContext implements ShapeContext {
         this.realm = realm;
     }
 
-    public TruffleLanguage.Env getEnv() {
-        return truffleLanguageEnv;
-    }
-
     public DynamicObjectFactory getJavaWrapperFactory() {
         return javaWrapperFactory;
     }
@@ -783,7 +756,7 @@ public class JSContext implements ShapeContext {
         if (regexEngine == null) {
             RegexCompiler joniCompiler = new JoniRegexCompiler(null);
             if (JSTruffleOptions.UseTRegex) {
-                TruffleObject regexEngineBuilder = (TruffleObject) getEnv().parse(Source.newBuilder("").name("TRegex Engine Builder Request").language(RegexLanguage.ID).build()).call();
+                TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder("").name("TRegex Engine Builder Request").language(RegexLanguage.ID).build()).call();
                 String regexOptions = createRegexEngineOptions();
                 try {
                     regexEngine = (TruffleObject) ForeignAccess.sendExecute(Message.createExecute(2).createNode(), regexEngineBuilder, regexOptions, joniCompiler);
@@ -1051,8 +1024,8 @@ public class JSContext implements ShapeContext {
     }
 
     @TruffleBoundary
-    public JSContext createChildContext() {
-        JSContext childContext = new JSContext(getEvaluator(), getFunctionLookup(), contextOptions, getLanguage(), truffleLanguageEnv, true);
+    JSContext createChildContext() {
+        JSContext childContext = new JSContext(getEvaluator(), getFunctionLookup(), contextOptions, getLanguage(), getRealm().getEnv(), true);
         childContext.setWriter(getWriter(), getWriterStream());
         childContext.setErrorWriter(getErrorWriter(), getErrorWriterStream());
         childContext.setLocalTimeZoneId(getLocalTimeZoneId());
@@ -1060,10 +1033,6 @@ public class JSContext implements ShapeContext {
         childContext.setRealmList(realmList);
         childContext.setInteropRuntime(interopRuntime);
         childContext.typedArrayNotDetachedAssumption = this.typedArrayNotDetachedAssumption;
-        // cannot leave Realm uninitialized
-        JSRealm childRealm = childContext.createRealm(false);
-        // "Realm" object shared by all realms
-        childRealm.setRealmBuiltinObject(getRealm().getRealmBuiltinObject());
         return childContext;
     }
 
@@ -1105,7 +1074,7 @@ public class JSContext implements ShapeContext {
 
     public DynamicObject allocateObject(Shape shape) {
         DynamicObject object;
-        AllocationReporter reporter = allocationReporter;
+        AllocationReporter reporter = getRealm().getAllocationReporter();
         if (reporter != null) {
             reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
         }
@@ -1118,7 +1087,7 @@ public class JSContext implements ShapeContext {
 
     public DynamicObject allocateObject(DynamicObjectFactory factory, Object... initialValues) {
         DynamicObject object;
-        AllocationReporter reporter = allocationReporter;
+        AllocationReporter reporter = getRealm().getAllocationReporter();
         if (reporter != null) {
             reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
         }
@@ -1416,5 +1385,9 @@ public class JSContext implements ShapeContext {
 
     public void setRealmInitialized() {
         this.isRealmInitialized = true;
+    }
+
+    JSContextOptions getContextOptions() {
+        return contextOptions;
     }
 }

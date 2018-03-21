@@ -90,7 +90,7 @@ public class DebugJSAgent extends JSAgent {
             @Override
             public void run() {
                 Context.Builder contextBuilder = Context.newBuilder(AbstractJavaScriptLanguage.ID);
-                OptionValues optionValues = parentContext.getOptionValues();
+                OptionValues optionValues = parentContext.getRealm().getEnv().getOptions();
                 for (OptionDescriptor optionDescriptor : optionValues.getDescriptors()) {
                     if (optionDescriptor.getKey().hasBeenSet(optionValues)) {
                         contextBuilder.option(optionDescriptor.getName(), String.valueOf(optionDescriptor.getKey().getValue(optionValues)));

@@ -50,9 +50,11 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.Shape;
@@ -280,15 +282,19 @@ public class JSRealm implements ShapeContext {
 
     private final MaterializedFrame globalScope;
 
+    private TruffleLanguage.Env truffleLanguageEnv;
+    @CompilationFinal private AllocationReporter allocationReporter;
+
     /**
      * Built-in runtime support for ECMA2017's async.
      */
     @CompilationFinal private Object performPromiseThen;
     @CompilationFinal private Object asyncFunctionPromiseCapabilityConstructor;
 
-    public JSRealm(JSContext context) {
+    public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
         context.setRealm(this); // (GR-1992)
+        this.truffleLanguageEnv = env;
 
         // need to build Function and Function.proto in a weird order to avoid circular dependencies
         this.objectPrototype = JSObjectPrototype.create(context);
@@ -1133,7 +1139,7 @@ public class JSRealm implements ShapeContext {
         JSObjectUtil.putFunctionsFromContainer(this, java, JSJava.CLASS_NAME);
         putGlobalProperty(global, JSJava.CLASS_NAME, java);
 
-        if (context.getEnv() != null && context.getEnv().isHostLookupAllowed()) {
+        if (getEnv() != null && getEnv().isHostLookupAllowed()) {
             putGlobalProperty(global, "Packages", JavaPackage.create(this, ""));
             if (JSTruffleOptions.NashornJavaInterop) {
                 putGlobalProperty(global, "java", JavaPackage.create(this, "java"));
@@ -1402,6 +1408,26 @@ public class JSRealm implements ShapeContext {
         return javaInteropWorkerConstructor;
     }
 
+    public TruffleLanguage.Env getEnv() {
+        return truffleLanguageEnv;
+    }
+
+    public void patchTruffleLanguageEnv(TruffleLanguage.Env env) {
+        CompilerAsserts.neverPartOfCompilation();
+        Objects.requireNonNull(env, "New env cannot be null.");
+        truffleLanguageEnv = env;
+        activateAllocationReporter();
+        context.getContextOptions().setEnv(env);
+    }
+
+    public void activateAllocationReporter() {
+        this.allocationReporter = truffleLanguageEnv.lookup(AllocationReporter.class);
+    }
+
+    AllocationReporter getAllocationReporter() {
+        return allocationReporter;
+    }
+
     public void setPerformPromiseThen(DynamicObject promiseThen) {
         CompilerAsserts.neverPartOfCompilation();
         this.performPromiseThen = promiseThen;
@@ -1418,5 +1444,15 @@ public class JSRealm implements ShapeContext {
     public void setAsyncFunctionPromiseCapabilityConstructor(Object promiseConstructor) {
         CompilerAsserts.neverPartOfCompilation();
         this.asyncFunctionPromiseCapabilityConstructor = promiseConstructor;
+    }
+
+    @TruffleBoundary
+    public JSRealm createChildRealm() {
+        JSContext childContext = context.createChildContext();
+        // cannot leave Realm uninitialized
+        JSRealm childRealm = childContext.createRealm(getEnv(), false);
+        // "Realm" object shared by all realms
+        childRealm.setRealmBuiltinObject(getRealmBuiltinObject());
+        return childRealm;
     }
 }
