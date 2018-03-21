@@ -568,10 +568,10 @@ final class InternalTranslator extends GraalJSTranslator {
         public Object execute(VirtualFrame frame) {
             DynamicObject constructor = (DynamicObject) newDefaultCapability.execute(frame);
             assert JSFunction.isJSFunction(constructor);
-            context.setAsyncFunctionPromiseCapabilityConstructor(constructor);
+            context.getRealm().setAsyncFunctionPromiseCapabilityConstructor(constructor);
             DynamicObject promiseThen = (DynamicObject) performPromiseThen.execute(frame);
             assert JSFunction.isJSFunction(promiseThen);
-            context.setPerformPromiseThen(promiseThen);
+            context.getRealm().setPerformPromiseThen(promiseThen);
             return Undefined.instance;
         }
 

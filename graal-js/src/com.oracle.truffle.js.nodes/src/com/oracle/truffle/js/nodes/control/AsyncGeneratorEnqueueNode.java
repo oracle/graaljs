@@ -70,7 +70,7 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
     }
 
     private DynamicObject newPromiseCapability() {
-        return (DynamicObject) createPromiseCapability.executeCall(JSArguments.createZeroArg(Undefined.instance, context.getAsyncFunctionPromiseCapabilityConstructor()));
+        return (DynamicObject) createPromiseCapability.executeCall(JSArguments.createZeroArg(Undefined.instance, context.getRealm().getAsyncFunctionPromiseCapabilityConstructor()));
     }
 
     @TruffleBoundary

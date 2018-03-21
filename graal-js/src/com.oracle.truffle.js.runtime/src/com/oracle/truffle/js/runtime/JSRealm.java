@@ -245,6 +245,12 @@ public class JSRealm implements ShapeContext {
 
     private final MaterializedFrame globalScope;
 
+    /**
+     * Built-in runtime support for ECMA2017's async.
+     */
+    @CompilationFinal private Object performPromiseThen;
+    @CompilationFinal private Object asyncFunctionPromiseCapabilityConstructor;
+
     public JSRealm(JSContext context) {
         this.context = context;
         context.setRealm(this); // (GR-1992)
@@ -1361,5 +1367,23 @@ public class JSRealm implements ShapeContext {
 
     public JSConstructor getJavaInteropWorkerConstructor() {
         return javaInteropWorkerConstructor;
+    }
+
+    public void setPerformPromiseThen(DynamicObject promiseThen) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.performPromiseThen = promiseThen;
+    }
+
+    public Object getPerformPromiseThen() {
+        return performPromiseThen;
+    }
+
+    public Object getAsyncFunctionPromiseCapabilityConstructor() {
+        return asyncFunctionPromiseCapabilityConstructor;
+    }
+
+    public void setAsyncFunctionPromiseCapabilityConstructor(Object promiseConstructor) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.asyncFunctionPromiseCapabilityConstructor = promiseConstructor;
     }
 }

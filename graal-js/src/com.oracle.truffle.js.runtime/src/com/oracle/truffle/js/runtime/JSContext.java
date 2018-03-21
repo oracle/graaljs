@@ -94,12 +94,6 @@ public class JSContext implements ShapeContext {
      */
     private Object embedderData;
 
-    /**
-     * Built-in runtime support for ECMA2017's async.
-     */
-    @CompilationFinal private Object performPromiseThen;
-    @CompilationFinal private Object asyncFunctionPromiseCapabilityConstructor;
-
     private final Assumption noSuchPropertyUnusedAssumption;
     private final Assumption noSuchMethodUnusedAssumption;
 
@@ -714,24 +708,6 @@ public class JSContext implements ShapeContext {
     @Override
     public DynamicObjectFactory getModuleNamespaceFactory() {
         return moduleNamespaceFactory;
-    }
-
-    public void setPerformPromiseThen(DynamicObject promiseThen) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.performPromiseThen = promiseThen;
-    }
-
-    public Object getPerformPromiseThen() {
-        return performPromiseThen;
-    }
-
-    public Object getAsyncFunctionPromiseCapabilityConstructor() {
-        return asyncFunctionPromiseCapabilityConstructor;
-    }
-
-    public void setAsyncFunctionPromiseCapabilityConstructor(Object promiseConstructor) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.asyncFunctionPromiseCapabilityConstructor = promiseConstructor;
     }
 
     @Override

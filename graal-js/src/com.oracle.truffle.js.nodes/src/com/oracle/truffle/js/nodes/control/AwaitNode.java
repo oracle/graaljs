@@ -128,11 +128,11 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     }
 
     private DynamicObject newPromiseCapability() {
-        return (DynamicObject) createPromiseCapability.executeCall(JSArguments.createZeroArg(Undefined.instance, context.getAsyncFunctionPromiseCapabilityConstructor()));
+        return (DynamicObject) createPromiseCapability.executeCall(JSArguments.createZeroArg(Undefined.instance, context.getRealm().getAsyncFunctionPromiseCapabilityConstructor()));
     }
 
     private void performPromiseThen(Object promise, DynamicObject onFulfilled, DynamicObject onRejected, DynamicObject resultCapability) {
-        callPerformPromiseThen.executeCall(JSArguments.create(Undefined.instance, context.getPerformPromiseThen(), promise, onFulfilled, onRejected, resultCapability));
+        callPerformPromiseThen.executeCall(JSArguments.create(Undefined.instance, context.getRealm().getPerformPromiseThen(), promise, onFulfilled, onRejected, resultCapability));
     }
 
     private DynamicObject createAwaitFulfilledFunction(CallTarget resumeTarget, MaterializedFrame asyncContext, Object generator) {
