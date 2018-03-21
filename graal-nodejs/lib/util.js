@@ -520,7 +520,7 @@ function formatValue(ctx, value, recurseTimes, ln) {
       if (keyLength === 0)
         return '{}';
     } else if (typeof value === 'function') {
-      const name = `${constructor.name}${value.name ? `: ${value.name}` : ''}`;
+      const name = `${(constructor && constructor.name) ? constructor.name : 'Function'}${value.name ? `: ${value.name}` : ''}`;
       if (keyLength === 0)
         return ctx.stylize(`[${name}]`, 'special');
       base = ` [${name}]`;
