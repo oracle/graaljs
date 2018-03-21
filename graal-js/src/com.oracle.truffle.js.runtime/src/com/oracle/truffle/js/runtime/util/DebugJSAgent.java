@@ -52,8 +52,8 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.EcmaAgent;
 import com.oracle.truffle.js.runtime.JSAgent;
@@ -66,7 +66,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
  */
 public class DebugJSAgent extends JSAgent {
 
-    private final JSContext context;
+    private final OptionValues optionValues;
 
     private final Deque<Object> reportValues;
     private final List<AgentExecutor> spawnedAgent;
@@ -74,15 +74,14 @@ public class DebugJSAgent extends JSAgent {
     private boolean quit;
     private Object debugReceiveBroadcast;
 
-    public DebugJSAgent(JSContext context) {
+    public DebugJSAgent(TruffleLanguage.Env env) {
         super();
-        this.context = context;
+        this.optionValues = env.getOptions();
         this.reportValues = new ConcurrentLinkedDeque<>();
         this.spawnedAgent = new LinkedList<>();
     }
 
     public Object startNewAgent(String source) {
-        final JSContext parentContext = context;
         final AtomicReference<Object> result = new AtomicReference<>(null);
         final CountDownLatch barrier = new CountDownLatch(1);
         Thread thread = new Thread(new Runnable() {
@@ -90,7 +89,6 @@ public class DebugJSAgent extends JSAgent {
             @Override
             public void run() {
                 Context.Builder contextBuilder = Context.newBuilder(AbstractJavaScriptLanguage.ID);
-                OptionValues optionValues = parentContext.getRealm().getEnv().getOptions();
                 for (OptionDescriptor optionDescriptor : optionValues.getDescriptors()) {
                     if (optionDescriptor.getKey().hasBeenSet(optionValues)) {
                         contextBuilder.option(optionDescriptor.getName(), String.valueOf(optionDescriptor.getKey().getValue(optionValues)));
@@ -107,9 +105,9 @@ public class DebugJSAgent extends JSAgent {
 
                 polyglotContext.eval(AbstractJavaScriptLanguage.ID, init);
                 JSContext jsContext = AbstractJavaScriptLanguage.getJSContext(polyglotContext);
-                AgentExecutor executor = ((DebugJSAgent) parentContext.getJSAgent()).registerChildAgent(Thread.currentThread(), (DebugJSAgent) jsContext.getJSAgent());
+                AgentExecutor executor = registerChildAgent(Thread.currentThread(), (DebugJSAgent) jsContext.getJSAgent());
 
-                polyglotContext.eval(AbstractJavaScriptLanguage.ID, Source.newBuilder(source).name("MainSource").mimeType("application/javascript").build().getCharacters());
+                polyglotContext.eval(AbstractJavaScriptLanguage.ID, source);
 
                 barrier.countDown();
 

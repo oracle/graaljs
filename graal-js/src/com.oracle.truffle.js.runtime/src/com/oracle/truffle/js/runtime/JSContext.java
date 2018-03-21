@@ -296,7 +296,7 @@ public class JSContext implements ShapeContext {
         this.dictionaryShapeNullPrototype = JSTruffleOptions.DictionaryObject ? JSDictionaryObject.makeDictionaryShape(this, null) : null;
 
         if (JSTruffleOptions.Test262Mode || JSTruffleOptions.TestV8Mode) {
-            this.setJSAgent(new DebugJSAgent(this));
+            this.setJSAgent(new DebugJSAgent(env));
         }
     }
 
