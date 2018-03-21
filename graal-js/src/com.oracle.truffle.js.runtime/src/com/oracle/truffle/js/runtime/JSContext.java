@@ -97,7 +97,6 @@ public class JSContext implements ShapeContext {
     /**
      * Built-in runtime support for ECMA2017's async.
      */
-    @CompilationFinal private Object asyncFunctionAwait;
     @CompilationFinal private Object performPromiseThen;
     @CompilationFinal private Object asyncFunctionPromiseCapabilityConstructor;
 

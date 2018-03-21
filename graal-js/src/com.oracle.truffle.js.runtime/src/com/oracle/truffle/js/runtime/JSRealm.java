@@ -690,10 +690,6 @@ public class JSRealm implements ShapeContext {
         return typedArrayPrototype;
     }
 
-    public final DynamicObject getMathObject() {
-        return mathObject;
-    }
-
     public final DynamicObject getRealmBuiltinObject() {
         return realmBuiltinObject;
     }

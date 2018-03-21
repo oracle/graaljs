@@ -108,10 +108,6 @@ final class InternalTranslator extends GraalJSTranslator {
                     return realm.getStringConstructor().getFunctionObject();
                 case "Date":
                     return realm.getDateConstructor().getFunctionObject();
-                case "RegExp":
-                    return realm.getRegExpConstructor().getFunctionObject();
-                case "Math":
-                    return realm.getMathObject();
                 case "DataView":
                     return realm.getDataViewConstructor().getFunctionObject();
                 case "Symbol":
@@ -122,8 +118,6 @@ final class InternalTranslator extends GraalJSTranslator {
                     return realm.getSetConstructor() == null ? null : realm.getSetConstructor().getFunctionObject();
                 case "Proxy":
                     return realm.getProxyConstructor().getFunctionObject();
-                case "Error":
-                    return realm.getErrorConstructor(JSErrorType.Error).getFunctionObject();
                 case "TypeError":
                     return realm.getErrorConstructor(JSErrorType.TypeError).getFunctionObject();
                 default:
