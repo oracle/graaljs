@@ -72,7 +72,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -1462,7 +1461,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 }
                 return toJSType(ForeignAccess.sendRead(foreignArrayAccess, targetClass.cast(target), converted));
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                return Null.instance;
+                return Undefined.instance;
             }
         }
 
