@@ -103,6 +103,14 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
                         log(format);
                     }
 
+                    @Override
+                    protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
+                        depth--;
+                        String format = String.format("%-7s|tag: %-20s @ %-20s |rval: %-20s |attr: %-20s", "RET-EXC", FineGrainedAccessTest.getTagNames((JavaScriptNode) c.getInstrumentedNode()),
+                                        c.getInstrumentedNode().getClass().getSimpleName(), exception.getClass().getSimpleName(), getAttributesDescription(c));
+                        log(format);
+                    }
+
                     private String getAttributeFrom(EventContext cx, String name) {
                         try {
                             return (String) ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) ((InstrumentableNode) cx.getInstrumentedNode()).getNodeObject(), name);

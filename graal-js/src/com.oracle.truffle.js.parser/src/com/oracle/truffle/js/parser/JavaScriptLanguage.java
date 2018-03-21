@@ -49,19 +49,19 @@ import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
@@ -113,9 +113,9 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
                 // Statements and builtins
                 BuiltinRootTag.class,
                 EvalCallTag.class,
-                ControlFlowStatementRootTag.class,
-                ControlFlowConditionStatementTag.class,
-                ControlFlowBlockStatementTag.class
+                ControlFlowRootTag.class,
+                ControlFlowBlockTag.class,
+                ControlFlowBranchTag.class
 })
 
 @TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, mimeType = {

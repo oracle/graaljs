@@ -279,56 +279,99 @@ public class JSTags {
     // ##### ECMA2018 13.x - JavaScript Statements
 
     /**
-     * Control flow root statement.
+     * Control flow root nodes.
      *
-     * Marks all code locations where a statement that affects the control flow of an application is
+     * Marks all code locations where a node that affects the control flow of an application is
      * declared.
      *
      * <p>
-     * Examples of such statements are:
+     * Examples are:
      * <ul>
      * <li>ECMA2018 13.6 The <code>if</code> statement.</li>
      * <li>ECMA2018 13.7 Iteration statements.</li>
      * <li>ECMA2018 13.12 The <code>switch</code> statement.</li>
      * </ul>
+     *
+     * Tagged nodes provide the following metadata:
+     * <ul>
+     * <li><b>type</b> A <code>String</code> describing the control flow construct type. Possible
+     * values are:
+     * <ul>
+     * <li><b>Conditional</b> A conditional branch statement (e.g., <code>if</code> or
+     * <code>switch</code> statements.)</li>
+     * <li><b>Iteration</b> An iterative block (e.g., <code>for</code> or <code>while</code> loop
+     * statements.)</li>
+     * <li><b>ExceptionHandler</b> An exception handling block (e.g., <code>try</code>.)</li>
+     * </ul>
      * </p>
+     **
      */
-    @Tag.Identifier("ControlFlowStatementRoot")
-    public static final class ControlFlowStatementRootTag extends Tag {
-        private ControlFlowStatementRootTag() {
+    @Tag.Identifier("ControlFlowRootTag")
+    public static final class ControlFlowRootTag extends Tag {
+        public enum Type {
+            Conditional,
+            Iteration,
+            ExceptionHandler,
+        }
+
+        private ControlFlowRootTag() {
         }
     }
 
     /**
-     * Control flow condition statement.
+     * Control flow branch node.
      *
-     * Marks all code locations where a conditional statement that might change the control flow of
-     * an application is declared.
+     * Marks all code locations where a statement or expression that might change the control flow
+     * of an application is declared.
      *
      * <p>
-     * Examples of such statements are:
+     * Examples are:
      * <ul>
      * <li>ECMA2018 13.6 Condition of <code>if</code> statements.</li>
      * <li>ECMA2018 13.7 Repeating conditions for iteration statements such as <code>while</code>,
      * <code>for</code>, etc.</li>
      * <li>ECMA2018 13.12 The <code>case</code> expressions in <code>switch</code> statements.</li>
+     * <li>ECMA2018 13.8 The <code>continue</code> statement.</li>
+     * <li>ECMA2018 13.9 The <code>break</code> statement.</li>
+     * <li>ECMA2018 13.14 The <code>throw</code> statement.</li>
+     * </ul>
+     *
+     * Tagged nodes provide the following metadata:
+     * <ul>
+     * <li><b>type</b> A <code>String</code> describing the control flow construct type. Possible
+     * values are:
+     * <ul>
+     * <li><b>Condition</b> The control condition of a conditional branch statement (e.g.,
+     * <code>if</code> or <code>switch</code> statements.</li>
+     * <li><b>Continue</b> The <code>continue</code> statement.</li>
+     * <li><b>Break</b> The <code>break</code> statement.</li>
+     * <li><b>Throw</b> The <code>throw</code> statement.</li>
      * </ul>
      * </p>
+     *
+     * </p>
      */
-    @Tag.Identifier("ControlFlowConditionStatement")
-    public static final class ControlFlowConditionStatementTag extends Tag {
-        private ControlFlowConditionStatementTag() {
+    @Tag.Identifier("ControlFlowBranchTag")
+    public static final class ControlFlowBranchTag extends Tag {
+        public enum Type {
+            Condition,
+            Continue,
+            Break,
+            Throw,
+        }
+
+        private ControlFlowBranchTag() {
         }
     }
 
     /**
-     * Control flow block statement.
+     * Control flow block node.
      *
-     * Marks all code locations where a block whose execution depends on a conditional statement are
+     * Marks all code locations where a block whose execution depends on a runtime condition are
      * declared.
      *
      * <p>
-     * Examples of such block statements are:
+     * Examples are:
      * <ul>
      * <li>ECMA2018 13.6 The <code>if</code> or the <code>else</code> branches of an <code>if</code>
      * statement.</li>
@@ -338,9 +381,9 @@ public class JSTags {
      * </ul>
      * </p>
      */
-    @Tag.Identifier("ControlFlowBlockStatement")
-    public static final class ControlFlowBlockStatementTag extends Tag {
-        private ControlFlowBlockStatementTag() {
+    @Tag.Identifier("ControlFlowBlockTag")
+    public static final class ControlFlowBlockTag extends Tag {
+        private ControlFlowBlockTag() {
         }
     }
 
@@ -390,5 +433,11 @@ public class JSTags {
 
     public static NodeObjectDescriptor createNodeObjectDescriptor() {
         return new NodeObjectDescriptor();
+    }
+
+    public static NodeObjectDescriptor createNodeObjectDescriptor(String name, Object value) {
+        NodeObjectDescriptor desc = new NodeObjectDescriptor();
+        desc.addProperty(name, value);
+        return desc;
     }
 }

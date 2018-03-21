@@ -12,7 +12,6 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 
 public abstract class JSBinaryNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode leftNode;
@@ -54,10 +53,7 @@ public abstract class JSBinaryNode extends JavaScriptNode {
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        NodeInfo annotation = getClass().getAnnotation(NodeInfo.class);
-        descriptor.addProperty("operator", annotation.shortName());
-        return descriptor;
+        return JSTags.createNodeObjectDescriptor("operator", getClass().getAnnotation(NodeInfo.class).shortName());
     }
 
 }

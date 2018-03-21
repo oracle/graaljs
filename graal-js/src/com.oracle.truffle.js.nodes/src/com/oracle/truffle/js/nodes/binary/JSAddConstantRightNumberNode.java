@@ -25,7 +25,6 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -62,10 +61,7 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        NodeInfo annotation = getClass().getAnnotation(NodeInfo.class);
-        descriptor.addProperty("operator", annotation.shortName());
-        return descriptor;
+        return JSTags.createNodeObjectDescriptor("operator", getClass().getAnnotation(NodeInfo.class).shortName());
     }
 
     @Override

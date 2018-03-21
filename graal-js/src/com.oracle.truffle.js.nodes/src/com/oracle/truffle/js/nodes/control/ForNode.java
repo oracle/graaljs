@@ -18,9 +18,10 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.IterationScopeNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -43,6 +44,19 @@ public final class ForNode extends StatementNode implements ResumableNode {
     public static ForNode createFor(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, IterationScopeNode copy, JavaScriptNode isFirstNode, JavaScriptNode setNotFirstNode) {
         JavaScriptNode nonVoidBody = body instanceof VoidNode ? ((VoidNode) body).getOperand() : body;
         return new ForNode(new ForRepeatingNode(condition, nonVoidBody, modify, copy, isFirstNode, setNotFirstNode), NodeUtil.cloneNode(copy));
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == ControlFlowRootTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor("type", ControlFlowRootTag.Type.Iteration.name());
     }
 
     @Override
@@ -97,10 +111,11 @@ public final class ForNode extends StatementNode implements ResumableNode {
 
         @Override
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-            if (materializedTags.contains(ControlFlowStatementRootTag.class) || materializedTags.contains(ControlFlowBlockStatementTag.class) ||
-                            materializedTags.contains(ControlFlowConditionStatementTag.class)) {
-                JavaScriptNode newBody = JSTaggedExecutionNode.createFor(bodyNode, ControlFlowBlockStatementTag.class);
-                JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(conditionNode, ControlFlowConditionStatementTag.class);
+            if (materializedTags.contains(ControlFlowRootTag.class) || materializedTags.contains(ControlFlowBlockTag.class) ||
+                            materializedTags.contains(ControlFlowBranchTag.class)) {
+                JavaScriptNode newBody = JSTaggedExecutionNode.createFor(bodyNode, ControlFlowBlockTag.class);
+                JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(conditionNode, ControlFlowBranchTag.class,
+                                JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
                 JavaScriptNode newLoop = new ForRepeatingNode(newCondition, newBody, cloneUninitialized(modify), cloneUninitialized(copy), isFirstNode, cloneUninitialized(setNotFirstNode));
                 transferSourceSection(this, newLoop);
                 return newLoop;

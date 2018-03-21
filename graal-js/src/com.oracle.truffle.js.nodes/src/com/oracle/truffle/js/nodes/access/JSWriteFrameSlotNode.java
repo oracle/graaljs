@@ -14,7 +14,6 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
 public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements WriteNode {
@@ -33,9 +32,7 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements Writ
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        descriptor.addProperty("name", getIdentifier());
-        return descriptor;
+        return JSTags.createNodeObjectDescriptor("name", getIdentifier());
     }
 
     @Override

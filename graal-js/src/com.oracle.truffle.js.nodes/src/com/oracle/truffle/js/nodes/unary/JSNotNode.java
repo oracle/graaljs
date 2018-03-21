@@ -17,7 +17,6 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBooleanNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
@@ -66,9 +65,7 @@ public abstract class JSNotNode extends JSUnaryNode {
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        descriptor.addProperty("operator", getClass().getAnnotation(NodeInfo.class).shortName());
-        return descriptor;
+        return JSTags.createNodeObjectDescriptor("operator", getClass().getAnnotation(NodeInfo.class).shortName());
     }
 
     @Specialization

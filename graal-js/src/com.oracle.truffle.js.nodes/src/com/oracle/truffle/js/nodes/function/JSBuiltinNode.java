@@ -14,7 +14,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -40,9 +39,7 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        descriptor.addProperty("name", getBuiltin().getFullName());
-        return descriptor;
+        return JSTags.createNodeObjectDescriptor("name", getBuiltin().getFullName());
     }
 
     protected JSBuiltinNode(JSContext context, JSBuiltin builtin) {

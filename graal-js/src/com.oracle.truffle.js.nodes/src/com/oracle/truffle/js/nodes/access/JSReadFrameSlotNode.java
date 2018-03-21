@@ -20,7 +20,6 @@ import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
 @ImportStatic(FrameSlotKind.class)
@@ -55,9 +54,7 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        descriptor.addProperty("name", getIdentifier());
-        return descriptor;
+        return JSTags.createNodeObjectDescriptor("name", getIdentifier());
     }
 
     public static JSReadFrameSlotNode create(FrameSlot slot, int frameLevel, int scopeLevel, FrameSlot parentSlot, boolean hasTemporalDeadZone) {

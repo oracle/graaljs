@@ -29,7 +29,6 @@ import com.oracle.truffle.js.nodes.function.FunctionNameHolder;
 import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -55,9 +54,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        descriptor.addProperty("type", LiteralExpressionTag.Type.ObjectLiteral.name());
-        return descriptor;
+        return JSTags.createNodeObjectDescriptor("type", LiteralExpressionTag.Type.ObjectLiteral.name());
     }
 
     public static final class MakeMethodNode extends JavaScriptNode implements FunctionNameHolder.Delegate {

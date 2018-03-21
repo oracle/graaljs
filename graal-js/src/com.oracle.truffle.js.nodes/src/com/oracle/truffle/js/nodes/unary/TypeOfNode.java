@@ -69,9 +69,7 @@ public abstract class TypeOfNode extends JSUnaryNode {
 
     @Override
     public Object getNodeObject() {
-        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-        descriptor.addProperty("operator", getClass().getAnnotation(NodeInfo.class).shortName());
-        return descriptor;
+        return JSTags.createNodeObjectDescriptor("operator", getClass().getAnnotation(NodeInfo.class).shortName());
     }
 
     @Override

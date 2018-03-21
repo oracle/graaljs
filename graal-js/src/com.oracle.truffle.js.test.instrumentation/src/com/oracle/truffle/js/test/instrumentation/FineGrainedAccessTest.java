@@ -37,9 +37,9 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
@@ -70,7 +70,7 @@ public abstract class FineGrainedAccessTest {
                     ObjectAllocationExpressionTag.class,
                     BinaryExpressionTag.class,
                     UnaryExpressionTag.class,
-                    ControlFlowStatementRootTag.class,
+                    ControlFlowRootTag.class,
                     WriteVariableExpressionTag.class,
                     ReadElementExpressionTag.class,
                     WriteElementExpressionTag.class,
@@ -81,9 +81,9 @@ public abstract class FineGrainedAccessTest {
                     FunctionCallExpressionTag.class,
                     BuiltinRootTag.class,
                     EvalCallTag.class,
-                    ControlFlowStatementRootTag.class,
-                    ControlFlowConditionStatementTag.class,
-                    ControlFlowBlockStatementTag.class
+                    ControlFlowRootTag.class,
+                    ControlFlowBlockTag.class,
+                    ControlFlowBranchTag.class,
     };
 
     @SuppressWarnings("unchecked")
@@ -118,6 +118,7 @@ public abstract class FineGrainedAccessTest {
             INPUT,
             RETURN,
             ENTER,
+            RETURN_EXCEPTIONAL,
         }
 
         protected final Kind kind;
@@ -184,6 +185,12 @@ public abstract class FineGrainedAccessTest {
             Event event = test.getNextEvent();
             assertTrue(event.instrumentedNode.hasTag(tag));
             assertEquals(event.kind, Event.Kind.RETURN);
+        }
+
+        void exitExceptional() {
+            Event event = test.getNextEvent();
+            assertTrue(event.instrumentedNode.hasTag(tag));
+            assertEquals(event.kind, Event.Kind.RETURN_EXCEPTIONAL);
         }
 
         void exit(Consumer<Event> verify) {
@@ -272,6 +279,15 @@ public abstract class FineGrainedAccessTest {
                         } else {
                             events.add(new Event(c, Event.Kind.RETURN, (JavaScriptNode) c.getInstrumentedNode(), new Object[]{result}));
                         }
+                        stack.pop();
+                    }
+
+                    @Override
+                    protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
+                        if (!collecting) {
+                            return;
+                        }
+                        events.add(new Event(c, Event.Kind.RETURN_EXCEPTIONAL, (JavaScriptNode) c.getInstrumentedNode(), exception));
                         stack.pop();
                     }
                 };

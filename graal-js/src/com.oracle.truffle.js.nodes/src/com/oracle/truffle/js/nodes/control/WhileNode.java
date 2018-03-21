@@ -16,9 +16,10 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowConditionStatementTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowStatementRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -54,20 +55,26 @@ public final class WhileNode extends StatementNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ControlFlowStatementRootTag.class) {
+        if (tag == ControlFlowRootTag.class) {
             return true;
         }
         return super.hasTag(tag);
     }
 
     @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor("type", ControlFlowRootTag.Type.Iteration.name());
+    }
+
+    @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ControlFlowStatementRootTag.class) || materializedTags.contains(ControlFlowBlockStatementTag.class) ||
-                        materializedTags.contains(ControlFlowConditionStatementTag.class)) {
+        if (materializedTags.contains(ControlFlowRootTag.class) || materializedTags.contains(ControlFlowBlockTag.class) ||
+                        materializedTags.contains(ControlFlowBranchTag.class)) {
             if (loop.getRepeatingNode() instanceof AbstractRepeatingNode) {
                 AbstractRepeatingNode repeatingNode = (AbstractRepeatingNode) loop.getRepeatingNode();
-                JavaScriptNode bodyNode = JSTaggedExecutionNode.createFor(repeatingNode.bodyNode, ControlFlowBlockStatementTag.class);
-                JavaScriptNode conditionNode = JSTaggedExecutionNode.createFor(repeatingNode.conditionNode, ControlFlowConditionStatementTag.class);
+                JavaScriptNode bodyNode = JSTaggedExecutionNode.createFor(repeatingNode.bodyNode, ControlFlowBlockTag.class);
+                JavaScriptNode conditionNode = JSTaggedExecutionNode.createFor(repeatingNode.conditionNode, ControlFlowBranchTag.class,
+                                JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
                 transferSourceSection(this, bodyNode);
                 WhileNode materialized;
                 if (repeatingNode instanceof DoWhileRepeatingNode) {
