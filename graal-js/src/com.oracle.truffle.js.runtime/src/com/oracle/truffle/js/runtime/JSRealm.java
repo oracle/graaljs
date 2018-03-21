@@ -178,7 +178,6 @@ public class JSRealm implements ShapeContext {
     private Object evalFunctionObject;
     private Object applyFunctionObject;
     private Object callFunctionObject;
-    private Object loadFunctionObject;
 
     private final JSConstructor arrayBufferConstructor;
     private final JSConstructor sharedArrayBufferConstructor;
@@ -771,10 +770,6 @@ public class JSRealm implements ShapeContext {
         return callFunctionObject;
     }
 
-    public final Object getLoadFunctionObject() {
-        return loadFunctionObject;
-    }
-
     private static void putProtoAccessorProperty(final JSRealm realm) {
         JSContext context = realm.getContext();
         DynamicObject getProto = JSFunction.create(realm, JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
@@ -915,7 +910,6 @@ public class JSRealm implements ShapeContext {
         this.evalFunctionObject = JSObject.get(global, JSGlobalObject.EVAL_NAME);
         this.applyFunctionObject = JSObject.get(getFunctionPrototype(), "apply");
         this.callFunctionObject = JSObject.get(getFunctionPrototype(), "call");
-        this.loadFunctionObject = JSObject.get(global, "load");
 
         for (JSErrorType type : JSErrorType.values()) {
             putGlobalProperty(global, type.name(), getErrorConstructor(type).getFunctionObject());

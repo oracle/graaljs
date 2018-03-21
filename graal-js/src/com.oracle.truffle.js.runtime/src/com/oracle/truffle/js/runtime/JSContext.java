@@ -721,10 +721,6 @@ public class JSContext implements ShapeContext {
         this.realm = realm;
     }
 
-    public Object getLoadFunctionObject() {
-        return getRealm().getLoadFunctionObject();
-    }
-
     public TruffleLanguage.Env getEnv() {
         return truffleLanguageEnv;
     }
