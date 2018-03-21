@@ -1101,7 +1101,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 Object foreignResult = ForeignAccess.sendGetSize(getSize, thisObj);
                 return toJSType.executeWithTarget(foreignResult);
             } catch (UnsupportedMessageException e) {
-                return Errors.createTypeErrorInteropException(thisObj, e, Message.GET_SIZE, this);
+                throw Errors.createTypeErrorInteropException(thisObj, e, Message.GET_SIZE, this);
             }
         }
 
