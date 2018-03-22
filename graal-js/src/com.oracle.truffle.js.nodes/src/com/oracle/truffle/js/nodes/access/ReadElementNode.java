@@ -1441,6 +1441,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     private static class TruffleObjectReadElementTypeCacheNode extends CachedReadElementTypeCacheNode {
         private final Class<? extends TruffleObject> targetClass;
 
+        @Child private Node foreignIsNull;
         @Child private Node foreignArrayAccess;
         @Child private ExportValueNode convert;
         @Child private JSForeignToJSTypeNode foreignConvertNode;
@@ -1449,11 +1450,15 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             super(context);
             this.targetClass = targetClass;
             this.convert = ExportValueNodeGen.create();
+            this.foreignIsNull = Message.IS_NULL.createNode();
             this.foreignArrayAccess = Message.READ.createNode();
         }
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
+            if (ForeignAccess.sendIsNull(foreignIsNull, targetClass.cast(target))) {
+                throw Errors.createTypeErrorCannotGetProperty(index, target, false, this);
+            }
             try {
                 Object converted = convert.executeWithTarget(index, Undefined.instance);
                 if (converted instanceof Symbol) {

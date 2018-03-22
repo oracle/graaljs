@@ -1063,6 +1063,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
     public static final class ForeignPropertyGetNode extends LinkedPropertyGetNode {
 
+        @Child private Node isNull;
         @Child private Node foreignGet;
         @Child private Node hasSizeProperty;
         @Child private Node getSize;
@@ -1080,6 +1081,13 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
 
         private Object foreignGet(TruffleObject thisObj) {
+            if (isNull == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                this.isNull = insert(Message.IS_NULL.createNode());
+            }
+            if (ForeignAccess.sendIsNull(isNull, thisObj)) {
+                throw Errors.createTypeErrorCannotGetProperty(key, thisObj, isMethod, this);
+            }
             if (foreignGet == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.foreignGet = insert(Message.READ.createNode());
