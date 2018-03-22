@@ -54,10 +54,12 @@ public class ThrowNode extends StatementNode {
         if (isError.profile(JSError.isJSError(exceptionObject))) {
             DynamicObject jsobject = (DynamicObject) exceptionObject;
             if (JSTruffleOptions.NashornCompatibilityMode) {
-                SourceSection sourceSection = getSourceSection();
-                JSContext context = JSObject.getJSContext(jsobject);
-                JSError.setLineNumber(context, jsobject, sourceSection.getStartLine());
-                JSError.setColumnNumber(context, jsobject, sourceSection.getStartColumn());
+                if (hasSourceSection()) {
+                    SourceSection sourceSection = getSourceSection();
+                    JSContext context = JSObject.getJSContext(jsobject);
+                    JSError.setLineNumber(context, jsobject, sourceSection.getStartLine());
+                    JSError.setColumnNumber(context, jsobject, sourceSection.getStartColumn());
+                }
             }
             throw JSError.getException(jsobject);
         }
