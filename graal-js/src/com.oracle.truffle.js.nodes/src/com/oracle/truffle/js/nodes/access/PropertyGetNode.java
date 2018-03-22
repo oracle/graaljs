@@ -1063,6 +1063,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
     public static final class ForeignPropertyGetNode extends LinkedPropertyGetNode {
 
+        @Child private Node isNull;
         @Child private Node foreignGet;
         @Child private Node hasSizeProperty;
         @Child private Node getSize;
@@ -1080,6 +1081,13 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
 
         private Object foreignGet(TruffleObject thisObj) {
+            if (isNull == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                this.isNull = insert(Message.IS_NULL.createNode());
+            }
+            if (ForeignAccess.sendIsNull(isNull, thisObj)) {
+                throw Errors.createTypeErrorCannotGetProperty(key, thisObj, isMethod, this);
+            }
             if (foreignGet == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.foreignGet = insert(Message.READ.createNode());
@@ -1087,10 +1095,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             try {
                 Object foreignResult = ForeignAccess.sendRead(foreignGet, thisObj, key);
                 return toJSType.executeWithTarget(foreignResult);
-            } catch (UnknownIdentifierException e) {
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 return Undefined.instance;
-            } catch (UnsupportedMessageException e) {
-                return Errors.createTypeErrorInteropException(thisObj, e, Message.READ, this);
             }
         }
 
@@ -1103,7 +1109,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 Object foreignResult = ForeignAccess.sendGetSize(getSize, thisObj);
                 return toJSType.executeWithTarget(foreignResult);
             } catch (UnsupportedMessageException e) {
-                return Errors.createTypeErrorInteropException(thisObj, e, Message.GET_SIZE, this);
+                throw Errors.createTypeErrorInteropException(thisObj, e, Message.GET_SIZE, this);
             }
         }
 
