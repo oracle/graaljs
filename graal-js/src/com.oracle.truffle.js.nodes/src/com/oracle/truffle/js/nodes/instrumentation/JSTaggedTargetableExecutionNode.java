@@ -37,7 +37,7 @@ public final class JSTaggedTargetableExecutionNode extends JSTargetableNode {
     private final SourceSection sourceSection;
     private final Class<? extends Tag> expectedTag;
 
-    public static JSTargetableNode createFor(JSTargetableNode originalNode) {
+    public static JSTargetableNode createFor(JSTargetableNode originalNode, SourceSection sourceSection) {
         // The original node will not report events. Rather, the event will be reported by the
         // wrapper node.
         JSTargetableNode clone = null;
@@ -53,8 +53,8 @@ public final class JSTaggedTargetableExecutionNode extends JSTargetableNode {
             expectedTag = ReadPropertyExpressionTag.class;
             clone = (JSTargetableNode) cloneUninitializedNoSourceSection(originalNode);
         }
-        JSTargetableNode wrapper = new JSTaggedTargetableExecutionNode(clone, expectedTag, originalNode.getSourceSection());
-        wrapper.setSourceSection(originalNode.getSourceSection());
+        JSTargetableNode wrapper = new JSTaggedTargetableExecutionNode(clone, expectedTag, sourceSection);
+        wrapper.setSourceSection(sourceSection);
         return wrapper;
     }
 

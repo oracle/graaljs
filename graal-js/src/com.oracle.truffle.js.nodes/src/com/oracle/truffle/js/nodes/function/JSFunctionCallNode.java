@@ -36,6 +36,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -385,22 +386,22 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         protected MaterializedInvokeNode(JSTargetableNode functionTargetNode, AbstractFunctionArgumentsNode argumentsNode, byte flags) {
             super(flags);
             this.argumentsNode = argumentsNode;
-            this.functionTargetNode = createEventEmittingWrapper(functionTargetNode);
+            this.functionTargetNode = createEventEmittingWrapper(functionTargetNode, functionTargetNode.getSourceSection());
             this.targetNode = functionTargetNode.getTarget();
             transferSourceSection(functionTargetNode, this.targetNode);
             transferSourceSection(functionTargetNode, this.functionTargetNode);
         }
 
-        private JSTargetableNode createEventEmittingWrapper(JSTargetableNode functionTarget) {
+        private JSTargetableNode createEventEmittingWrapper(JSTargetableNode functionTarget, SourceSection sourceSection) {
             if (functionTarget instanceof WrapperNode) {
                 JSTargetableNode delegate = (JSTargetableNode) ((WrapperNode) functionTarget).getDelegateNode();
-                return createEventEmittingWrapper(delegate);
+                return createEventEmittingWrapper(delegate, sourceSection);
             } else if (functionTarget instanceof JSTaggedTargetableExecutionNode) {
                 JSTargetableNode delegate = ((JSTaggedTargetableExecutionNode) functionTarget).getChild();
-                return createEventEmittingWrapper(delegate);
+                return createEventEmittingWrapper(delegate, sourceSection);
             } else {
                 assert functionTarget instanceof PropertyNode || functionTarget instanceof ReadElementNode;
-                return JSTaggedTargetableExecutionNode.createFor(functionTarget);
+                return JSTaggedTargetableExecutionNode.createFor(functionTarget, sourceSection);
             }
         }
 
