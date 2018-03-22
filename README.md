@@ -6,11 +6,11 @@ The best way to get started with Graal.js is via the GraalVM, which includes com
 
 http://www.oracle.com/technetwork/oracle-labs/program-languages/
 
-GraalVM provides two commands, `bin/js` and `bin/node`.
+GraalVM provides two main commands to execute applications, `bin/js` and `bin/node`.
 The first, `js`, is a pure JavaScript (ECMAScript 2017) engine.
 The second, `node`, executes an instance of Node.js (v8.9.4) on top of Graal.js
 
-You can use `npm` to install Node.js packages as normal.
+In addition, you can use `bin/npm` to install Node.js packages as normal with the Node package manager.
 
 ## Aim
 Graal.js aims to:
@@ -25,6 +25,8 @@ Graal.js aims to:
 ## Documentation
 
 Extensive documentation is available in [`docs`](docs).
+
+For instance, a guide how to build Graal.js from source code can be found in [`BUILDING-GRAAL.JS.md`](docs/BUILDING-GRAAL.JS.md).
 
 ## Current Status
 
