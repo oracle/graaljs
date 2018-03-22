@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -92,10 +93,18 @@ public final class JSObject {
     }
 
     /**
-     * use with care - this omits allocation tracking.
-     *
+     * Use only for static objects; omits allocation tracking.
      */
-    public static DynamicObject create(Shape shape) {
+    public static DynamicObject createStatic(Shape shape) {
+        CompilerAsserts.neverPartOfCompilation();
+        return shape.newInstance();
+    }
+
+    /**
+     * Use only for realm initialization; omits allocation tracking.
+     */
+    public static DynamicObject createNoTrack(Shape shape) {
+        CompilerAsserts.neverPartOfCompilation();
         return shape.newInstance();
     }
 
@@ -105,6 +114,14 @@ public final class JSObject {
 
     public static DynamicObject create(JSContext context, DynamicObjectFactory factory, Object... initialValues) {
         return context.allocateObject(factory, initialValues);
+    }
+
+    public static DynamicObject create(JSRealm realm, Shape shape) {
+        return realm.allocateObject(shape);
+    }
+
+    public static DynamicObject create(JSRealm realm, DynamicObjectFactory factory, Object... initialValues) {
+        return realm.allocateObject(factory, initialValues);
     }
 
     @TruffleBoundary

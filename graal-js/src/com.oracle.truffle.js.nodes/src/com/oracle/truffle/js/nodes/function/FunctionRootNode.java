@@ -54,7 +54,6 @@ import com.oracle.truffle.js.nodes.FrameDescriptorProvider;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -66,7 +65,7 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
 
     @Child private JavaScriptNode body;
 
-    private JSFunctionData functionData;
+    private final JSFunctionData functionData;
     private String internalFunctionName;
 
     protected FunctionRootNode(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection, String internalFunctionName) {
@@ -130,22 +129,14 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
         return body;
     }
 
-    public JSContext getContext() {
+    @Override
+    protected JSContext getContext() {
         return functionData.getContext();
     }
 
     @Override
-    protected Object executeAndSetRealm(VirtualFrame frame) {
+    protected Object executeInRealm(VirtualFrame frame) {
         return body.execute(frame);
-    }
-
-    @Override
-    protected JSRealm getRealm() {
-        return functionData.getContext().getRealm();
-    }
-
-    public void setFunctionData(JSFunctionData functionData) {
-        this.functionData = functionData;
     }
 
     @Override

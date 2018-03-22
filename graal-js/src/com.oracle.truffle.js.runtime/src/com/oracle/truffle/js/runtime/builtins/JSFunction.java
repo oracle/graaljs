@@ -781,7 +781,7 @@ public final class JSFunction extends JSBuiltinObject {
      * functions to differentiate between a constructor and a normal call (i.e., [[Construct]] and
      * [[Call]] internal methods, see ES5 13.2.1 and 13.2.2). Must not be passed anywhere else.
      */
-    public static final DynamicObject CONSTRUCT = JSObject.create(JSShape.makeStaticRoot(JSObject.LAYOUT, new JSBuiltinObject() {
+    public static final DynamicObject CONSTRUCT = JSObject.createStatic(JSShape.makeStaticRoot(JSObject.LAYOUT, new JSBuiltinObject() {
 
         public static final String CLASS_NAME = "CONSTRUCT";
 
@@ -948,7 +948,7 @@ public final class JSFunction extends JSBuiltinObject {
         DynamicObject enumerateIteratorPrototype = JSObject.create(realm, iteratorPrototype, JSUserObject.INSTANCE);
         JSContext context = realm.getContext();
         final Property iteratorProperty = JSObjectUtil.makeHiddenProperty(JSRuntime.ENUMERATE_ITERATOR_ID,
-                        context.getInitialUserObjectShape().allocator().locationForType(Iterator.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+                        realm.getInitialUserObjectShape().allocator().locationForType(Iterator.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
         JSObjectUtil.putFunctionsFromContainer(realm, enumerateIteratorPrototype, JSFunction.ENUMERATE_ITERATOR_PROTOTYPE_NAME);
         return JSObjectUtil.getProtoChildShape(enumerateIteratorPrototype, JSUserObject.INSTANCE, context).addProperty(iteratorProperty);
     }

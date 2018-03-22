@@ -73,4 +73,8 @@ public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm
         contextHolder.remove();
         return jsContext;
     }
+
+    final JSRealm getCurrentRealm() {
+        return getCurrentContext(this.getClass());
+    }
 }

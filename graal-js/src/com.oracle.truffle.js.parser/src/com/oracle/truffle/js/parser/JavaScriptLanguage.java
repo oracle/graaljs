@@ -160,6 +160,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private static final HiddenKey META_OBJECT_KEY = new HiddenKey("meta object");
 
     private CallTarget getJSContextCallTarget;
+    private JSContext languageContext;
 
     public static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
@@ -467,37 +468,37 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected JSRealm createContext(Env env) {
-        JSContext context = JSEngine.createJSContext(this, env);
+        if (languageContext == null) {
+            JSContext context = JSEngine.createJSContext(this, env);
 
-        /*
-         * Ensure that we use the output stream provided by env, but avoid creating a new
-         * PrintWriter when the existing PrintWriter already uses the same stream.
-         */
-        if (env.out() != context.getWriterStream()) {
-            context.setWriter(null, env.out());
-        }
-        if (env.err() != context.getErrorWriterStream()) {
-            context.setErrorWriter(null, env.err());
-        }
+            /*
+             * Ensure that we use the output stream provided by env, but avoid creating a new
+             * PrintWriter when the existing PrintWriter already uses the same stream.
+             */
+            if (env.out() != context.getWriterStream()) {
+                context.setWriter(null, env.out());
+            }
+            if (env.err() != context.getErrorWriterStream()) {
+                context.setErrorWriter(null, env.err());
+            }
 
-        if (JSContextOptions.TIME_ZONE.hasBeenSet(env.getOptions())) {
-            context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(env.getOptions())).toZoneId());
-        }
+            if (JSContextOptions.TIME_ZONE.hasBeenSet(env.getOptions())) {
+                context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(env.getOptions())).toZoneId());
+            }
 
-        context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionMRForeign.ACCESS));
-        JSRealm realm = context.createRealm(env);
+            context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionMRForeign.ACCESS));
+            languageContext = context;
+        }
+        JSRealm realm = languageContext.createRealm(env);
         realm.activateAllocationReporter();
         return realm;
     }
 
     @Override
     protected void initializeContext(JSRealm realm) {
-        JSContext context = realm.getContext();
-        Env env = realm.getEnv();
+        realm.setArguments(realm.getEnv().getApplicationArguments());
 
-        realm.setArguments(env.getApplicationArguments());
-
-        if (((GraalJSParserOptions) context.getParserOptions()).isScripting()) {
+        if (((GraalJSParserOptions) realm.getContext().getParserOptions()).isScripting()) {
             realm.addScriptingOptionsObject();
         }
     }
@@ -612,7 +613,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
 
         // avoid allocation profiling
-        DynamicObject metaObject = context.getInitialUserObjectShape().newInstance();
+        DynamicObject metaObject = realm.getInitialUserObjectShape().newInstance();
         JSObjectUtil.putDataProperty(context, metaObject, "type", type);
         if (subtype != null) {
             JSObjectUtil.putDataProperty(context, metaObject, "subtype", subtype);

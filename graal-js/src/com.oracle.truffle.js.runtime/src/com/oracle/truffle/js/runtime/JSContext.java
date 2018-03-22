@@ -69,7 +69,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -209,6 +208,7 @@ public class JSContext implements ShapeContext {
     private volatile List<JSRealm> realmList;
 
     private final boolean isChildContext;
+    final Assumption noChildRealmsAssumption;
 
     private boolean isRealmInitialized = false;
 
@@ -220,11 +220,6 @@ public class JSContext implements ShapeContext {
      * This flag is used to implement this semantics.
      */
     private int interopCallStackDepth = 0;
-
-    /**
-     * Temporary field to access shapes from realm until transition is complete.
-     */
-    @CompilationFinal private ShapeContext shapeContext;
 
     /**
      * Temporary field until transition is complete.
@@ -294,6 +289,8 @@ public class JSContext implements ShapeContext {
         this.javaWrapperFactory = JSTruffleOptions.NashornJavaInterop ? JSJavaWrapper.makeShape(this).createFactory() : null;
 
         this.dictionaryShapeNullPrototype = JSTruffleOptions.DictionaryObject ? JSDictionaryObject.makeDictionaryShape(this, null) : null;
+
+        this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
 
         if (JSTruffleOptions.Test262Mode || JSTruffleOptions.TestV8Mode) {
             this.setJSAgent(new DebugJSAgent(env));
@@ -413,20 +410,17 @@ public class JSContext implements ShapeContext {
     }
 
     public JSRealm createRealm(TruffleLanguage.Env env) {
-        return createRealm(env, true);
-    }
-
-    JSRealm createRealm(TruffleLanguage.Env env, boolean initRealmBuiltinObject) {
+        boolean isTop = env == null || env.getContext().getParent() == null;
         JSRealm newRealm = new JSRealm(this, env);
         newRealm.setupGlobals();
         if (realmList == null) {
             realmList = new ArrayList<>();
         }
         realmList.add(newRealm);
-        if (initRealmBuiltinObject) {
+        if (isTop) {
             newRealm.initRealmBuiltinObject();
         }
-        newRealm.getContext().setRealmInitialized();
+        newRealm.getContext().setRealmInitialized(true);
         return newRealm;
     }
 
@@ -546,8 +540,11 @@ public class JSContext implements ShapeContext {
         return timeProfiler;
     }
 
+    /**
+     * Get the current Realm using {@link ContextReference}.
+     */
     public JSRealm getRealm() {
-        if (isChildContext || (CompilerDirectives.inInterpreter() && !isRealmInitialized) || JSTruffleOptions.NashornCompatibilityMode) {
+        if (isChildContext || (CompilerDirectives.inInterpreter() && !isRealmInitialized)) {
             return realm; // childContext Realm cannot be shared among Engines (GR-8695)
         }
         if (contextRef == null) {
@@ -558,13 +555,8 @@ public class JSContext implements ShapeContext {
                 return realm;
             }
         }
-        JSRealm realm2 = contextRef.get();
-        return realm2 != null ? realm2 : realm;
-    }
-
-    public boolean hasRealm() {
-        assert (getRealm() != null) == isRealmInitialized;
-        return this.isRealmInitialized;
+        JSRealm currentRealm = contextRef.get();
+        return currentRealm != null ? currentRealm : realm;
     }
 
     @Override
@@ -579,143 +571,143 @@ public class JSContext implements ShapeContext {
 
     @Override
     public final Shape getInitialUserObjectShape() {
-        return shapeContext.getInitialUserObjectShape();
+        return getRealm().getInitialUserObjectShape();
     }
 
     @Override
     public final DynamicObjectFactory getArrayFactory() {
-        return shapeContext.getArrayFactory();
+        return getRealm().getArrayFactory();
     }
 
     @Override
     public final DynamicObjectFactory getStringFactory() {
-        return shapeContext.getStringFactory();
+        return getRealm().getStringFactory();
     }
 
     @Override
     public final DynamicObjectFactory getBooleanFactory() {
-        return shapeContext.getBooleanFactory();
+        return getRealm().getBooleanFactory();
     }
 
     @Override
     public final DynamicObjectFactory getNumberFactory() {
-        return shapeContext.getNumberFactory();
+        return getRealm().getNumberFactory();
     }
 
     @Override
     public final DynamicObjectFactory getSymbolFactory() {
-        return shapeContext.getSymbolFactory();
+        return getRealm().getSymbolFactory();
     }
 
     @Override
     public final DynamicObjectFactory getArrayBufferViewFactory(TypedArrayFactory factory) {
-        return shapeContext.getArrayBufferViewFactory(factory);
+        return getRealm().getArrayBufferViewFactory(factory);
     }
 
     @Override
     public final DynamicObjectFactory getArrayBufferFactory() {
-        return shapeContext.getArrayBufferFactory();
+        return getRealm().getArrayBufferFactory();
     }
 
     @Override
     public final DynamicObjectFactory getDirectArrayBufferViewFactory(TypedArrayFactory factory) {
-        return shapeContext.getDirectArrayBufferViewFactory(factory);
+        return getRealm().getDirectArrayBufferViewFactory(factory);
     }
 
     @Override
     public final DynamicObjectFactory getDirectArrayBufferFactory() {
-        return shapeContext.getDirectArrayBufferFactory();
+        return getRealm().getDirectArrayBufferFactory();
     }
 
     @Override
     public final DynamicObjectFactory getRegExpFactory() {
-        return shapeContext.getRegExpFactory();
+        return getRealm().getRegExpFactory();
     }
 
     @Override
     public final DynamicObjectFactory getDateFactory() {
-        return shapeContext.getDateFactory();
+        return getRealm().getDateFactory();
     }
 
     @Override
     public final DynamicObjectFactory getEnumerateIteratorFactory() {
-        return shapeContext.getEnumerateIteratorFactory();
+        return getRealm().getEnumerateIteratorFactory();
     }
 
     @Override
     public final DynamicObjectFactory getMapFactory() {
-        return shapeContext.getMapFactory();
+        return getRealm().getMapFactory();
     }
 
     @Override
     public final DynamicObjectFactory getWeakMapFactory() {
-        return shapeContext.getWeakMapFactory();
+        return getRealm().getWeakMapFactory();
     }
 
     @Override
     public final DynamicObjectFactory getSetFactory() {
-        return shapeContext.getSetFactory();
+        return getRealm().getSetFactory();
     }
 
     @Override
     public final DynamicObjectFactory getWeakSetFactory() {
-        return shapeContext.getWeakSetFactory();
+        return getRealm().getWeakSetFactory();
     }
 
     @Override
     public final DynamicObjectFactory getDataViewFactory() {
-        return shapeContext.getDataViewFactory();
+        return getRealm().getDataViewFactory();
     }
 
     @Override
     public final DynamicObjectFactory getProxyFactory() {
-        return shapeContext.getProxyFactory();
+        return getRealm().getProxyFactory();
     }
 
     @Override
     public final DynamicObjectFactory getSharedArrayBufferFactory() {
         assert isOptionSharedArrayBuffer();
-        return shapeContext.getSharedArrayBufferFactory();
+        return getRealm().getSharedArrayBufferFactory();
     }
 
     @Override
     public final DynamicObjectFactory getCollatorFactory() {
-        return shapeContext.getCollatorFactory();
+        return getRealm().getCollatorFactory();
     }
 
     @Override
     public final DynamicObjectFactory getNumberFormatFactory() {
-        return shapeContext.getNumberFormatFactory();
+        return getRealm().getNumberFormatFactory();
     }
 
     @Override
     public final DynamicObjectFactory getPluralRulesFactory() {
-        return shapeContext.getPluralRulesFactory();
+        return getRealm().getPluralRulesFactory();
     }
 
     @Override
     public final DynamicObjectFactory getDateTimeFormatFactory() {
-        return shapeContext.getDateTimeFormatFactory();
+        return getRealm().getDateTimeFormatFactory();
     }
 
     @Override
     public final DynamicObjectFactory getJavaImporterFactory() {
-        return shapeContext.getJavaImporterFactory();
+        return getRealm().getJavaImporterFactory();
     }
 
     @Override
     public final DynamicObjectFactory getJSAdapterFactory() {
-        return shapeContext.getJSAdapterFactory();
+        return getRealm().getJSAdapterFactory();
     }
 
     @Override
     public final DynamicObjectFactory getErrorFactory(JSErrorType type, boolean withMessage) {
-        return shapeContext.getErrorFactory(type, withMessage);
+        return getRealm().getErrorFactory(type, withMessage);
     }
 
     @Override
     public final DynamicObjectFactory getPromiseFactory() {
-        return shapeContext.getPromiseFactory();
+        return getRealm().getPromiseFactory();
     }
 
     @Override
@@ -725,12 +717,10 @@ public class JSContext implements ShapeContext {
 
     @Override
     public DynamicObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
-        return shapeContext.getSIMDTypeFactory(factory);
+        return getRealm().getSIMDTypeFactory(factory);
     }
 
     void setRealm(JSRealm realm) {
-        assert this.realm == null;
-        this.shapeContext = realm;
         this.realm = realm;
     }
 
@@ -1024,32 +1014,18 @@ public class JSContext implements ShapeContext {
     }
 
     @TruffleBoundary
-    JSContext createChildContext() {
-        JSContext childContext = new JSContext(getEvaluator(), getFunctionLookup(), contextOptions, getLanguage(), getRealm().getEnv(), true);
-        childContext.setWriter(getWriter(), getWriterStream());
-        childContext.setErrorWriter(getErrorWriter(), getErrorWriterStream());
-        childContext.setLocalTimeZoneId(getLocalTimeZoneId());
-        childContext.setSymbolRegistry(getSymbolRegistry());
-        childContext.setRealmList(realmList);
-        childContext.setInteropRuntime(interopRuntime);
-        childContext.typedArrayNotDetachedAssumption = this.typedArrayNotDetachedAssumption;
-        return childContext;
-    }
-
-    private void setRealmList(List<JSRealm> realmList) {
-        this.realmList = realmList;
-    }
-
     public synchronized JSRealm getFromRealmList(int idx) {
-        return Boundaries.listGet(realmList, idx);
+        return realmList.get(idx);
     }
 
+    @TruffleBoundary
     public synchronized int getIndexFromRealmList(JSRealm realm2) {
-        return Boundaries.listIndexOf(realmList, realm2);
+        return realmList.indexOf(realm2);
     }
 
+    @TruffleBoundary
     public synchronized void setInRealmList(int idx, JSRealm realm2) {
-        Boundaries.listSet(realmList, idx, realm2);
+        realmList.set(idx, realm2);
     }
 
     public JSAgent getJSAgent() {
@@ -1073,29 +1049,17 @@ public class JSContext implements ShapeContext {
     }
 
     public DynamicObject allocateObject(Shape shape) {
-        DynamicObject object;
-        AllocationReporter reporter = getRealm().getAllocationReporter();
-        if (reporter != null) {
-            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
+        if (CompilerDirectives.inInterpreter() && !isRealmInitialized) {
+            return shape.newInstance();
         }
-        object = shape.newInstance();
-        if (reporter != null) {
-            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        return object;
+        return getRealm().allocateObject(shape);
     }
 
     public DynamicObject allocateObject(DynamicObjectFactory factory, Object... initialValues) {
-        DynamicObject object;
-        AllocationReporter reporter = getRealm().getAllocationReporter();
-        if (reporter != null) {
-            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
+        if (CompilerDirectives.inInterpreter() && !isRealmInitialized) {
+            return factory.newInstance(initialValues);
         }
-        object = factory.newInstance(initialValues);
-        if (reporter != null) {
-            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        return object;
+        return getRealm().allocateObject(factory, initialValues);
     }
 
     public boolean isOptionAnnexB() {
@@ -1383,8 +1347,12 @@ public class JSContext implements ShapeContext {
         }
     }
 
-    public void setRealmInitialized() {
-        this.isRealmInitialized = true;
+    public final boolean neverCreatedChildRealms() {
+        return noChildRealmsAssumption.isValid();
+    }
+
+    void setRealmInitialized(boolean initialized) {
+        this.isRealmInitialized = initialized;
     }
 
     JSContextOptions getContextOptions() {

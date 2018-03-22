@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -298,8 +299,19 @@ public class JSRealm implements ShapeContext {
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
-        context.setRealm(this); // (GR-1992)
-        this.truffleLanguageEnv = env;
+        this.truffleLanguageEnv = env; // can be null
+
+        /*
+         * TODO Drop reference from context to realm (GR-1992).
+         *
+         * FIXME Temporarily set not initialized, so initialization code can get the right Realm.
+         */
+        context.setRealm(this);
+        context.setRealmInitialized(false);
+
+        if (env != null && isChildRealm()) {
+            context.noChildRealmsAssumption.invalidate();
+        }
 
         // need to build Function and Function.proto in a weird order to avoid circular dependencies
         this.objectPrototype = JSObjectPrototype.create(context);
@@ -1433,6 +1445,30 @@ public class JSRealm implements ShapeContext {
         return allocationReporter;
     }
 
+    public final DynamicObject allocateObject(Shape shape) {
+        AllocationReporter reporter = getAllocationReporter();
+        if (reporter != null) {
+            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        DynamicObject object = shape.newInstance();
+        if (reporter != null) {
+            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        return object;
+    }
+
+    public final DynamicObject allocateObject(DynamicObjectFactory factory, Object... initialValues) {
+        AllocationReporter reporter = getAllocationReporter();
+        if (reporter != null) {
+            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        DynamicObject object = factory.newInstance(initialValues);
+        if (reporter != null) {
+            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        return object;
+    }
+
     public void setPerformPromiseThen(DynamicObject promiseThen) {
         CompilerAsserts.neverPartOfCompilation();
         this.performPromiseThen = promiseThen;
@@ -1453,12 +1489,16 @@ public class JSRealm implements ShapeContext {
 
     @TruffleBoundary
     public JSRealm createChildRealm() {
-        JSContext childContext = context.createChildContext();
-        // cannot leave Realm uninitialized
-        JSRealm childRealm = childContext.createRealm(getEnv(), false);
-        // "Realm" object shared by all realms
-        childRealm.setRealmBuiltinObject(getRealmBuiltinObject());
-        return childRealm;
+        TruffleContext nestedContext = getEnv().newContextBuilder().build();
+        Object prev = nestedContext.enter();
+        try {
+            JSRealm childRealm = context.getLanguage().getCurrentRealm();
+            // "Realm" object is shared by all realms (V8 compatibility mode)
+            childRealm.setRealmBuiltinObject(getRealmBuiltinObject());
+            return childRealm;
+        } finally {
+            nestedContext.leave(prev);
+        }
     }
 
     public boolean isPreparingStackTrace() {
@@ -1467,5 +1507,13 @@ public class JSRealm implements ShapeContext {
 
     public void setPreparingStackTrace(boolean preparingStackTrace) {
         this.preparingStackTrace = preparingStackTrace;
+    }
+
+    public TruffleContext getTruffleContext() {
+        return getEnv().getContext();
+    }
+
+    public boolean isChildRealm() {
+        return getTruffleContext().getParent() != null;
     }
 }

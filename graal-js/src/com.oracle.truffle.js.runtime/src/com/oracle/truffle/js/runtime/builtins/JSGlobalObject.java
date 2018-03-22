@@ -63,7 +63,7 @@ public final class JSGlobalObject extends JSBuiltinObject {
         JSContext context = realm.getContext();
         // keep a separate shape tree for the global object in order not to pollute user objects
         Shape shape = JSShape.makeUniqueRootWithPrototype(JSObject.LAYOUT, INSTANCE, context, objectPrototype);
-        return JSObject.create(context, shape);
+        return JSObject.createNoTrack(shape);
     }
 
     public static boolean isJSGlobalObject(Object obj) {

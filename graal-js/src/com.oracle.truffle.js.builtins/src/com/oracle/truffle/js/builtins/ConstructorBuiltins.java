@@ -508,6 +508,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return getContext();
         }
 
+        protected JSRealm getRealmFromNewTarget(Object newTarget) {
+            JSRealm currentRealm = getContext().getRealm();
+            if (isNewTargetCase) {
+                return JSRuntime.getFunctionRealm(newTarget, currentRealm);
+            }
+            return currentRealm;
+        }
+
         protected abstract DynamicObject getIntrinsicDefaultProto(JSRealm realm);
 
         protected DynamicObject swapPrototype(DynamicObject resultObj, DynamicObject newTarget) {
@@ -520,7 +528,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected DynamicObject setPrototypeFromNewTarget(DynamicObject resultObj, DynamicObject newTarget) {
             Object prototype = JSObject.get(newTarget, JSObject.PROTOTYPE);
             if (!JSRuntime.isObject(prototype)) {
-                prototype = getIntrinsicDefaultProto(getContextFromNewTarget(newTarget).getRealm());
+                prototype = getIntrinsicDefaultProto(getRealmFromNewTarget(newTarget));
             }
             JSObject.setPrototype(resultObj, (DynamicObject) prototype);
             return resultObj;

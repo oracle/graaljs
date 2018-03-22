@@ -96,7 +96,8 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
         }
         // If [[ConstructorKind]] == "base" or result is undefined return this, otherwise throw
         if (getFunctionData().isDerived() && isNotUndefined.profile(result != Undefined.instance)) {
-            throw Errors.createTypeError("constructor result not as expected").setRealm(functionData.getContext().getRealm());
+            // TypeError is thrown in caller context
+            throw Errors.createTypeError("constructor result not as expected");
         }
         assert thisObject != JSFunction.CONSTRUCT;
         return thisObject;
