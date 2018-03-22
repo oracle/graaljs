@@ -122,19 +122,26 @@ void* main_new_thread(void* args) {
 }
 
 int main(int argc, char *argv[]) {
+    bool update_env = false;
     long stack_size = node::GraalArgumentsPreprocessing(argc, argv);
     if (stack_size <= 0) {
-      char* stack_size_str = getenv("NODE_STACK_SIZE");
-      if (stack_size_str != nullptr) {
-          stack_size = strtol(stack_size_str, nullptr, 10);
-      }
-    } else { // NODE_STACK_SIZE is read elsewhere as well as propagated to child processes
-      char buffer[32];
-      snprintf(buffer, sizeof(buffer), "%ld", stack_size);
-      setenv("NODE_STACK_SIZE", buffer, 1);
+        char* stack_size_str = getenv("NODE_STACK_SIZE");
+        if (stack_size_str != nullptr) {
+            stack_size = strtol(stack_size_str, nullptr, 10);
+        }
+    } else {
+        // stack size specified on the command line (using --jvm/native.Xss<value>)
+        update_env = true;
     }
     if (stack_size <= 0) {
+        // stack size not specified using env. variable or arguments
+        update_env = true;
         stack_size = 2*1024*1024;
+    }
+    if (update_env) { // NODE_STACK_SIZE is read elsewhere as well and propagated to child processes
+        char buffer[32];
+        snprintf(buffer, sizeof(buffer), "%ld", stack_size);
+        setenv("NODE_STACK_SIZE", buffer, 1);
     }
 #if defined(__sparc__) && defined(__linux__)
 /**
