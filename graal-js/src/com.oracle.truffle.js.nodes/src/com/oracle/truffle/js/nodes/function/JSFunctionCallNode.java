@@ -45,6 +45,7 @@ import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
+import com.oracle.truffle.js.nodes.access.GlobalConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedTargetableExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -279,7 +280,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
      * {@code true}, target not only serves as the this argument of the call, but also the target
      * object for the member expression that retrieves the function.
      */
-    static class InvokeNode extends JSFunctionCallNode {
+    public static class InvokeNode extends JSFunctionCallNode {
         @Child private JSTargetableNode functionTargetNode;
         @Child private AbstractFunctionArgumentsNode argumentsNode;
 
@@ -330,7 +331,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             return receiver;
         }
 
-        protected JSTargetableNode getFunctionTargetNode() {
+        public JSTargetableNode getFunctionTargetNode() {
             return functionTargetNode;
         }
 
@@ -393,6 +394,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         private JSTargetableNode createEventEmittingWrapper(JSTargetableNode functionTarget, SourceSection sourceSection) {
+            assert sourceSection != null;
             if (functionTarget instanceof WrapperNode) {
                 JSTargetableNode delegate = (JSTargetableNode) ((WrapperNode) functionTarget).getDelegateNode();
                 return createEventEmittingWrapper(delegate, sourceSection);
@@ -400,7 +402,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 JSTargetableNode delegate = ((JSTaggedTargetableExecutionNode) functionTarget).getChild();
                 return createEventEmittingWrapper(delegate, sourceSection);
             } else {
-                assert functionTarget instanceof PropertyNode || functionTarget instanceof ReadElementNode;
+                assert functionTarget instanceof PropertyNode || functionTarget instanceof ReadElementNode || functionTarget instanceof GlobalConstantNode;
                 return JSTaggedTargetableExecutionNode.createFor(functionTarget, sourceSection);
             }
         }
@@ -416,7 +418,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        protected JSTargetableNode getFunctionTargetNode() {
+        public JSTargetableNode getFunctionTargetNode() {
             return functionTargetNode;
         }
 
