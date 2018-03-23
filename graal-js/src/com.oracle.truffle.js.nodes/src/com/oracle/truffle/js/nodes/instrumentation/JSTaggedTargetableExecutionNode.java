@@ -14,6 +14,7 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.GlobalConstantNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
@@ -37,7 +38,7 @@ public final class JSTaggedTargetableExecutionNode extends JSTargetableNode {
     private final SourceSection sourceSection;
     private final Class<? extends Tag> expectedTag;
 
-    public static JSTargetableNode createFor(JSTargetableNode originalNode) {
+    public static JSTargetableNode createFor(JSTargetableNode originalNode, SourceSection sourceSection) {
         // The original node will not report events. Rather, the event will be reported by the
         // wrapper node.
         JSTargetableNode clone = null;
@@ -49,12 +50,12 @@ public final class JSTaggedTargetableExecutionNode extends JSTargetableNode {
             JavaScriptNode clonedIndex = JSTaggedExecutionNode.createFor(cloneUninitialized(originalRead.getElement()), StandardTags.ExpressionTag.class);
             clone = ReadElementNode.create(clonedTarget, clonedIndex, originalRead.getContext());
         } else {
-            assert originalNode instanceof PropertyNode;
+            assert originalNode instanceof PropertyNode || originalNode instanceof GlobalConstantNode;
             expectedTag = ReadPropertyExpressionTag.class;
             clone = (JSTargetableNode) cloneUninitializedNoSourceSection(originalNode);
         }
-        JSTargetableNode wrapper = new JSTaggedTargetableExecutionNode(clone, expectedTag, originalNode.getSourceSection());
-        wrapper.setSourceSection(originalNode.getSourceSection());
+        JSTargetableNode wrapper = new JSTaggedTargetableExecutionNode(clone, expectedTag, sourceSection);
+        wrapper.setSourceSection(sourceSection);
         return wrapper;
     }
 

@@ -228,6 +228,8 @@ public abstract class FineGrainedAccessTest {
     protected ExecutionEventNodeFactory getTestFactory() {
         return new ExecutionEventNodeFactory() {
 
+            private Stack<Integer> inputEvents = new Stack<>();
+
             @Override
             public ExecutionEventNode create(EventContext c) {
                 return new ExecutionEventNode() {
@@ -251,6 +253,7 @@ public abstract class FineGrainedAccessTest {
                              */
                             collecting = true;
                         }
+                        inputEvents.push(0);
                         events.add(new Event(c, Event.Kind.ENTER, (JavaScriptNode) c.getInstrumentedNode(), null));
                         stack.push((JavaScriptNode) c.getInstrumentedNode());
                     }
@@ -260,6 +263,7 @@ public abstract class FineGrainedAccessTest {
                         if (!collecting) {
                             return;
                         }
+                        inputEvents.push(inputEvents.pop() + 1);
                         events.add(new Event(c, Event.Kind.INPUT, (JavaScriptNode) c.getInstrumentedNode(), inputValue));
                         saveInputValue(frame, inputIndex, inputValue);
                     }
@@ -271,6 +275,7 @@ public abstract class FineGrainedAccessTest {
                         }
                         Object[] values = getSavedInputValues(frame);
                         assertTrue(values != null);
+
                         if (values.length > 0) {
                             Object[] newValues = new Object[values.length + 1];
                             System.arraycopy(values, 0, newValues, 1, values.length);
@@ -280,6 +285,11 @@ public abstract class FineGrainedAccessTest {
                             events.add(new Event(c, Event.Kind.RETURN, (JavaScriptNode) c.getInstrumentedNode(), new Object[]{result}));
                         }
                         stack.pop();
+                        int expectedEvents = inputEvents.pop();
+                        if (!c.hasTag(ControlFlowRootTag.class)) {
+                            // Iterations may register more events than expected
+                            assertTrue(expectedEvents == values.length);
+                        }
                     }
 
                     @Override
@@ -289,6 +299,7 @@ public abstract class FineGrainedAccessTest {
                         }
                         events.add(new Event(c, Event.Kind.RETURN_EXCEPTIONAL, (JavaScriptNode) c.getInstrumentedNode(), exception));
                         stack.pop();
+                        inputEvents.pop();
                     }
                 };
             }

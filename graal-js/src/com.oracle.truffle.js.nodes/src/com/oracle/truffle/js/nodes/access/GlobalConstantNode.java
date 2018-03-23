@@ -10,10 +10,13 @@ import java.nio.file.Paths;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
@@ -30,6 +33,20 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
 
     public static JSTargetableNode createGlobalConstant(JSContext ctx, String propertyName, Object value) {
         return new GlobalConstantNode(ctx, propertyName, JSConstantNode.create(value));
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == ReadPropertyExpressionTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor("key", propertyName);
     }
 
     @Override
