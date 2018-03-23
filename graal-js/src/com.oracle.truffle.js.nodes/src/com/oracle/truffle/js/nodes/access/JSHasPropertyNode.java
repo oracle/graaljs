@@ -8,18 +8,14 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -98,15 +94,18 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isForeignObject(object)")
     public boolean foreignObject(TruffleObject object, Object propertyName,
-                    @Cached("createRead()") Node readNode) {
-        try {
-            ForeignAccess.sendRead(readNode, object, JSRuntime.toPropertyKey(propertyName));
-            return true; // read worked, so HAS == true;
-        } catch (UnknownIdentifierException e) {
-            return false; // read did not work, so HAS == false;
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(object, e, Message.READ, this);
+                    @Cached("createKeyInfo()") Node keyInfoNode,
+                    @Cached("create()") JSToStringNode toStringNode) {
+        Object key;
+        if (propertyName instanceof Symbol) {
+            return false;
+        } else if (propertyName instanceof Number) {
+            key = propertyName;
+        } else {
+            key = toStringNode.executeString(propertyName);
         }
+        int result = ForeignAccess.sendKeyInfo(keyInfoNode, object, key);
+        return result != 0;
     }
 
     @Specialization(guards = "isJSType(object)")
