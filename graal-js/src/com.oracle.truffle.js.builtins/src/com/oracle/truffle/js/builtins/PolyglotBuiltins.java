@@ -18,8 +18,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -28,28 +26,28 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropConstructNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropCreateForeignDynamicObjectNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropCreateForeignObjectNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropEvalNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropExecuteNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropExportNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropGetSizeNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropHasKeysNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropHasSizeNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropImportNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropIsBoxedPrimitiveNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropIsExecutableNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropIsInstantiableNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropIsNullNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropKeysNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropParseNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropReadNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropRemoveNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropToInteropValueNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropToJSValueNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropUnboxValueNodeGen;
-import com.oracle.truffle.js.builtins.InteropBuiltinsFactory.InteropWriteNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotConstructNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotCreateForeignDynamicObjectNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotCreateForeignObjectNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotEvalFileNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotEvalNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotExecuteNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotExportNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotGetSizeNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotHasKeysNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotHasSizeNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotImportNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotIsBoxedPrimitiveNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotIsExecutableNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotIsInstantiableNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotIsNullNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotKeysNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotReadNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotRemoveNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotToJSValueNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotToPolyglotValueNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotUnboxValueNodeGen;
+import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotWriteNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
@@ -64,50 +62,21 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
-public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<InteropBuiltins.Interop> {
-    protected InteropBuiltins() {
-        super(JSRealm.INTEROP_CLASS_NAME, Interop.class);
+public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<PolyglotBuiltins.Polyglot> {
+    protected PolyglotBuiltins() {
+        super(JSRealm.POLYGLOT_CLASS_NAME, Polyglot.class);
     }
 
-    public enum Interop implements BuiltinEnum<Interop> {
-        isExecutable(1),
-        isBoxed(1),
-        isNull(1),
-        hasSize(1),
-        read(2),
-        write(3),
-        unbox(1),
-        construct(1),
-        execute(1),
-        getSize(1),
-        remove(2),
-        toJSValue(1),
-        toInteropValue(1),
-        // import and export
+    public enum Polyglot implements BuiltinEnum<Polyglot> {
+        // external
         export(2),
         import_(1),
         eval(2),
-        parse(2),
-        keys(1),
-        hasKeys(1),
-        isInstantiable(1),
-
-        createForeignObject(0) {
-            @Override
-            public boolean isAOTSupported() {
-                return false;
-            }
-        },
-        createForeignDynamicObject(0) {
-            @Override
-            public boolean isAOTSupported() {
-                return false;
-            }
-        };
+        evalFile(2);
 
         private final int length;
 
-        Interop(int length) {
+        Polyglot(int length) {
             this.length = length;
         }
 
@@ -118,68 +87,124 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, Interop builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, Polyglot builtinEnum) {
         switch (builtinEnum) {
-            case isExecutable:
-                return InteropIsExecutableNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case isBoxed:
-                return InteropIsBoxedPrimitiveNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case isNull:
-                return InteropIsNullNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case isInstantiable:
-                return InteropIsInstantiableNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case hasSize:
-                return InteropHasSizeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case read:
-                return InteropReadNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
-            case write:
-                return InteropWriteNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
-            case remove:
-                return InteropRemoveNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
-            case unbox:
-                return InteropUnboxValueNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case construct:
-                return InteropConstructNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
-            case execute:
-                return InteropExecuteNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
-            case getSize:
-                return InteropGetSizeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case export:
-                return InteropExportNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+                return PolyglotExportNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case import_:
-                return InteropImportNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                return PolyglotImportNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case eval:
-                return InteropEvalNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
-            case parse:
-                return InteropParseNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
-            case keys:
-                return InteropKeysNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case toJSValue:
-                return InteropToJSValueNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case toInteropValue:
-                return InteropToInteropValueNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case hasKeys:
-                return InteropHasKeysNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case createForeignObject:
-                if (!JSTruffleOptions.SubstrateVM) {
-                    return InteropCreateForeignObjectNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-                }
-                break;
-            case createForeignDynamicObject:
-                if (!JSTruffleOptions.SubstrateVM) {
-                    return InteropCreateForeignDynamicObjectNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-                }
-                break;
+                return PolyglotEvalNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+            case evalFile:
+                return PolyglotEvalFileNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
 
+    public static final class PolyglotInternalBuiltins extends JSBuiltinsContainer.SwitchEnum<PolyglotInternalBuiltins.PolyglotInternal> {
+        protected PolyglotInternalBuiltins() {
+            super(JSRealm.POLYGLOT_INTERNAL_CLASS_NAME, PolyglotInternal.class);
+        }
+
+        public enum PolyglotInternal implements BuiltinEnum<PolyglotInternal> {
+            isExecutable(1),
+            isBoxed(1),
+            isNull(1),
+            hasSize(1),
+            read(2),
+            write(3),
+            unbox(1),
+            construct(1),
+            execute(1),
+            getSize(1),
+            remove(2),
+            toJSValue(1),
+            toPolyglotValue(1),
+            keys(1),
+            hasKeys(1),
+            isInstantiable(1),
+
+            createForeignObject(0) {
+                @Override
+                public boolean isAOTSupported() {
+                    return false;
+                }
+            },
+            createForeignDynamicObject(0) {
+                @Override
+                public boolean isAOTSupported() {
+                    return false;
+                }
+            };
+
+            private final int length;
+
+            PolyglotInternal(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, PolyglotInternal builtinEnum) {
+            switch (builtinEnum) {
+                case isExecutable:
+                    return PolyglotIsExecutableNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case isBoxed:
+                    return PolyglotIsBoxedPrimitiveNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case isNull:
+                    return PolyglotIsNullNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case isInstantiable:
+                    return PolyglotIsInstantiableNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case hasSize:
+                    return PolyglotHasSizeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case read:
+                    return PolyglotReadNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+                case write:
+                    return PolyglotWriteNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
+                case remove:
+                    return PolyglotRemoveNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+                case unbox:
+                    return PolyglotUnboxValueNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case construct:
+                    return PolyglotConstructNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
+                case execute:
+                    return PolyglotExecuteNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
+                case getSize:
+                    return PolyglotGetSizeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case keys:
+                    return PolyglotKeysNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case toJSValue:
+                    return PolyglotToJSValueNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case toPolyglotValue:
+                    return PolyglotToPolyglotValueNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case hasKeys:
+                    return PolyglotHasKeysNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case createForeignObject:
+                    if (!JSTruffleOptions.SubstrateVM) {
+                        return PolyglotCreateForeignObjectNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
+                    }
+                    break;
+                case createForeignDynamicObject:
+                    if (!JSTruffleOptions.SubstrateVM) {
+                        return PolyglotCreateForeignDynamicObjectNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
+                    }
+                    break;
+            }
+            return null;
+        }
+    }
+
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropExportNode extends JSBuiltinNode {
+    abstract static class PolyglotExportNode extends JSBuiltinNode {
         @Child private ExportValueNode export = ExportValueNode.create();
         @Child private Node writeBinding = Message.WRITE.createNode();
 
-        InteropExportNode(JSContext context, JSBuiltin builtin) {
+        PolyglotExportNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -221,10 +246,10 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     }
 
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropImportNode extends JSBuiltinNode {
+    abstract static class PolyglotImportNode extends JSBuiltinNode {
         @Child private Node readBinding = Message.READ.createNode();
 
-        InteropImportNode(JSContext context, JSBuiltin builtin) {
+        PolyglotImportNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -268,9 +293,9 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     }
 
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropIsExecutableNode extends JSBuiltinNode {
+    abstract static class PolyglotIsExecutableNode extends JSBuiltinNode {
 
-        InteropIsExecutableNode(JSContext context, JSBuiltin builtin) {
+        PolyglotIsExecutableNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -293,9 +318,9 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     }
 
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropIsBoxedPrimitiveNode extends JSBuiltinNode {
+    abstract static class PolyglotIsBoxedPrimitiveNode extends JSBuiltinNode {
 
-        InteropIsBoxedPrimitiveNode(JSContext context, JSBuiltin builtin) {
+        PolyglotIsBoxedPrimitiveNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -318,9 +343,9 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     }
 
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropIsNullNode extends JSBuiltinNode {
+    abstract static class PolyglotIsNullNode extends JSBuiltinNode {
 
-        InteropIsNullNode(JSContext context, JSBuiltin builtin) {
+        PolyglotIsNullNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -343,9 +368,9 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     }
 
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropHasSizeNode extends JSBuiltinNode {
+    abstract static class PolyglotHasSizeNode extends JSBuiltinNode {
 
-        InteropHasSizeNode(JSContext context, JSBuiltin builtin) {
+        PolyglotHasSizeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -368,9 +393,9 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     }
 
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropReadNode extends JSBuiltinNode {
+    abstract static class PolyglotReadNode extends JSBuiltinNode {
 
-        InteropReadNode(JSContext context, JSBuiltin builtin) {
+        PolyglotReadNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -395,9 +420,9 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     }
 
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropWriteNode extends JSBuiltinNode {
+    abstract static class PolyglotWriteNode extends JSBuiltinNode {
 
-        InteropWriteNode(JSContext context, JSBuiltin builtin) {
+        PolyglotWriteNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -422,9 +447,9 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     }
 
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropRemoveNode extends JSBuiltinNode {
+    abstract static class PolyglotRemoveNode extends JSBuiltinNode {
 
-        InteropRemoveNode(JSContext context, JSBuiltin builtin) {
+        PolyglotRemoveNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -450,9 +475,9 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     }
 
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropUnboxValueNode extends JSBuiltinNode {
+    abstract static class PolyglotUnboxValueNode extends JSBuiltinNode {
 
-        InteropUnboxValueNode(JSContext context, JSBuiltin builtin) {
+        PolyglotUnboxValueNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -481,9 +506,9 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     }
 
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropExecuteNode extends JSBuiltinNode {
+    abstract static class PolyglotExecuteNode extends JSBuiltinNode {
 
-        InteropExecuteNode(JSContext context, JSBuiltin builtin) {
+        PolyglotExecuteNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -511,9 +536,9 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     }
 
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropConstructNode extends JSBuiltinNode {
+    abstract static class PolyglotConstructNode extends JSBuiltinNode {
 
-        InteropConstructNode(JSContext context, JSBuiltin builtin) {
+        PolyglotConstructNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -541,9 +566,9 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     }
 
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropGetSizeNode extends JSBuiltinNode {
+    abstract static class PolyglotGetSizeNode extends JSBuiltinNode {
 
-        InteropGetSizeNode(JSContext context, JSBuiltin builtin) {
+        PolyglotGetSizeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -564,9 +589,9 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         }
     }
 
-    abstract static class InteropEvalNode extends JSBuiltinNode {
+    abstract static class PolyglotEvalNode extends JSBuiltinNode {
 
-        InteropEvalNode(JSContext context, JSBuiltin builtin) {
+        PolyglotEvalNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -594,9 +619,9 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         }
     }
 
-    abstract static class InteropParseNode extends JSBuiltinNode {
+    abstract static class PolyglotEvalFileNode extends JSBuiltinNode {
 
-        InteropParseNode(JSContext context, JSBuiltin builtin) {
+        PolyglotEvalFileNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -618,7 +643,7 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
                 throw Errors.createError(e.getMessage());
             }
 
-            return new CallTargetObject(callTarget);
+            return callTarget.call();
         }
 
         @SuppressWarnings("unused")
@@ -628,43 +653,10 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
         }
     }
 
-    @MessageResolution(receiverType = CallTargetObject.class)
-    static class CallTargetObject implements TruffleObject {
-        final CallTarget callTarget;
-
-        CallTargetObject(CallTarget callTarget) {
-            this.callTarget = callTarget;
-        }
-
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return CallTargetObjectForeign.ACCESS;
-        }
-
-        static boolean isInstance(TruffleObject obj) {
-            return obj instanceof CallTargetObject;
-        }
-
-        @Resolve(message = "EXECUTE")
-        abstract static class ExecuteNode extends Node {
-            @TruffleBoundary
-            protected Object access(CallTargetObject obj, Object[] args) {
-                return obj.callTarget.call(args);
-            }
-        }
-
-        @Resolve(message = "IS_EXECUTABLE")
-        abstract static class IsExecutableNode extends Node {
-            protected boolean access(@SuppressWarnings("unused") CallTargetObject obj) {
-                return true;
-            }
-        }
-    }
-
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropHasKeysNode extends JSBuiltinNode {
+    abstract static class PolyglotHasKeysNode extends JSBuiltinNode {
 
-        InteropHasKeysNode(JSContext context, JSBuiltin builtin) {
+        PolyglotHasKeysNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -681,9 +673,9 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     }
 
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropKeysNode extends JSBuiltinNode {
+    abstract static class PolyglotKeysNode extends JSBuiltinNode {
 
-        InteropKeysNode(JSContext context, JSBuiltin builtin) {
+        PolyglotKeysNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -705,9 +697,9 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
     }
 
     @ImportStatic({JSInteropUtil.class})
-    abstract static class InteropIsInstantiableNode extends JSBuiltinNode {
+    abstract static class PolyglotIsInstantiableNode extends JSBuiltinNode {
 
-        InteropIsInstantiableNode(JSContext context, JSBuiltin builtin) {
+        PolyglotIsInstantiableNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -729,11 +721,11 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
      * features in JavaScript code.
      *
      */
-    abstract static class InteropCreateForeignObjectNode extends JSBuiltinNode {
+    abstract static class PolyglotCreateForeignObjectNode extends JSBuiltinNode {
 
         private static Class<?> testMapClass;
 
-        InteropCreateForeignObjectNode(JSContext context, JSBuiltin builtin) {
+        PolyglotCreateForeignObjectNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -761,11 +753,11 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
      * interop features in JavaScript code.
      *
      */
-    abstract static class InteropCreateForeignDynamicObjectNode extends JSBuiltinNode {
+    abstract static class PolyglotCreateForeignDynamicObjectNode extends JSBuiltinNode {
 
         private static Class<?> testMapClass;
 
-        InteropCreateForeignDynamicObjectNode(JSContext context, JSBuiltin builtin) {
+        PolyglotCreateForeignDynamicObjectNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -796,14 +788,14 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
      * Nullish interop values to the JavaScript null value, and unboxes boxed TruffleObjects.
      *
      */
-    abstract static class InteropToJSValueNode extends JSBuiltinNode {
+    abstract static class PolyglotToJSValueNode extends JSBuiltinNode {
         // this is most likely redundant, we do it to be sure
         @Child private JSForeignToJSTypeNode foreignToJSNode = JSForeignToJSTypeNode.create();
         @Child private Node isNullNode;
         @Child private Node isBoxedNode;
         @Child private Node unboxNode;
 
-        InteropToJSValueNode(JSContext context, JSBuiltin builtin) {
+        PolyglotToJSValueNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -856,10 +848,10 @@ public final class InteropBuiltins extends JSBuiltinsContainer.SwitchEnum<Intero
      * is done automatically at the language boundary and should rarely be necessary to be triggered
      * by user code.
      */
-    abstract static class InteropToInteropValueNode extends JSBuiltinNode {
+    abstract static class PolyglotToPolyglotValueNode extends JSBuiltinNode {
         @Child private ExportValueNode exportValueNode = ExportValueNode.create();
 
-        InteropToInteropValueNode(JSContext context, JSBuiltin builtin) {
+        PolyglotToPolyglotValueNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 

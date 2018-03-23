@@ -7,4 +7,5 @@ The main focus is on user-observable behavior of the engine.
 
 * Added object rest/spread support.
 * Added support for async generators.
+* Unified Polyglot primitives across all Truffle languages; e.g., rename `Interop` builtin to `Polyglot`.
 

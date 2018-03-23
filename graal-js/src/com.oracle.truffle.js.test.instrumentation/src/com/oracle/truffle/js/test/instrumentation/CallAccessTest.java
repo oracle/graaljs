@@ -286,7 +286,7 @@ public class CallAccessTest extends FineGrainedAccessTest {
 
     @Test
     public void callForeignTest() {
-        String src = "var r = Interop.import('run'); r.run();";
+        String src = "var r = Polyglot.import('run'); r.run();";
         declareInteropSymbol("run", new ForeignTestObject());
         evalWithTag(src, FunctionCallExpressionTag.class);
 
