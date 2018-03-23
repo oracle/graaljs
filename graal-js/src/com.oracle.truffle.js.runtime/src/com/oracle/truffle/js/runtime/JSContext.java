@@ -41,7 +41,6 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.LocationModifier;
@@ -74,6 +73,7 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
 import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexEngine;
+import com.oracle.truffle.regex.RegexLanguage;
 
 public class JSContext implements ShapeContext {
     private final Evaluator evaluator;
@@ -782,13 +782,11 @@ public class JSContext implements ShapeContext {
         return options.toString();
     }
 
-    @SuppressWarnings("deprecation")
     public TruffleObject getRegexEngine() {
         if (regexEngine == null) {
             RegexCompiler joniCompiler = new JoniRegexCompiler(null);
             if (JSTruffleOptions.UseTRegex) {
-                LanguageInfo regexLanguage = getEnv().getLanguages().get("regex");
-                TruffleObject regexEngineBuilder = (TruffleObject) getEnv().lookupSymbol(regexLanguage, "T_REGEX_ENGINE_BUILDER");
+                TruffleObject regexEngineBuilder = (TruffleObject) getEnv().parse(Source.newBuilder("").name("TRegex Engine Builder Request").language(RegexLanguage.ID).build()).call();
                 String regexOptions = createRegexEngineOptions();
                 try {
                     regexEngine = (TruffleObject) ForeignAccess.sendExecute(Message.createExecute(2).createNode(), regexEngineBuilder, regexOptions, joniCompiler);
@@ -805,7 +803,7 @@ public class JSContext implements ShapeContext {
     public TruffleObject getRegexResult() {
         assert isOptionRegexpStaticResult();
         if (regexResult == null) {
-            regexResult = TRegexUtil.getTRegexEmptyResult(this);
+            regexResult = TRegexUtil.getTRegexEmptyResult();
         }
         return regexResult;
     }

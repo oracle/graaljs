@@ -138,7 +138,7 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         private Object getEmptyResult() {
-            return ecmaScriptVersion >= 6 ? Null.instance : TRegexUtil.getTRegexEmptyResult(context);
+            return ecmaScriptVersion >= 6 ? Null.instance : TRegexUtil.getTRegexEmptyResult();
         }
 
         // Implements 21.2.5.2.2 Runtime Semantics: RegExpBuiltinExec ( R, S )

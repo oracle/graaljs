@@ -12,11 +12,9 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.result.RegexResult;
 
 public final class TRegexUtil {
 
@@ -53,19 +51,10 @@ public final class TRegexUtil {
 
     public static final class Constants {
         public static final int CAPTURE_GROUP_NO_MATCH = -1;
-        public static final String NO_MATCH_RESULT_IDENTIFIER = "T_REGEX_NO_MATCH_RESULT";
     }
 
-    @SuppressWarnings("deprecation")
-    public static TruffleObject getTRegexEmptyResult(JSContext context) {
-        // TODO: remove this when test262 and testv8 have been refactored to use PolyglotEngine!
-        if (context.getInteropRuntime() == null) {
-            return RegexLanguage.EXPORT_NO_MATCH_RESULT;
-        }
-        final LanguageInfo regexLanguage = context.getEnv().getLanguages().get("regex");
-        final TruffleObject ret = (TruffleObject) context.getEnv().lookupSymbol(regexLanguage, Constants.NO_MATCH_RESULT_IDENTIFIER);
-        assert ret != null;
-        return ret;
+    public static TruffleObject getTRegexEmptyResult() {
+        return RegexResult.NO_MATCH;
     }
 
     public static Object readExceptionIsFatal(Node readNode, TruffleObject object, Object property) {

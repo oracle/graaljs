@@ -11,7 +11,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 
 import java.util.Collections;
@@ -59,11 +58,7 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     public static final String ID = "regex";
     public static final String MIME_TYPE = "application/tregex";
 
-    static final String NO_MATCH_RESULT_IDENTIFIER = "T_REGEX_NO_MATCH_RESULT";
-    public static final RegexResult EXPORT_NO_MATCH_RESULT = RegexResult.NO_MATCH;
-    static final String ENGINE_BUILDER_IDENTIFIER = "T_REGEX_ENGINE_BUILDER";
     public final RegexEngineBuilder engineBuilder = new RegexEngineBuilder(this);
-    private final Iterable<Scope> tRegexGlobalsScope = Collections.singleton(Scope.newBuilder("global", new TRegexScopeObject(this)).build());
 
     private final CallTarget getEngineBuilderCT = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(engineBuilder));
 
@@ -78,14 +73,12 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
 
     @Override
     protected Void createContext(Env env) {
-        env.exportSymbol(NO_MATCH_RESULT_IDENTIFIER, EXPORT_NO_MATCH_RESULT);
-        env.exportSymbol(ENGINE_BUILDER_IDENTIFIER, engineBuilder);
         return null;
     }
 
     @Override
     protected Iterable<Scope> findTopScopes(Void context) {
-        return tRegexGlobalsScope;
+        return Collections.emptySet();
     }
 
     @Override
