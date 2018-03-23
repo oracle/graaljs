@@ -93,6 +93,7 @@ def _build(args, debug, shared_library, threading, parallelism, debug_mode):
             '--build-only-native',
             '--without-dtrace',
             '--without-snapshot',
+            '--shared-zlib',
             '--shared-graalvm', _getJdkHome(),
             '--shared-trufflejs', mx.distribution('graal-js:GRAALJS').path
         ] + debug + shared_library + threading,
