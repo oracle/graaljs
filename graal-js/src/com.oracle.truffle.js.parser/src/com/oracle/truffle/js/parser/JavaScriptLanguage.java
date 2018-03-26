@@ -182,7 +182,11 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
 
         protected final JSContext getContext() {
-            return contextRef.get().getContext();
+            return getRealm().getContext();
+        }
+
+        protected final JSRealm getRealm() {
+            return contextRef.get();
         }
     }
 
@@ -201,14 +205,15 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 rootNode = new ContextRootNode() {
 
                     @CompilationFinal private volatile JSContext cachedContext;
-                    @CompilationFinal(dimensions = 0) private Object[] arguments;
+                    @CompilationFinal private volatile ScriptNode cachedProgram;
                     @Child private DirectCallNode directCallNode;
                     @Child private ExportValueNode exportValueNode;
                     @Child private IndirectCallNode indirectCallNode;
 
                     @Override
                     public Object execute(VirtualFrame frame) {
-                        JSContext context = getContext();
+                        JSRealm realm = getRealm();
+                        JSContext context = realm.getContext();
                         Object result;
                         JSContext cachedCtx = cachedContext;
                         if (cachedCtx == null) {
@@ -221,9 +226,9 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                             context.interopBoundaryEnter();
                             if (context == cachedCtx) {
                                 context = cachedCtx;
-                                result = directCallNode.call(arguments);
+                                result = directCallNode.call(cachedProgram.argumentsToRun(realm));
                             } else {
-                                result = parseAndEval(context);
+                                result = parseAndEval(context, realm);
                             }
                         } finally {
                             context.interopBoundaryExit();
@@ -235,18 +240,18 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     private void parseAndCache(JSContext context) {
                         CompilerAsserts.neverPartOfCompilation();
                         ScriptNode program = parse(context);
-                        arguments = program.argumentsToRun(context.getRealm());
                         directCallNode = insert(DirectCallNode.create(program.getCallTarget()));
+                        cachedProgram = program;
                         cachedContext = context;
                     }
 
-                    private Object parseAndEval(JSContext context) {
+                    private Object parseAndEval(JSContext context, JSRealm realm) {
                         if (indirectCallNode == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             indirectCallNode = insert(IndirectCallNode.create());
                         }
                         ScriptNode program = parse(context);
-                        return indirectCallNode.call(program.getCallTarget(), program.argumentsToRun(context.getRealm()));
+                        return indirectCallNode.call(program.getCallTarget(), program.argumentsToRun(realm));
                     }
 
                     @TruffleBoundary
@@ -334,11 +339,11 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         return new ContextRootNode() {
             @Override
             public Object execute(VirtualFrame frame) {
-                return executeImpl(getContext(), frame.getArguments());
+                return executeImpl(getRealm(), frame.getArguments());
             }
 
             @TruffleBoundary
-            private Object executeImpl(JSContext context, Object[] arguments) {
+            private Object executeImpl(JSRealm realm, Object[] arguments) {
                 // (GR-2039) only works for simple expressions at the moment. needs parser support.
                 StringBuilder code = new StringBuilder();
                 code.append("(function");
@@ -354,7 +359,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 code.append(source.getCharacters());
                 code.append("\n})");
                 Source wrappedSource = Source.newBuilder(code.toString()).name(Evaluator.FUNCTION_SOURCE_NAME).mimeType(APPLICATION_MIME_TYPE).build();
-                Object function = parseInContext(wrappedSource, context).run(context.getRealm());
+                Object function = parseInContext(wrappedSource, realm.getContext()).run(realm);
                 return JSRuntime.jsObjectToJavaObject(JSFunction.call(JSArguments.create(Undefined.instance, function, arguments)));
             }
         };
