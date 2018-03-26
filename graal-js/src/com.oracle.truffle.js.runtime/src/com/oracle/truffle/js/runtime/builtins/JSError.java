@@ -85,7 +85,6 @@ public final class JSError extends JSBuiltinObject {
     public static final String STACK_NAME = "stack";
     public static final HiddenKey FORMATTED_STACK_NAME = new HiddenKey("FormattedStack");
     public static final String PREPARE_STACK_TRACE_NAME = "prepareStackTrace";
-    private static final HiddenKey PREPARING_STACK_TRACE_NAME = new HiddenKey("PreparingStackTrace");
     public static final String LINE_NUMBER_PROPERTY_NAME = "lineNumber";
     public static final String COLUMN_NUMBER_PROPERTY_NAME = "columnNumber";
     public static final int DEFAULT_COLUMN_NUMBER = -1;
@@ -203,7 +202,6 @@ public final class JSError extends JSBuiltinObject {
         JSObjectUtil.putConstructorPrototypeProperty(context, errorConstructor, classPrototype);
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorConstructor, CLASS_NAME);
-            errorConstructor.define(PREPARING_STACK_TRACE_NAME, false);
             JSObjectUtil.putDataProperty(context, errorConstructor, STACK_TRACE_LIMIT_PROPERTY_NAME, JSTruffleOptions.StackTraceLimit, JSAttributes.getDefault());
         }
 
@@ -290,13 +288,13 @@ public final class JSError extends JSBuiltinObject {
         JSStackTraceElement[] jsStackTrace = exception.getJSStackTrace();
         if (JSFunction.isJSFunction(prepareStackTrace)) {
             // Do not call Error.prepareStackTrace for errors that occur during its invocation
-            Object preparingStackTrace = error.get(PREPARING_STACK_TRACE_NAME);
-            if (preparingStackTrace != Boolean.TRUE) {
+            boolean inPrepareStackTrace = realm.isPreparingStackTrace();
+            if (!inPrepareStackTrace) {
                 try {
-                    error.set(PREPARING_STACK_TRACE_NAME, true);
+                    realm.setPreparingStackTrace(true);
                     return prepareStackWithUserFunction(realm, (DynamicObject) prepareStackTrace, errorObj, jsStackTrace);
                 } finally {
-                    error.set(PREPARING_STACK_TRACE_NAME, false);
+                    realm.setPreparingStackTrace(false);
                 }
             }
         }

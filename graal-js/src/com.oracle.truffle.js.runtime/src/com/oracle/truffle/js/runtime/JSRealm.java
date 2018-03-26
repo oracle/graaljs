@@ -291,6 +291,11 @@ public class JSRealm implements ShapeContext {
     @CompilationFinal private Object performPromiseThen;
     @CompilationFinal private Object asyncFunctionPromiseCapabilityConstructor;
 
+    /**
+     * True while calling Error.prepareStackTrace via the stack property of an error object.
+     */
+    private boolean preparingStackTrace;
+
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
         context.setRealm(this); // (GR-1992)
@@ -1454,5 +1459,13 @@ public class JSRealm implements ShapeContext {
         // "Realm" object shared by all realms
         childRealm.setRealmBuiltinObject(getRealmBuiltinObject());
         return childRealm;
+    }
+
+    public boolean isPreparingStackTrace() {
+        return preparingStackTrace;
+    }
+
+    public void setPreparingStackTrace(boolean preparingStackTrace) {
+        this.preparingStackTrace = preparingStackTrace;
     }
 }
