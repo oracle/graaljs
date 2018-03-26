@@ -29,9 +29,11 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
+import com.oracle.truffle.js.runtime.builtins.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSDebug;
 import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
@@ -39,8 +41,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSIntl;
-import com.oracle.truffle.js.runtime.builtins.JSCollator;
-import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSJava;
 import com.oracle.truffle.js.runtime.builtins.JSJavaWorkerBuiltin;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
@@ -65,7 +65,6 @@ import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
-import com.oracle.truffle.js.runtime.builtins.SIMD;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 import com.oracle.truffle.js.runtime.interop.JavaImporter;
@@ -885,10 +884,6 @@ public class JSRealm implements ShapeContext {
         putGlobalProperty(global, JSMath.CLASS_NAME, mathObject);
         putGlobalProperty(global, JSON.CLASS_NAME, JSON.create(this));
 
-        if (JSTruffleOptions.SIMDJS) {
-            putGlobalProperty(global, SIMD.CLASS_NAME, SIMD.create(this));
-        }
-
         if (context.isOptionIntl402()) {
             DynamicObject intlObject = JSIntl.create(this);
             DynamicObject collatorFn = getCollatorConstructor().getFunctionObject();
@@ -922,10 +917,11 @@ public class JSRealm implements ShapeContext {
         putGlobalProperty(global, JSDataView.CLASS_NAME, getDataViewConstructor().getFunctionObject());
 
         if (JSTruffleOptions.SIMDJS) {
+            DynamicObject simdObject = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
             for (SIMDTypeFactory<? extends SIMDType> factory : SIMDType.FACTORIES) {
-                JSObjectUtil.putDataProperty(context, (DynamicObject) global.get(SIMD.CLASS_NAME), factory.getName(), getSIMDTypeConstructor(factory).getFunctionObject(),
-                                JSAttributes.getDefaultNotEnumerable());
+                JSObjectUtil.putDataProperty(context, simdObject, factory.getName(), getSIMDTypeConstructor(factory).getFunctionObject(), JSAttributes.getDefaultNotEnumerable());
             }
+            putGlobalProperty(global, JSSIMD.SIMD_OBJECT_NAME, simdObject);
         }
 
         if (JSTruffleOptions.NashornExtensions) {

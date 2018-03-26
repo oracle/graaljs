@@ -29,6 +29,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSSIMD extends JSBuiltinObject {
+    public static final String SIMD_OBJECT_NAME = "SIMD";
     public static final String CLASS_NAME = "SIMDTypes";
     public static final String PROTOTYPE_NAME = "SIMDTypes.prototype";
     public static final String SIMD_TYPES_CLASS_NAME = "SIMDTypes";
@@ -100,7 +101,7 @@ public final class JSSIMD extends JSBuiltinObject {
 
     public static JSConstructor createSIMDTypeConstructor(JSRealm realm) {
         JSContext ctx = realm.getContext();
-        DynamicObject taConstructor = realm.lookupFunction(SIMD.CLASS_NAME, SIMD_TYPES_CLASS_NAME);
+        DynamicObject taConstructor = realm.lookupFunction(SIMD_OBJECT_NAME, SIMD_TYPES_CLASS_NAME);
         DynamicObject taPrototype = createTypedArrayPrototype(realm, taConstructor);
         JSObjectUtil.putDataProperty(ctx, taConstructor, JSObject.PROTOTYPE, taPrototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
 
@@ -128,7 +129,7 @@ public final class JSSIMD extends JSBuiltinObject {
     public static JSConstructor createConstructor(JSRealm realm, SIMDTypeFactory<? extends SIMDType> factory, JSConstructor taConstructor) {
         JSContext ctx = realm.getContext();
         String constructorName = factory.getName();
-        DynamicObject simdConstructor = realm.lookupFunction(SIMD.CLASS_NAME, constructorName);
+        DynamicObject simdConstructor = realm.lookupFunction(SIMD_OBJECT_NAME, constructorName);
         JSObject.setPrototype(simdConstructor, taConstructor.getFunctionObject());
 
         DynamicObject simdPrototype = createSIMDPrototype(realm, simdConstructor, factory, taConstructor.getPrototype());
