@@ -117,16 +117,20 @@ public final class JSError extends JSBuiltinObject {
             Object value = store.get(FORMATTED_STACK_NAME);
             if (value == null) {
                 // stack not prepared yet
-                JSContext context = currentContext(store);
                 GraalJSException truffleException = getException(store);
-                value = (truffleException == null) ? Undefined.instance : prepareStack(context.getRealm(), store, truffleException);
+                if (truffleException == null) {
+                    value = Undefined.instance;
+                } else {
+                    JSRealm realm = currentRealm(store);
+                    value = prepareStack(realm, store, truffleException);
+                }
                 store.set(FORMATTED_STACK_NAME, value);
             }
             return value;
         }
 
         @TruffleBoundary
-        private JSContext currentContext(DynamicObject store) {
+        private JSRealm currentRealm(DynamicObject store) {
             FrameInstance frameInstance = Truffle.getRuntime().getCurrentFrame();
             if (frameInstance != null) {
                 CallTarget callTarget = frameInstance.getCallTarget();
@@ -135,11 +139,11 @@ public final class JSError extends JSBuiltinObject {
                     if (JSRuntime.isJSFunctionRootNode(rootNode)) {
                         Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
                         DynamicObject function = JSFrameUtil.getFunctionObject(frame);
-                        return JSObject.getJSContext(function);
+                        return JSFunction.getRealm(function);
                     }
                 }
             }
-            return JSObject.getJSContext(store);
+            return JSObject.getJSContext(store).getRealm();
         }
 
         @Override
