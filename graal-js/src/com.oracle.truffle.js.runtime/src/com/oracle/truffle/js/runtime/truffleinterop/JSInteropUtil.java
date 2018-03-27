@@ -80,4 +80,8 @@ public final class JSInteropUtil {
     public static Node createIsInstantiable() {
         return Message.IS_INSTANTIABLE.createNode();
     }
+
+    public static Node createKeyInfo() {
+        return Message.KEY_INFO.createNode();
+    }
 }
