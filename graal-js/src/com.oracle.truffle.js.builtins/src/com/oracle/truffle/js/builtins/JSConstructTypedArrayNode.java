@@ -72,7 +72,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     private static TypedArrayFactory findTypedArrayFactory(String name) {
-        for (TypedArrayFactory typedArrayFactory : TypedArray.FACTORIES) {
+        for (TypedArrayFactory typedArrayFactory : TypedArray.factories()) {
             if (typedArrayFactory.getName().equals(name)) {
                 return typedArrayFactory;
             }
