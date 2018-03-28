@@ -1115,6 +1115,7 @@ public class JSRealm implements ShapeContext {
             JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_INTERNAL_CLASS_NAME);
         }
         putGlobalProperty(global, POLYGLOT_CLASS_NAME, obj);
+        putGlobalProperty(global, "Interop", obj); // temporary workaround to fix gates
     }
 
     private void putConsoleObject(DynamicObject global) {
