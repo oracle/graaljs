@@ -46,8 +46,10 @@ import java.lang.invoke.MethodType;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.interop.Converters.Converter;
@@ -68,7 +70,8 @@ public final class JavaAdapterServices {
 
     static {
         try {
-            JSFUNCTION_CALL_METHOD_HANDLE = MethodHandles.publicLookup().findStatic(JSFunction.class, "call", MethodType.methodType(Object.class, DynamicObject.class, Object.class, Object[].class));
+            JSFUNCTION_CALL_METHOD_HANDLE = MethodHandles.publicLookup().findStatic(JavaAdapterServices.class, "callFunction",
+                            MethodType.methodType(Object.class, DynamicObject.class, Object.class, Object[].class));
             CONVERTER_CONVERT_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Converter.class, "convert", MethodType.methodType(Object.class, Object.class));
             JAVA_TO_JS_CONVERTER_METHOD_HANDLE = CONVERTER_CONVERT_METHOD_HANDLE.bindTo(Converters.JAVA_TO_JS_CONVERTER);
         } catch (NoSuchMethodException | IllegalAccessException e) {
@@ -128,8 +131,28 @@ public final class JavaAdapterServices {
         }
     }
 
+    /**
+     * @see JavaAdapterBytecodeGenerator#emitIsJSFunction
+     */
     public static boolean isJSFunction(final Object obj) {
         return JSObject.isDynamicObject(obj) && JSFunction.isJSFunction((DynamicObject) obj);
+    }
+
+    /**
+     * Entry point for JS function calls by generated Java adapter classes. Enters the function's
+     * {@link TruffleContext} for the duration of the call.
+     *
+     * @see #JSFUNCTION_CALL_METHOD_HANDLE
+     */
+    public static Object callFunction(DynamicObject functionObject, Object thisObject, Object[] argumentValues) {
+        JSRealm functionRealm = JSFunction.getRealm(functionObject);
+        TruffleContext truffleContext = functionRealm.getTruffleContext();
+        Object prev = truffleContext.enter();
+        try {
+            return JSFunction.call(functionObject, thisObject, argumentValues);
+        } finally {
+            truffleContext.leave(prev);
+        }
     }
 
     @TruffleBoundary
