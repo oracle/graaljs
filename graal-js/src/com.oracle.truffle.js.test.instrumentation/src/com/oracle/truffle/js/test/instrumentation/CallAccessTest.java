@@ -301,4 +301,25 @@ public class CallAccessTest extends FineGrainedAccessTest {
         }).exit();
     }
 
+    @Test
+    public void invokeGlobal() {
+        String src = "arr=new Array();\n" +
+                        "for(var a = 0; a < 100; a++){\n" +
+                        "  arr.push(\"\");\n" +
+                        "}";
+
+        evalWithTag(src, FunctionCallExpressionTag.class);
+
+        enter(FunctionCallExpressionTag.class, (e, call) -> {
+            call.input(assertJSFunctionInput);
+        }).exit();
+        for (int i = 0; i < 100; i++) {
+            enter(FunctionCallExpressionTag.class, (e, call) -> {
+                call.input(assertJSArrayInput);
+                call.input(assertJSFunctionInput);
+                call.input("");
+            }).exit();
+        }
+    }
+
 }
