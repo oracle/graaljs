@@ -124,10 +124,12 @@ public final class JSObject {
 
     @TruffleBoundary
     public static boolean setPrototype(DynamicObject obj, DynamicObject newPrototype) {
+        assert newPrototype != null;
         return JSObject.getJSClass(obj).setPrototypeOf(obj, newPrototype);
     }
 
     public static boolean setPrototype(DynamicObject obj, DynamicObject newPrototype, JSClassProfile jsclassProfile) {
+        assert newPrototype != null;
         return jsclassProfile.getJSClass(obj).setPrototypeOf(obj, newPrototype);
     }
 
