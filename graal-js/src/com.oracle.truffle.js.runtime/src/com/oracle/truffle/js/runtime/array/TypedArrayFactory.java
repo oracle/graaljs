@@ -159,4 +159,6 @@ public enum TypedArrayFactory {
     }
 
     abstract TypedArray instantiateArrayType(boolean direct, boolean offset);
+
+    static final TypedArrayFactory[] FACTORIES = TypedArrayFactory.values();
 }

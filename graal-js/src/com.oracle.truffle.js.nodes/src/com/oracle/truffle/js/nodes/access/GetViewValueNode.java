@@ -39,7 +39,7 @@ public abstract class GetViewValueNode extends JavaScriptNode {
     }
 
     static TypedArrayFactory typedArrayFactoryFromType(String type) {
-        for (TypedArrayFactory factory : TypedArray.FACTORIES) {
+        for (TypedArrayFactory factory : TypedArray.factories()) {
             if (factory.getName().startsWith(type)) {
                 return factory;
             }

@@ -214,6 +214,10 @@ public abstract class TypedArray extends ScriptArray {
 
     public abstract void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Number value);
 
+    public static TypedArrayFactory[] factories() {
+        return TypedArrayFactory.FACTORIES;
+    }
+
     public abstract static class TypedIntArray<T> extends TypedArray {
         protected TypedIntArray(TypedArrayFactory factory, boolean offset) {
             super(factory, offset);
@@ -1165,5 +1169,4 @@ public abstract class TypedArray extends ScriptArray {
     static final BufferAccess NATIVE_ORDER = new SunMiscUnsafeNativeOrderBufferAccess();
     private static final BufferAccess LITTLE_ENDIAN_ORDER = new LittleEndianBufferAccess();
     private static final BufferAccess BIG_ENDIAN_ORDER = new BigEndianBufferAccess();
-    public static final TypedArrayFactory[] FACTORIES = TypedArrayFactory.values();
 }
