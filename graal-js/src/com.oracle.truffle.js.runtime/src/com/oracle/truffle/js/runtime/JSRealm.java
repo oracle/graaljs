@@ -338,9 +338,9 @@ public class JSRealm implements ShapeContext {
         this.arrayBufferFactory = JSArrayBuffer.makeInitialArrayBufferShape(context, arrayBufferConstructor.getPrototype(), false).createFactory();
         this.directArrayBufferFactory = JSArrayBuffer.makeInitialArrayBufferShape(context, arrayBufferConstructor.getPrototype(), true).createFactory();
 
-        this.typedArrayConstructors = new JSConstructor[TypedArray.FACTORIES.length];
-        this.typedArrayFactories = new DynamicObjectFactory[TypedArray.FACTORIES.length];
-        this.directTypedArrayFactories = new DynamicObjectFactory[TypedArray.FACTORIES.length];
+        this.typedArrayConstructors = new JSConstructor[TypedArray.factories().length];
+        this.typedArrayFactories = new DynamicObjectFactory[TypedArray.factories().length];
+        this.directTypedArrayFactories = new DynamicObjectFactory[TypedArray.factories().length];
         initializeTypedArrayConstructors();
         this.dataViewConstructor = JSDataView.createConstructor(this);
         this.dataViewFactory = JSDataView.makeInitialArrayBufferViewShape(context, dataViewConstructor.getPrototype()).createFactory();
@@ -428,7 +428,7 @@ public class JSRealm implements ShapeContext {
         typedArrayConstructor = taConst.getFunctionObject();
         typedArrayPrototype = taConst.getPrototype();
 
-        for (TypedArrayFactory factory : TypedArray.FACTORIES) {
+        for (TypedArrayFactory factory : TypedArray.factories()) {
             JSConstructor constructor = JSArrayBufferView.createConstructor(this, factory, taConst);
             typedArrayConstructors[factory.getFactoryIndex()] = constructor;
             directTypedArrayFactories[factory.getFactoryIndex()] = JSArrayBufferView.makeInitialArrayBufferViewShape(context, constructor.getPrototype(), true).createFactory();
@@ -915,7 +915,7 @@ public class JSRealm implements ShapeContext {
         }
 
         putGlobalProperty(global, JSArrayBuffer.CLASS_NAME, getArrayBufferConstructor().getFunctionObject());
-        for (TypedArrayFactory factory : TypedArray.FACTORIES) {
+        for (TypedArrayFactory factory : TypedArray.factories()) {
             putGlobalProperty(global, factory.getName(), getArrayBufferViewConstructor(factory).getFunctionObject());
         }
         putGlobalProperty(global, JSDataView.CLASS_NAME, getDataViewConstructor().getFunctionObject());
