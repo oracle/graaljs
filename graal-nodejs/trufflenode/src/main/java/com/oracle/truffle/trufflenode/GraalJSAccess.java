@@ -231,6 +231,9 @@ public final class GraalJSAccess {
     private final Deallocator deallocator;
     private ESModuleLoader moduleLoader;
 
+    /** Env that can be used for accessing instruments when no context is active anymore. */
+    private final TruffleLanguage.Env envForInstruments;
+
     /**
      * Direct {@code ByteBuffer} shared with the native code and used to pass additional data from
      * Java. Use it with care: reset the buffer before you use it, make sure that you read the same
@@ -278,6 +281,7 @@ public final class GraalJSAccess {
         GraalJSJavaInteropMainWorker worker = new GraalJSJavaInteropMainWorker(this, loopAddress);
         mainJSContext.initializeJavaInteropWorkers(worker, worker);
         deallocator = new Deallocator();
+        envForInstruments = mainJSRealm.getEnv();
 
         ensureErrorClassesInitialized();
     }
@@ -1905,7 +1909,7 @@ public final class GraalJSAccess {
     }
 
     public <T> T lookupInstrument(String instrumentId, Class<T> instrumentClass) {
-        TruffleLanguage.Env env = mainJSContext.getRealm().getEnv();
+        TruffleLanguage.Env env = envForInstruments;
         InstrumentInfo info = env.getInstruments().get(instrumentId);
         return env.lookup(info, instrumentClass);
     }
