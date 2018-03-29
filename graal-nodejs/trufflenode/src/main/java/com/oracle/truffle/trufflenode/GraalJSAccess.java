@@ -239,6 +239,14 @@ public final class GraalJSAccess {
         GraalJSJavaInteropMainWorker worker = new GraalJSJavaInteropMainWorker(this, loopAddress);
         mainJSContext.initializeJavaInteropWorkers(worker, worker);
         deallocator = new Deallocator();
+
+        ensureErrorClassesInitialized();
+    }
+
+    private static void ensureErrorClassesInitialized() {
+        if (JSTruffleOptions.SubstrateVM) {
+            return;
+        }
         // Ensure initialization of error-related classes (to avoid NoClassDefFoundError
         // during conversion of StackOverflowError to RangeError)
         TruffleStackTraceElement.getStackTrace(Errors.createRangeError(""));
