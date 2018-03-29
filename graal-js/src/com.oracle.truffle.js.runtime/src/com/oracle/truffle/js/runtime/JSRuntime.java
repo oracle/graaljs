@@ -2342,7 +2342,7 @@ public final class JSRuntime {
     public static Object getDataProperty(DynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         DynamicObject current = thisObj;
-        while (current != Null.instance && !isProxy(current)) {
+        while (current != Null.instance && current != null && !isProxy(current)) {
             PropertyDescriptor desc = JSObject.getOwnProperty(current, key);
             if (desc != null) {
                 if (desc.isDataDescriptor()) {
