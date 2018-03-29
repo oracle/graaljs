@@ -182,10 +182,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             super(null, null);
         }
 
-        protected final JSContext getContext() {
-            return getRealm().getContext();
-        }
-
         protected final JSRealm getRealm() {
             return contextRef.get();
         }
@@ -541,7 +537,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         return Truffle.getRuntime().createCallTarget(new ContextRootNode() {
             @Override
             public Object execute(VirtualFrame frame) {
-                contextHolder.set(getContext());
+                contextHolder.set(getRealm());
                 return Undefined.instance;
             }
         });

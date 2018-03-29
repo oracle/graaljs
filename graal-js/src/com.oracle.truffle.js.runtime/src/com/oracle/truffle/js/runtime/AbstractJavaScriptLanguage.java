@@ -59,7 +59,7 @@ public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm
     public static final String NAME = "JavaScript";
     public static final String ID = "js";
 
-    protected static final ThreadLocal<JSContext> contextHolder = new ThreadLocal<>();
+    protected static final ThreadLocal<JSRealm> contextHolder = new ThreadLocal<>();
     protected static final String GET_JSCONTEXT_NAME = "<get graal-js context>";
 
     public static Source sourceFromFileName(String fileName) throws IOException {
@@ -67,11 +67,15 @@ public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm
     }
 
     public static JSContext getJSContext(Context context) {
+        return getJSRealm(context).getContext();
+    }
+
+    public static JSRealm getJSRealm(Context context) {
         org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder("js", "", GET_JSCONTEXT_NAME).buildLiteral();
         context.eval(source);
-        JSContext jsContext = contextHolder.get();
+        JSRealm jsRealm = contextHolder.get();
         contextHolder.remove();
-        return jsContext;
+        return jsRealm;
     }
 
     final JSRealm getCurrentRealm() {

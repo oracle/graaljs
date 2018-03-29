@@ -272,7 +272,8 @@ public final class GraalJSAccess {
 
         exposeGC = options.isGCExposed();
         evaluator = contextBuilder.build();
-        mainJSContext = JavaScriptLanguage.getJSContext(evaluator);
+        JSRealm mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
+        mainJSContext = mainJSRealm.getContext();
         assert mainJSContext != null : "JSContext initialized";
         GraalJSJavaInteropMainWorker worker = new GraalJSJavaInteropMainWorker(this, loopAddress);
         mainJSContext.initializeJavaInteropWorkers(worker, worker);
