@@ -856,8 +856,26 @@ public final class GraalJSAccess {
         if (JSFunction.isJSFunction(object)) {
             return JSFunction.getRealm(dynamicObject);
         } else {
-            return JSObject.getJSContext(dynamicObject).getRealm();
+            return objectCreationContextFromConstructor(dynamicObject);
         }
+    }
+
+    private Object objectCreationContextFromConstructor(DynamicObject object) {
+        // V8 has a link to the constructor in the object's map which is used to get the context.
+        // We try to get the constructor via the object's prototype instead.
+        if (!JSProxy.isProxy(object)) {
+            DynamicObject prototype = JSObject.getPrototype(object);
+            if (prototype != Null.instance) {
+                Object constructor = JSRuntime.getDataProperty(prototype, JSObject.CONSTRUCTOR);
+                if (JSFunction.isJSFunction(constructor)) {
+                    return JSFunction.getRealm((DynamicObject) constructor);
+                }
+            }
+        } else if (JSRuntime.isCallableProxy(object)) {
+            // Callable Proxy: get the creation context from the target function.
+            return objectCreationContext(JSProxy.getTarget(object));
+        }
+        throw new IllegalArgumentException("Cannot get creation context for this object");
     }
 
     public Object arrayNew(Object context, int length) {
