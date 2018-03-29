@@ -25,9 +25,15 @@
 
 package com.oracle.truffle.trufflenode;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.nodes.Node;
 
+@MessageResolution(receiverType = RunnableInvoker.class)
 public final class RunnableInvoker implements TruffleObject {
 
     private final Runnable runnable;
@@ -46,6 +52,20 @@ public final class RunnableInvoker implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return RunnableInvokerMessageResolutionForeign.ACCESS;
+        return RunnableInvokerForeign.ACCESS;
+    }
+
+    @Resolve(message = "INVOKE")
+    abstract static class RunnableInvokeNode extends Node {
+
+        public Object access(RunnableInvoker invoker, String identifier, @SuppressWarnings("unused") Object[] arguments) {
+            if ("run".equals(identifier)) {
+                invoker.getRunnable().run();
+                return null;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw UnknownIdentifierException.raise(identifier);
+            }
+        }
     }
 }
