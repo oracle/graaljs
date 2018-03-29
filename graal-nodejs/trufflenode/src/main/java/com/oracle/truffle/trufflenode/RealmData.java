@@ -38,51 +38,64 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode.info;
+package com.oracle.truffle.trufflenode;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.runtime.JSRealm;
+import java.util.HashMap;
+import java.util.Map;
 
-public final class Script {
+import com.oracle.truffle.api.object.DynamicObject;
 
-    private final int id;
-    private final ScriptNode scriptNode;
-    private final Object parseResult;
-    private final JSRealm realm;
-    private final boolean graalInternal;
+/**
+ * Realm-specific embedder data.
+ */
+public final class RealmData {
+    private Object securityToken;
+    private final Map<Integer, Object> embedderData = new HashMap<>();
 
-    public Script(ScriptNode scriptNode, Object parseResult, JSRealm realm, int id) {
-        this.scriptNode = scriptNode;
-        this.parseResult = parseResult;
-        this.realm = realm;
-        this.id = id;
-        this.graalInternal = isGraalInternalScript(scriptNode.getRootNode().getSourceSection().getSource());
+    private DynamicObject nativeUtf8Write;
+    private DynamicObject nativeUtf8Slice;
+    private DynamicObject resolverFactory;
+
+    public RealmData() {
     }
 
-    public ScriptNode getScriptNode() {
-        return scriptNode;
+    public void setSecurityToken(Object securityToken) {
+        this.securityToken = securityToken;
     }
 
-    public Object getParseResult() {
-        return parseResult;
+    public Object getSecurityToken() {
+        return securityToken;
     }
 
-    public JSRealm getRealm() {
-        return realm;
+    public DynamicObject getNativeUtf8Write() {
+        return nativeUtf8Write;
     }
 
-    public int getId() {
-        return id;
+    public void setNativeUtf8Write(DynamicObject nativeUtf8Write) {
+        this.nativeUtf8Write = nativeUtf8Write;
     }
 
-    public boolean isGraalInternal() {
-        return graalInternal;
+    public DynamicObject getNativeUtf8Slice() {
+        return nativeUtf8Slice;
     }
 
-    private static boolean isGraalInternalScript(Source source) {
-        String name = source.getName();
-        return name.startsWith("graal/") || name.startsWith("internal/graal/");
+    public void setNativeUtf8Slice(DynamicObject nativeUtf8Slice) {
+        this.nativeUtf8Slice = nativeUtf8Slice;
     }
 
+    public void setEmbedderData(int index, Object value) {
+        embedderData.put(index, value);
+    }
+
+    public Object getEmbedderData(int index) {
+        return embedderData.get(index);
+    }
+
+    public void setResolverFactory(DynamicObject resolverFactory) {
+        this.resolverFactory = resolverFactory;
+    }
+
+    public DynamicObject getResolverFactory() {
+        return resolverFactory;
+    }
 }

@@ -45,7 +45,6 @@ import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
-import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -62,12 +61,14 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
 
     private static final int V8MaxStringLength = (1 << 28) - 16;
 
-    protected final DynamicObject nativeUtf8Slice;
     protected final BranchProfile nativePath = BranchProfile.create();
 
     public NIOBufferUTF8SliceNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
-        this.nativeUtf8Slice = Objects.requireNonNull(GraalJSAccess.getContextData(context).getNativeUtf8Slice());
+    }
+
+    private DynamicObject getNativeUtf8Slice() {
+        return GraalJSAccess.getRealmEmbedderData(getContext().getRealm()).getNativeUtf8Slice();
     }
 
     @Specialization(guards = {"accept(target)"})
@@ -90,7 +91,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
 
     @Specialization
     public Object sliceDefault(DynamicObject target, Object start, Object end) {
-        return JSFunction.call(nativeUtf8Slice, target, new Object[]{start, end});
+        return JSFunction.call(getNativeUtf8Slice(), target, new Object[]{start, end});
     }
 
     @SuppressWarnings("unused")
@@ -101,7 +102,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
 
     private Object doNativeFallback(DynamicObject target, Object start, Object end) {
         nativePath.enter();
-        return JSFunction.call(nativeUtf8Slice, target, new Object[]{start, end});
+        return JSFunction.call(getNativeUtf8Slice(), target, new Object[]{start, end});
     }
 
     private Object doSlice(DynamicObject target, int start, int end) throws CharacterCodingException {

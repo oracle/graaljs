@@ -295,6 +295,11 @@ public class JSRealm implements ShapeContext {
      */
     private boolean preparingStackTrace;
 
+    /**
+     * Slot for Realm-specific data of the embedder of the JS engine.
+     */
+    private Object embedderData;
+
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
         this.truffleLanguageEnv = env; // can be null
@@ -1481,5 +1486,13 @@ public class JSRealm implements ShapeContext {
 
     public boolean isChildRealm() {
         return getTruffleContext().getParent() != null;
+    }
+
+    public final Object getEmbedderData() {
+        return embedderData;
+    }
+
+    public final void setEmbedderData(Object embedderData) {
+        this.embedderData = embedderData;
     }
 }
