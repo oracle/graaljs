@@ -207,7 +207,6 @@ public class JSContext implements ShapeContext {
 
     private volatile List<JSRealm> realmList;
 
-    private final boolean isChildContext;
     final Assumption noChildRealmsAssumption;
 
     private boolean isRealmInitialized = false;
@@ -246,11 +245,10 @@ public class JSContext implements ShapeContext {
 
     private final JSContextOptions contextOptions;
 
-    public JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env, boolean isChildContext) {
+    protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
         this.functionLookup = lookup;
         this.contextOptions = contextOptions;
         this.contextOptions.setEnv(env); // env could still be null
-        this.isChildContext = isChildContext;
 
         this.language = lang;
 
@@ -406,7 +404,7 @@ public class JSContext implements ShapeContext {
     }
 
     public static JSContext createContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
-        return new JSContext(evaluator, lookup, contextOptions, lang, env, false);
+        return new JSContext(evaluator, lookup, contextOptions, lang, env);
     }
 
     public JSRealm createRealm(TruffleLanguage.Env env) {
@@ -544,8 +542,10 @@ public class JSContext implements ShapeContext {
      * Get the current Realm using {@link ContextReference}.
      */
     public JSRealm getRealm() {
-        if (isChildContext || (CompilerDirectives.inInterpreter() && !isRealmInitialized)) {
-            return realm; // childContext Realm cannot be shared among Engines (GR-8695)
+        if (CompilerDirectives.inInterpreter() && !isRealmInitialized) {
+            // Realm is being initialized, cannot use ContextReference yet
+            // TODO avoid calling getRealm() during initialization
+            return realm;
         }
         if (contextRef == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -556,7 +556,8 @@ public class JSContext implements ShapeContext {
             }
         }
         JSRealm currentRealm = contextRef.get();
-        return currentRealm != null ? currentRealm : realm;
+        assert currentRealm != null;
+        return currentRealm;
     }
 
     @Override
