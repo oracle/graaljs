@@ -1538,7 +1538,12 @@ public final class GraalJSAccess {
             if (scriptNode == null) {
                 GraalJSParserOptions options = ((GraalJSParserOptions) jsContext.getParserOptions());
                 NodeFactory factory = NodeFactory.getInstance(jsContext);
-                scriptNode = JavaScriptTranslator.translateFunction(factory, jsContext, null, source, options.isStrict(), (FunctionNode) parseResult);
+                Object prev = jsRealm.getTruffleContext().enter();
+                try {
+                    scriptNode = JavaScriptTranslator.translateFunction(factory, jsContext, null, source, options.isStrict(), (FunctionNode) parseResult);
+                } finally {
+                    jsRealm.getTruffleContext().leave(prev);
+                }
                 if (!"repl".equals(source.getName())) {
                     contextData.getScriptNodeCache().put(source, scriptNode);
                 }
