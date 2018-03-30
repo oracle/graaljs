@@ -1972,7 +1972,6 @@ public final class GraalJSAccess {
                 JSObject.setPrototype(global, prototype);
             }
         }
-        microtasks.put(context, null);
         return realm;
     }
 
@@ -2037,20 +2036,14 @@ public final class GraalJSAccess {
         return data.getEmbedderData(index);
     }
 
-    private final Map<JSContext, Void> microtasks = new WeakHashMap<>();
-
     public void isolateRunMicrotasks() {
         try {
             boolean seenJob;
             do {
                 seenJob = false;
-                for (JSContext context : microtasks.keySet().toArray(new JSContext[microtasks.size()])) {
-                    if (context != null) {
-                        if (context.processAllPendingPromiseJobs()) {
-                            // the queue processed at least one job. We continue processing.
-                            seenJob = true;
-                        }
-                    }
+                if (mainJSContext.processAllPendingPromiseJobs()) {
+                    // the queue processed at least one job. We continue processing.
+                    seenJob = true;
                 }
             } while (seenJob); // some job may trigger a job in a context processed already
         } catch (Exception ex) {
