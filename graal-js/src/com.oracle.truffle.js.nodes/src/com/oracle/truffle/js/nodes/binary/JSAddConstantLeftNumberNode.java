@@ -59,7 +59,7 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(BinaryExpressionTag.class)) {
             JSConstantNode constantNode = isInt ? JSConstantIntegerNode.create(leftInt) : JSConstantDoubleNode.create(leftDouble);
-            JavaScriptNode node = JSAddNodeGen.create(truncate, constantNode, getOperand());
+            JavaScriptNode node = JSAddNode.createUnoptimized(constantNode, getOperand(), truncate);
             transferSourceSectionNoTags(this, constantNode);
             transferSourceSection(this, node);
             return node;
