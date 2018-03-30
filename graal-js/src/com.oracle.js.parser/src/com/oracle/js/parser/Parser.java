@@ -4450,7 +4450,7 @@ loop:
                         // we'll rather just restart parsing from this well-known, friendly token instead.
                     }
                 }
-                bodyFinish = finish;
+                bodyFinish = Token.descPosition(token) + Token.descLength(token);
                 functionNode.setLastToken(token);
                 expect(RBRACE);
             }
