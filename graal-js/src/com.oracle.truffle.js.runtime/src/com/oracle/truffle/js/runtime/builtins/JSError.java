@@ -43,13 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.util.EnumSet;
 import java.util.Objects;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
@@ -61,7 +55,6 @@ import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -129,20 +122,7 @@ public final class JSError extends JSBuiltinObject {
             return value;
         }
 
-        @TruffleBoundary
         private JSRealm currentRealm(DynamicObject store) {
-            FrameInstance frameInstance = Truffle.getRuntime().getCurrentFrame();
-            if (frameInstance != null) {
-                CallTarget callTarget = frameInstance.getCallTarget();
-                if (callTarget instanceof RootCallTarget) {
-                    RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
-                    if (JSRuntime.isJSFunctionRootNode(rootNode)) {
-                        Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
-                        DynamicObject function = JSFrameUtil.getFunctionObject(frame);
-                        return JSFunction.getRealm(function);
-                    }
-                }
-            }
             return JSObject.getJSContext(store).getRealm();
         }
 
