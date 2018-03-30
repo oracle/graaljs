@@ -43,8 +43,6 @@ package com.oracle.truffle.js.runtime;
 import java.io.File;
 import java.io.IOException;
 
-import org.graalvm.polyglot.Context;
-
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 
@@ -59,26 +57,11 @@ public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm
     public static final String NAME = "JavaScript";
     public static final String ID = "js";
 
-    protected static final ThreadLocal<JSRealm> contextHolder = new ThreadLocal<>();
-    protected static final String GET_JSCONTEXT_NAME = "<get graal-js context>";
-
     public static Source sourceFromFileName(String fileName) throws IOException {
         return Source.newBuilder(new File(fileName)).name(fileName).mimeType(APPLICATION_MIME_TYPE).build();
     }
 
-    public static JSContext getJSContext(Context context) {
-        return getJSRealm(context).getContext();
-    }
-
-    public static JSRealm getJSRealm(Context context) {
-        org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder("js", "", GET_JSCONTEXT_NAME).buildLiteral();
-        context.eval(source);
-        JSRealm jsRealm = contextHolder.get();
-        contextHolder.remove();
-        return jsRealm;
-    }
-
-    final JSRealm getCurrentRealm() {
-        return getCurrentContext(this.getClass());
+    public static JSRealm findCurrentJSRealm() {
+        return getCurrentContext(AbstractJavaScriptLanguage.class);
     }
 }

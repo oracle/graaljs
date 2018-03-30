@@ -57,7 +57,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.EcmaAgent;
 import com.oracle.truffle.js.runtime.JSAgent;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Null;
 
@@ -94,7 +93,6 @@ public class DebugJSAgent extends JSAgent {
                         contextBuilder.option(optionDescriptor.getName(), String.valueOf(optionDescriptor.getKey().getValue(optionValues)));
                     }
                 }
-                Context polyglotContext = contextBuilder.build();
 
                 String init = "var $262 = { agent : {} };" +
                                 "$262.agent.receiveBroadcast = Test262.agentReceiveBroadcast;" +
@@ -103,16 +101,17 @@ public class DebugJSAgent extends JSAgent {
                                 "$262.agent.leaving = Test262.agentLeaving;" +
                                 "$262;";
 
-                polyglotContext.eval(AbstractJavaScriptLanguage.ID, init);
-                JSContext jsContext = AbstractJavaScriptLanguage.getJSContext(polyglotContext);
-                AgentExecutor executor = registerChildAgent(Thread.currentThread(), (DebugJSAgent) jsContext.getJSAgent());
-
-                polyglotContext.eval(AbstractJavaScriptLanguage.ID, source);
-
-                barrier.countDown();
-
+                Context polyglotContext = contextBuilder.build();
+                polyglotContext.enter();
                 try {
-                    polyglotContext.enter();
+                    polyglotContext.eval(AbstractJavaScriptLanguage.ID, init);
+                    DebugJSAgent debugJSAgent = (DebugJSAgent) AbstractJavaScriptLanguage.findCurrentJSRealm().getContext().getJSAgent();
+                    AgentExecutor executor = registerChildAgent(Thread.currentThread(), debugJSAgent);
+
+                    polyglotContext.eval(AbstractJavaScriptLanguage.ID, source);
+
+                    barrier.countDown();
+
                     while (true) {
                         try {
                             Thread.sleep(1000);
@@ -125,6 +124,7 @@ public class DebugJSAgent extends JSAgent {
                     }
                 } finally {
                     polyglotContext.leave();
+                    polyglotContext.close();
                 }
             }
         });
