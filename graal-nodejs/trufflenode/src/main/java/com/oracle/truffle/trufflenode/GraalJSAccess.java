@@ -135,7 +135,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -1436,16 +1435,19 @@ public final class GraalJSAccess {
             System.err.println("EXECUTING: " + source.getName());
         }
         JSRealm realm = boundScript.getRealm();
-        Object thisObj = realm.getGlobalObject();
-        DynamicObject functionObj = JSFunction.create(realm, scriptNode.getFunctionData(), JSFrameUtil.NULL_MATERIALIZED_FRAME);
-        Object result;
-        Object[] arguments = JSArguments.create(thisObj, functionObj);
-        if (boundScript.isGraalInternal()) {
-            result = scriptRunInternal(scriptNode, arguments);
-        } else {
-            result = scriptNode.run(arguments);
+        Object[] arguments = scriptNode.argumentsToRun(realm);
+        Object prev = realm.getTruffleContext().enter();
+        try {
+            Object result;
+            if (boundScript.isGraalInternal()) {
+                result = scriptRunInternal(scriptNode, arguments);
+            } else {
+                result = scriptNode.run(arguments);
+            }
+            return result;
+        } finally {
+            realm.getTruffleContext().leave(prev);
         }
-        return result;
     }
 
     private Object scriptRunInternal(ScriptNode scriptNode, Object[] arguments) {
