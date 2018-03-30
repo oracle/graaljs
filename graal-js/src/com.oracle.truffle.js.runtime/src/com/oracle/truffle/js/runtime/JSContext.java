@@ -206,11 +206,11 @@ public class JSContext implements ShapeContext {
 
     private volatile Map<Shape, JSShapeData> shapeDataMap;
 
-    private volatile List<JSRealm> realmList;
+    private List<JSRealm> realmList;
 
     final Assumption noChildRealmsAssumption;
 
-    private boolean isRealmInitialized = false;
+    private boolean isRealmInitialized;
 
     /**
      * According to ECMA2017 8.4 the queue of pending jobs (promises reactions) must be processed
@@ -299,6 +299,9 @@ public class JSContext implements ShapeContext {
 
         if (JSTruffleOptions.Test262Mode || JSTruffleOptions.TestV8Mode) {
             this.setJSAgent(new DebugJSAgent(env));
+        }
+        if (contextOptions.isV8RealmBuiltin()) {
+            this.realmList = new ArrayList<>();
         }
     }
 
@@ -418,14 +421,13 @@ public class JSContext implements ShapeContext {
         boolean isTop = env == null || env.getContext().getParent() == null;
         JSRealm newRealm = new JSRealm(this, env);
         newRealm.setupGlobals();
-        if (realmList == null) {
-            realmList = new ArrayList<>();
+        if (realmList != null) {
+            addToRealmList(newRealm);
         }
-        realmList.add(newRealm);
         if (isTop) {
             newRealm.initRealmBuiltinObject();
         }
-        newRealm.getContext().setRealmInitialized(true);
+        setRealmInitialized(true);
         return newRealm;
     }
 
@@ -1008,19 +1010,25 @@ public class JSContext implements ShapeContext {
         return result;
     }
 
-    @TruffleBoundary
+    private synchronized void addToRealmList(JSRealm newRealm) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert !realmList.contains(newRealm);
+        realmList.add(newRealm);
+    }
+
     public synchronized JSRealm getFromRealmList(int idx) {
+        CompilerAsserts.neverPartOfCompilation();
         return realmList.get(idx);
     }
 
-    @TruffleBoundary
-    public synchronized int getIndexFromRealmList(JSRealm realm2) {
-        return realmList.indexOf(realm2);
+    public synchronized int getIndexFromRealmList(JSRealm rlm) {
+        CompilerAsserts.neverPartOfCompilation();
+        return realmList.indexOf(rlm);
     }
 
-    @TruffleBoundary
-    public synchronized void setInRealmList(int idx, JSRealm realm2) {
-        realmList.set(idx, realm2);
+    public synchronized void removeFromRealmList(int idx) {
+        CompilerAsserts.neverPartOfCompilation();
+        realmList.set(idx, null);
     }
 
     public JSAgent getJSAgent() {

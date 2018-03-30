@@ -1397,10 +1397,8 @@ public class JSRealm implements ShapeContext {
     }
 
     public void initRealmBuiltinObject() {
-        if (context.isOptionV8CompatibilityMode()) {
+        if (context.getContextOptions().isV8RealmBuiltin()) {
             setRealmBuiltinObject(createRealmBuiltinObject());
-        } else {
-            this.realmBuiltinObject = null;
         }
     }
 

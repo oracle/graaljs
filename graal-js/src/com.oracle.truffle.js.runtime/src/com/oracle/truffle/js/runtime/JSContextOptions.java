@@ -96,6 +96,11 @@ public final class JSContextOptions {
     private static final OptionKey<Boolean> V8_COMPATIBILITY_MODE = new OptionKey<>(false);
     @CompilationFinal private boolean v8CompatibilityMode;
 
+    public static final String V8_REALM_BUILTIN_NAME = JS_OPTION_PREFIX + "v8-realm-builtin";
+    private static final String V8_REALM_BUILTIN_HELP = "Provide Realm builtin compatible with V8's d8 shell.";
+    private static final OptionKey<Boolean> V8_REALM_BUILTIN = new OptionKey<>(false);
+    @CompilationFinal private boolean v8RealmBuiltin;
+
     public static final String DEBUG_BUILTIN_NAME = JS_OPTION_PREFIX + "debug-builtin";
     private static final String DEBUG_BUILTIN_HELP = "provide a non-API Debug builtin. Behaviour will likely change. Don't depend on this in production code.";
     private static final OptionKey<Boolean> DEBUG_BUILTIN = new OptionKey<>(false);
@@ -128,6 +133,7 @@ public final class JSContextOptions {
                     SHARED_ARRAY_BUFFER,
                     ATOMICS,
                     V8_COMPATIBILITY_MODE,
+                    V8_REALM_BUILTIN,
                     DEBUG_BUILTIN,
                     PARSE_ONLY,
                     TIME_ZONE,
@@ -165,6 +171,7 @@ public final class JSContextOptions {
         this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER, SHARED_ARRAY_BUFFER_NAME);
         this.atomics = readBooleanOption(ATOMICS, ATOMICS_NAME);
         this.v8CompatibilityMode = readBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME);
+        this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME);
         this.directByteBuffer = readBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME);
         this.parseOnly = readBooleanOption(PARSE_ONLY, PARSE_ONLY_NAME);
         this.debug = readBooleanOption(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME);
@@ -208,7 +215,8 @@ public final class JSContextOptions {
         options.add(OptionDescriptor.newBuilder(SHARED_ARRAY_BUFFER, SHARED_ARRAY_BUFFER_NAME).category(OptionCategory.USER).help(SHARED_ARRAY_BUFFER_HELP).build());
         options.add(OptionDescriptor.newBuilder(ATOMICS, ATOMICS_NAME).category(OptionCategory.USER).help(ATOMICS_HELP).build());
         options.add(OptionDescriptor.newBuilder(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME).category(OptionCategory.USER).help(V8_COMPATIBILITY_MODE_HELP).build());
-        options.add(OptionDescriptor.newBuilder(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME).category(OptionCategory.USER).help(DEBUG_BUILTIN_HELP).build());
+        options.add(OptionDescriptor.newBuilder(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME).category(OptionCategory.DEBUG).help(V8_REALM_BUILTIN_HELP).build());
+        options.add(OptionDescriptor.newBuilder(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME).category(OptionCategory.DEBUG).help(DEBUG_BUILTIN_HELP).build());
         options.add(OptionDescriptor.newBuilder(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME).category(OptionCategory.USER).help(DIRECT_BYTE_BUFFER_HELP).build());
         options.add(OptionDescriptor.newBuilder(PARSE_ONLY, PARSE_ONLY_NAME).category(OptionCategory.USER).help(PARSE_ONLY_HELP).build());
         options.add(OptionDescriptor.newBuilder(TIME_ZONE, TIME_ZONE_NAME).category(OptionCategory.USER).help(TIME_ZONE_HELP).build());
@@ -278,5 +286,9 @@ public final class JSContextOptions {
 
     public boolean isPreciseTime() {
         return preciseTime;
+    }
+
+    public boolean isV8RealmBuiltin() {
+        return v8RealmBuiltin;
     }
 }
