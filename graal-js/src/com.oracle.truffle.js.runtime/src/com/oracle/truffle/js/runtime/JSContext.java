@@ -56,6 +56,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.Assumption;
@@ -248,6 +249,8 @@ public class JSContext implements ShapeContext {
     @CompilationFinal private boolean shouldProcessJavaInteropAsyncTasks = true;
 
     private final JSContextOptions contextOptions;
+
+    private final Map<Source, Object> codeCache = new ConcurrentHashMap<>();
 
     protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
         this.functionLookup = lookup;
@@ -1399,5 +1402,9 @@ public class JSContext implements ShapeContext {
 
     JSContextOptions getContextOptions() {
         return contextOptions;
+    }
+
+    public Map<Source, Object> getCodeCache() {
+        return codeCache;
     }
 }

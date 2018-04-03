@@ -191,6 +191,10 @@ public final class GraalJSParserOptions implements ParserOptions {
         return opts;
     }
 
+    public static GraalJSParserOptions fromOptions(OptionValues optionValues) {
+        return new GraalJSParserOptions().putOptions(optionValues);
+    }
+
     public GraalJSParserOptions putStrict(boolean strict) {
         if (strict != this.strict) {
             return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
@@ -246,5 +250,55 @@ public final class GraalJSParserOptions implements ParserOptions {
             return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
         }
         return this;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + (annexB ? 1231 : 1237);
+        result = prime * result + (constAsVar ? 1231 : 1237);
+        result = prime * result + (dumpOnError ? 1231 : 1237);
+        result = prime * result + ecmaScriptVersion;
+        result = prime * result + (emptyStatements ? 1231 : 1237);
+        result = prime * result + (functionStatementError ? 1231 : 1237);
+        result = prime * result + (scripting ? 1231 : 1237);
+        result = prime * result + (shebang ? 1231 : 1237);
+        result = prime * result + (strict ? 1231 : 1237);
+        result = prime * result + (syntaxExtensions ? 1231 : 1237);
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof GraalJSParserOptions)) {
+            return false;
+        }
+        GraalJSParserOptions other = (GraalJSParserOptions) obj;
+        if (annexB != other.annexB) {
+            return false;
+        } else if (constAsVar != other.constAsVar) {
+            return false;
+        } else if (dumpOnError != other.dumpOnError) {
+            return false;
+        } else if (ecmaScriptVersion != other.ecmaScriptVersion) {
+            return false;
+        } else if (emptyStatements != other.emptyStatements) {
+            return false;
+        } else if (functionStatementError != other.functionStatementError) {
+            return false;
+        } else if (scripting != other.scripting) {
+            return false;
+        } else if (shebang != other.shebang) {
+            return false;
+        } else if (strict != other.strict) {
+            return false;
+        } else if (syntaxExtensions != other.syntaxExtensions) {
+            return false;
+        }
+        return true;
     }
 }

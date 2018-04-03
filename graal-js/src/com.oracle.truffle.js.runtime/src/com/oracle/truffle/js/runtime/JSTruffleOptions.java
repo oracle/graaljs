@@ -232,13 +232,16 @@ public class JSTruffleOptions {
     /** ECMA Promises are automatically resolved or rejected when crossing an interop boundary. */
     public static final boolean InteropCompletePromises = booleanOption("InteropCompletePromises", false, OPTION_SETUP);
 
+    /** Enables thread-safe context and code reuse via a pool of disposed JSContexts. */
+    public static final boolean ContextPool = booleanOption("ContextPool", false, OPTION_SETUP);
+
     static {
-        checkRestParams();
+        checkUnknownOptions();
     }
 
     // -------------------------------------------------------------------------------------------------------------------//
 
-    private static Object checkRestParams() {
+    private static Object checkUnknownOptions() {
         boolean unknownOptions = false;
         if (graaljsOptions.size() > 0) {
             for (String key : graaljsOptions.keySet()) {

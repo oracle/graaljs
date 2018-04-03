@@ -43,7 +43,10 @@ package com.oracle.truffle.js.parser;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -57,6 +60,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.Frame;
@@ -115,6 +119,7 @@ import com.oracle.truffle.js.runtime.JSInteropRuntime;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.ParserOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -159,7 +164,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private static final HiddenKey META_OBJECT_KEY = new HiddenKey("meta object");
 
-    private JSContext languageContext;
+    private final Map<ParserOptions, Queue<JSContext>> contextPools = new ConcurrentHashMap<>();
 
     public static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
@@ -247,10 +252,15 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
                 @TruffleBoundary
                 private ScriptNode parse(JSContext context) {
+                    Object cached = context.getCodeCache().get(source);
+                    if (cached != null) {
+                        return (ScriptNode) cached;
+                    }
                     ScriptNode program = parseInContext(source, context);
                     if (context.isOptionParseOnly()) {
                         return createEmptyScript(context);
                     }
+                    context.getCodeCache().putIfAbsent(source, program);
                     return program;
                 }
 
@@ -449,29 +459,47 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected JSRealm createContext(Env env) {
-        if (languageContext == null) {
-            JSContext context = JSEngine.createJSContext(this, env);
-
-            /*
-             * Ensure that we use the output stream provided by env, but avoid creating a new
-             * PrintWriter when the existing PrintWriter already uses the same stream.
-             */
-            if (env.out() != context.getWriterStream()) {
-                context.setWriter(null, env.out());
+        JSContext languageContext = null;
+        TruffleContext parent = env.getContext().getParent();
+        if (parent == null) {
+            if (JSTruffleOptions.ContextPool && !contextPools.isEmpty()) {
+                languageContext = pollContextPool(GraalJSParserOptions.fromOptions(env.getOptions()));
             }
-            if (env.err() != context.getErrorWriterStream()) {
-                context.setErrorWriter(null, env.err());
+            if (languageContext == null) {
+                languageContext = newJSContext(env);
             }
-
-            if (JSContextOptions.TIME_ZONE.hasBeenSet(env.getOptions())) {
-                context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(env.getOptions())).toZoneId());
+        } else {
+            Object prev = parent.enter();
+            try {
+                languageContext = getCurrentContext(JavaScriptLanguage.class).getContext();
+            } finally {
+                parent.leave(prev);
             }
-
-            context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionMRForeign.ACCESS));
-            languageContext = context;
         }
         JSRealm realm = languageContext.createRealm(env);
         return realm;
+    }
+
+    private JSContext newJSContext(Env env) {
+        JSContext context = JSEngine.createJSContext(this, env);
+
+        /*
+         * Ensure that we use the output stream provided by env, but avoid creating a new
+         * PrintWriter when the existing PrintWriter already uses the same stream.
+         */
+        if (env.out() != context.getWriterStream()) {
+            context.setWriter(null, env.out());
+        }
+        if (env.err() != context.getErrorWriterStream()) {
+            context.setErrorWriter(null, env.err());
+        }
+
+        if (JSContextOptions.TIME_ZONE.hasBeenSet(env.getOptions())) {
+            context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(env.getOptions())).toZoneId());
+        }
+
+        context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionMRForeign.ACCESS));
+        return context;
     }
 
     @Override
@@ -511,6 +539,25 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             realm.addScriptingOptionsObject();
         }
         return true;
+    }
+
+    @Override
+    protected void disposeContext(JSRealm realm) {
+        if (JSTruffleOptions.ContextPool && !realm.isChildRealm()) {
+            JSContext context = realm.getContext();
+            Queue<JSContext> contextPool = getContextPool(context.getParserOptions());
+            assert !contextPool.contains(context);
+            contextPool.offer(context);
+        }
+    }
+
+    private Queue<JSContext> getContextPool(ParserOptions configKey) {
+        return contextPools.computeIfAbsent(configKey, k -> new ConcurrentLinkedQueue<>());
+    }
+
+    private JSContext pollContextPool(ParserOptions configKey) {
+        Queue<JSContext> contextPool = contextPools.get(configKey);
+        return contextPool == null ? null : contextPool.poll();
     }
 
     @Override
