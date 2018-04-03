@@ -74,6 +74,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.LocationModifier;
@@ -209,8 +210,9 @@ public class JSContext implements ShapeContext {
     private List<JSRealm> realmList;
 
     final Assumption noChildRealmsAssumption;
+    final Assumption singleRealmAssumption;
 
-    private boolean isRealmInitialized;
+    private volatile boolean isRealmInitialized;
 
     /**
      * According to ECMA2017 8.4 the queue of pending jobs (promises reactions) must be processed
@@ -295,6 +297,7 @@ public class JSContext implements ShapeContext {
 
         this.dictionaryShapeNullPrototype = JSTruffleOptions.DictionaryObject ? JSDictionaryObject.makeDictionaryShape(this, null) : null;
 
+        this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
         this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
 
         if (JSTruffleOptions.Test262Mode || JSTruffleOptions.TestV8Mode) {
@@ -419,6 +422,9 @@ public class JSContext implements ShapeContext {
 
     public JSRealm createRealm(TruffleLanguage.Env env) {
         boolean isTop = env == null || env.getContext().getParent() == null;
+        if (isRealmInitialized) {
+            singleRealmAssumption.invalidate();
+        }
         JSRealm newRealm = new JSRealm(this, env);
         newRealm.setupGlobals();
         if (realmList != null) {
@@ -1371,6 +1377,14 @@ public class JSContext implements ShapeContext {
 
     public final boolean neverCreatedChildRealms() {
         return noChildRealmsAssumption.isValid();
+    }
+
+    public final boolean isSingleRealm() {
+        return singleRealmAssumption.isValid();
+    }
+
+    public final void assumeSingleRealm() throws InvalidAssumptionException {
+        singleRealmAssumption.check();
     }
 
     void setRealmInitialized(boolean initialized) {
