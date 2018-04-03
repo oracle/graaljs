@@ -5,6 +5,7 @@
 
 var assert = require('assert');
 var util = require('util');
+var vm = require('vm');
 
 describe('Other', function () {
     it('should be possible to redefine process.env.FOO', function () {
@@ -30,4 +31,12 @@ describe('Other', function () {
             }
         });
     }
+    it('should not regress in ExecuteNativeFunctionNode', function () {
+        // inspired by a wrong rewrite of ExecuteNativeFunctionNode
+        var script = new vm.Script('');
+        script.runInThisContext(); // fine
+        assert.throws(function() {
+            Object.create(script).runInThisContext();
+        }, TypeError, "Illegal invocation");
+    });
 });

@@ -55,7 +55,6 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     @Children private final FlattenNode[] flattenNodes;
     @Child private GetPrototypeNode getPrototypeNode;
     @Child private PropertyGetNode prototypePropertyGetNode;
-    @Child private PropertyGetNode functionTemplateGetConstructorNode;
 
     ExecuteNativeFunctionNode(GraalJSAccess graalAccess, JSContext context, FunctionTemplate template, boolean isNew, boolean isNewTarget) {
         super(createSourceSection());
@@ -100,7 +99,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
             }
             thisObject.define(FunctionTemplate.CONSTRUCTOR, functionTemplate);
         } else if (signature != null) {
-            Object constructorTemplate = functionTemplateGetConstructor(thisObject);
+            Object constructorTemplate = thisObject.get(FunctionTemplate.CONSTRUCTOR);
             if (constructorTemplate == null) {
                 errorBranch.enter();
                 illegalInvocation();
@@ -168,14 +167,6 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
             result = executeFunction(arguments);
         }
         return graalAccess.correctReturnValue(result);
-    }
-
-    private Object functionTemplateGetConstructor(Object obj) {
-        if (functionTemplateGetConstructorNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            functionTemplateGetConstructorNode = insert(PropertyGetNode.create(FunctionTemplate.CONSTRUCTOR, false, context));
-        }
-        return functionTemplateGetConstructorNode.getValue(obj);
     }
 
     private static void illegalInvocation() {
