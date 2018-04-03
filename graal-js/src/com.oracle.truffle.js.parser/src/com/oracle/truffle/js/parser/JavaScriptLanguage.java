@@ -490,7 +490,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             languageContext = context;
         }
         JSRealm realm = languageContext.createRealm(env);
-        realm.activateAllocationReporter();
         return realm;
     }
 

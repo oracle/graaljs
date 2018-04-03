@@ -69,6 +69,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -226,6 +227,7 @@ public class JSContext implements ShapeContext {
     @CompilationFinal private JSRealm realm;
 
     @CompilationFinal private ContextReference<JSRealm> contextRef;
+    @CompilationFinal private AllocationReporter allocationReporter;
 
     /**
      * ECMA2017 8.7 Agent object.
@@ -248,7 +250,11 @@ public class JSContext implements ShapeContext {
     protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
         this.functionLookup = lookup;
         this.contextOptions = contextOptions;
-        this.contextOptions.setEnv(env); // env could still be null
+
+        if (env != null) { // env could still be null
+            this.contextOptions.setEnv(env);
+            setAllocationReporter(env);
+        }
 
         this.language = lang;
 
@@ -1049,18 +1055,37 @@ public class JSContext implements ShapeContext {
         return version;
     }
 
-    public DynamicObject allocateObject(Shape shape) {
-        if (CompilerDirectives.inInterpreter() && !isRealmInitialized) {
-            return shape.newInstance();
-        }
-        return getRealm().allocateObject(shape);
+    void setAllocationReporter(TruffleLanguage.Env env) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.allocationReporter = env.lookup(AllocationReporter.class);
     }
 
-    public DynamicObject allocateObject(DynamicObjectFactory factory, Object... initialValues) {
-        if (CompilerDirectives.inInterpreter() && !isRealmInitialized) {
-            return factory.newInstance(initialValues);
+    private AllocationReporter getAllocationReporter() {
+        return allocationReporter;
+    }
+
+    public final DynamicObject allocateObject(Shape shape) {
+        AllocationReporter reporter = getAllocationReporter();
+        if (reporter != null) {
+            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
         }
-        return getRealm().allocateObject(factory, initialValues);
+        DynamicObject object = shape.newInstance();
+        if (reporter != null) {
+            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        return object;
+    }
+
+    public final DynamicObject allocateObject(DynamicObjectFactory factory, Object... initialValues) {
+        AllocationReporter reporter = getAllocationReporter();
+        if (reporter != null) {
+            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        DynamicObject object = factory.newInstance(initialValues);
+        if (reporter != null) {
+            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        return object;
     }
 
     public boolean isOptionAnnexB() {

@@ -55,7 +55,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.Shape;
@@ -284,7 +283,6 @@ public class JSRealm implements ShapeContext {
     private final MaterializedFrame globalScope;
 
     private TruffleLanguage.Env truffleLanguageEnv;
-    @CompilationFinal private AllocationReporter allocationReporter;
 
     /**
      * Built-in runtime support for ECMA2017's async.
@@ -1433,40 +1431,8 @@ public class JSRealm implements ShapeContext {
         CompilerAsserts.neverPartOfCompilation();
         Objects.requireNonNull(env, "New env cannot be null.");
         truffleLanguageEnv = env;
-        activateAllocationReporter();
+        context.setAllocationReporter(env);
         context.getContextOptions().setEnv(env);
-    }
-
-    public void activateAllocationReporter() {
-        this.allocationReporter = truffleLanguageEnv.lookup(AllocationReporter.class);
-    }
-
-    AllocationReporter getAllocationReporter() {
-        return allocationReporter;
-    }
-
-    public final DynamicObject allocateObject(Shape shape) {
-        AllocationReporter reporter = getAllocationReporter();
-        if (reporter != null) {
-            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        DynamicObject object = shape.newInstance();
-        if (reporter != null) {
-            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        return object;
-    }
-
-    public final DynamicObject allocateObject(DynamicObjectFactory factory, Object... initialValues) {
-        AllocationReporter reporter = getAllocationReporter();
-        if (reporter != null) {
-            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        DynamicObject object = factory.newInstance(initialValues);
-        if (reporter != null) {
-            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        return object;
     }
 
     public void setPerformPromiseThen(DynamicObject promiseThen) {

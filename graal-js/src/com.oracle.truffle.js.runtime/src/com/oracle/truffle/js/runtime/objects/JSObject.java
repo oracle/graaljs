@@ -116,14 +116,6 @@ public final class JSObject {
         return context.allocateObject(factory, initialValues);
     }
 
-    public static DynamicObject create(JSRealm realm, Shape shape) {
-        return realm.allocateObject(shape);
-    }
-
-    public static DynamicObject create(JSRealm realm, DynamicObjectFactory factory, Object... initialValues) {
-        return realm.allocateObject(factory, initialValues);
-    }
-
     @TruffleBoundary
     public static DynamicObject create(JSRealm realm, DynamicObject prototype, JSClass builtinObject) {
         // slow; only use for initialization
