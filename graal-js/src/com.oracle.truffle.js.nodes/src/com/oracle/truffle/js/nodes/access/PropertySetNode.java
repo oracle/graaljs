@@ -1052,7 +1052,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
 
         @Override
         protected boolean isPropertyAssumptionCheckEnabled() {
-            return propertyAssumptionCheckEnabled;
+            return propertyAssumptionCheckEnabled && context.isSingleRealm();
         }
 
         @Override

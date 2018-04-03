@@ -336,4 +336,9 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
         String resultStr = s.substring((int) index, (int) index + 1);
         return PropertyDescriptor.createData(resultStr, true, false, false);
     }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getStringConstructor().getPrototype();
+    }
 }

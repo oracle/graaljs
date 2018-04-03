@@ -319,12 +319,17 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
 
         @Override
         protected boolean isPropertyAssumptionCheckEnabled() {
-            return propertyAssumptionCheckEnabled;
+            return propertyAssumptionCheckEnabled && context.isSingleRealm();
         }
 
         @Override
         protected void setPropertyAssumptionCheckEnabled(boolean value) {
             this.propertyAssumptionCheckEnabled = value;
+        }
+
+        @Override
+        public JSContext getContext() {
+            return context;
         }
 
         @Override
