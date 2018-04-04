@@ -20,22 +20,6 @@
     "status" : "SKIP",
     "comment" : "Unimplemented RegExp proposal (GR-6963)."
   }, {
-    "filePath" : "annexB/built-ins/String/prototype/trimLeft/name.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "annexB/built-ins/String/prototype/trimLeft/reference-trimStart.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "annexB/built-ins/String/prototype/trimRight/name.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "annexB/built-ins/String/prototype/trimRight/reference-trimEnd.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "annexB/language/comments/multi-line-html-close.js",
     "status" : "FAIL"
   }, {
