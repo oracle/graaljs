@@ -140,9 +140,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         // TBD
         trimStart(0),
-        trimEnd(0),
-        trimLeft(0),
-        trimRight(0);
+        trimEnd(0);
 
         private final int length;
 
@@ -157,7 +155,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Override
         public boolean isAnnexB() {
-            return EnumSet.of(substr, trimLeft, trimRight).contains(this);
+            return substr == this;
         }
 
         @Override
@@ -172,7 +170,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Override
         public boolean isEnabled() {
-            if (EnumSet.of(trimStart, trimEnd, trimLeft, trimRight).contains(this)) {
+            if (EnumSet.of(trimStart, trimEnd).contains(this)) {
                 return (JSTruffleOptions.Stage1 || JSTruffleOptions.NashornExtensions);
             }
             return true;
@@ -263,10 +261,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSStringNormalizeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
 
             case trimStart:
-            case trimLeft:
                 return JSStringTrimLeftNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case trimEnd:
-            case trimRight:
                 return JSStringTrimRightNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case padStart:
                 return JSStringPadNodeGen.create(context, builtin, true, args().withThis().varArgs().createArgumentNodes(context));

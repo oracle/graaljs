@@ -187,6 +187,13 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
         // sets the length just for the prototype
         JSObjectUtil.putDataProperty(ctx, prototype, LENGTH, 0, JSAttributes.notConfigurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
+        if (ctx.isOptionAnnexB()) {
+            // trimLeft/trimRight are the same objects as trimStart/trimEnd
+            Object trimStart = JSObject.get(prototype, "trimStart");
+            Object trimEnd = JSObject.get(prototype, "trimEnd");
+            JSObjectUtil.putDataProperty(ctx, prototype, "trimLeft", trimStart, JSAttributes.configurableNotEnumerableWritable());
+            JSObjectUtil.putDataProperty(ctx, prototype, "trimRight", trimEnd, JSAttributes.configurableNotEnumerableWritable());
+        }
         return prototype;
     }
 
