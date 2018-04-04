@@ -19,10 +19,14 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GlobalConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantDoubleNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
+import com.oracle.truffle.js.nodes.binary.JSAddNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode.InvokeNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -60,6 +64,23 @@ public class MaterializedNodes {
         assertTrue(m.hasTag(StatementTag.class));
         assertTrue(!((InstrumentableNode) m.getTarget()).hasTag(StatementTag.class));
         assertTrue(m.hasSourceSection());
+    }
+
+    @Test
+    public void desugaredAddNode() {
+        JavaScriptNode int42 = JSConstantIntegerNode.create(42);
+        JavaScriptNode double42 = JSConstantDoubleNode.create(42.42);
+        // This will create an optimized JSAddConstantRightNumberNodeGen
+        JavaScriptNode optimized = JSAddNode.create(double42, int42);
+        optimized.setSourceSection(Source.newBuilder("").name("").mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build().createUnavailableSection());
+        Set<Class<? extends Tag>> s = new HashSet<>();
+        s.add(BinaryExpressionTag.class);
+        optimized.addStatementTag();
+        // materialization should return a node of the same class
+        JavaScriptNode desugared = (JavaScriptNode) optimized.materializeInstrumentableNodes(s);
+        // otherwise cloning will crash
+        JavaScriptNode cloned = JavaScriptNode.cloneUninitialized(desugared);
+        assertTrue(cloned.getClass() == desugared.getClass());
     }
 
 }

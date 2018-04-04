@@ -68,6 +68,10 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         return create(left, right, false);
     }
 
+    public static JavaScriptNode createUnoptimized(JavaScriptNode left, JavaScriptNode right, boolean truncate) {
+        return JSAddNodeGen.create(truncate, left, right);
+    }
+
     public abstract Object execute(Object a, Object b);
 
     @Specialization(guards = "truncate")
@@ -217,6 +221,6 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSAddNodeGen.create(cloneUninitialized(getLeft()), cloneUninitialized(getRight()), truncate);
+        return JSAddNodeGen.createUnoptimized(cloneUninitialized(getLeft()), cloneUninitialized(getRight()), truncate);
     }
 }
