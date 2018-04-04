@@ -124,10 +124,6 @@
     "status" : "SKIP",
     "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
-    "filePath" : "built-ins/Array/prototype/sort/comparefn-nonfunction-call-throws.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/next/iterator-result-poisoned-done.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"

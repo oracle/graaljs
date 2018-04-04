@@ -2028,6 +2028,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected DynamicObject sortArray(final DynamicObject thisObj, final Object compare, //
                         @Cached("create(getContext())") JSToObjectArrayNode arrayToObjectArrayNode,
                         @Cached("createClassProfile()") ValueProfile classProfile) {
+            checkCompareFunction(compare);
             Object[] array;
             ScriptArray scriptArray = classProfile.profile(arrayGetArrayType(thisObj));
             long len = getLength(thisObj);
@@ -2070,6 +2071,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected DynamicObject sort(Object thisObj, final Object comparefn,
                         @Cached("create()") BranchProfile notAJSObjectBranch) {
+            checkCompareFunction(comparefn);
             DynamicObject thisJSObj = JSRuntime.expectJSObject(toObject(thisObj), notAJSObjectBranch);
             if (JSObject.isFrozen(thisJSObj)) {
                 errorBranch.enter();
@@ -2089,17 +2091,21 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return thisJSObj;
         }
 
+        private void checkCompareFunction(Object compare) {
+            if (!(JSRuntime.isCallable(compare) || JSRuntime.isForeignObject(compare) || getContext().isOptionV8CompatibilityMode() || compare == Undefined.instance)) {
+                errorBranch.enter();
+                throw Errors.createTypeError("illegal compare function");
+            }
+        }
+
         private Comparator<Object> getComparator(final DynamicObject thisObj, final Object compare) {
             if (JSRuntime.isCallable(compare) || JSRuntime.isForeignObject(compare)) {
                 hasCompareFnBranch.enter();
                 DynamicObject arrayBufferObj = isTypedArrayImplementation && JSArrayBufferView.isJSArrayBufferView(thisObj) ? JSArrayBufferView.getArrayBuffer(thisObj) : null;
                 return new SortComparator(compare, arrayBufferObj);
-            } else if (getContext().isOptionV8CompatibilityMode() || compare == Undefined.instance) {
+            } else {
                 noCompareFnBranch.enter();
                 return getDefaultComparator(thisObj);
-            } else {
-                errorBranch.enter();
-                throw Errors.createTypeError("illegal compare function");
             }
         }
 
