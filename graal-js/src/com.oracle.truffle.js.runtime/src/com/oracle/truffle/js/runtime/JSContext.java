@@ -112,7 +112,7 @@ public class JSContext implements ShapeContext {
     private final Evaluator evaluator;
     private final JSFunctionLookup functionLookup;
 
-    private AbstractJavaScriptLanguage language;
+    private final AbstractJavaScriptLanguage language;
 
     private final Shape emptyShape;
     private final Shape emptyShapePrototypeInObject;
@@ -226,7 +226,7 @@ public class JSContext implements ShapeContext {
      */
     @CompilationFinal private JSRealm realm;
 
-    @CompilationFinal private ContextReference<JSRealm> contextRef;
+    private final ContextReference<JSRealm> contextRef;
     @CompilationFinal private AllocationReporter allocationReporter;
 
     /**
@@ -257,6 +257,7 @@ public class JSContext implements ShapeContext {
         }
 
         this.language = lang;
+        this.contextRef = lang == null ? null : lang.getContextReference();
 
         this.emptyShape = createEmptyShape();
         this.emptyShapePrototypeInObject = createEmptyShapePrototypeInObject();
@@ -554,12 +555,7 @@ public class JSContext implements ShapeContext {
             return realm;
         }
         if (contextRef == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (getLanguage() != null) {  // could be uninitialized
-                contextRef = getLanguage().getContextReference();
-            } else {
-                return realm;
-            }
+            return realm;
         }
         JSRealm currentRealm = contextRef.get();
         assert currentRealm != null;
@@ -879,14 +875,6 @@ public class JSContext implements ShapeContext {
 
     public AbstractJavaScriptLanguage getLanguage() {
         return language;
-    }
-
-    public void setLanguage(AbstractJavaScriptLanguage language) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (this.language != null) {
-            throw new IllegalStateException("language can only be set once");
-        }
-        this.language = language;
     }
 
     public CallTarget getEmptyFunctionCallTarget() {
