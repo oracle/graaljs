@@ -512,7 +512,13 @@ public class JSContext implements ShapeContext {
         while (promiseJobsQueue.size() > 0) {
             DynamicObject nextJob = promiseJobsQueue.pollLast();
             if (JSFunction.isJSFunction(nextJob)) {
-                JSFunction.call(nextJob, thisArg, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                JSRealm functionRealm = JSFunction.getRealm(nextJob);
+                Object prev = functionRealm.getTruffleContext().enter();
+                try {
+                    JSFunction.call(nextJob, thisArg, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                } finally {
+                    functionRealm.getTruffleContext().leave(prev);
+                }
                 queueContainsJobs = true;
             }
         }
