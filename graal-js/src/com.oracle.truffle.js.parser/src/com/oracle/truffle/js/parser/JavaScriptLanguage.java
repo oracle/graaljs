@@ -53,9 +53,6 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
@@ -234,41 +231,17 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
         final Source source = request.getSource();
         final MaterializedFrame requestFrame = request.getFrame();
+        final JSContext context = getContextReference().get().getContext();
         final ExecutableNode executableNode = new ExecutableNode(this) {
-            private final ContextReference<JSRealm> contextRef = getContextReference();
-            @CompilationFinal private volatile JSContext cachedContext;
-            @Child private JavaScriptNode expression;
+            @Child private JavaScriptNode expression = insert(parseInline(source, context, requestFrame));
             @Child private ExportValueNode exportValueNode = ExportValueNode.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
-                JSContext context = contextRef.get().getContext();
-                JSContext cachedCtx = cachedContext;
-                if (cachedCtx == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    parseAndCache(context);
-                    cachedCtx = context;
-                }
-                assert context != null;
-                Object result;
-                if (context == cachedCtx) {
-                    result = expression.execute(frame);
-                } else {
-                    result = parseAndEval(context, frame.materialize());
-                }
+                JSContext currentContext = getContextReference().get().getContext();
+                assert currentContext == context : "unexpected JSContext";
+                Object result = expression.execute(frame);
                 return exportValueNode.executeWithTarget(result, Undefined.instance);
-            }
-
-            private void parseAndCache(JSContext context) {
-                CompilerAsserts.neverPartOfCompilation();
-                expression = insert(parseInline(source, context, requestFrame));
-                cachedContext = context;
-            }
-
-            @TruffleBoundary
-            private Object parseAndEval(JSContext context, MaterializedFrame frame) {
-                JavaScriptNode fragment = parseInline(source, context, frame);
-                return fragment.execute(frame);
             }
         };
         return executableNode;
