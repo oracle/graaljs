@@ -336,7 +336,7 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
             return (charIndex & ALWAYS_HALT_TAG_BIT) != 0;
         } else if (tag == StandardTags.ExpressionTag.class) {
             // Non-expression nodes override and return false.
-            return true;
+            return getSourceSection().isAvailable();
         } else {
             return false;
         }
