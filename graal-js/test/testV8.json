@@ -254,9 +254,6 @@
     "filePath" : "mjsunit/es6/proxies-bind.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/proxies-construct.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/proxies-cross-realm-exception.js",
     "status" : "FAIL"
   }, {
