@@ -26,7 +26,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class GlobalDeclarationInstantiationNode extends StatementNode {
     private final JSContext context;
-    private final DeclareGlobalNode[] globalDeclarations;
+    @Children private final DeclareGlobalNode[] globalDeclarations;
 
     public static final DeclareGlobalNode[] EMPTY_DECLARATION_ARRAY = new DeclareGlobalNode[0];
 
@@ -48,6 +48,7 @@ public class GlobalDeclarationInstantiationNode extends StatementNode {
         MaterializedFrame globalScope = context.getRealm().getGlobalScope();
         DynamicObject globalObject = context.getRealm().getGlobalObject();
 
+        // verify that declarations are definable
         for (DeclareGlobalNode declaration : globalDeclarations) {
             String varName = declaration.varName;
             if (hasLexicalDeclaration(globalScope, varName)) {
