@@ -476,11 +476,11 @@ public class JSContext implements ShapeContext {
     @TruffleBoundary
     private boolean processAllPromises() {
         boolean queueContainsJobs = false;
-        DynamicObject global = getRealm().getGlobalObject();
+        Object thisArg = Undefined.instance;
         while (promiseJobsQueue.size() > 0) {
             DynamicObject nextJob = promiseJobsQueue.pollLast();
             if (JSFunction.isJSFunction(nextJob)) {
-                JSFunction.call(nextJob, global, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                JSFunction.call(nextJob, thisArg, JSArguments.EMPTY_ARGUMENTS_ARRAY);
                 queueContainsJobs = true;
             }
         }
