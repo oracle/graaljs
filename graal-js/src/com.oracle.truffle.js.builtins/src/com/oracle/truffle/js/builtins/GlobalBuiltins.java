@@ -288,6 +288,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
         }
+
+        @TruffleBoundary
+        protected static final String fileGetPath(File file) {
+            return file.getPath();
+        }
     }
 
     /**
@@ -865,7 +870,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization
         protected Object loadFile(VirtualFrame frame, File file) {
-            return runImpl(realmNode.execute(frame), sourceFromFileName(file.getPath()));
+            return runImpl(realmNode.execute(frame), sourceFromFileName(fileGetPath(file)));
         }
 
         @Specialization(guards = "isForeignObject(scriptObj)")
