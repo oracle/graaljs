@@ -184,7 +184,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Uint32Array(3),
         Float32Array(3),
         Float64Array(3),
-        DataView(3),
+        DataView(1),
 
         Map(0),
         Set(0),
