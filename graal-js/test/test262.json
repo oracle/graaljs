@@ -516,10 +516,6 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
-    "filePath" : "built-ins/DataView/length.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "built-ins/DataView/prototype/getBigInt64/detached-buffer-after-toindex-byteoffset.js",
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
@@ -5354,10 +5350,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "intl402/NumberFormat/prototype/formatToParts/length.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "intl402/NumberFormat/prototype/resolvedOptions/builtin.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -5367,10 +5359,6 @@
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "intl402/PluralRules/prototype/resolvedOptions/builtins.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/PluralRules/prototype/select/length.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
