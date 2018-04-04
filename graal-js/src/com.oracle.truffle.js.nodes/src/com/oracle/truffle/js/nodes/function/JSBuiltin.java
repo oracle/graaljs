@@ -174,6 +174,11 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
 
     @Override
     public JSFunctionData createFunctionData(JSContext context) {
+        JSFunctionData cached = context.getBuiltinFunctionData(this);
+        if (cached != null) {
+            return cached;
+        }
+
         JSFunctionData functionData = JSFunctionData.create(context, getLength(), getName(), isConstructor(), false, false, true);
 
         if (JSTruffleOptions.LazyFunctionData) {
@@ -182,6 +187,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
             initializeEager(functionData);
         }
 
+        context.putBuiltinFunctionData(this, functionData);
         return functionData;
     }
 

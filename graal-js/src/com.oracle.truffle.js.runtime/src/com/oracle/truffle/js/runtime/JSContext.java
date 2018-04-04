@@ -83,6 +83,7 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
+import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -201,7 +202,7 @@ public class JSContext implements ShapeContext {
         ProxyRevokerFunction,
     }
 
-    @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionDataCache;
+    @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
 
     private volatile JSFunctionData boundFunctionData;
     private volatile JSFunctionData boundConstructorFunctionData;
@@ -250,6 +251,7 @@ public class JSContext implements ShapeContext {
 
     private final JSContextOptions contextOptions;
 
+    private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
     private final Map<Source, Object> codeCache = new ConcurrentHashMap<>();
 
     protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
@@ -293,7 +295,7 @@ public class JSContext implements ShapeContext {
         this.emptyFunctionCallTarget = createEmptyFunctionCallTarget(lang);
         this.speciesGetterFunctionCallTarget = createSpeciesGetterFunctionCallTarget(lang);
 
-        this.builtinFunctionDataCache = new JSFunctionData[BuiltinFunctionKey.values().length];
+        this.builtinFunctionData = new JSFunctionData[BuiltinFunctionKey.values().length];
 
         this.timeProfiler = JSTruffleOptions.ProfileTime ? new TimeProfiler() : null;
         this.javaWrapperFactory = JSTruffleOptions.NashornJavaInterop ? JSJavaWrapper.makeShape(this).createFactory() : null;
@@ -1369,19 +1371,29 @@ public class JSContext implements ShapeContext {
 
     public final JSFunctionData getOrCreateBuiltinFunctionData(BuiltinFunctionKey key, Function<JSContext, JSFunctionData> factory) {
         final int index = key.ordinal();
-        JSFunctionData callTarget = builtinFunctionDataCache[index];
-        if (callTarget != null) {
-            return callTarget;
+        JSFunctionData functionData = builtinFunctionData[index];
+        if (functionData != null) {
+            return functionData;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         synchronized (this) {
-            callTarget = builtinFunctionDataCache[index];
-            if (callTarget == null) {
-                callTarget = factory.apply(this);
-                builtinFunctionDataCache[index] = callTarget;
+            functionData = builtinFunctionData[index];
+            if (functionData == null) {
+                functionData = factory.apply(this);
+                builtinFunctionData[index] = functionData;
             }
-            return callTarget;
+            return functionData;
         }
+    }
+
+    public final JSFunctionData getBuiltinFunctionData(Builtin key) {
+        CompilerAsserts.neverPartOfCompilation();
+        return builtinFunctionDataMap.get(key);
+    }
+
+    public final void putBuiltinFunctionData(Builtin key, JSFunctionData functionData) {
+        CompilerAsserts.neverPartOfCompilation();
+        builtinFunctionDataMap.putIfAbsent(key, functionData);
     }
 
     public final boolean neverCreatedChildRealms() {
