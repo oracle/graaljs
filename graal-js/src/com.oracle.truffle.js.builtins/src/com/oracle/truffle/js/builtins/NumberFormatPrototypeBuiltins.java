@@ -24,7 +24,7 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
     public enum NumberFormatPrototype implements BuiltinEnum<NumberFormatPrototype> {
 
         resolvedOptions(0),
-        formatToParts(0);
+        formatToParts(1);
 
         private final int length;
 

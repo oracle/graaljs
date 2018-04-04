@@ -5350,10 +5350,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "intl402/NumberFormat/prototype/formatToParts/length.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "intl402/NumberFormat/prototype/resolvedOptions/builtin.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
