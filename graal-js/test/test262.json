@@ -5362,10 +5362,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "intl402/PluralRules/prototype/select/length.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "intl402/PluralRules/supportedLocalesOf/supportedLocalesOf.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"

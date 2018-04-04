@@ -24,7 +24,7 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
     public enum PluralRulesPrototype implements BuiltinEnum<PluralRulesPrototype> {
 
         resolvedOptions(0),
-        select(0);
+        select(1);
 
         private final int length;
 
