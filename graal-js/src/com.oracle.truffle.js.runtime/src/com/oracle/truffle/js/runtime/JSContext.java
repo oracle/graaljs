@@ -1094,11 +1094,22 @@ public class JSContext implements ShapeContext {
         if (reporter != null) {
             reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
         }
-        DynamicObject object = factory.newInstance(initialValues);
+        DynamicObject object;
+        if (CompilerDirectives.isPartialEvaluationConstant(factory) || isSingleRealm()) {
+            object = factory.newInstance(initialValues);
+        } else {
+            // factory is not PE-constant in the case of multiple realms
+            object = newInstanceBoundary(factory, initialValues);
+        }
         if (reporter != null) {
             reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
         }
         return object;
+    }
+
+    @TruffleBoundary
+    private static DynamicObject newInstanceBoundary(DynamicObjectFactory factory, Object[] initialValues) {
+        return factory.newInstance(initialValues);
     }
 
     public boolean isOptionAnnexB() {
