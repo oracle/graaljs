@@ -6,6 +6,7 @@ package com.oracle.truffle.js.parser;
 
 import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE;
 import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.MODULE_SOURCE_NAME_PREFIX;
+import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -209,7 +210,7 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public ScriptNode parseScriptNode(JSContext context, Source source) {
         GraalJSParserOptions po = ((GraalJSParserOptions) context.getParserOptions());
-        if (source.getName().startsWith(MODULE_SOURCE_NAME_PREFIX)) {
+        if (source.getName().startsWith(MODULE_SOURCE_NAME_PREFIX) || source.getName().endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
             return fakeScriptForModule(context, source);
         }
         return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, source, po.isStrict());
