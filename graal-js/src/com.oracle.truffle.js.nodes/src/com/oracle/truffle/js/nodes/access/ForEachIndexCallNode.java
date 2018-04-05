@@ -12,6 +12,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -68,6 +69,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     @Child private JSArrayFirstElementIndexNode firstElementIndexNode;
     @Child private JSArrayLastElementIndexNode lastElementIndexNode;
     @Child private JSHasPropertyNode hasPropertyNode;
+    @Child private JSForeignToJSTypeNode toJSTypeNode;
     protected final JSContext context;
     @Child private Node hasSizeNode;
     @Child private Node readNode;
@@ -129,7 +131,11 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             readNode = insert(JSInteropUtil.createRead());
         }
-        return JSInteropNodeUtil.read(target, index, readNode);
+        if (toJSTypeNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            toJSTypeNode = insert(JSForeignToJSTypeNode.create());
+        }
+        return toJSTypeNode.executeWithTarget(JSInteropNodeUtil.read(target, index, readNode));
     }
 
     protected final void checkHasDetachedBuffer(TruffleObject view) {

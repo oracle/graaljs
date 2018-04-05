@@ -88,17 +88,19 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
 
     @Specialization
     public Object fromTruffleJavaObject(TruffleObject value) {
-        if (JSTruffleOptions.NashornJavaInterop && JavaInterop.isJavaObject(value)) {
+        if (JavaInterop.isJavaObject(value)) {
             Object object = JavaInterop.asJavaObject(value);
             if (object == null) {
                 return Null.instance;
-            } else if (object instanceof Class) {
-                return JavaClass.forClass((Class<?>) object);
-            } else {
-                return object;
             }
-        }
-        if (value instanceof InteropBoundFunction) {
+            if (JSTruffleOptions.NashornJavaInterop) {
+                if (object instanceof Class) {
+                    return JavaClass.forClass((Class<?>) object);
+                } else {
+                    return object;
+                }
+            }
+        } else if (value instanceof InteropBoundFunction) {
             return ((InteropBoundFunction) value).getFunction();
         }
         return value;
