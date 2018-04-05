@@ -127,8 +127,9 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             return thiz != Undefined.instance && getGeneratorTarget.getValue(thiz) != Undefined.instance;
         }
 
-        protected void promiseCapabilityReject(DynamicObject promiseCapability, Object result) {
+        protected void promiseCapabilityReject(DynamicObject promiseCapability, GraalJSException exception) {
             DynamicObject reject = (DynamicObject) getPromiseReject.getValue(promiseCapability);
+            Object result = exception.getErrorObjectEager(getContext());
             executePromiseMethod.executeCall(JSArguments.create(Undefined.instance, reject, new Object[]{result}));
         }
 
@@ -210,7 +211,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             }
             try {
                 nextValue = iteratorValue.execute(nextResult);
-            } catch (Exception e) {
+            } catch (GraalJSException e) {
                 promiseCapabilityReject(promiseCapability, e);
                 return getPromise(promiseCapability);
             }
@@ -265,7 +266,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             }
             try {
                 value = iteratorValue.execute(returnResult);
-            } catch (Exception e) {
+            } catch (GraalJSException e) {
                 promiseCapabilityReject(promiseCapability, e);
                 return getPromise(promiseCapability);
             }
