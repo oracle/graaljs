@@ -29,9 +29,11 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
+import com.oracle.truffle.js.runtime.builtins.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSDebug;
 import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
@@ -39,8 +41,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSIntl;
-import com.oracle.truffle.js.runtime.builtins.JSCollator;
-import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSJava;
 import com.oracle.truffle.js.runtime.builtins.JSJavaWorkerBuiltin;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
@@ -65,7 +65,6 @@ import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
-import com.oracle.truffle.js.runtime.builtins.SIMD;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 import com.oracle.truffle.js.runtime.interop.JavaImporter;
@@ -178,7 +177,6 @@ public class JSRealm implements ShapeContext {
     private Object evalFunctionObject;
     private Object applyFunctionObject;
     private Object callFunctionObject;
-    private Object loadFunctionObject;
 
     private final JSConstructor arrayBufferConstructor;
     private final JSConstructor sharedArrayBufferConstructor;
@@ -244,6 +242,12 @@ public class JSRealm implements ShapeContext {
     private final Shape dictionaryShapeObjectPrototype;
 
     private final MaterializedFrame globalScope;
+
+    /**
+     * Built-in runtime support for ECMA2017's async.
+     */
+    @CompilationFinal private Object performPromiseThen;
+    @CompilationFinal private Object asyncFunctionPromiseCapabilityConstructor;
 
     public JSRealm(JSContext context) {
         this.context = context;
@@ -529,25 +533,30 @@ public class JSRealm implements ShapeContext {
         return initialStrictConstructorFactory;
     }
 
-    public final DynamicObjectFactory getFunctionFactory(boolean strictFunctionProperties, boolean isConstructor, boolean isGenerator, boolean isAsync, boolean isAnonymous) {
+    public final DynamicObjectFactory getFunctionFactory(JSFunctionData functionData) {
+        boolean isBuiltin = functionData.isBuiltin();
+        boolean strictFunctionProperties = functionData.hasStrictFunctionProperties();
+        boolean isConstructor = functionData.isConstructor();
+        boolean isGenerator = functionData.isGenerator();
+        boolean isAsync = functionData.isAsync();
+        boolean isAnonymous = functionData.getName().isEmpty();
+        assert !isBuiltin || (!isGenerator && !isAsync) : "built-in functions are never generator or async functions!";
         if (isAsync) {
             if (isGenerator) {
                 return isAnonymous ? initialAnonymousAsyncGeneratorFunctionFactory : initialAsyncGeneratorFunctionFactory;
             } else {
                 return isAnonymous ? initialAnonymousAsyncFunctionFactory : initialAsyncFunctionFactory;
             }
-        } else if (isConstructor) {
-            if (!isGenerator) {
-                if (strictFunctionProperties) {
-                    return isAnonymous ? initialAnonymousStrictConstructorFactory : initialStrictConstructorFactory;
-                } else {
-                    return isAnonymous ? initialAnonymousConstructorFactory : initialConstructorFactory;
-                }
+        } else if (isGenerator) {
+            return isAnonymous ? initialAnonymousGeneratorFactory : initialGeneratorFactory;
+        } else if (isConstructor && !isBuiltin) {
+            if (strictFunctionProperties) {
+                return isAnonymous ? initialAnonymousStrictConstructorFactory : initialStrictConstructorFactory;
             } else {
-                return isAnonymous ? initialAnonymousGeneratorFactory : initialGeneratorFactory;
+                return isAnonymous ? initialAnonymousConstructorFactory : initialConstructorFactory;
             }
         } else {
-            assert !isGenerator;
+            // Built-in constructor functions end up here due to the way they're initialized.
             if (strictFunctionProperties) {
                 return isAnonymous ? initialAnonymousStrictFunctionFactory : initialStrictFunctionFactory;
             } else {
@@ -690,10 +699,6 @@ public class JSRealm implements ShapeContext {
         return typedArrayPrototype;
     }
 
-    public final DynamicObject getMathObject() {
-        return mathObject;
-    }
-
     public final DynamicObject getRealmBuiltinObject() {
         return realmBuiltinObject;
     }
@@ -762,10 +767,6 @@ public class JSRealm implements ShapeContext {
 
     public final Object getCallFunctionObject() {
         return callFunctionObject;
-    }
-
-    public final Object getLoadFunctionObject() {
-        return loadFunctionObject;
     }
 
     private static void putProtoAccessorProperty(final JSRealm realm) {
@@ -883,10 +884,6 @@ public class JSRealm implements ShapeContext {
         putGlobalProperty(global, JSMath.CLASS_NAME, mathObject);
         putGlobalProperty(global, JSON.CLASS_NAME, JSON.create(this));
 
-        if (JSTruffleOptions.SIMDJS) {
-            putGlobalProperty(global, SIMD.CLASS_NAME, SIMD.create(this));
-        }
-
         if (context.isOptionIntl402()) {
             DynamicObject intlObject = JSIntl.create(this);
             DynamicObject collatorFn = getCollatorConstructor().getFunctionObject();
@@ -908,7 +905,6 @@ public class JSRealm implements ShapeContext {
         this.evalFunctionObject = JSObject.get(global, JSGlobalObject.EVAL_NAME);
         this.applyFunctionObject = JSObject.get(getFunctionPrototype(), "apply");
         this.callFunctionObject = JSObject.get(getFunctionPrototype(), "call");
-        this.loadFunctionObject = JSObject.get(global, "load");
 
         for (JSErrorType type : JSErrorType.values()) {
             putGlobalProperty(global, type.name(), getErrorConstructor(type).getFunctionObject());
@@ -921,10 +917,11 @@ public class JSRealm implements ShapeContext {
         putGlobalProperty(global, JSDataView.CLASS_NAME, getDataViewConstructor().getFunctionObject());
 
         if (JSTruffleOptions.SIMDJS) {
+            DynamicObject simdObject = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
             for (SIMDTypeFactory<? extends SIMDType> factory : SIMDType.FACTORIES) {
-                JSObjectUtil.putDataProperty(context, (DynamicObject) global.get(SIMD.CLASS_NAME), factory.getName(), getSIMDTypeConstructor(factory).getFunctionObject(),
-                                JSAttributes.getDefaultNotEnumerable());
+                JSObjectUtil.putDataProperty(context, simdObject, factory.getName(), getSIMDTypeConstructor(factory).getFunctionObject(), JSAttributes.getDefaultNotEnumerable());
             }
+            putGlobalProperty(global, JSSIMD.SIMD_OBJECT_NAME, simdObject);
         }
 
         if (JSTruffleOptions.NashornExtensions) {
@@ -1031,7 +1028,6 @@ public class JSRealm implements ShapeContext {
                 loadInternal("iterator.js");
                 loadInternal("promise.js");
                 initPromiseFields();
-                loadInternal("proxy.js");
             }
         } catch (Exception ex) {
             throw new RuntimeException(ex);
@@ -1361,5 +1357,23 @@ public class JSRealm implements ShapeContext {
 
     public JSConstructor getJavaInteropWorkerConstructor() {
         return javaInteropWorkerConstructor;
+    }
+
+    public void setPerformPromiseThen(DynamicObject promiseThen) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.performPromiseThen = promiseThen;
+    }
+
+    public Object getPerformPromiseThen() {
+        return performPromiseThen;
+    }
+
+    public Object getAsyncFunctionPromiseCapabilityConstructor() {
+        return asyncFunctionPromiseCapabilityConstructor;
+    }
+
+    public void setAsyncFunctionPromiseCapabilityConstructor(Object promiseConstructor) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.asyncFunctionPromiseCapabilityConstructor = promiseConstructor;
     }
 }

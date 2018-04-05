@@ -4,15 +4,12 @@
  */
 package com.oracle.truffle.js.parser;
 
-import java.util.concurrent.atomic.AtomicReference;
-
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.js.builtins.JSDefaultBuiltinLookup;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionLookup;
 
 public final class JSEngine {
@@ -42,11 +39,11 @@ public final class JSEngine {
         return parser;
     }
 
-    public JSContext createContext(JavaScriptLanguage language, TruffleLanguage.Env env) {
+    private JSContext createContext(JavaScriptLanguage language, TruffleLanguage.Env env) {
         return createContext(language, new GraalJSParserOptions(), env);
     }
 
-    public JSRealm createRealm(JavaScriptLanguage language, TruffleLanguage.Env env) {
+    private JSRealm createRealm(JavaScriptLanguage language, TruffleLanguage.Env env) {
         return createContext(language, env).createRealm();
     }
 
@@ -72,23 +69,6 @@ public final class JSEngine {
     }
 
     public static JSContext createJSContext(JavaScriptLanguage language, TruffleLanguage.Env env) {
-        if (JSTruffleOptions.PrepareFirstContext && JSContextOptions.optionsAllowPreInitializedContext(env)) {
-            JSContext result = FirstContextHolder.firstContext.getAndSet(null);
-            if (result != null) {
-                result.setLanguage(language);
-                result.setTruffleLanguageEnv(env);
-                return result;
-            }
-        }
-
         return JSEngine.getInstance().createContext(language, env);
-    }
-
-    /*
-     * Separate class for lazy loading: firstContext is only built when option is turned on and this
-     * class gets loaded.
-     */
-    private static class FirstContextHolder {
-        static final AtomicReference<JSContext> firstContext = new AtomicReference<>(createJSContextAndRealm(null, null));
     }
 }

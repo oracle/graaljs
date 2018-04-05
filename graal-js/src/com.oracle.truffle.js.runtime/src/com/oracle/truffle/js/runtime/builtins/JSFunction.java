@@ -270,15 +270,7 @@ public final class JSFunction extends JSBuiltinObject {
     }
 
     private static DynamicObjectFactory initialFactory(JSRealm realm, JSFunctionData functionData) {
-        if (!functionData.isBuiltin()) {
-            return realm.getFunctionFactory(functionData.hasStrictFunctionProperties(), functionData.isConstructor(), functionData.isGenerator(), functionData.isAsync(),
-                            functionData.getName().isEmpty());
-        } else {
-            // Built-in constructor functions end up here due to the way they're initialized.
-            // assert !functionData.isStrictMode();
-            assert !functionData.isGenerator() : "built-in functions are never generators!";
-            return !functionData.hasStrictFunctionProperties() ? realm.getFunctionFactory() : realm.getStrictFunctionFactory();
-        }
+        return realm.getFunctionFactory(functionData);
     }
 
     public static String getName(DynamicObject obj) {

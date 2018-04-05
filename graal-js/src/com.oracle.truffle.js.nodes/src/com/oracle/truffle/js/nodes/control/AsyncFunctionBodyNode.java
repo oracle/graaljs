@@ -165,7 +165,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     }
 
     private DynamicObject createPromiseCapability() {
-        return (DynamicObject) createPromiseCapability.executeCall(JSArguments.createZeroArg(Undefined.instance, getContext().getAsyncFunctionPromiseCapabilityConstructor()));
+        return (DynamicObject) createPromiseCapability.executeCall(JSArguments.createZeroArg(Undefined.instance, getContext().getRealm().getAsyncFunctionPromiseCapabilityConstructor()));
     }
 
     @Override

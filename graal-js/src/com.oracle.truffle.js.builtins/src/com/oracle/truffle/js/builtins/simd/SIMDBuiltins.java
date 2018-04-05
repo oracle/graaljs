@@ -13,11 +13,11 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.SIMD;
+import com.oracle.truffle.js.runtime.builtins.JSSIMD;
 
 public final class SIMDBuiltins extends JSBuiltinsContainer.SwitchEnum<SIMDBuiltins.SIMDConstructor> {
     public SIMDBuiltins() {
-        super(SIMD.CLASS_NAME, SIMDConstructor.class);
+        super(JSSIMD.SIMD_OBJECT_NAME, SIMDConstructor.class);
     }
 
     public enum SIMDConstructor implements BuiltinEnum<SIMDConstructor> {

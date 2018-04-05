@@ -120,7 +120,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         protected DynamicObject createPromiseCapability() {
-            return (DynamicObject) createPromiseCapability.executeCall(JSArguments.create(Undefined.instance, getContext().getAsyncFunctionPromiseCapabilityConstructor(), new Object[]{}));
+            return (DynamicObject) createPromiseCapability.executeCall(JSArguments.create(Undefined.instance, getContext().getRealm().getAsyncFunctionPromiseCapabilityConstructor(), new Object[]{}));
         }
 
         protected boolean isAsyncFromSyncIterator(DynamicObject thiz) {
@@ -143,7 +143,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         protected void performPromiseThen(Object promise, DynamicObject onFulfilled, DynamicObject instance, DynamicObject promiseCapability) {
-            performPromiseThenCall.executeCall(JSArguments.create(Undefined.instance, getContext().getPerformPromiseThen(), promise, onFulfilled, instance, promiseCapability));
+            performPromiseThenCall.executeCall(JSArguments.create(Undefined.instance, getContext().getRealm().getPerformPromiseThen(), promise, onFulfilled, instance, promiseCapability));
         }
 
         /**

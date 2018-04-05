@@ -108,10 +108,6 @@ final class InternalTranslator extends GraalJSTranslator {
                     return realm.getStringConstructor().getFunctionObject();
                 case "Date":
                     return realm.getDateConstructor().getFunctionObject();
-                case "RegExp":
-                    return realm.getRegExpConstructor().getFunctionObject();
-                case "Math":
-                    return realm.getMathObject();
                 case "DataView":
                     return realm.getDataViewConstructor().getFunctionObject();
                 case "Symbol":
@@ -120,10 +116,6 @@ final class InternalTranslator extends GraalJSTranslator {
                     return realm.getMapConstructor() == null ? null : realm.getMapConstructor().getFunctionObject();
                 case "Set":
                     return realm.getSetConstructor() == null ? null : realm.getSetConstructor().getFunctionObject();
-                case "Proxy":
-                    return realm.getProxyConstructor().getFunctionObject();
-                case "Error":
-                    return realm.getErrorConstructor(JSErrorType.Error).getFunctionObject();
                 case "TypeError":
                     return realm.getErrorConstructor(JSErrorType.TypeError).getFunctionObject();
                 default:
@@ -229,8 +221,6 @@ final class InternalTranslator extends GraalJSTranslator {
                         return new InternalAdvanceMapCursorNode(arguments[0]);
                     case "GetMapCursor":
                         return new InternalGetMapCursorNode(arguments[0]);
-                    case "RevokeProxy":
-                        return new RevokeProxyNode(arguments[0]);
                     case "SetFunctionName":
                         return new InternalSetFunctionNameNode(arguments[0], arguments[1]);
                     case "StringReplace":
@@ -578,10 +568,10 @@ final class InternalTranslator extends GraalJSTranslator {
         public Object execute(VirtualFrame frame) {
             DynamicObject constructor = (DynamicObject) newDefaultCapability.execute(frame);
             assert JSFunction.isJSFunction(constructor);
-            context.setAsyncFunctionPromiseCapabilityConstructor(constructor);
+            context.getRealm().setAsyncFunctionPromiseCapabilityConstructor(constructor);
             DynamicObject promiseThen = (DynamicObject) performPromiseThen.execute(frame);
             assert JSFunction.isJSFunction(promiseThen);
-            context.setPerformPromiseThen(promiseThen);
+            context.getRealm().setPerformPromiseThen(promiseThen);
             return Undefined.instance;
         }
 
@@ -728,29 +718,6 @@ final class InternalTranslator extends GraalJSTranslator {
         @Override
         protected JavaScriptNode copyUninitialized() {
             return new InternalHasDetachedBufferNode(cloneUninitialized(arrayNode));
-        }
-    }
-
-    public static class RevokeProxyNode extends JavaScriptNode {
-        @Child private JavaScriptNode proxyNode;
-
-        RevokeProxyNode(JavaScriptNode proxyNode) {
-            this.proxyNode = proxyNode;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            try {
-                JSProxy.revoke(proxyNode.executeDynamicObject(frame));
-                return Undefined.instance;
-            } catch (UnexpectedResultException e) {
-                throw Errors.shouldNotReachHere();
-            }
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new RevokeProxyNode(cloneUninitialized(proxyNode));
         }
     }
 

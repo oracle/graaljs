@@ -181,18 +181,9 @@ public final class JSContextOptions {
 
     // check for options that are not on their default value.
     // in such case, we cannot use the pre-initialized context for faster startup
-    public static boolean optionsAllowPreInitializedContext(Env env) {
-        for (OptionKey<?> key : PREINIT_CONTEXT_OPTION_KEYS) {
-            if (!env.getOptions().get(key).equals(key.getDefaultValue())) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     public static boolean optionsAllowPreInitializedContext(JSContext context, Env env) {
         for (OptionKey<?> key : PREINIT_CONTEXT_OPTION_KEYS) {
-            if (!context.getOptionValues().get(key).equals(env.getOptions().get(key))) {
+            if (!context.getEnv().getOptions().get(key).equals(env.getOptions().get(key))) {
                 return false;
             }
         }

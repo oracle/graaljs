@@ -94,13 +94,6 @@ public class JSContext implements ShapeContext {
      */
     private Object embedderData;
 
-    /**
-     * Built-in runtime support for ECMA2017's async.
-     */
-    @CompilationFinal private Object asyncFunctionAwait;
-    @CompilationFinal private Object performPromiseThen;
-    @CompilationFinal private Object asyncFunctionPromiseCapabilityConstructor;
-
     private final Assumption noSuchPropertyUnusedAssumption;
     private final Assumption noSuchMethodUnusedAssumption;
 
@@ -171,6 +164,7 @@ public class JSContext implements ShapeContext {
         AsyncGeneratorReturnFulfilled,
         AsyncGeneratorReturnRejected,
         AsyncFromSyncIteratorValueUnwrap,
+        ProxyRevokerFunction,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionDataCache;
@@ -482,11 +476,11 @@ public class JSContext implements ShapeContext {
     @TruffleBoundary
     private boolean processAllPromises() {
         boolean queueContainsJobs = false;
-        DynamicObject global = getRealm().getGlobalObject();
+        Object thisArg = Undefined.instance;
         while (promiseJobsQueue.size() > 0) {
             DynamicObject nextJob = promiseJobsQueue.pollLast();
             if (JSFunction.isJSFunction(nextJob)) {
-                JSFunction.call(nextJob, global, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                JSFunction.call(nextJob, thisArg, JSArguments.EMPTY_ARGUMENTS_ARRAY);
                 queueContainsJobs = true;
             }
         }
@@ -523,20 +517,9 @@ public class JSContext implements ShapeContext {
         this.interopRuntime = interopRuntime;
     }
 
-    public void setTruffleLanguageEnv(TruffleLanguage.Env env) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (env != null && truffleLanguageEnv == null) {
-            setTruffleLanguageEnvImpl(env);
-        }
-    }
-
     public void patchTruffleLanguageEnv(TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
-        Objects.requireNonNull("env", "New env cannot be null.");
-        setTruffleLanguageEnvImpl(env);
-    }
-
-    private void setTruffleLanguageEnvImpl(TruffleLanguage.Env env) {
+        Objects.requireNonNull(env, "New env cannot be null.");
         truffleLanguageEnv = env;
         activateAllocationReporter();
         this.contextOptions.setEnv(env);
@@ -551,7 +534,7 @@ public class JSContext implements ShapeContext {
     }
 
     public JSRealm getRealm() {
-        if (isChildContext || !isRealmInitialized || JSTruffleOptions.NashornCompatibilityMode) {
+        if (isChildContext || (CompilerDirectives.inInterpreter() && !isRealmInitialized) || JSTruffleOptions.NashornCompatibilityMode) {
             return realm; // childContext Realm cannot be shared among Engines (GR-8695)
         }
         if (contextRef == null) {
@@ -727,24 +710,6 @@ public class JSContext implements ShapeContext {
         return moduleNamespaceFactory;
     }
 
-    public void setPerformPromiseThen(DynamicObject promiseThen) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.performPromiseThen = promiseThen;
-    }
-
-    public Object getPerformPromiseThen() {
-        return performPromiseThen;
-    }
-
-    public Object getAsyncFunctionPromiseCapabilityConstructor() {
-        return asyncFunctionPromiseCapabilityConstructor;
-    }
-
-    public void setAsyncFunctionPromiseCapabilityConstructor(Object promiseConstructor) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.asyncFunctionPromiseCapabilityConstructor = promiseConstructor;
-    }
-
     @Override
     public DynamicObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
         return shapeContext.getSIMDTypeFactory(factory);
@@ -754,10 +719,6 @@ public class JSContext implements ShapeContext {
         assert this.realm == null;
         this.shapeContext = realm;
         this.realm = realm;
-    }
-
-    public Object getLoadFunctionObject() {
-        return getRealm().getLoadFunctionObject();
     }
 
     public TruffleLanguage.Env getEnv() {
@@ -1055,14 +1016,13 @@ public class JSContext implements ShapeContext {
 
     @TruffleBoundary
     public JSContext createChildContext() {
-        JSContext childContext = new JSContext(getEvaluator(), getFunctionLookup(), contextOptions, getLanguage(), null, true);
+        JSContext childContext = new JSContext(getEvaluator(), getFunctionLookup(), contextOptions, getLanguage(), truffleLanguageEnv, true);
         childContext.setWriter(getWriter(), getWriterStream());
         childContext.setErrorWriter(getErrorWriter(), getErrorWriterStream());
         childContext.setLocalTimeZoneId(getLocalTimeZoneId());
         childContext.setSymbolRegistry(getSymbolRegistry());
         childContext.setRealmList(realmList);
         childContext.setInteropRuntime(interopRuntime);
-        childContext.setTruffleLanguageEnv(truffleLanguageEnv);
         childContext.typedArrayNotDetachedAssumption = this.typedArrayNotDetachedAssumption;
         // cannot leave Realm uninitialized
         JSRealm childRealm = childContext.createRealm(false);

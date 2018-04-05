@@ -60,6 +60,8 @@ public final class JSProxy extends AbstractJSClass {
     private static final HiddenKey PROXY_TARGET = new HiddenKey("ProxyTarget");
     private static final HiddenKey PROXY_HANDLER = new HiddenKey("ProxyHandler");
 
+    public static final HiddenKey REVOCABLE_PROXY = new HiddenKey("RevocableProxy");
+
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
         PROXY_TARGET_PROPERTY = JSObjectUtil.makeHiddenProperty(PROXY_TARGET, allocator.locationForType(TruffleObject.class));
@@ -547,11 +549,12 @@ public final class JSProxy extends AbstractJSClass {
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        DynamicObject jsProxyConstructor = realm.lookupFunction(JSConstructor.BUILTINS, CLASS_NAME);
+        DynamicObject proxyConstructor = realm.lookupFunction(JSConstructor.BUILTINS, CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, proxyConstructor, CLASS_NAME);
         // Proxy constructor does not have a prototype property (ES6 26.2.2)
         // Still, makeInitialShape currently needs a dummy prototype
         DynamicObject dummyPrototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
-        return new JSConstructor(jsProxyConstructor, dummyPrototype);
+        return new JSConstructor(proxyConstructor, dummyPrototype);
     }
 
     public static DynamicObject getTrapFromObject(DynamicObject maybeHandler, String trapName) {
