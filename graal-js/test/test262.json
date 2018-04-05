@@ -108,19 +108,11 @@
     "status" : "SKIP",
     "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
-    "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/return/iterator-result.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/return/result-object-error.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/throw/iterator-result-unwrap-promise.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/throw/iterator-result.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
@@ -5450,27 +5442,11 @@
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
   }, {
-    "filePath" : "language/expressions/async-generator/named-yield-star-sync-return.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/expressions/async-generator/named-yield-star-sync-throw.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/expressions/async-generator/yield-star-async-next.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "language/expressions/async-generator/yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/expressions/async-generator/yield-star-sync-return.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/expressions/async-generator/yield-star-sync-throw.js",
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
   }, {
@@ -5610,27 +5586,11 @@
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
   }, {
-    "filePath" : "language/expressions/class/async-gen-method-static-yield-star-sync-return.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/expressions/class/async-gen-method-static-yield-star-sync-throw.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/expressions/class/async-gen-method-yield-star-async-next.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "language/expressions/class/async-gen-method-yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/expressions/class/async-gen-method-yield-star-sync-return.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/expressions/class/async-gen-method-yield-star-sync-throw.js",
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
   }, {
@@ -6406,14 +6366,6 @@
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
   }, {
-    "filePath" : "language/expressions/object/method-definition/async-gen-yield-star-sync-return.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/expressions/object/method-definition/async-gen-yield-star-sync-throw.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/expressions/object/method-definition/gen-meth-dflt-params-ref-later.js",
     "status" : "FAIL"
   }, {
@@ -7049,14 +7001,6 @@
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
   }, {
-    "filePath" : "language/statements/async-generator/yield-star-sync-return.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/statements/async-generator/yield-star-sync-throw.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/statements/block/tco-stmt-list.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
@@ -7097,27 +7041,11 @@
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
   }, {
-    "filePath" : "language/statements/class/async-gen-method-static-yield-star-sync-return.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/statements/class/async-gen-method-static-yield-star-sync-throw.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/statements/class/async-gen-method-yield-star-async-next.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "language/statements/class/async-gen-method-yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/statements/class/async-gen-method-yield-star-sync-return.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/statements/class/async-gen-method-yield-star-sync-throw.js",
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
   }, {

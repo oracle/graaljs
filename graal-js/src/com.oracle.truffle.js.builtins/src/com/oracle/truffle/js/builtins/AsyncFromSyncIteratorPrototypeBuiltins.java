@@ -245,7 +245,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 return getPromise(promiseCapability);
             }
             boolean done;
-            Object value;
             DynamicObject syncIterator = (DynamicObject) getGeneratorTarget.getValue(thisObj);
             Object method = getMethod().executeWithTarget(syncIterator);
             if (method == Undefined.instance) {
@@ -253,7 +252,8 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 promiseCapabilityResolve(promiseCapability, iterResult);
                 return getPromise(promiseCapability);
             }
-            DynamicObject returnResult = (DynamicObject) executeReturnMethod.executeCall(JSArguments.create(syncIterator, method));
+            Object value = JSArguments.getUserArgument(frame.getArguments(), 0);
+            DynamicObject returnResult = (DynamicObject) executeReturnMethod.executeCall(JSArguments.create(syncIterator, method, value));
             if (!JSObject.isJSObject(returnResult)) {
                 promiseCapabilityReject(promiseCapability, Errors.createTypeErrorNotAnObject(returnResult));
                 return getPromise(promiseCapability);
@@ -264,14 +264,15 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 promiseCapabilityReject(promiseCapability, e);
                 return getPromise(promiseCapability);
             }
+            Object returnValue;
             try {
-                value = iteratorValue.execute(returnResult);
+                returnValue = iteratorValue.execute(returnResult);
             } catch (GraalJSException e) {
                 promiseCapabilityReject(promiseCapability, e);
                 return getPromise(promiseCapability);
             }
             DynamicObject valueWrapperCapability = createPromiseCapability();
-            promiseCapabilityResolve(valueWrapperCapability, value);
+            promiseCapabilityResolve(valueWrapperCapability, returnValue);
             DynamicObject onFulfilled = createIteratorValueUnwrapFunction(getContext().getRealm(), done);
             performPromiseThen(getPromise(valueWrapperCapability), onFulfilled, Undefined.instance, promiseCapability);
             return getPromise(promiseCapability);
