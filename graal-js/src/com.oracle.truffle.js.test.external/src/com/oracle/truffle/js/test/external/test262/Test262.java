@@ -65,6 +65,7 @@ public class Test262 extends TestSuite {
     static {
         String[] prequelFilesES6 = new String[]{
                         "atomicsHelper.js",
+                        "isConstructor.js",
                         "nativeFunctionMatcher.js",
                         "testAtomics.js", // see XXX comment in it!
                         "typeCoercion.js"
