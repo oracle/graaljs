@@ -65,7 +65,7 @@ def _graal_js_gate_runner(args, tasks):
 
     for testCommandName in gateTestCommands:
         for testConfigName in gateTestConfigs:
-            testName = '%s:%s' % (testCommandName, testConfigName)
+            testName = '%s-%s' % (testCommandName, testConfigName)
             with Task(testName, tasks, tags=[testName, testConfigName, GraalJsDefaultTags.all]) as t:
                 if t:
                     gateTestCommands[testCommandName](gateTestConfigs[testConfigName])
