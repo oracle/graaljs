@@ -58,6 +58,7 @@ def _graal_nodejs_pre_gate_runner(args, tasks):
             mx.run(['ls', join('out', 'Release', 'lib.target')])
 
 def _graal_nodejs_post_gate_runner(args, tasks):
+    _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
     with Task('UnitTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.unitTests]) as t:
         if t:
             commonArgs = ['-ea']
