@@ -534,7 +534,7 @@ public class JSContext implements ShapeContext {
     }
 
     public JSRealm getRealm() {
-        if (isChildContext || !isRealmInitialized || JSTruffleOptions.NashornCompatibilityMode) {
+        if (isChildContext || (CompilerDirectives.inInterpreter() && !isRealmInitialized) || JSTruffleOptions.NashornCompatibilityMode) {
             return realm; // childContext Realm cannot be shared among Engines (GR-8695)
         }
         if (contextRef == null) {
