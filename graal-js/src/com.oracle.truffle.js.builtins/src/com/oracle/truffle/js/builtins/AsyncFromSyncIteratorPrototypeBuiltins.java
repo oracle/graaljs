@@ -253,20 +253,20 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 return getPromise(promiseCapability);
             }
             Object value = JSArguments.getUserArgument(frame.getArguments(), 0);
-            DynamicObject returnResult = (DynamicObject) executeReturnMethod.executeCall(JSArguments.create(syncIterator, method, value));
+            Object returnResult = executeReturnMethod.executeCall(JSArguments.create(syncIterator, method, value));
             if (!JSObject.isJSObject(returnResult)) {
                 promiseCapabilityReject(promiseCapability, Errors.createTypeErrorNotAnObject(returnResult));
                 return getPromise(promiseCapability);
             }
             try {
-                done = iteratorComplete.execute(returnResult);
+                done = iteratorComplete.execute((DynamicObject) returnResult);
             } catch (GraalJSException e) {
                 promiseCapabilityReject(promiseCapability, e);
                 return getPromise(promiseCapability);
             }
             Object returnValue;
             try {
-                returnValue = iteratorValue.execute(returnResult);
+                returnValue = iteratorValue.execute((DynamicObject) returnResult);
             } catch (GraalJSException e) {
                 promiseCapabilityReject(promiseCapability, e);
                 return getPromise(promiseCapability);

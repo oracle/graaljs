@@ -108,15 +108,7 @@
     "status" : "SKIP",
     "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
-    "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/return/result-object-error.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/throw/iterator-result-unwrap-promise.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/throw/result-object-error.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
