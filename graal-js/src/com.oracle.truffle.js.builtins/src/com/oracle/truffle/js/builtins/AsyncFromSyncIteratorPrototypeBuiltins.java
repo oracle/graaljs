@@ -54,9 +54,9 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
     }
 
     public enum GeneratorPrototype implements BuiltinEnum<GeneratorPrototype> {
-        next(0),
-        return_(0),
-        throw_(0);
+        next(1),
+        return_(1),
+        throw_(1);
 
         private final int length;
 
@@ -75,11 +75,11 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         assert context.getEcmaScriptVersion() >= 8;
         switch (builtinEnum) {
             case next:
-                return AsyncFromSyncNextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return AsyncFromSyncNextNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case return_:
-                return AsyncFromSyncReturnNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return AsyncFromSyncReturnNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case throw_:
-                return AsyncFromSyncThrowNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return AsyncFromSyncThrowNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             default:
                 return null;
         }
@@ -186,7 +186,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         @Specialization(guards = "isObject(thisObj)")
-        protected Object next(DynamicObject thisObj) {
+        protected Object next(DynamicObject thisObj, Object value) {
             DynamicObject promiseCapability = createPromiseCapability();
             if (!isAsyncFromSyncIterator(thisObj)) {
                 JSException typeError = Errors.createTypeErrorIncompatibleReceiver(thisObj);
@@ -198,7 +198,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             DynamicObject nextResult;
             DynamicObject syncIterator = (DynamicObject) getGeneratorTarget.getValue(thisObj);
             try {
-                nextResult = iteratorNext.execute(syncIterator, Undefined.instance);
+                nextResult = iteratorNext.execute(syncIterator, value);
             } catch (GraalJSException e) {
                 promiseCapabilityReject(promiseCapability, e);
                 return getPromise(promiseCapability);
@@ -237,7 +237,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         protected abstract GetMethodNode getMethod();
 
-        protected Object doMethod(VirtualFrame frame, DynamicObject thisObj) {
+        protected Object doMethod(VirtualFrame frame, DynamicObject thisObj, Object value) {
             DynamicObject promiseCapability = createPromiseCapability();
             if (!isAsyncFromSyncIterator(thisObj)) {
                 JSException typeError = Errors.createTypeErrorIncompatibleReceiver(thisObj);
@@ -252,7 +252,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 promiseCapabilityResolve(promiseCapability, iterResult);
                 return getPromise(promiseCapability);
             }
-            Object value = JSArguments.getUserArgument(frame.getArguments(), 0);
             Object returnResult = executeReturnMethod.executeCall(JSArguments.create(syncIterator, method, value));
             if (!JSObject.isJSObject(returnResult)) {
                 promiseCapabilityReject(promiseCapability, Errors.createTypeErrorNotAnObject(returnResult));
@@ -294,8 +293,8 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         @Specialization(guards = "isObject(thisObj)")
-        protected Object resume(VirtualFrame frame, DynamicObject thisObj) {
-            return doMethod(frame, thisObj);
+        protected Object resume(VirtualFrame frame, DynamicObject thisObj, Object value) {
+            return doMethod(frame, thisObj, value);
         }
     }
 
@@ -314,8 +313,8 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         @Specialization(guards = "isObject(thisObj)")
-        protected Object doThrow(VirtualFrame frame, DynamicObject thisObj) {
-            return doMethod(frame, thisObj);
+        protected Object doThrow(VirtualFrame frame, DynamicObject thisObj, Object value) {
+            return doMethod(frame, thisObj, value);
         }
     }
 
