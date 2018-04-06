@@ -112,10 +112,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/throw/throw-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "built-ins/AsyncGeneratorFunction/instance-prototype.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"

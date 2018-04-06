@@ -128,8 +128,12 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         protected void promiseCapabilityReject(DynamicObject promiseCapability, GraalJSException exception) {
-            DynamicObject reject = (DynamicObject) getPromiseReject.getValue(promiseCapability);
             Object result = exception.getErrorObjectEager(getContext());
+            promiseCapabilityRejectImpl(promiseCapability, result);
+        }
+
+        protected void promiseCapabilityRejectImpl(DynamicObject promiseCapability, Object result) {
+            DynamicObject reject = (DynamicObject) getPromiseReject.getValue(promiseCapability);
             executePromiseMethod.executeCall(JSArguments.create(Undefined.instance, reject, new Object[]{result}));
         }
 
@@ -227,15 +231,15 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
     public abstract static class AsyncFromSyncMethod extends AsyncFromSyncBaseNode {
 
         @Child private JSFunctionCallNode executeReturnMethod;
-        @Child private CreateIterResultObjectNode createIterResult;
 
         public AsyncFromSyncMethod(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.createIterResult = CreateIterResultObjectNodeGen.create(getContext());
             this.executeReturnMethod = JSFunctionCallNode.createCall();
         }
 
         protected abstract GetMethodNode getMethod();
+
+        protected abstract Object processUndefinedMethod(VirtualFrame frame, DynamicObject promiseCapability, Object value);
 
         protected Object doMethod(VirtualFrame frame, DynamicObject thisObj, Object value) {
             DynamicObject promiseCapability = createPromiseCapability();
@@ -248,9 +252,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             DynamicObject syncIterator = (DynamicObject) getGeneratorTarget.getValue(thisObj);
             Object method = getMethod().executeWithTarget(syncIterator);
             if (method == Undefined.instance) {
-                DynamicObject iterResult = createIterResult.execute(frame, Undefined.instance, true);
-                promiseCapabilityResolve(promiseCapability, iterResult);
-                return getPromise(promiseCapability);
+                return processUndefinedMethod(frame, promiseCapability, value);
             }
             Object returnResult = executeReturnMethod.executeCall(JSArguments.create(syncIterator, method, value));
             if (!JSObject.isJSObject(returnResult)) {
@@ -281,15 +283,24 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
     public abstract static class AsyncFromSyncReturn extends AsyncFromSyncMethod {
 
         @Child private GetMethodNode getReturn;
+        @Child private CreateIterResultObjectNode createIterResult;
 
         public AsyncFromSyncReturn(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.getReturn = GetMethodNode.create(context, null, "return");
+            this.createIterResult = CreateIterResultObjectNodeGen.create(getContext());
         }
 
         @Override
         protected GetMethodNode getMethod() {
             return getReturn;
+        }
+
+        @Override
+        protected Object processUndefinedMethod(VirtualFrame frame, DynamicObject promiseCapability, Object value) {
+            DynamicObject iterResult = createIterResult.execute(frame, value, true);
+            promiseCapabilityResolve(promiseCapability, iterResult);
+            return getPromise(promiseCapability);
         }
 
         @Specialization(guards = "isObject(thisObj)")
@@ -310,6 +321,12 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         @Override
         protected GetMethodNode getMethod() {
             return getThrow;
+        }
+
+        @Override
+        protected Object processUndefinedMethod(VirtualFrame frame, DynamicObject promiseCapability, Object value) {
+            promiseCapabilityRejectImpl(promiseCapability, value);
+            return getPromise(promiseCapability);
         }
 
         @Specialization(guards = "isObject(thisObj)")
