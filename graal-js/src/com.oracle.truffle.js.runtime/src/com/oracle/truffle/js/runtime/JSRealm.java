@@ -218,6 +218,7 @@ public class JSRealm implements ShapeContext {
     private final JSConstructor asyncGeneratorFunctionConstructor;
     private final DynamicObjectFactory initialAsyncGeneratorFunctionFactory;
     private final DynamicObjectFactory initialAnonymousAsyncGeneratorFunctionFactory;
+    private final Shape initialAsyncGeneratorObjectShape;
 
     private final DynamicObject throwerFunction;
 
@@ -420,8 +421,10 @@ public class JSRealm implements ShapeContext {
         this.asyncIteratorPrototype = es9 ? JSFunction.createAsyncIteratorPrototype(this) : null;
         this.asyncFromSyncIteratorPrototype = es9 ? JSFunction.createAsyncFromSyncIteratorPrototype(this) : null;
         this.asyncGeneratorFunctionConstructor = es9 ? JSFunction.createAsyncGeneratorFunctionConstructor(this) : null;
-        this.initialAsyncGeneratorFunctionFactory = es9 ? JSFunction.makeInitialAsyncFunctionShape(this, asyncGeneratorFunctionConstructor.getPrototype(), false).createFactory() : null;
-        this.initialAnonymousAsyncGeneratorFunctionFactory = es9 ? JSFunction.makeInitialAsyncFunctionShape(this, asyncGeneratorFunctionConstructor.getPrototype(), true).createFactory() : null;
+        this.initialAsyncGeneratorFunctionFactory = es9 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(this, asyncGeneratorFunctionConstructor.getPrototype(), false).createFactory() : null;
+        this.initialAnonymousAsyncGeneratorFunctionFactory = es9 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(this, asyncGeneratorFunctionConstructor.getPrototype(), true).createFactory()
+                        : null;
+        this.initialAsyncGeneratorObjectShape = es9 ? JSFunction.makeInitialAsyncGeneratorObjectShape(this) : null;
 
         this.javaInteropWorkerConstructor = isJavaInteropAvailable() ? JSJavaWorkerBuiltin.createWorkerConstructor(this) : null;
         this.javaInteropWorkerFactory = isJavaInteropAvailable() ? JSJavaWorkerBuiltin.makeInitialShape(context, javaInteropWorkerConstructor.getPrototype()).createFactory() : null;
@@ -632,6 +635,10 @@ public class JSRealm implements ShapeContext {
 
     public final Shape getInitialGeneratorObjectShape() {
         return initialGeneratorObjectShape;
+    }
+
+    public final Shape getInitialAsyncGeneratorObjectShape() {
+        return initialAsyncGeneratorObjectShape;
     }
 
     public DynamicObjectFactory getInitialBoundFunctionFactory() {

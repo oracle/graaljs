@@ -112,14 +112,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "built-ins/AsyncGeneratorFunction/instance-prototype.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorFunction/prototype/prototype.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "built-ins/AsyncGeneratorPrototype/next/this-val-not-async-generator.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -172,31 +164,11 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/Symbol.toStringTag.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "built-ins/AsyncGeneratorPrototype/throw/this-val-not-async-generator.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "built-ins/AsyncGeneratorPrototype/throw/this-val-not-object.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncIteratorPrototype/Symbol.asyncIterator/length.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncIteratorPrototype/Symbol.asyncIterator/name.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncIteratorPrototype/Symbol.asyncIterator/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncIteratorPrototype/Symbol.asyncIterator/return-val.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
