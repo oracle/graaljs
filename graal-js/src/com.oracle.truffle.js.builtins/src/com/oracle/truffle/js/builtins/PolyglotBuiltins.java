@@ -595,11 +595,11 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isString(mimeType)", "isString(source)"})
+        @Specialization(guards = {"isString(languageId)", "isString(source)"})
         @TruffleBoundary
-        protected Object evalString(Object mimeType, Object source) {
+        protected Object evalString(Object languageId, Object source) {
             String sourceText = source.toString();
-            Source sourceObject = Source.newBuilder(sourceText).name(Evaluator.EVAL_SOURCE_NAME).mimeType(mimeType.toString()).build();
+            Source sourceObject = Source.newBuilder(sourceText).name(Evaluator.EVAL_SOURCE_NAME).mimeType(languageId.toString()).build();
 
             CallTarget callTarget;
 
@@ -613,9 +613,9 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "!isString(mimeType) || !isString(source)")
-        protected Object eval(Object mimeType, Object source) {
-            throw Errors.createTypeError("Expected arguments: (String mimeType, String sourceCode)");
+        @Specialization(guards = "!isString(languageId) || !isString(source)")
+        protected Object eval(Object languageId, Object source) {
+            throw Errors.createTypeError("Expected arguments: (String languageId, String sourceCode)");
         }
     }
 
@@ -625,13 +625,13 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isString(mimeType)", "isString(fileName)"})
+        @Specialization(guards = {"isString(languageId)", "isString(fileName)"})
         @TruffleBoundary
-        protected Object evalString(Object mimeType, Object fileName) {
+        protected Object evalString(Object languageId, Object fileName) {
             String fileNameStr = fileName.toString();
             Source source;
             try {
-                source = Source.newBuilder(new File(fileNameStr)).mimeType(mimeType.toString()).build();
+                source = Source.newBuilder(new File(fileNameStr)).mimeType(languageId.toString()).build();
             } catch (IOException e) {
                 throw Errors.createError(e.getMessage());
             }
@@ -647,9 +647,9 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "!isString(mimeType) || !isString(fileName)")
-        protected Object eval(Object mimeType, Object fileName) {
-            throw Errors.createTypeError("Expected arguments: (String mimeType, String fileName)");
+        @Specialization(guards = "!isString(languageId) || !isString(fileName)")
+        protected Object eval(Object languageId, Object fileName) {
+            throw Errors.createTypeError("Expected arguments: (String languageId, String fileName)");
         }
     }
 
