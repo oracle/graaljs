@@ -112,14 +112,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/next/this-val-not-async-generator.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/next/this-val-not-object.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "built-ins/AsyncGeneratorPrototype/return/iterator-result-prototype.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -153,22 +145,6 @@
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-suspendedYield.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/this-val-not-async-generator.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/this-val-not-object.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/throw/this-val-not-async-generator.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/throw/this-val-not-object.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
