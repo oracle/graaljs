@@ -94,6 +94,10 @@ public final class ForNode extends StatementNode implements ResumableNode {
         return new ForNode((RepeatingNode) cloneUninitialized((JavaScriptNode) loop.getRepeatingNode()), cloneUninitialized(copy));
     }
 
+    public LoopNode getLoopNode() {
+        return loop;
+    }
+
     /** for(;condition;modify) {body}. */
     private static final class ForRepeatingNode extends AbstractRepeatingNode {
         @Child private JavaScriptNode modify;
