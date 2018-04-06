@@ -112,27 +112,7 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/iterator-result-prototype.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "built-ins/AsyncGeneratorPrototype/return/request-queue-order-state-executing.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-promise.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-state-completed.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-suspendedStart-promise.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-suspendedStart.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
@@ -7594,10 +7574,6 @@
     "filePath" : "language/statements/do-while/tco-body.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
-  }, {
-    "filePath" : "language/statements/for-await-of/async-gen-decl-dstr-array-elem-trlg-iter-rest-nrml-close-skip.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
   }, {
     "filePath" : "language/statements/for-await-of/let-block-with-newline.js",
     "status" : "FAIL",

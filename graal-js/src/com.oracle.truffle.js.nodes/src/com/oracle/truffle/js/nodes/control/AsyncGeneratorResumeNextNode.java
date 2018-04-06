@@ -64,6 +64,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
         this.setGenerator = PropertySetNode.create(RETURN_PROCESSOR_GENERATOR, false, context, false);
         this.setPromiseIsHandled = PropertySetNode.create(JSPromise.PROMISE_IS_HANDLED, false, context, false);
         this.callNode = InternalCallNode.create();
+        this.callPerformPromiseThen = JSFunctionCallNode.createCall();
         this.createPromiseCapability = JSFunctionCallNode.createCall();
     }
 
