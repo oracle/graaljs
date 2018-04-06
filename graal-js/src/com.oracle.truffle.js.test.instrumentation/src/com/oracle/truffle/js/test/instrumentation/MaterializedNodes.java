@@ -122,7 +122,7 @@ public class MaterializedNodes {
 
         private final Object value;
 
-        public DummyConstantNode(Object value) {
+        DummyConstantNode(Object value) {
             this.value = value;
         }
 
@@ -144,7 +144,7 @@ public class MaterializedNodes {
     private static final JavaScriptNode dummyJSNode = new DummyConstantNode(42);
     private static final SourceSection dummySourceSection = Source.newBuilder("").name("").mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build().createUnavailableSection();
 
-    private static final JSContext getDummyCx() {
+    private static JSContext getDummyCx() {
         return JSObject.getJSContext(Undefined.instance);
     }
 
@@ -292,7 +292,7 @@ public class MaterializedNodes {
         node.addStatementTag();
         InstrumentableNode m1 = node.materializeInstrumentableNodes(s);
         InstrumentableNode m2 = m1.materializeInstrumentableNodes(s);
-        // Maretializing twice has no effect.
+        // Materializing twice has no effect.
         assertEquals(m1, m2);
     }
 

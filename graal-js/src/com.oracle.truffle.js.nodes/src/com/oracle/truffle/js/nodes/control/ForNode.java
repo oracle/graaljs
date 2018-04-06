@@ -115,8 +115,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
 
         @Override
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-            if (materializedTags.contains(ControlFlowRootTag.class) || materializedTags.contains(ControlFlowBlockTag.class) ||
-                            materializedTags.contains(ControlFlowBranchTag.class)) {
+            if (hasMaterializationTag(materializedTags) && materializationNeeded()) {
                 JavaScriptNode newBody = JSTaggedExecutionNode.createFor(bodyNode, ControlFlowBlockTag.class);
                 JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(conditionNode, ControlFlowBranchTag.class,
                                 JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
@@ -126,6 +125,16 @@ public final class ForNode extends StatementNode implements ResumableNode {
             } else {
                 return this;
             }
+        }
+
+        private static boolean hasMaterializationTag(Set<Class<? extends Tag>> materializedTags) {
+            return materializedTags.contains(ControlFlowRootTag.class) || materializedTags.contains(ControlFlowBlockTag.class) ||
+                            materializedTags.contains(ControlFlowBranchTag.class);
+        }
+
+        private boolean materializationNeeded() {
+            // if body is tagged, no materialization is needed.
+            return !(bodyNode instanceof JSTaggedExecutionNode);
         }
 
         @Override

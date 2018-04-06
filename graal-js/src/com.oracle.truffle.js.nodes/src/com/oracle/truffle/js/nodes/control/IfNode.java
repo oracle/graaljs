@@ -65,8 +65,7 @@ public final class IfNode extends StatementNode implements ResumableNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ControlFlowRootTag.class) || materializedTags.contains(ControlFlowBranchTag.class) ||
-                        materializedTags.contains(ControlFlowBlockTag.class) || materializedTags.contains(StatementTag.class)) {
+        if (hasMaterializationTag(materializedTags) && materializationNeeded()) {
             JavaScriptNode newElsePart = elsePart != null ? JSTaggedExecutionNode.createFor(elsePart, JSTags.ControlFlowBlockTag.class) : null;
             JavaScriptNode newThenPart = thenPart != null ? JSTaggedExecutionNode.createFor(thenPart, JSTags.ControlFlowBlockTag.class) : null;
             JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(condition, ControlFlowBranchTag.class,
@@ -77,6 +76,16 @@ public final class IfNode extends StatementNode implements ResumableNode {
         } else {
             return this;
         }
+    }
+
+    private boolean materializationNeeded() {
+        // If we are using tagged nodes, this node is already materialized.
+        return !(condition instanceof JSTaggedExecutionNode && (elsePart == null || elsePart instanceof JSTaggedExecutionNode) && (thenPart == null || thenPart instanceof JSTaggedExecutionNode));
+    }
+
+    private static boolean hasMaterializationTag(Set<Class<? extends Tag>> materializedTags) {
+        return materializedTags.contains(ControlFlowRootTag.class) || materializedTags.contains(ControlFlowBranchTag.class) ||
+                        materializedTags.contains(ControlFlowBlockTag.class) || materializedTags.contains(StatementTag.class) || materializedTags.contains(ExpressionTag.class);
     }
 
     private IfNode(JavaScriptNode condition, JavaScriptNode thenPart, JavaScriptNode elsePart) {
