@@ -4,14 +4,20 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 
@@ -53,6 +59,16 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
     @Override
     public Object getNodeObject() {
         return JSTags.createNodeObjectDescriptor("type", LiteralExpressionTag.Type.FunctionLiteral.name());
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (JSTruffleOptions.LazyFunctionData && (materializedTags.contains(StatementTag.class) || materializedTags.contains(ExpressionTag.class))) {
+            // when instruments require the materialization of function expression nodes, we force
+            // initialization.
+            functionData.getCallTarget();
+        }
+        return this;
     }
 
     public JSFunctionData getFunctionData() {

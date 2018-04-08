@@ -94,12 +94,17 @@ public abstract class JSNewNode extends JavaScriptNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ObjectAllocationExpressionTag.class)) {
+        if (materializedTags.contains(ObjectAllocationExpressionTag.class) && materializationNeeded()) {
             JavaScriptNode newNew = create(cloneUninitialized(getTarget()), AbstractFunctionArgumentsNode.materializeArgumentsNode(arguments, getSourceSection()));
             transferSourceSection(this, newNew);
             return newNew;
         }
         return super.materializeInstrumentableNodes(materializedTags);
+    }
+
+    private boolean materializationNeeded() {
+        // If arguments are not constant, no materialization is needed.
+        return arguments instanceof JSFunctionOneConstantArgumentNode;
     }
 
     public static JSNewNode create(JavaScriptNode function, AbstractFunctionArgumentsNode arguments) {
