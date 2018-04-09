@@ -71,6 +71,7 @@ public final class Options {
 
         private Context.Builder contextBuilder;
         private boolean exposeGC;
+        private boolean polyglot;
 
         // Options that should not be passed to polyglot engine (they are processed
         // elsewhere or can be ignored without almost any harm).
@@ -93,12 +94,24 @@ public final class Options {
 
         @Override
         public Object[] apply(String[] args) {
-            launch(args);
+            launch(filterArguments(args));
             if (contextBuilder == null) {
                 // launch(Context.Builder) was not called (i.e. help was printed) => exit
                 System.exit(0);
             }
             return new Object[]{contextBuilder, exposeGC};
+        }
+
+        private String[] filterArguments(String[] args) {
+            List<String> filtered = new ArrayList<>();
+            for (String arg : args) {
+                if ("--polyglot".equals(arg)) {
+                    polyglot = true;
+                } else {
+                    filtered.add(arg);
+                }
+            }
+            return filtered.toArray(new String[filtered.size()]);
         }
 
         @Override
@@ -216,6 +229,12 @@ public final class Options {
             }
             System.out.println(String.format("  %-22s%s", opt, description));
         }
+
+        @Override
+        protected String[] getDefaultLanguages() {
+            return polyglot ? new String[0] : super.getDefaultLanguages();
+        }
+
     }
 
 }
