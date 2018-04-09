@@ -253,8 +253,8 @@ public class JSLauncher extends AbstractLanguageLauncher {
         printOption("--strict",             "run in strict mode");
         printOption("--version",            "print the version and exit");
         printOption("--show-version",       "print the version and continue");
+        // @formatter:on
     }
-
 
     @Override
     protected void collectArguments(Set<String> args) {
@@ -299,14 +299,17 @@ public class JSLauncher extends AbstractLanguageLauncher {
                         System.out.println("Result: " + result.toString());
                     }
                     status = 0;
-                } catch (PolyglotException t) {
-                    if (t.isExit()) {
-                        status = t.getExitStatus();
-                    } else if (t.isGuestException()) {
-                        t.printStackTrace();
+                } catch (PolyglotException e) {
+                    if (e.isExit()) {
+                        status = e.getExitStatus();
+                    } else if (e.isSyntaxError()) {
+                        System.err.println(e.getMessage());
+                        status = 7;
+                    } else if (!e.isInternalError()) {
+                        printStackTraceSkipTrailingHost(e, System.err);
                         status = 7;
                     } else {
-                        t.printStackTrace();
+                        e.printStackTrace();
                         status = 8;
                     }
                 } catch (Throwable t) {
@@ -338,20 +341,41 @@ public class JSLauncher extends AbstractLanguageLauncher {
                 }
 
                 context.eval(Source.newBuilder("js", line, "<shell>:" + (++lineNumber)).interactive(true).build());
-            } catch (PolyglotException t) {
-                if (t.isExit()) {
-                    return t.getExitStatus();
-                } else if (t.isGuestException()) {
-                    // TODO format stack trace as expected for JS
-                    t.printStackTrace();
+            } catch (PolyglotException e) {
+                if (e.isExit()) {
+                    return e.getExitStatus();
+                } else if (e.isSyntaxError()) {
+                    output.println(e.getMessage());
+                } else if (!e.isInternalError()) {
+                    printStackTraceSkipTrailingHost(e, output);
                 } else {
-                    t.printStackTrace();
+                    e.printStackTrace();
                     return 8;
                 }
             } catch (Throwable t) {
                 t.printStackTrace();
                 return 8;
             }
+        }
+    }
+
+    private static void printStackTraceSkipTrailingHost(PolyglotException e, PrintStream output) {
+        List<PolyglotException.StackFrame> stackTrace = new ArrayList<>();
+        for (PolyglotException.StackFrame s : e.getPolyglotStackTrace()) {
+            stackTrace.add(s);
+        }
+        // remove trailing host frames
+        for (ListIterator<PolyglotException.StackFrame> iterator = stackTrace.listIterator(stackTrace.size()); iterator.hasPrevious();) {
+            PolyglotException.StackFrame s = iterator.previous();
+            if (s.isHostFrame()) {
+                iterator.remove();
+            } else {
+                break;
+            }
+        }
+        output.println(e.isHostException() ? e.asHostException().toString() : e.getMessage());
+        for (PolyglotException.StackFrame s : stackTrace) {
+            output.println("\tat " + s);
         }
     }
 
