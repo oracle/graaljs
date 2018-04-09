@@ -7,7 +7,7 @@ local common = import '../common.jsonnet';
     ],
   },
 
-  local gateCmd = ['mx', '--strict-compliance', 'gate', '--strict-mode'],
+  local gateCmd = ['mx', '--strict-compliance', 'gate', '-B=--force-deprecation-as-warning', '--strict-mode'],
 
   local gateGraalImport = {
     downloads+: {
