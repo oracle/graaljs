@@ -112,43 +112,7 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "built-ins/AsyncGeneratorFunction/instance-prototype.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorFunction/prototype/prototype.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/next/this-val-not-async-generator.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/next/this-val-not-object.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/iterator-result-prototype.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "built-ins/AsyncGeneratorPrototype/return/request-queue-order-state-executing.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-promise.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-state-completed.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-suspendedStart-promise.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-suspendedStart.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
@@ -161,42 +125,6 @@
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-suspendedYield.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/this-val-not-async-generator.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/this-val-not-object.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/Symbol.toStringTag.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/throw/this-val-not-async-generator.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/throw/this-val-not-object.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncIteratorPrototype/Symbol.asyncIterator/length.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncIteratorPrototype/Symbol.asyncIterator/name.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncIteratorPrototype/Symbol.asyncIterator/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncIteratorPrototype/Symbol.asyncIterator/return-val.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
@@ -7646,10 +7574,6 @@
     "filePath" : "language/statements/do-while/tco-body.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
-  }, {
-    "filePath" : "language/statements/for-await-of/async-gen-decl-dstr-array-elem-trlg-iter-rest-nrml-close-skip.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
   }, {
     "filePath" : "language/statements/for-await-of/let-block-with-newline.js",
     "status" : "FAIL",

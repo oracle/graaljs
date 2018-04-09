@@ -51,11 +51,11 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unchecked")
-    public Object execute(VirtualFrame frame, DynamicObject generator, Completion completion) {
+    public Object execute(VirtualFrame frame, Object generator, Completion completion) {
         DynamicObject promiseCapability = newPromiseCapability();
         if (!JSGuards.isJSObject(generator) || !hasAsyncGeneratorInternalSlots.executeHasHiddenKey(generator)) {
             Object badGeneratorError = Errors.createTypeErrorAsyncGeneratorObjectExpected().getErrorObjectEager(context);
-            Object reject = getPromiseReject.getValue(generator);
+            Object reject = getPromiseReject.getValue(promiseCapability);
             callPromiseRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, reject, badGeneratorError));
             return getPromise.getValue(promiseCapability);
         }
@@ -64,7 +64,7 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
         queueAdd(queue, request);
         AsyncGeneratorState state = (AsyncGeneratorState) getGeneratorState.getValue(generator);
         if (state != AsyncGeneratorState.Executing) {
-            asyncGeneratorResumeNextNode.execute(frame, generator);
+            asyncGeneratorResumeNextNode.execute(frame, (DynamicObject) generator);
         }
         return getPromise.getValue(promiseCapability);
     }
