@@ -317,7 +317,7 @@ def setupNodeEnvironment(args):
     if 'GRAALJS_JAR_PATH' not in os.environ:
         _setEnvVar('GRAALJS_JAR_PATH', mx.distribution('graal-js:GRAALJS').path)
     if 'TREGEX_JAR_PATH' not in os.environ:
-        _setEnvVar('TREGEX_JAR_PATH', mx.distribution('graal-js:TREGEX').path)
+        _setEnvVar('TREGEX_JAR_PATH', mx.distribution('truffle:TREGEX').path)
     if mx.suite('compiler', fatalIfMissing=False) is None:
         _setEnvVar('GRAAL_SDK_JAR_PATH', mx.distribution('sdk:GRAAL_SDK').path)
         _setEnvVar('TRUFFLE_JAR_PATH', mx.distribution('truffle:TRUFFLE_API').path)
