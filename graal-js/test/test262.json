@@ -2991,7 +2991,35 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
+    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/invoked-as-accessor.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/invoked-as-func.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/length.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/name.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
     "filePath" : "built-ins/TypedArray/prototype/length/BigInt/return-length.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/this-has-no-typedarrayname-internal.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/this-is-not-object.js",
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
@@ -3778,7 +3806,35 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
+    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/invoked-as-accessor.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/invoked-as-func.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/length.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/name.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
     "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/return-typedarrayname.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/this-has-no-typedarrayname-internal.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/this-is-not-object.js",
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
