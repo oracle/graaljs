@@ -40,16 +40,29 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
+import com.oracle.truffle.js.nodes.binary.JSAddNode;
+import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
@@ -75,7 +88,7 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
         public abstract LargeInteger doLargeInteger(LargeInteger value);
     }
 
-    private static class IncOp extends LocalVarOp {
+    protected static class IncOp extends LocalVarOp {
         @Override
         public int doInt(int value) {
             return Math.addExact(value, 1);
@@ -107,7 +120,7 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
         }
     }
 
-    private static class DecOp extends LocalVarOp {
+    protected static class DecOp extends LocalVarOp {
         @Override
         public int doInt(int value) {
             return Math.subtractExact(value, 1);
@@ -140,7 +153,7 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
     }
 
     protected final LocalVarOp op;
-    private final boolean hasTemporalDeadZone;
+    protected final boolean hasTemporalDeadZone;
     @Child @Executed protected ScopeFrameNode scopeFrameNode;
 
     protected LocalVarIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode) {
@@ -174,10 +187,53 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
     }
 }
 
+class LocalVarPostFixIncMaterializedNode extends LocalVarIncNode {
+
+    @Child protected JavaScriptNode writeTmp;
+    @Child protected JavaScriptNode readTmp;
+    @Child protected JavaScriptNode opNode;
+    @Child protected JavaScriptNode one;
+
+    public LocalVarPostFixIncMaterializedNode(LocalVarPostfixIncNode from) {
+        super(from.op, from.frameSlot, from.hasTemporalDeadZone, from.scopeFrameNode);
+        readTmp = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
+        one = JSConstantIntegerNode.create(1);
+        if (from.op instanceof DecOp) {
+            opNode = JSSubtractNode.create(readTmp, one);
+        } else {
+            opNode = JSAddNode.create(readTmp, one);
+        }
+        writeTmp = JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, opNode, hasTemporalDeadZone);
+        readTmp.setSourceSection(from.getSourceSection());
+        one.setSourceSection(from.getSourceSection());
+        opNode.setSourceSection(from.getSourceSection());
+        writeTmp.setSourceSection(from.getSourceSection());
+        this.setSourceSection(from.getSourceSection());
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        Object value = readTmp.execute(frame);
+        writeTmp.execute(frame);
+        return value;
+    }
+
+}
+
 abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
 
     protected LocalVarPostfixIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode) {
         super(op, frameSlot, hasTemporalDeadZone, scopeFrameNode);
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(ReadVariableExpressionTag.class) ||
+                        materializedTags.contains(WriteVariableExpressionTag.class)) {
+            return new LocalVarPostFixIncMaterializedNode(this);
+        } else {
+            return this;
+        }
     }
 
     @Specialization(guards = {"isBoolean(frame)", "isIntegerKind(frame)"})

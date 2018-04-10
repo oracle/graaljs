@@ -45,6 +45,7 @@ import org.junit.Test;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 
@@ -127,4 +128,29 @@ public class IncDecOperationTest extends FineGrainedAccessTest {
         }).exit();
     }
 
+    @Test
+    public void incLocal() {
+        evalAllTags("function inc(a) { var x = a++; return x; }; inc(42);");
+
+        assertGlobalVarDeclaration("a", 42);
+
+        // Inc operation de-sugared to a = a + 1;
+        enter(WritePropertyExpressionTag.class, (e, write) -> {
+            assertAttribute(e, KEY, "a");
+            write.input(assertJSObjectInput);
+            enter(BinaryExpressionTag.class, (e1, bin) -> {
+                assertAttribute(e1, OPERATOR, "+");
+                // read lhs global 'a'
+                enter(ReadVariableExpressionTag.class, (e2, p) -> {
+                    assertAttribute(e2, KEY, "a");
+                    p.input(assertGlobalObjectInput);
+                }).exit(assertReturnValue(42));
+                bin.input(42);
+                // read rhs '1'
+                enter(LiteralExpressionTag.class).exit(assertReturnValue(1));
+                bin.input(1);
+            }).exit();
+            write.input(43);
+        }).exit();
+    }
 }
