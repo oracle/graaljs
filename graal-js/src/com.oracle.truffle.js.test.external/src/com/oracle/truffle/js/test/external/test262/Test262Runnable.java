@@ -9,15 +9,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -41,15 +38,14 @@ public class Test262Runnable extends TestRunnable {
     private static final Pattern NEGATIVE_PREFIX = Pattern.compile("^[\t ]*negative:");
     private static final Pattern NEGATIVE_TYPE_PREFIX = Pattern.compile("^[\t ]*type: ");
     private static final String FLAGS_PREFIX = "flags: ";
+    private static final String INCLUDES_PREFIX = "includes: ";
     private static final String ONLY_STRICT_FLAG = "onlyStrict";
     private static final String MODULE_FLAG = "module";
-    private static final Pattern FLAGS_MATCH_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?(?:\\w+))*)\\]");
-    private static final Pattern FLAGS_SPLIT_PATTERN = Pattern.compile(", ");
+    private static final Pattern FLAGS_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?(?:\\w+))*)\\]");
+    private static final Pattern INCLUDES_PATTERN = Pattern.compile("includes: \\[(.*)\\]");
+    private static final Pattern SPLIT_PATTERN = Pattern.compile(", ");
     private static final Pattern ECMA_VERSION_PATTERN = Pattern.compile("^\\W*es(?<version>\\d+)id:");
     private static final String PENDING_ECMA_VERSION_LINE = "esid: pending";
-
-    private static final ConcurrentMap<Integer, Source[]> STRICT_HARNESS_SOURCES = new ConcurrentHashMap<>();
-    private static final ConcurrentMap<Integer, Source[]> NON_STRICT_HARNESS_SOURCES = new ConcurrentHashMap<>();
 
     private static final Map<String, String> commonOptions;
     static {
@@ -98,11 +94,14 @@ public class Test262Runnable extends TestRunnable {
             ecmaVersion = TestFile.EcmaVersion.forVersions(detectedVersions);
         }
 
+        Source[] harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList));
+
         // now run it
-        testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, testSource, runStrict, negative, asyncTest, negativeExpectedMessage)));
+        testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources)));
     }
 
-    private TestFile.Result runInternal(int ecmaVersion, File file, org.graalvm.polyglot.Source testSource, boolean runStrict, boolean negative, boolean asyncTest, String negativeExpectedMessage) {
+    private TestFile.Result runInternal(int ecmaVersion, File file, org.graalvm.polyglot.Source testSource, boolean negative, boolean asyncTest, String negativeExpectedMessage,
+                    Source[] harnessSources) {
         final String ecmaVersionSuffix = " (ES" + ecmaVersion + ")";
         suite.logVerbose(getName() + ecmaVersionSuffix);
         TestFile.Result testResult;
@@ -113,7 +112,6 @@ public class Test262Runnable extends TestRunnable {
             outputStream = makeDualStream(byteArrayOutputStream, System.out);
         }
 
-        Source[] harnessSources = getHarnessSources(ecmaVersion, runStrict);
         TestCallable tc = new TestCallable(suite, harnessSources, testSource, file, ecmaVersion, commonOptions);
         tc.setOutput(outputStream);
         tc.setError(outputStream);
@@ -213,26 +211,8 @@ public class Test262Runnable extends TestRunnable {
         return versions;
     }
 
-    private synchronized Source[] getHarnessSources(int ecmaVersion, boolean strict) {
-        ConcurrentMap<Integer, Source[]> harnessSources = strict ? STRICT_HARNESS_SOURCES : NON_STRICT_HARNESS_SOURCES;
-        return harnessSources.computeIfAbsent(ecmaVersion, k -> {
-            String prefix = strict ? "\"use strict\";" : "";
-            Source prologSource = Source.newBuilder("js", strict ? "var strict_mode = true;" : "var strict_mode = false;", "").buildLiteral();
-            Stream<Source> prologStream = Stream.of(prologSource);
-            Stream<Source> mockupStream = Stream.of(((Test262) suite).getMockupSource());
-            return Stream.concat(Stream.concat(prologStream, Arrays.stream(loadHarnessSources(ecmaVersion)).map(s -> applyPrefix(s, prefix))), mockupStream).toArray(Source[]::new);
-        });
-    }
-
     private static Source createSource(File testFile, String code, boolean module) {
         return Source.newBuilder("js", code, (module ? "module:" : "") + testFile.getPath()).buildLiteral();
-    }
-
-    private static Source applyPrefix(Source source, String prefix) {
-        if (prefix.isEmpty()) {
-            return source;
-        }
-        return Source.newBuilder("js", prefix + source.getCharacters(), source.getName()).buildLiteral();
     }
 
     private static String getNegativeMessage(List<String> scriptCode) {
@@ -258,16 +238,35 @@ public class Test262Runnable extends TestRunnable {
         return null;
     }
 
-    private static Set<String> getFlags(List<String> scriptCode) {
+    private static Stream<String> getStrings(List<String> scriptCode, String prefix, Pattern pattern) {
         for (String line : scriptCode) {
-            if (line.contains(FLAGS_PREFIX)) {
-                Matcher matcher = FLAGS_MATCH_PATTERN.matcher(line);
+            if (line.contains(prefix)) {
+                Matcher matcher = pattern.matcher(line);
                 if (matcher.find()) {
-                    return FLAGS_SPLIT_PATTERN.splitAsStream(matcher.group(1)).collect(Collectors.toSet());
+                    return SPLIT_PATTERN.splitAsStream(matcher.group(1));
                 }
             }
         }
-        return Collections.emptySet();
+        return Stream.empty();
+    }
+
+    private static Set<String> getFlags(List<String> scriptCode) {
+        return getStrings(scriptCode, FLAGS_PREFIX, FLAGS_PATTERN).collect(Collectors.toSet());
+    }
+
+    private static Stream<String> getIncludes(List<String> scriptCode) {
+        Stream<String> includes = getStrings(scriptCode, INCLUDES_PREFIX, INCLUDES_PATTERN);
+
+        // There are few tests whose "includes:" section has the form
+        // includes:
+        // - propertyHelper.js
+        for (String line : scriptCode) {
+            if ("- propertyHelper.js".equals(line.trim())) {
+                assert includes.count() == 0;
+                includes = Stream.of("propertyHelper.js");
+            }
+        }
+        return includes;
     }
 
     private static boolean isAsyncTest(List<String> scriptCodeList) {
