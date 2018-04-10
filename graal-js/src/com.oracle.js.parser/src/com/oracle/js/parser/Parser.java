@@ -1106,54 +1106,54 @@ loop:
         switch (type) {
         case LBRACE:
             block();
-            break;
+            return;
         case VAR:
             variableStatement(type);
-            break;
+            return;
         case SEMICOLON:
             emptyStatement();
-            break;
+            return;
         case IF:
             ifStatement();
-            break;
+            return;
         case FOR:
             forStatement();
-            break;
+            return;
         case WHILE:
             whileStatement();
-            break;
+            return;
         case DO:
             doStatement();
-            break;
+            return;
         case CONTINUE:
             continueStatement();
-            break;
+            return;
         case BREAK:
             breakStatement();
-            break;
+            return;
         case RETURN:
             returnStatement();
-            break;
+            return;
         case WITH:
             withStatement();
-            break;
+            return;
         case SWITCH:
             switchStatement();
-            break;
+            return;
         case THROW:
             throwStatement();
-            break;
+            return;
         case TRY:
             tryStatement();
-            break;
+            return;
         case DEBUGGER:
             debuggerStatement();
-            break;
+            return;
         case RPAREN:
         case RBRACKET:
         case EOF:
             expect(SEMICOLON);
-            break;
+            return;
         case FUNCTION:
             // As per spec (ECMA section 12), function declarations as arbitrary statement
             // is not "portable". Implementation can issue a warning or disallow the same.
@@ -1168,34 +1168,39 @@ loop:
             }
             functionExpression(true, topLevel || labelledStatement, singleStatement);
             return;
+        case LET:
+        case CONST:
+            if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration(false) || type == CONST)) {
+                if (singleStatement) {
+                    throw error(AbstractParser.message("expected.stmt", type.getName() + " declaration"), token);
+                }
+                variableStatement(type);
+                return;
+            } else if (env.constAsVar && type == CONST) {
+                variableStatement(TokenType.VAR);
+                return;
+            }
+            break;
+        case CLASS:
+            if (ES6_CLASS && isES6()) {
+                if (singleStatement) {
+                    throw error(AbstractParser.message("expected.stmt", "class declaration"), token);
+                }
+                classDeclaration(inGeneratorFunction(), inAsyncFunction(), false);
+                return;
+            }
+            break;
+        case ASYNC:
+            if (isAsync() && lookaheadIsAsyncFunction()) {
+                if (singleStatement) {
+                    throw error(AbstractParser.message("expected.stmt", "async function declaration"), token);
+                }
+                asyncFunctionExpression(true, topLevel || labelledStatement);
+                return;
+            }
+            break;
         default:
-            statementDefault(topLevel, reparseFlags, singleStatement, labelledStatement, mayBeFunctionDeclaration);
-        }
-    }
-
-    private void statementDefault(final boolean topLevel, final int reparseFlags, final boolean singleStatement, final boolean labelledStatement, final boolean mayBeFunctionDeclaration) {
-        if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration(false) || type == CONST)) {
-            if (singleStatement) {
-                throw error(AbstractParser.message("expected.stmt", type.getName() + " declaration"), token);
-            }
-            variableStatement(type);
-            return;
-        } else if (ES6_CLASS && type == CLASS && isES6()) {
-            if (singleStatement) {
-                throw error(AbstractParser.message("expected.stmt", "class declaration"), token);
-            }
-            classDeclaration(inGeneratorFunction(), inAsyncFunction(), false);
-            return;
-        } else if (isAsync() && lookaheadIsAsyncFunction()) {
-            if (singleStatement) {
-                throw error(AbstractParser.message("expected.stmt", "async function declaration"), token);
-            }
-            asyncFunctionExpression(true, topLevel || labelledStatement);
-            return;
-        }
-        if (env.constAsVar && type == CONST) {
-            variableStatement(TokenType.VAR);
-            return;
+            break;
         }
 
         if (isBindingIdentifier()) {
@@ -1203,33 +1208,40 @@ loop:
                 labelStatement(mayBeFunctionDeclaration);
                 return;
             }
-            final boolean allowPropertyFunction = (reparseFlags & REPARSE_IS_PROPERTY_ACCESSOR) != 0;
-            final boolean isES6Method = (reparseFlags & REPARSE_IS_METHOD) != 0;
-            if (allowPropertyFunction) {
-                final long propertyToken = token;
-                final int propertyLine = line;
-                if (type == GET) {
-                    next();
-                    addPropertyFunctionStatement(propertyGetterFunction(propertyToken, propertyLine, false, false));
-                    return;
-                } else if (type == SET) {
-                    next();
-                    addPropertyFunctionStatement(propertySetterFunction(propertyToken, propertyLine, false, false));
-                    return;
-                }
-            } else if (isES6Method) {
-                final String ident = (String)getValue();
-                IdentNode identNode = createIdentNode(token, finish, ident).setIsPropertyName();
-                final long propertyToken = token;
-                final int propertyLine = line;
-                next();
-                final int flags = CONSTRUCTOR_NAME.equals(ident) ? FunctionNode.IS_CLASS_CONSTRUCTOR : FunctionNode.IS_METHOD;
-                addPropertyFunctionStatement(propertyMethodFunction(identNode, propertyToken, propertyLine, false, flags, false, false));
+            if (reparseFlags != 0 && reparseFunctionStatement(reparseFlags)) {
                 return;
             }
         }
 
         expressionStatement();
+    }
+
+    private boolean reparseFunctionStatement(final int reparseFlags) {
+        final boolean allowPropertyFunction = (reparseFlags & REPARSE_IS_PROPERTY_ACCESSOR) != 0;
+        final boolean isES6Method = (reparseFlags & REPARSE_IS_METHOD) != 0;
+        if (allowPropertyFunction) {
+            final long propertyToken = token;
+            final int propertyLine = line;
+            if (type == GET) {
+                next();
+                addPropertyFunctionStatement(propertyGetterFunction(propertyToken, propertyLine, false, false));
+                return true;
+            } else if (type == SET) {
+                next();
+                addPropertyFunctionStatement(propertySetterFunction(propertyToken, propertyLine, false, false));
+                return true;
+            }
+        } else if (isES6Method) {
+            final String ident = (String)getValue();
+            IdentNode identNode = createIdentNode(token, finish, ident).setIsPropertyName();
+            final long propertyToken = token;
+            final int propertyLine = line;
+            next();
+            final int flags = CONSTRUCTOR_NAME.equals(ident) ? FunctionNode.IS_CLASS_CONSTRUCTOR : FunctionNode.IS_METHOD;
+            addPropertyFunctionStatement(propertyMethodFunction(identNode, propertyToken, propertyLine, false, flags, false, false));
+            return true;
+        }
+        return false;
     }
 
     private void addPropertyFunctionStatement(final PropertyFunction propertyFunction) {
@@ -3802,9 +3814,8 @@ loop:
             if (ES6_CLASS && isES6()) {
                 lhs = classExpression(yield, await);
                 break;
-            } else {
-                // fall through
             }
+            // fall through
 
         case SUPER:
             if (ES6_CLASS && isES6()) {
@@ -3831,19 +3842,18 @@ loop:
                             throw error(AbstractParser.message("invalid.super"), identToken);
                     }
                     break;
-                } else {
-                    // fall through
                 }
-            } else {
-                // fall through
             }
+            // fall through
 
-        default:
+        case ASYNC:
             if (isAsync() && lookaheadIsAsyncFunction()) {
                 lhs = asyncFunctionExpression(false, false);
                 break;
             }
+            // fall through
 
+        default:
             // Get primary expression.
             lhs = primaryExpression(yield, await);
             break;
