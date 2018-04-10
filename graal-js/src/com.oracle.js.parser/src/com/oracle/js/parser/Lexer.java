@@ -56,6 +56,7 @@ import static com.oracle.js.parser.TokenType.XML;
 
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.Map;
 
 // @formatter:off
 /**
@@ -97,8 +98,8 @@ public class Lexer extends Scanner {
     private boolean pauseOnNextLeftBrace;
     boolean pauseOnRightBrace;
 
-    /** HashMap to intern strings during parsing (memory footprint). */
-    private final HashMap<String, String> internedStrings;
+    /** Map to intern strings during parsing (memory footprint). */
+    private final Map<String, String> internedStrings;
 
     private static final String JAVASCRIPT_WHITESPACE_HIGH =
         "\u1680" + // Ogham space mark
@@ -1944,12 +1945,8 @@ public class Lexer extends Scanner {
     }
 
     public String stringIntern(String candidate) {
-        String interned = internedStrings.get(candidate);
-        if (interned == null) {
-            internedStrings.put(candidate, candidate);
-            interned = candidate;
-        }
-        return interned;
+        String interned = internedStrings.putIfAbsent(candidate, candidate);
+        return interned == null ? candidate : interned;
     }
 
     /**

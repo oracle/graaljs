@@ -31,8 +31,6 @@ import static com.oracle.js.parser.TokenType.EOF;
 import static com.oracle.js.parser.TokenType.EOL;
 import static com.oracle.js.parser.TokenType.IDENT;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Function;
 
 import com.oracle.js.parser.Lexer.LexerToken;
@@ -87,8 +85,6 @@ public abstract class AbstractParser {
 
     /** What should line numbers be counted from? */
     protected final int lineOffset;
-
-    private final Map<String, String> canonicalNames = new HashMap<>();
 
     /**
      * Construct a parser.
@@ -447,9 +443,8 @@ public abstract class AbstractParser {
      *         name will be deduplicated.
      */
     protected IdentNode createIdentNode(final long identToken, final int identFinish, final String name) {
-        final String existingName = canonicalNames.putIfAbsent(name, name);
-        final String canonicalName = existingName != null ? existingName : name;
-        return new IdentNode(identToken, identFinish, canonicalName);
+        // Note: name should already be interned
+        return new IdentNode(identToken, identFinish, name);
     }
 
     /**
