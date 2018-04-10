@@ -443,8 +443,16 @@ public abstract class AbstractParser {
      *         name will be deduplicated.
      */
     protected IdentNode createIdentNode(final long identToken, final int identFinish, final String name) {
-        // Note: name should already be interned
+        assert isInterned(name) : name;
         return new IdentNode(identToken, identFinish, name);
+    }
+
+    private boolean isInterned(final String name) {
+        return isSame(lexer.stringIntern(name), name) || isSame(name.intern(), name);
+    }
+
+    private static boolean isSame(Object a, Object b) {
+        return a == b;
     }
 
     /**
