@@ -133,8 +133,8 @@
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "built-ins/Atomics/wait/undefined-index-defaults-to-zero.js",
-    "status" : "FAIL",
-    "comment" : "fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "fails randomly, highly timing sensitive (sleep(5) + wait(10)), will be fixed by Test262 update"
   }, {
     "filePath" : "built-ins/BigInt/asIntN/arithmetic.js",
     "status" : "FAIL",
