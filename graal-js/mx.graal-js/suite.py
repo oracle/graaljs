@@ -20,18 +20,18 @@ suite = {
   "repositories" : {
     "graaljs-binary-snapshots" : {
       "url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
-      "licenses" : ["Oracle Proprietary"]
+      "licenses" : ["UPL", "MIT"]
     },
   },
 
   "licenses" : {
-    "Oracle Proprietary" : {
-      "name" : "ORACLE PROPRIETARY/CONFIDENTIAL",
-      "url" : "http://www.oracle.com/us/legal/copyright/index.html"
-    }
+    "UPL" : { #bulk of the code
+      "name" : "Universal Permissive License, Version 1.0",
+      "url" : "http://opensource.org/licenses/UPL",
+    },
   },
 
-  "defaultLicense" : "Oracle Proprietary",
+  "defaultLicense" : "UPL",
 
   "javac.lint.overrides" : "none",
 
@@ -360,6 +360,10 @@ suite = {
       "maven" : {
         "artifactId" : "graal-js",
       },
+      "license": [
+        "UPL",  # Main code
+        "MIT",  # JONI regexp engine
+      ],
     },
 
     "GRAALJS_LAUNCHER" : {

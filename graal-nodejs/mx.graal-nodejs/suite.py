@@ -26,18 +26,18 @@ suite = {
   "repositories" : {
     "graalnodejs-binary-snapshots" : {
       "url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
-      "licenses" : ["Oracle Proprietary"]
+      "licenses" : ["UPL"]
     },
   },
 
   "licenses" : {
-    "Oracle Proprietary" : {
-      "name" : "ORACLE PROPRIETARY/CONFIDENTIAL",
-      "url" : "http://www.oracle.com/us/legal/copyright/index.html"
+    "UPL" : {
+      "name" : "Universal Permissive License, Version 1.0",
+      "url" : "http://opensource.org/licenses/UPL",
     }
   },
 
-  "defaultLicense" : "Oracle Proprietary",
+  "defaultLicense" : "UPL",
 
   # If you add/remove/rename projects, update also the SharedBuild task of the gate
   "projects" : {
