@@ -39,30 +39,69 @@
  * SOFTWARE.
  */
 
-#include "arguments.cc"
-#include "array.cc"
-#include "boolean.cc"
-#include "bootstrap.cc"
-#include "cast.cc"
-#include "context.cc"
-#include "exception.cc"
-#include "external.cc"
-#include "function.cc"
-#include "function_template.cc"
-#include "gc.cc"
-#include "local.cc"
-#include "integer.cc"
-#include "isolate.cc"
-#include "message.cc"
-#include "null.cc"
-#include "object.cc"
-#include "object_new.cc"
-#include "object_template.cc"
-#include "persistent.cc"
-#include "script.cc"
-#include "stacktrace.cc"
-#include "string.cc"
-#include "try_catch.cc"
-#include "undefined.cc"
-#include "value.cc"
-#include "v8obj.cc"
+#define SUITE ObjectNew
+
+// RegExp::New
+
+EXPORT_TO_JS(RegExp) {
+    Local<String> pattern = args[0].As<String>();
+    Local<Value> re = RegExp::New(pattern, RegExp::Flags::kGlobal);
+    args.GetReturnValue().Set(re);
+}
+
+EXPORT_TO_JS(RegExpMaybe) {
+    Isolate* isolate = args.GetIsolate();
+    Local<String> pattern = args[0].As<String>();
+    MaybeLocal<RegExp> re = RegExp::New(isolate->GetCurrentContext(), pattern, RegExp::Flags::kGlobal);
+    if (re.IsEmpty()) {
+        return;
+    }
+    args.GetReturnValue().Set(re.ToLocalChecked());
+}
+
+// Date::New
+
+EXPORT_TO_JS(Date) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Number> number = args[0].As<Number>();
+    Local<Value> date = Date::New(isolate, number->Value());
+    args.GetReturnValue().Set(date);
+}
+
+EXPORT_TO_JS(DateMaybe) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Number> number = args[0].As<Number>();
+    MaybeLocal<Value> date = Date::New(isolate->GetCurrentContext(), number->Value());
+    if (date.IsEmpty()) {
+        return;
+    }
+    args.GetReturnValue().Set(date.ToLocalChecked());
+}
+
+// BooleanObject::New
+
+EXPORT_TO_JS(BooleanObject) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Boolean> boolean = args[0].As<Boolean>();
+    Local<Value> booleanObj = BooleanObject::New(isolate, boolean->Value());
+    args.GetReturnValue().Set(booleanObj);
+}
+
+// StringObject::New
+
+EXPORT_TO_JS(StringObject) {
+    Local<String> value = args[0].As<String>();
+    Local<Value> stringObj = StringObject::New(value);
+    args.GetReturnValue().Set(stringObj);
+}
+
+// NumberObject::New
+
+EXPORT_TO_JS(NumberObject) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Number> number = args[0].As<Number>();
+    Local<Value> numberObj = NumberObject::New(isolate, number->Value());
+    args.GetReturnValue().Set(numberObj);
+}
+
+#undef SUITE
