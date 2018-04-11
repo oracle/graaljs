@@ -104,9 +104,9 @@ And others.
 
 ## Licence
 
-Graal.js is copyright (c) 2013-2018 Oracle and/or its affiliates, and is made available to you under the following license:
+Graal.js is available under the following license:
 
-* TODO
+* The Universal Permissive License (UPL), Version 1.0; https://opensource.org/licenses/UPL
 
 ## Attribution
 
