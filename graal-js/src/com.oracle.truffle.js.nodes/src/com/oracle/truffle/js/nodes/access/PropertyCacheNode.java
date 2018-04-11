@@ -951,6 +951,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
                 } else if (JSProxy.isProxy(store)) {
                     specialized = createUndefinedPropertyNode(thisObject, store, depth, context, value);
                     break;
+                } else if (isOwnProperty()) {
+                    break;
                 }
 
                 store = (DynamicObject) JSRuntime.toJavaNull(JSObject.getPrototype(store));
@@ -1188,6 +1190,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
     }
 
     protected abstract boolean isGlobal();
+
+    protected abstract boolean isOwnProperty();
 
     public abstract JSContext getContext();
 

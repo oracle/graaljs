@@ -108,10 +108,15 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode> {
 
     public static PropertySetNode create(Object key, boolean isGlobal, JSContext context, boolean isStrict) {
+        final boolean setOwnProperty = false;
+        return createImpl(key, isGlobal, context, isStrict, setOwnProperty, JSAttributes.getDefault());
+    }
+
+    private static PropertySetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean isStrict, boolean setOwnProperty, int attributeFlags) {
         if (JSTruffleOptions.PropertyCacheLimit > 0) {
-            return new UninitializedPropertySetNode(key, isGlobal, context, isStrict, JSAttributes.getDefault());
+            return new UninitializedPropertySetNode(key, isGlobal, context, isStrict, setOwnProperty, attributeFlags);
         } else {
-            return new GenericPropertySetNode(key, isGlobal, isStrict, context);
+            return new GenericPropertySetNode(key, isGlobal, isStrict, setOwnProperty, context);
         }
     }
 
@@ -279,6 +284,11 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         @Override
         protected boolean isGlobal() {
             return getNext().isGlobal();
+        }
+
+        @Override
+        protected boolean isOwnProperty() {
+            return getNext().isOwnProperty();
         }
     }
 
@@ -883,12 +893,14 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
     public abstract static class TerminalPropertySetNode extends PropertySetNode {
         private final boolean isGlobal;
         private final boolean isStrict;
+        private final boolean setOwnProperty;
         protected final JSContext context;
 
-        public TerminalPropertySetNode(Object key, boolean isGlobal, boolean isStrict, JSContext context) {
+        public TerminalPropertySetNode(Object key, boolean isGlobal, boolean isStrict, boolean setOwnProperty, JSContext context) {
             super(key);
             this.isGlobal = isGlobal;
             this.isStrict = isStrict;
+            this.setOwnProperty = setOwnProperty;
             this.context = context;
         }
 
@@ -933,6 +945,11 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         }
 
         @Override
+        protected boolean isOwnProperty() {
+            return setOwnProperty;
+        }
+
+        @Override
         public JSContext getContext() {
             return context;
         }
@@ -949,8 +966,8 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         private final ConditionProfile isForeignObject = ConditionProfile.createBinaryProfile();
         @CompilerDirectives.CompilationFinal private Converters.Converter converter;
 
-        public GenericPropertySetNode(Object key, boolean isGlobal, boolean isStrict, JSContext context) {
-            super(key, isGlobal, isStrict, context);
+        public GenericPropertySetNode(Object key, boolean isGlobal, boolean isStrict, boolean setOwnProperty, JSContext context) {
+            super(key, isGlobal, isStrict, setOwnProperty, context);
             this.toObjectNode = JSToObjectNode.createToObjectNoCheck(context);
         }
 
@@ -1040,8 +1057,8 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         private boolean propertyAssumptionCheckEnabled;
         private final int attributeFlags;
 
-        public UninitializedPropertySetNode(Object key, boolean isGlobal, JSContext context, boolean isStrict, int attributeFlags) {
-            super(key, isGlobal, isStrict, context);
+        public UninitializedPropertySetNode(Object key, boolean isGlobal, JSContext context, boolean isStrict, boolean setOwnProperty, int attributeFlags) {
+            super(key, isGlobal, isStrict, setOwnProperty, context);
             this.attributeFlags = attributeFlags;
         }
 
@@ -1117,9 +1134,9 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
     public static final class JSJavaWrapperPropertySetNode extends LinkedPropertySetNode {
         @Child private PropertySetNode nested;
 
-        public JSJavaWrapperPropertySetNode(Object key, boolean isGlobal, boolean isStrict, JSContext context) {
+        public JSJavaWrapperPropertySetNode(Object key, boolean isGlobal, boolean isStrict, boolean setOwnProperty, JSContext context) {
             super(key, new JSClassCheckNode(JSJavaWrapper.getJSClassInstance()));
-            this.nested = new UninitializedPropertySetNode(key, isGlobal, context, isStrict, JSAttributes.getDefault());
+            this.nested = new UninitializedPropertySetNode(key, isGlobal, context, isStrict, setOwnProperty, JSAttributes.getDefault());
         }
 
         @Override
@@ -1306,7 +1323,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
             }
         } else {
             if (JSJavaWrapper.isJSJavaWrapper(thisObj)) {
-                return new JSJavaWrapperPropertySetNode(key, isGlobal(), isStrict(), context);
+                return new JSJavaWrapperPropertySetNode(key, isGlobal(), isStrict(), isOwnProperty(), context);
             }
         }
         return null;
@@ -1342,7 +1359,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
 
     @Override
     protected PropertySetNode createGenericPropertyNode(JSContext context) {
-        return new GenericPropertySetNode(key, isGlobal(), isStrict(), context);
+        return new GenericPropertySetNode(key, isGlobal(), isStrict(), isOwnProperty(), context);
     }
 
     protected boolean isStrict() {
