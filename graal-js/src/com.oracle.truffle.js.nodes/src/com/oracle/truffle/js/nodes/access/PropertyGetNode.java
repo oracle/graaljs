@@ -141,6 +141,10 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         return createImpl(key, global, context, getOwnProperty);
     }
 
+    public static PropertyGetNode createGetHidden(HiddenKey key, JSContext context) {
+        return createGetOwn(key, context);
+    }
+
     protected PropertyGetNode(Object key) {
         super(key);
     }

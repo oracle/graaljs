@@ -299,8 +299,8 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         @Child private CreateMethodPropertyNode setColumnNumber;
 
         private InitErrorObjectNode(JSContext context, boolean defaultColumnNumber) {
-            this.setException = PropertySetNode.create(JSError.EXCEPTION_PROPERTY_NAME, false, context, false);
-            this.setFormattedStack = PropertySetNode.create(JSError.FORMATTED_STACK_NAME, false, context, false);
+            this.setException = PropertySetNode.createSetHidden(JSError.EXCEPTION_PROPERTY_NAME, context);
+            this.setFormattedStack = PropertySetNode.createSetHidden(JSError.FORMATTED_STACK_NAME, context);
             this.defaultColumnNumber = defaultColumnNumber;
             if (JSTruffleOptions.NashornCompatibilityMode) {
                 this.setLineNumber = CreateMethodPropertyNode.create(context, JSError.LINE_NUMBER_PROPERTY_NAME);

@@ -120,6 +120,10 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         }
     }
 
+    public static PropertySetNode createSetHidden(HiddenKey key, JSContext context) {
+        return createImpl(key, false, context, false, true, 0);
+    }
+
     protected PropertySetNode(Object key) {
         super(key);
     }

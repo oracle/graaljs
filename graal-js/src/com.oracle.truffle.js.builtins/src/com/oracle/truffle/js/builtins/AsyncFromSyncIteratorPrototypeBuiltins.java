@@ -150,9 +150,9 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             this.iteratorNext = IteratorNextNode.create(context);
             this.iteratorComplete = IteratorCompleteNode.create(context);
             this.iteratorValue = IteratorValueNodeGen.create(context);
-            this.getGeneratorTarget = PropertyGetNode.create(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, false, context);
+            this.getGeneratorTarget = PropertyGetNode.createGetHidden(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, context);
             this.performPromiseThenCall = JSFunctionCallNode.createCall();
-            this.setDoneNode = PropertySetNode.create(DONE, false, context, false);
+            this.setDoneNode = PropertySetNode.createSetHidden(DONE, context);
         }
 
         protected DynamicObject createPromiseCapability() {
@@ -200,7 +200,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         private static JSFunctionData createIteratorValueUnwrapImpl(JSContext context) {
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
                 @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
-                @Child private PropertyGetNode isDoneNode = PropertyGetNode.create(DONE, false, context);
+                @Child private PropertyGetNode isDoneNode = PropertyGetNode.createGetHidden(DONE, context);
                 @Child private CreateIterResultObjectNode iterResult = CreateIterResultObjectNodeGen.create(context);
 
                 @Override

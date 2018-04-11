@@ -64,7 +64,7 @@ public class AsyncGeneratorRejectNode extends JavaScriptBaseNode {
 
     protected AsyncGeneratorRejectNode(JSContext context) {
         this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-        this.getAsyncGeneratorQueueNode = PropertyGetNode.create(JSFunction.ASYNC_GENERATOR_QUEUE_ID, false, context);
+        this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
         this.getPromiseReject = PropertyGetNode.create("reject", false, context);
         this.callRejectNode = JSFunctionCallNode.createCall();
     }

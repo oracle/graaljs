@@ -130,7 +130,7 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         public CallSiteOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getStackTraceElementNode = PropertyGetNode.create(JSError.STACK_TRACE_ELEMENT_PROPERTY_NAME, false, context);
+            this.getStackTraceElementNode = PropertyGetNode.createGetHidden(JSError.STACK_TRACE_ELEMENT_PROPERTY_NAME, context);
         }
 
         protected final JSStackTraceElement getStackTraceElement(DynamicObject thisObj) {

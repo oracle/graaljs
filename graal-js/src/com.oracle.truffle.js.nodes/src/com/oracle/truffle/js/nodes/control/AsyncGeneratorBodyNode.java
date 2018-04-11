@@ -90,9 +90,9 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
         AsyncGeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, SourceSection functionSourceSection) {
             super(context.getLanguage(), functionSourceSection, null);
-            this.getGeneratorContext = PropertyGetNode.create(JSFunction.GENERATOR_CONTEXT_ID, false, context);
-            this.getGeneratorState = PropertyGetNode.create(JSFunction.GENERATOR_STATE_ID, false, context);
-            this.setGeneratorState = PropertySetNode.create(JSFunction.GENERATOR_STATE_ID, false, context, false);
+            this.getGeneratorContext = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_CONTEXT_ID, context);
+            this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_STATE_ID, context);
+            this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
             this.functionBody = functionBody;
             this.writeYieldValue = writeYieldValueNode;
             this.readYieldResult = readYieldResultNode;
@@ -158,10 +158,10 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         JavaScriptNode functionObject = AccessFunctionNode.create();
         this.createAsyncGeneratorObject = SpecializedNewObjectNode.create(context, false, true, true, functionObject);
 
-        this.setGeneratorState = PropertySetNode.create(JSFunction.GENERATOR_STATE_ID, false, context, false);
-        this.setGeneratorContext = PropertySetNode.create(JSFunction.GENERATOR_CONTEXT_ID, false, context, false);
-        this.setGeneratorTarget = PropertySetNode.create(JSFunction.GENERATOR_TARGET_ID, false, context, false);
-        this.setGeneratorQueue = PropertySetNode.create(JSFunction.ASYNC_GENERATOR_QUEUE_ID, false, context, false);
+        this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
+        this.setGeneratorContext = PropertySetNode.createSetHidden(JSFunction.GENERATOR_CONTEXT_ID, context);
+        this.setGeneratorTarget = PropertySetNode.createSetHidden(JSFunction.GENERATOR_TARGET_ID, context);
+        this.setGeneratorQueue = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
 
         this.context = context;
 

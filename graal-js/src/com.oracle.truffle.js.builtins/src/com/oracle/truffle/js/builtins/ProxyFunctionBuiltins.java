@@ -83,7 +83,7 @@ public final class ProxyFunctionBuiltins extends JSBuiltinsContainer.Lambda {
         public RevocableNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.proxyCreateNode = ConstructJSProxyNodeGen.create(context, builtin, false, null);
-            this.setRevocableProxySlotNode = PropertySetNode.create(JSProxy.REVOCABLE_PROXY, false, context, false);
+            this.setRevocableProxySlotNode = PropertySetNode.createSetHidden(JSProxy.REVOCABLE_PROXY, context);
             this.createObjectNode = CreateObjectNode.create(context);
             this.createProxyPropertyNode = CreateDataPropertyNode.create(context, "proxy");
             this.createRevokePropertyNode = CreateDataPropertyNode.create(context, "revoke");
@@ -105,8 +105,8 @@ public final class ProxyFunctionBuiltins extends JSBuiltinsContainer.Lambda {
 
         private static JSFunctionData createProxyRevokerFunctionImpl(JSContext context) {
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
-                @Child private PropertyGetNode getRevocableProxyNode = PropertyGetNode.create(JSProxy.REVOCABLE_PROXY, false, context);
-                @Child private PropertySetNode setRevocableProxyNode = PropertySetNode.create(JSProxy.REVOCABLE_PROXY, false, context, false);
+                @Child private PropertyGetNode getRevocableProxyNode = PropertyGetNode.createGetHidden(JSProxy.REVOCABLE_PROXY, context);
+                @Child private PropertySetNode setRevocableProxyNode = PropertySetNode.createSetHidden(JSProxy.REVOCABLE_PROXY, context);
 
                 @Override
                 public Object execute(VirtualFrame frame) {
