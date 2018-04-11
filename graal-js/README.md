@@ -3,7 +3,7 @@ Graal.js is a High-Performance JavaScript implementation built atop [Truffle](ht
 Truffle is a framework for implementing languages as self-optimizing interpreters written in Java.
 Graal is a dynamic compiler that is used to generate efficient machine code from partially evaluated Truffle interpreters.
 
-Graal.js is compatible with [ECMAScript 2016](http://www.ecma-international.org/ecma-262/7.0/index.html).
+Graal.js is compatible with [ECMAScript 2017](http://www.ecma-international.org/ecma-262/8.0/index.html).
 
 ## Building
 1. Clone `mx`: `git clone https://github.com/graalvm/mx.git`
