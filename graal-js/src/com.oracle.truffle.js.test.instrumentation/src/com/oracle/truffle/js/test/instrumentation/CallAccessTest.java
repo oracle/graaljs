@@ -49,6 +49,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -72,6 +73,10 @@ public class CallAccessTest extends FineGrainedAccessTest {
             // one argument
             enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
             call.input(42);
+
+            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+                call1.input(42);
+            }).exit();
         }).exit();
     }
 
@@ -94,6 +99,13 @@ public class CallAccessTest extends FineGrainedAccessTest {
             call.input(42);
             enter(LiteralExpressionTag.class).exit(assertReturnValue(24));
             call.input(24);
+
+            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+                call1.input(42);
+            }).exit();
+            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+                call1.input(24);
+            }).exit();
         }).exit();
     }
 
@@ -134,6 +146,13 @@ public class CallAccessTest extends FineGrainedAccessTest {
             call.input(42);
             enter(LiteralExpressionTag.class).exit(assertReturnValue(24));
             call.input(24);
+
+            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+                call1.input(42);
+            }).exit();
+            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+                call1.input(24);
+            }).exit();
         }).exit();
     }
 
@@ -172,6 +191,13 @@ public class CallAccessTest extends FineGrainedAccessTest {
             // arguments
             enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
             call.input(42);
+
+            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+                call1.input(42);
+            }).exit();
+            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+                call1.input(Undefined.instance);
+            }).exit();
         }).exit();
     }
 
