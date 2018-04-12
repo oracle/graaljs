@@ -186,7 +186,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             int realmIndex = toRealmIndexOrThrow(getContext(), index);
             JSRealm jsrealm = getContext().getFromRealmList(realmIndex);
             String sourceText = JSRuntime.toString(code);
-            Source source = Source.newBuilder(sourceText).name(Evaluator.EVAL_SOURCE_NAME).mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build();
+            Source source = Source.newBuilder(sourceText).name(Evaluator.EVAL_SOURCE_NAME).language(AbstractJavaScriptLanguage.ID).build();
             return jsrealm.getContext().getEvaluator().evaluate(jsrealm, this, source);
         }
     }

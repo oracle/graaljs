@@ -824,7 +824,7 @@ public class JSContext implements ShapeContext {
                         if (existingModule != null) {
                             return existingModule;
                         }
-                        Source source = Source.newBuilder(moduleFile).name(specifier).mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build();
+                        Source source = Source.newBuilder(moduleFile).name(specifier).language(AbstractJavaScriptLanguage.ID).build();
                         JSModuleRecord newModule = getEvaluator().parseModule(JSContext.this, source, this);
                         moduleMap.put(canonicalPath, newModule);
                         return newModule;

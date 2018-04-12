@@ -2460,7 +2460,7 @@ public final class GraalJSAccess {
         NodeFactory factory = NodeFactory.getInstance(jsContext);
         String moduleName = (String) name;
         URI uri = URI.create(moduleName);
-        Source source = Source.newBuilder(moduleName).content((String) sourceCode).uri(uri).name(moduleName).mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build();
+        Source source = Source.newBuilder(moduleName).content((String) sourceCode).uri(uri).name(moduleName).language(AbstractJavaScriptLanguage.ID).build();
         return JavaScriptTranslator.translateModule(factory, jsContext, source, getModuleLoader());
     }
 

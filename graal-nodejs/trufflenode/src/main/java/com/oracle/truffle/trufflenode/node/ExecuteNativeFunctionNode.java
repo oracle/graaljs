@@ -113,7 +113,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     private static int sourceSectionCounter;
 
     private static SourceSection createSourceSection() {
-        return Source.newBuilder("").name("<native$" + ++sourceSectionCounter + ">").mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build().createUnavailableSection();
+        return Source.newBuilder("").name("<native$" + ++sourceSectionCounter + ">").language(AbstractJavaScriptLanguage.ID).build().createUnavailableSection();
     }
 
     @Override

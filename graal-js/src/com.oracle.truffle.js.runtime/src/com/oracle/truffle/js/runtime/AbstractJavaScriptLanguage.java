@@ -58,7 +58,7 @@ public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm
     public static final String ID = "js";
 
     public static Source sourceFromFileName(String fileName) throws IOException {
-        return Source.newBuilder(new File(fileName)).name(fileName).mimeType(APPLICATION_MIME_TYPE).build();
+        return Source.newBuilder(new File(fileName)).name(fileName).language(ID).build();
     }
 
     public static JSRealm findCurrentJSRealm() {

@@ -108,7 +108,7 @@ public class MaterializedNodes {
     public void functionNode() {
         AbstractFunctionArgumentsNode args = JSFunctionArgumentsNode.create(new JavaScriptNode[]{});
         JSFunctionCallNode c = JSFunctionCallNode.create(JSConstantNode.createUndefined(), null, args, false, false);
-        c.setSourceSection(Source.newBuilder("").name("").mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build().createUnavailableSection());
+        c.setSourceSection(Source.newBuilder("").name("").language(AbstractJavaScriptLanguage.ID).build().createUnavailableSection());
         Set<Class<? extends Tag>> s = new HashSet<>();
         s.add(FunctionCallExpressionTag.class);
         c.addStatementTag();
@@ -122,8 +122,8 @@ public class MaterializedNodes {
         JSTargetableNode undef = GlobalConstantNode.createGlobalConstant(JSObject.getJSContext(Undefined.instance), "test", Undefined.instance);
         AbstractFunctionArgumentsNode args = JSFunctionArgumentsNode.create(new JavaScriptNode[]{});
         JSFunctionCallNode c = JSFunctionCallNode.createInvoke(undef, args, false, false);
-        c.setSourceSection(Source.newBuilder("").name("").mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build().createUnavailableSection());
-        undef.setSourceSection(Source.newBuilder("").name("").mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build().createUnavailableSection());
+        c.setSourceSection(Source.newBuilder("").name("").language(AbstractJavaScriptLanguage.ID).build().createUnavailableSection());
+        undef.setSourceSection(Source.newBuilder("").name("").language(AbstractJavaScriptLanguage.ID).build().createUnavailableSection());
         Set<Class<? extends Tag>> s = new HashSet<>();
         s.add(FunctionCallExpressionTag.class);
         c.addStatementTag();
@@ -141,7 +141,7 @@ public class MaterializedNodes {
 
         // This will create an optimized JSAddConstantRightNumberNodeGen
         JavaScriptNode optimized = JSAddNode.create(dummyDouble, dummyInt);
-        optimized.setSourceSection(Source.newBuilder("").name("").mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build().createUnavailableSection());
+        optimized.setSourceSection(Source.newBuilder("").name("").language(AbstractJavaScriptLanguage.ID).build().createUnavailableSection());
         Set<Class<? extends Tag>> s = new HashSet<>();
         s.add(BinaryExpressionTag.class);
         optimized.addStatementTag();
@@ -178,7 +178,7 @@ public class MaterializedNodes {
     private static final JavaScriptNode dummyInt = JSConstantIntegerNode.create(42);
     private static final JavaScriptNode dummyDouble = JSConstantDoubleNode.create(42.42);
     private static final JavaScriptNode dummyJSNode = new DummyConstantNode(42);
-    private static final SourceSection dummySourceSection = Source.newBuilder("").name("").mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build().createUnavailableSection();
+    private static final SourceSection dummySourceSection = Source.newBuilder("").name("").language(AbstractJavaScriptLanguage.ID).build().createUnavailableSection();
 
     private static JSContext getDummyCx() {
         return JSObject.getJSContext(Undefined.instance);
