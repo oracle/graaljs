@@ -115,13 +115,13 @@ public final class JSPromise extends JSBuiltinObject {
     }
 
     private static String getStatus(DynamicObject obj) {
-        if (isPending(obj)) {
-            return "pending";
-        } else if (isFulfilled(obj)) {
+        if (isFulfilled(obj)) {
             return "resolved";
-        } else {
-            assert isRejected(obj);
+        } else if (isRejected(obj)) {
             return "rejected";
+        } else {
+            assert isPending(obj) || !obj.containsKey(JSPromise.PROMISE_STATE);
+            return "pending";
         }
     }
 
