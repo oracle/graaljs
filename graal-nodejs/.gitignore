@@ -46,6 +46,7 @@ coverage/
 Debug/
 !**/node_modules/debug/
 !deps/v8/src/debug/
+!**/src/main/java/**/debug/
 Release/
 !doc/blog/**
 *.sln
