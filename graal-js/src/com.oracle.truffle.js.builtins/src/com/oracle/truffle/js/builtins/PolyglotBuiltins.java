@@ -635,7 +635,8 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @TruffleBoundary
         protected Object evalString(Object languageId, Object source) {
             String sourceText = source.toString();
-            Source sourceObject = Source.newBuilder(sourceText).name(Evaluator.EVAL_SOURCE_NAME).mimeType(languageId.toString()).build();
+            String languageIdOrMimeType = languageId.toString();
+            Source sourceObject = Source.newBuilder(sourceText).name(Evaluator.EVAL_SOURCE_NAME).language(languageIdOrMimeType).mimeType(languageIdOrMimeType).build();
 
             CallTarget callTarget;
 
@@ -666,8 +667,9 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected Object evalString(Object languageId, Object fileName) {
             String fileNameStr = fileName.toString();
             Source source;
+            String languageIdOrMimeType = languageId.toString();
             try {
-                source = Source.newBuilder(new File(fileNameStr)).mimeType(languageId.toString()).build();
+                source = Source.newBuilder(new File(fileNameStr)).language(languageIdOrMimeType).mimeType(languageIdOrMimeType).build();
             } catch (IOException e) {
                 throw Errors.createError(e.getMessage());
             }
