@@ -131,6 +131,12 @@ public final class WhileNode extends StatementNode {
     }
 
     private boolean materializationNeeded() {
+        RepeatingNode repeatingNode = loop.getRepeatingNode();
+        if (!(repeatingNode instanceof AbstractRepeatingNode)) {
+            // Other repeating nodes e.g. Generators are not instrumentable yet.
+            return false;
+        }
+        assert repeatingNode instanceof AbstractRepeatingNode;
         // If we are using tagged nodes, this node is already materialized.
         return !(((AbstractRepeatingNode) loop.getRepeatingNode()).bodyNode instanceof JSTaggedExecutionNode);
     }
