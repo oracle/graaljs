@@ -504,14 +504,15 @@ def _import_substratevm():
 
 def buildSvmImage(args):
     """build a shared SubstrateVM library to run Graal.nodejs"""
-     _svm= _import_substratevm()
-        _svm.flag_suitename_map['nodejs'] = ('graal-nodejs', ['TRUFFLENODE'], ['TRUFFLENODE_NATIVE'], 'js')
-        _js_version = VC.get_vc(_suite.vc_dir).parent(_suite.vc_dir)
-        mx.logv('Fetch JS version {}'.format(_js_version))
-        for _lang in ['js', 'nodejs']:
-            _svm.fetch_languages(['--language:{}=version={}'.format(_lang, _js_version)])
-        _svm.fetch_languages(['--language:regex'])with _svm.native_image_context() as _native_image:
-            _native_image(['--language:nodejs', '-H:JNIConfigurationFiles={}'.format(join(_suite.dir, 'svmnodejs.jniconfig'))] + args)
+    _svm = _import_substratevm()
+    _svm.flag_suitename_map['nodejs'] = ('graal-nodejs', ['TRUFFLENODE'], ['TRUFFLENODE_NATIVE'], 'js')
+    _js_version = VC.get_vc(_suite.vc_dir).parent(_suite.vc_dir)
+    mx.logv('Fetch JS version {}'.format(_js_version))
+    for _lang in ['js', 'nodejs']:
+        _svm.fetch_languages(['--language:{}=version={}'.format(_lang, _js_version)])
+    _svm.fetch_languages(['--tool:regex'])
+    with _svm.native_image_context() as _native_image:
+        _native_image(['--language:nodejs', '-H:JNIConfigurationFiles={}'.format(join(_suite.dir, 'svmnodejs.jniconfig'))] + args)
 
 def _prepare_svm_env():
     setLibraryPath()
