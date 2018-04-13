@@ -460,8 +460,6 @@ suite = {
       "native" : True,
       "description" : "Graal.js support distribution for the GraalVM",
       "layout" : {
-        "LICENSE_GRAAL_JS" : "file:LICENSE",
-        "THIRDPARTYLICENSE_GRAAL_JS" : "file:THIRDPARTYLICENSE",
         "native-image.properties": "file:mx.graal-js/native-image.properties",
       },
     },

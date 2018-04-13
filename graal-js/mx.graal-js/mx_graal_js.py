@@ -377,8 +377,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     name='Graal.js',
     short_name='js',
     documentation_files=['extracted-dependency:graal-js:GRAALJS_GRAALVM_DOCS/README_GRAAL_JS.md'],
-    license_files=['link:<support>/LICENSE_GRAAL_JS'],
-    third_party_license_files=['link:<support>/THIRDPARTYLICENSE_GRAAL_JS'],
+    license_files=[],
+    third_party_license_files=[],
     truffle_jars=[
         'dependency:graal-js:GRAALJS',
         'dependency:graal-js:ICU4J',

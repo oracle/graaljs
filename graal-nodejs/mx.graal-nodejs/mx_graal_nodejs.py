@@ -534,11 +534,11 @@ def svmnpm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     name='Graal.nodejs',
-    short_name='nodejs',
+    short_name='njs',
     dir_name='js',
     documentation_files=['extracted-dependency:graal-nodejs:TRUFFLENODE_GRAALVM_DOCS/README_GRAAL_NODEJS.md'],
-    license_files=['link:<support>/LICENSE_GRAAL_NODEJS'],
-    third_party_license_files=['link:<support>/THIRDPARTYLICENSE_GRAAL_NODEJS'],
+    license_files=[],
+    third_party_license_files=[],
     truffle_jars=['dependency:graal-nodejs:TRUFFLENODE'],
     support_distributions=['extracted-dependency:graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT'],
     provided_executables=[

@@ -125,8 +125,6 @@ suite = {
       "platformDependent" : True,
       "description" : "Graal.nodejs support distribution for the GraalVM",
       "layout" : {
-        "LICENSE_GRAAL_NODEJS" : "file:LICENSE",
-        "THIRDPARTYLICENSE_GRAAL_NODEJS" : "file:THIRDPARTYLICENSE",
         "./" : "file:deps/npm",
         "bin/" : [
           "dependency:trufflenodeNative/node"
