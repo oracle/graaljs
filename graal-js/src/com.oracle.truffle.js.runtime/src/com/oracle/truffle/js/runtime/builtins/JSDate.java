@@ -91,6 +91,16 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     private static final int MS_PER_DAY = 3600000 * 24;
     public static final double MAX_DATE = 8.64E15;
 
+    private static final int DAYS_IN_4_YEARS = 4 * 365 + 1;
+    private static final int DAYS_IN_100_YEARS = 25 * DAYS_IN_4_YEARS - 1;
+    private static final int DAYS_IN_400_YEARS = 4 * DAYS_IN_100_YEARS + 1;
+    private static final int DAYS_FROM_1970_TO_2000 = 30 * 365 + 7;
+
+    // Helper constants for yearFromTime(), YEAR_SHIFT must be divisible by 400
+    // and represent more than 30 years plus 100,000,000 days
+    private static final int YEAR_SHIFT = 280000;
+    private static final int DAY_SHIFT = (YEAR_SHIFT / 400) * DAYS_IN_400_YEARS;
+
     public static final String INVALID_DATE_STRING = "Invalid Date";
 
     static {
@@ -192,32 +202,36 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         return secureNegativeModulo(t, MS_PER_DAY);
     }
 
-    private static double dayFromYear(double y) {
-        return 365 * (y - 1970) + floor((y - 1969) / 4) - floor((y - 1901) / 100) + floor((y - 1601) / 400);
-    }
-
-    private static double timeFromYear(double y) {
-        return MS_PER_DAY * dayFromYear(y);
+    private static int dayFromYear(int y) {
+        return 365 * (y - 1970) + Math.floorDiv(y - 1969, 4) - Math.floorDiv(y - 1901, 100) + Math.floorDiv(y - 1601, 400);
     }
 
     @TruffleBoundary
-    public static double yearFromTime(double t) {
-        // the largest integer y (closest to positive infinity) such that TimeFromYear(y) <= t
-        assert !Double.isNaN(t);
-        double y = JSRuntime.mathFloor(t / MS_PER_DAY / 365) + 1970;
-        y += floor((t - timeFromYear(y)) / MS_PER_DAY / 365); // correct leap year errors
+    public static int yearFromTime(long t) {
+        long daysAfter1970 = Math.floorDiv(t, MS_PER_DAY);
+        assert JSRuntime.longIsRepresentableAsInt(daysAfter1970);
+        // we need days relative to a year divisible by 400
+        int daysAfter2000 = (int) daysAfter1970 - DAYS_FROM_1970_TO_2000;
+        // days after year (2000 - yearShift)
+        int days = daysAfter2000 + DAY_SHIFT;
+        // we need days > 0 to ensure that integer division rounds correctly
+        assert days > 0;
 
-        if (timeFromYear(y) <= t) {
-            y++;
-            if (timeFromYear(y) <= t) {
-                y++;
-            }
-        }
-        assert timeFromYear(y - 1) <= t && t <= timeFromYear(y);
-        return y - 1;
+        int year = 400 * (days / DAYS_IN_400_YEARS);
+        int remainingDays = days % DAYS_IN_400_YEARS;
+        remainingDays--;
+        year += 100 * (remainingDays / DAYS_IN_100_YEARS);
+        remainingDays %= DAYS_IN_100_YEARS;
+        remainingDays++;
+        year += 4 * (remainingDays / DAYS_IN_4_YEARS);
+        remainingDays %= DAYS_IN_4_YEARS;
+        remainingDays--;
+        year += remainingDays / 365;
+
+        return year - YEAR_SHIFT + 2000;
     }
 
-    private static boolean isLeapYear(double year) {
+    private static boolean isLeapYear(int year) {
         if (year % 4 != 0) {
             return false;
         }
@@ -232,9 +246,10 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
 
     // 15.9.1.4
     @TruffleBoundary
-    public static int monthFromTime(double t) {
-        assert !Double.isNaN(t);
-        double year = yearFromTime(t);
+    public static int monthFromTime(double dt) {
+        assert JSRuntime.doubleIsRepresentableAsLong(dt);
+        long t = (long) dt;
+        int year = yearFromTime(t);
         boolean leapYear = isLeapYear(year);
         int day = dayWithinYear(t, year);
 
@@ -315,15 +330,16 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     }
 
     // 15.9.1.4
-    private static int dayWithinYear(double t, double year) {
-        return (int) (day(t) - dayFromYear(year));
+    private static int dayWithinYear(long t, int year) {
+        return (int) Math.floorDiv(t, MS_PER_DAY) - dayFromYear(year);
     }
 
     // 15.9.1.5
     @TruffleBoundary
-    public static double dateFromTime(double t) {
-        assert !Double.isNaN(t);
-        double year = yearFromTime(t);
+    public static double dateFromTime(double dt) {
+        assert JSRuntime.doubleIsRepresentableAsLong(dt);
+        long t = (long) dt;
+        int year = yearFromTime(t);
         int day = dayWithinYear(t, year);
         if (day < 31) {
             return day + 1;
@@ -559,7 +575,7 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         if (Double.isNaN(t)) {
             u = Double.NaN;
         } else {
-            double newDate = makeDate(makeDay(yearFromTime(t), monthFromTime(t), date), timeWithinDay(t));
+            double newDate = makeDate(makeDay(yearFromTime((long) t), monthFromTime(t), date), timeWithinDay(t));
             u = timeClip(utc(newDate, isUTC, context));
         }
         setTimeMillisField(thisDate, u);
@@ -573,7 +589,7 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
             newDate = Double.NaN;
         } else {
             double dt = dateSpecified ? date : dateFromTime(t);
-            newDate = timeClip(utc(makeDate(makeDay(yearFromTime(t), month, dt), timeWithinDay(t)), isUTC, context));
+            newDate = timeClip(utc(makeDate(makeDay(yearFromTime((long) t), month, dt), timeWithinDay(t)), isUTC, context));
         }
         setTimeMillisField(thisDate, newDate);
         return newDate;

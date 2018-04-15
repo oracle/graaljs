@@ -579,7 +579,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (!isUTC) {
                 t = JSDate.localTime(t, getContext());
             }
-            return JSDate.yearFromTime(t);
+            return JSDate.yearFromTime((long) t);
         }
     }
 
@@ -595,7 +595,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            return JSDate.yearFromTime(JSDate.localTime(t, getContext())) - 1900;
+            return JSDate.yearFromTime((long) JSDate.localTime(t, getContext())) - 1900;
         }
     }
 
