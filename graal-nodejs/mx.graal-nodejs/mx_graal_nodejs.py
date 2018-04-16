@@ -319,16 +319,12 @@ def setLibraryPath(additionalPath=None):
 def setupNodeEnvironment(args):
     javaHome = _getJdkHome()
     _setEnvVar('JAVA_HOME', javaHome)
-    if 'GRAALJS_JAR_PATH' not in os.environ:
-        _setEnvVar('GRAALJS_JAR_PATH', mx.distribution('graal-js:GRAALJS').path)
-    if 'TREGEX_JAR_PATH' not in os.environ:
-        _setEnvVar('TREGEX_JAR_PATH', mx.distribution('graal-js:TREGEX').path)
     if mx.suite('compiler', fatalIfMissing=False) is None:
         _setEnvVar('GRAAL_SDK_JAR_PATH', mx.distribution('sdk:GRAAL_SDK').path)
         _setEnvVar('TRUFFLE_JAR_PATH', mx.distribution('truffle:TRUFFLE_API').path)
     _setEnvVar('LAUNCHER_COMMON_JAR_PATH', mx.distribution('sdk:LAUNCHER_COMMON').path)
     _setEnvVar('TRUFFLENODE_JAR_PATH', mx.distribution('TRUFFLENODE').path)
-    _setEnvVar('NODE_JVM_CLASSPATH', mx.classpath(['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER']))
+    _setEnvVar('NODE_JVM_CLASSPATH', mx.classpath(['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'TRUFFLENODE']))
     setLibraryPath()
 
     prevPATH = os.environ['PATH']
