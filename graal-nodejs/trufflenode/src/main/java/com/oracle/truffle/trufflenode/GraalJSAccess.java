@@ -266,6 +266,7 @@ public final class GraalJSAccess {
 
         contextBuilder.option(JSContextOptions.DIRECT_BYTE_BUFFER_NAME, "true");
         contextBuilder.option(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
+        contextBuilder.option(JSContextOptions.INTL_402_NAME, "true");
         contextBuilder.option(GraalJSParserOptions.SYNTAX_EXTENSIONS_NAME, "false");
 
         exposeGC = options.isGCExposed();
