@@ -160,12 +160,6 @@ public class JSTruffleOptions {
     /** Java implementation of SIMD.js. */
     public static final boolean SIMDJS = booleanOption("SIMDJS", false, OPTION_LANGUAGE_FEATURE);
 
-    /**
-     * Disable strict check if locale is included in RFC5646 when converting to canonicalized locale
-     * list.
-     */
-    public static final boolean Intl402LocaleInRFC5646 = booleanOption("Intl402LocaleInRFC5646", true, OPTION_LANGUAGE_FEATURE);
-
     // Nashorn extensions
     public static final boolean NashornCompatibilityMode = booleanOption("NashornCompatibilityMode", false, OPTION_LANGUAGE_FEATURE);
     public static final boolean NashornExtensions = booleanOption("NashornExtensions", true, OPTION_LANGUAGE_FEATURE);
