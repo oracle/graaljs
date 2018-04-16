@@ -1095,7 +1095,7 @@ public class JSContext implements ShapeContext {
             reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
         }
         DynamicObject object;
-        if (CompilerDirectives.isPartialEvaluationConstant(factory) || isSingleRealm()) {
+        if (CompilerDirectives.isPartialEvaluationConstant(factory)) {
             object = factory.newInstance(initialValues);
         } else {
             // factory is not PE-constant in the case of multiple realms
