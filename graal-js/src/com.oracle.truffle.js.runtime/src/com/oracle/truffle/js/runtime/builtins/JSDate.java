@@ -205,7 +205,7 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         return secureNegativeModulo(t, MS_PER_DAY);
     }
 
-    private static int dayFromYear(int y) {
+    public static int dayFromYear(int y) {
         return 365 * (y - 1970) + Math.floorDiv(y - 1969, 4) - Math.floorDiv(y - 1901, 100) + Math.floorDiv(y - 1601, 400);
     }
 
@@ -356,6 +356,26 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         int year = yearFromDays(daysAfter1970);
         int day = daysAfter1970 - dayFromYear(year);
         return dateFromDayInYear(year, day);
+    }
+
+    @TruffleBoundary
+    public static double dateFromDaysRegularLeapYears(int daysAfter1970) {
+        // we need days relative to a year divisible by 4
+        int daysAfter2000 = daysAfter1970 - DAYS_FROM_1970_TO_2000;
+        // days after year 1900 (as if it was a leap year)
+        int days = daysAfter2000 + 25 * DAYS_IN_4_YEARS;
+        // we need days > 0 to ensure that integer division rounds correctly
+        assert days > 0;
+        int year = 4 * (days / DAYS_IN_4_YEARS);
+        int remainingDays = days % DAYS_IN_4_YEARS;
+        remainingDays--;
+        year += remainingDays / 365 + 1900;
+        remainingDays %= 365;
+        boolean leapYear = (year & 3) == 0;
+        if (leapYear) {
+            remainingDays++;
+        }
+        return dateFromDayInYear(year, remainingDays);
     }
 
     // 15.9.1.5

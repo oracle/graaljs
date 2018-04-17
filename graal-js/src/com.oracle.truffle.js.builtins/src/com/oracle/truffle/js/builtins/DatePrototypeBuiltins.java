@@ -624,6 +624,8 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
     }
 
     public abstract static class JSDateGetDateNode extends JSDateOperation {
+        private static final int DAYS_FROM_1970_TO_1901 = JSDate.dayFromYear(1901);
+        private static final int DAYS_FROM_1970_TO_2100 = JSDate.dayFromYear(2100);
 
         public JSDateGetDateNode(JSContext context, JSBuiltin builtin, boolean isUTC) {
             super(context, builtin, isUTC);
@@ -639,7 +641,12 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return JSDate.dateFromTime(t);
             } else {
                 int daysAfter1970 = JSDate.localDay((long) t, getContext());
-                return JSDate.dateFromDays(daysAfter1970);
+                if (DAYS_FROM_1970_TO_1901 <= daysAfter1970 && daysAfter1970 <= DAYS_FROM_1970_TO_2100) {
+                    // There are regular leap years between 1.1.1901 and 1.1.2100
+                    return JSDate.dateFromDaysRegularLeapYears(daysAfter1970);
+                } else {
+                    return JSDate.dateFromDays(daysAfter1970);
+                }
             }
         }
     }
