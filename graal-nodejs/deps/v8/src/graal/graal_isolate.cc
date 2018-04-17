@@ -391,12 +391,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
                             execv(java.c_str(), argv);
                             perror(java.c_str());
                             exit(errno);
-                        } else {
-                            printf("Native Options:\n\n");
-                            printf("  --native.D<name>=<value>    set a system property\n");
-                            printf("  --native.XX:<name>=<value>  set a runtime option\n\n");
-                            // print list of runtime options and exit
-                            options.push_back({const_cast<char*> ("-XX:+PrintFlags"), nullptr});
                         }
                     }
                     option = strtok(nullptr, delimiters);
