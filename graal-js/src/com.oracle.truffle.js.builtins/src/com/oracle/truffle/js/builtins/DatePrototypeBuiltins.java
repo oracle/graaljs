@@ -576,10 +576,12 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            if (!isUTC) {
-                t = JSDate.localTime(t, getContext());
+            if (isUTC) {
+                return JSDate.yearFromTime((long) t);
+            } else {
+                int daysAfter1970 = JSDate.localDay((long) t, getContext());
+                return JSDate.yearFromDays(daysAfter1970);
             }
-            return JSDate.yearFromTime((long) t);
         }
     }
 
@@ -595,7 +597,8 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            return JSDate.yearFromTime((long) JSDate.localTime(t, getContext())) - 1900;
+            int daysAfter1970 = JSDate.localDay((long) t, getContext());
+            return JSDate.yearFromDays(daysAfter1970) - 1900;
         }
     }
 
@@ -611,10 +614,12 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (Double.isNaN(t)) {
                 return Double.NaN;
             }
-            if (!isUTC) {
-                t = JSDate.localTime(t, getContext());
+            if (isUTC) {
+                return JSDate.monthFromTime(t);
+            } else {
+                int daysAfter1970 = JSDate.localDay((long) t, getContext());
+                return JSDate.monthFromDays(daysAfter1970);
             }
-            return JSDate.monthFromTime(t);
         }
     }
 
@@ -630,10 +635,12 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            if (!isUTC) {
-                t = JSDate.localTime(t, getContext());
+            if (isUTC) {
+                return JSDate.dateFromTime(t);
+            } else {
+                int daysAfter1970 = JSDate.localDay((long) t, getContext());
+                return JSDate.dateFromDays(daysAfter1970);
             }
-            return JSDate.dateFromTime(t);
         }
     }
 
@@ -649,10 +656,14 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            if (!isUTC) {
-                t = JSDate.localTime(t, getContext());
+            if (isUTC) {
+                return JSDate.weekDay(t);
+            } else {
+                int daysAfter1970 = JSDate.localDay((long) t, getContext());
+                int result = (daysAfter1970 + 4) % 7;
+                return result >= 0 ? result : (result + 7);
             }
-            return JSDate.weekDay(t);
+
         }
     }
 
@@ -725,9 +736,8 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            if (!isUTC) {
-                t = JSDate.localTime(t, getContext());
-            }
+            // No need to convert to local time - DST offset and localTZA
+            // are always in full seconds
             return JSDate.msFromTime(t);
         }
     }
