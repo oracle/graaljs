@@ -1203,7 +1203,7 @@ namespace v8 {
                 classpath = arg + sizeof ("--jvm.classpath") - 1;
             } else if (!strncmp(arg, "--jvm.cp", sizeof ("--jvm.cp") - 1)) {
                 classpath = arg + sizeof ("--jvm.cp") - 1;
-            } else if (!strncmp(arg, "--jvm.", sizeof ("--jvm.") - 1) || !strncmp(arg, "--native.", sizeof ("--native.") - 1)) {
+            } else if (!strncmp(arg, "--jvm.", sizeof ("--jvm.") - 1) || (!strncmp(arg, "--native.", sizeof ("--native.") - 1) && strcmp(arg, "--native.help"))) {
                 use_jvm = use_jvm || arg[2] == 'j';
                 use_native = use_native || arg[2] == 'n';
                 const char *trailing = strchr(arg, '.') + 1;
