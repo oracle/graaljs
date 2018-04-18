@@ -2,18 +2,10 @@ A high performance implementation of the JavaScript programming language.
 Built on the GraalVM by Oracle Labs.
 
 ## Getting Started
-The best way to get started with Graal.js is via the GraalVM, which includes compatible versions of everything you need as well as Graal.js.
+See the documentation at [graalvm.org](http://www.graalvm.org/docs/getting-started/) how to install and use Graal.js.
 
-http://www.oracle.com/technetwork/oracle-labs/program-languages/
-
-GraalVM provides two main commands to execute applications, `bin/js` and `bin/node`.
-The first, `js`, is a pure JavaScript (ECMAScript 2017) engine.
-The second, `node`, executes an instance of Node.js (v8.9.4) on top of Graal.js
-
-In addition, you can use `bin/npm` to install Node.js packages as normal with the Node package manager.
-
-## Aim
-Graal.js aims to:
+## Goals
+The goals of Graal.js are:
 
 * Run idiomatic JavaScript code as fast as possible
 * Provide full compatibility with Node.js applications, including native packages
@@ -39,43 +31,14 @@ It provides high compatibility with existing npm packages, with high likelyhood 
 This includes npm packages with native implementations.
 Note that you will need to re-compile from source with Graal.js if you want to run binaries that have beeen compiled for Node.js based on V8, or any other compatible engine.
 
-### Common questions about the status of Graal.js
+### Graal.js Reference Manual
 
-#### Does the npm modules `XYZ` work?
+A reference manual for Graal.js is available at [graalvm.org](http://www.graalvm.org/docs/reference-manual/languages/js/).
 
-We test a large share of npm modules, and most of them pass all their tests.
-Among those we fail one or more tests, often the setup is causing the failure, not incompatibilities in the JavaScript engine.
-We will publish a list of passing and/or failing modules shortly.
+## Stay connected with the community
 
-If you are interested in executing an npm module and it fails on Graal.js, we would like to hear about the failure and your usage scenario.
-Please get in touch with us!
-
-#### What is SubstrateVM and how does it influence JavaScript execution?
-
-You don't need a JVM to run Graal.js.
-With the SubstrateVM it is possible to produce a single, statically linked native binary executable version of Graal.js, which doesn't need any JVM to run.
-
-This SubstrateVM version of Graal.js has startup performance and memory footprint similar to other, natively implemented JavaScript engines.
-As all Java code is precompiled, the Java interop features are disabled on SubstrateVM.
-
-If you use a binary build of GraalVM to run Graal.js, by default you will be using SubstrateVM.
-You can deactivate it and use a normal JVM instead with the `--jvm` flag.
-
-#### Can Graal.js run on a standard JVM?
-
-It is possible to run on an unmodified JDK 9 but you will have to build Graal yourself and we recommend using GraalVM instead.
-
-It is possible to run just the JavaScript engine (without Node.js) support on any JDK 8 or newer.
-Note, however, that this will imply a performance penalty, as only the Graal compiler can optimize Graal.js execution.
-
-## Contact
-
+See [graalvm.org/community](http://www.graalvm.org/community/) on how to stay connected with the development community.
 The discussion on [gitter](https://gitter.im/graalvm/graal-core) is a good way to get in touch with us.
-You can also send an email to christian.wirth@oracle.com.
-
-## Mailing list
-
-Announcements about GraalVM, including Graal.js, are made on the [graalvm-dev](https://oss.oracle.com/mailman/listinfo/graalvm-dev) mailing list.
 
 ## Authors
 
