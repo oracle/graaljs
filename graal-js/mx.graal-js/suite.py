@@ -341,6 +341,20 @@ suite = {
         "outputDir": "lib/icu4j",
         "prefix": "icu4j"
     },
+
+    "com.oracle.truffle.js.test.sdk" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "sdk:POLYGLOT_TCK"
+      ],
+      "checkstyle" : "com.oracle.truffle.js.runtime",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,JavaScript,Test",
+      "testProject" : True,
+    },
+
   },
 
   "distributions" : {
@@ -459,6 +473,19 @@ suite = {
         "icu4j-data",
       ],
       "description" : "ICU4J localization library and data files",
+    },
+
+    "SDK_JS_TESTS" : {
+      "subDir" : "src",
+      "javaCompliance" : "1.8",
+      "dependencies" : ["com.oracle.truffle.js.test.sdk"],
+      "exclude" : [
+        "mx:JUNIT",
+      ],
+      "distDependencies" : [
+        "sdk:POLYGLOT_TCK"
+      ],
+      "maven" : False
     },
   }
 }
