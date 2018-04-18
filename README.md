@@ -17,8 +17,8 @@ Graal.js aims to:
 
 * Run idiomatic JavaScript code as fast as possible
 * Provide full compatibility with Node.js applications, including native packages
-* Add fast and low-overhead interopability with languages natively supported on the JVM, e.g., Java, Scala, or Kotlin
-* Add fast and low-overhead interopability with other GraalVM languages like Ruby, Python, or R
+* Add fast and low-overhead interoperability with languages natively supported on the JVM, e.g., Java, Scala, or Kotlin
+* Add fast and low-overhead interoperability with other GraalVM languages like Ruby, Python, or R
 * Provide new tooling such as debuggers and monitoring
 * All while being fully standard compliant to the latest ECMAScript specification (2017, currently)
 
