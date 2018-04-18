@@ -267,7 +267,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         "resources/arrayFactory.js",
                         TypeDescriptor.array(TypeDescriptor.OBJECT),
                         (snippetRun) -> {
-                            ResultVerifier.getDefaultResultVerfier().accept(snippetRun);
+                            ResultVerifier.getDefaultResultVerifier().accept(snippetRun);
                             final Value result = snippetRun.getResult();
                             Assert.assertEquals("Array size", 2, result.getArraySize());
                             Value p1 = result.getArrayElement(0);
@@ -282,7 +282,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         "resources/recursion.js",
                         TypeDescriptor.array(TypeDescriptor.NUMBER),
                         (snippetRun) -> {
-                            ResultVerifier.getDefaultResultVerfier().accept(snippetRun);
+                            ResultVerifier.getDefaultResultVerifier().accept(snippetRun);
                             final Value result = snippetRun.getResult();
                             Assert.assertEquals("Array size", 3, result.getArraySize());
                             Assert.assertEquals("res[0]", 3628800, result.getArrayElement(0).asInt());
@@ -486,7 +486,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
 
     /**
      * Support for JavaScript {@link ResultVerifier}s. The JavaScript result verifiers can be
-     * composed the last verifier is always the {@link ResultVerifier#getDefaultResultVerfier()}.
+     * composed the last verifier is always the {@link ResultVerifier#getDefaultResultVerifier()}.
      */
     // Checkstyle: stop
     // Need to disable checkstyle reporting "Class JavaScriptVerifier should be declared as final"
@@ -495,7 +495,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         private final ResultVerifier next;
 
         private JavaScriptVerifier(ResultVerifier next) {
-            this.next = next == null ? ResultVerifier.getDefaultResultVerfier() : next;
+            this.next = next == null ? ResultVerifier.getDefaultResultVerifier() : next;
         }
 
         @Override
