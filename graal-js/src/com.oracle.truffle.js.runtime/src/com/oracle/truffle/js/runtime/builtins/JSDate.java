@@ -216,7 +216,6 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         return yearFromDays((int) daysAfter1970);
     }
 
-    @TruffleBoundary
     public static int yearFromDays(int daysAfter1970) {
         // we need days relative to a year divisible by 400
         int daysAfter2000 = daysAfter1970 - DAYS_FROM_1970_TO_2000;
