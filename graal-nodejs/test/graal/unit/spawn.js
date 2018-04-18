@@ -51,7 +51,13 @@ describe('Spawn', function () {
     }).timeout(10000);
     if (typeof java === 'object') {
         it('should finish gracefully when a native method is called from a wrong thread', function () {
-            var code = "var t = new java.lang.Thread(function() { console.log('crash'); }); t.start(); t.join()";
+            var code = `var vm = require('vm');
+                        var sandbox = {};
+                        vm.runInNewContext("var f = function() { console.log('crash'); }", sandbox);
+                        var t = new java.lang.Thread(sandbox.f);
+                        t.start();
+                        t.join();`;
+            code = code.replace(/\n\s*/g, ' ');
             var result = spawnSync(process.execPath, ['-e', code]);
             assert.ok(result.stderr.toString().indexOf('thread') !== 0);
             assert.strictEqual(result.stdout.toString(), '');
