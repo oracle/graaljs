@@ -270,7 +270,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
         }
 
         @Override
-        protected boolean isHasOwnProperty() {
+        protected boolean isOwnProperty() {
             return hasOwnProperty;
         }
     }
@@ -319,7 +319,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
 
         @Override
         protected boolean isPropertyAssumptionCheckEnabled() {
-            return propertyAssumptionCheckEnabled;
+            return propertyAssumptionCheckEnabled && context.isSingleRealm();
         }
 
         @Override
@@ -328,7 +328,12 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
         }
 
         @Override
-        protected boolean isHasOwnProperty() {
+        public JSContext getContext() {
+            return context;
+        }
+
+        @Override
+        protected boolean isOwnProperty() {
             return hasOwnProperty;
         }
     }
@@ -385,9 +390,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
      */
     @Override
     protected LinkedHasPropertyCacheNode createCachedPropertyNode(Property property, Object thisObj, int depth, JSContext context, Object value) {
-        if (isHasOwnProperty() && depth > 0) {
-            return createUndefinedPropertyNode(thisObj, thisObj, 0, context, value);
-        }
+        assert !isOwnProperty() || depth == 0;
         ReceiverCheckNode check;
         if (JSObject.isDynamicObject(thisObj)) {
             Shape cacheShape = ((DynamicObject) thisObj).getShape();
@@ -464,7 +467,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
      */
     @Override
     protected HasPropertyCacheNode createGenericPropertyNode(JSContext context) {
-        return createGeneric(key, isHasOwnProperty());
+        return createGeneric(key, isOwnProperty());
     }
 
     private static HasPropertyCacheNode createGeneric(Object key, boolean hasOwnProperty) {
@@ -484,7 +487,8 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
         return false;
     }
 
-    protected boolean isHasOwnProperty() {
+    @Override
+    protected boolean isOwnProperty() {
         throw new UnsupportedOperationException();
     }
 

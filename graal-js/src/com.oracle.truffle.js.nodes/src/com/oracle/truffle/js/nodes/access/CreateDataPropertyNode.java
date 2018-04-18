@@ -92,7 +92,7 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
         if (shape.getProperty(key) == null) {
             return new UninitializedDefinePropertyNode(key, shape, context, JSAttributes.getDefault());
         } else {
-            return new UninitializedPropertySetNode(key, false, context, true, JSAttributes.getDefault());
+            return new UninitializedPropertySetNode(key, false, context, true, true, JSAttributes.getDefault());
         }
     }
 }

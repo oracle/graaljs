@@ -55,11 +55,9 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
-
-import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -67,16 +65,17 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.LocationModifier;
@@ -84,6 +83,7 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
+import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -115,7 +115,7 @@ public class JSContext implements ShapeContext {
     private final Evaluator evaluator;
     private final JSFunctionLookup functionLookup;
 
-    private AbstractJavaScriptLanguage language;
+    private final AbstractJavaScriptLanguage language;
 
     private final Shape emptyShape;
     private final Shape emptyShapePrototypeInObject;
@@ -165,7 +165,6 @@ public class JSContext implements ShapeContext {
     private final Object nodeFactory;
 
     private JSInteropRuntime interopRuntime;
-    private TruffleLanguage.Env truffleLanguageEnv;
     private final TimeProfiler timeProfiler;
 
     private final DynamicObjectFactory moduleNamespaceFactory;
@@ -203,18 +202,19 @@ public class JSContext implements ShapeContext {
         ProxyRevokerFunction,
     }
 
-    @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionDataCache;
+    @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
 
     private volatile JSFunctionData boundFunctionData;
     private volatile JSFunctionData boundConstructorFunctionData;
 
     private volatile Map<Shape, JSShapeData> shapeDataMap;
 
-    private volatile List<JSRealm> realmList;
+    private List<JSRealm> realmList;
 
-    private final boolean isChildContext;
+    final Assumption noChildRealmsAssumption;
+    final Assumption singleRealmAssumption;
 
-    private boolean isRealmInitialized = false;
+    private volatile boolean isRealmInitialized;
 
     /**
      * According to ECMA2017 8.4 the queue of pending jobs (promises reactions) must be processed
@@ -226,16 +226,12 @@ public class JSContext implements ShapeContext {
     private int interopCallStackDepth = 0;
 
     /**
-     * Temporary field to access shapes from realm until transition is complete.
-     */
-    @CompilationFinal private ShapeContext shapeContext;
-
-    /**
      * Temporary field until transition is complete.
      */
     @CompilationFinal private JSRealm realm;
 
-    @CompilationFinal private ContextReference<JSRealm> contextRef;
+    private final ContextReference<JSRealm> contextRef;
+    @CompilationFinal private AllocationReporter allocationReporter;
 
     /**
      * ECMA2017 8.7 Agent object.
@@ -246,8 +242,6 @@ public class JSContext implements ShapeContext {
      */
     @CompilationFinal private JSAgent agent;
 
-    @CompilationFinal private AllocationReporter allocationReporter;
-
     /**
      * Java Interop Workers factory.
      */
@@ -257,14 +251,20 @@ public class JSContext implements ShapeContext {
 
     private final JSContextOptions contextOptions;
 
-    public JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env, boolean isChildContext) {
+    private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
+    private final Map<Source, Object> codeCache = new ConcurrentHashMap<>();
+
+    protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
         this.functionLookup = lookup;
         this.contextOptions = contextOptions;
-        this.truffleLanguageEnv = env; // could still be null
-        this.contextOptions.setEnv(env);
-        this.isChildContext = isChildContext;
+
+        if (env != null) { // env could still be null
+            this.contextOptions.setEnv(env);
+            setAllocationReporter(env);
+        }
 
         this.language = lang;
+        this.contextRef = lang == null ? null : lang.getContextReference();
 
         this.emptyShape = createEmptyShape();
         this.emptyShapePrototypeInObject = createEmptyShapePrototypeInObject();
@@ -295,15 +295,21 @@ public class JSContext implements ShapeContext {
         this.emptyFunctionCallTarget = createEmptyFunctionCallTarget(lang);
         this.speciesGetterFunctionCallTarget = createSpeciesGetterFunctionCallTarget(lang);
 
-        this.builtinFunctionDataCache = new JSFunctionData[BuiltinFunctionKey.values().length];
+        this.builtinFunctionData = new JSFunctionData[BuiltinFunctionKey.values().length];
 
         this.timeProfiler = JSTruffleOptions.ProfileTime ? new TimeProfiler() : null;
         this.javaWrapperFactory = JSTruffleOptions.NashornJavaInterop ? JSJavaWrapper.makeShape(this).createFactory() : null;
 
         this.dictionaryShapeNullPrototype = JSTruffleOptions.DictionaryObject ? JSDictionaryObject.makeDictionaryShape(this, null) : null;
 
+        this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
+        this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
+
         if (JSTruffleOptions.Test262Mode || JSTruffleOptions.TestV8Mode) {
-            this.setJSAgent(new DebugJSAgent(this));
+            this.setJSAgent(new DebugJSAgent(env));
+        }
+        if (contextOptions.isV8RealmBuiltin()) {
+            this.realmList = new ArrayList<>();
         }
     }
 
@@ -383,10 +389,6 @@ public class JSContext implements ShapeContext {
         this.contextOptions.setParserOptions(parserOptions);
     }
 
-    public final OptionValues getOptionValues() {
-        return getEnv().getOptions();
-    }
-
     public final Object getEmbedderData() {
         return embedderData;
     }
@@ -420,24 +422,23 @@ public class JSContext implements ShapeContext {
     }
 
     public static JSContext createContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
-        return new JSContext(evaluator, lookup, contextOptions, lang, env, false);
+        return new JSContext(evaluator, lookup, contextOptions, lang, env);
     }
 
-    public JSRealm createRealm() {
-        return createRealm(true);
-    }
-
-    private JSRealm createRealm(boolean initRealmBuiltinObject) {
-        JSRealm newRealm = new JSRealm(this);
-        newRealm.setupGlobals();
-        if (realmList == null) {
-            realmList = new ArrayList<>();
+    public JSRealm createRealm(TruffleLanguage.Env env) {
+        boolean isTop = env == null || env.getContext().getParent() == null;
+        if (isRealmInitialized) {
+            singleRealmAssumption.invalidate();
         }
-        realmList.add(newRealm);
-        if (initRealmBuiltinObject) {
+        JSRealm newRealm = new JSRealm(this, env);
+        newRealm.setupGlobals();
+        if (realmList != null) {
+            addToRealmList(newRealm);
+        }
+        if (isTop) {
             newRealm.initRealmBuiltinObject();
         }
-        newRealm.getContext().setRealmInitialized();
+        setRealmInitialized(true);
         return newRealm;
     }
 
@@ -516,7 +517,13 @@ public class JSContext implements ShapeContext {
         while (promiseJobsQueue.size() > 0) {
             DynamicObject nextJob = promiseJobsQueue.pollLast();
             if (JSFunction.isJSFunction(nextJob)) {
-                JSFunction.call(nextJob, thisArg, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                JSRealm functionRealm = JSFunction.getRealm(nextJob);
+                Object prev = functionRealm.getTruffleContext().enter();
+                try {
+                    JSFunction.call(nextJob, thisArg, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                } finally {
+                    functionRealm.getTruffleContext().leave(prev);
+                }
                 queueContainsJobs = true;
             }
         }
@@ -553,41 +560,29 @@ public class JSContext implements ShapeContext {
         this.interopRuntime = interopRuntime;
     }
 
-    public void patchTruffleLanguageEnv(TruffleLanguage.Env env) {
-        CompilerAsserts.neverPartOfCompilation();
-        Objects.requireNonNull(env, "New env cannot be null.");
-        truffleLanguageEnv = env;
-        activateAllocationReporter();
-        this.contextOptions.setEnv(env);
-    }
-
-    public void activateAllocationReporter() {
-        this.allocationReporter = truffleLanguageEnv.lookup(AllocationReporter.class);
-    }
-
     public TimeProfiler getTimeProfiler() {
         return timeProfiler;
     }
 
+    /**
+     * Get the current Realm using {@link ContextReference}.
+     */
     public JSRealm getRealm() {
-        if (isChildContext || (CompilerDirectives.inInterpreter() && !isRealmInitialized) || JSTruffleOptions.NashornCompatibilityMode) {
-            return realm; // childContext Realm cannot be shared among Engines (GR-8695)
+        if (CompilerDirectives.inInterpreter() && !isRealmInitialized) {
+            // Realm is being initialized, cannot use ContextReference yet
+            // TODO avoid calling getRealm() during initialization
+            return realm;
         }
         if (contextRef == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (getLanguage() != null) {  // could be uninitialized
-                contextRef = getLanguage().getContextReference();
-            } else {
-                return realm;
-            }
+            return realm;
         }
-        JSRealm realm2 = contextRef.get();
-        return realm2 != null ? realm2 : realm;
-    }
-
-    public boolean hasRealm() {
-        assert (getRealm() != null) == isRealmInitialized;
-        return this.isRealmInitialized;
+        if (isSingleRealm()) {
+            assert realm == contextRef.get();
+            return realm;
+        }
+        JSRealm currentRealm = contextRef.get();
+        assert currentRealm != null;
+        return currentRealm;
     }
 
     @Override
@@ -602,143 +597,143 @@ public class JSContext implements ShapeContext {
 
     @Override
     public final Shape getInitialUserObjectShape() {
-        return shapeContext.getInitialUserObjectShape();
+        return getRealm().getInitialUserObjectShape();
     }
 
     @Override
     public final DynamicObjectFactory getArrayFactory() {
-        return shapeContext.getArrayFactory();
+        return getRealm().getArrayFactory();
     }
 
     @Override
     public final DynamicObjectFactory getStringFactory() {
-        return shapeContext.getStringFactory();
+        return getRealm().getStringFactory();
     }
 
     @Override
     public final DynamicObjectFactory getBooleanFactory() {
-        return shapeContext.getBooleanFactory();
+        return getRealm().getBooleanFactory();
     }
 
     @Override
     public final DynamicObjectFactory getNumberFactory() {
-        return shapeContext.getNumberFactory();
+        return getRealm().getNumberFactory();
     }
 
     @Override
     public final DynamicObjectFactory getSymbolFactory() {
-        return shapeContext.getSymbolFactory();
+        return getRealm().getSymbolFactory();
     }
 
     @Override
     public final DynamicObjectFactory getArrayBufferViewFactory(TypedArrayFactory factory) {
-        return shapeContext.getArrayBufferViewFactory(factory);
+        return getRealm().getArrayBufferViewFactory(factory);
     }
 
     @Override
     public final DynamicObjectFactory getArrayBufferFactory() {
-        return shapeContext.getArrayBufferFactory();
+        return getRealm().getArrayBufferFactory();
     }
 
     @Override
     public final DynamicObjectFactory getDirectArrayBufferViewFactory(TypedArrayFactory factory) {
-        return shapeContext.getDirectArrayBufferViewFactory(factory);
+        return getRealm().getDirectArrayBufferViewFactory(factory);
     }
 
     @Override
     public final DynamicObjectFactory getDirectArrayBufferFactory() {
-        return shapeContext.getDirectArrayBufferFactory();
+        return getRealm().getDirectArrayBufferFactory();
     }
 
     @Override
     public final DynamicObjectFactory getRegExpFactory() {
-        return shapeContext.getRegExpFactory();
+        return getRealm().getRegExpFactory();
     }
 
     @Override
     public final DynamicObjectFactory getDateFactory() {
-        return shapeContext.getDateFactory();
+        return getRealm().getDateFactory();
     }
 
     @Override
     public final DynamicObjectFactory getEnumerateIteratorFactory() {
-        return shapeContext.getEnumerateIteratorFactory();
+        return getRealm().getEnumerateIteratorFactory();
     }
 
     @Override
     public final DynamicObjectFactory getMapFactory() {
-        return shapeContext.getMapFactory();
+        return getRealm().getMapFactory();
     }
 
     @Override
     public final DynamicObjectFactory getWeakMapFactory() {
-        return shapeContext.getWeakMapFactory();
+        return getRealm().getWeakMapFactory();
     }
 
     @Override
     public final DynamicObjectFactory getSetFactory() {
-        return shapeContext.getSetFactory();
+        return getRealm().getSetFactory();
     }
 
     @Override
     public final DynamicObjectFactory getWeakSetFactory() {
-        return shapeContext.getWeakSetFactory();
+        return getRealm().getWeakSetFactory();
     }
 
     @Override
     public final DynamicObjectFactory getDataViewFactory() {
-        return shapeContext.getDataViewFactory();
+        return getRealm().getDataViewFactory();
     }
 
     @Override
     public final DynamicObjectFactory getProxyFactory() {
-        return shapeContext.getProxyFactory();
+        return getRealm().getProxyFactory();
     }
 
     @Override
     public final DynamicObjectFactory getSharedArrayBufferFactory() {
         assert isOptionSharedArrayBuffer();
-        return shapeContext.getSharedArrayBufferFactory();
+        return getRealm().getSharedArrayBufferFactory();
     }
 
     @Override
     public final DynamicObjectFactory getCollatorFactory() {
-        return shapeContext.getCollatorFactory();
+        return getRealm().getCollatorFactory();
     }
 
     @Override
     public final DynamicObjectFactory getNumberFormatFactory() {
-        return shapeContext.getNumberFormatFactory();
+        return getRealm().getNumberFormatFactory();
     }
 
     @Override
     public final DynamicObjectFactory getPluralRulesFactory() {
-        return shapeContext.getPluralRulesFactory();
+        return getRealm().getPluralRulesFactory();
     }
 
     @Override
     public final DynamicObjectFactory getDateTimeFormatFactory() {
-        return shapeContext.getDateTimeFormatFactory();
+        return getRealm().getDateTimeFormatFactory();
     }
 
     @Override
     public final DynamicObjectFactory getJavaImporterFactory() {
-        return shapeContext.getJavaImporterFactory();
+        return getRealm().getJavaImporterFactory();
     }
 
     @Override
     public final DynamicObjectFactory getJSAdapterFactory() {
-        return shapeContext.getJSAdapterFactory();
+        return getRealm().getJSAdapterFactory();
     }
 
     @Override
     public final DynamicObjectFactory getErrorFactory(JSErrorType type, boolean withMessage) {
-        return shapeContext.getErrorFactory(type, withMessage);
+        return getRealm().getErrorFactory(type, withMessage);
     }
 
     @Override
     public final DynamicObjectFactory getPromiseFactory() {
-        return shapeContext.getPromiseFactory();
+        return getRealm().getPromiseFactory();
     }
 
     @Override
@@ -748,17 +743,11 @@ public class JSContext implements ShapeContext {
 
     @Override
     public DynamicObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
-        return shapeContext.getSIMDTypeFactory(factory);
+        return getRealm().getSIMDTypeFactory(factory);
     }
 
     void setRealm(JSRealm realm) {
-        assert this.realm == null;
-        this.shapeContext = realm;
         this.realm = realm;
-    }
-
-    public TruffleLanguage.Env getEnv() {
-        return truffleLanguageEnv;
     }
 
     public DynamicObjectFactory getJavaWrapperFactory() {
@@ -783,7 +772,7 @@ public class JSContext implements ShapeContext {
         if (regexEngine == null) {
             RegexCompiler joniCompiler = new JoniRegexCompiler(null);
             if (JSTruffleOptions.UseTRegex) {
-                TruffleObject regexEngineBuilder = (TruffleObject) getEnv().parse(Source.newBuilder("").name("TRegex Engine Builder Request").language(RegexLanguage.ID).build()).call();
+                TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder("").name("TRegex Engine Builder Request").language(RegexLanguage.ID).build()).call();
                 String regexOptions = createRegexEngineOptions();
                 try {
                     regexEngine = (TruffleObject) ForeignAccess.sendExecute(Message.createExecute(2).createNode(), regexEngineBuilder, regexOptions, joniCompiler);
@@ -839,7 +828,7 @@ public class JSContext implements ShapeContext {
                         if (existingModule != null) {
                             return existingModule;
                         }
-                        Source source = Source.newBuilder(moduleFile).name(specifier).mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build();
+                        Source source = Source.newBuilder(moduleFile).name(specifier).language(AbstractJavaScriptLanguage.ID).build();
                         JSModuleRecord newModule = getEvaluator().parseModule(JSContext.this, source, this);
                         moduleMap.put(canonicalPath, newModule);
                         return newModule;
@@ -909,14 +898,6 @@ public class JSContext implements ShapeContext {
 
     public AbstractJavaScriptLanguage getLanguage() {
         return language;
-    }
-
-    public void setLanguage(AbstractJavaScriptLanguage language) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (this.language != null) {
-            throw new IllegalStateException("language can only be set once");
-        }
-        this.language = language;
     }
 
     public CallTarget getEmptyFunctionCallTarget() {
@@ -1050,37 +1031,25 @@ public class JSContext implements ShapeContext {
         return result;
     }
 
-    @TruffleBoundary
-    public JSContext createChildContext() {
-        JSContext childContext = new JSContext(getEvaluator(), getFunctionLookup(), contextOptions, getLanguage(), truffleLanguageEnv, true);
-        childContext.setWriter(getWriter(), getWriterStream());
-        childContext.setErrorWriter(getErrorWriter(), getErrorWriterStream());
-        childContext.setLocalTimeZoneId(getLocalTimeZoneId());
-        childContext.setSymbolRegistry(getSymbolRegistry());
-        childContext.setRealmList(realmList);
-        childContext.setInteropRuntime(interopRuntime);
-        childContext.typedArrayNotDetachedAssumption = this.typedArrayNotDetachedAssumption;
-        // cannot leave Realm uninitialized
-        JSRealm childRealm = childContext.createRealm(false);
-        // "Realm" object shared by all realms
-        childRealm.setRealmBuiltinObject(getRealm().getRealmBuiltinObject());
-        return childContext;
-    }
-
-    private void setRealmList(List<JSRealm> realmList) {
-        this.realmList = realmList;
+    private synchronized void addToRealmList(JSRealm newRealm) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert !realmList.contains(newRealm);
+        realmList.add(newRealm);
     }
 
     public synchronized JSRealm getFromRealmList(int idx) {
-        return Boundaries.listGet(realmList, idx);
+        CompilerAsserts.neverPartOfCompilation();
+        return realmList.get(idx);
     }
 
-    public synchronized int getIndexFromRealmList(JSRealm realm2) {
-        return Boundaries.listIndexOf(realmList, realm2);
+    public synchronized int getIndexFromRealmList(JSRealm rlm) {
+        CompilerAsserts.neverPartOfCompilation();
+        return realmList.indexOf(rlm);
     }
 
-    public synchronized void setInRealmList(int idx, JSRealm realm2) {
-        Boundaries.listSet(realmList, idx, realm2);
+    public synchronized void removeFromRealmList(int idx) {
+        CompilerAsserts.neverPartOfCompilation();
+        realmList.set(idx, null);
     }
 
     public JSAgent getJSAgent() {
@@ -1103,30 +1072,48 @@ public class JSContext implements ShapeContext {
         return version;
     }
 
-    public DynamicObject allocateObject(Shape shape) {
-        DynamicObject object;
-        AllocationReporter reporter = allocationReporter;
+    void setAllocationReporter(TruffleLanguage.Env env) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.allocationReporter = env.lookup(AllocationReporter.class);
+    }
+
+    private AllocationReporter getAllocationReporter() {
+        return allocationReporter;
+    }
+
+    public final DynamicObject allocateObject(Shape shape) {
+        AllocationReporter reporter = getAllocationReporter();
         if (reporter != null) {
             reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
         }
-        object = shape.newInstance();
+        DynamicObject object = shape.newInstance();
         if (reporter != null) {
             reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
         }
         return object;
     }
 
-    public DynamicObject allocateObject(DynamicObjectFactory factory, Object... initialValues) {
-        DynamicObject object;
-        AllocationReporter reporter = allocationReporter;
+    public final DynamicObject allocateObject(DynamicObjectFactory factory, Object... initialValues) {
+        AllocationReporter reporter = getAllocationReporter();
         if (reporter != null) {
             reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
         }
-        object = factory.newInstance(initialValues);
+        DynamicObject object;
+        if (CompilerDirectives.isPartialEvaluationConstant(factory)) {
+            object = factory.newInstance(initialValues);
+        } else {
+            // factory is not PE-constant in the case of multiple realms
+            object = newInstanceBoundary(factory, initialValues);
+        }
         if (reporter != null) {
             reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
         }
         return object;
+    }
+
+    @TruffleBoundary
+    private static DynamicObject newInstanceBoundary(DynamicObjectFactory factory, Object[] initialValues) {
+        return factory.newInstance(initialValues);
     }
 
     public boolean isOptionAnnexB() {
@@ -1399,22 +1386,52 @@ public class JSContext implements ShapeContext {
 
     public final JSFunctionData getOrCreateBuiltinFunctionData(BuiltinFunctionKey key, Function<JSContext, JSFunctionData> factory) {
         final int index = key.ordinal();
-        JSFunctionData callTarget = builtinFunctionDataCache[index];
-        if (callTarget != null) {
-            return callTarget;
+        JSFunctionData functionData = builtinFunctionData[index];
+        if (functionData != null) {
+            return functionData;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         synchronized (this) {
-            callTarget = builtinFunctionDataCache[index];
-            if (callTarget == null) {
-                callTarget = factory.apply(this);
-                builtinFunctionDataCache[index] = callTarget;
+            functionData = builtinFunctionData[index];
+            if (functionData == null) {
+                functionData = factory.apply(this);
+                builtinFunctionData[index] = functionData;
             }
-            return callTarget;
+            return functionData;
         }
     }
 
-    public void setRealmInitialized() {
-        this.isRealmInitialized = true;
+    public final JSFunctionData getBuiltinFunctionData(Builtin key) {
+        CompilerAsserts.neverPartOfCompilation();
+        return builtinFunctionDataMap.get(key);
+    }
+
+    public final void putBuiltinFunctionData(Builtin key, JSFunctionData functionData) {
+        CompilerAsserts.neverPartOfCompilation();
+        builtinFunctionDataMap.putIfAbsent(key, functionData);
+    }
+
+    public final boolean neverCreatedChildRealms() {
+        return noChildRealmsAssumption.isValid();
+    }
+
+    public final boolean isSingleRealm() {
+        return singleRealmAssumption.isValid();
+    }
+
+    public final void assumeSingleRealm() throws InvalidAssumptionException {
+        singleRealmAssumption.check();
+    }
+
+    void setRealmInitialized(boolean initialized) {
+        this.isRealmInitialized = initialized;
+    }
+
+    JSContextOptions getContextOptions() {
+        return contextOptions;
+    }
+
+    public Map<Source, Object> getCodeCache() {
+        return codeCache;
     }
 }

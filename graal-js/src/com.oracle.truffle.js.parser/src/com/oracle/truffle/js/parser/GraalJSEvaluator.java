@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.parser;
 
-import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE;
 import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.MODULE_SOURCE_NAME_PREFIX;
 import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
 
@@ -79,6 +78,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.parser.date.DateParser;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.env.EvalEnvironment;
+import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -152,7 +152,7 @@ public final class GraalJSEvaluator implements JSParser {
         code.append(body);
         code.append(JSRuntime.LINE_SEPARATOR);
         code.append("})");
-        Source source = Source.newBuilder(code.toString()).name(Evaluator.FUNCTION_SOURCE_NAME).mimeType(APPLICATION_MIME_TYPE).build();
+        Source source = Source.newBuilder(code.toString()).name(Evaluator.FUNCTION_SOURCE_NAME).language(AbstractJavaScriptLanguage.ID).build();
 
         return parseEval(context, lastNode, null, source, false);
     }
@@ -229,7 +229,7 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public ScriptNode evalCompile(JSContext context, String sourceCode, String name) {
         try {
-            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(sourceCode).name(name).mimeType(APPLICATION_MIME_TYPE).build(), false);
+            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(sourceCode).name(name).language(AbstractJavaScriptLanguage.ID).build(), false);
         } catch (com.oracle.js.parser.ParserException e) {
             throw Errors.createSyntaxError(e.getMessage());
         }
@@ -273,7 +273,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     @Override
     public ScriptNode parseScriptNode(JSContext context, String sourceCode) {
-        return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(sourceCode).name("<unknown>").mimeType(APPLICATION_MIME_TYPE).build(), false);
+        return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(sourceCode).name("<unknown>").language(AbstractJavaScriptLanguage.ID).build(), false);
     }
 
     @TruffleBoundary

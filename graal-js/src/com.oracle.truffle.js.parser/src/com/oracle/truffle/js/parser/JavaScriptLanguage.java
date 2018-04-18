@@ -43,19 +43,21 @@ package com.oracle.truffle.js.parser;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.Frame;
@@ -72,7 +74,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -88,16 +89,16 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
@@ -114,7 +115,7 @@ import com.oracle.truffle.js.runtime.JSInteropRuntime;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
-import com.oracle.truffle.js.runtime.SuppressFBWarnings;
+import com.oracle.truffle.js.runtime.ParserOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -159,7 +160,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private static final HiddenKey META_OBJECT_KEY = new HiddenKey("meta object");
 
-    private CallTarget getJSContextCallTarget;
+    private final Map<ParserOptions, Queue<JSContext>> contextPools = new ConcurrentHashMap<>();
 
     public static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
@@ -174,171 +175,87 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof JSLazyString || o instanceof InteropBoundFunction;
     }
 
-    private abstract class ContextRootNode extends RootNode {
-        private final ContextReference<JSRealm> contextRef = getContextReference();
+    @TruffleBoundary
+    @Override
+    public CallTarget parse(ParsingRequest parsingRequest) {
+        Source source = parsingRequest.getSource();
+        List<String> argumentNames = parsingRequest.getArgumentNames();
+        if (argumentNames == null || argumentNames.isEmpty()) {
+            final JSContext context = getContextReference().get().getContext();
 
-        ContextRootNode() {
-            super(null, null);
-        }
+            if (context.isOptionParseOnly()) {
+                parseInContext(source, context);
+                return createEmptyScript(context).getCallTarget();
+            }
 
-        protected final JSContext getContext() {
-            return contextRef.get().getContext();
+            Object cached = context.getCodeCache().get(source);
+            if (cached != null) {
+                return (CallTarget) cached;
+            }
+
+            final ScriptNode program = parseInContext(source, context);
+
+            RootNode rootNode = new RootNode(this) {
+                @Child private DirectCallNode directCallNode = DirectCallNode.create(program.getCallTarget());
+                @Child private ExportValueNode exportValueNode = ExportValueNode.create();
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    JSRealm realm = getContextReference().get();
+                    JSContext currentContext = realm.getContext();
+                    assert currentContext == context : "unexpected JSContext";
+                    try {
+                        context.interopBoundaryEnter();
+                        Object result = directCallNode.call(program.argumentsToRun(realm));
+                        return exportValueNode.executeWithTarget(result, Undefined.instance);
+                    } finally {
+                        context.interopBoundaryExit();
+                    }
+                }
+            };
+            CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+            context.getCodeCache().putIfAbsent(source, callTarget);
+            return callTarget;
+        } else {
+            RootNode rootNode = parseWithArgumentNames(source, argumentNames);
+            return Truffle.getRuntime().createCallTarget(rootNode);
         }
     }
 
     @TruffleBoundary
-    @Override
-    @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "intentional comparison of strings using ==")
-    public CallTarget parse(ParsingRequest parsingRequest) {
-        Source source = parsingRequest.getSource();
-        if (source.getName() == AbstractJavaScriptLanguage.GET_JSCONTEXT_NAME) {
-            // special CallTarget for internal JSContext access
-            return getJSContextCallTarget();
-        } else {
-            final RootNode rootNode;
-            List<String> argumentNames = parsingRequest.getArgumentNames();
-            if (argumentNames == null || argumentNames.isEmpty()) {
-                rootNode = new ContextRootNode() {
-
-                    @CompilationFinal private volatile JSContext cachedContext;
-                    @CompilationFinal(dimensions = 0) private Object[] arguments;
-                    @Child private DirectCallNode directCallNode;
-                    @Child private ExportValueNode exportValueNode;
-                    @Child private IndirectCallNode indirectCallNode;
-
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        JSContext context = getContext();
-                        Object result;
-                        JSContext cachedCtx = cachedContext;
-                        if (cachedCtx == null) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            parseAndCache(context);
-                            cachedCtx = context;
-                        }
-                        assert context != null;
-                        try {
-                            context.interopBoundaryEnter();
-                            if (context == cachedCtx) {
-                                context = cachedCtx;
-                                result = directCallNode.call(arguments);
-                            } else {
-                                result = parseAndEval(context);
-                            }
-                        } finally {
-                            context.interopBoundaryExit();
-                        }
-
-                        return export(result);
-                    }
-
-                    private void parseAndCache(JSContext context) {
-                        CompilerAsserts.neverPartOfCompilation();
-                        ScriptNode program = parse(context);
-                        arguments = program.argumentsToRun(context.getRealm());
-                        directCallNode = insert(DirectCallNode.create(program.getCallTarget()));
-                        cachedContext = context;
-                    }
-
-                    private Object parseAndEval(JSContext context) {
-                        if (indirectCallNode == null) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            indirectCallNode = insert(IndirectCallNode.create());
-                        }
-                        ScriptNode program = parse(context);
-                        return indirectCallNode.call(program.getCallTarget(), program.argumentsToRun(context.getRealm()));
-                    }
-
-                    @TruffleBoundary
-                    private ScriptNode parse(JSContext context) {
-                        ScriptNode program = parseInContext(source, context);
-                        if (context.isOptionParseOnly()) {
-                            return createEmptyScript(context);
-                        }
-                        return program;
-                    }
-
-                    @TruffleBoundary
-                    private ScriptNode createEmptyScript(JSContext context) {
-                        return ScriptNode.fromFunctionData(context, JSFunction.createEmptyFunctionData(context));
-                    }
-
-                    private Object export(Object value) {
-                        if (exportValueNode == null) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            exportValueNode = insert(ExportValueNode.create());
-                        }
-                        return exportValueNode.executeWithTarget(value, Undefined.instance);
-                    }
-                };
-            } else {
-                rootNode = parseWithArgumentNames(source, argumentNames);
-            }
-            return Truffle.getRuntime().createCallTarget(rootNode);
-        }
+    private static ScriptNode createEmptyScript(JSContext context) {
+        return ScriptNode.fromFunctionData(context, JSFunction.createEmptyFunctionData(context));
     }
 
     @Override
     protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
         final Source source = request.getSource();
         final MaterializedFrame requestFrame = request.getFrame();
+        final JSContext context = getContextReference().get().getContext();
         final ExecutableNode executableNode = new ExecutableNode(this) {
-            private final ContextReference<JSRealm> contextRef = getContextReference();
-            @CompilationFinal private volatile JSContext cachedContext;
-            @Child private JavaScriptNode expression;
+            @Child private JavaScriptNode expression = insert(parseInline(source, context, requestFrame));
             @Child private ExportValueNode exportValueNode = ExportValueNode.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
-                JSContext context = contextRef.get().getContext();
-                JSContext cachedCtx = cachedContext;
-                if (cachedCtx == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    parseAndCache(context);
-                    cachedCtx = context;
-                }
-                assert context != null;
-                Object result;
-                if (context == cachedCtx) {
-                    result = expression.execute(frame);
-                } else {
-                    result = parseAndEval(context, frame.materialize());
-                }
+                JSContext currentContext = getContextReference().get().getContext();
+                assert currentContext == context : "unexpected JSContext";
+                Object result = expression.execute(frame);
                 return exportValueNode.executeWithTarget(result, Undefined.instance);
-            }
-
-            private void parseAndCache(JSContext context) {
-                CompilerAsserts.neverPartOfCompilation();
-                expression = insert(parseInline(source, context, requestFrame));
-                cachedContext = context;
-            }
-
-            @TruffleBoundary
-            private Object parseAndEval(JSContext context, MaterializedFrame frame) {
-                JavaScriptNode fragment = parseInline(source, context, frame);
-                return fragment.execute(frame);
             }
         };
         return executableNode;
     }
 
-    protected CallTarget getJSContextCallTarget() {
-        CallTarget cached = getJSContextCallTarget;
-        if (cached == null) {
-            cached = getJSContextCallTarget = createGetJSContextCallTarget();
-        }
-        return cached;
-    }
-
     private RootNode parseWithArgumentNames(Source source, List<String> argumentNames) {
-        return new ContextRootNode() {
+        return new RootNode(this) {
             @Override
             public Object execute(VirtualFrame frame) {
-                return executeImpl(getContext(), frame.getArguments());
+                return executeImpl(getContextReference().get(), frame.getArguments());
             }
 
             @TruffleBoundary
-            private Object executeImpl(JSContext context, Object[] arguments) {
+            private Object executeImpl(JSRealm realm, Object[] arguments) {
                 // (GR-2039) only works for simple expressions at the moment. needs parser support.
                 StringBuilder code = new StringBuilder();
                 code.append("(function");
@@ -353,8 +270,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 code.append("return ");
                 code.append(source.getCharacters());
                 code.append("\n})");
-                Source wrappedSource = Source.newBuilder(code.toString()).name(Evaluator.FUNCTION_SOURCE_NAME).mimeType(APPLICATION_MIME_TYPE).build();
-                Object function = parseInContext(wrappedSource, context).run(context.getRealm());
+                Source wrappedSource = Source.newBuilder(code.toString()).name(Evaluator.FUNCTION_SOURCE_NAME).language(ID).build();
+                Object function = parseInContext(wrappedSource, realm.getContext()).run(realm);
                 return JSRuntime.jsObjectToJavaObject(JSFunction.call(JSArguments.create(Undefined.instance, function, arguments)));
             }
         };
@@ -462,6 +379,28 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected JSRealm createContext(Env env) {
+        JSContext languageContext = null;
+        TruffleContext parent = env.getContext().getParent();
+        if (parent == null) {
+            if (JSTruffleOptions.ContextPool && !contextPools.isEmpty()) {
+                languageContext = pollContextPool(GraalJSParserOptions.fromOptions(env.getOptions()));
+            }
+            if (languageContext == null) {
+                languageContext = newJSContext(env);
+            }
+        } else {
+            Object prev = parent.enter();
+            try {
+                languageContext = getCurrentContext(JavaScriptLanguage.class).getContext();
+            } finally {
+                parent.leave(prev);
+            }
+        }
+        JSRealm realm = languageContext.createRealm(env);
+        return realm;
+    }
+
+    private JSContext newJSContext(Env env) {
         JSContext context = JSEngine.createJSContext(this, env);
 
         /*
@@ -480,18 +419,14 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
 
         context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionMRForeign.ACCESS));
-        context.activateAllocationReporter();
-        return context.createRealm();
+        return context;
     }
 
     @Override
     protected void initializeContext(JSRealm realm) {
-        JSContext context = realm.getContext();
-        Env env = context.getEnv();
+        realm.setArguments(realm.getEnv().getApplicationArguments());
 
-        realm.setArguments(env.getApplicationArguments());
-
-        if (((GraalJSParserOptions) context.getParserOptions()).isScripting()) {
+        if (((GraalJSParserOptions) realm.getContext().getParserOptions()).isScripting()) {
             realm.addScriptingOptionsObject();
         }
     }
@@ -499,12 +434,12 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     @Override
     protected boolean patchContext(JSRealm realm, Env newEnv) {
         JSContext context = realm.getContext();
-        if (!JSContextOptions.optionsAllowPreInitializedContext(realm.getContext(), newEnv)) {
+        if (!JSContextOptions.optionsAllowPreInitializedContext(realm, newEnv)) {
             return false;
         }
 
         assert context.getLanguage() == this;
-        context.patchTruffleLanguageEnv(newEnv);
+        realm.patchTruffleLanguageEnv(newEnv);
 
         if (newEnv.out() != context.getWriterStream()) {
             context.setWriter(null, newEnv.out());
@@ -518,27 +453,36 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
 
         context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionMRForeign.ACCESS));
-        context.getRealm().setArguments(newEnv.getApplicationArguments());
+        realm.setArguments(newEnv.getApplicationArguments());
 
         if (((GraalJSParserOptions) context.getParserOptions()).isScripting()) {
-            context.getRealm().addScriptingOptionsObject();
+            realm.addScriptingOptionsObject();
         }
         return true;
     }
 
     @Override
-    protected OptionDescriptors getOptionDescriptors() {
-        return OPTION_DESCRIPTORS;
+    protected void disposeContext(JSRealm realm) {
+        if (JSTruffleOptions.ContextPool && !realm.isChildRealm()) {
+            JSContext context = realm.getContext();
+            Queue<JSContext> contextPool = getContextPool(context.getParserOptions());
+            assert !contextPool.contains(context);
+            contextPool.offer(context);
+        }
     }
 
-    private CallTarget createGetJSContextCallTarget() {
-        return Truffle.getRuntime().createCallTarget(new ContextRootNode() {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                contextHolder.set(getContext());
-                return Undefined.instance;
-            }
-        });
+    private Queue<JSContext> getContextPool(ParserOptions configKey) {
+        return contextPools.computeIfAbsent(configKey, k -> new ConcurrentLinkedQueue<>());
+    }
+
+    private JSContext pollContextPool(ParserOptions configKey) {
+        Queue<JSContext> contextPool = contextPools.get(configKey);
+        return contextPool == null ? null : contextPool.poll();
+    }
+
+    @Override
+    protected OptionDescriptors getOptionDescriptors() {
+        return OPTION_DESCRIPTORS;
     }
 
     @TruffleBoundary
@@ -606,7 +550,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
 
         // avoid allocation profiling
-        DynamicObject metaObject = context.getInitialUserObjectShape().newInstance();
+        DynamicObject metaObject = realm.getInitialUserObjectShape().newInstance();
         JSObjectUtil.putDataProperty(context, metaObject, "type", type);
         if (subtype != null) {
             JSObjectUtil.putDataProperty(context, metaObject, "subtype", subtype);
@@ -653,4 +597,17 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         return JSScope.createGlobalScopes(realm);
     }
 
+    public static JSContext getJSContext(Context context) {
+        return getJSRealm(context).getContext();
+    }
+
+    public static JSRealm getJSRealm(Context context) {
+        context.enter();
+        try {
+            context.initialize(ID);
+            return getCurrentContext(JavaScriptLanguage.class);
+        } finally {
+            context.leave();
+        }
+    }
 }

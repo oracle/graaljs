@@ -48,10 +48,6 @@ import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.node.ExecuteNativeAccessorNode;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- *
- * @author Jan Stola
- */
 public class Accessor {
 
     private static final AtomicInteger idGenerator = new AtomicInteger();
@@ -111,7 +107,7 @@ public class Accessor {
     }
 
     public Pair<JSFunctionData, JSFunctionData> getFunctions(JSContext context) {
-        ContextData contextData = GraalJSAccess.getContextData(context);
+        ContextData contextData = GraalJSAccess.getContextEmbedderData(context);
         Pair<JSFunctionData, JSFunctionData> functions = contextData.getAccessorPair(id);
         if (functions == null) {
             functions = createFunctions(context);

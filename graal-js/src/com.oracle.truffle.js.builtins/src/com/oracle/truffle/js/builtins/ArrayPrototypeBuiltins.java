@@ -431,37 +431,45 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         /**
          * ES6, 9.4.2.3 ArraySpeciesCreate(originalArray, length).
          */
-        protected final Object arraySpeciesCreate(TruffleObject thisObj, long length) {
-            Object c = Undefined.instance;
-            if (isArray(thisObj)) {
+        protected final Object arraySpeciesCreate(TruffleObject originalArray, long length) {
+            Object ctor = Undefined.instance;
+            if (isArray(originalArray)) {
                 arraySpeciesIsArray.enter();
-                c = getConstructorProperty(thisObj);
-                if (JSObject.isJSObject(c)) {
-                    DynamicObject cObj = (DynamicObject) c;
-                    if (JSFunction.isJSFunction(cObj) && JSFunction.isConstructor(cObj)) {
-                        JSRealm realmC = JSFunction.getRealm(cObj);
-                        if (context.getRealm() != realmC) {
+                ctor = getConstructorProperty(originalArray);
+                if (JSObject.isJSObject(ctor)) {
+                    DynamicObject ctorObj = (DynamicObject) ctor;
+                    // TODO should work for proxy constructors, too
+                    if (JSFunction.isJSFunction(ctorObj) && JSFunction.isConstructor(ctorObj)) {
+                        JSRealm thisRealm = context.getRealm();
+                        JSRealm ctorRealm = JSFunction.getRealm(ctorObj);
+                        if (thisRealm != ctorRealm) {
                             differentRealm.enter();
-                            if (realmC.getArrayConstructor().getFunctionObject() == cObj) {
+                            if (ctorRealm.getArrayConstructor().getFunctionObject() == ctor) {
+                                /*
+                                 * If originalArray was created using the standard built-in Array
+                                 * constructor for a realm that is not the realm of the running
+                                 * execution context, then a new Array is created using the realm of
+                                 * the running execution context.
+                                 */
                                 return JSArray.createEmpty(context, length);
                             }
                         }
                     }
-                    if (cObj != Undefined.instance) {
+                    if (ctor != Undefined.instance) {
                         arraySpeciesGetSymbol.enter();
-                        c = getSpeciesProperty(cObj);
-                        c = c == Null.instance ? Undefined.instance : c;
+                        ctor = getSpeciesProperty(ctor);
+                        ctor = ctor == Null.instance ? Undefined.instance : ctor;
                     }
                 }
             }
-            if (arraySpeciesEmpty.profile(c == Undefined.instance)) {
+            if (arraySpeciesEmpty.profile(ctor == Undefined.instance)) {
                 return JSArray.createEmpty(context, length);
             }
-            if (!JSFunction.isConstructor(c)) {
+            if (!JSFunction.isConstructor(ctor)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorConstructorExpected();
             }
-            return construct((DynamicObject) c, JSRuntime.longToIntOrDouble(length));
+            return construct((DynamicObject) ctor, JSRuntime.longToIntOrDouble(length));
         }
 
         protected final boolean isArray(TruffleObject thisObj) {

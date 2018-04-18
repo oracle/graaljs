@@ -50,6 +50,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -280,15 +282,39 @@ public class JSRealm implements ShapeContext {
 
     private final MaterializedFrame globalScope;
 
+    private TruffleLanguage.Env truffleLanguageEnv;
+
     /**
      * Built-in runtime support for ECMA2017's async.
      */
     @CompilationFinal private Object performPromiseThen;
     @CompilationFinal private Object asyncFunctionPromiseCapabilityConstructor;
 
-    public JSRealm(JSContext context) {
+    /**
+     * True while calling Error.prepareStackTrace via the stack property of an error object.
+     */
+    private boolean preparingStackTrace;
+
+    /**
+     * Slot for Realm-specific data of the embedder of the JS engine.
+     */
+    private Object embedderData;
+
+    public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
-        context.setRealm(this); // (GR-1992)
+        this.truffleLanguageEnv = env; // can be null
+
+        /*
+         * TODO Drop reference from context to realm (GR-1992).
+         *
+         * FIXME Temporarily set not initialized, so initialization code can get the right Realm.
+         */
+        context.setRealm(this);
+        context.setRealmInitialized(false);
+
+        if (env != null && isChildRealm()) {
+            context.noChildRealmsAssumption.invalidate();
+        }
 
         // need to build Function and Function.proto in a weird order to avoid circular dependencies
         this.objectPrototype = JSObjectPrototype.create(context);
@@ -1133,7 +1159,7 @@ public class JSRealm implements ShapeContext {
         JSObjectUtil.putFunctionsFromContainer(this, java, JSJava.CLASS_NAME);
         putGlobalProperty(global, JSJava.CLASS_NAME, java);
 
-        if (context.getEnv() != null && context.getEnv().isHostLookupAllowed()) {
+        if (getEnv() != null && getEnv().isHostLookupAllowed()) {
             putGlobalProperty(global, "Packages", JavaPackage.create(this, ""));
             if (JSTruffleOptions.NashornJavaInterop) {
                 putGlobalProperty(global, "java", JavaPackage.create(this, "java"));
@@ -1371,10 +1397,8 @@ public class JSRealm implements ShapeContext {
     }
 
     public void initRealmBuiltinObject() {
-        if (context.isOptionV8CompatibilityMode()) {
+        if (context.getContextOptions().isV8RealmBuiltin()) {
             setRealmBuiltinObject(createRealmBuiltinObject());
-        } else {
-            this.realmBuiltinObject = null;
         }
     }
 
@@ -1402,6 +1426,18 @@ public class JSRealm implements ShapeContext {
         return javaInteropWorkerConstructor;
     }
 
+    public TruffleLanguage.Env getEnv() {
+        return truffleLanguageEnv;
+    }
+
+    public void patchTruffleLanguageEnv(TruffleLanguage.Env env) {
+        CompilerAsserts.neverPartOfCompilation();
+        Objects.requireNonNull(env, "New env cannot be null.");
+        truffleLanguageEnv = env;
+        context.setAllocationReporter(env);
+        context.getContextOptions().setEnv(env);
+    }
+
     public void setPerformPromiseThen(DynamicObject promiseThen) {
         CompilerAsserts.neverPartOfCompilation();
         this.performPromiseThen = promiseThen;
@@ -1418,5 +1454,43 @@ public class JSRealm implements ShapeContext {
     public void setAsyncFunctionPromiseCapabilityConstructor(Object promiseConstructor) {
         CompilerAsserts.neverPartOfCompilation();
         this.asyncFunctionPromiseCapabilityConstructor = promiseConstructor;
+    }
+
+    @TruffleBoundary
+    public JSRealm createChildRealm() {
+        TruffleContext nestedContext = getEnv().newContextBuilder().build();
+        Object prev = nestedContext.enter();
+        try {
+            JSRealm childRealm = AbstractJavaScriptLanguage.findCurrentJSRealm();
+            // "Realm" object is shared by all realms (V8 compatibility mode)
+            childRealm.setRealmBuiltinObject(getRealmBuiltinObject());
+            return childRealm;
+        } finally {
+            nestedContext.leave(prev);
+        }
+    }
+
+    public boolean isPreparingStackTrace() {
+        return preparingStackTrace;
+    }
+
+    public void setPreparingStackTrace(boolean preparingStackTrace) {
+        this.preparingStackTrace = preparingStackTrace;
+    }
+
+    public TruffleContext getTruffleContext() {
+        return getEnv().getContext();
+    }
+
+    public boolean isChildRealm() {
+        return getTruffleContext().getParent() != null;
+    }
+
+    public final Object getEmbedderData() {
+        return embedderData;
+    }
+
+    public final void setEmbedderData(Object embedderData) {
+        this.embedderData = embedderData;
     }
 }

@@ -52,7 +52,7 @@ public final class Undefined {
     public static final String TYPE_NAME = NAME;
     private static final JSClass UNDEFINED_CLASS = Null.NULL_CLASS;
     private static final Shape SHAPE = JSShape.makeStaticRoot(JSObject.LAYOUT, UNDEFINED_CLASS, 0);
-    public static final DynamicObject instance = JSObject.create(SHAPE);
+    public static final DynamicObject instance = JSObject.createStatic(SHAPE);
 
     private Undefined() {
     }

@@ -178,7 +178,7 @@ public class InternalTranslationProvider {
     private static Source readInternalFileSource(String fileName) {
         InputStream stream = JSRealm.class.getResourceAsStream(RESOURCES_PATH + fileName);
         try {
-            return Source.newBuilder(new InputStreamReader(stream)).name(JSRealm.INTERNAL_JS_FILE_NAME_PREFIX + fileName).mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).internal().build();
+            return Source.newBuilder(new InputStreamReader(stream)).name(JSRealm.INTERNAL_JS_FILE_NAME_PREFIX + fileName).language(AbstractJavaScriptLanguage.ID).internal().build();
         } catch (IOException ex) {
             throw new IllegalStateException(ex);
         }

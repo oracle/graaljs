@@ -38,31 +38,64 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.trufflenode;
 
-#include "arguments.cc"
-#include "array.cc"
-#include "boolean.cc"
-#include "bootstrap.cc"
-#include "cast.cc"
-#include "context.cc"
-#include "exception.cc"
-#include "external.cc"
-#include "function.cc"
-#include "function_template.cc"
-#include "gc.cc"
-#include "local.cc"
-#include "integer.cc"
-#include "isolate.cc"
-#include "message.cc"
-#include "null.cc"
-#include "object.cc"
-#include "object_new.cc"
-#include "object_template.cc"
-#include "persistent.cc"
-#include "script.cc"
-#include "stacktrace.cc"
-#include "string.cc"
-#include "try_catch.cc"
-#include "undefined.cc"
-#include "value.cc"
-#include "v8obj.cc"
+import java.util.HashMap;
+import java.util.Map;
+
+import com.oracle.truffle.api.object.DynamicObject;
+
+/**
+ * Realm-specific embedder data.
+ */
+public final class RealmData {
+    private Object securityToken;
+    private final Map<Integer, Object> embedderData = new HashMap<>();
+
+    private DynamicObject nativeUtf8Write;
+    private DynamicObject nativeUtf8Slice;
+    private DynamicObject resolverFactory;
+
+    public RealmData() {
+    }
+
+    public void setSecurityToken(Object securityToken) {
+        this.securityToken = securityToken;
+    }
+
+    public Object getSecurityToken() {
+        return securityToken;
+    }
+
+    public DynamicObject getNativeUtf8Write() {
+        return nativeUtf8Write;
+    }
+
+    public void setNativeUtf8Write(DynamicObject nativeUtf8Write) {
+        this.nativeUtf8Write = nativeUtf8Write;
+    }
+
+    public DynamicObject getNativeUtf8Slice() {
+        return nativeUtf8Slice;
+    }
+
+    public void setNativeUtf8Slice(DynamicObject nativeUtf8Slice) {
+        this.nativeUtf8Slice = nativeUtf8Slice;
+    }
+
+    public void setEmbedderData(int index, Object value) {
+        embedderData.put(index, value);
+    }
+
+    public Object getEmbedderData(int index) {
+        return embedderData.get(index);
+    }
+
+    public void setResolverFactory(DynamicObject resolverFactory) {
+        this.resolverFactory = resolverFactory;
+    }
+
+    public DynamicObject getResolverFactory() {
+        return resolverFactory;
+    }
+}

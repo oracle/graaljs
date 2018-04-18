@@ -99,7 +99,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         private MakeMethodNode(JSContext context, JavaScriptNode functionNode) {
             this.functionNode = functionNode;
-            this.makeMethodNode = PropertySetNode.create(JSFunction.HOME_OBJECT_ID, false, context, false);
+            this.makeMethodNode = PropertySetNode.createSetHidden(JSFunction.HOME_OBJECT_ID, context);
         }
 
         public static JavaScriptNode create(JSContext context, JavaScriptNode functionNode) {

@@ -159,4 +159,9 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
     public static boolean isJSSymbol(DynamicObject obj) {
         return isInstance(obj, INSTANCE);
     }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getSymbolConstructor().getPrototype();
+    }
 }

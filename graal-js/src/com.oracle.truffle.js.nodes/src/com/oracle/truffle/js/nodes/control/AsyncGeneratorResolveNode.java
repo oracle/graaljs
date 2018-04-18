@@ -64,7 +64,7 @@ public class AsyncGeneratorResolveNode extends JavaScriptBaseNode {
 
     protected AsyncGeneratorResolveNode(JSContext context) {
         this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-        this.getAsyncGeneratorQueueNode = PropertyGetNode.create(JSFunction.ASYNC_GENERATOR_QUEUE_ID, false, context);
+        this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
         this.getPromiseResolve = PropertyGetNode.create("resolve", false, context);
         this.callResolveNode = JSFunctionCallNode.createCall();
     }

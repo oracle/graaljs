@@ -166,4 +166,9 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
                             new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
         }
     }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getNumberConstructor().getPrototype();
+    }
 }

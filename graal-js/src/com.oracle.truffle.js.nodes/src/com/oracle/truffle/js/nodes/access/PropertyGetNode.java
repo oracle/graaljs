@@ -123,11 +123,26 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil;
 public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode> {
 
     public static PropertyGetNode create(Object key, boolean isGlobal, JSContext context) {
+        final boolean getOwnProperty = false;
+        return createImpl(key, isGlobal, context, getOwnProperty);
+    }
+
+    private static PropertyGetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean getOwnProperty) {
         if (JSTruffleOptions.PropertyCacheLimit > 0) {
-            return new UninitializedPropertyGetNode(key, isGlobal, context);
+            return new UninitializedPropertyGetNode(key, isGlobal, context, getOwnProperty);
         } else {
-            return createGeneric(key, isGlobal, false, context);
+            return createGeneric(key, isGlobal, false, getOwnProperty, context);
         }
+    }
+
+    public static PropertyGetNode createGetOwn(Object key, JSContext context) {
+        final boolean global = false;
+        final boolean getOwnProperty = true;
+        return createImpl(key, global, context, getOwnProperty);
+    }
+
+    public static PropertyGetNode createGetHidden(HiddenKey key, JSContext context) {
+        return createGetOwn(key, context);
     }
 
     protected PropertyGetNode(Object key) {
@@ -328,6 +343,11 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         @Override
         protected boolean isMethod() {
             return getNext().isMethod();
+        }
+
+        @Override
+        protected boolean isOwnProperty() {
+            return getNext().isOwnProperty();
         }
     }
 
@@ -824,9 +844,9 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     public static final class JSJavaWrapperPropertyGetNode extends LinkedPropertyGetNode {
         @Child private PropertyGetNode nested;
 
-        public JSJavaWrapperPropertyGetNode(Object key, boolean isGlobal, boolean isMethod, JSContext context) {
+        public JSJavaWrapperPropertyGetNode(Object key, boolean isGlobal, boolean isMethod, boolean getOwnProperty, JSContext context) {
             super(key, new JSClassCheckNode(JSJavaWrapper.getJSClassInstance()));
-            this.nested = new UninitializedPropertyGetNode(key, isGlobal, context);
+            this.nested = new UninitializedPropertyGetNode(key, isGlobal, context, getOwnProperty);
             if (isMethod) {
                 this.nested.setMethod();
             }
@@ -1039,10 +1059,12 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     public abstract static class TerminalPropertyGetNode extends PropertyGetNode {
         protected final JSContext context;
         @CompilationFinal private boolean isMethod;
+        private final boolean getOwnProperty;
 
-        public TerminalPropertyGetNode(Object key, JSContext context) {
+        public TerminalPropertyGetNode(Object key, JSContext context, boolean getOwnProperty) {
             super(key);
             this.context = context;
+            this.getOwnProperty = getOwnProperty;
         }
 
         @Override
@@ -1089,6 +1111,11 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         protected void setMethod() {
             CompilerAsserts.neverPartOfCompilation();
             this.isMethod = true;
+        }
+
+        @Override
+        protected boolean isOwnProperty() {
+            return this.getOwnProperty;
         }
 
         @Override
@@ -1181,8 +1208,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final BranchProfile notAJSObjectBranch = BranchProfile.create();
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
 
-        public GenericPropertyGetNode(Object key, JSContext context, boolean isMethod) {
-            super(key, context);
+        public GenericPropertyGetNode(Object key, JSContext context, boolean isMethod, boolean getOwnProperty) {
+            super(key, context, getOwnProperty);
             this.toObjectNode = JSToObjectNode.createToObjectNoCheck(context);
             if (isMethod) {
                 setMethod();
@@ -1294,8 +1321,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     @NodeInfo(cost = NodeCost.MEGAMORPHIC)
     public static final class GenericRequiredPropertyGetNode extends GenericPropertyGetNode {
 
-        public GenericRequiredPropertyGetNode(Object key, JSContext context, boolean isMethod) {
-            super(key, context, isMethod);
+        public GenericRequiredPropertyGetNode(Object key, JSContext context, boolean isMethod, boolean getOwnProperty) {
+            super(key, context, isMethod, getOwnProperty);
         }
 
         @Override
@@ -1314,8 +1341,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final boolean isGlobal;
         private boolean propertyAssumptionCheckEnabled = true;
 
-        public UninitializedPropertyGetNode(Object key, boolean isGlobal, JSContext context) {
-            super(key, context);
+        public UninitializedPropertyGetNode(Object key, boolean isGlobal, JSContext context, boolean getOwnProperty) {
+            super(key, context, getOwnProperty);
             this.isGlobal = isGlobal;
         }
 
@@ -1331,7 +1358,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
         @Override
         protected boolean isPropertyAssumptionCheckEnabled() {
-            return propertyAssumptionCheckEnabled;
+            return propertyAssumptionCheckEnabled && context.isSingleRealm();
         }
 
         @Override
@@ -1529,6 +1556,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
      */
     @Override
     protected LinkedPropertyGetNode createCachedPropertyNode(Property property, Object thisObj, int depth, JSContext context, Object value) {
+        assert !isOwnProperty() || depth == 0;
         if (!(JSObject.isDynamicObject(thisObj))) {
             return createCachedPropertyNodeNotJSObject(property, thisObj, depth, context);
         }
@@ -1702,7 +1730,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     private LinkedPropertyGetNode createJavaPropertyNodeMaybe0(Object thisObj, JSContext context) {
         if (JSObject.isDynamicObject(thisObj)) {
             if (JSJavaWrapper.isJSJavaWrapper(thisObj)) {
-                return new JSJavaWrapperPropertyGetNode(key, isGlobal(), isMethod(), context);
+                return new JSJavaWrapperPropertyGetNode(key, isGlobal(), isMethod(), isOwnProperty(), context);
             } else if (JavaPackage.isJavaPackage(thisObj)) {
                 return new CachedJavaPackagePropertyGetNode(context, key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)), (DynamicObject) thisObj);
             } else if (JavaImporter.isJavaImporter(thisObj)) {
@@ -1810,11 +1838,11 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
      */
     @Override
     protected PropertyGetNode createGenericPropertyNode(JSContext context) {
-        return createGeneric(key, isRequired(), isMethod(), context);
+        return createGeneric(key, isRequired(), isMethod(), isOwnProperty(), context);
     }
 
-    private static PropertyGetNode createGeneric(Object key, boolean required, boolean isMethod, JSContext context) {
-        return required ? new GenericRequiredPropertyGetNode(key, context, isMethod) : new GenericPropertyGetNode(key, context, isMethod);
+    private static PropertyGetNode createGeneric(Object key, boolean required, boolean isMethod, boolean getOwnProperty, JSContext context) {
+        return required ? new GenericRequiredPropertyGetNode(key, context, isMethod, getOwnProperty) : new GenericPropertyGetNode(key, context, isMethod, getOwnProperty);
     }
 
     protected final boolean isRequired() {

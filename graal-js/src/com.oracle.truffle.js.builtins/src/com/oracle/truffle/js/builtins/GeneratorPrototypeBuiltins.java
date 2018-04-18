@@ -109,7 +109,7 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
         public GeneratorResumeNode(JSContext context, JSBuiltin builtin, Completion.Type resumeType) {
             super(context, builtin);
             this.resumeType = resumeType;
-            this.getGeneratorTarget = PropertyGetNode.create(JSFunction.GENERATOR_TARGET_ID, false, context);
+            this.getGeneratorTarget = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_TARGET_ID, context);
             this.callNode = InternalCallNode.create();
         }
 

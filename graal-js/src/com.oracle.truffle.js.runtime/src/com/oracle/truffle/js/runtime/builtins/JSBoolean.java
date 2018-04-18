@@ -147,4 +147,9 @@ public final class JSBoolean extends JSPrimitiveObject implements JSConstructorF
                             new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
         }
     }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getBooleanConstructor().getPrototype();
+    }
 }

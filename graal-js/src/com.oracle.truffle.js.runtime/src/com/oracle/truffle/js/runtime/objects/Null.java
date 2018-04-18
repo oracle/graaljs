@@ -56,7 +56,7 @@ public final class Null {
     public static final JSClass NULL_CLASS = NullClass.INSTANCE;
     private static final Shape SHAPE = JSShape.makeStaticRoot(JSObject.LAYOUT, NULL_CLASS, 0);
     public static final String CLASS_NAME = "null|undefined";
-    public static final DynamicObject instance = JSObject.create(SHAPE);
+    public static final DynamicObject instance = JSObject.createStatic(SHAPE);
 
     private Null() {
     }

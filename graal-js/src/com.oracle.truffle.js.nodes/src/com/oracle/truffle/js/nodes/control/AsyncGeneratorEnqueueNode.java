@@ -72,8 +72,8 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
 
     protected AsyncGeneratorEnqueueNode(JSContext context) {
         this.context = context;
-        this.getGeneratorState = PropertyGetNode.create(JSFunction.GENERATOR_STATE_ID, false, context);
-        this.getAsyncGeneratorQueueNode = PropertyGetNode.create(JSFunction.ASYNC_GENERATOR_QUEUE_ID, false, context);
+        this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_STATE_ID, context);
+        this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
         this.hasAsyncGeneratorInternalSlots = HasHiddenKeyCacheNode.create(JSFunction.ASYNC_GENERATOR_QUEUE_ID);
         this.getPromiseReject = PropertyGetNode.create("reject", false, context);
         this.callPromiseRejectNode = JSFunctionCallNode.createCall();

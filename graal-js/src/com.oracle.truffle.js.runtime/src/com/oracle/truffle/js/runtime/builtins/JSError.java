@@ -43,13 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.util.EnumSet;
 import java.util.Objects;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
@@ -61,7 +55,6 @@ import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -85,7 +78,6 @@ public final class JSError extends JSBuiltinObject {
     public static final String STACK_NAME = "stack";
     public static final HiddenKey FORMATTED_STACK_NAME = new HiddenKey("FormattedStack");
     public static final String PREPARE_STACK_TRACE_NAME = "prepareStackTrace";
-    private static final HiddenKey PREPARING_STACK_TRACE_NAME = new HiddenKey("PreparingStackTrace");
     public static final String LINE_NUMBER_PROPERTY_NAME = "lineNumber";
     public static final String COLUMN_NUMBER_PROPERTY_NAME = "columnNumber";
     public static final int DEFAULT_COLUMN_NUMBER = -1;
@@ -118,29 +110,20 @@ public final class JSError extends JSBuiltinObject {
             Object value = store.get(FORMATTED_STACK_NAME);
             if (value == null) {
                 // stack not prepared yet
-                JSContext context = currentContext(store);
                 GraalJSException truffleException = getException(store);
-                value = (truffleException == null) ? Undefined.instance : prepareStack(context.getRealm(), store, truffleException);
+                if (truffleException == null) {
+                    value = Undefined.instance;
+                } else {
+                    JSRealm realm = currentRealm(store);
+                    value = prepareStack(realm, store, truffleException);
+                }
                 store.set(FORMATTED_STACK_NAME, value);
             }
             return value;
         }
 
-        @TruffleBoundary
-        private JSContext currentContext(DynamicObject store) {
-            FrameInstance frameInstance = Truffle.getRuntime().getCurrentFrame();
-            if (frameInstance != null) {
-                CallTarget callTarget = frameInstance.getCallTarget();
-                if (callTarget instanceof RootCallTarget) {
-                    RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
-                    if (JSRuntime.isJSFunctionRootNode(rootNode)) {
-                        Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
-                        DynamicObject function = JSFrameUtil.getFunctionObject(frame);
-                        return JSObject.getJSContext(function);
-                    }
-                }
-            }
-            return JSObject.getJSContext(store);
+        private JSRealm currentRealm(DynamicObject store) {
+            return JSObject.getJSContext(store).getRealm();
         }
 
         @Override
@@ -203,7 +186,6 @@ public final class JSError extends JSBuiltinObject {
         JSObjectUtil.putConstructorPrototypeProperty(context, errorConstructor, classPrototype);
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorConstructor, CLASS_NAME);
-            errorConstructor.define(PREPARING_STACK_TRACE_NAME, false);
             JSObjectUtil.putDataProperty(context, errorConstructor, STACK_TRACE_LIMIT_PROPERTY_NAME, JSTruffleOptions.StackTraceLimit, JSAttributes.getDefault());
         }
 
@@ -290,13 +272,13 @@ public final class JSError extends JSBuiltinObject {
         JSStackTraceElement[] jsStackTrace = exception.getJSStackTrace();
         if (JSFunction.isJSFunction(prepareStackTrace)) {
             // Do not call Error.prepareStackTrace for errors that occur during its invocation
-            Object preparingStackTrace = error.get(PREPARING_STACK_TRACE_NAME);
-            if (preparingStackTrace != Boolean.TRUE) {
+            boolean inPrepareStackTrace = realm.isPreparingStackTrace();
+            if (!inPrepareStackTrace) {
                 try {
-                    error.set(PREPARING_STACK_TRACE_NAME, true);
+                    realm.setPreparingStackTrace(true);
                     return prepareStackWithUserFunction(realm, (DynamicObject) prepareStackTrace, errorObj, jsStackTrace);
                 } finally {
-                    error.set(PREPARING_STACK_TRACE_NAME, false);
+                    realm.setPreparingStackTrace(false);
                 }
             }
         }

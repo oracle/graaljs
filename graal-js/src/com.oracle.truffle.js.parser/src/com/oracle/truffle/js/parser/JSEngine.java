@@ -80,7 +80,7 @@ public final class JSEngine {
     }
 
     private JSRealm createRealm(JavaScriptLanguage language, TruffleLanguage.Env env) {
-        return createContext(language, env).createRealm();
+        return createContext(language, env).createRealm(env);
     }
 
     public JSContext createContext(JavaScriptLanguage language, GraalJSParserOptions parserOptions, TruffleLanguage.Env env) {

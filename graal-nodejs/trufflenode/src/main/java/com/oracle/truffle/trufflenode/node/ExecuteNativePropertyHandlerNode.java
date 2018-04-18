@@ -103,7 +103,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         this.stringKeysOnly = template.getStringKeysOnly();
         this.proxy = proxy;
         this.mode = mode;
-        this.holderPropertyGetNode = PropertyGetNode.create(GraalJSAccess.HOLDER_KEY, false, context);
+        this.holderPropertyGetNode = PropertyGetNode.createGetHidden(GraalJSAccess.HOLDER_KEY, context);
     }
 
     @Override

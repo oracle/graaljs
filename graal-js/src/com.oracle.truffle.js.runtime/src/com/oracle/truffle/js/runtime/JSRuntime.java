@@ -2420,7 +2420,7 @@ public final class JSRuntime {
                 if (JSFunction.isBoundFunction(dynObj)) {
                     return getFunctionRealm(JSFunction.getBoundTargetFunction(dynObj), currentRealm);
                 } else {
-                    return JSFunction.getFunctionData(dynObj).getContext().getRealm();
+                    return JSFunction.getRealm(dynObj);
                 }
             } else if (JSProxy.isProxy(dynObj)) {
                 if (JSProxy.getHandler(dynObj) == Null.instance) {

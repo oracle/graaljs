@@ -78,7 +78,7 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
         this.getter = getter;
         this.getPrototypeNode = GetPrototypeNode.create();
         this.prototypePropertyGetNode = PropertyGetNode.create(JSObject.PROTOTYPE, false, context);
-        this.holderPropertyGetNode = PropertyGetNode.create(GraalJSAccess.HOLDER_KEY, false, context);
+        this.holderPropertyGetNode = PropertyGetNode.createGetHidden(GraalJSAccess.HOLDER_KEY, context);
     }
 
     @Override

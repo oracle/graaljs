@@ -606,15 +606,6 @@
     "status" : "SKIP",
     "comment" : "GR-6710 BigInt propsal"
   }, {
-    "filePath" : "built-ins/Proxy/apply/arguments-realm.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/Proxy/construct/arguments-realm.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/Proxy/defineProperty/desc-realm.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
     "status" : "SKIP",
     "comment" : "Unimplemented RegExp proposal (GR-6965)."

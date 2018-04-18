@@ -159,7 +159,7 @@ public class SnapshotTool {
 
     private void snapshotScriptFileTo(String fileName, File sourceFile, File outputFile, boolean binary) throws IOException {
         Recording.logv("recording snapshot of %s", fileName);
-        Source source = Source.newBuilder(sourceFile).name(fileName).mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build();
+        Source source = Source.newBuilder(sourceFile).name(fileName).language(AbstractJavaScriptLanguage.ID).build();
         final Recording rec;
         try (TimerCloseable timer = timeStats.file(fileName)) {
             rec = new Recording();

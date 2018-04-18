@@ -106,7 +106,7 @@ public abstract class CreateMethodPropertyNode extends JavaScriptNode {
         if (shape.getProperty(key) == null) {
             return new UninitializedDefinePropertyNode(key, shape, context, JSAttributes.getDefaultNotEnumerable());
         } else {
-            return new UninitializedPropertySetNode(key, false, context, true, JSAttributes.getDefaultNotEnumerable());
+            return new UninitializedPropertySetNode(key, false, context, true, true, JSAttributes.getDefaultNotEnumerable());
         }
     }
 

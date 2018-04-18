@@ -104,7 +104,7 @@ public abstract class EvalNode extends JavaScriptNode {
         if (evalSourceName == null) {
             evalSourceName = Evaluator.EVAL_SOURCE_NAME;
         }
-        return Source.newBuilder(sourceCode.toString()).name(evalSourceName).mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build();
+        return Source.newBuilder(sourceCode.toString()).name(evalSourceName).language(AbstractJavaScriptLanguage.ID).build();
     }
 
     @TruffleBoundary

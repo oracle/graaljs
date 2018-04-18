@@ -40,28 +40,53 @@
  */
 
 var assert = require('assert');
-var spawnSync = require('child_process').spawnSync;
+var module = require('./_unit');
 
-describe('Spawn', function () {
-    it('should spawn a child node process when env. variables are cleared', function () {
-        var result = spawnSync(process.execPath, ['-p', '6*7'], {env: {}});
-        assert.strictEqual(result.stderr.toString(), '');
-        assert.strictEqual(result.stdout.toString(), '42\n');
-        assert.strictEqual(result.status, 0);
-    }).timeout(10000);
-    if (typeof java === 'object') {
-        it('should finish gracefully when a native method is called from a wrong thread', function () {
-            var code = `var vm = require('vm');
-                        var sandbox = {};
-                        vm.runInNewContext("var f = function() { console.log('crash'); }", sandbox);
-                        var t = new java.lang.Thread(sandbox.f);
-                        t.start();
-                        t.join();`;
-            code = code.replace(/\n\s*/g, ' ');
-            var result = spawnSync(process.execPath, ['-e', code]);
-            assert.ok(result.stderr.toString().indexOf('thread') !== 0);
-            assert.strictEqual(result.stdout.toString(), '');
-            assert.strictEqual(result.status, 1);
-        }).timeout(10000);
-    }
+describe('ObjectNew', function () {
+    describe('RegExp::New', function () {
+        it('should return a RegExp object', function () {
+            var re = module.ObjectNew_RegExp("beer");
+            assert(re instanceof RegExp);
+            assert(re.global);
+        });
+        it('should return a RegExp object (maybe version)', function () {
+            var re = module.ObjectNew_RegExpMaybe("beer");
+            assert(re instanceof RegExp);
+            assert(re.global);
+        });
+    });
+    describe('Date::New', function () {
+        const time = new Date(2018,1,1).valueOf();
+        it('should return a Date object', function () {
+            var date = module.ObjectNew_Date(time);
+            assert(date instanceof Date);
+            assert.strictEqual(date.valueOf(), time);
+        });
+        it('should return a Date object (maybe version)', function () {
+            var date = module.ObjectNew_DateMaybe(time);
+            assert(date instanceof Date);
+            assert.strictEqual(date.valueOf(), time);
+        });
+    });
+    describe('BooleanObject::New', function () {
+        it('should return a Boolean object', function () {
+            assert(module.ObjectNew_BooleanObject(false) instanceof Boolean);
+            assert.strictEqual(module.ObjectNew_BooleanObject(false).valueOf(), false);
+            assert.strictEqual(module.ObjectNew_BooleanObject(true).valueOf(), true);
+        });
+    });
+    describe('NumberObject::New', function () {
+        it('should return a Number object', function () {
+            var number = module.ObjectNew_NumberObject(42);
+            assert(number instanceof Number);
+            assert.strictEqual(number.valueOf(), 42);
+        });
+    });
+    describe('StringObject::New', function () {
+        it('should return a String object', function () {
+            var string = module.ObjectNew_StringObject("beer");
+            assert(string instanceof String);
+            assert.strictEqual(string.valueOf(), "beer");
+        });
+    });
 });

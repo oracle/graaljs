@@ -157,7 +157,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @TruffleBoundary
         private Object evalScript(JSRealm realm, String sourceText) {
-            Source source = Source.newBuilder(sourceText).name(Evaluator.EVAL_SOURCE_NAME).mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build();
+            Source source = Source.newBuilder(sourceText).name(Evaluator.EVAL_SOURCE_NAME).language(AbstractJavaScriptLanguage.ID).build();
             return realm.getContext().getEvaluator().evaluate(realm, this, source);
         }
 
@@ -179,7 +179,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @TruffleBoundary
         private JSRealm createChildRealm() {
-            return getContext().createChildContext().getRealm();
+            return getContext().getRealm().createChildRealm();
         }
     }
 

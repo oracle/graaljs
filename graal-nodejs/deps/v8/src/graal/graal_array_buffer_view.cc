@@ -75,8 +75,7 @@ bool GraalArrayBufferView::IsArrayBufferView() const {
 
 size_t GraalArrayBufferView::ByteLength() {
     if (byte_length_ == -1) {
-        jobject java_context = Isolate()->CurrentJavaContext();
-        JNI_CALL(jint, length, Isolate(), GraalAccessMethod::array_buffer_view_byte_length, Int, java_context, GetJavaObject());
+        JNI_CALL(jint, length, Isolate(), GraalAccessMethod::array_buffer_view_byte_length, Int, GetJavaObject());
         byte_length_ = length;
     }
     return byte_length_;
@@ -84,8 +83,7 @@ size_t GraalArrayBufferView::ByteLength() {
 
 size_t GraalArrayBufferView::ByteOffset() {
     if (byte_offset_ == -1) {
-        jobject java_context = Isolate()->CurrentJavaContext();
-        JNI_CALL(jint, offset, Isolate(), GraalAccessMethod::array_buffer_view_byte_offset, Int, java_context, GetJavaObject());
+        JNI_CALL(jint, offset, Isolate(), GraalAccessMethod::array_buffer_view_byte_offset, Int, GetJavaObject());
         byte_offset_ = offset;
     }
     return byte_offset_;

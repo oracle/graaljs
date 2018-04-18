@@ -42,21 +42,20 @@ package com.oracle.truffle.trufflenode.info;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.nodes.ScriptNode;
+import com.oracle.truffle.js.runtime.JSRealm;
 
-/**
- *
- * @author Jan Stola
- */
 public final class Script {
 
     private final int id;
     private final ScriptNode scriptNode;
     private final Object parseResult;
+    private final JSRealm realm;
     private final boolean graalInternal;
 
-    public Script(ScriptNode scriptNode, Object parseResult, int id) {
+    public Script(ScriptNode scriptNode, Object parseResult, JSRealm realm, int id) {
         this.scriptNode = scriptNode;
         this.parseResult = parseResult;
+        this.realm = realm;
         this.id = id;
         this.graalInternal = isGraalInternalScript(scriptNode.getRootNode().getSourceSection().getSource());
     }
@@ -67,6 +66,10 @@ public final class Script {
 
     public Object getParseResult() {
         return parseResult;
+    }
+
+    public JSRealm getRealm() {
+        return realm;
     }
 
     public int getId() {
