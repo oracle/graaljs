@@ -72,21 +72,28 @@ public abstract class GraalJSException extends RuntimeException implements Truff
     private static final long serialVersionUID = -6624166672101791072L;
     private static final JSStackTraceElement[] EMPTY_STACK_TRACE = new JSStackTraceElement[0];
     private JSStackTraceElement[] jsStackTrace;
-    private Node originatingNode;
+    private Object location;
     private int stackTraceLimit;
 
     protected GraalJSException(String message, Throwable cause, Node node, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean capture) {
         super(message, cause);
-        this.originatingNode = node;
+        this.location = node;
         this.stackTraceLimit = stackTraceLimit;
         this.jsStackTrace = initStackTrace(node, stackTraceLimit, skipFramesUpTo, capture);
     }
 
     protected GraalJSException(String message, Node node, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean capture) {
         super(message);
-        this.originatingNode = node;
+        this.location = node;
         this.stackTraceLimit = stackTraceLimit;
         this.jsStackTrace = initStackTrace(node, stackTraceLimit, skipFramesUpTo, capture);
+    }
+
+    protected GraalJSException(String message, SourceSection location, int stackTraceLimit) {
+        super(message);
+        this.location = location;
+        this.stackTraceLimit = stackTraceLimit;
+        this.jsStackTrace = initStackTrace(null, stackTraceLimit, Undefined.instance, false);
     }
 
     private static JSStackTraceElement[] initStackTrace(Node node, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean capture) {
@@ -103,7 +110,15 @@ public abstract class GraalJSException extends RuntimeException implements Truff
 
     @Override
     public Node getLocation() {
-        return originatingNode;
+        return location instanceof Node ? (Node) location : null;
+    }
+
+    @Override
+    public SourceSection getSourceLocation() {
+        if (location instanceof SourceSection) {
+            return (SourceSection) location;
+        }
+        return TruffleException.super.getSourceLocation();
     }
 
     @Override
@@ -151,7 +166,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
     private JSStackTraceElement[] materializeJSStackTrace() {
         List<TruffleStackTraceElement> stackTrace = TruffleStackTraceElement.getStackTrace(this);
         if (stackTrace != null) {
-            FrameVisitorImpl visitor = new FrameVisitorImpl(originatingNode, stackTraceLimit, Undefined.instance);
+            FrameVisitorImpl visitor = new FrameVisitorImpl(getLocation(), stackTraceLimit, Undefined.instance);
             for (TruffleStackTraceElement element : stackTrace) {
                 if (visitor.visitFrame(element) != null) {
                     break;

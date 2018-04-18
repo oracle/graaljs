@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -69,6 +70,12 @@ public final class JSException extends GraalJSException {
         this.exceptionObj = exceptionObj;
     }
 
+    private JSException(JSErrorType type, String message, SourceSection sourceLocation, int stackTraceLimit) {
+        super(message, sourceLocation, stackTraceLimit);
+        this.type = type;
+        this.exceptionObj = null;
+    }
+
     @TruffleBoundary
     public static JSException createCapture(JSErrorType type, String message, DynamicObject exceptionObj, int stackTraceLimit, DynamicObject skipFramesUpTo) {
         return new JSException(type, message, null, exceptionObj, stackTraceLimit, skipFramesUpTo, true);
@@ -89,6 +96,10 @@ public final class JSException extends GraalJSException {
 
     public static JSException create(JSErrorType type, String message, Throwable cause, Node originatingNode) {
         return new JSException(type, message, cause, originatingNode, JSTruffleOptions.StackTraceLimit, Undefined.instance, false);
+    }
+
+    public static JSException create(JSErrorType type, String message, SourceSection sourceLocation) {
+        return new JSException(type, message, sourceLocation, JSTruffleOptions.StackTraceLimit);
     }
 
     @Override

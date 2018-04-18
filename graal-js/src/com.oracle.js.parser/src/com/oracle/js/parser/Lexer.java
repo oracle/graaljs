@@ -695,7 +695,7 @@ public class Lexer extends Scanner {
             final int digit = convertDigit(ch0, 16);
 
             if (digit == -1) {
-                error(Lexer.message("invalid.hex"), type, position, limit);
+                error(Lexer.message("invalid.hex"), type, position, limit - position);
                 return i == 0 ? -1 : value;
             }
 
@@ -724,7 +724,7 @@ public class Lexer extends Scanner {
                     skip(1);
                     return value;
                 } else {
-                    error(Lexer.message("invalid.hex"), type, position, limit);
+                    error(Lexer.message("invalid.hex"), type, position, limit - position);
                     skip(1);
                     return -1;
                 }
@@ -733,14 +733,14 @@ public class Lexer extends Scanner {
             final int digit = convertDigit(ch0, 16);
 
             if (digit == -1) {
-                error(Lexer.message("invalid.hex"), type, position, limit);
+                error(Lexer.message("invalid.hex"), type, position, limit - position);
                 return i == 0 ? -1 : value;
             }
 
             value = digit | value << 4;
 
             if (value > 1114111) {
-                error(Lexer.message("invalid.hex"), type, position, limit);
+                error(Lexer.message("invalid.hex"), type, position, limit - position);
                 return -1;
             }
 
@@ -918,7 +918,7 @@ public class Lexer extends Scanner {
                         // octal escape sequences are not allowed (eg. "\02", "\31").
                         // See section 7.8.4 String literals production EscapeSequence
                         if (next != '0' || (ch0 >= '0' && ch0 <= '9')) {
-                            error(Lexer.message("strict.no.octal"), STRING, position, limit);
+                            error(Lexer.message("strict.no.octal"), STRING, position, limit - position);
                         }
                     }
                     reset(afterSlash);
@@ -1039,7 +1039,7 @@ public class Lexer extends Scanner {
                 type = ESCSTRING;
                 skip(1);
                 if (!isEscapeCharacter(ch0)) {
-                    error(Lexer.message("invalid.escape.char"), STRING, position, limit);
+                    error(Lexer.message("invalid.escape.char"), STRING, position, limit - position);
                 }
                 if (isEOL(ch0)) {
                     // Multiline string literal
@@ -1056,7 +1056,7 @@ public class Lexer extends Scanner {
             // Skip close quote.
             skip(1);
         } else {
-            error(Lexer.message("missing.close.quote"), STRING, position, limit);
+            error(Lexer.message("missing.close.quote"), STRING, position, limit - position);
         }
 
         // If not just scanning.
@@ -1140,7 +1140,7 @@ public class Lexer extends Scanner {
                 skip(1);
                 // EscapeSequence
                 if (!isEscapeCharacter(ch0)) {
-                    error(Lexer.message("invalid.escape.char"), TEMPLATE, position, limit);
+                    error(Lexer.message("invalid.escape.char"), TEMPLATE, position, limit - position);
                 }
                 if (isEOL(ch0)) {
                     // LineContinuation
@@ -1157,7 +1157,7 @@ public class Lexer extends Scanner {
             skip(1);
         }
 
-        error(Lexer.message("missing.close.quote"), TEMPLATE, position, limit);
+        error(Lexer.message("missing.close.quote"), TEMPLATE, position, limit - position);
     }
 
     /**
@@ -1420,7 +1420,7 @@ public class Lexer extends Scanner {
             final int ch = unicodeEscapeSequence(TokenType.IDENT);
 
             if (!Character.isJavaIdentifierStart(ch)) {
-                error(Lexer.message("illegal.identifier.character"), TokenType.IDENT, start, position);
+                error(Lexer.message("illegal.identifier.character"), TokenType.IDENT, start, position - start);
             }
         } else if (!Character.isJavaIdentifierStart(ch0)) {
             // Not an identifier.
@@ -1434,7 +1434,7 @@ public class Lexer extends Scanner {
                 final int ch = unicodeEscapeSequence(TokenType.IDENT);
 
                 if (!Character.isJavaIdentifierPart(ch)) {
-                    error(Lexer.message("illegal.identifier.character"), TokenType.IDENT, start, position);
+                    error(Lexer.message("illegal.identifier.character"), TokenType.IDENT, start, position - start);
                 }
             } else if (Character.isJavaIdentifierPart(ch0)) {
                 skip(1);
@@ -1650,7 +1650,7 @@ public class Lexer extends Scanner {
             final int identLength = scanIdentifier();
             if (noStringEditing) {
                 if (ch0 != quoteChar) {
-                    error(Lexer.message("here.non.matching.delimiter"), last, position, position);
+                    error(Lexer.message("here.non.matching.delimiter"), last, position, 0);
                     restoreState(saved);
                     return false;
                 }
@@ -1707,7 +1707,7 @@ public class Lexer extends Scanner {
 
             // If marker is missing.
             if (stringState.isEmpty() || atEOF()) {
-                error(Lexer.message("here.missing.end.marker", source.getString(identStart, identLength)), last, position, position);
+                error(Lexer.message("here.missing.end.marker", source.getString(identStart, identLength)), last, position, 0);
                 restoreState(saved);
 
                 return false;
