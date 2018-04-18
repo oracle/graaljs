@@ -576,6 +576,10 @@ public class JSContext implements ShapeContext {
         if (contextRef == null) {
             return realm;
         }
+        if (isSingleRealm()) {
+            assert realm == contextRef.get();
+            return realm;
+        }
         JSRealm currentRealm = contextRef.get();
         assert currentRealm != null;
         return currentRealm;
