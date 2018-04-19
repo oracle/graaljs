@@ -504,16 +504,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 errorBranch.enter();
                 throw Errors.createTypeErrorNotAnObject(c);
             }
-            Object s = getSpeciesProperty(c);
-            if (s == Undefined.instance || s == Null.instance) {
+            Object speciesConstructor = getSpeciesProperty(c);
+            if (speciesConstructor == Undefined.instance || speciesConstructor == Null.instance) {
                 defaultConstructorBranch.enter();
                 return defaultConstructor;
             }
-            if (!JSFunction.isConstructor(s)) {
+            if (!isConstructorNode.executeBoolean(speciesConstructor)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorConstructorExpected();
             }
-            return (DynamicObject) s;
+            return (DynamicObject) speciesConstructor;
         }
 
         private Object getConstructorProperty(Object obj) {
