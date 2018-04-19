@@ -45,9 +45,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.ref.Reference;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +64,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.utilities.JSONHelper;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugArrayTypeNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugAssertIntNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNameNodeGen;
@@ -83,7 +80,6 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugJSStackNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugLoadModuleNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugObjectSizeHistogramNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugObjectSizeNodeGen;
-import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugPrintNodeHistogramNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugPrintObjectNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugPrintSourceAttributionNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugShapeNodeGen;
@@ -129,7 +125,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.object.DynamicObjectImpl;
 
 /**
@@ -160,7 +155,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         jsStack(0),
         loadModule(2),
         printNodeCounters(0),
-        printNodeHistogram(0),
         createLargeInteger(1),
         typedArrayDetachBuffer(1),
         systemGC(0),
@@ -244,8 +238,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 return DebugSystemPropertyNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case systemProperties:
                 return DebugSystemPropertiesNodeGen.create(context, builtin, args().createArgumentNodes(context));
-            case printNodeHistogram:
-                return DebugPrintNodeHistogramNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case typedArrayDetachBuffer:
                 return DebugTypedArrayDetachBufferNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
 
@@ -805,54 +797,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             String key = JSRuntime.toString(name);
             String value = System.getProperty(key);
             return (value == null) ? Undefined.instance : value;
-        }
-    }
-
-    public abstract static class DebugPrintNodeHistogramNode extends JSBuiltinNode {
-        public DebugPrintNodeHistogramNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @TruffleBoundary
-        @Specialization
-        protected static Object printNodeHistogram() {
-            String s = JSONHelper.getResult();
-            List<Pair<String, Integer>> list = calculateHistogram(s);
-            list.sort(new Comparator<Pair<String, Integer>>() {
-                @Override
-                public int compare(Pair<String, Integer> p1, Pair<String, Integer> p2) {
-                    return p1.getSecond().compareTo(p2.getSecond());
-                }
-            });
-            int sum = 0;
-            for (Pair<String, Integer> node : list) {
-                int value = node.getSecond();
-                sum += value;
-                System.out.println(node.getFirst() + ";" + value + ";");
-            }
-            System.out.println("TOTAL_NODE_COUNT;" + sum + ";");
-            return Undefined.instance;
-        }
-
-        private static List<Pair<String, Integer>> calculateHistogram(String s) {
-            int pos = 0;
-            String pattern = "\"type\"";
-            HashMap<String, Integer> map = new HashMap<>();
-            while ((pos = s.indexOf(pattern, pos + 1)) >= 0) {
-                int startQuote = s.indexOf("\"", pos + pattern.length() + 1);
-                int endQuote = s.indexOf("\"", startQuote + 1);
-                inc(map, s.substring(startQuote + 1, endQuote));
-            }
-            List<Pair<String, Integer>> list = new ArrayList<>(map.size());
-            for (String key : map.keySet()) {
-                list.add(new Pair<>(key, map.get(key)));
-            }
-            return list;
-        }
-
-        private static void inc(HashMap<String, Integer> map, String name) {
-            int value = map.containsKey(name) ? map.get(name) : 0;
-            map.put(name, value + 1);
         }
     }
 
