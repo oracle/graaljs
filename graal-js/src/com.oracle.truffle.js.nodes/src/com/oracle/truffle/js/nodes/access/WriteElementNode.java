@@ -810,7 +810,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         private ArrayWriteElementCacheNode getSelection(ScriptArray array) {
             UninitArrayWriteElementCacheNode next = this;
-            if (array.isLengthNotWritable() || array.isFrozen()) {
+            if (array.isLengthNotWritable() || !array.isExtensible()) {
                 // TODO handle this case in the specializations below
                 return new ExactArrayWriteElementCacheNode(context, isStrict, array, writeOwn, next);
             }
