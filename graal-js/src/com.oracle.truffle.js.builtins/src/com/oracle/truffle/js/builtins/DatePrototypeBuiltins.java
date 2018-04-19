@@ -80,7 +80,6 @@ import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStrin
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStringIntlNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToTimeStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateValueOfNodeGen;
-import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.LocalDayNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltins.ObjectOperation;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -975,22 +974,19 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
     }
 
-    public abstract static class LocalDayNode extends JavaScriptBaseNode {
+    public static final class LocalDayNode extends JavaScriptBaseNode {
         private final JSContext context;
         private final BranchProfile dstNeededProfile = BranchProfile.create();
 
-        LocalDayNode(JSContext context) {
+        private LocalDayNode(JSContext context) {
             this.context = context;
         }
 
-        public abstract int execute(long t);
-
         public static LocalDayNode create(JSContext context) {
-            return LocalDayNodeGen.create(context);
+            return new LocalDayNode(context);
         }
 
-        @Specialization
-        public int localDay(long t) {
+        public int execute(long t) {
             long localNoDST = t + context.getLocalTZA();
             long day = Math.floorDiv(localNoDST, JSDate.MS_PER_DAY);
             assert JSRuntime.longIsRepresentableAsInt(day);
