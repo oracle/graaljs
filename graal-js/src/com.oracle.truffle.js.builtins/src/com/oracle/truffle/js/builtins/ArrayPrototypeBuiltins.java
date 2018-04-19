@@ -122,6 +122,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -374,6 +375,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private PropertyGetNode getConstructorNode;
         @Child private PropertyGetNode getSpeciesNode;
         @Child private JSIsArrayNode isArrayNode;
+        @Child private IsConstructorNode isConstructorNode = IsConstructorNode.create();
         private final BranchProfile errorBranch = BranchProfile.create();
         private final BranchProfile arraySpeciesIsArray = BranchProfile.create();
         private final BranchProfile arraySpeciesGetSymbol = BranchProfile.create();
@@ -439,7 +441,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 ctor = getConstructorProperty(originalArray);
                 if (JSObject.isJSObject(ctor)) {
                     DynamicObject ctorObj = (DynamicObject) ctor;
-                    // TODO should work for proxy constructors, too
                     if (JSFunction.isJSFunction(ctorObj) && JSFunction.isConstructor(ctorObj)) {
                         JSRealm thisRealm = context.getRealm();
                         JSRealm ctorRealm = JSFunction.getRealm(ctorObj);
@@ -466,7 +467,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (arraySpeciesEmpty.profile(ctor == Undefined.instance)) {
                 return JSArray.createEmpty(context, length);
             }
-            if (!JSFunction.isConstructor(ctor)) {
+            if (!isConstructorNode.executeBoolean(ctor)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorConstructorExpected();
             }
