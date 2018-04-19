@@ -944,7 +944,9 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         protected final boolean holesArrayNeedsSlowSet(DynamicObject target, ScriptArray arrayType, long index, boolean arrayCondition) {
-            if ((!context.getArrayPrototypeNoElementsAssumption().isValid() && !writeOwn) || !context.getFastArrayAssumption().isValid()) {
+            if ((!context.getArrayPrototypeNoElementsAssumption().isValid() && !writeOwn) ||
+                            (!context.getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(target)) ||
+                            (!context.getFastArgumentsObjectAssumption().isValid() && JSSlowArgumentsObject.isJSSlowArgumentsObject(target))) {
                 return !arrayType.hasElement(target, index, arrayCondition) && JSObject.hasProperty(target, index);
             }
             return false;
