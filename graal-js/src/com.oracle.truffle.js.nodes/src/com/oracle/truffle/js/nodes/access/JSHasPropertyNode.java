@@ -52,11 +52,13 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -68,15 +70,24 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
  * on features of the object and/or the property sought.
  *
  */
-@ImportStatic(value = JSInteropUtil.class)
+@ImportStatic(value = {JSInteropUtil.class})
 public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
 
+    private final boolean hasOwnProperty;
     private final JSClassProfile classProfile = JSClassProfile.create();
     private final ValueProfile arrayType = ValueProfile.createClassProfile();
     private final ConditionProfile simpleCheck = ConditionProfile.createBinaryProfile();
 
+    protected JSHasPropertyNode(boolean hasOwnProperty) {
+        this.hasOwnProperty = hasOwnProperty;
+    }
+
     public static JSHasPropertyNode create() {
-        return JSHasPropertyNodeGen.create();
+        return JSHasPropertyNodeGen.create(false);
+    }
+
+    public static JSHasPropertyNode create(boolean hasOwnProperty) {
+        return JSHasPropertyNodeGen.create(hasOwnProperty);
     }
 
     public abstract boolean executeBoolean(TruffleObject object, Object propertyName);
@@ -104,17 +115,22 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization(guards = {"acceptProperty(propertyName,cachedName)", "acceptObjectType(object)"}, limit = "1")
-    public boolean objectOrArrayStringCached(DynamicObject object,
+    @Specialization(guards = {"acceptObjectType(object)", "cachedName.equals(propertyName)"}, limit = "1")
+    public boolean objectStringCached(DynamicObject object,
                     @SuppressWarnings("unused") String propertyName,
                     @SuppressWarnings("unused") @Cached("propertyName") String cachedName,
                     @Cached("getCachedPropertyGetter(object,propertyName)") HasPropertyCacheNode propertyGetter) {
         return propertyGetter.hasProperty(object);
     }
 
-    @Specialization(guards = {"isJSType(object)", "!isJSJavaWrapper(object)"}, replaces = "objectOrArrayStringCached")
+    @Specialization(guards = {"isJSType(object)", "!isJSJavaWrapper(object)"}, replaces = {"objectStringCached"})
     public boolean objectOrArrayString(DynamicObject object, String propertyName) {
-        return JSObject.hasProperty(object, propertyName, classProfile);
+        return hasPropertyGeneric(object, propertyName);
+    }
+
+    @Specialization(guards = {"isJSType(object)", "!isJSJavaWrapper(object)"})
+    public boolean objectSymbol(DynamicObject object, Symbol propertyName) {
+        return hasPropertyGeneric(object, propertyName);
     }
 
     @Specialization(guards = {"isJSType(object)", "!isJSFastArray(object)", "!isJSJavaWrapper(object)"})
@@ -124,12 +140,20 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isJSType(object)", "!isJSFastArray(object)", "!isJSJavaWrapper(object)"})
     public boolean objectLong(DynamicObject object, long propertyIdx) {
-        return JSObject.hasProperty(object, propertyIdx, classProfile);
+        if (hasOwnProperty) {
+            return JSObject.hasOwnProperty(object, propertyIdx, classProfile);
+        } else {
+            return JSObject.hasProperty(object, propertyIdx, classProfile);
+        }
     }
 
-    @Specialization(guards = {"isJSType(object)", "!isJSJavaWrapper(object)"})
-    public boolean objectSymbol(DynamicObject object, Symbol propertyName) {
-        return JSObject.hasProperty(object, propertyName, classProfile);
+    private boolean hasPropertyGeneric(DynamicObject object, Object propertyKey) {
+        assert JSRuntime.isPropertyKey(propertyKey);
+        if (hasOwnProperty) {
+            return JSObject.hasOwnProperty(object, propertyKey, classProfile);
+        } else {
+            return JSObject.hasProperty(object, propertyKey, classProfile);
+        }
     }
 
     @Specialization(guards = "isForeignObject(object)")
@@ -151,18 +175,20 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     @Specialization(guards = "isJSType(object)")
     public boolean objectObject(DynamicObject object, Object propertyName,
                     @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
-        return JSObject.hasProperty(object, toPropertyKeyNode.execute(propertyName), classProfile);
-    }
-
-    protected static boolean acceptProperty(String key, Object expected) {
-        return key.equals(expected);
+        Object propertyKey = toPropertyKeyNode.execute(propertyName);
+        return hasPropertyGeneric(object, propertyKey);
     }
 
     protected static boolean acceptObjectType(Object obj) {
-        return JSObject.isJSObject(obj) && (!JSString.isJSString(obj) && !JSArray.isJSArray(obj) && !JSArgumentsObject.isJSArgumentsObject(obj) && !JSJavaWrapper.isJSJavaWrapper(obj));
+        return JSObject.isJSObject(obj) && (!JSRuntime.isNullOrUndefined(obj) &&
+                        !JSString.isJSString(obj) &&
+                        !JSArray.isJSArray(obj) &&
+                        !JSArgumentsObject.isJSArgumentsObject(obj) &&
+                        !JSArrayBufferView.isJSArrayBufferView(obj) &&
+                        !JSJavaWrapper.isJSJavaWrapper(obj));
     }
 
-    protected static HasPropertyCacheNode getCachedPropertyGetter(DynamicObject object, Object key) {
-        return HasPropertyCacheNode.create(key, JSObject.getJSContext(object));
+    protected HasPropertyCacheNode getCachedPropertyGetter(DynamicObject object, Object key) {
+        return HasPropertyCacheNode.create(key, JSObject.getJSContext(object), hasOwnProperty);
     }
 }

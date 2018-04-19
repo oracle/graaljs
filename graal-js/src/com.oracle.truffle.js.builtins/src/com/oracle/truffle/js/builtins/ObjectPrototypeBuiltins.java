@@ -60,6 +60,7 @@ import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectProto
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeToStringNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeValueOfNodeGen;
+import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
@@ -365,6 +366,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     public abstract static class ObjectPrototypeHasOwnPropertyNode extends ObjectOperation {
 
         private final JSClassProfile classProfile = JSClassProfile.create();
+        @Child private JSHasPropertyNode hasOwnPropertyNode;
         @Child private JSToPropertyKeyNode toPropertyKeyNode;
 
         public ObjectPrototypeHasOwnPropertyNode(JSContext context, JSBuiltin builtin) {
@@ -372,13 +374,13 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected boolean hasOwnProperty(DynamicObject thisObj, String propName) {
-            return JSObject.hasOwnProperty(thisObj, propName, classProfile);
+        protected boolean hasOwnProperty(DynamicObject thisObj, String propertyName) {
+            return getHasOwnPropertyNode().executeBoolean(thisObj, propertyName);
         }
 
         @Specialization
-        protected boolean hasOwnProperty(DynamicObject thisObj, int idx) {
-            return JSObject.hasOwnProperty(thisObj, idx, classProfile);
+        protected boolean hasOwnProperty(DynamicObject thisObj, int index) {
+            return getHasOwnPropertyNode().executeBoolean(thisObj, index);
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
@@ -423,6 +425,14 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 throw Errors.createTypeErrorInteropException(thisObj, e, Message.READ, this);
             }
             return (value != null && value != Null.instance);
+        }
+
+        public JSHasPropertyNode getHasOwnPropertyNode() {
+            if (hasOwnPropertyNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                hasOwnPropertyNode = insert(JSHasPropertyNode.create(true));
+            }
+            return hasOwnPropertyNode;
         }
 
         protected JSToPropertyKeyNode getToPropertyKeyNode() {
