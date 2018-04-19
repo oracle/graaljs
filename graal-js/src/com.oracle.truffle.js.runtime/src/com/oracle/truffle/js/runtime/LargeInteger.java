@@ -42,12 +42,14 @@ package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 
 /**
  * This type represents an integer value, useful for all ranges up to JSRuntime.MAX_SAFE_INTEGER.
  */
 @ValueType
-public final class LargeInteger extends Number implements Comparable<LargeInteger> {
+public final class LargeInteger extends Number implements Comparable<LargeInteger>, TruffleObject {
     private final long value;
 
     private LargeInteger(long value) {
@@ -134,5 +136,14 @@ public final class LargeInteger extends Number implements Comparable<LargeIntege
             throw new ArithmeticException();
         }
         return LargeInteger.valueOf(result);
+    }
+
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof LargeInteger;
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return LargeIntegerMessageResolutionForeign.ACCESS;
     }
 }

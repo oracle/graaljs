@@ -56,6 +56,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -152,6 +153,11 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     @Specialization
     protected final boolean doSymbol(@SuppressWarnings("unused") Symbol value) {
         return (type == Type.Symbol);
+    }
+
+    @Specialization
+    protected final boolean doLargeInteger(@SuppressWarnings("unused") LargeInteger value) {
+        return (type == Type.Number);
     }
 
     @Specialization
