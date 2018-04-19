@@ -1866,6 +1866,21 @@ namespace v8 {
                 attribute));
     }
 
+    bool Object::SetAccessor(Local<Name> name,
+            AccessorNameGetterCallback getter,
+            AccessorNameSetterCallback setter,
+            Local<Value> data,
+            AccessControl settings,
+            PropertyAttribute attribute) {
+        return reinterpret_cast<GraalObject*> (this)->SetAccessor(
+                reinterpret_cast<String*> (*name),
+                reinterpret_cast<AccessorGetterCallback> (getter),
+                reinterpret_cast<AccessorSetterCallback> (setter),
+                data,
+                settings,
+                attribute);
+    }
+
     Maybe<bool> Object::DefineOwnProperty(Local<Context> context, Local<Name> key, Local<Value> value, PropertyAttribute attributes) {
         return ForceSet(context, key, value, attributes);
     }
