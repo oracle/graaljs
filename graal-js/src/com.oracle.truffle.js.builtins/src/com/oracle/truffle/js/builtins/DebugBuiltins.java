@@ -83,7 +83,6 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugJSStackNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugLoadModuleNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugObjectSizeHistogramNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugObjectSizeNodeGen;
-import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugPrintNodeCountersNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugPrintNodeHistogramNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugPrintObjectNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugPrintSourceAttributionNodeGen;
@@ -245,8 +244,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 return DebugSystemPropertyNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case systemProperties:
                 return DebugSystemPropertiesNodeGen.create(context, builtin, args().createArgumentNodes(context));
-            case printNodeCounters:
-                return DebugPrintNodeCountersNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case printNodeHistogram:
                 return DebugPrintNodeHistogramNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case typedArrayDetachBuffer:
@@ -759,30 +756,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             evaluator.moduleDeclarationInstantiation(module);
             evaluator.moduleEvaluation(context.getRealm(), module);
             return String.valueOf(module);
-        }
-    }
-
-    public abstract static class DebugPrintNodeCountersNode extends JSBuiltinNode {
-        public DebugPrintNodeCountersNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @TruffleBoundary
-        @Specialization
-        protected static Object printNodeCounters() {
-            String s = JSONHelper.getResult();
-            System.out.println("NodeCreateCount: " + countInString(s, "\"createNode\""));
-            System.out.println("NodeReplaceCount: " + countInString(s, "\"replaceNode\""));
-            return Undefined.instance;
-        }
-
-        private static long countInString(String string, String pattern) {
-            int pos = 0;
-            int count = 0;
-            while ((pos = string.indexOf(pattern, pos + 1)) >= 0) {
-                count++;
-            }
-            return count;
         }
     }
 
