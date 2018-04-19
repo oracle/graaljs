@@ -21,9 +21,10 @@ added: v8.2.0
 * Returns: {Function} a callback style function
 
 Takes an `async` function (or a function that returns a Promise) and returns a
-function following the Node.js error first callback style. In the callback, the
-first argument will be the rejection reason (or `null` if the Promise resolved),
-and the second argument will be the resolved value.
+function following the error-first callback style, i.e. taking
+a `(err, value) => ...` callback as the last argument. In the callback, the
+first argument will be the rejection reason (or `null` if the Promise
+resolved), and the second argument will be the resolved value.
 
 For example:
 
@@ -463,8 +464,8 @@ added: v8.0.0
 * `original` {Function}
 * Returns: {Function}
 
-Takes a function following the common Node.js callback style, i.e. taking a
-`(err, value) => ...` callback as the last argument, and returns a version
+Takes a function following the common error-first callback style, i.e. taking
+a `(err, value) => ...` callback as the last argument, and returns a version
 that returns promises.
 
 For example:
@@ -499,8 +500,10 @@ If there is an `original[util.promisify.custom]` property present, `promisify`
 will return its value, see [Custom promisified functions][].
 
 `promisify()` assumes that `original` is a function taking a callback as its
-final argument in all cases, and the returned function will result in undefined
-behavior if it does not.
+final argument in all cases. If `original` is not a function, `promisify()`
+will throw an error. If `original` is a function but its last argument is not
+an error-first callback, it will still be passed an error-first
+callback as its last argument.
 
 ### Custom promisified functions
 
@@ -535,6 +538,8 @@ doSomething[util.promisify.custom] = (foo) => {
   });
 };
 ```
+If `promisify.custom` is defined but is not a function, `promisify()` will
+throw an error.
 
 ### util.promisify.custom
 <!-- YAML
@@ -704,7 +709,7 @@ const uint8array = encoder.encode('this is some data');
 UTF-8 encodes the `input` string and returns a `Uint8Array` containing the
 encoded bytes.
 
-### textDecoder.encoding
+### textEncoder.encoding
 
 * {string}
 

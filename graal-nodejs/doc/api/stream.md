@@ -437,6 +437,14 @@ process.nextTick(() => {
 
 See also: [`writable.cork()`][].
 
+##### writable.writableHighWaterMark
+<!-- YAML
+added: v8.10.0
+-->
+
+Return the value of `highWaterMark` passed when constructing this
+`Writable`.
+
 ##### writable.write(chunk[, encoding][, callback])
 <!-- YAML
 added: v0.9.4
@@ -878,6 +886,14 @@ to prevent memory leaks.
 *Note*: The [`process.stderr`][] and [`process.stdout`][] Writable streams are
 never closed until the Node.js process exits, regardless of the specified
 options.
+
+##### readable.readableHighWaterMark
+<!-- YAML
+added: v8.10.0
+-->
+
+Return the value of `highWaterMark` passed when constructing this
+`Readable`.
 
 ##### readable.read([size])
 <!-- YAML
@@ -1393,12 +1409,11 @@ successfully or failed with an error. The first argument passed to the
 `callback` must be the `Error` object if the call failed or `null` if the
 write succeeded.
 
-It is important to note that all calls to `writable.write()` that occur between
-the time `writable._write()` is called and the `callback` is called will cause
-the written data to be buffered. Once the `callback` is invoked, the stream will
-emit a [`'drain'`][] event. If a stream implementation is capable of processing
-multiple chunks of data at once, the `writable._writev()` method should be
-implemented.
+All calls to `writable.write()` that occur between the time `writable._write()`
+is called and the `callback` is called will cause the written data to be
+buffered. Once the `callback` is invoked, the stream will emit a [`'drain'`][]
+event. If a stream implementation is capable of processing multiple chunks of
+data at once, the `writable._writev()` method should be implemented.
 
 If the `decodeStrings` property is set in the constructor options, then
 `chunk` may be a string rather than a Buffer, and `encoding` will

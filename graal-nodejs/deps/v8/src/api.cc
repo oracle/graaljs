@@ -554,6 +554,7 @@ struct SnapshotCreatorData {
   ArrayBufferAllocator allocator_;
   Isolate* isolate_;
   Persistent<Context> default_context_;
+  SerializeInternalFieldsCallback default_embedder_fields_serializer_;
   PersistentValueVector<Context> contexts_;
   PersistentValueVector<Template> templates_;
   std::vector<SerializeInternalFieldsCallback> embedder_fields_serializers_;
@@ -562,7 +563,7 @@ struct SnapshotCreatorData {
 
 }  // namespace
 
-SnapshotCreator::SnapshotCreator(intptr_t* external_references,
+SnapshotCreator::SnapshotCreator(const intptr_t* external_references,
                                  StartupData* existing_snapshot) {
   i::Isolate* internal_isolate = new i::Isolate(true);
   Isolate* isolate = reinterpret_cast<Isolate*>(internal_isolate);
@@ -604,6 +605,8 @@ void SnapshotCreator::SetDefaultContext(Local<Context> context) {
   Isolate* isolate = data->isolate_;
   CHECK_EQ(isolate, context->GetIsolate());
   data->default_context_.Reset(isolate, context);
+  data->default_embedder_fields_serializer_ =
+      v8::SerializeInternalFieldsCallback();
 }
 
 size_t SnapshotCreator::AddContext(Local<Context> context,
@@ -697,26 +700,25 @@ StartupData SnapshotCreator::CreateBlob(
     fun->CompleteInobjectSlackTrackingIfActive();
   }
 
-#ifdef DEBUG
-  i::ExternalReferenceTable::instance(isolate)->ResetCount();
-#endif  // DEBUG
-
   i::StartupSerializer startup_serializer(isolate, function_code_handling);
   startup_serializer.SerializeStrongReferences();
 
   // Serialize each context with a new partial serializer.
-  i::List<i::SnapshotData*> context_snapshots(num_additional_contexts + 1);
+  std::vector<i::SnapshotData*> context_snapshots;
+  context_snapshots.reserve(num_additional_contexts + 1);
 
   // TODO(6593): generalize rehashing, and remove this flag.
   bool can_be_rehashed = true;
 
   {
-    // The default snapshot does not support embedder fields.
+    // The default context is created with a handler for embedder fields which
+    // determines how they are handled if encountered during serialization.
     i::PartialSerializer partial_serializer(
-        isolate, &startup_serializer, v8::SerializeInternalFieldsCallback());
+        isolate, &startup_serializer,
+        data->default_embedder_fields_serializer_);
     partial_serializer.Serialize(&default_context, false);
     can_be_rehashed = can_be_rehashed && partial_serializer.can_be_rehashed();
-    context_snapshots.Add(new i::SnapshotData(&partial_serializer));
+    context_snapshots.push_back(new i::SnapshotData(&partial_serializer));
   }
 
   for (int i = 0; i < num_additional_contexts; i++) {
@@ -724,24 +726,18 @@ StartupData SnapshotCreator::CreateBlob(
         isolate, &startup_serializer, data->embedder_fields_serializers_[i]);
     partial_serializer.Serialize(&contexts[i], true);
     can_be_rehashed = can_be_rehashed && partial_serializer.can_be_rehashed();
-    context_snapshots.Add(new i::SnapshotData(&partial_serializer));
+    context_snapshots.push_back(new i::SnapshotData(&partial_serializer));
   }
 
   startup_serializer.SerializeWeakReferencesAndDeferred();
   can_be_rehashed = can_be_rehashed && startup_serializer.can_be_rehashed();
 
-#ifdef DEBUG
-  if (i::FLAG_external_reference_stats) {
-    i::ExternalReferenceTable::instance(isolate)->PrintCount();
-  }
-#endif  // DEBUG
-
   i::SnapshotData startup_snapshot(&startup_serializer);
   StartupData result = i::Snapshot::CreateSnapshotBlob(
-      &startup_snapshot, &context_snapshots, can_be_rehashed);
+      &startup_snapshot, context_snapshots, can_be_rehashed);
 
   // Delete heap-allocated context snapshot instances.
-  for (const auto& context_snapshot : context_snapshots) {
+  for (const auto context_snapshot : context_snapshots) {
     delete context_snapshot;
   }
   data->created_ = true;
@@ -2154,10 +2150,9 @@ Location Module::GetModuleRequestLocation(int i) const {
 
 Local<Value> Module::GetModuleNamespace() {
   Utils::ApiCheck(
-      GetStatus() != kErrored && GetStatus() >= kInstantiated,
-      "v8::Module::GetModuleNamespace",
-      "GetModuleNamespace should be used on a successfully instantiated"
-      "module. The current module has not been instantiated or has errored");
+      GetStatus() == kEvaluated, "v8::Module::GetModuleNamespace",
+      "v8::Module::GetModuleNamespace can only be used on a module with "
+      "status kEvaluated");
   i::Handle<i::Module> self = Utils::OpenHandle(this);
   i::Handle<i::JSModuleNamespace> module_namespace =
       i::Module::GetModuleNamespace(self);
@@ -2174,8 +2169,8 @@ bool Module::Instantiate(Local<Context> context,
 Maybe<bool> Module::InstantiateModule(Local<Context> context,
                                       Module::ResolveCallback callback) {
   auto isolate = reinterpret_cast<i::Isolate*>(context->GetIsolate());
-  ENTER_V8_NO_SCRIPT(isolate, context, Module, InstantiateModule,
-                     Nothing<bool>(), i::HandleScope);
+  ENTER_V8(isolate, context, Module, InstantiateModule, Nothing<bool>(),
+           i::HandleScope);
   has_pending_exception =
       !i::Module::Instantiate(Utils::OpenHandle(this), context, callback);
   RETURN_ON_FAILED_EXECUTION_PRIMITIVE(bool);
@@ -2533,15 +2528,7 @@ MaybeLocal<Script> ScriptCompiler::Compile(Local<Context> context,
   }
   source->parser->UpdateStatistics(isolate, script);
   source->info->UpdateStatisticsAfterBackgroundParse(isolate);
-
-  i::DeferredHandleScope deferred_handle_scope(isolate);
-  {
-    // Internalize AST values on the main thread.
-    source->info->ReopenHandlesInNewHandleScope();
-    source->info->ast_value_factory()->Internalize(isolate);
-    source->parser->HandleSourceURLComments(isolate, script);
-  }
-  source->info->set_deferred_handles(deferred_handle_scope.Detach());
+  source->parser->HandleSourceURLComments(isolate, script);
 
   i::Handle<i::SharedFunctionInfo> result;
   if (source->info->literal() != nullptr) {
@@ -3109,7 +3096,7 @@ void NativeWeakMap::Set(Local<Value> v8_key, Local<Value> v8_value) {
     DCHECK(false);
     return;
   }
-  int32_t hash = i::Object::GetOrCreateHash(isolate, key)->value();
+  int32_t hash = key->GetOrCreateHash(isolate)->value();
   i::JSWeakCollection::Set(weak_collection, key, value, hash);
 }
 
@@ -3172,7 +3159,7 @@ bool NativeWeakMap::Delete(Local<Value> v8_key) {
     DCHECK(false);
     return false;
   }
-  int32_t hash = i::Object::GetOrCreateHash(isolate, key)->value();
+  int32_t hash = key->GetOrCreateHash(isolate)->value();
   return i::JSWeakCollection::Delete(weak_collection, key, hash);
 }
 
@@ -5206,7 +5193,7 @@ int v8::Object::GetIdentityHash() {
   auto isolate = Utils::OpenHandle(this)->GetIsolate();
   i::HandleScope scope(isolate);
   auto self = Utils::OpenHandle(this);
-  return i::JSReceiver::GetOrCreateIdentityHash(isolate, self)->value();
+  return self->GetOrCreateIdentityHash(isolate)->value();
 }
 
 
@@ -6565,7 +6552,7 @@ Local<Context> NewContext(
   // TODO(jkummerow): This is for crbug.com/713699. Remove it if it doesn't
   // fail.
   // Sanity-check that the isolate is initialized and usable.
-  CHECK(isolate->builtins()->Illegal()->IsCode());
+  CHECK(isolate->builtins()->builtin(i::Builtins::kIllegal)->IsCode());
 
   TRACE_EVENT_CALL_STATS_SCOPED(isolate, "v8", "V8.NewContext");
   LOG_API(isolate, Context, New);
@@ -6582,12 +6569,12 @@ Local<Context> NewContext(
   return Utils::ToLocal(scope.CloseAndEscape(env));
 }
 
-Local<Context> v8::Context::New(v8::Isolate* external_isolate,
-                                v8::ExtensionConfiguration* extensions,
-                                v8::MaybeLocal<ObjectTemplate> global_template,
-                                v8::MaybeLocal<Value> global_object) {
+Local<Context> v8::Context::New(
+    v8::Isolate* external_isolate, v8::ExtensionConfiguration* extensions,
+    v8::MaybeLocal<ObjectTemplate> global_template,
+    v8::MaybeLocal<Value> global_object) {
   return NewContext(external_isolate, extensions, global_template,
-                    global_object, 0, DeserializeInternalFieldsCallback());
+                    global_object, 0, v8::DeserializeInternalFieldsCallback());
 }
 
 MaybeLocal<Context> v8::Context::FromSnapshot(
@@ -7727,6 +7714,18 @@ MaybeLocal<Proxy> Proxy::New(Local<Context> context, Local<Object> local_target,
   RETURN_ESCAPED(result);
 }
 
+WasmCompiledModule::TransferrableModule::TransferrableModule(
+    TransferrableModule&& src)
+    : compiled_code(std::move(src.compiled_code))
+    , wire_bytes(std::move(src.wire_bytes)) {}
+
+WasmCompiledModule::TransferrableModule&
+WasmCompiledModule::TransferrableModule::operator=(TransferrableModule&& src) {
+  compiled_code = std::move(src.compiled_code);
+  wire_bytes = std::move(src.wire_bytes);
+  return *this;
+}
+
 Local<String> WasmCompiledModule::GetWasmWireBytes() {
   i::Handle<i::WasmModuleObject> obj =
       i::Handle<i::WasmModuleObject>::cast(Utils::OpenHandle(this));
@@ -7734,14 +7733,6 @@ Local<String> WasmCompiledModule::GetWasmWireBytes() {
       i::handle(i::WasmCompiledModule::cast(obj->compiled_module()));
   i::Handle<i::String> wire_bytes(compiled_part->module_bytes());
   return Local<String>::Cast(Utils::ToLocal(wire_bytes));
-}
-
-WasmCompiledModule::TransferrableModule&
-WasmCompiledModule::TransferrableModule::operator=(
-    TransferrableModule&& src) {
-  compiled_code = std::move(src.compiled_code);
-  wire_bytes = std::move(src.wire_bytes);
-  return *this;
 }
 
 // Currently, wasm modules are bound, both to Isolate and to
@@ -7834,6 +7825,91 @@ MaybeLocal<WasmCompiledModule> WasmCompiledModule::Compile(Isolate* isolate,
       Utils::ToLocal(maybe_compiled.ToHandleChecked()));
 }
 
+WasmModuleObjectBuilderStreaming::WasmModuleObjectBuilderStreaming(
+    Isolate* isolate)
+    : isolate_(isolate) {
+  MaybeLocal<Promise::Resolver> maybe_promise =
+      Promise::Resolver::New(isolate->GetCurrentContext());
+  Local<Promise::Resolver> promise;
+  if (maybe_promise.ToLocal(&promise)) {
+    promise_.Reset(isolate, promise->GetPromise());
+  } else {
+    UNREACHABLE();
+  }
+}
+
+WasmModuleObjectBuilderStreaming::WasmModuleObjectBuilderStreaming(
+    WasmModuleObjectBuilderStreaming&& src)
+    : isolate_(std::move(src.isolate_))
+    , promise_(std::move(src.promise_))
+    , received_buffers_(std::move(src.received_buffers_))
+    , total_size_(std::move(src.total_size_)) {}
+
+WasmModuleObjectBuilderStreaming& WasmModuleObjectBuilderStreaming::operator=(
+    WasmModuleObjectBuilderStreaming&& src) {
+  isolate_ = std::move(src.isolate_);
+  promise_ = std::move(src.promise_);
+  received_buffers_ = std::move(src.received_buffers_);
+  total_size_ = std::move(src.total_size_);
+  return *this;
+}
+
+Local<Promise> WasmModuleObjectBuilderStreaming::GetPromise() {
+  return promise_.Get(isolate_);
+}
+
+void WasmModuleObjectBuilderStreaming::OnBytesReceived(const uint8_t* bytes,
+                                                       size_t size) {
+  std::unique_ptr<uint8_t[]> cloned_bytes(new uint8_t[size]);
+  memcpy(cloned_bytes.get(), bytes, size);
+  received_buffers_.push_back(
+      Buffer(std::unique_ptr<const uint8_t[]>(
+                 const_cast<const uint8_t*>(cloned_bytes.release())),
+             size));
+  total_size_ += size;
+}
+
+void WasmModuleObjectBuilderStreaming::Finish() {
+  std::unique_ptr<uint8_t[]> wire_bytes(new uint8_t[total_size_]);
+  uint8_t* insert_at = wire_bytes.get();
+
+  for (size_t i = 0; i < received_buffers_.size(); ++i) {
+    const Buffer& buff = received_buffers_[i];
+    memcpy(insert_at, buff.first.get(), buff.second);
+    insert_at += buff.second;
+  }
+  // AsyncCompile makes its own copy of the wire bytes. This inefficiency
+  // will be resolved when we move to true streaming compilation.
+  i::wasm::AsyncCompile(reinterpret_cast<i::Isolate*>(isolate_),
+                        Utils::OpenHandle(*promise_.Get(isolate_)),
+                        {wire_bytes.get(), wire_bytes.get() + total_size_});
+}
+
+void WasmModuleObjectBuilderStreaming::Abort(Local<Value> exception) {
+  Local<Promise::Resolver> resolver =
+      promise_.Get(isolate_).As<Promise::Resolver>();
+  i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate_);
+  i::HandleScope scope(i_isolate);
+  Local<Context> context = Utils::ToLocal(handle(i_isolate->context()));
+  auto maybe = resolver->Reject(context, exception);
+  CHECK_IMPLIES(!maybe.FromMaybe(false), i_isolate->has_scheduled_exception());
+}
+
+WasmModuleObjectBuilderStreaming::~WasmModuleObjectBuilderStreaming() {
+  promise_.Reset();
+}
+
+WasmModuleObjectBuilder::WasmModuleObjectBuilder(WasmModuleObjectBuilder&& src)
+    : received_buffers_(std::move(src.received_buffers_))
+    , total_size_(std::move(src.total_size_)) {}
+
+WasmModuleObjectBuilder&
+WasmModuleObjectBuilder::operator=(WasmModuleObjectBuilder&& src) {
+  received_buffers_ = std::move(src.received_buffers_);
+  total_size_ = std::move(src.total_size_);
+  return *this;
+}
+
 void WasmModuleObjectBuilder::OnBytesReceived(const uint8_t* bytes,
                                               size_t size) {
   std::unique_ptr<uint8_t[]> cloned_bytes(new uint8_t[size]);
@@ -7855,13 +7931,6 @@ MaybeLocal<WasmCompiledModule> WasmModuleObjectBuilder::Finish() {
     insert_at += buff.second;
   }
   return WasmCompiledModule::Compile(isolate_, wire_bytes.get(), total_size_);
-}
-
-WasmModuleObjectBuilder&
-WasmModuleObjectBuilder::operator=(WasmModuleObjectBuilder&& src) {
-  received_buffers_ = std::move(src.received_buffers_);
-  total_size_ = src.total_size_;
-  return *this;
 }
 
 // static
@@ -8014,13 +8083,16 @@ size_t v8::TypedArray::Length() {
   return static_cast<size_t>(obj->length_value());
 }
 
+static_assert(v8::TypedArray::kMaxLength == i::Smi::kMaxValue,
+              "v8::TypedArray::kMaxLength must match i::Smi::kMaxValue");
+
 #define TYPED_ARRAY_NEW(Type, type, TYPE, ctype, size)                     \
   Local<Type##Array> Type##Array::New(Local<ArrayBuffer> array_buffer,     \
                                       size_t byte_offset, size_t length) { \
     i::Isolate* isolate = Utils::OpenHandle(*array_buffer)->GetIsolate();  \
     LOG_API(isolate, Type##Array, New);                                    \
     ENTER_V8_NO_SCRIPT_NO_EXCEPTION(isolate);                              \
-    if (!Utils::ApiCheck(length <= static_cast<size_t>(i::Smi::kMaxValue), \
+    if (!Utils::ApiCheck(length <= kMaxLength,                             \
                          "v8::" #Type                                      \
                          "Array::New(Local<ArrayBuffer>, size_t, size_t)", \
                          "length exceeds max allowed value")) {            \
@@ -8040,7 +8112,7 @@ size_t v8::TypedArray::Length() {
     LOG_API(isolate, Type##Array, New);                                    \
     ENTER_V8_NO_SCRIPT_NO_EXCEPTION(isolate);                              \
     if (!Utils::ApiCheck(                                                  \
-            length <= static_cast<size_t>(i::Smi::kMaxValue),              \
+            length <= kMaxLength,                                          \
             "v8::" #Type                                                   \
             "Array::New(Local<SharedArrayBuffer>, size_t, size_t)",        \
             "length exceeds max allowed value")) {                         \
@@ -9180,37 +9252,37 @@ bool MicrotasksScope::IsRunningMicrotasks(Isolate* v8Isolate) {
   return isolate->IsRunningMicrotasks();
 }
 
-String::Utf8Value::Utf8Value(v8::Local<v8::Value> obj)
+String::Utf8Value::Utf8Value(v8::Isolate* isolate, v8::Local<v8::Value> obj)
     : str_(NULL), length_(0) {
   if (obj.IsEmpty()) return;
-  i::Isolate* isolate = i::Isolate::Current();
-  Isolate* v8_isolate = reinterpret_cast<Isolate*>(isolate);
-  ENTER_V8_DO_NOT_USE(isolate);
-  i::HandleScope scope(isolate);
-  Local<Context> context = v8_isolate->GetCurrentContext();
-  TryCatch try_catch(v8_isolate);
+  i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
+  ENTER_V8_DO_NOT_USE(i_isolate);
+  i::HandleScope scope(i_isolate);
+  Local<Context> context = isolate->GetCurrentContext();
+  TryCatch try_catch(isolate);
   Local<String> str;
   if (!obj->ToString(context).ToLocal(&str)) return;
   i::Handle<i::String> i_str = Utils::OpenHandle(*str);
-  length_ = v8::Utf8Length(*i_str, isolate);
+  length_ = v8::Utf8Length(*i_str, i_isolate);
   str_ = i::NewArray<char>(length_ + 1);
   str->WriteUtf8(str_);
 }
 
+String::Utf8Value::Utf8Value(v8::Local<v8::Value> obj)
+    : String::Utf8Value::Utf8Value(Isolate::GetCurrent(), obj) {}
 
 String::Utf8Value::~Utf8Value() {
   i::DeleteArray(str_);
 }
 
-
-String::Value::Value(v8::Local<v8::Value> obj) : str_(NULL), length_(0) {
+String::Value::Value(v8::Isolate* isolate, v8::Local<v8::Value> obj)
+    : str_(NULL), length_(0) {
   if (obj.IsEmpty()) return;
-  i::Isolate* isolate = i::Isolate::Current();
-  Isolate* v8_isolate = reinterpret_cast<Isolate*>(isolate);
-  ENTER_V8_DO_NOT_USE(isolate);
-  i::HandleScope scope(isolate);
-  Local<Context> context = v8_isolate->GetCurrentContext();
-  TryCatch try_catch(v8_isolate);
+  i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
+  ENTER_V8_DO_NOT_USE(i_isolate);
+  i::HandleScope scope(i_isolate);
+  Local<Context> context = isolate->GetCurrentContext();
+  TryCatch try_catch(isolate);
   Local<String> str;
   if (!obj->ToString(context).ToLocal(&str)) return;
   length_ = str->Length();
@@ -9218,6 +9290,8 @@ String::Value::Value(v8::Local<v8::Value> obj) : str_(NULL), length_(0) {
   str->Write(str_);
 }
 
+String::Value::Value(v8::Local<v8::Value> obj)
+    : String::Value::Value(v8::Isolate::GetCurrent(), obj) {}
 
 String::Value::~Value() {
   i::DeleteArray(str_);
@@ -9627,8 +9701,9 @@ bool debug::Script::GetPossibleBreakpoints(
 int debug::Script::GetSourceOffset(const debug::Location& location) const {
   i::Handle<i::Script> script = Utils::OpenHandle(this);
   if (script->type() == i::Script::TYPE_WASM) {
-    // TODO(clemensh): Return the proper thing for wasm.
-    return 0;
+    return i::WasmCompiledModule::cast(script->wasm_compiled_module())
+               ->GetFunctionOffset(location.GetLineNumber()) +
+           location.GetColumnNumber();
   }
 
   int line = std::max(location.GetLineNumber() - script->line_offset(), 0);
@@ -9652,13 +9727,37 @@ int debug::Script::GetSourceOffset(const debug::Location& location) const {
 
 v8::debug::Location debug::Script::GetSourceLocation(int offset) const {
   i::Handle<i::Script> script = Utils::OpenHandle(this);
-  if (script->type() == i::Script::TYPE_WASM) {
-    // TODO(clemensh): Return the proper thing for wasm.
-    return v8::debug::Location();
-  }
   i::Script::PositionInfo info;
   i::Script::GetPositionInfo(script, offset, &info, i::Script::WITH_OFFSET);
   return debug::Location(info.line, info.column);
+}
+
+bool debug::Script::SetScriptSource(v8::Local<v8::String> newSource,
+                                    bool preview, bool* stack_changed) const {
+  i::Handle<i::Script> script = Utils::OpenHandle(this);
+  i::Isolate* isolate = script->GetIsolate();
+  return isolate->debug()->SetScriptSource(
+      script, Utils::OpenHandle(*newSource), preview, stack_changed);
+}
+
+bool debug::Script::SetBreakpoint(v8::Local<v8::String> condition,
+                                  debug::Location* location,
+                                  debug::BreakpointId* id) const {
+  i::Handle<i::Script> script = Utils::OpenHandle(this);
+  i::Isolate* isolate = script->GetIsolate();
+  int offset = GetSourceOffset(*location);
+  if (!isolate->debug()->SetBreakpoint(script, Utils::OpenHandle(*condition),
+                                       &offset, id)) {
+    return false;
+  }
+  *location = GetSourceLocation(offset);
+  return true;
+}
+
+void debug::RemoveBreakpoint(Isolate* v8_isolate, BreakpointId id) {
+  i::Isolate* isolate = reinterpret_cast<i::Isolate*>(v8_isolate);
+  i::HandleScope handle_scope(isolate);
+  isolate->debug()->RemoveBreakpoint(id);
 }
 
 debug::WasmScript* debug::WasmScript::Cast(debug::Script* script) {
@@ -9714,28 +9813,26 @@ debug::WasmDisassembly debug::WasmScript::DisassembleFunction(
 }
 
 debug::Location::Location(int line_number, int column_number)
-    : line_number_(line_number), column_number_(column_number) {
-  CHECK(line_number >= 0);
-  CHECK(column_number >= 0);
-}
+    : line_number_(line_number),
+      column_number_(column_number),
+      is_empty_(false) {}
 
 debug::Location::Location()
     : line_number_(v8::Function::kLineOffsetNotFound),
-      column_number_(v8::Function::kLineOffsetNotFound) {}
+      column_number_(v8::Function::kLineOffsetNotFound),
+      is_empty_(true) {}
 
 int debug::Location::GetLineNumber() const {
-  CHECK(line_number_ >= 0);
+  DCHECK(!IsEmpty());
   return line_number_;
 }
 
 int debug::Location::GetColumnNumber() const {
-  CHECK(column_number_ >= 0);
+  DCHECK(!IsEmpty());
   return column_number_;
 }
 
-bool debug::Location::IsEmpty() const {
-  return line_number_ == -1 && column_number_ == -1;
-}
+bool debug::Location::IsEmpty() const { return is_empty_; }
 
 void debug::GetLoadedScripts(v8::Isolate* v8_isolate,
                              PersistentValueVector<debug::Script>& scripts) {
@@ -9947,6 +10044,15 @@ v8::Local<debug::GeneratorObject> debug::GeneratorObject::Cast(
   return ToApiHandle<debug::GeneratorObject>(Utils::OpenHandle(*value));
 }
 
+void debug::QueryObjects(v8::Local<v8::Context> v8_context,
+                         QueryObjectPredicate* predicate,
+                         PersistentValueVector<v8::Object>* objects) {
+  i::Isolate* isolate = reinterpret_cast<i::Isolate*>(v8_context->GetIsolate());
+  ENTER_V8_NO_SCRIPT_NO_EXCEPTION(isolate);
+  isolate->heap_profiler()->QueryObjects(Utils::OpenHandle(*v8_context),
+                                         predicate, objects);
+}
+
 Local<String> CpuProfileNode::GetFunctionName() const {
   const i::ProfileNode* node = reinterpret_cast<const i::ProfileNode*>(this);
   i::Isolate* isolate = node->isolate();
@@ -10097,7 +10203,8 @@ unsigned CpuProfileNode::GetNodeId() const {
 
 
 int CpuProfileNode::GetChildrenCount() const {
-  return reinterpret_cast<const i::ProfileNode*>(this)->children()->length();
+  return static_cast<int>(
+      reinterpret_cast<const i::ProfileNode*>(this)->children()->size());
 }
 
 
@@ -10321,7 +10428,7 @@ const HeapGraphNode* HeapSnapshot::GetNodeById(SnapshotObjectId id) const {
 
 
 int HeapSnapshot::GetNodesCount() const {
-  return ToInternal(this)->entries().length();
+  return static_cast<int>(ToInternal(this)->entries().size());
 }
 
 
@@ -10445,8 +10552,7 @@ void HeapProfiler::SetGetRetainerInfosCallback(
 }
 
 size_t HeapProfiler::GetProfilerMemorySize() {
-  return reinterpret_cast<i::HeapProfiler*>(this)->
-      GetMemorySizeUsedByProfiler();
+  return 0;
 }
 
 v8::Testing::StressType internal::Testing::stress_type_ =
@@ -10478,9 +10584,8 @@ static void SetFlagsFromString(const char* flags) {
 void Testing::PrepareStressRun(int run) {
   static const char* kLazyOptimizations =
       "--prepare-always-opt "
-      "--max-inlined-source-size=999999 "
-      "--max-inlined-nodes=999999 "
-      "--max-inlined-nodes-cumulative=999999 "
+      "--max-inlined-bytecode-size=999999 "
+      "--max-inlined-bytecode-size-cumulative=999999 "
       "--noalways-opt";
   static const char* kForcedOptimizations = "--always-opt";
 

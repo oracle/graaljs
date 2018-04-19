@@ -54,7 +54,7 @@
 #endif
 
 #include "ares.h"
-#include "async-wrap-inl.h"
+#include "async_wrap-inl.h"
 #include "env.h"
 #include "env-inl.h"
 #include "handle_wrap.h"
@@ -119,6 +119,16 @@ typedef int mode_t;
 #elif !defined(_MSC_VER)
 extern char **environ;
 #endif
+
+// This is used to load built-in modules. Instead of using
+// __attribute__((constructor)), we call the _register_<modname>
+// function for each built-in modules explicitly in
+// node::RegisterBuiltinModules(). This is only forward declaration.
+// The definitions are in each module's implementation when calling
+// the NODE_BUILTIN_MODULE_CONTEXT_AWARE.
+#define V(modname) void _register_##modname();
+  NODE_BUILTIN_MODULES(V)
+#undef V
 
 namespace node {
 
@@ -262,21 +272,27 @@ node::DebugOptions debug_options;
 static struct {
 #if NODE_USE_V8_PLATFORM
   void Initialize(int thread_pool_size, uv_loop_t* loop) {
-    tracing_agent_ =
-        trace_enabled ? new tracing::Agent() : nullptr;
-    platform_ = new NodePlatform(thread_pool_size, loop,
-        trace_enabled ? tracing_agent_->GetTracingController() : nullptr);
-    V8::InitializePlatform(platform_);
-    tracing::TraceEventHelper::SetTracingController(
-        trace_enabled ? tracing_agent_->GetTracingController() : nullptr);
+    if (trace_enabled) {
+      tracing_agent_.reset(new tracing::Agent());
+      platform_ = new NodePlatform(thread_pool_size, loop,
+        tracing_agent_->GetTracingController());
+      V8::InitializePlatform(platform_);
+      tracing::TraceEventHelper::SetTracingController(
+        tracing_agent_->GetTracingController());
+    } else {
+      tracing_agent_.reset(nullptr);
+      platform_ = new NodePlatform(thread_pool_size, loop, nullptr);
+      V8::InitializePlatform(platform_);
+      tracing::TraceEventHelper::SetTracingController(
+        new v8::TracingController());
+    }
   }
 
   void Dispose() {
     platform_->Shutdown();
     delete platform_;
     platform_ = nullptr;
-    delete tracing_agent_;
-    tracing_agent_ = nullptr;
+    tracing_agent_.reset(nullptr);
   }
 
   void DrainVMTasks() {
@@ -305,7 +321,7 @@ static struct {
     tracing_agent_->Stop();
   }
 
-  tracing::Agent* tracing_agent_;
+  std::unique_ptr<tracing::Agent> tracing_agent_;
   NodePlatform* platform_;
 #else  // !NODE_USE_V8_PLATFORM
   void Initialize(int thread_pool_size, uv_loop_t* loop) {}
@@ -368,25 +384,6 @@ static void PrintErrorString(const char* format, ...) {
   vfprintf(stderr, format, ap);
 #endif
   va_end(ap);
-}
-
-
-static void CheckImmediate(uv_check_t* handle) {
-  Environment* env = Environment::from_immediate_check_handle(handle);
-  HandleScope scope(env->isolate());
-  Context::Scope context_scope(env->context());
-  MakeCallback(env->isolate(),
-               env->process_object(),
-               env->immediate_callback_string(),
-               0,
-               nullptr,
-               {0, 0}).ToLocalChecked();
-}
-
-
-static void IdleImmediateDummy(uv_idle_t* handle) {
-  // Do nothing. Only for maintaining event loop.
-  // TODO(bnoordhuis) Maybe make libuv accept nullptr idle callbacks.
 }
 
 
@@ -2467,6 +2464,9 @@ static void WaitForInspectorDisconnect(Environment* env) {
 
 static void Exit(const FunctionCallbackInfo<Value>& args) {
   WaitForInspectorDisconnect(Environment::GetCurrent(args));
+  if (trace_enabled) {
+    v8_platform.StopTracingAgent();
+  }
   args.GetIsolate()->Dispose(true, args[0]->Int32Value());
 }
 
@@ -3040,6 +3040,7 @@ static void EnvGetter(Local<Name> property,
 #else  // _WIN32
   node::TwoByteValue key(isolate, property);
   WCHAR buffer[32767];  // The maximum size allowed for environment variables.
+  SetLastError(ERROR_SUCCESS);
   DWORD result = GetEnvironmentVariableW(reinterpret_cast<WCHAR*>(*key),
                                          buffer,
                                          arraysize(buffer));
@@ -3088,6 +3089,7 @@ static void EnvQuery(Local<Name> property,
 #else  // _WIN32
     node::TwoByteValue key(info.GetIsolate(), property);
     WCHAR* key_ptr = reinterpret_cast<WCHAR*>(*key);
+    SetLastError(ERROR_SUCCESS);
     if (GetEnvironmentVariableW(key_ptr, nullptr, 0) > 0 ||
         GetLastError() == ERROR_SUCCESS) {
       rc = 0;
@@ -3195,6 +3197,12 @@ static void EnvEnumerator(const PropertyCallbackInfo<Array>& info) {
 }
 
 
+static void GetParentProcessId(Local<Name> property,
+                               const PropertyCallbackInfo<Value>& info) {
+  info.GetReturnValue().Set(Integer::New(info.GetIsolate(), uv_os_getppid()));
+}
+
+
 static Local<Object> GetFeatures(Environment* env) {
   EscapableHandleScope scope(env->isolate());
 
@@ -3273,39 +3281,9 @@ static void DebugEnd(const FunctionCallbackInfo<Value>& args);
 
 namespace {
 
-void NeedImmediateCallbackGetter(Local<Name> property,
-                                 const PropertyCallbackInfo<Value>& info) {
-  Environment* env = Environment::GetCurrent(info);
-  const uv_check_t* immediate_check_handle = env->immediate_check_handle();
-  bool active = uv_is_active(
-      reinterpret_cast<const uv_handle_t*>(immediate_check_handle));
-  info.GetReturnValue().Set(active);
-}
-
-
-void NeedImmediateCallbackSetter(
-    Local<Name> property,
-    Local<Value> value,
-    const PropertyCallbackInfo<void>& info) {
-  Environment* env = Environment::GetCurrent(info);
-
-  uv_check_t* immediate_check_handle = env->immediate_check_handle();
-  bool active = uv_is_active(
-      reinterpret_cast<const uv_handle_t*>(immediate_check_handle));
-
-  if (active == value->BooleanValue())
-    return;
-
-  uv_idle_t* immediate_idle_handle = env->immediate_idle_handle();
-
-  if (active) {
-    uv_check_stop(immediate_check_handle);
-    uv_idle_stop(immediate_idle_handle);
-  } else {
-    uv_check_start(immediate_check_handle, CheckImmediate);
-    // Idle handle is needed only to stop the event loop from blocking in poll.
-    uv_idle_start(immediate_idle_handle, IdleImmediateDummy);
-  }
+void ActivateImmediateCheck(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  env->ActivateImmediateCheck();
 }
 
 
@@ -3525,15 +3503,17 @@ void SetupProcessObject(Environment* env,
   process->Set(FIXED_ONE_BYTE_STRING(env->isolate(), "env"), process_env);
 
   READONLY_PROPERTY(process, "pid",
-                    Integer::New(env->isolate(), GetProcessId()));
+                    Integer::New(env->isolate(), uv_os_getpid()));
   READONLY_PROPERTY(process, "features", GetFeatures(env));
 
-  auto need_immediate_callback_string =
-      FIXED_ONE_BYTE_STRING(env->isolate(), "_needImmediateCallback");
-  CHECK(process->SetAccessor(env->context(), need_immediate_callback_string,
-                             NeedImmediateCallbackGetter,
-                             NeedImmediateCallbackSetter,
-                             env->as_external()).FromJust());
+  process->SetAccessor(FIXED_ONE_BYTE_STRING(env->isolate(), "ppid"),
+                       GetParentProcessId);
+
+  auto scheduled_immediate_count =
+      FIXED_ONE_BYTE_STRING(env->isolate(), "_scheduledImmediateCount");
+  CHECK(process->Set(env->context(),
+                     scheduled_immediate_count,
+                     env->scheduled_immediate_count().GetJSArray()).FromJust());
 
   // -e, --eval
   if (eval_string) {
@@ -3659,6 +3639,9 @@ void SetupProcessObject(Environment* env,
                              env->as_external()).FromJust());
 
   // define various internal methods
+  env->SetMethod(process,
+                 "_activateImmediateCheck",
+                 ActivateImmediateCheck);
   env->SetMethod(process,
                  "_startProfilerIdleNotifier",
                  StartProfilerIdleNotifier);
@@ -4019,6 +4002,7 @@ static void CheckIfAllowedInEnv(const char* exe, bool is_env,
     // V8 options (define with '_', which allows '-' or '_')
     "--abort_on_uncaught_exception",
     "--max_old_space_size",
+    "--stack_trace_limit",
   };
 
   for (unsigned i = 0; i < arraysize(whitelist); i++) {
@@ -4576,6 +4560,9 @@ void Init(int* argc,
   // Initialize prog_start_time to get relative uptime.
   prog_start_time = static_cast<double>(uv_now(uv_default_loop()));
 
+  // Register built-in modules
+  node::RegisterBuiltinModules();
+
   // Make inherited handles noninheritable.
   uv_disable_stdio_inheritance();
 
@@ -4673,6 +4660,15 @@ void Init(int* argc,
 
 void RunAtExit(Environment* env) {
   env->RunAtExitCallbacks();
+}
+
+
+uv_loop_t* GetCurrentEventLoop(v8::Isolate* isolate) {
+  HandleScope handle_scope(isolate);
+  auto context = isolate->GetCurrentContext();
+  if (context.IsEmpty())
+    return nullptr;
+  return Environment::GetCurrent(context)->event_loop();
 }
 
 
@@ -5023,10 +5019,19 @@ void GraalThreadingInit(const FunctionCallbackInfo<Value>& args) {
   graal::threading::RegisterNativeCallbacks();
 }
 #endif
+
+// Call built-in modules' _register_<module name> function to
+// do module registration explicitly.
+void RegisterBuiltinModules() {
+#define V(modname) _register_##modname();
+  NODE_BUILTIN_MODULES(V)
+#undef V
+}
+
 }  // namespace node
 
 #if !HAVE_INSPECTOR
-static void InitEmptyBindings() {}
+void InitEmptyBindings() {}
 
-NODE_MODULE_CONTEXT_AWARE_BUILTIN(inspector, InitEmptyBindings)
+NODE_BUILTIN_MODULE_CONTEXT_AWARE(inspector, InitEmptyBindings)
 #endif  // !HAVE_INSPECTOR

@@ -4,7 +4,6 @@
 
 #include "src/profiler/profiler-listener.h"
 
-#include "src/base/template-utils.h"
 #include "src/deoptimizer.h"
 #include "src/objects-inl.h"
 #include "src/profiler/cpu-profiler.h"

@@ -42,7 +42,7 @@
     {
       'target_name': 'v8',
       'dependencies_traverse': 1,
-      'dependencies': ['v8_maybe_snapshot'],
+      'dependencies': ['v8_maybe_snapshot', 'v8_dump_build_config#target'],
       'conditions': [
         ['want_separate_host_toolset==1', {
           'toolsets': ['host', 'target'],
@@ -187,7 +187,6 @@
         'builtins/builtins-constructor-gen.h',
         'builtins/builtins-constructor.h',
         'builtins/builtins-conversion-gen.cc',
-        'builtins/builtins-conversion-gen.h',
         'builtins/builtins-date-gen.cc',
         'builtins/builtins-debug-gen.cc',
         'builtins/builtins-forin-gen.cc',
@@ -208,6 +207,9 @@
         'builtins/builtins-promise-gen.cc',
         'builtins/builtins-promise-gen.h',
         'builtins/builtins-proxy-gen.cc',
+        'builtins/builtins-proxy-gen.h',
+        'builtins/builtins-proxy-helpers-gen.cc',
+        'builtins/builtins-proxy-helpers-gen.h',
         'builtins/builtins-regexp-gen.cc',
         'builtins/builtins-regexp-gen.h',
         'builtins/builtins-sharedarraybuffer-gen.cc',
@@ -760,6 +762,43 @@
         }, {
           'toolsets': ['target'],
         }],
+      ],
+    },
+    {
+      'target_name': 'v8_dump_build_config',
+      'type': 'none',
+      'variables': {
+      },
+      'actions': [
+        {
+          'action_name': 'v8_dump_build_config',
+          'inputs': [
+            '../tools/testrunner/utils/dump_build_config_gyp.py',
+          ],
+          'outputs': [
+            '<(PRODUCT_DIR)/v8_build_config.json',
+          ],
+          'action': [
+            'python',
+            '../tools/testrunner/utils/dump_build_config_gyp.py',
+            '<(PRODUCT_DIR)/v8_build_config.json',
+            'dcheck_always_on=<(dcheck_always_on)',
+            'is_asan=<(asan)',
+            'is_cfi=<(cfi_vptr)',
+            'is_component_build=<(component)',
+            'is_debug=<(CONFIGURATION_NAME)',
+            # Not available in gyp.
+            'is_gcov_coverage=0',
+            'is_msan=<(msan)',
+            'is_tsan=<(tsan)',
+            # Not available in gyp.
+            'is_ubsan_vptr=0',
+            'target_cpu=<(target_arch)',
+            'v8_enable_i18n_support=<(v8_enable_i18n_support)',
+            'v8_target_cpu=<(v8_target_arch)',
+            'v8_use_snapshot=<(v8_use_snapshot)',
+          ],
+        },
       ],
     },
   ],

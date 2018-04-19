@@ -33,18 +33,25 @@ const kOnTimeout = TimerWrap.kOnTimeout | 0;
 // Two arrays that share state between C++ and JS.
 const { async_hook_fields, async_id_fields } = async_wrap;
 const {
-  initTriggerId,
+  getDefaultTriggerAsyncId,
   // The needed emit*() functions.
   emitInit,
   emitBefore,
   emitAfter,
   emitDestroy
-} = require('async_hooks');
+} = require('internal/async_hooks');
 // Grab the constants necessary for working with internal arrays.
 const { kInit, kDestroy, kAsyncIdCounter } = async_wrap.constants;
 // Symbols for storing async id state.
 const async_id_symbol = Symbol('asyncId');
 const trigger_async_id_symbol = Symbol('triggerAsyncId');
+
+/* This is an Uint32Array for easier sharing with C++ land. */
+const scheduledImmediateCount = process._scheduledImmediateCount;
+delete process._scheduledImmediateCount;
+/* Kick off setImmediate processing */
+const activateImmediateCheck = process._activateImmediateCheck;
+delete process._activateImmediateCheck;
 
 // Timeout values > TIMEOUT_MAX are set to 1.
 const TIMEOUT_MAX = 2147483647; // 2^31-1
@@ -173,7 +180,7 @@ function insert(item, unrefed) {
   if (!item[async_id_symbol] || item._destroyed) {
     item._destroyed = false;
     item[async_id_symbol] = ++async_id_fields[kAsyncIdCounter];
-    item[trigger_async_id_symbol] = initTriggerId();
+    item[trigger_async_id_symbol] = getDefaultTriggerAsyncId();
     if (async_hook_fields[kInit] > 0)
       emitInit(
         item[async_id_symbol], 'Timeout', item[trigger_async_id_symbol], item
@@ -574,7 +581,7 @@ function Timeout(after, callback, args) {
   this._repeat = null;
   this._destroyed = false;
   this[async_id_symbol] = ++async_id_fields[kAsyncIdCounter];
-  this[trigger_async_id_symbol] = initTriggerId();
+  this[trigger_async_id_symbol] = getDefaultTriggerAsyncId();
   if (async_hook_fields[kInit] > 0)
     emitInit(
       this[async_id_symbol], 'Timeout', this[trigger_async_id_symbol], this
@@ -731,15 +738,9 @@ function processImmediate() {
     else
       immediate = next;
   }
-
-  // Only round-trip to C++ land if we have to. Calling clearImmediate() on an
-  // immediate that's in |queue| is okay. Worst case is we make a superfluous
-  // call to NeedImmediateCallbackSetter().
-  if (!immediateQueue.head) {
-    process._needImmediateCallback = false;
-  }
 }
 
+process._immediateCallback = processImmediate;
 
 // An optimization so that the try/finally only de-optimizes (since at least v8
 // 4.7) what is in this smaller function.
@@ -751,13 +752,17 @@ function tryOnImmediate(immediate, oldTail) {
     runCallback(immediate);
     threw = false;
   } finally {
-    // clearImmediate checks _callback === null for kDestroy hooks.
     immediate._callback = null;
     if (!threw)
       emitAfter(immediate[async_id_symbol]);
-    if (async_hook_fields[kDestroy] > 0 && !immediate._destroyed) {
-      emitDestroy(immediate[async_id_symbol]);
+
+    if (!immediate._destroyed) {
       immediate._destroyed = true;
+      scheduledImmediateCount[0]--;
+
+      if (async_hook_fields[kDestroy] > 0) {
+        emitDestroy(immediate[async_id_symbol]);
+      }
     }
 
     if (threw && immediate._idleNext) {
@@ -811,7 +816,7 @@ function Immediate() {
   this._destroyed = false;
   this.domain = process.domain;
   this[async_id_symbol] = ++async_id_fields[kAsyncIdCounter];
-  this[trigger_async_id_symbol] = initTriggerId();
+  this[trigger_async_id_symbol] = getDefaultTriggerAsyncId();
   if (async_hook_fields[kInit] > 0)
     emitInit(
       this[async_id_symbol], 'Immediate', this[trigger_async_id_symbol], this
@@ -860,10 +865,9 @@ function createImmediate(args, callback) {
   immediate._argv = args;
   immediate._onImmediate = callback;
 
-  if (!process._needImmediateCallback) {
-    process._needImmediateCallback = true;
-    process._immediateCallback = processImmediate;
-  }
+  if (scheduledImmediateCount[0] === 0)
+    activateImmediateCheck();
+  scheduledImmediateCount[0]++;
 
   immediateQueue.append(immediate);
 
@@ -874,18 +878,16 @@ function createImmediate(args, callback) {
 exports.clearImmediate = function(immediate) {
   if (!immediate) return;
 
-  if (async_hook_fields[kDestroy] > 0 &&
-      immediate._callback !== null &&
-      !immediate._destroyed) {
-    emitDestroy(immediate[async_id_symbol]);
+  if (!immediate._destroyed) {
+    scheduledImmediateCount[0]--;
     immediate._destroyed = true;
+
+    if (async_hook_fields[kDestroy] > 0) {
+      emitDestroy(immediate[async_id_symbol]);
+    }
   }
 
   immediate._onImmediate = null;
 
   immediateQueue.remove(immediate);
-
-  if (!immediateQueue.head) {
-    process._needImmediateCallback = false;
-  }
 };

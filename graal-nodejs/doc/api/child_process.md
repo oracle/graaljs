@@ -25,7 +25,7 @@ ls.on('close', (code) => {
 });
 ```
 
-By default, pipes for `stdin`, `stdout` and `stderr` are established between
+By default, pipes for `stdin`, `stdout`, and `stderr` are established between
 the parent Node.js process and the spawned child. It is possible to stream data
 through these pipes in a non-blocking way. *Note, however, that some programs
 use line-buffered I/O internally. While that does not affect Node.js, it can
@@ -170,7 +170,7 @@ exec('echo "The \\$HOME variable is $HOME"');
 //The $HOME variable is escaped in the first instance, but not in the second
 ```
 
-*Note*: Never pass unsanitised user input to this function. Any input
+*Note*: Never pass unsanitized user input to this function. Any input
 containing shell metacharacters may be used to trigger arbitrary command
 execution.
 
@@ -418,7 +418,7 @@ The `child_process.spawn()` method spawns a new process using the given
 `command`, with command line arguments in `args`. If omitted, `args` defaults
 to an empty array.
 
-*Note*: If the `shell` option is enabled, do not pass unsanitised user input to
+*Note*: If the `shell` option is enabled, do not pass unsanitized user input to
 this function. Any input containing shell metacharacters may be used to
 trigger arbitrary command execution.
 
@@ -623,7 +623,7 @@ pipes between the parent and child. The value is one of the following:
    have an underlying descriptor (file streams do not until the `'open'`
    event has occurred).
 5. Positive integer - The integer value is interpreted as a file descriptor
-   that is is currently open in the parent process. It is shared with the child
+   that is currently open in the parent process. It is shared with the child
    process, similar to how {Stream} objects can be shared.
 6. `null`, `undefined` - Use default value. For stdio fds 0, 1, and 2 (in other
    words, stdin, stdout, and stderr) a pipe is created. For fd 3 and up, the
@@ -661,7 +661,7 @@ The [`child_process.spawnSync()`][], [`child_process.execSync()`][], and
 the Node.js event loop, pausing execution of any additional code until the
 spawned process exits.
 
-Blocking calls like these are mostly useful for simplifying general purpose
+Blocking calls like these are mostly useful for simplifying general-purpose
 scripting tasks and for simplifying the loading/processing of application
 configuration at startup.
 
@@ -715,7 +715,7 @@ completely exited.
 does not exit, the parent process will still wait until the child process has
 exited.
 
-If the process times out, or has a non-zero exit code, this method ***will***
+If the process times out or has a non-zero exit code, this method ***will***
 throw an [`Error`][] that will include the full result of the underlying
 [`child_process.spawnSync()`][].
 
@@ -767,11 +767,11 @@ exited. *Note that if  the child process intercepts and handles the `SIGTERM`
 signal and doesn't exit, the parent process will wait until the child
 process has exited.*
 
-If the process times out, or has a non-zero exit code, this method ***will***
+If the process times out or has a non-zero exit code, this method ***will***
 throw.  The [`Error`][] object will contain the entire result from
 [`child_process.spawnSync()`][]
 
-*Note*: Never pass unsanitised user input to this function. Any input
+*Note*: Never pass unsanitized user input to this function. Any input
 containing shell metacharacters may be used to trigger arbitrary command
 execution.
 
@@ -839,7 +839,7 @@ completely exited. Note that if the process intercepts and handles the
 `SIGTERM` signal and doesn't exit, the parent process will wait until the child
 process has exited.
 
-*Note*: If the `shell` option is enabled, do not pass unsanitised user input
+*Note*: If the `shell` option is enabled, do not pass unsanitized user input
 to this function. Any input containing shell metacharacters may be used to
 trigger arbitrary command execution.
 
@@ -984,7 +984,7 @@ added: v0.1.90
 
 * `signal` {string}
 
-The `subprocess.kill()` methods sends a signal to the child process. If no
+The `subprocess.kill()` method sends a signal to the child process. If no
 argument is given, the process will be sent the `'SIGTERM'` signal. See
 signal(7) for a list of available signals.
 
@@ -1130,10 +1130,10 @@ process.send({ foo: 'bar', baz: NaN });
 Child Node.js processes will have a [`process.send()`][] method of their own that
 allows the child to send messages back to the parent.
 
-There is a special case when sending a `{cmd: 'NODE_foo'}` message. All messages
-containing a `NODE_` prefix in its `cmd` property are considered to be reserved
-for use within Node.js core and will not be emitted in the child's
-[`process.on('message')`][] event. Rather, such messages are emitted using the
+There is a special case when sending a `{cmd: 'NODE_foo'}` message. Messages
+containing a `NODE_` prefix in the `cmd` property are reserved for use within
+Node.js core and will not be emitted in the child's [`process.on('message')`][]
+event. Rather, such messages are emitted using the
 `process.on('internalMessage')` event and are consumed internally by Node.js.
 Applications should avoid using such messages or listening for
 `'internalMessage'` events as it is subject to change without notice.

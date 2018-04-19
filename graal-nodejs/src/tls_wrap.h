@@ -27,7 +27,7 @@
 #include "node.h"
 #include "node_crypto.h"  // SSLWrap
 
-#include "async-wrap.h"
+#include "async_wrap.h"
 #include "env.h"
 #include "stream_wrap.h"
 #include "util.h"
@@ -141,7 +141,6 @@ class TLSWrap : public AsyncWrap,
                          const uv_buf_t* buf,
                          uv_handle_type pending,
                          void* ctx);
-  static void OnAfterWriteSelf(WriteWrap* w, void* ctx);
   static void OnAllocSelf(size_t size, uv_buf_t* buf, void* ctx);
   static void OnReadSelf(ssize_t nread,
                          const uv_buf_t* buf,

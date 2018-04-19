@@ -39,6 +39,14 @@ added: v8.5.0
 If `name` is not provided, removes all `PerformanceFunction` objects from the
 Performance Timeline. If `name` is provided, removes entries with `name`.
 
+### performance.clearGC()
+<!-- YAML
+added: v8.5.0
+-->
+
+Remove all performance entry objects with `entryType` equal to `gc` from the
+Performance Timeline.
+
 ### performance.clearMarks([name])
 <!-- YAML
 added: v8.5.0
@@ -125,12 +133,12 @@ Creates a new `PerformanceMeasure` entry in the Performance Timeline. A
 `startMark` and `endMark`.
 
 The `startMark` argument may identify any *existing* `PerformanceMark` in the
-the Performance Timeline, or *may* identify any of the timestamp properties
+Performance Timeline, or *may* identify any of the timestamp properties
 provided by the `PerformanceNodeTiming` class. If the named `startMark` does
 not exist, then `startMark` is set to [`timeOrigin`][] by default.
 
 The `endMark` argument must identify any *existing* `PerformanceMark` in the
-the Performance Timeline or any of the timestamp properties provided by the
+Performance Timeline or any of the timestamp properties provided by the
 `PerformanceNodeTiming` class. If the named `endMark` does not exist, an
 error will be thrown.
 

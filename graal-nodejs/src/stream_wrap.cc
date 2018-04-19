@@ -188,7 +188,7 @@ static Local<Object> AcceptHandle(Environment* env, LibuvStreamWrap* parent) {
   Local<Object> wrap_obj;
   UVType* handle;
 
-  wrap_obj = WrapType::Instantiate(env, parent);
+  wrap_obj = WrapType::Instantiate(env, parent, WrapType::SOCKET);
   if (wrap_obj.IsEmpty())
     return Local<Object>();
 
@@ -399,5 +399,5 @@ void LibuvStreamWrap::OnAfterWriteImpl(WriteWrap* w, void* ctx) {
 
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_BUILTIN(stream_wrap,
+NODE_BUILTIN_MODULE_CONTEXT_AWARE(stream_wrap,
                                   node::LibuvStreamWrap::Initialize)

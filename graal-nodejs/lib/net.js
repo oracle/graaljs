@@ -33,13 +33,13 @@ const uv = process.binding('uv');
 
 const { Buffer } = require('buffer');
 const TTYWrap = process.binding('tty_wrap');
-const { TCP } = process.binding('tcp_wrap');
-const { Pipe } = process.binding('pipe_wrap');
+const { TCP, constants: TCPConstants } = process.binding('tcp_wrap');
+const { Pipe, constants: PipeConstants } = process.binding('pipe_wrap');
 const { TCPConnectWrap } = process.binding('tcp_wrap');
 const { PipeConnectWrap } = process.binding('pipe_wrap');
 const { ShutdownWrap, WriteWrap } = process.binding('stream_wrap');
 const { async_id_symbol } = process.binding('async_wrap');
-const { newUid, setInitTriggerId } = require('async_hooks');
+const { newUid, defaultTriggerAsyncIdScope } = require('internal/async_hooks');
 const { nextTick } = require('internal/process/next_tick');
 const errors = require('internal/errors');
 const dns = require('dns');
@@ -53,10 +53,20 @@ const exceptionWithHostPort = util._exceptionWithHostPort;
 
 function noop() {}
 
-function createHandle(fd) {
-  var type = TTYWrap.guessHandleType(fd);
-  if (type === 'PIPE') return new Pipe();
-  if (type === 'TCP') return new TCP();
+function createHandle(fd, is_server) {
+  const type = TTYWrap.guessHandleType(fd);
+  if (type === 'PIPE') {
+    return new Pipe(
+      is_server ? PipeConstants.SERVER : PipeConstants.SOCKET
+    );
+  }
+
+  if (type === 'TCP') {
+    return new TCP(
+      is_server ? TCPConstants.SERVER : TCPConstants.SOCKET
+    );
+  }
+
   throw new TypeError('Unsupported fd type: ' + type);
 }
 
@@ -196,7 +206,7 @@ function Socket(options) {
     this._handle = options.handle; // private
     this[async_id_symbol] = getNewAsyncId(this._handle);
   } else if (options.fd !== undefined) {
-    this._handle = createHandle(options.fd);
+    this._handle = createHandle(options.fd, false);
     this._handle.open(options.fd);
     this[async_id_symbol] = this._handle.getAsyncId();
     // options.fd can be string (since it is user-defined),
@@ -260,6 +270,14 @@ Socket.prototype._unrefTimer = function _unrefTimer() {
     timers._unrefActive(s);
 };
 
+
+function shutdownSocket(self, callback) {
+  var req = new ShutdownWrap();
+  req.oncomplete = callback;
+  req.handle = self._handle;
+  return self._handle.shutdown(req);
+}
+
 // the user has called .end(), and all the bytes have been
 // sent out to the other side.
 function onSocketFinish() {
@@ -281,14 +299,9 @@ function onSocketFinish() {
   if (!this._handle || !this._handle.shutdown)
     return this.destroy();
 
-  var req = new ShutdownWrap();
-  req.oncomplete = afterShutdown;
-  req.handle = this._handle;
-  // node::ShutdownWrap isn't instantiated and attached to the JS instance of
-  // ShutdownWrap above until shutdown() is called. So don't set the init
-  // trigger id until now.
-  setInitTriggerId(this[async_id_symbol]);
-  var err = this._handle.shutdown(req);
+  var err = defaultTriggerAsyncIdScope(
+    this[async_id_symbol], shutdownSocket, this, afterShutdown
+  );
 
   if (err)
     return this.destroy(errnoException(err, 'shutdown'));
@@ -940,23 +953,15 @@ function internalConnect(
     req.localAddress = localAddress;
     req.localPort = localPort;
 
-    // node::TCPConnectWrap isn't instantiated and attached to the JS instance
-    // of TCPConnectWrap above until connect() is called. So don't set the init
-    // trigger id until now.
-    setInitTriggerId(self[async_id_symbol]);
     if (addressType === 4)
       err = self._handle.connect(req, address, port);
     else
       err = self._handle.connect6(req, address, port);
-
   } else {
     const req = new PipeConnectWrap();
     req.address = address;
     req.oncomplete = afterConnect;
-    // node::PipeConnectWrap isn't instantiated and attached to the JS instance
-    // of PipeConnectWrap above until connect() is called. So don't set the
-    // init trigger id until now.
-    setInitTriggerId(self[async_id_symbol]);
+
     err = self._handle.connect(req, address, afterConnect);
   }
 
@@ -1003,7 +1008,9 @@ Socket.prototype.connect = function(...args) {
   debug('pipe', pipe, path);
 
   if (!this._handle) {
-    this._handle = pipe ? new Pipe() : new TCP();
+    this._handle = pipe ?
+      new Pipe(PipeConstants.SOCKET) :
+      new TCP(TCPConstants.SOCKET);
     initSocketHandle(this);
   }
 
@@ -1023,7 +1030,9 @@ Socket.prototype.connect = function(...args) {
                                  'string',
                                  path);
     }
-    internalConnect(this, path);
+    defaultTriggerAsyncIdScope(
+      this[async_id_symbol], internalConnect, this, path
+    );
   } else {
     lookupAndConnect(this, options);
   }
@@ -1062,7 +1071,11 @@ function lookupAndConnect(self, options) {
   if (addressType) {
     nextTick(self[async_id_symbol], function() {
       if (self.connecting)
-        internalConnect(self, host, port, addressType, localAddress, localPort);
+        defaultTriggerAsyncIdScope(
+          self[async_id_symbol],
+          internalConnect,
+          self, host, port, addressType, localAddress, localPort
+        );
     });
     return;
   }
@@ -1075,7 +1088,10 @@ function lookupAndConnect(self, options) {
     hints: options.hints || 0
   };
 
-  if (dnsopts.family !== 4 && dnsopts.family !== 6 && dnsopts.hints === 0) {
+  if (process.platform !== 'win32' &&
+      dnsopts.family !== 4 &&
+      dnsopts.family !== 6 &&
+      dnsopts.hints === 0) {
     dnsopts.hints = dns.ADDRCONFIG;
   }
 
@@ -1083,33 +1099,33 @@ function lookupAndConnect(self, options) {
   debug('connect: dns options', dnsopts);
   self._host = host;
   var lookup = options.lookup || dns.lookup;
-  setInitTriggerId(self[async_id_symbol]);
-  lookup(host, dnsopts, function emitLookup(err, ip, addressType) {
-    self.emit('lookup', err, ip, addressType, host);
+  defaultTriggerAsyncIdScope(self[async_id_symbol], function() {
+    lookup(host, dnsopts, function emitLookup(err, ip, addressType) {
+      self.emit('lookup', err, ip, addressType, host);
 
-    // It's possible we were destroyed while looking this up.
-    // XXX it would be great if we could cancel the promise returned by
-    // the look up.
-    if (!self.connecting) return;
+      // It's possible we were destroyed while looking this up.
+      // XXX it would be great if we could cancel the promise returned by
+      // the look up.
+      if (!self.connecting) return;
 
-    if (err) {
-      // net.createConnection() creates a net.Socket object and
-      // immediately calls net.Socket.connect() on it (that's us).
-      // There are no event listeners registered yet so defer the
-      // error event to the next tick.
-      err.host = options.host;
-      err.port = options.port;
-      err.message = err.message + ' ' + options.host + ':' + options.port;
-      process.nextTick(connectErrorNT, self, err);
-    } else {
-      self._unrefTimer();
-      internalConnect(self,
-                      ip,
-                      port,
-                      addressType,
-                      localAddress,
-                      localPort);
-    }
+      if (err) {
+        // net.createConnection() creates a net.Socket object and
+        // immediately calls net.Socket.connect() on it (that's us).
+        // There are no event listeners registered yet so defer the
+        // error event to the next tick.
+        err.host = options.host;
+        err.port = options.port;
+        err.message = err.message + ' ' + options.host + ':' + options.port;
+        process.nextTick(connectErrorNT, self, err);
+      } else {
+        self._unrefTimer();
+        defaultTriggerAsyncIdScope(
+          self[async_id_symbol],
+          internalConnect,
+          self, ip, port, addressType, localAddress, localPort
+        );
+      }
+    });
   });
 }
 
@@ -1253,7 +1269,7 @@ function createServerHandle(address, port, addressType, fd) {
   var isTCP = false;
   if (typeof fd === 'number' && fd >= 0) {
     try {
-      handle = createHandle(fd);
+      handle = createHandle(fd, true);
     } catch (e) {
       // Not a fd we can listen on.  This will trigger an error.
       debug('listen invalid fd=%d:', fd, e.message);
@@ -1264,7 +1280,7 @@ function createServerHandle(address, port, addressType, fd) {
     handle.writable = true;
     assert(!address && !port);
   } else if (port === -1 && addressType === -1) {
-    handle = new Pipe();
+    handle = new Pipe(PipeConstants.SERVER);
     if (process.platform === 'win32') {
       var instances = parseInt(process.env.NODE_PENDING_PIPE_INSTANCES);
       if (!isNaN(instances)) {
@@ -1272,7 +1288,7 @@ function createServerHandle(address, port, addressType, fd) {
       }
     }
   } else {
-    handle = new TCP();
+    handle = new TCP(TCPConstants.SERVER);
     isTCP = true;
   }
 

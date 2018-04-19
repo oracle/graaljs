@@ -363,16 +363,11 @@ process.on('SIGINT', () => {
 });
 ```
 
-*Note*: An easy way to send the `SIGINT` signal is with `<Ctrl>-C` in most
-terminal programs.
-
-It is important to take note of the following:
-
 * `SIGUSR1` is reserved by Node.js to start the [debugger][]. It's possible to
   install a listener but doing so will _not_ stop the debugger from starting.
 * `SIGTERM` and `SIGINT` have default handlers on non-Windows platforms that
-  resets the terminal mode before exiting with code `128 + signal number`. If
-  one of these signals has a listener installed, its default behavior will be
+  reset the terminal mode before exiting with code `128 + signal number`. If one
+  of these signals has a listener installed, its default behavior will be
   removed (Node.js will no longer exit).
 * `SIGPIPE` is ignored by default. It can have a listener installed.
 * `SIGHUP` is generated on Windows when the console window is closed, and on
@@ -383,7 +378,7 @@ It is important to take note of the following:
   installed its default behavior will be removed.
 * `SIGTERM` is not supported on Windows, it can be listened on.
 * `SIGINT` from the terminal is supported on all platforms, and can usually be
-  generated with `CTRL+C` (though this may be configurable). It is not generated
+  generated with `<Ctrl>+C` (though this may be configurable). It is not generated
   when terminal raw mode is enabled.
 * `SIGBREAK` is delivered on Windows when `<Ctrl>+<Break>` is pressed, on
   non-Windows platforms it can be listened on, but there is no way to send or
@@ -421,9 +416,11 @@ added: v0.5.0
 
 * {string}
 
-The `process.arch` property returns a String identifying the processor
-architecture that the Node.js process is currently running on. For instance
-`'arm'`, `'ia32'`, or `'x64'`.
+The `process.arch` property returns a string identifying the operating system CPU
+architecture for which the Node.js binary was compiled.
+
+The current possible values are: `'arm'`, `'arm64'`, `'ia32'`, `'mips'`,
+`'mipsel'`, `'ppc'`, `'ppc64'`, `'s390'`, `'s390x'`, `'x32'`, and `'x64'`.
 
 ```js
 console.log(`This processor architecture is ${process.arch}`);
@@ -934,10 +931,10 @@ process.exit(1);
 
 The shell that executed Node.js should see the exit code as `1`.
 
-It is important to note that calling `process.exit()` will force the process to
-exit as quickly as possible *even if there are still asynchronous operations
-pending* that have not yet completed fully, *including* I/O operations to
-`process.stdout` and `process.stderr`.
+Calling `process.exit()` will force the process to exit as quickly as possible
+even if there are still asynchronous operations pending that have not yet
+completed fully, including I/O operations to `process.stdout` and
+`process.stderr`.
 
 In most situations, it is not actually necessary to call `process.exit()`
 explicitly. The Node.js process will exit on its own *if there is no additional
@@ -1345,6 +1342,19 @@ event loop **before** additional I/O is processed.  As a result,
 recursively setting nextTick callbacks will block any I/O from
 happening, just like a `while(true);` loop.
 
+## process.noDeprecation
+<!-- YAML
+added: v0.8.0
+-->
+
+* {boolean}
+
+The `process.noDeprecation` property indicates whether the `--no-deprecation`
+flag is set on the current Node.js process. See the documentation for
+the [`warning` event][process_warning] and the
+[`emitWarning` method][process_emit_warning] for more information about this
+flag's behavior.
+
 ## process.pid
 <!-- YAML
 added: v0.1.15
@@ -1366,11 +1376,37 @@ added: v0.1.16
 * {string}
 
 The `process.platform` property returns a string identifying the operating
-system platform on which the Node.js process is running. For instance
-`'darwin'`, `'freebsd'`, `'linux'`, `'sunos'` or `'win32'`
+system platform on which the Node.js process is running.
+
+Currently possible values are:
+
+* `'aix'`
+* `'darwin'`
+* `'freebsd'`
+* `'linux'`
+* `'openbsd'`
+* `'sunos'`
+* `'win32'`
 
 ```js
 console.log(`This platform is ${process.platform}`);
+```
+
+The value `'android'` may also be returned if the Node.js is built on the
+Android operating system. However, Android support in Node.js
+[is experimental][Supported platforms].
+
+## process.ppid
+<!-- YAML
+added: v8.10.0
+-->
+
+* {integer}
+
+The `process.ppid` property returns the PID of the current parent process.
+
+```js
+console.log(`The parent process is pid ${process.ppid}`);
 ```
 
 ## process.release
@@ -1682,6 +1718,19 @@ false
 
 See the [TTY][] documentation for more information.
 
+## process.throwDeprecation
+<!-- YAML
+added: v0.9.12
+-->
+
+* {boolean}
+
+The `process.throwDeprecation` property indicates whether the
+`--throw-deprecation` flag is set on the current Node.js process. See the
+documentation for the [`warning` event][process_warning] and the
+[`emitWarning` method][process_emit_warning] for more information about this
+flag's behavior.
+
 ## process.title
 <!-- YAML
 added: v0.1.104
@@ -1701,6 +1750,19 @@ because setting the `process.title` overwrites the `argv` memory of the
 process.  Node.js v0.8 allowed for longer process title strings by also
 overwriting the `environ` memory but that was potentially insecure and
 confusing in some (rather obscure) cases.
+
+## process.traceDeprecation
+<!-- YAML
+added: v0.8.0
+-->
+
+* {boolean}
+
+The `process.traceDeprecation` property indicates whether the
+`--trace-deprecation` flag is set on the current Node.js process. See the
+documentation for the [`warning` event][process_warning] and the
+[`emitWarning` method][process_emit_warning] for more information about this
+flag's behavior.
 
 ## process.umask([mask])
 <!-- YAML
@@ -1773,18 +1835,19 @@ Will generate an object similar to:
 
 <!-- eslint-skip -->
 ```js
-{
-  http_parser: '2.3.0',
-  node: '1.1.1',
-  v8: '4.1.0.14',
-  uv: '1.3.0',
-  zlib: '1.2.8',
-  ares: '1.10.0-DEV',
-  modules: '43',
-  icu: '55.1',
-  openssl: '1.0.1k',
-  unicode: '8.0',
-  cldr: '29.0',
+{ http_parser: '2.7.0',
+  node: '8.9.0',
+  v8: '6.3.292.48-node.6',
+  uv: '1.18.0',
+  zlib: '1.2.11',
+  ares: '1.13.0',
+  modules: '60',
+  nghttp2: '1.29.0',
+  napi: '2',
+  openssl: '1.0.2n',
+  icu: '60.1',
+  unicode: '10.0',
+  cldr: '32.0',
   tz: '2016b' }
 ```
 
@@ -1869,5 +1932,6 @@ cases:
 [Readable]: stream.html#stream_readable_streams
 [Signal Events]: #process_signal_events
 [Stream compatibility]: stream.html#stream_compatibility_with_older_node_js_versions
+[Supported platforms]: https://github.com/nodejs/node/blob/master/BUILDING.md#supported-platforms-1
 [TTY]: tty.html#tty_tty
 [Writable]: stream.html#stream_writable_streams
