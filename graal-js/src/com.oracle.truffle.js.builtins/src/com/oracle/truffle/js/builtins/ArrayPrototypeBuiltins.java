@@ -146,6 +146,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -1633,7 +1634,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private boolean mustUseElementwise(DynamicObject obj) {
             ScriptArray array = arrayGetArrayType(obj);
             return array instanceof SparseArray || array.isLengthNotWritable() || JSObject.getPrototype(obj) != getContext().getRealm().getArrayConstructor().getPrototype() ||
-                            !getContext().getArrayPrototypeNoElementsAssumption().isValid() || !getContext().getFastArrayAssumption().isValid();
+                            !getContext().getArrayPrototypeNoElementsAssumption().isValid() || (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj));
         }
 
         private void spliceRead(TruffleObject thisObj, long actualStart, long actualDeleteCount, DynamicObject aObj, long length) {
