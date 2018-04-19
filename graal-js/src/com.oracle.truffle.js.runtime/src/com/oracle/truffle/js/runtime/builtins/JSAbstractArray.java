@@ -391,8 +391,11 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         DynamicObject current = JSObject.getPrototype(thisObj);
         String propertyName = null;
         while (current != Null.instance) {
-            if (JSObject.hasOwnProperty(current, index)) {
-                if (!JSObject.hasArray(current) || (JSSlowArray.isJSSlowArray(current) || JSSlowArgumentsObject.isJSSlowArgumentsObject(current) || JSObjectPrototype.isJSObjectPrototype(current))) {
+            if (JSProxy.isProxy(current)) {
+                return JSObject.setWithReceiver(current, Boundaries.stringValueOf(index), value, receiver, false);
+            }
+            if (canHaveReadOnlyOrAccessorProperties(current)) {
+                if (JSObject.hasOwnProperty(current, index)) {
                     if (propertyName == null) {
                         propertyName = Boundaries.stringValueOf(index);
                     }
@@ -415,6 +418,10 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
             current = JSObject.getPrototype(current);
         }
         return false;
+    }
+
+    private static boolean canHaveReadOnlyOrAccessorProperties(DynamicObject current) {
+        return !JSArrayBufferView.isJSArrayBufferView(current);
     }
 
     @Override
@@ -717,8 +724,11 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     @TruffleBoundary
     @Override
     public final boolean preventExtensions(DynamicObject thisObj) {
-        makeSlowArray(thisObj);
-        return super.preventExtensions(thisObj);
+        boolean result = super.preventExtensions(thisObj);
+        ScriptArray arr = arrayGetArrayType(thisObj);
+        arraySetArrayType(thisObj, arr.preventExtensions());
+        assert !isExtensible(thisObj);
+        return result;
     }
 
     @TruffleBoundary

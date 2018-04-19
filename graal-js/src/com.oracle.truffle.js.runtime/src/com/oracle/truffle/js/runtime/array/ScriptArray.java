@@ -59,6 +59,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractConstantArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyArray;
@@ -91,7 +92,7 @@ public abstract class ScriptArray {
     public final ScriptArray setElement(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
         if (isFrozen()) {
             if (strict) {
-                setElementStrict(index);
+                setElementFrozenStrict(index);
             }
             return this;
         } else if (isLengthNotWritable() && !isInBoundsFast(object, index, condition)) {
@@ -104,7 +105,7 @@ public abstract class ScriptArray {
     }
 
     @TruffleBoundary
-    private static void setElementStrict(long index) {
+    private static void setElementFrozenStrict(long index) {
         if (JSTruffleOptions.NashornCompatibilityMode) {
             throw Errors.createTypeErrorFormat("Cannot set property \"%d\" of frozen array", index);
         } else {
@@ -440,12 +441,21 @@ public abstract class ScriptArray {
     public abstract ScriptArray addRangeImpl(DynamicObject object, long offset, int size);
 
     public final ScriptArray addRange(DynamicObject object, long offset, int size) {
+        if (!isExtensible()) {
+            throw addRangeNotExtensible();
+        }
+        return addRangeImpl(object, offset, size);
+    }
+
+    @TruffleBoundary
+    private JSException addRangeNotExtensible() {
         if (isFrozen()) {
             throw Errors.createTypeError("Cannot add property of frozen array");
         } else if (isSealed()) {
             throw Errors.createTypeError("Cannot add property to sealed array");
+        } else {
+            throw Errors.createTypeError("Cannot add property to non-extensible array");
         }
-        return addRangeImpl(object, offset, size);
     }
 
     protected static int nextPower(int length) {
@@ -479,11 +489,17 @@ public abstract class ScriptArray {
         return false;
     }
 
+    public boolean isExtensible() {
+        return true;
+    }
+
     public abstract ScriptArray seal();
 
     public abstract ScriptArray freeze();
 
     public abstract ScriptArray setLengthNotWritable();
+
+    public abstract ScriptArray preventExtensions();
 
     public abstract boolean isStatelessType();
 
