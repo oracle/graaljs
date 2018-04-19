@@ -81,6 +81,10 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
 
     public abstract boolean executeBoolean(TruffleObject object, Object propertyName);
 
+    public abstract boolean executeBoolean(TruffleObject object, int index);
+
+    public abstract boolean executeBoolean(TruffleObject object, long index);
+
     @Specialization(guards = "isJSFastArray(object)")
     public boolean arrayInt(DynamicObject object, int propertyIdx) {
         return checkInteger(object, propertyIdx);
