@@ -70,7 +70,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
  * on features of the object and/or the property sought.
  *
  */
-@ImportStatic(value = {JSInteropUtil.class})
+@ImportStatic(value = {JSRuntime.class, JSInteropUtil.class})
 public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
 
     private final boolean hasOwnProperty;
@@ -115,15 +115,23 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         }
     }
 
+    @SuppressWarnings("unused")
     @Specialization(guards = {"acceptObjectType(object)", "cachedName.equals(propertyName)"}, limit = "1")
-    public boolean objectStringCached(DynamicObject object,
-                    @SuppressWarnings("unused") String propertyName,
-                    @SuppressWarnings("unused") @Cached("propertyName") String cachedName,
-                    @Cached("getCachedPropertyGetter(object,propertyName)") HasPropertyCacheNode propertyGetter) {
-        return propertyGetter.hasProperty(object);
+    public boolean objectStringCached(DynamicObject object, String propertyName,
+                    @Cached("propertyName") String cachedName,
+                    @Cached("getCachedPropertyGetter(object,propertyName)") HasPropertyCacheNode hasPropertyNode) {
+        return hasPropertyNode.hasProperty(object);
     }
 
-    @Specialization(guards = {"isJSType(object)", "!isJSJavaWrapper(object)"}, replaces = {"objectStringCached"})
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"isJSArray(object)", "!isArrayIndex(cachedName)", "cachedName.equals(propertyName)"}, limit = "1")
+    public boolean arrayStringCached(DynamicObject object, String propertyName,
+                    @Cached("propertyName") String cachedName,
+                    @Cached("getCachedPropertyGetter(object,propertyName)") HasPropertyCacheNode hasPropertyNode) {
+        return hasPropertyNode.hasProperty(object);
+    }
+
+    @Specialization(guards = {"isJSType(object)", "!isJSJavaWrapper(object)"}, replaces = {"objectStringCached", "arrayStringCached"})
     public boolean objectOrArrayString(DynamicObject object, String propertyName) {
         return hasPropertyGeneric(object, propertyName);
     }
