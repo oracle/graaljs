@@ -157,7 +157,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
             ScriptArray array = arrayType;
-            if (arrayType.isLengthNotWritable()) {
+            if (array.isLengthNotWritable() || array.isSealed()) {
                 for (int i = array.lengthInt(arrayObj, condition) - 1; i >= length; i--) {
                     array = array.deleteElement(arrayObj, i, strict, condition);
                     arraySetArrayType(arrayObj, array);
@@ -172,7 +172,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
             ScriptArray array = getArrayType(arrayObj, condition);
-            if (lengthNotWritableProfile.profile(array.isLengthNotWritable())) {
+            if (lengthNotWritableProfile.profile(array.isLengthNotWritable() || array.isSealed())) {
                 for (int i = array.lengthInt(arrayObj, condition) - 1; i >= length; i--) {
                     array = array.deleteElement(arrayObj, i, strict, condition);
                     arraySetArrayType(arrayObj, array);
