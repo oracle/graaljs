@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -116,8 +117,9 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"acceptObjectType(object)", "cachedName.equals(propertyName)"}, limit = "1")
+    @Specialization(guards = {"cachedObjectType != null", "cachedObjectType.isInstance(object)", "cachedName.equals(propertyName)"}, limit = "1")
     public boolean objectStringCached(DynamicObject object, String propertyName,
+                    @Cached("getCacheableObjectType(object)") JSClass cachedObjectType,
                     @Cached("propertyName") String cachedName,
                     @Cached("getCachedPropertyGetter(object,propertyName)") HasPropertyCacheNode hasPropertyNode) {
         return hasPropertyNode.hasProperty(object);
@@ -187,13 +189,20 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         return hasPropertyGeneric(object, propertyKey);
     }
 
-    protected static boolean acceptObjectType(Object obj) {
+    protected static boolean isCacheableObjectType(DynamicObject obj) {
         return JSObject.isJSObject(obj) && (!JSRuntime.isNullOrUndefined(obj) &&
                         !JSString.isJSString(obj) &&
                         !JSArray.isJSArray(obj) &&
                         !JSArgumentsObject.isJSArgumentsObject(obj) &&
                         !JSArrayBufferView.isJSArrayBufferView(obj) &&
                         !JSJavaWrapper.isJSJavaWrapper(obj));
+    }
+
+    protected static JSClass getCacheableObjectType(DynamicObject obj) {
+        if (isCacheableObjectType(obj)) {
+            return JSObject.getJSClass(obj);
+        }
+        return null;
     }
 
     protected HasPropertyCacheNode getCachedPropertyGetter(DynamicObject object, Object key) {
