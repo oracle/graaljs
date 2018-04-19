@@ -88,11 +88,11 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     private static final int MS_PER_SECOND = 1000;
     public static final int MS_PER_MINUTE = 60000;
     private static final int MS_PER_HOUR = 3600000;
-    private static final int MS_PER_DAY = 3600000 * 24;
+    public static final int MS_PER_DAY = 3600000 * 24;
     public static final double MAX_DATE = 8.64E15;
 
     // Maximal size of DST offset
-    private static final int MS_MAX_DST = 2 * MS_PER_HOUR;
+    public static final int MS_MAX_DST = 2 * MS_PER_HOUR;
 
     private static final int DAYS_IN_4_YEARS = 4 * 365 + 1;
     private static final int DAYS_IN_100_YEARS = 25 * DAYS_IN_4_YEARS - 1;
@@ -216,7 +216,6 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         return yearFromDays((int) daysAfter1970);
     }
 
-    @TruffleBoundary
     public static int yearFromDays(int daysAfter1970) {
         // we need days relative to a year divisible by 400
         int daysAfter2000 = daysAfter1970 - DAYS_FROM_1970_TO_2000;
@@ -433,7 +432,7 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
      * ES5 15.9.1.8 Daylight Saving Time Adjustment, in milliseconds.
      */
     @TruffleBoundary
-    private static long daylightSavingTA(ZoneId zone, double t) {
+    public static long daylightSavingTA(ZoneId zone, double t) {
         Duration d = zone.getRules().getDaylightSavings(Instant.ofEpochMilli((long) t));
         long offset = d.getSeconds() * 1000L;
         assert 0 <= offset && offset <= MS_MAX_DST;
@@ -445,22 +444,6 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     public static double localTime(double t, JSContext context) {
         long localTZA = context.getLocalTZA();
         return t + localTZA + daylightSavingTA(context.getLocalTimeZoneId(), t);
-    }
-
-    @TruffleBoundary
-    public static int localDay(long t, JSContext context) {
-        long localNoDST = t + context.getLocalTZA();
-        long day = Math.floorDiv(localNoDST, MS_PER_DAY);
-        assert JSRuntime.longIsRepresentableAsInt(day);
-        int iday = (int) day;
-        long timeInDay = localNoDST - MS_PER_DAY * day;
-        if (timeInDay < MS_PER_DAY - MS_MAX_DST) {
-            // DST offset cannot change the day
-            return iday;
-        } else {
-            timeInDay += daylightSavingTA(context.getLocalTimeZoneId(), t);
-            return (timeInDay < MS_PER_DAY) ? iday : (iday + 1);
-        }
     }
 
     private static double utc(double t, JSContext context) {

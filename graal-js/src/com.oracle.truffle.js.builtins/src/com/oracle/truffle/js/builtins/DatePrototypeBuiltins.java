@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetDateNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetDayNodeGen;
@@ -80,6 +81,7 @@ import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStrin
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToTimeStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateValueOfNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltins.ObjectOperation;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -565,9 +567,11 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
     }
 
     public abstract static class JSDateGetFullYearNode extends JSDateOperation {
+        @Child protected LocalDayNode localDayNode;
 
         public JSDateGetFullYearNode(JSContext context, JSBuiltin builtin, boolean isUTC) {
             super(context, builtin, isUTC);
+            localDayNode = isUTC ? null : LocalDayNode.create(context);
         }
 
         @Specialization
@@ -579,16 +583,18 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isUTC) {
                 return JSDate.yearFromTime((long) t);
             } else {
-                int daysAfter1970 = JSDate.localDay((long) t, getContext());
+                int daysAfter1970 = localDayNode.execute((long) t);
                 return JSDate.yearFromDays(daysAfter1970);
             }
         }
     }
 
     public abstract static class JSDateGetYearNode extends JSDateOperation {
+        @Child protected LocalDayNode localDayNode;
 
         public JSDateGetYearNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, false);
+            localDayNode = isUTC ? null : LocalDayNode.create(context);
         }
 
         @Specialization
@@ -597,15 +603,17 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            int daysAfter1970 = JSDate.localDay((long) t, getContext());
+            int daysAfter1970 = localDayNode.execute((long) t);
             return JSDate.yearFromDays(daysAfter1970) - 1900;
         }
     }
 
     public abstract static class JSDateGetMonthNode extends JSDateOperation {
+        @Child protected LocalDayNode localDayNode;
 
         public JSDateGetMonthNode(JSContext context, JSBuiltin builtin, boolean isUTC) {
             super(context, builtin, isUTC);
+            localDayNode = isUTC ? null : LocalDayNode.create(context);
         }
 
         @Specialization
@@ -617,7 +625,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isUTC) {
                 return JSDate.monthFromTime(t);
             } else {
-                int daysAfter1970 = JSDate.localDay((long) t, getContext());
+                int daysAfter1970 = localDayNode.execute((long) t);
                 return JSDate.monthFromDays(daysAfter1970);
             }
         }
@@ -626,9 +634,11 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
     public abstract static class JSDateGetDateNode extends JSDateOperation {
         private static final int DAYS_FROM_1970_TO_1901 = JSDate.dayFromYear(1901);
         private static final int DAYS_FROM_1970_TO_2100 = JSDate.dayFromYear(2100);
+        @Child protected LocalDayNode localDayNode;
 
         public JSDateGetDateNode(JSContext context, JSBuiltin builtin, boolean isUTC) {
             super(context, builtin, isUTC);
+            localDayNode = isUTC ? null : LocalDayNode.create(context);
         }
 
         @Specialization
@@ -640,7 +650,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isUTC) {
                 return JSDate.dateFromTime(t);
             } else {
-                int daysAfter1970 = JSDate.localDay((long) t, getContext());
+                int daysAfter1970 = localDayNode.execute((long) t);
                 if (DAYS_FROM_1970_TO_1901 <= daysAfter1970 && daysAfter1970 <= DAYS_FROM_1970_TO_2100) {
                     // There are regular leap years between 1.1.1901 and 1.1.2100
                     return JSDate.dateFromDaysRegularLeapYears(daysAfter1970);
@@ -652,9 +662,11 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
     }
 
     public abstract static class JSDateGetDayNode extends JSDateOperation {
+        @Child protected LocalDayNode localDayNode;
 
         public JSDateGetDayNode(JSContext context, JSBuiltin builtin, boolean isUTC) {
             super(context, builtin, isUTC);
+            localDayNode = isUTC ? null : LocalDayNode.create(context);
         }
 
         @Specialization
@@ -666,7 +678,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isUTC) {
                 return JSDate.weekDay(t);
             } else {
-                int daysAfter1970 = JSDate.localDay((long) t, getContext());
+                int daysAfter1970 = localDayNode.execute((long) t);
                 int result = (daysAfter1970 + 4) % 7;
                 return result >= 0 ? result : (result + 7);
             }
@@ -961,4 +973,35 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
         }
     }
+
+    public static final class LocalDayNode extends JavaScriptBaseNode {
+        private final JSContext context;
+        private final BranchProfile dstNeededProfile = BranchProfile.create();
+
+        private LocalDayNode(JSContext context) {
+            this.context = context;
+        }
+
+        public static LocalDayNode create(JSContext context) {
+            return new LocalDayNode(context);
+        }
+
+        public int execute(long t) {
+            long localNoDST = t + context.getLocalTZA();
+            long day = Math.floorDiv(localNoDST, JSDate.MS_PER_DAY);
+            assert JSRuntime.longIsRepresentableAsInt(day);
+            int iday = (int) day;
+            long timeInDay = localNoDST - JSDate.MS_PER_DAY * day;
+            if (timeInDay < JSDate.MS_PER_DAY - JSDate.MS_MAX_DST) {
+                // DST offset cannot change the day
+                return iday;
+            } else {
+                dstNeededProfile.enter();
+                timeInDay += JSDate.daylightSavingTA(context.getLocalTimeZoneId(), t);
+                return (timeInDay < JSDate.MS_PER_DAY) ? iday : (iday + 1);
+            }
+        }
+
+    }
+
 }
