@@ -980,6 +980,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         deletePropertyNode.executeEvaluated(thisObj, i);
                     }
                 }
+                deletePropertyNode.executeEvaluated(thisObj, len - 1);
                 setLength(thisObj, len - 1);
                 return firstElement;
             } else {
