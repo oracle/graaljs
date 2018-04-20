@@ -8,7 +8,7 @@ suite = {
         {
            "name" : "tools",
            "subdir" : True,
-           "version" : "a84731f4eeb8c4023cb8311774a10d6631f7840c",
+           "version" : "1f2fbfb014677bd1f16bcb98ebe998e904a5a7b9",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
