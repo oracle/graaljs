@@ -128,16 +128,16 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
                     @Cached("createClassProfile()") ValueProfile arrayTypeProfile,
                     @Cached("create()") JSClassProfile jsclassProfile,
                     @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
-        final boolean arrayCondition = isArrayNode.execute(targetObject) && !arrayGetArrayType(targetObject).isLengthNotWritable();
+        final boolean isArray = isArrayNode.execute(targetObject);
         final Object propertyKey;
-        if (arrayProfile.profile(arrayCondition)) {
+        if (arrayProfile.profile(isArray)) {
             Object objIndex = toArrayIndexNode.execute(key);
 
             if (arrayIndexProfile.profile(objIndex instanceof Long)) {
-                ScriptArray array = arrayTypeProfile.profile(arrayGetArrayType(targetObject, arrayCondition));
                 long longIndex = (long) objIndex;
-                if (array.canDeleteElement(targetObject, longIndex, strict, arrayCondition)) {
-                    arraySetArrayType(targetObject, array = array.deleteElement(targetObject, longIndex, strict, arrayCondition));
+                ScriptArray array = arrayTypeProfile.profile(arrayGetArrayType(targetObject, isArray));
+                if (array.canDeleteElement(targetObject, longIndex, strict, isArray)) {
+                    arraySetArrayType(targetObject, array = array.deleteElement(targetObject, longIndex, strict, isArray));
                     return true;
                 } else {
                     return false;
