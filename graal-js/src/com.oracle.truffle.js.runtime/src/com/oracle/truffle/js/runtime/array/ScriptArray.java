@@ -95,11 +95,13 @@ public abstract class ScriptArray {
                 setElementFrozenStrict(index);
             }
             return this;
-        } else if (isLengthNotWritable() && !isInBoundsFast(object, index, condition)) {
-            if (strict) {
-                throw Errors.createTypeErrorLengthNotWritable();
+        } else if (isLengthNotWritable()) {
+            if (index >= length(object, condition)) {
+                if (strict) {
+                    throw Errors.createTypeErrorLengthNotWritable();
+                }
+                return this;
             }
-            return this;
         }
         return setElementImpl(object, index, value, strict, condition);
     }
