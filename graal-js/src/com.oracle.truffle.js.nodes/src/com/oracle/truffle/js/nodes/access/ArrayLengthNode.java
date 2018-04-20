@@ -132,14 +132,34 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
                         @Cached("getArrayType(arrayObj, condition)") ScriptArray arrayType,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
+            if (arrayType.isSealed()) {
+                setLengthSealed(arrayObj, length, arrayType, condition, setLengthProfile);
+                return;
+            }
             arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, condition, setLengthProfile));
         }
 
         @Specialization(replaces = "doCached")
         protected void doGeneric(DynamicObject arrayObj, int length, boolean condition,
+                        @Cached("createBinaryProfile()") ConditionProfile sealedProfile,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
             ScriptArray arrayType = getArrayType(arrayObj, condition);
+            if (sealedProfile.profile(arrayType.isSealed())) {
+                setLengthSealed(arrayObj, length, arrayType, condition, setLengthProfile);
+                return;
+            }
+            arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, condition, setLengthProfile));
+        }
+
+        private void setLengthSealed(DynamicObject arrayObj, int length, ScriptArray arrayType, boolean condition, ScriptArray.ProfileHolder setLengthProfile) {
+            long minLength = arrayType.lastElementIndex(arrayObj, condition) + 1;
+            if (length < minLength) {
+                ScriptArray array = arrayType;
+                arraySetArrayType(arrayObj, array = arrayType.setLength(arrayObj, minLength, strict, condition, setLengthProfile));
+                array.canDeleteElement(arrayObj, minLength - 1, strict, condition);
+                return;
+            }
             arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, condition, setLengthProfile));
         }
     }
@@ -156,26 +176,31 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
                         @Cached("getArrayType(arrayObj, condition)") ScriptArray arrayType,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
-            ScriptArray array = arrayType;
-            if (array.isLengthNotWritable() || array.isSealed()) {
-                for (int i = array.lengthInt(arrayObj, condition) - 1; i >= length; i--) {
-                    array = array.deleteElement(arrayObj, i, strict, condition);
-                    arraySetArrayType(arrayObj, array);
-                }
+            if (arrayType.isLengthNotWritable() || arrayType.isSealed()) {
+                deleteAndSetLength(arrayObj, length, arrayType, condition, setLengthProfile);
+                return;
             }
-            arraySetArrayType(arrayObj, array.setLength(arrayObj, length, strict, condition, setLengthProfile));
+            arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, condition, setLengthProfile));
         }
 
         @Specialization(replaces = "doCached")
         protected void doGeneric(DynamicObject arrayObj, int length, boolean condition,
-                        @Cached("createBinaryProfile()") ConditionProfile lengthNotWritableProfile,
+                        @Cached("createBinaryProfile()") ConditionProfile mustDeleteProfile,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
             assert length >= 0;
-            ScriptArray array = getArrayType(arrayObj, condition);
-            if (lengthNotWritableProfile.profile(array.isLengthNotWritable() || array.isSealed())) {
-                for (int i = array.lengthInt(arrayObj, condition) - 1; i >= length; i--) {
-                    array = array.deleteElement(arrayObj, i, strict, condition);
-                    arraySetArrayType(arrayObj, array);
+            ScriptArray arrayType = getArrayType(arrayObj, condition);
+            if (mustDeleteProfile.profile(arrayType.isLengthNotWritable() || arrayType.isSealed())) {
+                deleteAndSetLength(arrayObj, length, arrayType, condition, setLengthProfile);
+                return;
+            }
+            arraySetArrayType(arrayObj, arrayType.setLength(arrayObj, length, strict, condition, setLengthProfile));
+        }
+
+        private void deleteAndSetLength(DynamicObject arrayObj, int length, ScriptArray arrayType, boolean condition, ScriptArray.ProfileHolder setLengthProfile) {
+            ScriptArray array = arrayType;
+            for (int i = array.lengthInt(arrayObj, condition) - 1; i >= length; i--) {
+                if (array.canDeleteElement(arrayObj, i, strict, condition)) {
+                    arraySetArrayType(arrayObj, array = array.deleteElement(arrayObj, i, strict, condition));
                 }
             }
             arraySetArrayType(arrayObj, array.setLength(arrayObj, length, strict, condition, setLengthProfile));

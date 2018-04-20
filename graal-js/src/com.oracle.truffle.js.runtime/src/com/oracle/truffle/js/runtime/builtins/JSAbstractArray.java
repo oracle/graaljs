@@ -331,6 +331,13 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         if (length > Integer.MAX_VALUE && !(array instanceof SparseArray)) {
             array = SparseArray.makeSparseArray(thisObj, array);
         }
+        if (array.isSealed()) {
+            long minIndex = array.lastElementIndex(thisObj) + 1;
+            if (length < minIndex) {
+                arraySetArrayType(thisObj, array = array.setLength(thisObj, minIndex, doThrow));
+                return array.canDeleteElement(thisObj, minIndex - 1, doThrow);
+            }
+        }
         arraySetArrayType(thisObj, array.setLength(thisObj, length, doThrow));
         return true;
     }
@@ -432,8 +439,13 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
 
     @Override
     public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
-        arraySetArrayType(thisObj, arrayGetArrayType(thisObj).deleteElement(thisObj, index, isStrict));
-        return true;
+        ScriptArray arrayType = arrayGetArrayType(thisObj);
+        if (arrayType.canDeleteElement(thisObj, index, isStrict)) {
+            arraySetArrayType(thisObj, arrayType.deleteElement(thisObj, index, isStrict));
+            return true;
+        } else {
+            return false;
+        }
     }
 
     @TruffleBoundary

@@ -122,13 +122,24 @@ public abstract class ScriptArray {
     }
 
     public final ScriptArray deleteElement(DynamicObject object, long index, boolean strict, boolean condition) {
-        if (isSealed()) {
-            if (strict) {
-                throw Errors.createTypeErrorCannotDeletePropertyOfSealedArray(index);
-            }
-            return this;
-        }
+        assert canDeleteElement(object, index, strict, condition);
         return deleteElementImpl(object, index, strict, condition);
+    }
+
+    public final boolean canDeleteElement(DynamicObject object, long index, boolean strict) {
+        return canDeleteElement(object, index, strict, arrayCondition());
+    }
+
+    public final boolean canDeleteElement(DynamicObject object, long index, boolean strict, boolean condition) {
+        if (isSealed()) {
+            if (hasElement(object, index, condition)) {
+                if (strict) {
+                    throw Errors.createTypeErrorCannotDeletePropertyOfSealedArray(index);
+                }
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -204,6 +215,8 @@ public abstract class ScriptArray {
                 throw Errors.createTypeErrorLengthNotWritable();
             }
             return this;
+        } else if (isSealed()) {
+            assert len >= lastElementIndex(object, condition) + 1; // to be checked by caller
         }
         return setLengthImpl(object, len, condition, profile);
     }
