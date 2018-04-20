@@ -1568,6 +1568,9 @@
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
+    "filePath" : "mjsunit/regress/wasm/regress-712569.js",
+    "status" : "FAIL"
+  }, {
     "filePath" : "mjsunit/regress/wasm/regress-752423.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"

@@ -7636,9 +7636,6 @@
     "filePath" : "language/statements/for-in/head-let-bound-names-fordecl-tdz.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/statements/for-in/head-lhs-let.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/statements/for-in/head-var-bound-names-let.js",
     "status" : "FAIL"
   }, {
