@@ -512,7 +512,6 @@ def buildSvmImage(args):
         mx.logv('Fetch JS version {}'.format(_js_version))
         for _lang in ['js', 'nodejs']:
             _svm.fetch_languages(['--language:{}=version={}'.format(_lang, _js_version)])
-        _svm.fetch_languages(['--language:regex'])
         with _svm.native_image_context() as _native_image:
             _native_image(['--language:nodejs', '-H:JNIConfigurationFiles={}'.format(join(_suite.dir, 'svmnodejs.jniconfig'))] + args)
 
