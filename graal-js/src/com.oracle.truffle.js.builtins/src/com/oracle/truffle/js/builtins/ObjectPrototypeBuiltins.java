@@ -365,7 +365,6 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     @ImportStatic(value = JSInteropUtil.class)
     public abstract static class ObjectPrototypeHasOwnPropertyNode extends ObjectOperation {
 
-        private final JSClassProfile classProfile = JSClassProfile.create();
         @Child private JSHasPropertyNode hasOwnPropertyNode;
         @Child private JSToPropertyKeyNode toPropertyKeyNode;
 
@@ -373,38 +372,38 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        @Specialization
-        protected boolean hasOwnProperty(DynamicObject thisObj, String propertyName) {
+        @Specialization(guards = "isJSObject(thisObj)")
+        protected boolean doJSObjectStringKey(DynamicObject thisObj, String propertyName) {
             return getHasOwnPropertyNode().executeBoolean(thisObj, propertyName);
         }
 
-        @Specialization
-        protected boolean hasOwnProperty(DynamicObject thisObj, int index) {
+        @Specialization(guards = "isJSObject(thisObj)")
+        protected boolean doJSObjectIntKey(DynamicObject thisObj, int index) {
             return getHasOwnPropertyNode().executeBoolean(thisObj, index);
         }
 
-        @Specialization(guards = "isJSObject(thisObj)")
-        protected boolean hasOwnPropertyJSObject(DynamicObject thisObj, Object propName) {
-            Object key = getToPropertyKeyNode().execute(propName); // ordering 15.2.4.5 Note2
-            return JSObject.hasOwnProperty(thisObj, key, classProfile);
+        @Specialization(guards = "isJSObject(thisObj)", replaces = {"doJSObjectStringKey", "doJSObjectIntKey"})
+        protected boolean doJSObjectAnyKey(DynamicObject thisObj, Object propName) {
+            Object key = getToPropertyKeyNode().execute(propName);
+            return getHasOwnPropertyNode().executeBoolean(thisObj, key);
         }
 
         @Specialization(guards = "isNullOrUndefined(thisObj)")
         protected boolean hasOwnPropertyNullOrUndefined(DynamicObject thisObj, Object propName) {
-            getToPropertyKeyNode().execute(propName); // ordering 15.2.4.5 Note2
+            getToPropertyKeyNode().execute(propName); // may have side effect
             throw Errors.createTypeErrorNotObjectCoercible(thisObj);
         }
 
         @Specialization
         protected boolean hasOwnPropertyLazyString(JSLazyString thisObj, Object propName) {
-            Object key = getToPropertyKeyNode().execute(propName); // ordering 15.2.4.5 Note2
-            return JSObject.hasOwnProperty(toObject(thisObj), key, classProfile);
+            return hasOwnPropertyPrimitive(thisObj, propName);
         }
 
         @Specialization(guards = "!isTruffleObject(thisObj)")
         protected boolean hasOwnPropertyPrimitive(Object thisObj, Object propName) {
-            Object key = getToPropertyKeyNode().execute(propName); // ordering 15.2.4.5 Note2
-            return JSObject.hasOwnProperty(toObject(thisObj), key, classProfile);
+            Object key = getToPropertyKeyNode().execute(propName);
+            DynamicObject obj = toObject(thisObj);
+            return getHasOwnPropertyNode().executeBoolean(obj, key);
         }
 
         @Specialization
@@ -415,7 +414,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "isForeignObject(thisObj)")
         protected boolean hasOwnPropertyForeign(TruffleObject thisObj, Object propName,
                         @Cached("createRead()") Node readNode) {
-            Object key = getToPropertyKeyNode().execute(propName); // ordering 15.2.4.5 Note2
+            Object key = getToPropertyKeyNode().execute(propName);
             Object value;
             try {
                 value = ForeignAccess.sendRead(readNode, thisObj, key);
