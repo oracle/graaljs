@@ -45,12 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -412,18 +407,8 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isForeignObject(thisObj)")
-        protected boolean hasOwnPropertyForeign(TruffleObject thisObj, Object propName,
-                        @Cached("createRead()") Node readNode) {
-            Object key = getToPropertyKeyNode().execute(propName);
-            Object value;
-            try {
-                value = ForeignAccess.sendRead(readNode, thisObj, key);
-            } catch (UnknownIdentifierException e) {
-                return false;
-            } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(thisObj, e, Message.READ, this);
-            }
-            return (value != null && value != Null.instance);
+        protected boolean hasOwnPropertyForeign(TruffleObject thisObj, Object propName) {
+            return getHasOwnPropertyNode().executeBoolean(thisObj, propName);
         }
 
         public JSHasPropertyNode getHasOwnPropertyNode() {
