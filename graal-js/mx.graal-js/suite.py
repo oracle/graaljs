@@ -6,6 +6,15 @@ suite = {
   "imports" : {
     "suites" : [
         {
+           "name" : "regex",
+           "subdir" : True,
+           "version" : "f9116363b929ae9375e44640650d5fe8e378bd6a",
+           "urls" : [
+                {"url" : "https://github.com/graalvm/graal.git", "kind" : "git"},
+                {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
+            ]
+        },
+        {
            "name" : "tools",
            "subdir" : True,
            "version" : "1f2fbfb014677bd1f16bcb98ebe998e904a5a7b9",
@@ -109,7 +118,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.js.runtime.doubleconv",
-        "com.oracle.truffle.regex",
+        "regex:TREGEX",
         "com.oracle.truffle.regex.nashorn",
         "mx:ASM_DEBUG_ALL",
         "ICU4J",
@@ -244,19 +253,6 @@ suite = {
       "workingSets" : "Truffle,Regex",
     },
 
-    "com.oracle.truffle.regex" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "truffle:TRUFFLE_API",
-        "sdk:GRAAL_SDK",
-      ],
-      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-      "checkstyle" : "com.oracle.truffle.js.runtime",
-      "javaCompliance" : "1.8",
-      "workingSets" : "Truffle,Regex",
-    },
-
     "com.oracle.truffle.js.stats" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -362,7 +358,7 @@ suite = {
       "subDir" : "src",
       "dependencies" : ["graaljs"],
       "distDependencies" : [
-        "TREGEX",
+        "regex:TREGEX",
         "truffle:TRUFFLE_API",
         "sdk:GRAAL_SDK",
       ],
@@ -407,15 +403,6 @@ suite = {
         "GRAALJS",
       ],
       "maven" : False,
-    },
-
-    "TREGEX" : {
-      "subDir" : "src",
-      "dependencies" : ["com.oracle.truffle.regex"],
-      "distDependencies" : [
-        "truffle:TRUFFLE_API",
-        "sdk:GRAAL_SDK"
-      ],
     },
 
     "TRUFFLE_STATS" : {
