@@ -43,11 +43,13 @@ package com.oracle.truffle.js.test.instrumentation;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class IncDecOperationTest extends FineGrainedAccessTest {
 
@@ -131,26 +133,54 @@ public class IncDecOperationTest extends FineGrainedAccessTest {
     @Test
     public void incLocal() {
         evalAllTags("function inc(a) { var x = a++; return x; }; inc(42);");
+        assertAllLocalOperations("+", 43);
+    }
 
-        assertGlobalVarDeclaration("a", 42);
+    @Test
+    public void decLocal() {
+        evalAllTags("function inc(a) { var x = a--; return x; }; inc(42);");
+        assertAllLocalOperations("-", 41);
+    }
 
-        // Inc operation de-sugared to a = a + 1;
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
-            assertAttribute(e, KEY, "a");
-            write.input(assertJSObjectInput);
-            enter(BinaryExpressionTag.class, (e1, bin) -> {
-                assertAttribute(e1, OPERATOR, "+");
-                // read lhs global 'a'
-                enter(ReadVariableExpressionTag.class, (e2, p) -> {
-                    assertAttribute(e2, KEY, "a");
-                    p.input(assertGlobalObjectInput);
-                }).exit(assertReturnValue(42));
-                bin.input(42);
-                // read rhs '1'
-                enter(LiteralExpressionTag.class).exit(assertReturnValue(1));
-                bin.input(1);
+    private void assertAllLocalOperations(String operator, int valueSet) {
+        assertGlobalFunctionExpressionDeclaration("inc");
+
+        enter(FunctionCallExpressionTag.class, (e1, p1) -> {
+            // Read target and arguments
+            enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+            p1.input(Undefined.instance);
+            enter(ReadPropertyExpressionTag.class, (e2, p2) -> {
+                assertAttribute(e2, KEY, "inc");
+                p2.input(assertGlobalObjectInput);
+            }).exit(assertJSFunctionReturn);
+            p1.input(assertJSFunctionInput);
+            enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+            p1.input(42);
+            // Enter function
+            enter(WriteVariableExpressionTag.class, (e3, p3) -> {
+                assertAttribute(e3, NAME, "x");
+                enter(WriteVariableExpressionTag.class, (e4, p4) -> {
+                    assertAttribute(e4, NAME, "a");
+                    // De-sugared to a = a + 1;
+                    enter(BinaryExpressionTag.class, (e5, p5) -> {
+                        assertAttribute(e5, OPERATOR, operator);
+                        enter(ReadVariableExpressionTag.class, (e6, p6) -> {
+                            assertAttribute(e6, NAME, "a");
+                        }).exit(assertReturnValue(42));
+                        p5.input(42);
+                        enter(LiteralExpressionTag.class).exit(assertReturnValue(1));
+                        p5.input(1);
+                    }).exit();
+                    // Write to 'a' sets new value
+                    p4.input(valueSet);
+                }).exit();
+                // expression returns 42
+                p3.input(42);
             }).exit();
-            write.input(43);
+            // return x;
+            enter(ReadVariableExpressionTag.class, (e6, p6) -> {
+                assertAttribute(e6, NAME, "x");
+            }).exit(assertReturnValue(42));
         }).exit();
     }
 }
