@@ -2001,8 +2001,10 @@ public final class GraalJSAccess {
     private void isolatePerformGC() {
         NativeAccess.notifyGCCallbacks(true);
         pollWeakCallbackQueue(true);
-        System.gc();
-        pollWeakCallbackQueue(true);
+        for (int i = 0; i < 3; i++) {
+            System.gc();
+            pollWeakCallbackQueue(true);
+        }
         NativeAccess.notifyGCCallbacks(false);
     }
 
