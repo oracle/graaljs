@@ -57,13 +57,25 @@ test-performance-function                                          : FAIL
 test-buffer-bindingobj-no-zerofill                                 : SKIP
 
 # tracing is not supported
-test-trace-event                                                   : FAIL
+test-trace-events-all                                              : SKIP
+test-trace-events-async-hooks                                      : SKIP
+test-trace-events-binding                                          : SKIP
+test-trace-events-category-used                                    : SKIP
+test-trace-events-process-exit                                     : SKIP
+test-trace-events-v8                                               : SKIP
 
 # WebAssembly is not supported
 test-wasm-simple                                                   : FAIL
 
+# Tests some V8 options
+test-cli-node-options                                              : FAIL
+
+# Unstable test - triggers stack-overflow that is not handled well
+# by graal.js/truffle sometimes
+test-async-wrap-pop-id-during-load                                 : SKIP
+
 # unclassified
-test-buffer-slow                                                   : FAIL
+test-async-hooks-recursive-stack                                   : SKIP
 test-crypto-fips                                                   : FAIL
 test-domain-no-error-handler-abort-on-uncaught-0                   : FAIL
 test-domain-no-error-handler-abort-on-uncaught-1                   : FAIL
