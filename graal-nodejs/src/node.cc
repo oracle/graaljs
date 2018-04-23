@@ -4128,7 +4128,7 @@ static void ParseArgs(int* argc,
     } else if (strcmp(arg, "--force-async-hooks-checks") == 0) {
       force_async_hooks_checks = true;
     } else if (strcmp(arg, "--trace-events-enabled") == 0) {
-      trace_enabled = true;
+      fprintf(stderr, "Tracing is not supported by graal-node.js!\n");
     } else if (strcmp(arg, "--trace-event-categories") == 0) {
       const char* categories = argv[index + 1];
       if (categories == nullptr) {
