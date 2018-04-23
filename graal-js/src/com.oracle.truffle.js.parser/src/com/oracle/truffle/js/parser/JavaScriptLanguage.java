@@ -89,6 +89,10 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeleteExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
@@ -147,6 +151,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
                 ReadVariableExpressionTag.class,
                 LiteralExpressionTag.class,
                 FunctionCallExpressionTag.class,
+                DeleteExpressionTag.class,
                 // Statements and builtins
                 BuiltinRootTag.class,
                 EvalCallTag.class,
