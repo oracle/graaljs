@@ -156,6 +156,11 @@ public class IncDecOperationTest extends FineGrainedAccessTest {
             p1.input(assertJSFunctionInput);
             enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
             p1.input(42);
+            // Set local argument 'a'
+            enter(WriteVariableExpressionTag.class, (e3, p3) -> {
+                assertAttribute(e3, NAME, "a");
+                p3.input(42);
+            }).exit();
             // Enter function
             enter(WriteVariableExpressionTag.class, (e3, p3) -> {
                 assertAttribute(e3, NAME, "x");

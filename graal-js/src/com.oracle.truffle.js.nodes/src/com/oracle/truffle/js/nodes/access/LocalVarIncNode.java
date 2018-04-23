@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -50,7 +49,6 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -60,7 +58,6 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.binary.JSAddNode;
 import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.runtime.JSRuntime;
