@@ -191,7 +191,7 @@ class LocalVarPostFixIncMaterializedNode extends LocalVarIncNode {
     @Child protected JavaScriptNode opNode;
     @Child protected JavaScriptNode one;
 
-    public LocalVarPostFixIncMaterializedNode(LocalVarPostfixIncNode from) {
+    LocalVarPostFixIncMaterializedNode(LocalVarPostfixIncNode from) {
         super(from.op, from.frameSlot, from.hasTemporalDeadZone, from.scopeFrameNode);
         readTmp = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
         one = JSConstantIntegerNode.create(1);
