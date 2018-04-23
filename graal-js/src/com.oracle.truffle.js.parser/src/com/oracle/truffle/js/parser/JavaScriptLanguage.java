@@ -212,6 +212,11 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                         context.interopBoundaryExit();
                     }
                 }
+
+                @Override
+                public boolean isInternal() {
+                    return true;
+                }
             };
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
             context.getCodeCache().putIfAbsent(source, callTarget);
