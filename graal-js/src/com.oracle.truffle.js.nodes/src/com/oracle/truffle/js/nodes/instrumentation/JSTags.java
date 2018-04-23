@@ -151,13 +151,31 @@ public class JSTags {
      * Tagged nodes provide the following metadata:
      * <ul>
      * <li><b>operator</b> A <code>String</code> representation of the operator. Examples are:
-     * <code>!</code>, <code>~</code>, <code>delete</code> etc.</li>
+     * <code>!</code>, <code>~</code> etc.</li>
      * </ul>
      * </p>
      */
     @Tag.Identifier("UnaryExpression")
     public static final class UnaryExpressionTag extends Tag {
         private UnaryExpressionTag() {
+        }
+    }
+
+    /**
+     * ECMA2018 12.5.3 Delete expressions.
+     *
+     * Marks all code locations that remove a property from an object using <code>delete</code>.
+     * <p>
+     * Delete expressions have only two input Intermediate value:
+     * <ul>
+     * <li><b>#0 Target</b> The target object instance.</li>
+     * <li><b>#1 Key</b> The property name.</li>
+     * </ul>
+     * </p>
+     */
+    @Tag.Identifier("DeleteExpression")
+    public static final class DeleteExpressionTag extends Tag {
+        private DeleteExpressionTag() {
         }
     }
 

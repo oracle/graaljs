@@ -51,6 +51,7 @@ import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -65,6 +66,7 @@ import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeleteExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -100,6 +102,15 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     public static DeletePropertyNode create(JavaScriptNode object, JavaScriptNode property, boolean strict) {
         return DeletePropertyNodeGen.create(strict, object, property);
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == DeleteExpressionTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
     }
 
     @Override
