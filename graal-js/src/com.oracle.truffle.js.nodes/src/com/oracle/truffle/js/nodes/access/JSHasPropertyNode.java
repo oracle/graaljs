@@ -48,7 +48,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -76,8 +75,9 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
 
     private final boolean hasOwnProperty;
     private final JSClassProfile classProfile = JSClassProfile.create();
-    private final ValueProfile arrayType = ValueProfile.createClassProfile();
-    private final ConditionProfile simpleCheck = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile hasElementProfile = ConditionProfile.createBinaryProfile();
+
+    static final int MAX_ARRAY_TYPES = 3;
 
     protected JSHasPropertyNode(boolean hasOwnProperty) {
         this.hasOwnProperty = hasOwnProperty;
@@ -97,22 +97,33 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
 
     public abstract boolean executeBoolean(TruffleObject object, long index);
 
-    @Specialization(guards = "isJSFastArray(object)")
-    public boolean arrayInt(DynamicObject object, int propertyIdx) {
-        return checkInteger(object, propertyIdx);
+    @Specialization(guards = {"isJSFastArray(object)", "isArrayIndex(index)", "cachedArrayType.isInstance(getArrayType(object))"}, limit = "MAX_ARRAY_TYPES")
+    public boolean arrayIntCached(DynamicObject object, int index,
+                    @Cached("getArrayType(object)") ScriptArray cachedArrayType) {
+        return checkInteger(object, index, cachedArrayType.cast(getArrayType(object)));
     }
 
-    @Specialization(guards = "isJSFastArray(object)")
-    public boolean arrayLong(DynamicObject object, long propertyIdx) {
-        return checkInteger(object, propertyIdx);
+    @Specialization(guards = {"isJSFastArray(object)", "isArrayIndex(index)", "cachedArrayType.isInstance(getArrayType(object))"}, limit = "MAX_ARRAY_TYPES")
+    public boolean arrayLongCached(DynamicObject object, long index,
+                    @Cached("getArrayType(object)") ScriptArray cachedArrayType) {
+        return checkInteger(object, index, cachedArrayType.cast(getArrayType(object)));
     }
 
-    private boolean checkInteger(DynamicObject object, long propertyIdx) {
-        ScriptArray array = arrayType.profile(JSAbstractArray.arrayGetArrayType(object));
-        if (simpleCheck.profile(array.hasElement(object, propertyIdx, JSArray.isJSFastArray(object)))) {
+    @Specialization(guards = {"isJSFastArray(object)", "isArrayIndex(index)"}, replaces = {"arrayIntCached"})
+    public boolean arrayInt(DynamicObject object, int index) {
+        return checkInteger(object, index, getArrayType(object));
+    }
+
+    @Specialization(guards = {"isJSFastArray(object)", "isArrayIndex(index)"}, replaces = {"arrayLongCached"})
+    public boolean arrayLong(DynamicObject object, long index) {
+        return checkInteger(object, index, getArrayType(object));
+    }
+
+    private boolean checkInteger(DynamicObject object, long index, ScriptArray arrayType) {
+        if (hasElementProfile.profile(arrayType.hasElement(object, index, JSArray.isJSFastArray(object)))) {
             return true;
         } else {
-            return objectLong(object, propertyIdx);
+            return objectLong(object, index);
         }
     }
 
@@ -203,6 +214,10 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
             return JSObject.getJSClass(obj);
         }
         return null;
+    }
+
+    protected static ScriptArray getArrayType(DynamicObject object) {
+        return JSAbstractArray.arrayGetArrayType(object);
     }
 
     protected HasPropertyCacheNode getCachedPropertyGetter(DynamicObject object, Object key) {
