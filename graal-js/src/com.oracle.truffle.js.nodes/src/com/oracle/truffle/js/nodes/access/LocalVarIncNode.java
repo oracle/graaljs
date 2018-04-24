@@ -184,14 +184,14 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
     }
 }
 
-class LocalVarPostFixIncMaterializedNode extends LocalVarIncNode {
+class LocalVarPostfixIncMaterializedNode extends LocalVarIncNode {
 
     @Child protected JavaScriptNode writeTmp;
     @Child protected JavaScriptNode readTmp;
     @Child protected JavaScriptNode opNode;
     @Child protected JavaScriptNode one;
 
-    LocalVarPostFixIncMaterializedNode(LocalVarPostfixIncNode from) {
+    LocalVarPostfixIncMaterializedNode(LocalVarPostfixIncNode from) {
         super(from.op, from.frameSlot, from.hasTemporalDeadZone, from.scopeFrameNode);
         readTmp = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
         one = JSConstantIntegerNode.create(1);
@@ -201,11 +201,11 @@ class LocalVarPostFixIncMaterializedNode extends LocalVarIncNode {
             opNode = JSAddNode.create(readTmp, one);
         }
         writeTmp = JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, opNode, hasTemporalDeadZone);
-        readTmp.setSourceSection(from.getSourceSection());
-        one.setSourceSection(from.getSourceSection());
-        opNode.setSourceSection(from.getSourceSection());
-        writeTmp.setSourceSection(from.getSourceSection());
-        this.setSourceSection(from.getSourceSection());
+        transferSourceSectionNoTags(from, readTmp);
+        transferSourceSectionNoTags(from, one);
+        transferSourceSectionNoTags(from, writeTmp);
+        transferSourceSectionNoTags(from, opNode);
+        transferSourceSection(from, this);
     }
 
     @Override
@@ -227,7 +227,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ReadVariableExpressionTag.class) ||
                         materializedTags.contains(WriteVariableExpressionTag.class)) {
-            return new LocalVarPostFixIncMaterializedNode(this);
+            return new LocalVarPostfixIncMaterializedNode(this);
         } else {
             return this;
         }
