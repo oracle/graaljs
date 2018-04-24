@@ -1577,6 +1577,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile needMoveDeleteBranch = BranchProfile.create();
         private final BranchProfile needLoopDeleteBranch = BranchProfile.create();
         private final BranchProfile needFillBranch = BranchProfile.create();
+        private final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
 
         @Specialization
         protected DynamicObject splice(Object thisArg, Object[] args) {
@@ -1607,12 +1608,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 spliceRead(thisObj, actualStart, actualDeleteCount, aObj, len);
             }
 
-            if (JSArray.isJSArray(thisObj)) {
+            boolean isJSArray = JSArray.isJSArray(thisObj);
+            if (isJSArray) {
                 DynamicObject dynObj = (DynamicObject) thisObj;
-                if (arrayElementwise.profile(mustUseElementwise(dynObj))) {
+                ScriptArray arrayType = arrayTypeProfile.profile(arrayGetArrayType(dynObj, isJSArray));
+                if (arrayElementwise.profile(mustUseElementwise(dynObj, arrayType))) {
                     spliceIntlArrayElementwise(dynObj, len, actualStart, actualDeleteCount, itemCount);
                 } else {
-                    spliceIntlArrayBlockwise(dynObj, actualStart, actualDeleteCount, itemCount);
+                    spliceIntlArrayBlockwise(dynObj, actualStart, actualDeleteCount, itemCount, arrayType);
                 }
             } else {
                 objectBranch.enter();
@@ -1633,8 +1636,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return aObj;
         }
 
-        private boolean mustUseElementwise(DynamicObject obj) {
-            ScriptArray array = arrayGetArrayType(obj);
+        private boolean mustUseElementwise(DynamicObject obj, ScriptArray array) {
             return array instanceof SparseArray || array.isLengthNotWritable() || JSObject.getPrototype(obj) != getContext().getRealm().getArrayConstructor().getPrototype() ||
                             !getContext().getArrayPrototypeNoElementsAssumption().isValid() || (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj));
         }
@@ -1748,9 +1750,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private void spliceIntlArrayBlockwise(DynamicObject thisObj, long actualStart, long actualDeleteCount, long itemCount) {
+        private void spliceIntlArrayBlockwise(DynamicObject thisObj, long actualStart, long actualDeleteCount, long itemCount, ScriptArray array) {
             assert JSArray.isJSArray(thisObj); // contract
-            ScriptArray array = arrayGetArrayType(thisObj);
             if (itemCount < actualDeleteCount) {
                 branchA.enter();
                 arraySetArrayType(thisObj, array.removeRange(thisObj, actualStart + itemCount, actualStart + actualDeleteCount, errorBranch));
