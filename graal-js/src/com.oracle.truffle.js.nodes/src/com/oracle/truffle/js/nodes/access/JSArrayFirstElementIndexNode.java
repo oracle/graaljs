@@ -87,13 +87,27 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
         return getArrayType(object, isArray).firstElementIndex(object);
     }
 
-    @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"})
-    public long doWithHoles(DynamicObject object, long length, boolean isArray,
+    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object, isArray) == cachedArrayType", "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
+    public long doWithHolesCached(DynamicObject object, long length, boolean isArray,
+                    @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
+                    @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached("createBinaryProfile()") ConditionProfile isZero) {
+        assert isSupportedArray(object) && cachedArrayType == getArrayType(object, isArray);
+        return holesArrayImpl(object, length, cachedArrayType, nextElementIndexNode, isZero);
+    }
+
+    @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "doWithHolesCached")
+    public long doWithHolesUncached(DynamicObject object, long length, boolean isArray,
                     @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile isZero,
-                    @Cached("createClassProfile()") ValueProfile arrayType) {
+                    @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
         assert isSupportedArray(object);
-        ScriptArray array = arrayType.profile(getArrayType(object, isArray));
+        ScriptArray array = arrayTypeProfile.profile(getArrayType(object, isArray));
+        return holesArrayImpl(object, length, array, nextElementIndexNode, isZero);
+    }
+
+    private long holesArrayImpl(DynamicObject object, long length, ScriptArray array,
+                    JSArrayNextElementIndexNode nextElementIndexNode, ConditionProfile isZero) {
         long firstIndex = array.firstElementIndex(object);
         if (isZero.profile(firstIndex == 0)) {
             return firstIndex;

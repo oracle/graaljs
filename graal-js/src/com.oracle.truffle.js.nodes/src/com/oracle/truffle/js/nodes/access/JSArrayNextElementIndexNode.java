@@ -87,13 +87,28 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
         return getArrayType(object, isArray).nextElementIndex(object, currentIndex, isArray);
     }
 
-    @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"})
-    public long nextWithHoles(DynamicObject object, long currentIndex, long length, boolean isArray,
+    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object, isArray) == cachedArrayType", "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
+    public long nextWithHolesCached(DynamicObject object, long currentIndex, long length, boolean isArray,
+                    @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
+                    @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached("createBinaryProfile()") ConditionProfile isPlusOne) {
+        assert isSupportedArray(object) && cachedArrayType == getArrayType(object, isArray);
+        return holesArrayImpl(object, currentIndex, length, isArray, cachedArrayType, nextElementIndexNode, isPlusOne);
+    }
+
+    @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "nextWithHolesCached")
+    public long nextWithHolesUncached(DynamicObject object, long currentIndex, long length, boolean isArray,
                     @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile isPlusOne,
-                    @Cached("createClassProfile()") ValueProfile arrayType) {
+                    @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
         assert isSupportedArray(object);
-        long nextIndex = arrayType.profile(getArrayType(object, isArray)).nextElementIndex(object, currentIndex, isArray);
+        ScriptArray arrayType = arrayTypeProfile.profile(getArrayType(object, isArray));
+        return holesArrayImpl(object, currentIndex, length, isArray, arrayType, nextElementIndexNode, isPlusOne);
+    }
+
+    private long holesArrayImpl(DynamicObject object, long currentIndex, long length, boolean isArray, ScriptArray array,
+                    JSArrayNextElementIndexNode nextElementIndexNode, ConditionProfile isPlusOne) {
+        long nextIndex = array.nextElementIndex(object, currentIndex, isArray);
         long plusOne = currentIndex + 1;
         if (isPlusOne.profile(nextIndex == plusOne)) {
             return nextIndex;
