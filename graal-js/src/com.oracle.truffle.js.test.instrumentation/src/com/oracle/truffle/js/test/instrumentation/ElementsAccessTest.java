@@ -154,4 +154,22 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
         }).exit();
     }
 
+    @Test
+    public void exprBlockTest() {
+        evalWithTag("(function() {" +
+                        "  var self = {" +
+                        "    cursorState : {" +
+                        "      documents : ['foo', 'bar']," +
+                        "      cursorIndex : 1" +
+                        "    }" +
+                        "  };" +
+                        "  var doc = self.cursorState.documents[self.cursorState.cursorIndex++];" +
+                        "})()", ReadElementExpressionTag.class);
+
+        enter(ReadElementExpressionTag.class, (e, b) -> {
+            b.input(assertJSArrayInput);
+            b.input(1);
+        }).exit();
+    }
+
 }
