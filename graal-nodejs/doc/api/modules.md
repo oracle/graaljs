@@ -468,7 +468,7 @@ added: v0.1.27
 
 * {string}
 
-The directory name of the current module. This the same as the
+The directory name of the current module. This is the same as the
 [`path.dirname()`][] of the [`__filename`][].
 
 Example: running `node example.js` from `/Users/mjr`
@@ -626,9 +626,11 @@ added: v8.9.0
 -->
 
 * `request` {string} The module path whose lookup paths are being retrieved.
-* Returns: {Array}
+* Returns: {Array|null}
 
-Returns an array containing the paths searched during resolution of `request`.
+Returns an array containing the paths searched during resolution of `request` or
+null if the `request` string references a core module, for example `http` or
+`fs`.
 
 ## The `module` Object
 <!-- YAML
@@ -818,6 +820,28 @@ The `module.require` method provides a way to load a module as if
 `module` object.  Since `require()` returns the `module.exports`, and the
 `module` is typically *only* available within a specific module's code, it must
 be explicitly exported in order to be used.
+
+## The `Module` Object
+
+<!-- YAML
+added: v0.3.7
+-->
+
+* {Object}
+
+Provides general utility methods when interacting with instances of
+`Module` -- the `module` variable often seen in file modules. Accessed
+via `require('module')`.
+
+### module.builtinModules
+<!-- YAML
+added: v8.10.0
+-->
+
+* {string[]}
+
+A list of  the names of all modules provided by Node.js. Can be used to verify
+if a module is maintained by a third-party module or not.
 
 [`__dirname`]: #modules_dirname
 [`__filename`]: #modules_filename

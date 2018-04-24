@@ -37,6 +37,7 @@ if (process.__node_cluster_threading) {
   var vPipe = process.binding('pipe_wrap').Pipe;
 }
 const Pipe = vPipe;
+const { constants: PipeConstants } = process.binding('pipe_wrap');
 const child_process = require('internal/child_process');
 const {
   _validateStdio,
@@ -111,7 +112,7 @@ exports.fork = function(modulePath /*, args, options*/) {
 
 exports._forkChild = function(fd) {
   // set process.send()
-  var p = new Pipe(true);
+  var p = new Pipe(PipeConstants.IPC);
   p.open(fd);
   p.unref();
   const control = setupChannel(process, p);

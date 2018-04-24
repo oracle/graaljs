@@ -110,7 +110,7 @@ static int StartDebugSignalHandler() {
   CHECK_EQ(0, pthread_attr_destroy(&attr));
   if (err != 0) {
     fprintf(stderr, "node[%u]: pthread_create: %s\n",
-            GetProcessId(), strerror(err));
+            uv_os_getpid(), strerror(err));
     fflush(stderr);
     // Leave SIGUSR1 blocked.  We don't install a signal handler,
     // receiving the signal would terminate the process.
@@ -145,7 +145,7 @@ static int StartDebugSignalHandler() {
   DWORD pid;
   LPTHREAD_START_ROUTINE* handler;
 
-  pid = GetCurrentProcessId();
+  pid = uv_os_getpid();
 
   if (GetDebugSignalHandlerMappingName(pid,
                                        mapping_name,
@@ -325,10 +325,12 @@ class NodeInspectorClient : public V8InspectorClient {
   }
 
   void maxAsyncCallStackDepthChanged(int depth) override {
-    if (depth == 0) {
-      env_->inspector_agent()->DisableAsyncHook();
-    } else {
-      env_->inspector_agent()->EnableAsyncHook();
+    if (auto agent = env_->inspector_agent()) {
+      if (depth == 0) {
+        agent->DisableAsyncHook();
+      } else {
+        agent->EnableAsyncHook();
+      }
     }
   }
 
@@ -692,4 +694,3 @@ bool Agent::IsWaitingForConnect() {
 
 }  // namespace inspector
 }  // namespace node
-

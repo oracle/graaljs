@@ -22,7 +22,7 @@
 #include "node.h"
 #include "node_buffer.h"
 
-#include "async-wrap-inl.h"
+#include "async_wrap-inl.h"
 #include "env.h"
 #include "env-inl.h"
 #include "util-inl.h"
@@ -701,4 +701,4 @@ void InitZlib(Local<Object> target,
 }  // anonymous namespace
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_BUILTIN(zlib, node::InitZlib)
+NODE_BUILTIN_MODULE_CONTEXT_AWARE(zlib, node::InitZlib)

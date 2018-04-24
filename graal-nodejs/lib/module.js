@@ -76,6 +76,12 @@ function Module(id, parent) {
   this.children = [];
 }
 
+const builtinModules = Object.keys(NativeModule._source)
+  .filter(NativeModule.nonInternalExists);
+
+Object.freeze(builtinModules);
+Module.builtinModules = builtinModules;
+
 Module._cache = Object.create(null);
 Module._pathCache = Object.create(null);
 Module._extensions = Object.create(null);
@@ -514,11 +520,14 @@ Module._resolveFilename = function(request, parent, isMain, options) {
 
   if (typeof options === 'object' && options !== null &&
       Array.isArray(options.paths)) {
+    const fakeParent = new Module('', null);
+
     paths = [];
 
     for (var i = 0; i < options.paths.length; i++) {
       const path = options.paths[i];
-      const lookupPaths = Module._resolveLookupPaths(path, parent, true);
+      fakeParent.paths = Module._nodeModulePaths(path);
+      const lookupPaths = Module._resolveLookupPaths(request, fakeParent, true);
 
       if (!paths.includes(path))
         paths.push(path);
@@ -712,7 +721,7 @@ Module._initPaths = function() {
     paths.unshift(path.resolve(homeDir, '.node_modules'));
   }
 
-  var nodePath = process.env['NODE_PATH'];
+  var nodePath = process.env.NODE_PATH;
   if (nodePath) {
     paths = nodePath.split(path.delimiter).filter(function(path) {
       return !!path;

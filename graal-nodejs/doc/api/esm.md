@@ -133,7 +133,7 @@ module. This can be one of the following:
 | `format` | Description |
 | --- | --- |
 | `"esm"` | Load a standard JavaScript module |
-| `"cjs"` | Load a node-style CommonJS module |
+| `"commonjs"` | Load a node-style CommonJS module |
 | `"builtin"` | Load a node builtin CommonJS module |
 | `"json"` | Load a JSON file |
 | `"addon"` | Load a [C++ Addon][addons] |
@@ -207,7 +207,7 @@ export async function dynamicInstantiate(url) {
 ```
 
 With the list of module exports provided upfront, the `execute` function will
-then be called at the exact point of module evalutation order for that module
+then be called at the exact point of module evaluation order for that module
 in the import tree.
 
 [Node.js EP for ES Modules]: https://github.com/nodejs/node-eps/blob/master/002-es-modules.md

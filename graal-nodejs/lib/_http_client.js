@@ -566,7 +566,10 @@ function responseKeepAlive(res, req) {
   if (!req.shouldKeepAlive) {
     if (socket.writable) {
       debug('AGENT socket.destroySoon()');
-      socket.destroySoon();
+      if (typeof socket.destroySoon === 'function')
+        socket.destroySoon();
+      else
+        socket.end();
     }
     assert(!socket.writable);
   } else {
@@ -579,7 +582,7 @@ function responseKeepAlive(res, req) {
     socket.removeListener('error', socketErrorListener);
     socket.once('error', freeSocketErrorListener);
     // There are cases where _handle === null. Avoid those. Passing null to
-    // nextTick() will call initTriggerId() to retrieve the id.
+    // nextTick() will call getDefaultTriggerAsyncId() to retrieve the id.
     const asyncId = socket._handle ? socket._handle.getAsyncId() : null;
     // Mark this socket as available, AFTER user-added end
     // handlers have a chance to run.

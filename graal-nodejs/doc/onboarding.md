@@ -38,6 +38,10 @@ onboarding session.
       * Branches in the nodejs/node repository are only for release lines
     * [See "Updating Node.js from Upstream"](./onboarding-extras.md#updating-nodejs-from-upstream)
     * Make a new branch for each PR you submit.
+    * Membership: Consider making your membership in the Node.js GitHub organization
+      public. This makes it easier to identify Collaborators. Instructions on how to
+      do that are available at
+      [Publicizing or hiding organization membership](https://help.github.com/articles/publicizing-or-hiding-organization-membership/).
 
   * Notifications:
     * Use [https://github.com/notifications](https://github.com/notifications) or set up email
@@ -107,7 +111,7 @@ onboarding session.
         (especially if it just has nits left).
   * Approving a change
     * Collaborators indicate that they have reviewed and approve of the
-        the changes in a pull request using Github’s approval interface
+        changes in a pull request using Github’s approval interface
     * Some people like to comment `LGTM` (“Looks Good To Me”)
     * You have the authority to approve any other collaborator’s work.
     * You cannot approve your own pull requests.

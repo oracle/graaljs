@@ -1090,20 +1090,16 @@ if (constants.O_SYMLINK !== undefined) {
   };
 
   fs.lchmodSync = function(path, mode) {
-    var fd = fs.openSync(path, constants.O_WRONLY | constants.O_SYMLINK);
+    const fd = fs.openSync(path, constants.O_WRONLY | constants.O_SYMLINK);
 
     // Prefer to return the chmod error, if one occurs,
     // but still try to close, and report closing errors if they occur.
-    var ret;
+    let ret;
     try {
       ret = fs.fchmodSync(fd, mode);
-    } catch (err) {
-      try {
-        fs.closeSync(fd);
-      } catch (ignore) {}
-      throw err;
+    } finally {
+      fs.closeSync(fd);
     }
-    fs.closeSync(fd);
     return ret;
   };
 }
@@ -1135,13 +1131,25 @@ if (constants.O_SYMLINK !== undefined) {
         callback(err);
         return;
       }
-      fs.fchown(fd, uid, gid, callback);
+      // Prefer to return the chown error, if one occurs,
+      // but still try to close, and report closing errors if they occur.
+      fs.fchown(fd, uid, gid, function(err) {
+        fs.close(fd, function(err2) {
+          callback(err || err2);
+        });
+      });
     });
   };
 
   fs.lchownSync = function(path, uid, gid) {
-    var fd = fs.openSync(path, constants.O_WRONLY | constants.O_SYMLINK);
-    return fs.fchownSync(fd, uid, gid);
+    const fd = fs.openSync(path, constants.O_WRONLY | constants.O_SYMLINK);
+    let ret;
+    try {
+      ret = fs.fchownSync(fd, uid, gid);
+    } finally {
+      fs.closeSync(fd);
+    }
+    return ret;
   };
 }
 
@@ -1942,7 +1950,8 @@ function ReadStream(path, options) {
   this.flags = options.flags === undefined ? 'r' : options.flags;
   this.mode = options.mode === undefined ? 0o666 : options.mode;
 
-  this.start = options.start;
+  this.start = typeof this.fd !== 'number' && options.start === undefined ?
+    0 : options.start;
   this.end = options.end;
   this.autoClose = options.autoClose === undefined ? true : options.autoClose;
   this.pos = undefined;
@@ -2007,7 +2016,7 @@ ReadStream.prototype._read = function(n) {
 
   if (!pool || pool.length - pool.used < kMinPoolSpace) {
     // discard the old pool.
-    allocNewPool(this._readableState.highWaterMark);
+    allocNewPool(this.readableHighWaterMark);
   }
 
   // Grab another reference to the pool in the case that while we're

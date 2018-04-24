@@ -106,6 +106,7 @@ class IsolateData : public v8_inspector::V8InspectorClient {
                          const v8_inspector::StringView& url,
                          unsigned lineNumber, unsigned columnNumber,
                          v8_inspector::V8StackTrace*) override;
+  bool isInspectableHeapObject(v8::Local<v8::Object>) override;
   void maxAsyncCallStackDepthChanged(int depth) override;
 
   TaskRunner* task_runner_;
@@ -125,6 +126,7 @@ class IsolateData : public v8_inspector::V8InspectorClient {
   double current_time_ = 0.0;
   bool log_console_api_message_calls_ = false;
   bool log_max_async_call_stack_depth_changed_ = false;
+  v8::Global<v8::Private> not_inspectable_private_;
 
   DISALLOW_COPY_AND_ASSIGN(IsolateData);
 };

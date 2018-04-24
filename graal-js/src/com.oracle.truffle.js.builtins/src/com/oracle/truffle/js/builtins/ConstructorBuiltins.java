@@ -1335,7 +1335,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
 
             if (badLengthCondition.profile(byteLength > JSTruffleOptions.MaxTypedArrayLength)) {
-                throw Errors.createRangeError("Invalid array buffer length");
+                throw Errors.createRangeError("Array buffer allocation failed");
             }
 
             DynamicObject arrayBuffer;

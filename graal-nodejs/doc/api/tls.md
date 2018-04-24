@@ -455,7 +455,10 @@ changes:
     description: ALPN options are supported now.
 -->
 
-* `socket` {net.Socket} An instance of [`net.Socket`][]
+* `socket` {net.Socket|stream.Duplex}
+  On the server side, any `Duplex` stream. On the client side, any
+  instance of [`net.Socket`][] (for generic `Duplex` stream support
+  on the client side, [`tls.connect()`][] must be used).
 * `options` {Object}
   * `isServer`: The SSL/TLS protocol is asymmetrical, TLSSockets must know if
     they are to behave as a server or a client. If `true` the TLS socket will be
@@ -518,7 +521,7 @@ added: v0.11.4
 
 Returns the bound address, the address family name, and port of the
 underlying socket as reported by the operating system. Returns an
-object with three properties, e.g.,
+object with three properties, e.g.
 `{ port: 12346, family: 'IPv4', address: '127.0.0.1' }`
 
 ### tlsSocket.authorizationError
@@ -558,12 +561,12 @@ Always returns `true`. This may be used to distinguish TLS sockets from regular
 added: v0.11.4
 -->
 
-Returns an object representing the cipher name and the SSL/TLS protocol version
-that first defined the cipher.
+Returns an object representing the cipher name. The `version` key is a legacy
+field which always contains the value `'TLSv1/SSLv3'`.
 
 For example: `{ name: 'AES256-SHA', version: 'TLSv1/SSLv3' }`
 
-See `SSL_CIPHER_get_name()` and `SSL_CIPHER_get_version()` in
+See `SSL_CIPHER_get_name()` in
 https://www.openssl.org/docs/man1.0.2/ssl/SSL_CIPHER_get_name.html for more
 information.
 
@@ -815,10 +818,12 @@ changes:
   * `port` {number} Port the client should connect to.
   * `path` {string} Creates unix socket connection to path. If this option is
     specified, `host` and `port` are ignored.
-  * `socket` {net.Socket} Establish secure connection on a given socket rather
-    than creating a new socket. If this option is specified, `path`, `host` and
-    `port` are ignored.  Usually, a socket is already connected when passed to
-    `tls.connect()`, but it can be connected later. Note that
+  * `socket` {stream.Duplex} Establish secure connection on a given socket
+    rather than creating a new socket. Typically, this is an instance of
+    [`net.Socket`][], but any `Duplex` stream is allowed.
+    If this option is specified, `path`, `host` and `port` are ignored,
+    except for certificate validation.  Usually, a socket is already connected
+    when passed to `tls.connect()`, but it can be connected later. Note that
     connection/disconnection/destruction of `socket` is the user's
     responsibility, calling `tls.connect()` will not cause `net.connect()` to be
     called.
@@ -841,7 +846,7 @@ changes:
   * `servername`: {string} Server name for the SNI (Server Name Indication) TLS
     extension.
   * `checkServerIdentity(servername, cert)` {Function} A callback function
-    to be used (instead of the builtin `tls.checkServerIdentity()` function)
+    to be used (instead of the builtin `tls.checkServerIdentity()` function)
     when checking the server's hostname (or the provided `servername` when
     explicitly set) against the certificate. This should return an {Error} if
     verification fails. The method should return `undefined` if the `servername`

@@ -19,6 +19,7 @@ if (process.__node_cluster_threading) {
 const Process = vProcess;
 const Pipe = vPipe;
 const { WriteWrap } = process.binding('stream_wrap');
+const { constants: PipeConstants } = process.binding('pipe_wrap');
 const { TTY } = process.binding('tty_wrap');
 const { TCP } = process.binding('tcp_wrap');
 const { UDP } = process.binding('udp_wrap');
@@ -863,7 +864,7 @@ function _validateStdio(stdio, sync) {
       };
 
       if (!sync)
-        a.handle = new Pipe();
+        a.handle = new Pipe(PipeConstants.SOCKET);
 
       acc.push(a);
     } else if (stdio === 'ipc') {
@@ -876,8 +877,7 @@ function _validateStdio(stdio, sync) {
           throw new errors.Error('ERR_IPC_SYNC_FORK');
       }
 
-      // (db) the extra arg to start server-side pipe endpoint for threads
-      ipc = new Pipe(true, /* is server? */ true);
+      ipc = new Pipe(PipeConstants.IPC);
       ipcFd = i;
 
       acc.push({

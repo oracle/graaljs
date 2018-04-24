@@ -1768,7 +1768,7 @@ void Http2Session::Goaway(const FunctionCallbackInfo<Value>& args) {
   int32_t lastStreamID = args[1]->Int32Value(context).ToChecked();
   Local<Value> opaqueData = args[2];
 
-  uint8_t* data = NULL;
+  uint8_t* data = nullptr;
   size_t length = 0;
 
   if (opaqueData->BooleanValue(context).ToChecked()) {
@@ -2250,4 +2250,4 @@ HTTP_STATUS_CODES(V)
 }  // namespace http2
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_BUILTIN(http2, node::http2::Initialize)
+NODE_BUILTIN_MODULE_CONTEXT_AWARE(http2, node::http2::Initialize)

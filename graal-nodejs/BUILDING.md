@@ -95,7 +95,7 @@ Depending on host platform, the selection of toolchains may vary.
 
 ### Unix / macOS
 
-Prerequisites:
+#### Prerequisites
 
 * `gcc` and `g++` 4.9.4 or newer, or
 * `clang` and `clang++` 3.4.2 or newer (macOS: latest Xcode Command Line Tools)
@@ -121,6 +121,8 @@ directory and the symbolic `node` link in the project's root directory.
 On FreeBSD and OpenBSD, you may also need:
 * libexecinfo
 
+#### Building Node.js
+
 To build Node.js:
 
 ```console
@@ -139,13 +141,26 @@ for more information.
 Note that the above requires that `python` resolve to Python 2.6 or 2.7
 and not a newer version.
 
-To run the tests:
+#### Running Tests
+
+To verify the build:
+
+```console
+$ make test-only
+```
+
+At this point, you are ready to make code changes and re-run the tests.
+
+If you are running tests prior to submitting a Pull Request, the recommended
+command is:
 
 ```console
 $ make test
 ```
 
-At this point you are ready to make code changes and re-run the tests!
+`make test` does a full check on the codebase, including running linters and
+documentation tests.
+
 Optionally, continue below.
 
 To run the tests and generate code coverage reports:
@@ -166,6 +181,8 @@ reports:
 ```console
 $ make coverage-clean
 ```
+
+#### Building the documentation
 
 To build the documentation:
 
@@ -218,8 +235,11 @@ Prerequisites:
 * Basic Unix tools required for some tests,
   [Git for Windows](http://git-scm.com/download/win) includes Git Bash
   and tools which can be included in the global `PATH`.
+* **Optional** (to build the MSI): the [WiX Toolset v3.11](http://wixtoolset.org/releases/)
+  and the [Wix Toolset Visual Studio 2017 Extension](https://marketplace.visualstudio.com/items?itemName=RobMensching.WixToolsetVisualStudio2017Extension).
 
-If the path to your build directory contains a space, the build will likely fail.
+If the path to your build directory contains a space or a non-ASCII character, the
+build will likely fail.
 
 ```console
 > .\vcbuild
@@ -389,3 +409,26 @@ and [user guide](https://openssl.org/docs/fips/UserGuide-2.0.pdf).
    `/usr/local/ssl/fips-2.0`
 8. Build Node.js with `make -j`
 9. Verify with `node -p "process.versions.openssl"` (for example `1.0.2a-fips`)
+
+## Building Node.js with external core modules
+
+It is possible to specify one or more JavaScript text files to be bundled in
+the binary as builtin modules when building Node.js.
+
+### Unix / macOS
+
+This command will make `/root/myModule.js` available via
+`require('/root/myModule')` and `./myModule2.js` available via
+`require('myModule2')`.
+
+```console
+$ ./configure --link-module '/root/myModule.js' --link-module './myModule2.js'
+```
+
+### Windows
+
+To make `./myCustomModule.js` available via `require('myCustomModule')`.
+
+```console
+> .\vcbuild link-module './myCustomModule.js'
+```

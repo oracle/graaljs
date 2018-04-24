@@ -4,7 +4,7 @@
 
 * [Issues and Pull Requests](#issues-and-pull-requests)
   - [Managing Issues and Pull Requests](#managing-issues-and-pull-requests)
-  - [Welcoming First-Time Contributiors](#welcoming-first-time-contributiors)
+  - [Welcoming First-Time Contributors](#welcoming-first-time-contributors)
   - [Closing Issues and Pull Requests](#closing-issues-and-pull-requests)
 * [Accepting Modifications](#accepting-modifications)
   - [Code Reviews and Consensus Seeking](#code-reviews-and-consensus-seeking)
@@ -33,7 +33,7 @@
     - [How is an LTS release cut?](#how-is-an-lts-release-cut)
 
 This document contains information for Collaborators of the Node.js
-project regarding maintaining the code, documentation, and issues.
+project regarding managing the project's code, documentation, and issue tracker.
 
 Collaborators should be familiar with the guidelines for new
 contributors in [CONTRIBUTING.md](./CONTRIBUTING.md) and also
@@ -52,11 +52,11 @@ may also notify other qualified parties for more input on an issue
 or a pull request.
 [See "Who to CC in issues"](./doc/onboarding-extras.md#who-to-cc-in-issues)
 
-### Welcoming First-Time Contributiors
+### Welcoming First-Time Contributors
 
 Courtesy should always be shown to individuals submitting issues and pull
 requests to the Node.js project. Be welcoming to first-time contributors,
-identified by the GitHub ![badge](./doc/first_timer_badge.png) badge.
+identified by the GitHub ![First-time contributor](./doc/first_timer_badge.png) badge.
 
 For first-time contributors, check if the commit author is the same as the
 pull request author, and ask if they have configured their git
@@ -116,18 +116,25 @@ oppose the PR, it can be landed. Where there is disagreement among TSC members
 or objections from one or more Collaborators, `semver-major` pull requests
 should be put on the TSC meeting agenda.
 
+#### Helpful resources
+
+* How to respectfully and usefully review code, part [one](https://mtlynch.io/human-code-reviews-1/) and [two](https://mtlynch.io/human-code-reviews-2/)
+* [How to write a positive code review](https://css-tricks.com/code-review-etiquette/)
+
 ### Waiting for Approvals
 
 Before landing pull requests, sufficient time should be left for input
 from other Collaborators. In general, leave at least 48 hours during the
 week and 72 hours over weekends to account for international time
 differences and work schedules. However, certain types of pull requests
-can be fast-tracked and may be landed after a shorter delay:
+can be fast-tracked and may be landed after a shorter delay. For example:
 
-* Focused changes that affect only documentation and/or the test suite.
-  `code-and-learn` and `good-first-issue` pull requests typically fall
-  into this category.
-* Changes that fix regressions.
+* Focused changes that affect only documentation and/or the test suite:
+  * `code-and-learn` tasks typically fall into this category.
+  * `good-first-issue` pull requests may also be suitable.
+* Changes that fix regressions:
+  * Regressions that break the workflow (red CI or broken compilation).
+  * Regressions that happen right before a release, or reported soon after.
 
 When a pull request is deemed suitable to be fast-tracked, label it with
 `fast-track`. The pull request can be landed once 2 or more Collaborators
@@ -142,6 +149,7 @@ test should *fail* before the change, and *pass* after the change.
 All pull requests that modify executable code should be subjected to
 continuous integration tests on the
 [project CI server](https://ci.nodejs.org/).
+The pull request should have a CI status indicator if possible.
 
 #### Useful CI Jobs
 
@@ -200,11 +208,10 @@ Node.js API are internal:
 - Any native C/C++ APIs/ABIs exported by the Node.js `*.h` header files that
   are hidden behind the `NODE_WANT_INTERNALS` flag are internal.
 
-Exception to each of these points can be made if use or behavior of a given
-internal API can be demonstrated to be sufficiently relied upon by the Node.js
-ecosystem such that any changes would cause too much breakage. The threshold
-for what qualifies as too much breakage is to be decided on a case-by-case
-basis by the TSC.
+Exceptions can be made if use or behavior of a given internal API can be
+demonstrated to be sufficiently relied upon by the Node.js ecosystem such that
+any changes would cause too much breakage. The threshold for what qualifies as
+too much breakage is to be decided on a case-by-case basis by the TSC.
 
 If it is determined that a currently undocumented object, property, method,
 argument, or event *should* be documented, then a pull request adding the
@@ -243,14 +250,14 @@ properties to an options argument) are semver-minor changes.
 
 #### Breaking Changes and Deprecations
 
-With a few notable exceptions outlined below, when backwards incompatible
-changes to a *Public* API are necessary, the existing API *must* be deprecated
-*first* and the new API either introduced in parallel or added after the next
-major Node.js version following the deprecation as a replacement for the
-deprecated API. In other words, as a general rule, existing *Public* APIs
-*must not* change (in a backwards incompatible way) without a deprecation.
+With a few exceptions outlined below, when backward-incompatible changes to a
+*Public* API are necessary, the existing API *must* be deprecated *first* and
+the new API either introduced in parallel or added after the next major Node.js
+version following the deprecation as a replacement for the deprecated API. In
+other words, as a general rule, existing *Public* APIs *must not* change (in a
+backward-incompatible way) without a deprecation.
 
-Exception to this rule is given in the following cases:
+Exceptions to this rule may be made in the following cases:
 
 * Adding or removing errors thrown or reported by a Public API;
 * Changing error messages;
@@ -351,7 +358,7 @@ recommended but not required.
 ### Deprecations
 
 _Deprecation_ refers to the identification of Public APIs that should no longer
-be used and that may be removed or modified in non-backwards compatible ways in
+be used and that may be removed or modified in backward-incompatible ways in
 a future major release of Node.js. Deprecation may be used with internal APIs if
 there is expected impact on the user community.
 
@@ -430,7 +437,7 @@ The TSC should serve as the final arbiter where required.
       author when squashing.
 
 Review the commit message to ensure that it adheres to the guidelines outlined
-in the [contributing](./CONTRIBUTING.md#commit-message-guidelines) guide.
+in the [contributing](./doc/guides/contributing/pull-requests.md#commit-message-guidelines) guide.
 
 Add all necessary [metadata](#metadata) to commit messages before landing.
 
@@ -460,7 +467,7 @@ $ git checkout master
 ```
 
 Update the tree (assumes your repo is set up as detailed in
-[CONTRIBUTING.md](CONTRIBUTING.md#step-1-fork)):
+[CONTRIBUTING.md](./doc/guides/contributing/pull-requests.md#step-1-fork)):
 
 ```text
 $ git fetch upstream
@@ -491,7 +498,7 @@ Check and re-review the changes:
 $ git diff upstream/master
 ```
 
-Check number of commits and commit messages:
+Check the number of commits and commit messages:
 
 ```text
 $ git log upstream/master...master
@@ -555,7 +562,7 @@ commit logs, ensure that they are properly formatted, and add
 `Reviewed-By` lines.
 
 * The commit message text must conform to the
-[commit message guidelines](./CONTRIBUTING.md#commit-message-guidelines).
+[commit message guidelines](./doc/guides/contributing/pull-requests.md#commit-message-guidelines).
 
 <a name="metadata"></a>
 * Modify the original commit message to include additional metadata regarding
@@ -616,7 +623,7 @@ error: failed to push some refs to 'https://github.com/nodejs/node'
 hint: Updates were rejected because the remote contains work that you do
 hint: not have locally. This is usually caused by another repository pushing
 hint: to the same ref. You may want to first integrate the remote changes
-hint: (e.g., 'git pull ...') before pushing again.
+hint: (e.g. 'git pull ...') before pushing again.
 hint: See the 'Note about fast-forwards' in 'git push --help' for details.
 ```
 
@@ -652,7 +659,7 @@ commit final.
 #### What is LTS?
 
 Long Term Support (often referred to as *LTS*) guarantees application developers
-a 30 month support cycle with specific versions of Node.js.
+a 30-month support cycle with specific versions of Node.js.
 
 You can find more information
 [in the full release plan](https://github.com/nodejs/Release#release-plan).
@@ -665,7 +672,7 @@ certain performance improvements that can be demonstrated to not break existing
 applications. Semver-minor changes are only permitted if required for bug fixes
 and then only on a case-by-case basis with LTS WG and possibly Technical
 Steering Committee (TSC) review. Semver-major changes are permitted only if
-required for security related fixes.
+required for security-related fixes.
 
 Once a Current branch moves into Maintenance mode, only **critical** bugs,
 **critical** security fixes, and documentation updates will be permitted.
