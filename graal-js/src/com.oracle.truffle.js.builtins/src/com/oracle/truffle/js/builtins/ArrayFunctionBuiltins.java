@@ -51,6 +51,7 @@ import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSArrayFromNo
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSArrayOfNodeGen;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSIsArrayNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperation;
+import com.oracle.truffle.js.nodes.access.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
@@ -137,7 +138,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
     }
 
     public abstract static class JSArrayFunctionOperation extends JSArrayOperation {
-        @Child private JSFunctionCallNode constructNode;
+        @Child private ArrayCreateNode arrayCreateNode;
         private final ConditionProfile isConstructor = ConditionProfile.createBinaryProfile();
 
         public JSArrayFunctionOperation(JSContext context, JSBuiltin builtin, boolean isTypedArray) {
@@ -155,7 +156,11 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                         return (DynamicObject) getArraySpeciesConstructorNode().construct((DynamicObject) thisObj);
                     }
                 } else {
-                    return JSArray.createEmpty(getContext(), len);
+                    if (arrayCreateNode == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        arrayCreateNode = insert(ArrayCreateNode.create(getContext()));
+                    }
+                    return arrayCreateNode.execute(len);
                 }
             }
         }

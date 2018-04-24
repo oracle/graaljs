@@ -94,6 +94,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.ArrayLengthNode.ArrayLengthWriteNode;
+import com.oracle.truffle.js.nodes.access.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.CallbackNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
@@ -376,6 +377,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private PropertyGetNode getSpeciesNode;
         @Child private JSIsArrayNode isArrayNode;
         @Child private IsConstructorNode isConstructorNode = IsConstructorNode.create();
+        @Child private ArrayCreateNode arrayCreateNode;
         private final BranchProfile errorBranch = BranchProfile.create();
         private final BranchProfile arraySpeciesIsArray = BranchProfile.create();
         private final BranchProfile arraySpeciesGetSymbol = BranchProfile.create();
@@ -453,7 +455,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                                  * execution context, then a new Array is created using the realm of
                                  * the running execution context.
                                  */
-                                return JSArray.createEmpty(context, length);
+                                return arrayCreate(length);
                             }
                         }
                     }
@@ -465,7 +467,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
             }
             if (arraySpeciesEmpty.profile(ctor == Undefined.instance)) {
-                return JSArray.createEmpty(context, length);
+                return arrayCreate(length);
             }
             if (!isConstructorNode.executeBoolean(ctor)) {
                 errorBranch.enter();
@@ -476,6 +478,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected final boolean isArray(TruffleObject thisObj) {
             return isArrayNode.execute(thisObj);
+        }
+
+        private Object arrayCreate(long length) {
+            if (arrayCreateNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                arrayCreateNode = insert(ArrayCreateNode.create(context));
+            }
+            return arrayCreateNode.execute(length);
         }
 
         protected Object construct(DynamicObject constructor, Object... userArgs) {
