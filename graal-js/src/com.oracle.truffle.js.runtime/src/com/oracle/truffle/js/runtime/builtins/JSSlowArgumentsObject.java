@@ -61,8 +61,9 @@ public final class JSSlowArgumentsObject extends JSAbstractArgumentsObject {
         Object oldValue = get(thisObj, index);
 
         boolean wasDeleted;
-        if (arrayGetArrayType(thisObj, isJSSlowArgumentsObject(thisObj)).hasElement(thisObj, index)) {
-            arraySetArrayType(thisObj, arrayGetArrayType(thisObj, isJSSlowArgumentsObject(thisObj)).deleteElement(thisObj, index, false));
+        ScriptArray arrayType = arrayGetArrayType(thisObj, isJSSlowArgumentsObject(thisObj));
+        if (arrayType.hasElement(thisObj, index)) {
+            arraySetArrayType(thisObj, arrayType.deleteElement(thisObj, index, false));
             wasDeleted = true;
         } else {
             wasDeleted = JSUserObject.INSTANCE.delete(thisObj, index, isStrict);

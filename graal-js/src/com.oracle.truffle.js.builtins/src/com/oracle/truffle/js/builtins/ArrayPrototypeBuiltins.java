@@ -94,6 +94,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.ArrayLengthNode.ArrayLengthWriteNode;
+import com.oracle.truffle.js.nodes.access.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.CallbackNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
@@ -122,6 +123,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -146,6 +148,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -373,6 +376,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private PropertyGetNode getConstructorNode;
         @Child private PropertyGetNode getSpeciesNode;
         @Child private JSIsArrayNode isArrayNode;
+        @Child private IsConstructorNode isConstructorNode = IsConstructorNode.create();
+        @Child private ArrayCreateNode arrayCreateNode;
         private final BranchProfile errorBranch = BranchProfile.create();
         private final BranchProfile arraySpeciesIsArray = BranchProfile.create();
         private final BranchProfile arraySpeciesGetSymbol = BranchProfile.create();
@@ -438,7 +443,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 ctor = getConstructorProperty(originalArray);
                 if (JSObject.isJSObject(ctor)) {
                     DynamicObject ctorObj = (DynamicObject) ctor;
-                    // TODO should work for proxy constructors, too
                     if (JSFunction.isJSFunction(ctorObj) && JSFunction.isConstructor(ctorObj)) {
                         JSRealm thisRealm = context.getRealm();
                         JSRealm ctorRealm = JSFunction.getRealm(ctorObj);
@@ -451,7 +455,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                                  * execution context, then a new Array is created using the realm of
                                  * the running execution context.
                                  */
-                                return JSArray.createEmpty(context, length);
+                                return arrayCreate(length);
                             }
                         }
                     }
@@ -463,9 +467,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
             }
             if (arraySpeciesEmpty.profile(ctor == Undefined.instance)) {
-                return JSArray.createEmpty(context, length);
+                return arrayCreate(length);
             }
-            if (!JSFunction.isConstructor(ctor)) {
+            if (!isConstructorNode.executeBoolean(ctor)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorConstructorExpected();
             }
@@ -474,6 +478,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected final boolean isArray(TruffleObject thisObj) {
             return isArrayNode.execute(thisObj);
+        }
+
+        private Object arrayCreate(long length) {
+            if (arrayCreateNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                arrayCreateNode = insert(ArrayCreateNode.create(context));
+            }
+            return arrayCreateNode.execute(length);
         }
 
         protected Object construct(DynamicObject constructor, Object... userArgs) {
@@ -502,16 +514,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 errorBranch.enter();
                 throw Errors.createTypeErrorNotAnObject(c);
             }
-            Object s = getSpeciesProperty(c);
-            if (s == Undefined.instance || s == Null.instance) {
+            Object speciesConstructor = getSpeciesProperty(c);
+            if (speciesConstructor == Undefined.instance || speciesConstructor == Null.instance) {
                 defaultConstructorBranch.enter();
                 return defaultConstructor;
             }
-            if (!JSFunction.isConstructor(s)) {
+            if (!isConstructorNode.executeBoolean(speciesConstructor)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorConstructorExpected();
             }
-            return (DynamicObject) s;
+            return (DynamicObject) speciesConstructor;
         }
 
         private Object getConstructorProperty(Object obj) {
@@ -978,6 +990,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         deletePropertyNode.executeEvaluated(thisObj, i);
                     }
                 }
+                deletePropertyNode.executeEvaluated(thisObj, len - 1);
                 setLength(thisObj, len - 1);
                 return firstElement;
             } else {
@@ -1415,21 +1428,26 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private String joinOne(final TruffleObject thisObject) {
             Object value = read(thisObject, 0);
-            if (isValidEntry(thisObject, value)) {
-                return elementToStringNode.executeString(value);
-            } else {
-                return "";
-            }
+            return toStringOrEmpty(thisObject, value);
         }
 
         private String joinTwo(final TruffleObject thisObject, final String joinSeparator, final boolean appendSep) {
-            final DelimitedStringBuilder res = new DelimitedStringBuilder();
-            appendIntl(thisObject, res, read(thisObject, 0));
-            if (appendSep) {
-                res.append(joinSeparator);
+            String first = toStringOrEmpty(thisObject, read(thisObject, 0));
+            String second = toStringOrEmpty(thisObject, read(thisObject, 1));
+
+            long resultLength = first.length() + (appendSep ? joinSeparator.length() : 0) + second.length();
+            if (resultLength > JSTruffleOptions.StringLengthLimit) {
+                CompilerDirectives.transferToInterpreter();
+                throw Errors.createRangeErrorInvalidStringLength();
             }
-            appendIntl(thisObject, res, read(thisObject, 1));
-            return res.toString();
+
+            final StringBuilder res = new StringBuilder((int) resultLength);
+            Boundaries.builderAppend(res, first);
+            if (appendSep) {
+                Boundaries.builderAppend(res, joinSeparator);
+            }
+            Boundaries.builderAppend(res, second);
+            return Boundaries.builderToString(res);
         }
 
         private String joinLoop(final TruffleObject thisJSObject, final long length, final String joinSeparator, final boolean appendSep) {
@@ -1440,7 +1458,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     res.append(joinSeparator);
                 }
                 Object value = read(thisJSObject, i);
-                appendIntl(thisJSObject, res, value);
+                res.append(toStringOrEmpty(thisJSObject, value));
 
                 if (appendSep) {
                     i++;
@@ -1451,14 +1469,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return res.toString();
         }
 
-        private void appendIntl(final TruffleObject thisObject, final DelimitedStringBuilder res, Object value) {
-            // the last check here is to avoid recursion
+        private String toStringOrEmpty(final TruffleObject thisObject, Object value) {
             if (isValidEntry(thisObject, value)) {
-                res.append(elementToStringNode.executeString(value));
+                return elementToStringNode.executeString(value);
+            } else {
+                return "";
             }
         }
 
         private static boolean isValidEntry(final TruffleObject thisObject, Object value) {
+            // the last check here is to avoid recursion
             return value != Undefined.instance && value != Null.instance && value != thisObject;
         }
 
@@ -1574,6 +1594,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile needMoveDeleteBranch = BranchProfile.create();
         private final BranchProfile needLoopDeleteBranch = BranchProfile.create();
         private final BranchProfile needFillBranch = BranchProfile.create();
+        private final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
 
         @Specialization
         protected DynamicObject splice(Object thisArg, Object[] args) {
@@ -1604,12 +1625,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 spliceRead(thisObj, actualStart, actualDeleteCount, aObj, len);
             }
 
-            if (JSArray.isJSArray(thisObj)) {
+            boolean isJSArray = JSArray.isJSArray(thisObj);
+            if (isJSArray) {
                 DynamicObject dynObj = (DynamicObject) thisObj;
-                if (arrayElementwise.profile(mustUseElementwise(dynObj))) {
+                ScriptArray arrayType = arrayTypeProfile.profile(arrayGetArrayType(dynObj, isJSArray));
+                if (arrayElementwise.profile(mustUseElementwise(dynObj, arrayType))) {
                     spliceIntlArrayElementwise(dynObj, len, actualStart, actualDeleteCount, itemCount);
                 } else {
-                    spliceIntlArrayBlockwise(dynObj, actualStart, actualDeleteCount, itemCount);
+                    spliceIntlArrayBlockwise(dynObj, actualStart, actualDeleteCount, itemCount, arrayType);
                 }
             } else {
                 objectBranch.enter();
@@ -1630,10 +1653,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return aObj;
         }
 
-        private boolean mustUseElementwise(DynamicObject obj) {
-            ScriptArray array = arrayGetArrayType(obj);
+        private boolean mustUseElementwise(DynamicObject obj, ScriptArray array) {
             return array instanceof SparseArray || array.isLengthNotWritable() || JSObject.getPrototype(obj) != getContext().getRealm().getArrayConstructor().getPrototype() ||
-                            !getContext().getArrayPrototypeNoElementsAssumption().isValid() || !getContext().getFastArrayAssumption().isValid();
+                            !getContext().getArrayPrototypeNoElementsAssumption().isValid() || (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj));
         }
 
         private void spliceRead(TruffleObject thisObj, long actualStart, long actualDeleteCount, DynamicObject aObj, long length) {
@@ -1745,9 +1767,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private void spliceIntlArrayBlockwise(DynamicObject thisObj, long actualStart, long actualDeleteCount, long itemCount) {
+        private void spliceIntlArrayBlockwise(DynamicObject thisObj, long actualStart, long actualDeleteCount, long itemCount, ScriptArray array) {
             assert JSArray.isJSArray(thisObj); // contract
-            ScriptArray array = arrayGetArrayType(thisObj);
             if (itemCount < actualDeleteCount) {
                 branchA.enter();
                 arraySetArrayType(thisObj, array.removeRange(thisObj, actualStart + itemCount, actualStart + actualDeleteCount, errorBranch));

@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -61,7 +60,7 @@ import com.oracle.truffle.js.runtime.util.DebugCounter;
 public final class JSSharedData implements ShapeListener {
     private final boolean unique;
     private final JSContext context;
-    private final List<Shape> protoChildTrees;
+    private final CopyOnWriteArrayList<Shape> protoChildTrees;
     private final Property prototypeProperty;
     private Map<Object, Assumption> propertyAssumptions;
 

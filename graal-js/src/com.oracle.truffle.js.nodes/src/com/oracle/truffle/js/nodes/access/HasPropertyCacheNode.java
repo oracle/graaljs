@@ -203,17 +203,23 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
 
     public static final class JSProxyDispatcherPropertyHasNode extends LinkedHasPropertyCacheNode {
 
+        private final boolean hasOwnProperty;
         @Child private JSProxyHasPropertyNode proxyGet;
 
-        public JSProxyDispatcherPropertyHasNode(JSContext context, Object key, ReceiverCheckNode receiverCheck, @SuppressWarnings("unused") boolean isMethod) {
+        public JSProxyDispatcherPropertyHasNode(JSContext context, Object key, ReceiverCheckNode receiverCheck, boolean hasOwnProperty) {
             super(key, receiverCheck);
+            this.hasOwnProperty = hasOwnProperty;
             assert JSRuntime.isPropertyKey(key);
-            this.proxyGet = JSProxyHasPropertyNodeGen.create(context);
+            this.proxyGet = hasOwnProperty ? null : JSProxyHasPropertyNodeGen.create(context);
         }
 
         @Override
         public boolean hasPropertyUnchecked(Object thisObj, boolean floatingCondition) {
-            return proxyGet.executeWithTargetAndKeyBoolean(receiverCheck.getStore(thisObj), key);
+            if (hasOwnProperty) {
+                return JSObject.getOwnProperty(receiverCheck.getStore(thisObj), key) != null;
+            } else {
+                return proxyGet.executeWithTargetAndKeyBoolean(receiverCheck.getStore(thisObj), key);
+            }
         }
     }
 
@@ -415,7 +421,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
             if (JSAdapter.isJSAdapter(store)) {
                 return new JSAdapterHasPropertyCacheNode(key, receiverCheck, isMethod());
             } else if (JSProxy.isProxy(store)) {
-                return new JSProxyDispatcherPropertyHasNode(context, key, receiverCheck, isMethod());
+                return new JSProxyDispatcherPropertyHasNode(context, key, receiverCheck, isOwnProperty());
             } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
                 return new UnspecializedHasPropertyCacheNode(key, receiverCheck);
             } else {

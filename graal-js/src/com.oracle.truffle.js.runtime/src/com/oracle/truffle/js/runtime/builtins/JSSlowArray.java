@@ -102,14 +102,13 @@ public final class JSSlowArray extends JSAbstractArray {
     public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
         ScriptArray array = arrayGetArrayType(thisObj);
         if (array.hasElement(thisObj, index)) {
-            if (array.isSealed()) {
-                if (isStrict) {
-                    throw Errors.createTypeErrorCannotDeletePropertyOfSealedArray(index);
-                }
+            ScriptArray arrayType = arrayGetArrayType(thisObj);
+            if (arrayType.canDeleteElement(thisObj, index, isStrict)) {
+                arraySetArrayType(thisObj, arrayType.deleteElement(thisObj, index, isStrict));
+                return true;
+            } else {
                 return false;
             }
-            arraySetArrayType(thisObj, array.deleteElement(thisObj, index, isStrict));
-            return true;
         } else {
             return JSUserObject.INSTANCE.delete(thisObj, index, isStrict);
         }
@@ -140,11 +139,14 @@ public final class JSSlowArray extends JSAbstractArray {
         if (this.getLength(thisObj) <= index) {
             this.setLength(thisObj, (index + 1), doThrow);
         }
-        if (arrayGetArrayType(thisObj).hasElement(thisObj, index) && !JSUserObject.INSTANCE.hasOwnProperty(thisObj, name)) {
+        ScriptArray arrayType = arrayGetArrayType(thisObj);
+        if (arrayType.hasElement(thisObj, index) && !JSUserObject.INSTANCE.hasOwnProperty(thisObj, name)) {
             // apply the default attributes to the property first
             JSContext context = JSObject.getJSContext(thisObj);
             JSObjectUtil.putDataProperty(context, thisObj, name, get(thisObj, index), JSAttributes.getDefault());
-            arraySetArrayType(thisObj, arrayGetArrayType(thisObj).deleteElement(thisObj, index, false));
+            if (arrayType.canDeleteElement(thisObj, index, false)) {
+                arraySetArrayType(thisObj, arrayType.deleteElement(thisObj, index, false));
+            }
         }
 
         boolean succeeded = jsDefineProperty(thisObj, index, descriptor, false);

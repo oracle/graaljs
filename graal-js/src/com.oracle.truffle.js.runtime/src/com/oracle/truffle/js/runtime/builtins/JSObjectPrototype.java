@@ -145,8 +145,12 @@ public final class JSObjectPrototype extends JSBuiltinObject {
     public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
         ScriptArray array = JSObject.getArray(thisObj);
         if (array.hasElement(thisObj, index)) {
-            JSObject.setArray(thisObj, array.deleteElement(thisObj, index, isStrict));
-            return true;
+            if (array.canDeleteElement(thisObj, index, isStrict)) {
+                JSObject.setArray(thisObj, array.deleteElement(thisObj, index, isStrict));
+                return true;
+            } else {
+                return false;
+            }
         } else {
             return JSUserObject.INSTANCE.delete(thisObj, index, isStrict);
         }

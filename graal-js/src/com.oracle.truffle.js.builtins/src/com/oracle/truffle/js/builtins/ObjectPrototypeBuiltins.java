@@ -45,12 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -60,6 +55,7 @@ import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectProto
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeToStringNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeValueOfNodeGen;
+import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
@@ -364,45 +360,45 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     @ImportStatic(value = JSInteropUtil.class)
     public abstract static class ObjectPrototypeHasOwnPropertyNode extends ObjectOperation {
 
-        private final JSClassProfile classProfile = JSClassProfile.create();
+        @Child private JSHasPropertyNode hasOwnPropertyNode;
         @Child private JSToPropertyKeyNode toPropertyKeyNode;
 
         public ObjectPrototypeHasOwnPropertyNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization
-        protected boolean hasOwnProperty(DynamicObject thisObj, String propName) {
-            return JSObject.hasOwnProperty(thisObj, propName, classProfile);
-        }
-
-        @Specialization
-        protected boolean hasOwnProperty(DynamicObject thisObj, int idx) {
-            return JSObject.hasOwnProperty(thisObj, idx, classProfile);
+        @Specialization(guards = "isJSObject(thisObj)")
+        protected boolean doJSObjectStringKey(DynamicObject thisObj, String propertyName) {
+            return getHasOwnPropertyNode().executeBoolean(thisObj, propertyName);
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
-        protected boolean hasOwnPropertyJSObject(DynamicObject thisObj, Object propName) {
-            Object key = getToPropertyKeyNode().execute(propName); // ordering 15.2.4.5 Note2
-            return JSObject.hasOwnProperty(thisObj, key, classProfile);
+        protected boolean doJSObjectIntKey(DynamicObject thisObj, int index) {
+            return getHasOwnPropertyNode().executeBoolean(thisObj, index);
+        }
+
+        @Specialization(guards = "isJSObject(thisObj)", replaces = {"doJSObjectStringKey", "doJSObjectIntKey"})
+        protected boolean doJSObjectAnyKey(DynamicObject thisObj, Object propName) {
+            Object key = getToPropertyKeyNode().execute(propName);
+            return getHasOwnPropertyNode().executeBoolean(thisObj, key);
         }
 
         @Specialization(guards = "isNullOrUndefined(thisObj)")
         protected boolean hasOwnPropertyNullOrUndefined(DynamicObject thisObj, Object propName) {
-            getToPropertyKeyNode().execute(propName); // ordering 15.2.4.5 Note2
+            getToPropertyKeyNode().execute(propName); // may have side effect
             throw Errors.createTypeErrorNotObjectCoercible(thisObj);
         }
 
         @Specialization
         protected boolean hasOwnPropertyLazyString(JSLazyString thisObj, Object propName) {
-            Object key = getToPropertyKeyNode().execute(propName); // ordering 15.2.4.5 Note2
-            return JSObject.hasOwnProperty(toObject(thisObj), key, classProfile);
+            return hasOwnPropertyPrimitive(thisObj, propName);
         }
 
         @Specialization(guards = "!isTruffleObject(thisObj)")
         protected boolean hasOwnPropertyPrimitive(Object thisObj, Object propName) {
-            Object key = getToPropertyKeyNode().execute(propName); // ordering 15.2.4.5 Note2
-            return JSObject.hasOwnProperty(toObject(thisObj), key, classProfile);
+            Object key = getToPropertyKeyNode().execute(propName);
+            DynamicObject obj = toObject(thisObj);
+            return getHasOwnPropertyNode().executeBoolean(obj, key);
         }
 
         @Specialization
@@ -411,18 +407,16 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isForeignObject(thisObj)")
-        protected boolean hasOwnPropertyForeign(TruffleObject thisObj, Object propName,
-                        @Cached("createRead()") Node readNode) {
-            Object key = getToPropertyKeyNode().execute(propName); // ordering 15.2.4.5 Note2
-            Object value;
-            try {
-                value = ForeignAccess.sendRead(readNode, thisObj, key);
-            } catch (UnknownIdentifierException e) {
-                return false;
-            } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(thisObj, e, Message.READ, this);
+        protected boolean hasOwnPropertyForeign(TruffleObject thisObj, Object propName) {
+            return getHasOwnPropertyNode().executeBoolean(thisObj, propName);
+        }
+
+        public JSHasPropertyNode getHasOwnPropertyNode() {
+            if (hasOwnPropertyNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                hasOwnPropertyNode = insert(JSHasPropertyNode.create(true));
             }
-            return (value != null && value != Null.instance);
+            return hasOwnPropertyNode;
         }
 
         protected JSToPropertyKeyNode getToPropertyKeyNode() {

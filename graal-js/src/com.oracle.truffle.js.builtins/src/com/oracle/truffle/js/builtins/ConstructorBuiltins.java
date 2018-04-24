@@ -110,6 +110,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeEvaluator;
 import com.oracle.truffle.js.nodes.ScriptNode;
+import com.oracle.truffle.js.nodes.access.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode.ArrayContentType;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
@@ -560,22 +561,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = "isOneNumberArg(args)")
-        protected DynamicObject constructArrayConstant(DynamicObject newTarget, Object[] args,
+        protected DynamicObject constructWithLength(DynamicObject newTarget, Object[] args,
                         @Cached("create()") JSToUInt32Node toUInt32Node,
-                        @Cached("createBinaryProfile()") ConditionProfile needLongLength,
-                        @Cached("createBinaryProfile()") ConditionProfile isLengthZero) {
+                        @Cached("create(getContext())") ArrayCreateNode arrayCreateNode) {
             Number origLen = (Number) args[0]; // guard ensures this is a Number
             Number origLen32 = (Number) toUInt32Node.execute(origLen);
             long len = JSArray.toArrayIndexOrRangeError(origLen, origLen32);
-            if (isLengthZero.profile(len == 0)) {
-                return swapPrototype(JSArray.createConstantEmptyArray(getContext()), newTarget);
-            } else {
-                if (needLongLength.profile(len > Integer.MAX_VALUE)) {
-                    return swapPrototype(JSArray.createSparseArray(getContext(), len), newTarget);
-                } else {
-                    return swapPrototype(JSArray.createConstantEmptyArray(getContext(), (int) len), newTarget);
-                }
-            }
+            DynamicObject array = arrayCreateNode.execute(len);
+            return swapPrototype(array, newTarget);
         }
 
         @Specialization(guards = "!isOneNumberArg(args)")

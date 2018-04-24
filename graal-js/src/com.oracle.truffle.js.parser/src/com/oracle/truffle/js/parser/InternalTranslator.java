@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.parser;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -54,7 +52,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArrayPrototype;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectDefinePropertyNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
@@ -68,10 +65,12 @@ import com.oracle.truffle.js.nodes.access.IsArrayNode.IsArrayWrappedNode;
 import com.oracle.truffle.js.nodes.access.IsJSClassNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode.IsObjectWrappedNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.nodes.access.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.OrdinaryCreateFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectNode;
 import com.oracle.truffle.js.nodes.access.SetViewValueNode;
+import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.cast.JSEnqueueJobNode;
 import com.oracle.truffle.js.nodes.cast.JSIsConstructorFunctionNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -85,11 +84,10 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode.JSToStringWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node.JSToUInt32WrapperNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
-import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.parser.InternalTranslatorFactory.InternalArrayPushNodeGen;
 import com.oracle.truffle.js.parser.InternalTranslatorFactory.InternalStringReplaceNodeGen;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.runtime.Errors;
@@ -272,10 +270,7 @@ final class InternalTranslator extends GraalJSTranslator {
                     case "Assert":
                         return createAssert(arguments[0]);
                     case "ArrayPush":
-                        DynamicObject arrayPushFunction = context.getRealm().lookupFunction(JSArray.PROTOTYPE_NAME, ArrayPrototype.push.getName());
-                        JavaScriptNode functionNode = JSConstantNode.create(arrayPushFunction);
-                        AbstractFunctionArgumentsNode args = JSFunctionArgumentsNode.create(Arrays.copyOfRange(arguments, 1, arguments.length));
-                        return JSFunctionCallNode.create(functionNode, arguments[0], args, false, false);
+                        return InternalArrayPushNode.create(context, arguments[0], arguments[1]);
                     case "GetIterator":
                         return GetIteratorNode.create(context, arguments[0]);
                     case "RegisterAsyncFunctionBuiltins":
@@ -824,6 +819,46 @@ final class InternalTranslator extends GraalJSTranslator {
         @Override
         protected JavaScriptNode copyUninitialized() {
             return new PromiseHookNode(context, cloneUninitialized(changeTypeNode), cloneUninitialized(promiseNode));
+        }
+    }
+
+    abstract static class InternalArrayPushNode extends JavaScriptNode {
+        @Child @Executed JavaScriptNode arrayNode;
+        @Child @Executed JavaScriptNode valueNode;
+        @Child private WriteElementNode writeElementNode;
+        @Child private JSGetLengthNode getLengthNode;
+        private final JSContext context;
+
+        protected InternalArrayPushNode(JSContext context, JavaScriptNode arrayNode, JavaScriptNode valueNode) {
+            this.arrayNode = arrayNode;
+            this.valueNode = valueNode;
+            this.context = context;
+        }
+
+        static InternalArrayPushNode create(JSContext context, JavaScriptNode arrayNode, JavaScriptNode valueNode) {
+            return InternalArrayPushNodeGen.create(context, arrayNode, valueNode);
+        }
+
+        @Specialization
+        protected int doPush(Object array, Object value) {
+            assert JSArray.isJSArray(array);
+            DynamicObject arrayObject = (DynamicObject) array;
+            if (getLengthNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getLengthNode = insert(JSGetLengthNode.create(context));
+            }
+            if (writeElementNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                writeElementNode = insert(WriteElementNode.create(context, true, true));
+            }
+            int len = (int) getLengthNode.executeLong(arrayObject);
+            writeElementNode.executeWithTargetAndIndexAndValue(arrayObject, len, value);
+            return len + 1;
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized() {
+            return create(context, cloneUninitialized(arrayNode), cloneUninitialized(valueNode));
         }
     }
 }
