@@ -1418,21 +1418,26 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private String joinOne(final TruffleObject thisObject) {
             Object value = read(thisObject, 0);
-            if (isValidEntry(thisObject, value)) {
-                return elementToStringNode.executeString(value);
-            } else {
-                return "";
-            }
+            return toStringOrEmpty(thisObject, value);
         }
 
         private String joinTwo(final TruffleObject thisObject, final String joinSeparator, final boolean appendSep) {
-            final DelimitedStringBuilder res = new DelimitedStringBuilder();
-            appendIntl(thisObject, res, read(thisObject, 0));
-            if (appendSep) {
-                res.append(joinSeparator);
+            String first = toStringOrEmpty(thisObject, read(thisObject, 0));
+            String second = toStringOrEmpty(thisObject, read(thisObject, 1));
+
+            long resultLength = first.length() + (appendSep ? joinSeparator.length() : 0) + second.length();
+            if (resultLength > JSTruffleOptions.StringLengthLimit) {
+                CompilerDirectives.transferToInterpreter();
+                throw Errors.createRangeErrorInvalidStringLength();
             }
-            appendIntl(thisObject, res, read(thisObject, 1));
-            return res.toString();
+
+            final StringBuilder res = new StringBuilder((int) resultLength);
+            Boundaries.builderAppend(res, first);
+            if (appendSep) {
+                Boundaries.builderAppend(res, joinSeparator);
+            }
+            Boundaries.builderAppend(res, second);
+            return Boundaries.builderToString(res);
         }
 
         private String joinLoop(final TruffleObject thisJSObject, final long length, final String joinSeparator, final boolean appendSep) {
@@ -1443,7 +1448,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     res.append(joinSeparator);
                 }
                 Object value = read(thisJSObject, i);
-                appendIntl(thisJSObject, res, value);
+                res.append(toStringOrEmpty(thisJSObject, value));
 
                 if (appendSep) {
                     i++;
@@ -1454,14 +1459,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return res.toString();
         }
 
-        private void appendIntl(final TruffleObject thisObject, final DelimitedStringBuilder res, Object value) {
-            // the last check here is to avoid recursion
+        private String toStringOrEmpty(final TruffleObject thisObject, Object value) {
             if (isValidEntry(thisObject, value)) {
-                res.append(elementToStringNode.executeString(value));
+                return elementToStringNode.executeString(value);
+            } else {
+                return "";
             }
         }
 
         private static boolean isValidEntry(final TruffleObject thisObject, Object value) {
+            // the last check here is to avoid recursion
             return value != Undefined.instance && value != Null.instance && value != thisObject;
         }
 
