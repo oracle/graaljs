@@ -41,8 +41,6 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -59,14 +57,6 @@ public final class ExprBlockNode extends AbstractBlockNode implements SequenceNo
 
     public static JavaScriptNode createExprBlock(JavaScriptNode[] statements) {
         return filterStatements(statements, true);
-    }
-
-    @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == StandardTags.ExpressionTag.class) {
-            return true;
-        }
-        return super.hasTag(tag);
     }
 
     @ExplodeLoop

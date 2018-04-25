@@ -64,7 +64,9 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
     }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
-        if (left instanceof DualNode || left instanceof AbstractBlockNode || right instanceof DualNode || right instanceof AbstractBlockNode) {
+        if (left instanceof DualNode && !(right instanceof DualNode || right instanceof AbstractBlockNode)) {
+            return new DualNode(left, right);
+        } else if (left instanceof DualNode || left instanceof AbstractBlockNode || right instanceof DualNode || right instanceof AbstractBlockNode) {
             final int len = getLen(left) + getLen(right);
             JavaScriptNode[] arr = new JavaScriptNode[len];
             int pos = flatten(arr, 0, left);
