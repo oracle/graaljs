@@ -2311,6 +2311,8 @@ public final class GraalJSAccess {
             builder.append('y');
         } else if ((flags & 16 /* kUnicode */) != 0) {
             builder.append('u');
+        } else if ((flags & 32 /* kDotAll */) != 0) {
+            builder.append('s');
         }
         return builder.toString();
     }
