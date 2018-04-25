@@ -113,19 +113,13 @@ suite = {
       "relpath" : True,
       "description" : "Graal Node.js native components",
     },
-    "TRUFFLENODE_GRAALVM_DOCS" : {
-      "native" : True,
-      "description" : "Graal.nodejs documentation files for the GraalVM",
-      "layout" : {
-        "README_GRAAL_NODEJS.md" : "file:README.md",
-      },
-    },
     "TRUFFLENODE_GRAALVM_SUPPORT" : {
       "native" : True,
       "platformDependent" : True,
       "description" : "Graal.nodejs support distribution for the GraalVM",
       "layout" : {
-        "./" : "file:deps/npm",
+        "./" : ["file:deps/npm"],
+        "NODE_README.md" : "file:README.md",
         "bin/" : [
           "dependency:trufflenodeNative/node"
         ],

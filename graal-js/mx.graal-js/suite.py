@@ -448,19 +448,12 @@ suite = {
       "description" : "ICU4J localization library and data files",
     },
 
-    "GRAALJS_GRAALVM_DOCS" : {
-      "native" : True,
-      "description" : "Graal.js documentation files for the GraalVM",
-      "layout" : {
-        "README_GRAAL_JS.md" : "file:README.md",
-      },
-    },
-
     "GRAALJS_GRAALVM_SUPPORT" : {
       "native" : True,
       "description" : "Graal.js support distribution for the GraalVM",
       "layout" : {
         "native-image.properties": "file:mx.graal-js/native-image.properties",
+        "./": "file:README.md",
       },
     },
   }

@@ -374,30 +374,30 @@ def deploy_binary_if_master(args):
 
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+    suite=_suite,
     name='Graal.js',
     short_name='js',
-    documentation_files=['extracted-dependency:graal-js:GRAALJS_GRAALVM_DOCS/README_GRAAL_JS.md'],
     license_files=[],
     third_party_license_files=[],
     truffle_jars=[
-        'dependency:graal-js:GRAALJS',
-        'dependency:graal-js:ICU4J',
-        'dependency:mx:ASM_DEBUG_ALL',
+        'graal-js:GRAALJS',
+        'graal-js:ICU4J',
+        'mx:ASM_DEBUG_ALL',
     ],
     support_distributions=[
-        'extracted-dependency:graal-js:GRAALJS_GRAALVM_SUPPORT',
-        'extracted-dependency:graal-js:ICU4J-DIST'
+        'graal-js:GRAALJS_GRAALVM_SUPPORT',
+        'graal-js:ICU4J-DIST'
     ],
     launcher_configs=[
         mx_sdk.LanguageLauncherConfig(
             destination='bin/<exe:js>',
-            jar_distributions=['dependency:graal-js:GRAALJS_LAUNCHER'],
+            jar_distributions=['graal-js:GRAALJS_LAUNCHER'],
             main_class='com.oracle.truffle.js.shell.JSLauncher',
             build_args=['--language:js']
         )
     ],
-    boot_jars=['dependency:graal-js:GRAALJS_SCRIPTENGINE']
-), _suite)
+    boot_jars=['graal-js:GRAALJS_SCRIPTENGINE']
+))
 
 mx.update_commands(_suite, {
     'deploy-binary-if-master' : [deploy_binary_if_master, ''],

@@ -532,27 +532,28 @@ def svmnpm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     """run 'npm' with Graal.nodejs on SubstrateVM"""
     return svmnode([join(_suite.dir, 'deps', 'npm', 'bin', 'npm-cli.js')] + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
+
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+    suite=_suite,
     name='Graal.nodejs',
     short_name='njs',
     dir_name='js',
-    documentation_files=['extracted-dependency:graal-nodejs:TRUFFLENODE_GRAALVM_DOCS/README_GRAAL_NODEJS.md'],
     license_files=[],
     third_party_license_files=[],
-    truffle_jars=['dependency:graal-nodejs:TRUFFLENODE'],
-    support_distributions=['extracted-dependency:graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT'],
+    truffle_jars=['graal-nodejs:TRUFFLENODE'],
+    support_distributions=['graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT'],
     provided_executables=[
-        'link:<support>/bin/node',
-        'link:<support>/bin/npm',
+        'bin/node',
+        'bin/npm',
     ],
     polyglot_lib_build_args=[
         "-H:JNIConfigurationResources=svmnodejs.jniconfig",
     ],
     polyglot_lib_jar_dependencies=[
-        "dependency:graal-nodejs:TRUFFLENODE"
+        "graal-nodejs:TRUFFLENODE"
     ],
     has_polyglot_lib_entrypoints=True,
-), _suite)
+))
 
 mx.update_commands(_suite, {
     'node' : [node, ''],
