@@ -54,6 +54,7 @@ import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSEqualNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
@@ -90,6 +91,11 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
 
     @Specialization
     protected static boolean doLazyString(@SuppressWarnings("unused") JSLazyString operand) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doLargeInteger(@SuppressWarnings("unused") LargeInteger operand) {
         return false;
     }
 
