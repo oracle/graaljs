@@ -40,10 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.truffleinterop;
 
-import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
@@ -62,14 +60,6 @@ public class JSLazyStringForeignAccessFactory {
         @SuppressWarnings("unused")
         public Object access(JSLazyString target) {
             return true;
-        }
-    }
-
-    @CanResolve
-    public abstract static class CanResolveNode extends Node {
-
-        protected boolean test(TruffleObject receiver) {
-            return receiver instanceof JSLazyString;
         }
     }
 }

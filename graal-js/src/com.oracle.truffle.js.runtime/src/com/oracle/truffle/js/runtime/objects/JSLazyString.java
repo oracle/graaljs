@@ -319,6 +319,10 @@ public final class JSLazyString implements CharSequence, TruffleObject {
 
     }
 
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof JSLazyString;
+    }
+
     @Override
     public ForeignAccess getForeignAccess() {
         return JSLazyStringForeignAccessFactoryForeign.ACCESS;
