@@ -56,6 +56,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -545,6 +546,10 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         ensureIsNumberFormat(numberFormatObj);
         NumberFormat numberFormat = getNumberFormatProperty(numberFormatObj);
         Number x = JSRuntime.toNumber(n);
+
+        if (x instanceof LargeInteger) {
+            x = ((LargeInteger) x).doubleValue();
+        }
 
         List<Object> resultParts = new LinkedList<>();
         AttributedCharacterIterator fit = numberFormat.formatToCharacterIterator(x);
