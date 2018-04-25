@@ -38,28 +38,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.truffleinterop;
+package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
-@MessageResolution(receiverType = JSLazyString.class)
-public class JSLazyStringForeignAccessFactory {
+@MessageResolution(receiverType = LargeInteger.class)
+public class LargeIntegerMessageResolution {
 
-    @Resolve(message = "UNBOX")
-    abstract static class UnboxNode extends Node {
-        public Object access(JSLazyString target) {
-            return target.toString();
+    @Resolve(message = "IS_BOXED")
+    public abstract static class IsBoxedObject extends Node {
+        public Object access(@SuppressWarnings("unused") LargeInteger li) {
+            return true;
         }
     }
 
-    @Resolve(message = "IS_BOXED")
-    abstract static class IsBoxedNode extends Node {
-        @SuppressWarnings("unused")
-        public Object access(JSLazyString target) {
-            return true;
+    @Resolve(message = "UNBOX")
+    public abstract static class UnboxObject extends Node {
+        public Object access(LargeInteger li) {
+            return li.doubleValue();
         }
     }
 }
