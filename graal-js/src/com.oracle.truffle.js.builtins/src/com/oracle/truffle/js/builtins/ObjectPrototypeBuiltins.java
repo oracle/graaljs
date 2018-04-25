@@ -412,6 +412,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return hasOwnPropertyPrimitive(thisObj, propName);
         }
 
+        @Specialization
+        protected boolean hasOwnPropertySymbol(LargeInteger thisObj, Object propName) {
+            return hasOwnPropertyPrimitive(thisObj, propName);
+        }
+
         @Specialization(guards = "isForeignObject(thisObj)")
         protected boolean hasOwnPropertyForeign(TruffleObject thisObj, Object propName) {
             return getHasOwnPropertyNode().executeBoolean(thisObj, propName);
