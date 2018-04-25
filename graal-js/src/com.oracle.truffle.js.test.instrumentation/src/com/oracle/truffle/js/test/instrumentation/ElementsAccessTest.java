@@ -154,4 +154,41 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
         }).exit();
     }
 
+    @Test
+    public void exprBlockTestIncPost() {
+        assertNestedIncDecElementRead("self.cursorState.cursorIndex++", 1, 1);
+    }
+
+    @Test
+    public void exprBlockTestIncPre() {
+        assertNestedIncDecElementRead("++self.cursorState.cursorIndex", 0, 1);
+    }
+
+    @Test
+    public void exprBlockTestDecPost() {
+        assertNestedIncDecElementRead("self.cursorState.cursorIndex--", 1, 1);
+    }
+
+    @Test
+    public void exprBlockTestDecPre() {
+        assertNestedIncDecElementRead("--self.cursorState.cursorIndex", 1, 0);
+    }
+
+    private void assertNestedIncDecElementRead(String op, int initial, int returned) {
+        evalWithTag("(function() {" +
+                        "  var self = {" +
+                        "    cursorState : {" +
+                        "      documents : ['foo', 'bar']," +
+                        "      cursorIndex : " + initial +
+                        "    }" +
+                        "  };" +
+                        "  var doc = self.cursorState.documents[" + op + "];" +
+                        "})()", ReadElementExpressionTag.class);
+
+        enter(ReadElementExpressionTag.class, (e, b) -> {
+            b.input(assertJSArrayInput);
+            b.input(returned);
+        }).exit();
+    }
+
 }
