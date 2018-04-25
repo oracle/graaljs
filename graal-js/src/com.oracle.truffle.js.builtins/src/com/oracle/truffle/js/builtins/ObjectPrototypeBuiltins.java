@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -303,6 +304,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected String doLazyString(JSLazyString thisObj) {
+            return JSObject.defaultToString(toObject(thisObj));
+        }
+
+        @Specialization
+        protected String doLargeInteger(LargeInteger thisObj) {
             return JSObject.defaultToString(toObject(thisObj));
         }
 
