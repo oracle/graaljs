@@ -44,6 +44,8 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.NoSuchFileException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -670,8 +672,12 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             String languageIdOrMimeType = languageId.toString();
             try {
                 source = Source.newBuilder(new File(fileNameStr)).language(languageIdOrMimeType).mimeType(languageIdOrMimeType).build();
+            } catch (AccessDeniedException e) {
+                throw Errors.createError("Cannot evaluate file " + fileNameStr + ": permission denied");
+            } catch (NoSuchFileException e) {
+                throw Errors.createError("Cannot evaluate file " + fileNameStr + ": no such file");
             } catch (IOException e) {
-                throw Errors.createError(e.getMessage());
+                throw Errors.createError("Cannot evaluate file: " + e.getMessage());
             }
 
             CallTarget callTarget;
