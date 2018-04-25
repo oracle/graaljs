@@ -207,6 +207,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toObject(thisObj);
         }
 
+        @Specialization
+        protected DynamicObject valueOf(LargeInteger thisObj) {
+            return toObject(thisObj);
+        }
+
         @Specialization(guards = "!isTruffleObject(thisObj)")
         protected DynamicObject valueOf(Object thisObj) {
             return toObject(thisObj);
