@@ -48,9 +48,9 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
+import com.oracle.truffle.js.nodes.intl.CreateRegExpNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
-import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 
 public class RegExpLiteralNode extends JavaScriptNode {
     private final JSContext context;
@@ -58,6 +58,8 @@ public class RegExpLiteralNode extends JavaScriptNode {
     private final String flags;
 
     @CompilationFinal private TruffleObject regex;
+
+    @Child private CreateRegExpNode createRegExpNode;
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
@@ -77,6 +79,7 @@ public class RegExpLiteralNode extends JavaScriptNode {
         this.context = context;
         this.pattern = pattern;
         this.flags = flags;
+        this.createRegExpNode = CreateRegExpNode.create(context);
     }
 
     public static RegExpLiteralNode create(JSContext context, String pattern, String flags) {
@@ -89,7 +92,7 @@ public class RegExpLiteralNode extends JavaScriptNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             regex = RegexCompilerInterface.compile(pattern, flags, context);
         }
-        return JSRegExp.create(context, regex);
+        return createRegExpNode.execute(regex);
     }
 
     @Override

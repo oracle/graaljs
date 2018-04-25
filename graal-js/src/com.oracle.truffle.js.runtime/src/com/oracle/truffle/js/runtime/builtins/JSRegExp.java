@@ -194,16 +194,28 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         return (DynamicObjectFactory) GROUPS_FACTORY_PROPERTY.get(thisObj, isJSRegExp(thisObj));
     }
 
-    public static DynamicObject create(JSContext ctx, TruffleObject regex) {
-        // (compiledRegex, lastIndex)
-        DynamicObject regExp = JSObject.create(ctx, ctx.getRegExpFactory(), regex, 0, prepareGroupsFactory(ctx, regex));
+    /**
+     * Creates a new JavaScript RegExp object.
+     * <p>
+     * This overload incurs hitting a {@link TruffleBoundary} when having to examine the
+     * {@code compiledRegex} for information about named capture groups. In order to avoid a
+     * {@link TruffleBoundary} in cases when your regular expression has no named capture groups,
+     * consider using the {@code com.oracle.truffle.js.nodes.intl.CreateRegExpNode}.
+     */
+    public static DynamicObject create(JSContext ctx, TruffleObject compiledRegex) {
+        return create(ctx, compiledRegex, computeGroupsFactory(ctx, compiledRegex));
+    }
+
+    public static DynamicObject create(JSContext ctx, TruffleObject compiledRegex, DynamicObjectFactory groupsFactory) {
+        // (compiledRegex, lastIndex, groupsFactory)
+        DynamicObject regExp = JSObject.create(ctx, ctx.getRegExpFactory(), compiledRegex, 0, groupsFactory);
         assert isJSRegExp(regExp);
         return regExp;
     }
 
     private static void initialize(JSContext ctx, DynamicObject regExp, TruffleObject regex) {
         COMPILED_REGEX_PROPERTY.setSafe(regExp, regex, null);
-        GROUPS_FACTORY_PROPERTY.setSafe(regExp, prepareGroupsFactory(ctx, regex), null);
+        GROUPS_FACTORY_PROPERTY.setSafe(regExp, computeGroupsFactory(ctx, regex), null);
     }
 
     public static void updateCompilation(JSContext ctx, DynamicObject thisObj, TruffleObject regex) {
@@ -212,21 +224,26 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     }
 
     @TruffleBoundary
-    private static DynamicObjectFactory prepareGroupsFactory(JSContext ctx, TruffleObject compiledRegex) {
+    private static DynamicObjectFactory computeGroupsFactory(JSContext ctx, TruffleObject compiledRegex) {
         TruffleObject namedCaptureGroups = TRegexUtil.readNamedCaptureGroups(JSInteropUtil.createRead(), compiledRegex);
         if (JSInteropNodeUtil.isNull(namedCaptureGroups)) {
             return null;
         } else {
-            Shape groupsShape = ctx.getEmptyShape();
-            groupsShape = groupsShape.addProperty(GROUPS_RESULT_PROPERTY);
-            for (Object key : JSInteropNodeUtil.keys(namedCaptureGroups)) {
-                String groupName = (String) key;
-                int groupIndex = ((Number) JSInteropNodeUtil.read(namedCaptureGroups, groupName)).intValue();
-                Property groupProperty = JSObjectUtil.makeProxyProperty(groupName, new LazyNamedCaptureGroupProperty(groupName, groupIndex), JSAttributes.getDefault());
-                groupsShape = groupsShape.addProperty(groupProperty);
-            }
-            return groupsShape.createFactory();
+            return buildGroupsFactory(ctx, namedCaptureGroups);
         }
+    }
+
+    @TruffleBoundary
+    public static DynamicObjectFactory buildGroupsFactory(JSContext ctx, TruffleObject namedCaptureGroups) {
+        Shape groupsShape = ctx.getEmptyShape();
+        groupsShape = groupsShape.addProperty(GROUPS_RESULT_PROPERTY);
+        for (Object key : JSInteropNodeUtil.keys(namedCaptureGroups)) {
+            String groupName = (String) key;
+            int groupIndex = ((Number) JSInteropNodeUtil.read(namedCaptureGroups, groupName)).intValue();
+            Property groupProperty = JSObjectUtil.makeProxyProperty(groupName, new LazyNamedCaptureGroupProperty(groupName, groupIndex), JSAttributes.getDefault());
+            groupsShape = groupsShape.addProperty(groupProperty);
+        }
+        return groupsShape.createFactory();
     }
 
     /**
