@@ -282,7 +282,7 @@ public class DateParser {
                                     || ((token == Token.END || token == Token.SEPARATOR) && setTimeField(0)))) {
                                 return false;
                             }
-                        } while (skipDelimiter(isSet(SECOND) ? '.' : ':'));
+                        } while (isSet(SECOND) ? (skipDelimiter('.') || skipDelimiter(':')) : skipDelimiter(':'));
 
                     } else {
                         // Parse as date token
