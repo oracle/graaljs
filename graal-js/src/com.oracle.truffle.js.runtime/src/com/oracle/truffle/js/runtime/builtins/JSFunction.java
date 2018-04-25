@@ -294,7 +294,7 @@ public final class JSFunction extends JSBuiltinObject {
         assert factory.getShape().getObjectType() == JSFunction.INSTANCE;
         assert functionData != null;
         assert enclosingFrame != null; // use JSFrameUtil.NULL_MATERIALIZED_FRAME instead
-        return JSObject.create(realm.getContext(), factory, functionData, enclosingFrame, classPrototype, realm);
+        return JSObject.create(functionData.getContext(), factory, functionData, enclosingFrame, classPrototype, realm);
     }
 
     public static DynamicObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments,
