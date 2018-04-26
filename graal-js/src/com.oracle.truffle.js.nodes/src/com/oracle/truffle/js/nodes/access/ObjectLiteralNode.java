@@ -386,7 +386,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             }
 
             PropertyDescriptor propDesc = PropertyDescriptor.createData(value, enumerable, true, true);
-            JSRuntime.definePropertyOrThrow(obj, key, propDesc, JSObject.getJSContext(obj));
+            JSRuntime.definePropertyOrThrow(obj, key, propDesc, context);
         }
 
         @Override
@@ -439,7 +439,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) setterV, (DynamicObject) getterV);
             propDesc.setConfigurable(true);
             propDesc.setEnumerable(enumerable);
-            JSRuntime.definePropertyOrThrow(obj, key, propDesc, JSObject.getJSContext(obj));
+            JSRuntime.definePropertyOrThrow(obj, key, propDesc, context);
         }
 
         @Override
