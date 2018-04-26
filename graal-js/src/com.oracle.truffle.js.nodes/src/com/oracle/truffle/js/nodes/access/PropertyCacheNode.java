@@ -1137,6 +1137,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
                             ? new ConstantObjectPrototypeShapeCheckNode(shape, thisObj, key, getContext())
                             : new PrototypeShapeCheckNode(shape, thisObj, key, getContext());
         } else {
+            traversePrototypeShapeCheckCount.inc();
             return new TraversePrototypeShapeCheckNode(shape, thisObj);
         }
     }
@@ -1148,6 +1149,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
                             ? new ConstantObjectPrototypeChainShapeCheckNode(shape, thisObj, key, depth, getContext())
                             : new PrototypeChainShapeCheckNode(shape, thisObj, key, depth, getContext());
         } else {
+            traversePrototypeChainShapeCheckCount.inc();
             return new TraversePrototypeChainShapeCheckNode(shape, thisObj, depth);
         }
     }
@@ -1274,4 +1276,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
     private static final DebugCounter cacheAssumptionInitializedCount = DebugCounter.create("Property cache assumptions initialized");
     private static final DebugCounter cacheAssumptionInvalidatedCount = DebugCounter.create("Property cache assumptions invalidated");
     private static final DebugCounter propertyAssumptionCheckFailedCount = DebugCounter.create("Property assumption checks failed");
+    private static final DebugCounter traversePrototypeShapeCheckCount = DebugCounter.create("TraversePrototypeShapeCheckNode count");
+    private static final DebugCounter traversePrototypeChainShapeCheckCount = DebugCounter.create("TraversePrototypeChainShapeCheckNode count");
 }
