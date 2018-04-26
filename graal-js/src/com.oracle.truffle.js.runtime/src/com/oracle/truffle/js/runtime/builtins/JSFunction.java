@@ -1000,9 +1000,10 @@ public final class JSFunction extends JSBuiltinObject {
                         DynamicObject function = (DynamicObject) JSArguments.getFunctionObject(frame.getArguments());
                         if (function == thiz) {
                             JSFunctionData functionData = JSFunction.getFunctionData(function);
-                            JSRealm realm = functionData.getContext().getRealm();
+                            JSContext context = functionData.getContext();
+                            JSRealm realm = context.getRealm();
                             Object[] userArguments = JSArguments.extractUserArguments(frame.getArguments());
-                            return JSArgumentsObject.createNonStrict(realm, userArguments, function);
+                            return JSArgumentsObject.createNonStrict(context, realm, userArguments, function);
                         }
                     }
                     return null;

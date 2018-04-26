@@ -40,12 +40,22 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.*;
+import java.util.EnumSet;
 
-import com.oracle.truffle.api.object.*;
-import com.oracle.truffle.js.runtime.*;
-import com.oracle.truffle.js.runtime.array.*;
-import com.oracle.truffle.js.runtime.objects.*;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.LocationModifier;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.Accessor;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSArgumentsObject extends JSAbstractArgumentsObject {
     static final JSArgumentsObject INSTANCE = new JSArgumentsObject();
@@ -53,17 +63,19 @@ public final class JSArgumentsObject extends JSAbstractArgumentsObject {
     private JSArgumentsObject() {
     }
 
-    public static DynamicObject createStrict(JSRealm realm, Object[] elements) {
+    public static DynamicObject createStrict(JSContext context, JSRealm realm, Object[] elements) {
         // (array, arrayType, length, usedLength, indexOffset, arrayOffset, holeCount, length)
-        return JSObject.create(realm.getContext(), realm.getStrictArgumentsFactory(), elements, ScriptArray.createConstantArray(elements), null, elements.length, 0, 0, 0, 0, elements.length,
-                        elements.length,
-                        realm.getArrayProtoValuesIterator());
+        if (context.getEcmaScriptVersion() < JSTruffleOptions.ECMAScript2017) {
+            return JSObject.create(context, realm.getStrictArgumentsFactory(), elements, ScriptArray.createConstantArray(elements), null, elements.length, 0, 0, 0, 0, elements.length, elements.length,
+                            realm.getArrayProtoValuesIterator(), realm.getThrowerAccessor(), realm.getThrowerAccessor());
+        }
+        return JSObject.create(context, realm.getStrictArgumentsFactory(), elements, ScriptArray.createConstantArray(elements), null, elements.length, 0, 0, 0, 0, elements.length, elements.length,
+                        realm.getArrayProtoValuesIterator(), realm.getThrowerAccessor());
     }
 
-    public static DynamicObject createNonStrict(JSRealm realm, Object[] elements, DynamicObject callee) {
+    public static DynamicObject createNonStrict(JSContext context, JSRealm realm, Object[] elements, DynamicObject callee) {
         // (array, arrayType, len, usedLen, indexOffset, arrayOffset, holeCount, length, callee)
-        return JSObject.create(realm.getContext(), realm.getNonStrictArgumentsFactory(), elements, ScriptArray.createConstantArray(elements), null, elements.length, 0, 0, 0, 0, elements.length,
-                        elements.length,
+        return JSObject.create(context, realm.getNonStrictArgumentsFactory(), elements, ScriptArray.createConstantArray(elements), null, elements.length, 0, 0, 0, 0, elements.length, elements.length,
                         realm.getArrayProtoValuesIterator(), callee);
     }
 
@@ -104,10 +116,10 @@ public final class JSArgumentsObject extends JSAbstractArgumentsObject {
 
         putIteratorProperty(context, dummyArray);
 
-        DynamicObject throwerFn = realm.getThrowerFunction();
-        JSObjectUtil.putConstantAccessorProperty(context, dummyArray, CALLEE, throwerFn, throwerFn, JSAttributes.notConfigurableNotEnumerable());
+        Accessor throwerAccessor = realm.getThrowerAccessor();
+        JSObjectUtil.putAccessorProperty(context, dummyArray, CALLEE, throwerAccessor, JSAttributes.notConfigurableNotEnumerable());
         if (context.getEcmaScriptVersion() < JSTruffleOptions.ECMAScript2017) {
-            JSObjectUtil.putConstantAccessorProperty(context, dummyArray, CALLER, throwerFn, throwerFn, JSAttributes.notConfigurableNotEnumerable());
+            JSObjectUtil.putAccessorProperty(context, dummyArray, CALLER, throwerAccessor, JSAttributes.notConfigurableNotEnumerable());
         }
         return dummyArray.getShape();
     }
