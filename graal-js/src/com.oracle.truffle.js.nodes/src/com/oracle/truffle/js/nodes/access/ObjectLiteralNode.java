@@ -167,6 +167,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
     private abstract static class CachingObjectLiteralMemberNode extends ObjectLiteralMemberNode {
         protected final String name;
         @CompilationFinal protected CacheEntry cache;
+        protected static final CacheEntry GENERIC = new CacheEntry(null, null, null, null, null);
 
         CachingObjectLiteralMemberNode(String name, boolean isStatic, boolean enumerable) {
             super(isStatic, enumerable);
@@ -192,6 +193,10 @@ public class ObjectLiteralNode extends JavaScriptNode {
                 return newShapeNotObsoleteAssumption.isValid();
             }
 
+            protected static int getDepth(CacheEntry head) {
+                return head == null ? 0 : 1 + getDepth(head.next);
+            }
+
             @Override
             public String toString() {
                 CompilerAsserts.neverPartOfCompilation();
@@ -202,7 +207,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
                 }
                 return sb.toString();
             }
-
         }
 
         protected final void insertIntoCache(Shape oldShape, Shape newShape, Property property, Assumption newShapeNotObsoleteAssumption) {
@@ -225,6 +229,15 @@ public class ObjectLiteralNode extends JavaScriptNode {
                 return filteredNext;
             }
         }
+
+        protected final void setGeneric() {
+            CompilerAsserts.neverPartOfCompilation();
+            this.cache = GENERIC;
+        }
+
+        protected final int getCacheDepth() {
+            return CacheEntry.getDepth(cache);
+        }
     }
 
     private static class ObjectLiteralDataMemberNode extends CachingObjectLiteralMemberNode {
@@ -244,6 +257,10 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
         private void execute(DynamicObject obj, Object value, JSContext context) {
             for (CacheEntry resolved = cache; resolved != null; resolved = resolved.next) {
+                if (resolved == GENERIC) {
+                    executeGeneric(obj, value, context);
+                    return;
+                }
                 if (resolved.oldShape.check(obj)) {
                     try {
                         resolved.newShapeNotObsoleteAssumption.check();
@@ -261,8 +278,18 @@ public class ObjectLiteralNode extends JavaScriptNode {
             rewrite(obj, value, context);
         }
 
+        private void executeGeneric(DynamicObject obj, Object value, JSContext context) {
+            PropertyDescriptor propDesc = PropertyDescriptor.createData(value, enumerable, true, true);
+            JSRuntime.definePropertyOrThrow(obj, name, propDesc, context);
+        }
+
         private void rewrite(DynamicObject obj, Object value, JSContext context) {
             CompilerAsserts.neverPartOfCompilation();
+            if (getCacheDepth() >= JSTruffleOptions.PropertyCacheLimit) {
+                setGeneric();
+                executeGeneric(obj, value, context);
+                return;
+            }
             Shape oldShape = obj.getShape();
             Property property = oldShape.getProperty(name);
             int attributes = enumerable ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable();
@@ -311,12 +338,17 @@ public class ObjectLiteralNode extends JavaScriptNode {
             if (setterNode != null) {
                 setterV = executeWithObject(setterNode, frame, obj);
             }
+            assert getterV != null || setterV != null;
             execute(obj, getterV, setterV, context);
         }
 
         @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
         private void execute(DynamicObject obj, Object getterV, Object setterV, JSContext context) {
             for (CacheEntry resolved = cache; resolved != null; resolved = resolved.next) {
+                if (resolved == GENERIC) {
+                    executeGeneric(obj, getterV, setterV, context);
+                    return;
+                }
                 if (resolved.oldShape.check(obj)) {
                     try {
                         resolved.newShapeNotObsoleteAssumption.check();
@@ -335,8 +367,20 @@ public class ObjectLiteralNode extends JavaScriptNode {
             rewrite(obj, getterV, setterV, context);
         }
 
+        private void executeGeneric(DynamicObject obj, Object getterV, Object setterV, JSContext context) {
+            PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) setterV, (DynamicObject) getterV);
+            propDesc.setConfigurable(true);
+            propDesc.setEnumerable(enumerable);
+            JSRuntime.definePropertyOrThrow(obj, name, propDesc, context);
+        }
+
         private void rewrite(DynamicObject obj, Object getterV, Object setterV, JSContext context) {
             CompilerAsserts.neverPartOfCompilation();
+            if (getCacheDepth() >= JSTruffleOptions.PropertyCacheLimit) {
+                setGeneric();
+                executeGeneric(obj, getterV, setterV, context);
+                return;
+            }
             Shape oldShape = obj.getShape();
             Property property = oldShape.getProperty(name);
             int attributes = enumerable ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable();
