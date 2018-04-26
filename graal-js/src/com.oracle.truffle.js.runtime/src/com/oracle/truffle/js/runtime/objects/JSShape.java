@@ -123,6 +123,14 @@ public final class JSShape {
         return getSharedData(shape).getPropertyAssumption(key);
     }
 
+    public static Assumption getPropertyAssumption(Shape shape, Object key, boolean prototype) {
+        assert JSRuntime.isPropertyKey(key) || key instanceof HiddenKey;
+        if (prototype && JSTruffleOptions.LeafShapeAssumption) {
+            return shape.getLeafAssumption();
+        }
+        return getSharedData(shape).getPropertyAssumption(key);
+    }
+
     public static void invalidatePropertyAssumption(Shape shape, Object propertyName) {
         getSharedData(shape).invalidatePropertyAssumption(propertyName);
     }

@@ -99,6 +99,7 @@ public class JSTruffleOptions {
     public static final boolean SkipPrototypeShapeCheck = booleanOption("SkipPrototypeShapeCheck", true, 0);
     public static final boolean SkipGlobalShapeCheck = booleanOption("SkipGlobalShapeCheck", true, 0);
     public static final boolean SkipFinalShapeCheck = booleanOption("SkipFinalShapeCheck", true, 0);
+    public static final boolean LeafShapeAssumption = booleanOption("LeafShapeAssumption", false, 0);
 
     // Runtime options
     public static final boolean LazyStrings = booleanOption("LazyStrings", true, OPTION_PERFORMANCE);

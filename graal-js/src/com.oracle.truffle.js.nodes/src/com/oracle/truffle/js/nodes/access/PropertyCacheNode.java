@@ -274,10 +274,14 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
         private final Assumption shapeValidAssumption;
         private final Assumption unchangedShapeAssumption;
 
-        public AssumptionShapeCheckNode(Shape shape, Object key, JSContext context) {
+        public AssumptionShapeCheckNode(Shape shape, @SuppressWarnings("unused") Object key, JSContext context, Assumption unchangedAssumption) {
             super(shape, context);
             this.shapeValidAssumption = shape.getValidAssumption();
-            this.unchangedShapeAssumption = JSShape.getPropertyAssumption(shape, key);
+            this.unchangedShapeAssumption = unchangedAssumption;
+        }
+
+        public AssumptionShapeCheckNode(Shape shape, Object key, JSContext context, boolean prototype) {
+            this(shape, key, context, JSShape.getPropertyAssumption(shape, key, prototype));
         }
 
         @Override
@@ -318,7 +322,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
             DynamicObject finalProto = JSObject.getPrototype(thisObj);
             Shape protoShape = finalProto.getShape();
             this.protoNotObsoletedAssumption = protoShape.getValidAssumption();
-            this.protoUnchangedAssumption = JSShape.getPropertyAssumption(protoShape, key);
+            this.protoUnchangedAssumption = JSShape.getPropertyAssumption(protoShape, key, true);
             this.prototype = finalProto;
         }
 
@@ -365,7 +369,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
             for (int i = 0; i < depth; i++) {
                 depthProto = JSObject.getPrototype(depthProto);
                 depthShape = depthProto.getShape();
-                shapeCheckNodes[i] = new AssumptionShapeCheckNode(depthShape, key, context);
+                shapeCheckNodes[i] = new AssumptionShapeCheckNode(depthShape, key, context, true);
             }
             this.prototype = depthProto;
         }
@@ -499,7 +503,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
             for (int i = 0; i < depth; i++) {
                 depthProto = JSObject.getPrototype(depthProto);
                 depthShape = depthProto.getShape();
-                shapeCheckNodes[i] = new AssumptionShapeCheckNode(depthShape, key, context);
+                shapeCheckNodes[i] = new AssumptionShapeCheckNode(depthShape, key, context, true);
             }
             this.prototype = new WeakReference<>(depthProto);
         }
@@ -565,7 +569,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
             DynamicObject finalProto = JSObject.getPrototype(thisObj);
             Shape protoShape = finalProto.getShape();
             this.protoShapeValidAssumption = protoShape.getValidAssumption();
-            this.protoUnchangedAssumption = JSShape.getPropertyAssumption(protoShape, key);
+            this.protoUnchangedAssumption = JSShape.getPropertyAssumption(protoShape, key, true);
             this.expectedObjectRef = new WeakReference<>(thisObj);
             this.prototype = new WeakReference<>(finalProto);
         }
@@ -721,7 +725,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
             for (int i = 0; i < depth; i++) {
                 depthProto = JSObject.getPrototype(depthProto);
                 depthShape = depthProto.getShape();
-                shapeCheckNodes[i] = new AssumptionShapeCheckNode(depthShape, key, context);
+                shapeCheckNodes[i] = new AssumptionShapeCheckNode(depthShape, key, context, true);
             }
             this.prototype = depthProto;
         }
@@ -1116,7 +1120,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
     private AbstractShapeCheckNode createShapeCheckNodeDepth0(Shape shape, DynamicObject thisObj, boolean isConstantObjectFinal, boolean isDefine) {
         // if isDefine is true, shape change is imminent, so don't use assumption
         if (isGlobal() && JSTruffleOptions.SkipGlobalShapeCheck && !isDefine && isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(shape, key).isValid()) {
-            return new AssumptionShapeCheckNode(shape, key, getContext());
+            return new AssumptionShapeCheckNode(shape, key, getContext(), false);
         } else if (isConstantObjectFinal) {
             assert !isDefine;
             if (isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(shape, key).isValid()) {
@@ -1175,7 +1179,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
         }
         for (int i = 0; i < depth; i++) {
             depthObject = JSObject.getPrototype(depthObject);
-            if (!JSShape.getPropertyAssumption(depthObject.getShape(), key).isValid()) {
+            if (!JSShape.getPropertyAssumption(depthObject.getShape(), key, true).isValid()) {
                 return false;
             }
         }
