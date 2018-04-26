@@ -32,10 +32,6 @@
     "filePath" : "mjsunit/asm/asm-validation.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/asm/call-stdlib.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
     "filePath" : "mjsunit/asm/global-imports.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
