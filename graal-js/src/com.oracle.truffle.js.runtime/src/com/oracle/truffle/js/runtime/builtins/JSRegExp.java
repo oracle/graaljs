@@ -166,14 +166,15 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     }
 
     static {
-        Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        COMPILED_REGEX_PROPERTY = JSObjectUtil.makeHiddenProperty(COMPILED_REGEX_ID, allocator.locationForType(TruffleObject.class, EnumSet.of(LocationModifier.NonNull)));
+        Shape.Allocator regExpAllocator = JSShape.makeAllocator(JSObject.LAYOUT);
+        COMPILED_REGEX_PROPERTY = JSObjectUtil.makeHiddenProperty(COMPILED_REGEX_ID, regExpAllocator.locationForType(TruffleObject.class, EnumSet.of(LocationModifier.NonNull)));
         // (GR-1991): could start out as an int location.
-        LAST_INDEX_PROPERTY = JSObjectUtil.makeDataProperty(JSRegExp.LAST_INDEX, allocator.locationForType(Object.class, EnumSet.of(LocationModifier.NonNull)),
+        LAST_INDEX_PROPERTY = JSObjectUtil.makeDataProperty(JSRegExp.LAST_INDEX, regExpAllocator.locationForType(Object.class, EnumSet.of(LocationModifier.NonNull)),
                         JSAttributes.notConfigurableNotEnumerableWritable());
-        GROUPS_FACTORY_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_FACTORY_ID, allocator.locationForType(DynamicObjectFactory.class));
+        GROUPS_FACTORY_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_FACTORY_ID, regExpAllocator.locationForType(DynamicObjectFactory.class));
 
-        GROUPS_RESULT_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_RESULT_ID, allocator.locationForType(TruffleObject.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+        Shape.Allocator resultAllocator = JSShape.makeAllocator(JSObject.LAYOUT);
+        GROUPS_RESULT_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_RESULT_ID, resultAllocator.locationForType(TruffleObject.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
     }
 
     private JSRegExp() {
