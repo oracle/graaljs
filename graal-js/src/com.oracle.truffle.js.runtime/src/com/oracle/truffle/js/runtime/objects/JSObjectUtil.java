@@ -285,7 +285,7 @@ public final class JSObjectUtil {
 
     private static Shape createChildRootShape(DynamicObject obj, JSClass jsclass, JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        return JSShape.makeRootShape(JSObject.LAYOUT, new JSSharedData(false, context, JSShape.makePrototypeProperty(obj)), jsclass);
+        return JSShape.makeRootShape(JSObject.LAYOUT, new JSSharedData(context, JSShape.makePrototypeProperty(obj)), jsclass);
     }
 
     private static void putPrototypeData(DynamicObject obj, JSPrototypeData prototypeData) {
@@ -301,22 +301,6 @@ public final class JSObjectUtil {
 
     static JSPrototypeData getPrototypeData(DynamicObject obj) {
         return (JSPrototypeData) obj.get(PROTOTYPE_DATA);
-    }
-
-    /**
-     * Split off a new shape tree unique to this object and set it, allowing a child tree with this
-     * object as the prototype be assigned to the shape tree. Does nothing if the shape is already
-     * unique. Formerly known as {@code makePrototype}.
-     */
-    public static Shape makeUnique(DynamicObject obj) {
-        CompilerAsserts.neverPartOfCompilation("do not make unique Shape in compiled code");
-        Shape currentShape = obj.getShape();
-        Shape newShape = JSShape.makeUniqueShape(currentShape);
-        if (newShape != null) {
-            obj.setShapeAndGrow(currentShape, newShape);
-            return newShape;
-        }
-        return currentShape;
     }
 
     public static Map<Object, Object> archive(DynamicObject obj) {

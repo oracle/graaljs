@@ -55,7 +55,6 @@ import com.oracle.truffle.js.runtime.util.DebugCounter;
  * @see JSShape
  */
 public final class JSSharedData implements ShapeListener {
-    private final boolean unique;
     private final JSContext context;
     private final Property prototypeProperty;
     private Map<Object, Assumption> propertyAssumptions;
@@ -63,8 +62,7 @@ public final class JSSharedData implements ShapeListener {
     private static final DebugCounter propertyAssumptionsCreated = DebugCounter.create("Property assumptions created");
     private static final DebugCounter propertyAssumptionsRemoved = DebugCounter.create("Property assumptions removed");
 
-    public JSSharedData(boolean unique, JSContext context, Property prototypeProperty) {
-        this.unique = unique;
+    public JSSharedData(JSContext context, Property prototypeProperty) {
         this.context = context;
         this.prototypeProperty = prototypeProperty;
     }
@@ -111,10 +109,6 @@ public final class JSSharedData implements ShapeListener {
 
     public JSContext getContext() {
         return context;
-    }
-
-    public boolean isUnique() {
-        return unique;
     }
 
     Property getPrototypeProperty() {

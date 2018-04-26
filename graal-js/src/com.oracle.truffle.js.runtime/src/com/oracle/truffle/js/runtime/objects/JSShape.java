@@ -45,7 +45,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Layout;
@@ -78,25 +77,8 @@ public final class JSShape {
         return shape.getObjectType();
     }
 
-    /**
-     * Make a unique shape for a prototype object.
-     */
-    public static Shape makeUniqueShape(Shape shape) {
-        if (isUnique(shape)) {
-            // this is already a prototype!
-            return null;
-        }
-        CompilerDirectives.transferToInterpreter();
-        return shape.createSeparateShape(new JSSharedData(true, getJSContext(shape), getPrototypeProperty(shape)));
-    }
-
     public static JSSharedData getSharedData(Shape shape) {
         return (JSSharedData) shape.getSharedData();
-    }
-
-    private static boolean isUnique(Shape shape) {
-        JSSharedData shared = getSharedData(shape);
-        return shared.isUnique();
     }
 
     /**
@@ -212,32 +194,32 @@ public final class JSShape {
      * Internal constructor for null shape et al.
      */
     public static Shape makeStaticRoot(Layout layout, ObjectType jsclass, int id) {
-        return makeRootShape(layout, jsclass, new JSSharedData(false, null, makePrototypeProperty(Null.instance)), id);
+        return makeRootShape(layout, jsclass, new JSSharedData(null, makePrototypeProperty(Null.instance)), id);
     }
 
     /**
      * Empty shape constructor.
      */
     public static Shape makeEmptyRoot(Layout layout, ObjectType jsclass, JSContext context) {
-        return makeRootShape(layout, new JSSharedData(false, context, makePrototypeProperty(Null.instance)), jsclass);
+        return makeRootShape(layout, new JSSharedData(context, makePrototypeProperty(Null.instance)), jsclass);
     }
 
     /**
      * Empty shape constructor with prototype in field.
      */
     public static Shape makeEmptyRoot(Layout layout, ObjectType jsclass, JSContext context, Property prototypeProperty) {
-        return makeRootShape(layout, new JSSharedData(false, context, prototypeProperty), jsclass);
+        return makeRootShape(layout, new JSSharedData(context, prototypeProperty), jsclass);
     }
 
     /**
      * Constructor for makePrototypeShape.
      */
     public static Shape makeUniqueRoot(Layout layout, ObjectType jsclass, JSContext context, Property prototypeProperty) {
-        return makeRootShape(layout, new JSSharedData(true, context, prototypeProperty), jsclass);
+        return makeRootShape(layout, new JSSharedData(context, prototypeProperty), jsclass);
     }
 
     public static Shape makeUniqueRootWithPrototype(Layout layout, ObjectType jsclass, JSContext context, DynamicObject prototype) {
-        return makeRootShape(layout, new JSSharedData(true, context, makePrototypeProperty(prototype)), jsclass);
+        return makeRootShape(layout, new JSSharedData(context, makePrototypeProperty(prototype)), jsclass);
     }
 
     /**
