@@ -214,7 +214,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     }
 
     public static Shape makeInitialArrayShape(JSContext context, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype.getShape(), INSTANCE) == null;
+        assert JSShape.getProtoChildTree(prototype, INSTANCE) == null;
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         initialShape = addArrayProperties(initialShape);
         initialShape = initialShape.addProperty(makeArrayLengthProxyProperty());

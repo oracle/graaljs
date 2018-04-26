@@ -405,7 +405,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         protected Object getProtoChildShape(Object prototype) {
             CompilerAsserts.neverPartOfCompilation();
             if (JSGuards.isJSObject(prototype)) {
-                return JSObjectUtil.getProtoChildShape(((DynamicObject) prototype), JSUserObject.INSTANCE, context);
+                return JSObjectUtil.getProtoChildShape((DynamicObject) prototype, JSUserObject.INSTANCE, context);
             }
             return Undefined.instance;
         }

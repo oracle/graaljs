@@ -308,7 +308,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     }
 
     public static Shape makeInitialShape(JSContext ctx, DynamicObject thisObj) {
-        assert JSShape.getProtoChildTree(thisObj.getShape(), INSTANCE) == null;
+        assert JSShape.getProtoChildTree(thisObj, INSTANCE) == null;
         // @formatter:off
         return JSObjectUtil.getProtoChildShape(thisObj, INSTANCE, ctx).
                         addProperty(COMPILED_REGEX_PROPERTY).

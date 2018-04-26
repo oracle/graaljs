@@ -182,7 +182,7 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
     }
 
     public static Shape makeInitialArrayBufferViewShape(JSContext ctx, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype.getShape(), INSTANCE) == null;
+        assert JSShape.getProtoChildTree(prototype, INSTANCE) == null;
         Shape childTree = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
         // hidden properties
         childTree = childTree.addProperty(ARRAY_BUFFER_PROPERTY);

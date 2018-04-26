@@ -50,7 +50,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -58,6 +57,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 
@@ -65,6 +65,8 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
  * @see DynamicObject
  */
 public final class JSObjectUtil {
+    private static final HiddenKey PROTOTYPE_DATA = new HiddenKey("PROTOTYPE_DATA");
+
     private JSObjectUtil() {
         // this utility class should not be instantiated
     }
@@ -245,7 +247,7 @@ public final class JSObjectUtil {
      * Get or create a prototype child shape inheriting from this object, migrating the object to a
      * unique shape in the process. Creating unique shapes should be avoided in the fast path.
      */
-    public static Shape getProtoChildShape(DynamicObject obj, ObjectType jsclass, JSContext context) {
+    public static Shape getProtoChildShape(DynamicObject obj, JSClass jsclass, JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
         Shape protoChild = getProtoChildShapeMaybe(obj, jsclass);
         if (protoChild != null) {
@@ -255,7 +257,7 @@ public final class JSObjectUtil {
         return getProtoChildShapeSlowPath(obj, jsclass, context);
     }
 
-    public static Shape getProtoChildShape(DynamicObject obj, ObjectType jsclass, JSContext context, BranchProfile branchProfile) {
+    public static Shape getProtoChildShape(DynamicObject obj, JSClass jsclass, JSContext context, BranchProfile branchProfile) {
         Shape protoChild = getProtoChildShapeMaybe(obj, jsclass);
         if (protoChild != null) {
             return protoChild;
@@ -265,17 +267,40 @@ public final class JSObjectUtil {
         return getProtoChildShapeSlowPath(obj, jsclass, context);
     }
 
-    private static Shape getProtoChildShapeMaybe(DynamicObject obj, ObjectType jsclass) {
-        Shape currentShape = obj.getShape();
-        Shape protoChild = JSShape.getProtoChildTree(currentShape, jsclass);
+    private static Shape getProtoChildShapeMaybe(DynamicObject obj, JSClass jsclass) {
+        Shape protoChild = JSShape.getProtoChildTree(obj, jsclass);
         assert protoChild == null || JSShape.getJSClassNoCast(protoChild) == jsclass;
         return protoChild;
     }
 
     @TruffleBoundary
-    private static Shape getProtoChildShapeSlowPath(DynamicObject obj, ObjectType jsclass, JSContext context) {
-        return JSShape.getSharedData(makeUnique(obj)).getOrAddProtoChildTree(jsclass,
-                        JSShape.makeRootShape(JSObject.LAYOUT, new JSSharedData(false, context, JSShape.makePrototypeProperty(obj)), jsclass));
+    private static Shape getProtoChildShapeSlowPath(DynamicObject obj, JSClass jsclass, JSContext context) {
+        JSPrototypeData prototypeData = getPrototypeData(obj);
+        if (prototypeData == null) {
+            prototypeData = new JSPrototypeData();
+            putPrototypeData(obj, prototypeData);
+        }
+        return prototypeData.getOrAddProtoChildTree(jsclass, createChildRootShape(obj, jsclass, context));
+    }
+
+    private static Shape createChildRootShape(DynamicObject obj, JSClass jsclass, JSContext context) {
+        CompilerAsserts.neverPartOfCompilation();
+        return JSShape.makeRootShape(JSObject.LAYOUT, new JSSharedData(false, context, JSShape.makePrototypeProperty(obj)), jsclass);
+    }
+
+    private static void putPrototypeData(DynamicObject obj, JSPrototypeData prototypeData) {
+        boolean wasNotExtensible = !JSShape.isExtensible(obj.getShape());
+        obj.define(PROTOTYPE_DATA, prototypeData);
+        if (wasNotExtensible && JSObject.isExtensible(obj)) {
+            // not-extensible marker property is expected to be the last property; ensure it is.
+            obj.delete(JSShape.NOT_EXTENSIBLE_KEY);
+            JSObject.preventExtensions(obj);
+            assert !JSObject.isExtensible(obj);
+        }
+    }
+
+    static JSPrototypeData getPrototypeData(DynamicObject obj) {
+        return (JSPrototypeData) obj.get(PROTOTYPE_DATA);
     }
 
     /**
@@ -316,7 +341,7 @@ public final class JSObjectUtil {
             newRootShape = JSShape.makeEmptyRoot(oldShape.getLayout(), oldShape.getObjectType(), JSShape.getJSContext(oldShape), JSShape.makePrototypeProperty(newPrototype));
         } else {
             assert JSRuntime.isObject(newPrototype) : newPrototype;
-            newRootShape = JSObjectUtil.getProtoChildShape(newPrototype, JSShape.getJSClassNoCast(oldShape), JSShape.getJSContext(oldShape));
+            newRootShape = JSObjectUtil.getProtoChildShape(newPrototype, JSShape.getJSClass(oldShape), JSShape.getJSContext(oldShape));
         }
         Map<Object, Object> archive = archive(object);
         object.setShapeAndResize(oldShape, newRootShape);

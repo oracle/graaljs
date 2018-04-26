@@ -165,7 +165,7 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     }
 
     public static Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype.getShape(), INSTANCE) == null;
+        assert JSShape.getProtoChildTree(prototype, INSTANCE) == null;
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
         initialShape = initialShape.addProperty(TIME_MILLIS_PROPERTY);
         return initialShape;

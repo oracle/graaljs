@@ -577,7 +577,7 @@ public final class JSProxy extends AbstractJSClass {
     }
 
     public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype.getShape(), INSTANCE) == null;
+        assert JSShape.getProtoChildTree(prototype, INSTANCE) == null;
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         initialShape = initialShape.addProperty(PROXY_TARGET_PROPERTY);
         initialShape = initialShape.addProperty(PROXY_HANDLER_PROPERTY);

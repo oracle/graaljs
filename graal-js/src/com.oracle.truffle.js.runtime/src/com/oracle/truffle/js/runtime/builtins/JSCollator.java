@@ -174,7 +174,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     }
 
     public static Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype.getShape(), INSTANCE) == null;
+        assert JSShape.getProtoChildTree(prototype, INSTANCE) == null;
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
         initialShape = initialShape.addProperty(INTERNAL_STATE_PROPERTY);
         return initialShape;

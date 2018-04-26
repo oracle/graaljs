@@ -102,10 +102,10 @@ public final class JSShape {
     /**
      * Get empty shape for all objects inheriting from the prototype this shape is describing.
      */
-    public static Shape getProtoChildTree(Shape prototypeShape, ObjectType jsclass) {
-        JSSharedData shared = getSharedData(prototypeShape);
-        if (shared.isUnique()) {
-            return shared.getProtoChildTree(jsclass);
+    public static Shape getProtoChildTree(DynamicObject prototype, JSClass jsclass) {
+        JSPrototypeData prototypeData = JSObjectUtil.getPrototypeData(prototype);
+        if (prototypeData != null) {
+            return prototypeData.getProtoChildTree(jsclass);
         }
         return null;
     }

@@ -154,12 +154,12 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
 
     public static Shape makeInitialArrayBufferShape(JSContext context, DynamicObject prototype, boolean direct) {
         if (!direct) {
-            assert JSShape.getProtoChildTree(prototype.getShape(), HEAP_INSTANCE) == null;
+            assert JSShape.getProtoChildTree(prototype, HEAP_INSTANCE) == null;
             Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, HEAP_INSTANCE, context);
             initialShape = initialShape.addProperty(BYTE_ARRAY_PROPERTY);
             return initialShape;
         } else {
-            assert JSShape.getProtoChildTree(prototype.getShape(), DIRECT_INSTANCE) == null;
+            assert JSShape.getProtoChildTree(prototype, DIRECT_INSTANCE) == null;
             Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, DIRECT_INSTANCE, context);
             initialShape = initialShape.addProperty(BYTE_BUFFER_PROPERTY);
             return initialShape;

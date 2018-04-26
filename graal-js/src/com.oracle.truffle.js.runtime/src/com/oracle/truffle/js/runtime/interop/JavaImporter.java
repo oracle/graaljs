@@ -180,7 +180,7 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
     }
 
     public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype.getShape(), LazyState.INSTANCE) == null;
+        assert JSShape.getProtoChildTree(prototype, LazyState.INSTANCE) == null;
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, LazyState.INSTANCE, context);
         initialShape = initialShape.addProperty(PACKAGES_PROPERTY);
         return initialShape;
