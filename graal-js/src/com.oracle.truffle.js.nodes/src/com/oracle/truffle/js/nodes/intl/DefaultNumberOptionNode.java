@@ -47,6 +47,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
 public abstract class DefaultNumberOptionNode extends JavaScriptBaseNode {
 
@@ -77,7 +78,7 @@ public abstract class DefaultNumberOptionNode extends JavaScriptBaseNode {
 
     @TruffleBoundary
     private void createRangeError(Object value, int minimum) throws JSException {
-        throw Errors.createRangeError(String.format("invalid value %d found where only values between %d and %d are allowed", value, minimum, maximum));
+        throw Errors.createRangeError(String.format("invalid value %s found where only values between %d and %d are allowed", JSRuntime.safeToString(value), minimum, maximum));
     }
 
     @Specialization(guards = "isUndefined(value)")
