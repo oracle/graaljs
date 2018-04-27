@@ -5169,10 +5169,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "intl402/Intl/builtin.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "intl402/Intl/getCanonicalLocales/canonicalized-tags.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
