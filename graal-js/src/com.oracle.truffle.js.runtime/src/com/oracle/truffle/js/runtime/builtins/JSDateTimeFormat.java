@@ -288,9 +288,9 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         }
         switch (yearOpt) {
             case "2-digit":
-                return "YY";
+                return "yy";
             case "numeric":
-                return "YYYY";
+                return "y";
         }
         return "";
     }
