@@ -66,11 +66,13 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.ibm.icu.text.DateFormat;
 import com.ibm.icu.text.DateTimePatternGenerator;
 import com.ibm.icu.text.SimpleDateFormat;
+import com.ibm.icu.util.GregorianCalendar;
 import com.ibm.icu.util.TimeZone;
 
 import java.text.AttributedCharacterIterator;
 
 import java.util.Calendar;
+import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -210,8 +212,22 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
         state.initialized = true;
 
-        state.dateFormat = new SimpleDateFormat(bestPattern, strippedLocale);
+        SimpleDateFormat dateFormat = new SimpleDateFormat(bestPattern, strippedLocale);
+        state.dateFormat = dateFormat;
         state.locale = strippedLocale.toLanguageTag();
+
+        state.calendar = Calendar.getInstance(strippedLocale).getCalendarType();
+        if ("gregory".equals(state.calendar)) {
+            // Ensure that Gregorian calendar is used for all dates.
+            // GregorianCalendar used by SimpleDateFormat is using
+            // Julian calendar for dates before 1582 otherwise.
+            com.ibm.icu.util.Calendar calendar = dateFormat.getCalendar();
+            if (!(calendar instanceof GregorianCalendar)) {
+                calendar = new GregorianCalendar(strippedLocale);
+                dateFormat.setCalendar(calendar);
+            }
+            ((GregorianCalendar) calendar).setGregorianChange(new Date(Long.MIN_VALUE));
+        }
 
         if (tzNameOpt != null && !tzNameOpt.isEmpty()) {
             state.timeZoneName = tzNameOpt;
@@ -234,10 +250,6 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             state.dateFormat.setTimeZone(tz);
             state.timeZone = tz.getID();
         }
-
-        Calendar calendar = Calendar.getInstance(strippedLocale);
-        state.calendar = calendar.getCalendarType();
-
     }
 
     private static String weekdayOptToSkeleton(String weekdayOpt) {
@@ -276,9 +288,9 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         }
         switch (yearOpt) {
             case "2-digit":
-                return "YY";
+                return "yy";
             case "numeric":
-                return "YYYY";
+                return "y";
         }
         return "";
     }
