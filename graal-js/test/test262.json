@@ -4501,14 +4501,6 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
-    "filePath" : "built-ins/TypedArrayConstructors/ctors/typedarray-arg/detached-when-species-retrieved-different-type.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/ctors/typedarray-arg/detached-when-species-retrieved-same-type.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "built-ins/TypedArrayConstructors/ctors/typedarray-arg/src-typedarray-big-throws.js",
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
