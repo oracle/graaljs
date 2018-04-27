@@ -294,7 +294,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         }
         if (indexedHandler != null) {
             DynamicObject array2 = (DynamicObject) NativeAccess.executePropertyHandlerEnumerator(indexedHandler.getEnumerator(), holder, nativeCallArgs, indexedHandlerData);
-            array = concatArrays(array, array2);
+            array = concatArrays(array, array2, context);
         }
         Object fn = JSObject.get(array, "values");
         return JSFunction.call((DynamicObject) fn, array, JSArguments.EMPTY_ARGUMENTS_ARRAY);
@@ -309,7 +309,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         }
         if (indexedHandler != null) {
             DynamicObject ownKeys2 = (DynamicObject) NativeAccess.executePropertyHandlerEnumerator(indexedHandler.getEnumerator(), holder, nativeCallArgs, indexedHandlerData);
-            ownKeys = concatArrays(ownKeys, ownKeys2);
+            ownKeys = concatArrays(ownKeys, ownKeys2, context);
         }
         DynamicObject target = (DynamicObject) arguments[2];
         fixOwnKeysInvariants(ownKeys, target);
@@ -339,7 +339,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         }
     }
 
-    private static DynamicObject concatArrays(DynamicObject array1, DynamicObject array2) {
+    private static DynamicObject concatArrays(DynamicObject array1, DynamicObject array2, JSContext context) {
         if (JSRuntime.isArray(array1)) {
             if (JSRuntime.isArray(array2)) {
                 List<Object> keys = new ArrayList<>(Arrays.asList(JSArray.toArray(array1)));
@@ -348,7 +348,6 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                         keys.add(key);
                     }
                 }
-                JSContext context = JSObject.getJSContext(array1);
                 return JSArray.createConstant(context, keys.toArray());
             } else {
                 return array1;
