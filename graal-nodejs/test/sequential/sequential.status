@@ -8,9 +8,6 @@ prefix sequential
 
 ### Graal-specific start ###
 
-# Error message from JSON.parse() differs between V8 and graal.js
-test-module-loading         : FAIL
-
 # missing multiline support in REPL
 test-repl-timeout-throw     : FAIL
 

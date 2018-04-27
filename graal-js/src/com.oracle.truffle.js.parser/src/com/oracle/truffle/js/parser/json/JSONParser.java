@@ -55,6 +55,7 @@ import com.oracle.js.parser.Source;
 import com.oracle.js.parser.Token;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
@@ -210,14 +211,14 @@ public class JSONParser {
                 break;
             case ',':
                 if (state != STATE_ELEMENT_PARSED) {
-                    throw error(parserMessage("trailing.comma.in.json"), pos);
+                    throw trailingCommaError(pos, toString(c));
                 }
                 state = STATE_COMMA_PARSED;
                 pos++;
                 break;
             case '}':
                 if (state == STATE_COMMA_PARSED) {
-                    throw error(parserMessage("trailing.comma.in.json"), pos);
+                    throw trailingCommaError(pos, toString(c));
                 }
                 pos++;
                 return jsobject;
@@ -256,14 +257,14 @@ public class JSONParser {
             switch (c) {
             case ',':
                 if (state != STATE_ELEMENT_PARSED) {
-                    throw error(parserMessage("trailing.comma.in.json"), pos);
+                    throw trailingCommaError(pos, toString(c));
                 }
                 state = STATE_COMMA_PARSED;
                 pos++;
                 break;
             case ']':
                 if (state == STATE_COMMA_PARSED) {
-                    throw error(parserMessage("trailing.comma.in.json"), pos);
+                    throw trailingCommaError(pos, toString(c));
                 }
                 pos++;
                 return jsarray;
@@ -506,5 +507,11 @@ public class JSONParser {
 
     private static String parserMessage(final String msgId, String... args) {
         return ECMAErrors.getMessage("parser.error." + msgId, args);
+    }
+
+    private ParserException trailingCommaError(int start, String found) {
+        return JSTruffleOptions.NashornCompatibilityMode
+                ? error(parserMessage("trailing.comma.in.json"), start)
+                : expectedErrorV8(start, found);
     }
 }
