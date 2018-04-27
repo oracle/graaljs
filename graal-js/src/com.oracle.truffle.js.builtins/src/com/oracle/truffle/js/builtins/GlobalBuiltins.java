@@ -1049,7 +1049,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             ScriptNode scriptNode = loadStringImpl(childRealm.getContext(), name, script);
             DynamicObject globalObject = childRealm.getGlobalObject();
             if (args.length > 0) {
-                DynamicObject argObj = JSArgumentsObject.createStrict(childRealm, args);
+                DynamicObject argObj = JSArgumentsObject.createStrict(getContext(), childRealm, args);
                 JSRuntime.createDataProperty(globalObject, JSFunction.ARGUMENTS, argObj);
             }
             return scriptNode.run(JSArguments.create(globalObject, JSFunction.create(childRealm, scriptNode.getFunctionData()), args));

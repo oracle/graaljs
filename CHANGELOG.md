@@ -5,7 +5,9 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 1.0
 
-* LICENSE set to The Universal Permissive License (UPL), Version 1.0
+* LICENSE set to The Universal Permissive License (UPL), Version 1.0.
+* Updated Node.js to 8.11.1.
+* Enabled code sharing between Contexts with the same Engine.
 
 ## Version 0.33
 

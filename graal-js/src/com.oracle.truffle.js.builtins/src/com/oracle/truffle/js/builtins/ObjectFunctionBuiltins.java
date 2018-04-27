@@ -348,7 +348,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     Boundaries.listAdd(descriptors, new Pair<>(key, desc));
                 }
             }
-            JSContext context = JSObject.getJSContext(obj);
+            JSContext context = getContext();
             for (Pair<Object, PropertyDescriptor> descPair : descriptors) {
                 JSRuntime.definePropertyOrThrow(obj, descPair.getFirst(), descPair.getSecond(), context);
             }

@@ -401,21 +401,22 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
      */
     protected static final class ConstantObjectShapeCheckNode extends AbstractShapeCheckNode {
         private final Assumption shapeValidAssumption;
-        private final WeakReference<DynamicObject> expectedObject;
+        private final WeakReference<DynamicObject> expectedObjectRef;
 
         public ConstantObjectShapeCheckNode(Shape shape, DynamicObject thisObj) {
             super(shape);
             this.shapeValidAssumption = shape.getValidAssumption();
-            this.expectedObject = new WeakReference<>(thisObj);
+            this.expectedObjectRef = new WeakReference<>(thisObj);
         }
 
         @Override
         public boolean accept(Object thisObj) throws InvalidAssumptionException {
             shapeValidAssumption.check();
-            if (thisObj != this.expectedObject.get()) {
+            DynamicObject expectedObj = this.expectedObjectRef.get();
+            if (thisObj != expectedObj) {
                 return false;
             }
-            if (this.expectedObject.get() == null) {
+            if (expectedObj == null) {
                 throw new InvalidAssumptionException();
             }
             return JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
@@ -436,23 +437,24 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
 
         private final Assumption shapeValidAssumption;
         private final Assumption unchangedAssumption;
-        private final WeakReference<DynamicObject> expectedObject;
+        private final WeakReference<DynamicObject> expectedObjectRef;
 
         public ConstantObjectAssumptionShapeCheckNode(Shape shape, DynamicObject thisObj, Object key, JSContext context) {
             super(shape, context);
             this.shapeValidAssumption = shape.getValidAssumption();
             this.unchangedAssumption = JSShape.getPropertyAssumption(shape, key);
-            this.expectedObject = new WeakReference<>(thisObj);
+            this.expectedObjectRef = new WeakReference<>(thisObj);
         }
 
         @Override
         public boolean accept(Object thisObj) throws InvalidAssumptionException {
             assumeSingleRealm();
             shapeValidAssumption.check();
-            if (thisObj != this.expectedObject.get()) {
+            DynamicObject expectedObj = this.expectedObjectRef.get();
+            if (thisObj != expectedObj) {
                 return false;
             }
-            if (this.expectedObject.get() == null) {
+            if (expectedObj == null) {
                 throw new InvalidAssumptionException();
             }
             try {
@@ -480,7 +482,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
 
         private final Assumption shapeValidAssumption;
         private final Assumption shapeUnchangedAssumption;
-        private final WeakReference<DynamicObject> expectedObject;
+        private final WeakReference<DynamicObject> expectedObjectRef;
         private final WeakReference<DynamicObject> prototype;
         @Children private final AssumptionShapeCheckNode[] shapeCheckNodes;
 
@@ -488,7 +490,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
             super(shape, context);
             this.shapeValidAssumption = shape.getValidAssumption();
             this.shapeUnchangedAssumption = JSShape.getPropertyAssumption(shape, key);
-            this.expectedObject = new WeakReference<>(thisObj);
+            this.expectedObjectRef = new WeakReference<>(thisObj);
             this.shapeCheckNodes = new AssumptionShapeCheckNode[depth];
 
             Shape depthShape = shape;
@@ -506,10 +508,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
         public boolean accept(Object thisObj) throws InvalidAssumptionException {
             assumeSingleRealm();
             shapeValidAssumption.check();
-            if (thisObj != this.expectedObject.get()) {
+            DynamicObject expectedObj = this.expectedObjectRef.get();
+            if (thisObj != expectedObj) {
                 return false;
             }
-            if (this.expectedObject.get() == null) {
+            if (expectedObj == null) {
                 throw new InvalidAssumptionException();
             }
             assert this.prototype.get() != null;
@@ -550,7 +553,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
         private final Assumption unchangedAssumption;
         private final Assumption protoShapeValidAssumption;
         private final Assumption protoUnchangedAssumption;
-        private final WeakReference<DynamicObject> expectedObject;
+        private final WeakReference<DynamicObject> expectedObjectRef;
         private final WeakReference<DynamicObject> prototype;
 
         public ConstantObjectPrototypeShapeCheckNode(Shape shape, DynamicObject thisObj, Object key, JSContext context) {
@@ -562,7 +565,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
             Shape protoShape = finalProto.getShape();
             this.protoShapeValidAssumption = protoShape.getValidAssumption();
             this.protoUnchangedAssumption = JSShape.getPropertyAssumption(protoShape, key);
-            this.expectedObject = new WeakReference<>(thisObj);
+            this.expectedObjectRef = new WeakReference<>(thisObj);
             this.prototype = new WeakReference<>(finalProto);
         }
 
@@ -570,10 +573,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
         public boolean accept(Object thisObj) throws InvalidAssumptionException {
             assumeSingleRealm();
             shapeValidAssumption.check();
-            if (thisObj != this.expectedObject.get()) {
+            DynamicObject expectedObj = this.expectedObjectRef.get();
+            if (thisObj != expectedObj) {
                 return false;
             }
-            if (this.expectedObject.get() == null) {
+            if (expectedObj == null) {
                 throw new InvalidAssumptionException();
             }
             assert this.prototype.get() != null;

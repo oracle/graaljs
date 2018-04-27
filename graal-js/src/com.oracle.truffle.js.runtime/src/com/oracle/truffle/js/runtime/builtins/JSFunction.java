@@ -294,7 +294,7 @@ public final class JSFunction extends JSBuiltinObject {
         assert factory.getShape().getObjectType() == JSFunction.INSTANCE;
         assert functionData != null;
         assert enclosingFrame != null; // use JSFrameUtil.NULL_MATERIALIZED_FRAME instead
-        return JSObject.create(realm.getContext(), factory, functionData, enclosingFrame, classPrototype, realm);
+        return JSObject.create(functionData.getContext(), factory, functionData, enclosingFrame, classPrototype, realm);
     }
 
     public static DynamicObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments,
@@ -1000,9 +1000,10 @@ public final class JSFunction extends JSBuiltinObject {
                         DynamicObject function = (DynamicObject) JSArguments.getFunctionObject(frame.getArguments());
                         if (function == thiz) {
                             JSFunctionData functionData = JSFunction.getFunctionData(function);
-                            JSRealm realm = functionData.getContext().getRealm();
+                            JSContext context = functionData.getContext();
+                            JSRealm realm = context.getRealm();
                             Object[] userArguments = JSArguments.extractUserArguments(frame.getArguments());
-                            return JSArgumentsObject.createNonStrict(realm, userArguments, function);
+                            return JSArgumentsObject.createNonStrict(context, realm, userArguments, function);
                         }
                     }
                     return null;

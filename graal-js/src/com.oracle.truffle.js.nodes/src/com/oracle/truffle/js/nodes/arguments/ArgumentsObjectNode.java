@@ -81,13 +81,13 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
     @Specialization(guards = "isStrict(frame)")
     protected DynamicObject doStrict(VirtualFrame frame) {
         Object[] arguments = getObjectArray(frame);
-        return JSArgumentsObject.createStrict(realmNode.execute(frame), arguments);
+        return JSArgumentsObject.createStrict(realmNode.getContext(), realmNode.execute(frame), arguments);
     }
 
     @Specialization(guards = "!isStrict(frame)")
     protected DynamicObject doNonStrict(VirtualFrame frame) {
         Object[] arguments = getObjectArray(frame);
-        return JSArgumentsObject.createNonStrict(realmNode.execute(frame), arguments, getFunctionObject(frame));
+        return JSArgumentsObject.createNonStrict(realmNode.getContext(), realmNode.execute(frame), arguments, getFunctionObject(frame));
     }
 
     private static DynamicObject getFunctionObject(VirtualFrame frame) {

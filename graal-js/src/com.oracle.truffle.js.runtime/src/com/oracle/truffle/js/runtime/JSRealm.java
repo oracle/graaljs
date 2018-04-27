@@ -107,6 +107,7 @@ import com.oracle.truffle.js.runtime.builtins.SIMDType;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
+import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -259,6 +260,7 @@ public class JSRealm implements ShapeContext {
     private final Shape initialAsyncGeneratorObjectShape;
 
     private final DynamicObject throwerFunction;
+    private final Accessor throwerAccessor;
 
     private final DynamicObjectFactory initialJavaPackageFactory;
     private DynamicObject javaPackageToPrimitiveFunction;
@@ -324,7 +326,10 @@ public class JSRealm implements ShapeContext {
         this.initialAnonymousFunctionFactory = JSFunction.makeInitialFunctionShape(this, functionPrototype, false, true).createFactory();
         this.initialConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(this, functionPrototype, false, false)).createFactory();
         this.initialAnonymousConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(this, functionPrototype, false, true)).createFactory();
+
         this.throwerFunction = createThrowerFunction();
+        this.throwerAccessor = new Accessor(throwerFunction, throwerFunction);
+
         this.initialStrictFunctionFactory = JSFunction.makeInitialFunctionShape(this, functionPrototype, true, false).createFactory();
         this.initialAnonymousStrictFunctionFactory = JSFunction.makeInitialFunctionShape(this, functionPrototype, true, true).createFactory();
         this.initialStrictConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(this, functionPrototype, true, false)).createFactory();
@@ -891,6 +896,11 @@ public class JSRealm implements ShapeContext {
 
     public final DynamicObject getThrowerFunction() {
         return throwerFunction;
+    }
+
+    public final Accessor getThrowerAccessor() {
+        assert throwerAccessor != null;
+        return throwerAccessor;
     }
 
     public DynamicObject getIteratorPrototype() {

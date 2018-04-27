@@ -486,7 +486,7 @@ public abstract class JSBuiltinObject extends JSClass {
                         JSAttributes.configurableNotEnumerableNotWritable());
     }
 
-    protected static Object createSymbolSpeciesGetterFunction(JSRealm realm) {
+    protected static DynamicObject createSymbolSpeciesGetterFunction(JSRealm realm) {
         return JSFunction.create(realm, JSFunctionData.createCallOnly(realm.getContext(), realm.getContext().getSpeciesGetterFunctionCallTarget(), 0, "get [Symbol.species]"));
     }
 
