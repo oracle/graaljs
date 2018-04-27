@@ -461,19 +461,28 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     public static String format(DynamicObject numberFormatObj, Object n) {
         ensureIsDateTimeFormat(numberFormatObj);
         DateFormat dateFormat = getDateFormatProperty(numberFormatObj);
-        Number x = (Undefined.instance == n) ? getDateNow() : JSRuntime.toNumber(n);
-        throwRangeErrorIfOutOfValidRange(x);
-        return dateFormat.format(x);
+        return dateFormat.format(timeClip(n));
+    }
+
+    private static double timeClip(Object n) {
+        double x;
+        if (n == Undefined.instance) {
+            x = getDateNow();
+        } else {
+            x = JSDate.timeClip(JSRuntime.toDouble(n));
+            if (Double.isNaN(x)) {
+                throwDateOutOfRange();
+            }
+        }
+        return x;
     }
 
     private static double getDateNow() {
         return System.currentTimeMillis();
     }
 
-    private static void throwRangeErrorIfOutOfValidRange(Object n) throws JSException {
-        if (n != null && (n.equals(Double.NaN) || n.equals(Double.POSITIVE_INFINITY) || n.equals(Double.NEGATIVE_INFINITY))) {
-            throw Errors.createRangeError("Provided date is not in valid range.");
-        }
+    private static void throwDateOutOfRange() throws JSException {
+        throw Errors.createRangeError("Provided date is not in valid range.");
     }
 
     static final Map<DateFormat.Field, String> fieldToType = new HashMap<>();
@@ -500,8 +509,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         ensureIsDateTimeFormat(numberFormatObj);
         DateFormat dateFormat = getDateFormatProperty(numberFormatObj);
 
-        Number x = (Undefined.instance == n) ? getDateNow() : JSRuntime.toNumber(n);
-        throwRangeErrorIfOutOfValidRange(x);
+        double x = timeClip(n);
 
         List<Object> resultParts = new LinkedList<>();
         AttributedCharacterIterator fit = dateFormat.formatToCharacterIterator(x);
