@@ -40,8 +40,9 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 
@@ -49,10 +50,11 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
  * Extra data associated with prototype objects.
  */
 public final class JSPrototypeData {
-    private final CopyOnWriteArrayList<Shape> protoChildTrees;
+    private static final Shape[] EMPTY_SHAPE_ARRAY = new Shape[0];
+    private volatile Shape[] protoChildTrees;
 
     public JSPrototypeData() {
-        this.protoChildTrees = new CopyOnWriteArrayList<>();
+        this.protoChildTrees = EMPTY_SHAPE_ARRAY;
     }
 
     Shape getProtoChildTree(JSClass jsclass) {
@@ -65,9 +67,13 @@ public final class JSPrototypeData {
     }
 
     synchronized Shape getOrAddProtoChildTree(JSClass jsclass, Shape newRootShape) {
+        CompilerAsserts.neverPartOfCompilation();
         Shape existingRootShape = getProtoChildTree(jsclass);
         if (existingRootShape == null) {
-            protoChildTrees.add(newRootShape);
+            Shape[] oldArray = protoChildTrees;
+            Shape[] newArray = Arrays.copyOf(oldArray, oldArray.length + 1);
+            newArray[oldArray.length] = newRootShape;
+            protoChildTrees = newArray;
             return newRootShape;
         }
         return existingRootShape;
