@@ -129,7 +129,7 @@ public final class NativeAccess {
 
     public static native void notifyGCCallbacks(boolean prolog);
 
-    public static native void polyglotEngineEntered(long callback, long isolate, long param1, long param2, int argc, long argv, int exec_argc, long exec_argv);
+    public static native void polyglotEngineEntered(long callback, long isolate, long param1, long param2, int argc, long argv, int execArgc, long execArgv);
 
     public static native ByteBuffer getCoreModuleBinarySnapshot(String modulePath);
 

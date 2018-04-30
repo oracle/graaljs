@@ -90,7 +90,7 @@ public class GraalJSJavaInteropMainWorker implements EcmaAgent, EcmaAgent.Factor
         private final ExecutorService executor;
         private final GraalJSJavaInteropMainWorker parent;
 
-        public GraalJSJavaInteropWorker(long loop, GraalJSJavaInteropMainWorker parent) {
+        GraalJSJavaInteropWorker(long loop, GraalJSJavaInteropMainWorker parent) {
             this.parent = parent;
             this.executor = Executors.newSingleThreadExecutor();
             this.asyncHandle = NativeAccess.createAsyncHandle(loop, new AsyncHandleCallback(this));
@@ -132,7 +132,7 @@ public class GraalJSJavaInteropMainWorker implements EcmaAgent, EcmaAgent.Factor
 
         private final GraalJSJavaInteropWorker worker;
 
-        public AsyncHandleCallback(GraalJSJavaInteropWorker worker) {
+        AsyncHandleCallback(GraalJSJavaInteropWorker worker) {
             this.worker = worker;
         }
 

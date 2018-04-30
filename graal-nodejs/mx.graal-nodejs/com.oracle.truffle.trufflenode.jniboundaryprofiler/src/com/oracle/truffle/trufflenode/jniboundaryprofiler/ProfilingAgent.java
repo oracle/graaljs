@@ -95,7 +95,7 @@ public class ProfilingAgent {
 
         private long value;
 
-        public PerfCounter() {
+        PerfCounter() {
             this.value = 0;
         }
 

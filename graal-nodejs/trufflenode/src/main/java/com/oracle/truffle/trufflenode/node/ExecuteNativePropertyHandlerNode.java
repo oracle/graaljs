@@ -65,10 +65,6 @@ import com.oracle.truffle.trufflenode.NativeAccess;
 import com.oracle.truffle.trufflenode.info.ObjectTemplate;
 import com.oracle.truffle.trufflenode.info.PropertyHandler;
 
-/**
- *
- * @author Jan Stola
- */
 public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
     private final GraalJSAccess graalAccess;
     private final JSContext context;
@@ -82,7 +78,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
 
     @Child private PropertyGetNode holderPropertyGetNode;
 
-    public static enum Mode {
+    public enum Mode {
         GETTER,
         SETTER,
         QUERY,
