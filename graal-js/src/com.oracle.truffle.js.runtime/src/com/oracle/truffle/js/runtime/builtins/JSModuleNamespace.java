@@ -132,10 +132,10 @@ public final class JSModuleNamespace extends JSBuiltinObject {
          * The initial value of the @@toStringTag property is the String value "Module".
          *
          * This property has the attributes { [[Writable]]: false, [[Enumerable]]: false,
-         * [[Configurable]]: true }.
+         * [[Configurable]]: false }.
          */
         Property toStringTagProperty = JSObjectUtil.makeDataProperty(Symbol.SYMBOL_TO_STRING_TAG, initialShape.allocator().constantLocation(CLASS_NAME),
-                        JSAttributes.configurableNotEnumerableNotWritable());
+                        JSAttributes.notConfigurableNotEnumerableNotWritable());
         initialShape = initialShape.addProperty(toStringTagProperty);
 
         return JSShape.makeNotExtensible(initialShape);

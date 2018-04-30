@@ -6874,9 +6874,6 @@
     "filePath" : "language/module-code/namespace/internals/get-own-property-str-found-uninit.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/module-code/namespace/internals/get-own-property-sym.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/module-code/namespace/internals/get-str-found-uninit.js",
     "status" : "FAIL"
   }, {
@@ -6898,9 +6895,6 @@
     "filePath" : "language/module-code/namespace/internals/set.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-09-06)"
-  }, {
-    "filePath" : "language/module-code/namespace/Symbol.toStringTag.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "language/module-code/parse-err-hoist-lex-fun.js",
     "status" : "FAIL"
