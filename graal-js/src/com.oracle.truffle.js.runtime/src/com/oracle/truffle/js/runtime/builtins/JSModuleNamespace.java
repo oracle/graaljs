@@ -195,6 +195,9 @@ public final class JSModuleNamespace extends JSBuiltinObject {
 
     @Override
     public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
+        if (!(key instanceof String)) {
+            return super.delete(thisObj, key, isStrict);
+        }
         return !Boundaries.mapContainsKey(getExports(thisObj), key);
     }
 

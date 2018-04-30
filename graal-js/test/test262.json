@@ -6863,10 +6863,6 @@
     "filePath" : "language/module-code/namespace/internals/delete-exported-uninit.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/module-code/namespace/internals/delete-non-exported.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
     "filePath" : "language/module-code/namespace/internals/enumerate-binding-uninit.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
