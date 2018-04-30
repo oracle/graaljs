@@ -1503,10 +1503,21 @@ namespace v8 {
     Local<Value> TryCatch::Exception() const {
         if (HasCaught()) {
             GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
-            jobject java_exception = graal_isolate->GetJNIEnv()->ExceptionOccurred();
+            JNIEnv* env = graal_isolate->GetJNIEnv();
+            jthrowable java_exception = env->ExceptionOccurred();
             jobject java_context = graal_isolate->CurrentJavaContext();
+
+            // We should not perform the following Java call with a pending exception
+            env->ExceptionClear();
+
             JNI_CALL(jobject, exception_object, graal_isolate, GraalAccessMethod::try_catch_exception, Object, java_context, java_exception);
             GraalValue* graal_exception = GraalValue::FromJavaObject(graal_isolate, exception_object);
+
+            // Restore the original pending exception (unless we managed
+            // to generate a new one from the call above already)
+            if (!env->ExceptionCheck()) {
+                env->Throw(java_exception);
+            }
             return reinterpret_cast<Value*> (graal_exception);
         } else {
             return Local<Value>();
