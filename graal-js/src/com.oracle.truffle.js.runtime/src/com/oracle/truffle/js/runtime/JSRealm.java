@@ -1315,16 +1315,6 @@ public class JSRealm implements ShapeContext {
     }
 
     @Override
-    public final Shape getEmptyShape() {
-        return context.getEmptyShape();
-    }
-
-    @Override
-    public final Shape getEmptyShapePrototypeInObject() {
-        return context.getEmptyShapePrototypeInObject();
-    }
-
-    @Override
     public final DynamicObjectFactory getArrayFactory() {
         return arrayFactory;
     }

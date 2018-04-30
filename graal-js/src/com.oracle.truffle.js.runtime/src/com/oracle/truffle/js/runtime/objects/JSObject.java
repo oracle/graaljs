@@ -121,7 +121,7 @@ public final class JSObject {
         // slow; only use for initialization
         assert prototype == null || JSRuntime.isObject(prototype);
         JSContext context = realm.getContext();
-        return create(context, prototype == null ? realm.getEmptyShape() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
+        return create(context, prototype == null ? context.getEmptyShape() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
     }
 
     @TruffleBoundary

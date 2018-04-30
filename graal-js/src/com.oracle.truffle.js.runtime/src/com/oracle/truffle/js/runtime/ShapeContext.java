@@ -52,10 +52,6 @@ import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 public interface ShapeContext {
     Shape getInitialUserObjectShape();
 
-    Shape getEmptyShape();
-
-    Shape getEmptyShapePrototypeInObject();
-
     DynamicObjectFactory getArrayFactory();
 
     DynamicObjectFactory getStringFactory();

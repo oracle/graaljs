@@ -542,12 +542,10 @@ public class JSContext implements ShapeContext {
         return currentRealm;
     }
 
-    @Override
     public final Shape getEmptyShape() {
         return emptyShape;
     }
 
-    @Override
     public final Shape getEmptyShapePrototypeInObject() {
         return emptyShapePrototypeInObject;
     }
