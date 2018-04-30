@@ -46,7 +46,6 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
-import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -65,13 +64,15 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
     @Child protected JSToIntegerNode toInt;
 
-    protected final DynamicObject nativeUtf8Write;
     protected final BranchProfile nativePath = BranchProfile.create();
 
     public NIOBufferUTF8WriteNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
-        this.nativeUtf8Write = Objects.requireNonNull(GraalJSAccess.getContextData(context).getNativeUtf8Write());
         this.toInt = JSToIntegerNodeGen.create();
+    }
+
+    private DynamicObject getNativeUtf8Write() {
+        return GraalJSAccess.getRealmEmbedderData(getContext().getRealm()).getNativeUtf8Write();
     }
 
     @Specialization(guards = "accept(target)")
@@ -112,7 +113,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
     @Specialization
     public Object writeDefault(DynamicObject target, Object str, Object destOffset, Object bytes) {
-        return JSFunction.call(nativeUtf8Write, target, new Object[]{str, destOffset, bytes});
+        return JSFunction.call(getNativeUtf8Write(), target, new Object[]{str, destOffset, bytes});
     }
 
     @Specialization(guards = {"!isJSArrayBufferView(target)"})
@@ -123,7 +124,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
     private Object doNativeFallback(DynamicObject target, String str, Object destOffset, Object bytes) {
         nativePath.enter();
-        return JSFunction.call(nativeUtf8Write, target, new Object[]{str, destOffset, bytes});
+        return JSFunction.call(getNativeUtf8Write(), target, new Object[]{str, destOffset, bytes});
     }
 
     private int doWrite(DynamicObject target, String str, int destOffset, int bytes) throws CharacterCodingException {

@@ -810,7 +810,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         private ArrayWriteElementCacheNode getSelection(ScriptArray array) {
             UninitArrayWriteElementCacheNode next = this;
-            if (array.isLengthNotWritable() || array.isFrozen()) {
+            if (array.isLengthNotWritable() || !array.isExtensible()) {
                 // TODO handle this case in the specializations below
                 return new ExactArrayWriteElementCacheNode(context, isStrict, array, writeOwn, next);
             }
@@ -929,6 +929,7 @@ public class WriteElementNode extends JSTargetableNode {
 
     private abstract static class RecursiveCachedArrayWriteElementCacheNode extends ArrayClassGuardCachedArrayWriteElementCacheNode {
         @Child private ArrayWriteElementCacheNode recursiveWrite;
+        private final BranchProfile needPrototypeBranch = BranchProfile.create();
 
         RecursiveCachedArrayWriteElementCacheNode(JSContext context, boolean isStrict, ScriptArray arrayType, boolean writeOwn, ArrayWriteElementCacheNode arrayCacheNext) {
             super(context, isStrict, arrayType, writeOwn, arrayCacheNext);
@@ -943,9 +944,26 @@ public class WriteElementNode extends JSTargetableNode {
             recursiveWrite.executeWithTargetAndArrayAndIndexAndValue(target, newArray, index, value, arrayCondition);
         }
 
-        protected final boolean holesArrayNeedsSlowSet(DynamicObject target, ScriptArray arrayType, long index, boolean arrayCondition) {
-            if ((!context.getArrayPrototypeNoElementsAssumption().isValid() && !writeOwn) || !context.getFastArrayAssumption().isValid()) {
-                return !arrayType.hasElement(target, index, arrayCondition) && JSObject.hasProperty(target, index);
+        protected final boolean nonHolesArrayNeedsSlowSet(DynamicObject target, AbstractWritableArray arrayType, long index, boolean arrayCondition) {
+            assert !arrayType.isHolesType();
+            if (!context.getArrayPrototypeNoElementsAssumption().isValid() && !writeOwn) {
+                if (!arrayType.hasElement(target, index, arrayCondition) && JSObject.hasProperty(target, index)) {
+                    needPrototypeBranch.enter();
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        protected final boolean holesArrayNeedsSlowSet(DynamicObject target, AbstractWritableArray arrayType, long index, boolean arrayCondition) {
+            assert arrayType.isHolesType();
+            if ((!context.getArrayPrototypeNoElementsAssumption().isValid() && !writeOwn) ||
+                            (!context.getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(target)) ||
+                            (!context.getFastArgumentsObjectAssumption().isValid() && JSSlowArgumentsObject.isJSSlowArgumentsObject(target))) {
+                if (!arrayType.hasElement(target, index, arrayCondition) && JSObject.hasProperty(target, index)) {
+                    needPrototypeBranch.enter();
+                    return true;
+                }
             }
             return false;
         }
@@ -1049,7 +1067,6 @@ public class WriteElementNode extends JSTargetableNode {
         private final BranchProfile intValueBranch = BranchProfile.create();
         private final BranchProfile toDoubleBranch = BranchProfile.create();
         private final BranchProfile toObjectBranch = BranchProfile.create();
-        private final BranchProfile needPrototypeBranch = BranchProfile.create();
         private final ConditionProfile inBoundsFastCondition = ConditionProfile.createBinaryProfile();
         private final ConditionProfile inBoundsCondition = ConditionProfile.createBinaryProfile();
         private final ConditionProfile supportedNonZeroCondition = ConditionProfile.createBinaryProfile();
@@ -1080,12 +1097,9 @@ public class WriteElementNode extends JSTargetableNode {
 
         private void executeWithTargetAndArrayAndIndexAndIntValueInner(DynamicObject target, AbstractIntArray intArray, long index, int intValue, boolean arrayCondition) {
             assert !(intArray instanceof HolesIntArray);
-            if (!context.getArrayPrototypeNoElementsAssumption().isValid() && !writeOwn) {
-                if (!intArray.hasElement(target, index, arrayCondition) && JSObject.hasProperty(target, index)) {
-                    needPrototypeBranch.enter();
-                    JSObject.set(target, index, (Object) intValue, isStrict);
-                    return;
-                }
+            if (nonHolesArrayNeedsSlowSet(target, intArray, index, arrayCondition)) {
+                JSObject.set(target, index, (Object) intValue, isStrict);
+                return;
             }
             int iIndex = (int) index;
             if (inBoundsFastCondition.profile(intArray.isInBoundsFast(target, index, arrayCondition) && !mightTransferToNonContiguous(intArray, index))) {
@@ -1149,6 +1163,10 @@ public class WriteElementNode extends JSTargetableNode {
         private void executeWithTargetAndArrayAndIndexAndDoubleValueInner(DynamicObject target, AbstractDoubleArray doubleArray, long index, double doubleValue,
                         boolean arrayCondition) {
             assert !(doubleArray instanceof HolesDoubleArray);
+            if (nonHolesArrayNeedsSlowSet(target, doubleArray, index, arrayCondition)) {
+                JSObject.set(target, index, (Object) doubleValue, isStrict);
+                return;
+            }
             int iIndex = (int) index;
             if (inBoundsFastCondition.profile(doubleArray.isInBoundsFast(target, index, arrayCondition))) {
                 doubleArray.setInBoundsFast(target, iIndex, doubleValue, arrayCondition);
@@ -1189,6 +1207,10 @@ public class WriteElementNode extends JSTargetableNode {
 
         private void executeWithTargetAndArrayAndIndexAndValueInner(DynamicObject target, AbstractObjectArray objectArray, long index, Object value, boolean arrayCondition) {
             assert !(objectArray instanceof HolesObjectArray);
+            if (nonHolesArrayNeedsSlowSet(target, objectArray, index, arrayCondition)) {
+                JSObject.set(target, index, value, isStrict);
+                return;
+            }
             int iIndex = (int) index;
             if (inBoundsFastCondition.profile(objectArray.isInBoundsFast(target, index, arrayCondition))) {
                 objectArray.setInBoundsFast(target, iIndex, value, arrayCondition);
@@ -1236,6 +1258,10 @@ public class WriteElementNode extends JSTargetableNode {
                         boolean arrayCondition) {
             assert !(jsobjectArray instanceof HolesJSObjectArray);
             int iIndex = (int) index;
+            if (nonHolesArrayNeedsSlowSet(target, jsobjectArray, index, arrayCondition)) {
+                JSObject.set(target, index, jsobjectValue, isStrict);
+                return;
+            }
             if (inBoundsFastCondition.profile(jsobjectArray.isInBoundsFast(target, index, arrayCondition))) {
                 jsobjectArray.setInBoundsFast(target, iIndex, jsobjectValue, arrayCondition);
             } else if (inBoundsCondition.profile(jsobjectArray.isInBounds(target, iIndex, arrayCondition))) {
@@ -1257,7 +1283,6 @@ public class WriteElementNode extends JSTargetableNode {
         private final BranchProfile intValueBranch = BranchProfile.create();
         private final BranchProfile toDoubleBranch = BranchProfile.create();
         private final BranchProfile toObjectBranch = BranchProfile.create();
-        private final BranchProfile needPrototypeBranch = BranchProfile.create();
         private final ConditionProfile inBoundsFastCondition = ConditionProfile.createBinaryProfile();
         private final ConditionProfile inBoundsFastHoleCondition = ConditionProfile.createBinaryProfile();
         private final ConditionProfile inBoundsCondition = ConditionProfile.createBinaryProfile();
@@ -1290,7 +1315,6 @@ public class WriteElementNode extends JSTargetableNode {
 
         private void executeWithTargetAndArrayAndIndexAndIntValueInner(DynamicObject target, HolesIntArray holesIntArray, long index, int intValue, boolean arrayCondition) {
             if (holesArrayNeedsSlowSet(target, holesIntArray, index, arrayCondition)) {
-                needPrototypeBranch.enter();
                 JSObject.set(target, index, (Object) intValue, isStrict);
                 return;
             }
@@ -1323,7 +1347,6 @@ public class WriteElementNode extends JSTargetableNode {
         private final BranchProfile doubleValueBranch = BranchProfile.create();
         private final BranchProfile intValueBranch = BranchProfile.create();
         private final BranchProfile toObjectBranch = BranchProfile.create();
-        private final BranchProfile needPrototypeBranch = BranchProfile.create();
         private final ConditionProfile inBoundsFastCondition = ConditionProfile.createBinaryProfile();
         private final ConditionProfile inBoundsFastHoleCondition = ConditionProfile.createBinaryProfile();
         private final ConditionProfile inBoundsCondition = ConditionProfile.createBinaryProfile();
@@ -1359,7 +1382,6 @@ public class WriteElementNode extends JSTargetableNode {
         private void executeWithTargetAndArrayAndIndexAndIntValueInner(DynamicObject target, HolesDoubleArray holesDoubleArray, long index, double doubleValue,
                         boolean arrayCondition) {
             if (holesArrayNeedsSlowSet(target, holesDoubleArray, index, arrayCondition)) {
-                needPrototypeBranch.enter();
                 JSObject.set(target, index, (Object) doubleValue, isStrict);
                 return;
             }
@@ -1395,7 +1417,6 @@ public class WriteElementNode extends JSTargetableNode {
         private final ConditionProfile inBoundsCondition = ConditionProfile.createBinaryProfile();
         private final ConditionProfile supportedContainsHolesCondition = ConditionProfile.createBinaryProfile();
         private final ConditionProfile supportedNotContainsHolesCondition = ConditionProfile.createBinaryProfile();
-        private final BranchProfile needPrototypeBranch = BranchProfile.create();
         private final ConditionProfile hasExplicitHolesProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile containsHolesProfile = ConditionProfile.createBinaryProfile();
         private final ScriptArray.ProfileHolder profile = AbstractWritableArray.createSetSupportedProfile();
@@ -1418,7 +1439,6 @@ public class WriteElementNode extends JSTargetableNode {
         private void executeWithTargetAndArrayAndIndexAndJSObjectValueInner(DynamicObject target, HolesJSObjectArray jsobjectArray, long index, DynamicObject value,
                         boolean arrayCondition) {
             if (holesArrayNeedsSlowSet(target, jsobjectArray, index, arrayCondition)) {
-                needPrototypeBranch.enter();
                 JSObject.set(target, index, value, isStrict);
                 return;
             }
@@ -1450,7 +1470,6 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class HolesObjectArrayWriteElementCacheNode extends RecursiveCachedArrayWriteElementCacheNode {
-        private final BranchProfile needPrototypeBranch = BranchProfile.create();
         private final ConditionProfile inBoundsFastCondition = ConditionProfile.createBinaryProfile();
         private final ConditionProfile inBoundsFastHoleCondition = ConditionProfile.createBinaryProfile();
         private final ConditionProfile inBoundsCondition = ConditionProfile.createBinaryProfile();
@@ -1469,7 +1488,6 @@ public class WriteElementNode extends JSTargetableNode {
 
         private void executeWithTargetAndArrayAndIndexAndValueInner(DynamicObject target, HolesObjectArray objectArray, long index, Object value, boolean arrayCondition) {
             if (holesArrayNeedsSlowSet(target, objectArray, index, arrayCondition)) {
-                needPrototypeBranch.enter();
                 JSObject.set(target, index, value, isStrict);
                 return;
             }

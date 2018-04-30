@@ -56,6 +56,7 @@
 #include "message.cc"
 #include "null.cc"
 #include "object.cc"
+#include "object_new.cc"
 #include "object_template.cc"
 #include "persistent.cc"
 #include "script.cc"

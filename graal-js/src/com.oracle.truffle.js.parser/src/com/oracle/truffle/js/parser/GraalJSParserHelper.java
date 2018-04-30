@@ -50,10 +50,13 @@ import com.oracle.js.parser.Parser;
 import com.oracle.js.parser.ParserException;
 import com.oracle.js.parser.ScriptEnvironment;
 import com.oracle.js.parser.ScriptEnvironment.FunctionStatementBehavior;
+import com.oracle.js.parser.Token;
+import com.oracle.js.parser.TokenType;
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.LexicalContext;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
 import com.oracle.truffle.js.parser.internal.ir.debug.JSONWriter;
 import com.oracle.truffle.js.parser.json.JSONParser;
@@ -100,7 +103,7 @@ public class GraalJSParserHelper {
         Parser parser = createParser(env, source, errors, parserOptions);
         FunctionNode parsed = parseModule ? parser.parseModule(":module") : parser.parse();
         if (errors.hasErrors()) {
-            throwErrors(errors);
+            throwErrors(truffleSource, errors);
         }
         return parsed;
     }
@@ -117,7 +120,7 @@ public class GraalJSParserHelper {
         Parser parser = createParser(env, source, errors, parserOptions);
         Expression expression = parser.parseExpression();
         if (errors.hasErrors()) {
-            throwErrors(errors);
+            throwErrors(truffleSource, errors);
         }
 
         expression.accept(new com.oracle.js.parser.ir.visitor.NodeVisitor<LexicalContext>(new LexicalContext()) {
@@ -187,16 +190,22 @@ public class GraalJSParserHelper {
         return endsWithLineComment;
     }
 
-    private static void throwErrors(ErrorManager errors) {
+    private static void throwErrors(com.oracle.truffle.api.source.Source source, ErrorManager errors) {
         ParserException parserException = errors.getParserException();
+        SourceSection sourceLocation = null;
         if (parserException != null) {
+            if (parserException.getPosition() >= 0) {
+                // For EOL tokens, length is the line number
+                int length = Token.descType(parserException.getToken()) == TokenType.EOL ? 0 : Token.descLength(parserException.getToken());
+                sourceLocation = source.createSection(parserException.getPosition(), length);
+            }
             if (parserException.getErrorType() == com.oracle.js.parser.JSErrorType.ReferenceError) {
-                throw Errors.createReferenceError(parserException.getMessage());
+                throw Errors.createReferenceError(parserException.getMessage(), sourceLocation);
             } else {
                 assert parserException.getErrorType() == com.oracle.js.parser.JSErrorType.SyntaxError;
             }
         }
-        throw Errors.createSyntaxError(((ErrorManager.StringBuilderErrorManager) errors).getOutput());
+        throw Errors.createSyntaxError(((ErrorManager.StringBuilderErrorManager) errors).getOutput(), sourceLocation);
     }
 
     public static Object parseJSON(String jsonString, JSContext context) throws ParserException {

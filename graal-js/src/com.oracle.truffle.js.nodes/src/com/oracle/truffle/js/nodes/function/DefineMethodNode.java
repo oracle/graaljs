@@ -59,7 +59,7 @@ public class DefineMethodNode extends JavaScriptBaseNode {
     protected DefineMethodNode(JSContext context, JSFunctionData functionData) {
         this.functionData = functionData;
         this.functionCreateNode = FunctionCreateNode.create(context, functionData);
-        this.makeMethodNode = PropertySetNode.create(JSFunction.HOME_OBJECT_ID, false, context, false);
+        this.makeMethodNode = PropertySetNode.createSetHidden(JSFunction.HOME_OBJECT_ID, context);
     }
 
     public static DefineMethodNode create(JSContext context, JSFunctionExpressionNode functionExpressionNode) {

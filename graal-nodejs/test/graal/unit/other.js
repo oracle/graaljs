@@ -40,6 +40,7 @@
  */
 
 var assert = require('assert');
+var fs = require('fs');
 var util = require('util');
 var vm = require('vm');
 
@@ -74,5 +75,17 @@ describe('Other', function () {
         assert.throws(function() {
             Object.create(script).runInThisContext();
         }, TypeError, "Illegal invocation");
+    });
+    it('should throw the right exception from vm.runInNewContext() (GR-9592)', function () {
+        Error.prepareStackTrace = function () {
+            fs.existsSync("."); // a call that invokes a native method needed here
+        };
+        try {
+            assert.throws(function () {
+                vm.runInNewContext("'");
+            }, SyntaxError);
+        } finally {
+            Error.prepareStackTrace = null;
+        }
     });
 });

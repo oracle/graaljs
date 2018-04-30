@@ -46,6 +46,7 @@ coverage/
 Debug/
 !**/node_modules/debug/
 !deps/v8/src/debug/
+!**/src/main/java/**/debug/
 Release/
 !doc/blog/**
 *.sln
@@ -61,6 +62,7 @@ _UpgradeReport_Files/
 ipch/
 *.sdf
 *.opensdf
+*.VC.db
 *.VC.opendb
 .vs/
 .vscode/
@@ -146,3 +148,6 @@ mx.graal-nodejs/com.oracle.truffle.trufflenode.jniboundaryprofiler/tests/build/
 deps/uv/.github/
 deps/uv/docs/code/
 deps/uv/docs/src/guide/
+
+# do not override V8's .gitignore
+!deps/v8/**

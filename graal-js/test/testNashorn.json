@@ -87,6 +87,14 @@
     "filePath" : "basic/javaarrayconversion.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "basic/javaclassoverrides.js",
+    "status" : "FAIL",
+    "comment" : "multi-threaded test"
+  }, {
+    "filePath" : "basic/JDK-8006857.js",
+    "status" : "FAIL",
+    "comment" : "multi-threaded test"
+  }, {
     "filePath" : "basic/JDK-8007990.js",
     "status" : "SKIP",
     "comment" : "Assumes that the test is executed from a specific directory. Should rather use '__FILE__'."
@@ -141,6 +149,10 @@
   }, {
     "filePath" : "basic/JDK-8015352.js",
     "runInIsolation" : true
+  }, {
+    "filePath" : "basic/JDK-8015741.js",
+    "status" : "FAIL",
+    "comment" : "multi-threaded test"
   }, {
     "filePath" : "basic/JDK-8015830.js",
     "status" : "SKIP",
@@ -557,6 +569,10 @@
   }, {
     "filePath" : "basic/optimistic_logical_check_type.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "basic/samfunc.js",
+    "status" : "FAIL",
+    "comment" : "multi-threaded test"
   }, {
     "filePath" : "basic/undefined.js",
     "status" : "FAIL"

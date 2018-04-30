@@ -60,7 +60,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -231,7 +231,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         static Object lookupJavaType(String name, JSContext context) {
-            Env env = context.getEnv();
+            TruffleLanguage.Env env = context.getRealm().getEnv();
             if (env != null && env.isHostLookupAllowed()) {
                 try {
                     Object found = env.lookupHostSymbol(name);
@@ -247,7 +247,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         // The following code is taken from Nashorn's NativeJava.simpleType(...)
-        private static Object lookForSubclasses(String className, Env env) {
+        private static Object lookForSubclasses(String className, TruffleLanguage.Env env) {
             // The logic below compensates for a frequent user error - when people use dot notation
             // to separate inner class names, i.e. "java.lang.Character.UnicodeBlock"
             // vs."java.lang.Character$UnicodeBlock". The logic below will try alternative class

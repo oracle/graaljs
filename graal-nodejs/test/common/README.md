@@ -117,15 +117,6 @@ Tests whether `name` and `expected` are part of a raised warning.
 
 Checks if `pathname` exists
 
-### fires(promise, [error], [timeoutMs])
-* promise [&lt;Promise]
-* error [&lt;String] default = 'timeout'
-* timeoutMs [&lt;Number] default = 100
-
-Returns a new promise that will propagate `promise` resolution or rejection if
-that happens within the `timeoutMs` timespan, or rejects with `error` as
-a reason otherwise.
-
 ### getArrayBufferViews(buf)
 * `buf` [&lt;Buffer>]
 * return [&lt;ArrayBufferView&#91;&#93;>]
@@ -350,6 +341,11 @@ Path to the project directory.
 * `msg` [&lt;String>]
 
 Logs '1..0 # Skipped: ' + `msg` and exits with exit code `0`.
+
+### skipIfEslintMissing()
+
+Skip the rest of the tests in the current file when `ESLint` is not available
+at `tools/node_modules/eslint`
 
 ### skipIfInspectorDisabled()
 

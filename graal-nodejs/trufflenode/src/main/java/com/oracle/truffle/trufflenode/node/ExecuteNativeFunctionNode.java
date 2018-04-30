@@ -55,6 +55,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -64,10 +65,6 @@ import com.oracle.truffle.trufflenode.NativeAccess;
 import com.oracle.truffle.trufflenode.info.FunctionTemplate;
 import com.oracle.truffle.trufflenode.info.ObjectTemplate;
 
-/**
- *
- * @author Jan Stola
- */
 public class ExecuteNativeFunctionNode extends JavaScriptNode {
 
     private final GraalJSAccess graalAccess;
@@ -116,7 +113,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     private static int sourceSectionCounter;
 
     private static SourceSection createSourceSection() {
-        return Source.newBuilder("").name("<native$" + ++sourceSectionCounter + ">").mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build().createUnavailableSection();
+        return Source.newBuilder("").name("<native$" + ++sourceSectionCounter + ">").language(AbstractJavaScriptLanguage.ID).build().createUnavailableSection();
     }
 
     @Override
@@ -128,10 +125,11 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
         DynamicObject thisObject = (DynamicObject) arguments[0];
+        JSRealm realm = context.getRealm();
         if (isNew) {
-            graalAccess.objectTemplateInstantiate(context, instanceTemplate, thisObject);
+            graalAccess.objectTemplateInstantiate(realm, instanceTemplate, thisObject);
             if (hasPropertyHandler) {
-                thisObject = graalAccess.propertyHandlerInstantiate(context, instanceTemplate, thisObject, false);
+                thisObject = graalAccess.propertyHandlerInstantiate(context, realm, instanceTemplate, thisObject, false);
             }
             thisObject.define(FunctionTemplate.CONSTRUCTOR, functionTemplate);
         } else if (signature != null) {
@@ -141,7 +139,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
                 illegalInvocation();
             }
             if (constructorTemplate != signature) { // checking the most common case
-                DynamicObject signatureFunction = (DynamicObject) graalAccess.functionTemplateGetFunction(context, signature);
+                DynamicObject signatureFunction = (DynamicObject) graalAccess.functionTemplateGetFunction(realm, signature);
                 DynamicObject signaturePrototype = (DynamicObject) prototypePropertyGetNode.getValue(signatureFunction);
                 if (!JSRuntime.isPrototypeOf(thisObject, signaturePrototype)) {
                     errorBranch.enter();
@@ -158,41 +156,41 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
             int thisType = getValueType(0, thisObject);
             Object calleeObject = arguments[1];
             if (argumentLengthTwo.profile(arguments.length == 2 + offset)) {
-                result = executeFunction0(thisObject, thisType, calleeObject, newTarget);
+                result = executeFunction0(thisObject, thisType, calleeObject, newTarget, realm);
             } else {
                 graalAccess.resetSharedBuffer();
                 Object argument1 = flatten(0, arguments[2 + offset]);
                 int argument1Type = getValueType(2, argument1);
                 if (arguments.length == 3 + offset) {
-                    result = executeFunction1(thisObject, thisType, calleeObject, newTarget, argument1, argument1Type);
+                    result = executeFunction1(thisObject, thisType, calleeObject, newTarget, argument1, argument1Type, realm);
                 } else {
                     Object argument2 = flatten(1, arguments[3 + offset]);
                     int argument2Type = getValueType(3, argument2);
                     if (arguments.length == 4 + offset) {
-                        result = executeFunction2(thisObject, thisType, calleeObject, newTarget, argument1, argument1Type, argument2, argument2Type);
+                        result = executeFunction2(thisObject, thisType, calleeObject, newTarget, argument1, argument1Type, argument2, argument2Type, realm);
                     } else {
                         Object argument3 = flatten(2, arguments[4 + offset]);
                         int argument3Type = getValueType(4, argument3);
                         if (arguments.length == 5 + offset) {
-                            result = executeFunction3(thisObject, thisType, calleeObject, newTarget, argument1, argument1Type, argument2, argument2Type, argument3, argument3Type);
+                            result = executeFunction3(thisObject, thisType, calleeObject, newTarget, argument1, argument1Type, argument2, argument2Type, argument3, argument3Type, realm);
                         } else {
                             Object argument4 = flatten(3, arguments[5 + offset]);
                             int argument4Type = getValueType(5, argument4);
                             if (arguments.length == 6 + offset) {
                                 result = executeFunction4(thisObject, thisType, calleeObject, newTarget, argument1, argument1Type, argument2, argument2Type, argument3, argument3Type, argument4,
-                                                argument4Type);
+                                                argument4Type, realm);
                             } else {
                                 Object argument5 = flatten(4, arguments[6 + offset]);
                                 int argument5Type = getValueType(6, argument5);
                                 if (arguments.length == 7 + offset) {
                                     result = executeFunction5(thisObject, thisType, calleeObject, newTarget, argument1, argument1Type, argument2, argument2Type, argument3, argument3Type, argument4,
-                                                    argument4Type, argument5, argument5Type);
+                                                    argument4Type, argument5, argument5Type, realm);
                                 } else {
                                     assert arguments.length == IMPLICIT_ARG_COUNT + EXPLICIT_ARG_COUNT + offset;
                                     Object argument6 = flatten(5, arguments[7 + offset]);
                                     int argument6Type = getValueType(7, argument6);
                                     result = executeFunction6(thisObject, thisType, calleeObject, newTarget, argument1, argument1Type, argument2, argument2Type, argument3, argument3Type, argument4,
-                                                    argument4Type, argument5, argument5Type, argument6, argument6Type);
+                                                    argument4Type, argument5, argument5Type, argument6, argument6Type, realm);
                                 }
                             }
                         }
@@ -200,7 +198,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
                 }
             }
         } else {
-            result = executeFunction(arguments);
+            result = executeFunction(arguments, realm);
         }
         return graalAccess.correctReturnValue(result);
     }
@@ -228,51 +226,52 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private Object executeFunction(Object[] arguments) {
-        return NativeAccess.executeFunction(templateID, arguments, isNew, isNewTarget, context);
+    private Object executeFunction(Object[] arguments, JSRealm realm) {
+        return NativeAccess.executeFunction(templateID, arguments, isNew, isNewTarget, realm);
     }
 
     @CompilerDirectives.TruffleBoundary
-    private Object executeFunction0(Object thisObject, int thisType, @SuppressWarnings("unused") Object calleeObject, Object newTarget) {
-        return NativeAccess.executeFunction0(templateID, thisObject, thisType, newTarget, context);
+    private Object executeFunction0(Object thisObject, int thisType, @SuppressWarnings("unused") Object calleeObject, Object newTarget, JSRealm realm) {
+        return NativeAccess.executeFunction0(templateID, thisObject, thisType, newTarget, realm);
     }
 
     @CompilerDirectives.TruffleBoundary
-    private Object executeFunction1(Object thisObject, int thisType, @SuppressWarnings("unused") Object calleeObject, Object newTarget, Object argument, int argumentType) {
-        return NativeAccess.executeFunction1(templateID, thisObject, thisType, newTarget, argument, argumentType, context);
+    private Object executeFunction1(Object thisObject, int thisType, @SuppressWarnings("unused") Object calleeObject, Object newTarget, Object argument, int argumentType, JSRealm realm) {
+        return NativeAccess.executeFunction1(templateID, thisObject, thisType, newTarget, argument, argumentType, realm);
     }
 
     @CompilerDirectives.TruffleBoundary
     private Object executeFunction2(Object thisObject, int thisType, @SuppressWarnings("unused") Object calleeObject, Object newTarget, Object argument1, int argument1Type, Object argument2,
-                    int argument2Type) {
-        return NativeAccess.executeFunction2(templateID, thisObject, thisType, newTarget, argument1, argument1Type, argument2, argument2Type, context);
+                    int argument2Type, JSRealm realm) {
+        return NativeAccess.executeFunction2(templateID, thisObject, thisType, newTarget, argument1, argument1Type, argument2, argument2Type, realm);
     }
 
     @CompilerDirectives.TruffleBoundary
     private Object executeFunction3(Object thisObject, int thisType, @SuppressWarnings("unused") Object calleeObject, Object newTarget, Object argument1, int argument1Type, Object argument2,
-                    int argument2Type, Object argument3, int argument3Type) {
-        return NativeAccess.executeFunction3(templateID, thisObject, thisType, newTarget, argument1, argument1Type, argument2, argument2Type, argument3, argument3Type, context);
+                    int argument2Type, Object argument3, int argument3Type, JSRealm realm) {
+        return NativeAccess.executeFunction3(templateID, thisObject, thisType, newTarget, argument1, argument1Type, argument2, argument2Type, argument3, argument3Type, realm);
     }
 
     @CompilerDirectives.TruffleBoundary
     private Object executeFunction4(Object thisObject, int thisType, @SuppressWarnings("unused") Object calleeObject, Object newTarget, Object argument1, int argument1Type, Object argument2,
-                    int argument2Type, Object argument3, int argument3Type, Object argument4, int argument4Type) {
+                    int argument2Type, Object argument3, int argument3Type, Object argument4, int argument4Type, JSRealm realm) {
         return NativeAccess.executeFunction4(templateID, thisObject, thisType, newTarget, argument1, argument1Type, argument2, argument2Type, argument3, argument3Type, argument4, argument4Type,
-                        context);
+                        realm);
     }
 
     @CompilerDirectives.TruffleBoundary
     private Object executeFunction5(Object thisObject, int thisType, @SuppressWarnings("unused") Object calleeObject, Object newTarget, Object argument1, int argument1Type, Object argument2,
-                    int argument2Type, Object argument3, int argument3Type, Object argument4, int argument4Type, Object argument5, int argument5Type) {
+                    int argument2Type, Object argument3, int argument3Type, Object argument4, int argument4Type, Object argument5, int argument5Type, JSRealm realm) {
         return NativeAccess.executeFunction5(templateID, thisObject, thisType, newTarget, argument1, argument1Type, argument2, argument2Type, argument3, argument3Type, argument4, argument4Type,
-                        argument5, argument5Type, context);
+                        argument5, argument5Type, realm);
     }
 
     @CompilerDirectives.TruffleBoundary
     private Object executeFunction6(Object thisObject, int thisType, @SuppressWarnings("unused") Object calleeObject, Object newTarget, Object argument1, int argument1Type, Object argument2,
-                    int argument2Type, Object argument3, int argument3Type, Object argument4, int argument4Type, Object argument5, int argument5Type, Object argument6, int argument6Type) {
+                    int argument2Type, Object argument3, int argument3Type, Object argument4, int argument4Type, Object argument5, int argument5Type, Object argument6, int argument6Type,
+                    JSRealm realm) {
         return NativeAccess.executeFunction6(templateID, thisObject, thisType, newTarget, argument1, argument1Type, argument2, argument2Type, argument3, argument3Type, argument4, argument4Type,
-                        argument5, argument5Type, argument6, argument6Type, context);
+                        argument5, argument5Type, argument6, argument6Type, realm);
     }
 
     public static class NativeFunctionRootNode extends JavaScriptRootNode {

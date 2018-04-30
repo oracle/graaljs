@@ -112,43 +112,7 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "built-ins/AsyncGeneratorFunction/instance-prototype.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorFunction/prototype/prototype.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/next/this-val-not-async-generator.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/next/this-val-not-object.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/iterator-result-prototype.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "built-ins/AsyncGeneratorPrototype/return/request-queue-order-state-executing.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-promise.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-state-completed.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-suspendedStart-promise.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-suspendedStart.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
@@ -164,49 +128,13 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/this-val-not-async-generator.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/this-val-not-object.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/Symbol.toStringTag.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/throw/this-val-not-async-generator.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/throw/this-val-not-object.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncIteratorPrototype/Symbol.asyncIterator/length.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncIteratorPrototype/Symbol.asyncIterator/name.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncIteratorPrototype/Symbol.asyncIterator/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncIteratorPrototype/Symbol.asyncIterator/return-val.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "built-ins/Atomics/wait/negative-index-throws.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "built-ins/Atomics/wait/undefined-index-defaults-to-zero.js",
-    "status" : "FAIL",
-    "comment" : "fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "fails randomly, highly timing sensitive (sleep(5) + wait(10)), will be fixed by Test262 update"
   }, {
     "filePath" : "built-ins/BigInt/asIntN/arithmetic.js",
     "status" : "FAIL",
@@ -677,15 +605,6 @@
     "filePath" : "built-ins/Object/setPrototypeOf/bigint.js",
     "status" : "SKIP",
     "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/Proxy/apply/arguments-realm.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/Proxy/construct/arguments-realm.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/Proxy/defineProperty/desc-realm.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
     "status" : "SKIP",
@@ -3063,7 +2982,35 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
+    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/invoked-as-accessor.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/invoked-as-func.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/length.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/name.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
     "filePath" : "built-ins/TypedArray/prototype/length/BigInt/return-length.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/this-has-no-typedarrayname-internal.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/this-is-not-object.js",
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
@@ -3850,7 +3797,35 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
+    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/invoked-as-accessor.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/invoked-as-func.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/length.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/name.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
     "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/return-typedarrayname.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/this-has-no-typedarrayname-internal.js",
+    "status" : "FAIL",
+    "comment" : "GR-6710 BigInt proposal"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/this-is-not-object.js",
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
@@ -4526,14 +4501,6 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
-    "filePath" : "built-ins/TypedArrayConstructors/ctors/typedarray-arg/detached-when-species-retrieved-different-type.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/ctors/typedarray-arg/detached-when-species-retrieved-same-type.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "built-ins/TypedArrayConstructors/ctors/typedarray-arg/src-typedarray-big-throws.js",
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
@@ -5182,27 +5149,11 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/proleptic-gregorian-calendar.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/time-clip-near-time-boundaries.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/time-clip-near-time-boundaries.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/resolved-locale-with-hc-unicode.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/Intl/builtin.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
@@ -5235,10 +5186,6 @@
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "intl402/language-tags-with-underscore.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/Number/prototype/toLocaleString/throws-same-exceptions-as-NumberFormat.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
@@ -7647,10 +7594,6 @@
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
   }, {
-    "filePath" : "language/statements/for-await-of/async-gen-decl-dstr-array-elem-trlg-iter-rest-nrml-close-skip.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/statements/for-await-of/let-block-with-newline.js",
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
@@ -7663,9 +7606,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/statements/for-in/head-let-bound-names-fordecl-tdz.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-in/head-lhs-let.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/statements/for-in/head-var-bound-names-let.js",

@@ -221,7 +221,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
                     @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
         if (useSharedBuffer) {
             graalAccess.getSharedBuffer().putInt(getByteLengthNode.executeInt(value));
-            graalAccess.getSharedBuffer().putInt(graalAccess.arrayBufferViewByteOffset(context, value));
+            graalAccess.getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
         return cachedTypeInt;
     }
@@ -231,7 +231,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
                     @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
         if (useSharedBuffer) {
             graalAccess.getSharedBuffer().putInt(getByteLengthNode.executeInt(value));
-            graalAccess.getSharedBuffer().putInt(graalAccess.arrayBufferViewByteOffset(context, value));
+            graalAccess.getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
         ScriptArray array = getScriptArray(value);
         return identifyType(array);
@@ -240,8 +240,8 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     @Specialization(guards = {"isJSDataView(value)"})
     protected final int doDataView(DynamicObject value) {
         if (useSharedBuffer) {
-            graalAccess.getSharedBuffer().putInt(graalAccess.arrayBufferViewByteLength(context, value));
-            graalAccess.getSharedBuffer().putInt(graalAccess.arrayBufferViewByteOffset(context, value));
+            graalAccess.getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteLength(context, value));
+            graalAccess.getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
         return DATA_VIEW_OBJECT;
     }

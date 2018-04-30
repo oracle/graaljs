@@ -92,6 +92,7 @@ if /i "%1"=="test-v8"       set test_v8=1&set custom_v8_test=1&goto arg-ok
 if /i "%1"=="test-v8-intl"  set test_v8_intl=1&set custom_v8_test=1&goto arg-ok
 if /i "%1"=="test-v8-benchmarks" set test_v8_benchmarks=1&set custom_v8_test=1&goto arg-ok
 if /i "%1"=="test-v8-all"       set test_v8=1&set test_v8_intl=1&set test_v8_benchmarks=1&set custom_v8_test=1&goto arg-ok
+if /i "%1"=="lint-cpp"      set lint_cpp=1&goto arg-ok
 if /i "%1"=="lint-js"       set lint_js=1&goto arg-ok
 if /i "%1"=="jslint"        set lint_js=1&echo Please use lint-js instead of jslint&goto arg-ok
 if /i "%1"=="lint-js-ci"    set lint_js_ci=1&goto arg-ok
@@ -105,7 +106,7 @@ if /i "%1"=="upload"        set upload=1&goto arg-ok
 if /i "%1"=="small-icu"     set i18n_arg=%1&goto arg-ok
 if /i "%1"=="full-icu"      set i18n_arg=%1&goto arg-ok
 if /i "%1"=="intl-none"     set i18n_arg=%1&goto arg-ok
-if /i "%1"=="without-intl"  set i18n_arg=intl-none&goto arg-ok
+if /i "%1"=="without-intl"  set i18n_arg=none&goto arg-ok
 if /i "%1"=="download-all"  set download_arg="--download=all"&goto arg-ok
 if /i "%1"=="ignore-flaky"  set test_args=%test_args% --flaky-tests=dontcare&goto arg-ok
 if /i "%1"=="enable-vtune"  set enable_vtune_arg=1&goto arg-ok
@@ -187,12 +188,24 @@ if %target_arch%==x64 if %msvs_host_arch%==amd64 set vcvarsall_arg=amd64
 :vs-set-2017
 if defined target_env if "%target_env%" NEQ "vs2017" goto vs-set-2015
 echo Looking for Visual Studio 2017
+call tools\msvs\vswhere_usability_wrapper.cmd
+if "_%VCINSTALLDIR%_" == "__" goto vs-set-2015
+if defined msi (
+  echo Looking for WiX installation for Visual Studio 2017...
+  if not exist "%WIX%\SDK\VS2017" (
+    echo Failed to find WiX install for Visual Studio 2017
+    echo VS2017 support for WiX is only present starting at version 3.11
+    goto vs-set-2015
+  )
+  if not exist "%VCINSTALLDIR%\..\MSBuild\Microsoft\WiX" (
+    echo Failed to find the Wix Toolset Visual Studio 2017 Extension
+    goto vs-set-2015
+  )
+)
 @rem check if VS2017 is already setup, and for the requested arch
 if "_%VisualStudioVersion%_" == "_15.0_" if "_%VSCMD_ARG_TGT_ARCH%_"=="_%target_arch%_" goto found_vs2017
 @rem need to clear VSINSTALLDIR for vcvarsall to work as expected
 set "VSINSTALLDIR="
-call tools\msvs\vswhere_usability_wrapper.cmd
-if "_%VCINSTALLDIR%_" == "__" goto vs-set-2015
 @rem prevent VsDevCmd.bat from changing the current working directory
 set "VSCMD_START_DIR=%CD%"
 set vcvars_call="%VCINSTALLDIR%\Auxiliary\Build\vcvarsall.bat" %vcvarsall_arg%
@@ -349,7 +362,9 @@ if not defined msi goto run
 
 :msibuild
 echo Building node-v%FULLVERSION%-%target_arch%.msi
-msbuild "%~dp0tools\msvs\msi\nodemsi.sln" /m /t:Clean,Build /p:PlatformToolset=%PLATFORM_TOOLSET% /p:GypMsvsVersion=%GYP_MSVS_VERSION% /p:Configuration=%config% /p:Platform=%target_arch% /p:NodeVersion=%NODE_VERSION% /p:FullVersion=%FULLVERSION% /p:DistTypeDir=%DISTTYPEDIR% %noetw_msi_arg% %noperfctr_msi_arg% /clp:NoSummary;NoItemAndPropertyList;Verbosity=minimal /nologo
+set "msbsdk="
+if defined WindowsSDKVersion set "msbsdk=/p:WindowsTargetPlatformVersion=%WindowsSDKVersion:~0,-1%"
+msbuild "%~dp0tools\msvs\msi\nodemsi.sln" /m /t:Clean,Build %msbsdk% /p:PlatformToolset=%PLATFORM_TOOLSET% /p:GypMsvsVersion=%GYP_MSVS_VERSION% /p:Configuration=%config% /p:Platform=%target_arch% /p:NodeVersion=%NODE_VERSION% /p:FullVersion=%FULLVERSION% /p:DistTypeDir=%DISTTYPEDIR% %noetw_msi_arg% %noperfctr_msi_arg% /clp:NoSummary;NoItemAndPropertyList;Verbosity=minimal /nologo
 if errorlevel 1 goto exit
 
 if not defined sign goto upload
@@ -493,22 +508,23 @@ call :run-python tools/cpplint.py %cppfilelist% > nul
 goto exit
 
 :add-to-list
-echo %1 | findstr /c:"src\node_root_certs.h"
+@rem Subroutine used to filter items from the cpplint file list
+echo %1 | findstr /c:"src\node_root_certs.h" > nul 2>&1
 if %errorlevel% equ 0 goto exit
 
-echo %1 | findstr /r /c:"src\\tracing\\trace_event.h"
+echo %1 | findstr /c:"src\tracing\trace_event.h" > nul 2>&1
 if %errorlevel% equ 0 goto exit
 
-echo %1 | findstr /r /c:"src\\tracing\\trace_event_common.h"
+echo %1 | findstr /c:"src\tracing\trace_event_common.h" > nul 2>&1
 if %errorlevel% equ 0 goto exit
 
-echo %1 | findstr /r /c:"test\\addons\\[0-9].*_.*\.h"
+echo %1 | findstr /r /c:"test\\addons\\[0-9].*_.*\.h" > nul 2>&1
 if %errorlevel% equ 0 goto exit
 
-echo %1 | findstr /r /c:"test\\addons\\[0-9].*_.*\.cc"
+echo %1 | findstr /r /c:"test\\addons\\[0-9].*_.*\.cc" > nul 2>&1
 if %errorlevel% equ 0 goto exit
 
-echo %1 | findstr /c:"test\\addons-napi\\common.h"
+echo %1 | findstr /c:"test\addons-napi\common.h" > nul 2>&1
 if %errorlevel% equ 0 goto exit
 
 set "localcppfilelist=%localcppfilelist% %1"

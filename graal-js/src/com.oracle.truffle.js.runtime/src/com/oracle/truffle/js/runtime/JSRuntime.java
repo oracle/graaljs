@@ -108,6 +108,8 @@ public final class JSRuntime {
     public static final long MIN_SAFE_INTEGER_LONG = (long) MIN_SAFE_INTEGER;
     public static final long INVALID_INTEGER_INDEX = -1;
     public static final int MAX_INTEGER_INDEX_DIGITS = 21;
+    public static final int MAX_SAFE_INTEGER_IN_FLOAT = 1 << 24;
+    public static final int MIN_SAFE_INTEGER_IN_FLOAT = -MAX_SAFE_INTEGER_IN_FLOAT;
 
     public static final String TO_STRING = "toString";
     public static final String VALUE_OF = "valueOf";
@@ -1359,7 +1361,7 @@ public final class JSRuntime {
     }
 
     public static boolean isForeignObject(Object value) {
-        return value instanceof TruffleObject && !JSObject.isJSObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString);
+        return value instanceof TruffleObject && !JSObject.isJSObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof LargeInteger);
     }
 
     private static boolean equalInterop(Object a, Object b) {
@@ -2420,7 +2422,7 @@ public final class JSRuntime {
                 if (JSFunction.isBoundFunction(dynObj)) {
                     return getFunctionRealm(JSFunction.getBoundTargetFunction(dynObj), currentRealm);
                 } else {
-                    return JSFunction.getFunctionData(dynObj).getContext().getRealm();
+                    return JSFunction.getRealm(dynObj);
                 }
             } else if (JSProxy.isProxy(dynObj)) {
                 if (JSProxy.getHandler(dynObj) == Null.instance) {
@@ -2615,4 +2617,9 @@ public final class JSRuntime {
         }
         return null; // could be a TruffleObject (as Proxy's target)
     }
+
+    public static boolean intIsRepresentableAsFloat(int value) {
+        return (MIN_SAFE_INTEGER_IN_FLOAT <= value && value <= MAX_SAFE_INTEGER_IN_FLOAT);
+    }
+
 }

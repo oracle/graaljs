@@ -48,6 +48,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -133,6 +134,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createSyntaxError(String message, SourceSection sourceLocation) {
+        return JSException.create(JSErrorType.SyntaxError, message, sourceLocation);
+    }
+
+    @TruffleBoundary
     public static JSException createReferenceError(String message, Node originatingNode) {
         return JSException.create(JSErrorType.ReferenceError, message, originatingNode);
     }
@@ -145,6 +151,11 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createReferenceError(String message) {
         return JSException.create(JSErrorType.ReferenceError, message);
+    }
+
+    @TruffleBoundary
+    public static JSException createReferenceError(String message, SourceSection sourceLocation) {
+        return JSException.create(JSErrorType.ReferenceError, message, sourceLocation);
     }
 
     @TruffleBoundary
@@ -373,8 +384,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createRangeErrorStackOverflow(StackOverflowError e) {
-        return JSException.create(JSErrorType.RangeError, "Maximum call stack size exceeded", e, null);
+    public static JSException createRangeErrorStackOverflow(Node originatingNode) {
+        return Errors.createRangeError("Maximum call stack size exceeded", originatingNode);
     }
 
     @TruffleBoundary

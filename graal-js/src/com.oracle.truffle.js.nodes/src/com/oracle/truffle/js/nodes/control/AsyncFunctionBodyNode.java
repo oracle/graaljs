@@ -61,15 +61,14 @@ import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class AsyncFunctionBodyNode extends JavaScriptNode {
 
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of async functions in JavaScript.")
-    private static final class AsyncFunctionRootNode extends JavaScriptRealmBoundaryRootNode {
+    private static final class AsyncFunctionRootNode extends JavaScriptRootNode {
 
         @Child private JavaScriptNode functionBody;
         @Child private JSWriteFrameSlotNode writeAsyncResult;
@@ -87,7 +86,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
         }
 
         @Override
-        protected Object executeAndSetRealm(VirtualFrame frame) {
+        public Object execute(VirtualFrame frame) {
             VirtualFrame asyncFrame = JSFrameUtil.castMaterializedFrame(frame.getArguments()[0]);
             DynamicObject promiseCapability = (DynamicObject) frame.getArguments()[1];
             Completion resumptionValue = (Completion) frame.getArguments()[2];
@@ -104,11 +103,6 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
             }
             // The result is undefined for normal completion.
             return Undefined.instance;
-        }
-
-        @Override
-        protected JSRealm getRealm() {
-            return getPromiseReject.getContext().getRealm();
         }
     }
 

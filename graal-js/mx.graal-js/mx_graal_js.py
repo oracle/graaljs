@@ -301,7 +301,6 @@ def test262(args, nonZeroIsFatal=True):
         '-Dtruffle.js.NashornJavaInterop=false',
         '-Dtruffle.js.Test262Mode=true',
         '-Dtruffle.js.SIMDJS=true',
-        '-Dtruffle.js.Intl402LocaleInRFC5646=false',
     ]
     return _run_test_suite(
         location=_location,

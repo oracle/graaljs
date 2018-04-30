@@ -1203,7 +1203,7 @@ namespace v8 {
                 classpath = arg + sizeof ("--jvm.classpath") - 1;
             } else if (!strncmp(arg, "--jvm.cp", sizeof ("--jvm.cp") - 1)) {
                 classpath = arg + sizeof ("--jvm.cp") - 1;
-            } else if (!strncmp(arg, "--jvm.", sizeof ("--jvm.") - 1) || !strncmp(arg, "--native.", sizeof ("--native.") - 1)) {
+            } else if (!strncmp(arg, "--jvm.", sizeof ("--jvm.") - 1) || (!strncmp(arg, "--native.", sizeof ("--native.") - 1) && strcmp(arg, "--native.help"))) {
                 use_jvm = use_jvm || arg[2] == 'j';
                 use_native = use_native || arg[2] == 'n';
                 const char *trailing = strchr(arg, '.') + 1;
@@ -1503,10 +1503,21 @@ namespace v8 {
     Local<Value> TryCatch::Exception() const {
         if (HasCaught()) {
             GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
-            jobject java_exception = graal_isolate->GetJNIEnv()->ExceptionOccurred();
+            JNIEnv* env = graal_isolate->GetJNIEnv();
+            jthrowable java_exception = env->ExceptionOccurred();
             jobject java_context = graal_isolate->CurrentJavaContext();
+
+            // We should not perform the following Java call with a pending exception
+            env->ExceptionClear();
+
             JNI_CALL(jobject, exception_object, graal_isolate, GraalAccessMethod::try_catch_exception, Object, java_context, java_exception);
             GraalValue* graal_exception = GraalValue::FromJavaObject(graal_isolate, exception_object);
+
+            // Restore the original pending exception (unless we managed
+            // to generate a new one from the call above already)
+            if (!env->ExceptionCheck()) {
+                env->Throw(java_exception);
+            }
             return reinterpret_cast<Value*> (graal_exception);
         } else {
             return Local<Value>();
@@ -1864,6 +1875,21 @@ namespace v8 {
                 data.ToLocalChecked(),
                 settings,
                 attribute));
+    }
+
+    bool Object::SetAccessor(Local<Name> name,
+            AccessorNameGetterCallback getter,
+            AccessorNameSetterCallback setter,
+            Local<Value> data,
+            AccessControl settings,
+            PropertyAttribute attribute) {
+        return reinterpret_cast<GraalObject*> (this)->SetAccessor(
+                reinterpret_cast<String*> (*name),
+                reinterpret_cast<AccessorGetterCallback> (getter),
+                reinterpret_cast<AccessorSetterCallback> (setter),
+                data,
+                settings,
+                attribute);
     }
 
     Maybe<bool> Object::DefineOwnProperty(Local<Context> context, Local<Name> key, Local<Value> value, PropertyAttribute attributes) {

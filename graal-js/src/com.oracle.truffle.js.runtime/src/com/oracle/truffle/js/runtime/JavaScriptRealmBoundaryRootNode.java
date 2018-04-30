@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
 /**
  * A RootNode for all cases where the body could throw and we would need to set the Realm to the
@@ -62,8 +65,31 @@ public abstract class JavaScriptRealmBoundaryRootNode extends JavaScriptRootNode
 
     @Override
     public final Object execute(VirtualFrame frame) {
+        final JSContext context = getContext();
+        CompilerAsserts.partialEvaluationConstant(context);
+
+        final JSRealm currentRealm = getRealm();
+        final JSRealm realm;
+        final boolean enterContext;
+        if (context.neverCreatedChildRealms()) {
+            // fast path: if there are no child realms we are guaranteed to be in the right realm
+            assert currentRealm == JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
+            realm = currentRealm;
+            enterContext = false;
+        } else {
+            // must enter function context if realm != currentRealm
+            realm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
+            enterContext = realm != currentRealm;
+        }
+        Object prev = null;
+        TruffleContext childContext = null;
+
+        if (enterContext) {
+            childContext = realm.getTruffleContext();
+            prev = childContext.enter();
+        }
         try {
-            return executeAndSetRealm(frame);
+            return executeInRealm(frame);
         } catch (JSException ex) {
             if (!seenException) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -74,16 +100,24 @@ public abstract class JavaScriptRealmBoundaryRootNode extends JavaScriptRootNode
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     seenNullRealm = true;
                 }
-                ex.setRealm(getRealm());
+                ex.setRealm(realm);
             }
             throw ex;
         } catch (StackOverflowError ex) {
             CompilerDirectives.transferToInterpreter();
-            throw Errors.createRangeErrorStackOverflow(ex).setRealm(getRealm());
+            throw Errors.createRangeErrorStackOverflow(this).setRealm(realm);
+        } finally {
+            if (enterContext) {
+                childContext.leave(prev);
+            }
         }
     }
 
-    protected abstract Object executeAndSetRealm(VirtualFrame frame);
+    protected abstract Object executeInRealm(VirtualFrame frame);
 
-    protected abstract JSRealm getRealm();
+    protected abstract JSContext getContext();
+
+    protected JSRealm getRealm() {
+        return getContext().getRealm();
+    }
 }

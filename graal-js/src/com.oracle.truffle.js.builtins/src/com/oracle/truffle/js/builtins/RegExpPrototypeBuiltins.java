@@ -66,7 +66,6 @@ import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpToS
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode.JSRegExpExecBuiltinNode;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
-import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
@@ -410,7 +409,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected Object read(Object target, int index) {
             if (readNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                readNode = insert(NodeFactory.getInstance(getContext()).createReadElementNode(getContext(), null, null));
+                readNode = insert(ReadElementNode.create(getContext()));
             }
             return readNode.executeWithTargetAndIndex(target, index);
         }
@@ -418,7 +417,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected void write(Object target, int index, Object value) {
             if (writeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                writeNode = insert(NodeFactory.getInstance(getContext()).createWriteElementNode(getContext(), true));
+                writeNode = insert(WriteElementNode.create(getContext(), true, true));
             }
             writeNode.executeWithTargetAndIndexAndValue(target, index, value);
         }

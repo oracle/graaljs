@@ -67,7 +67,7 @@ public final class JSExternalObject extends JSBuiltinObject {
     }
 
     public static DynamicObject create(JSContext context, long pointer) {
-        ContextData contextData = GraalJSAccess.getContextData(context);
+        ContextData contextData = GraalJSAccess.getContextEmbedderData(context);
         DynamicObject obj = contextData.getExternalObjectShape().newInstance();
         setPointer(obj, pointer);
         return obj;

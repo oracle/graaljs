@@ -197,23 +197,20 @@ public final class JSObjectUtil {
         putDataProperty(ctx, constructor, JSObject.PROTOTYPE, prototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
     }
 
-    public static void putAccessorProperty(JSContext context, DynamicObject thisObj, String name, Object getter, Object setter, int flags) {
-        Accessor accessor = new Accessor((DynamicObject) getter, (DynamicObject) setter);
-        putAccessorProperty(context, thisObj, name, accessor, flags);
+    public static void putAccessorProperty(JSContext context, DynamicObject thisObj, Object key, DynamicObject getter, DynamicObject setter, int flags) {
+        Accessor accessor = new Accessor(getter, setter);
+        putAccessorProperty(context, thisObj, key, accessor, flags);
     }
 
     public static void putAccessorProperty(JSContext context, DynamicObject thisObj, Object key, Accessor accessor, int flags) {
+        assert JSRuntime.isPropertyKey(key);
         assert checkForExistingProperty(thisObj, key);
 
         thisObj.define(checkForNoSuchPropertyOrMethod(context, key), accessor, flags | JSProperty.ACCESSOR);
     }
 
-    public static void putConstantAccessorProperty(JSContext context, DynamicObject thisObj, Object name, Object getter, Object setter, int flags) {
-        assert checkForExistingProperty(thisObj, name);
-
-        Accessor accessor = new Accessor((DynamicObject) getter, (DynamicObject) setter);
-
-        thisObj.define(checkForNoSuchPropertyOrMethod(context, name), accessor, flags | JSProperty.ACCESSOR, (shape, val) -> shape.allocator().constantLocation(val));
+    public static void putConstantAccessorProperty(JSContext context, DynamicObject thisObj, Object key, DynamicObject getter, DynamicObject setter, int flags) {
+        putAccessorProperty(context, thisObj, key, getter, setter, flags);
     }
 
     public static void putProxyProperty(DynamicObject thisObj, Property proxyProperty) {

@@ -110,6 +110,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeEvaluator;
 import com.oracle.truffle.js.nodes.ScriptNode;
+import com.oracle.truffle.js.nodes.access.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode.ArrayContentType;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
@@ -147,6 +148,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -172,6 +174,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
+import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -501,11 +504,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.isNewTargetCase = isNewTargetCase;
         }
 
-        protected JSContext getContextFromNewTarget(Object newTarget) {
+        protected JSRealm getRealmFromNewTarget(Object newTarget) {
+            JSRealm currentRealm = getContext().getRealm();
             if (isNewTargetCase) {
-                return JSRuntime.getFunctionRealm(newTarget, getContext().getRealm()).getContext();
+                return JSRuntime.getFunctionRealm(newTarget, currentRealm);
             }
-            return getContext();
+            return currentRealm;
         }
 
         protected abstract DynamicObject getIntrinsicDefaultProto(JSRealm realm);
@@ -520,7 +524,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected DynamicObject setPrototypeFromNewTarget(DynamicObject resultObj, DynamicObject newTarget) {
             Object prototype = JSObject.get(newTarget, JSObject.PROTOTYPE);
             if (!JSRuntime.isObject(prototype)) {
-                prototype = getIntrinsicDefaultProto(getContextFromNewTarget(newTarget).getRealm());
+                prototype = getIntrinsicDefaultProto(getRealmFromNewTarget(newTarget));
             }
             JSObject.setPrototype(resultObj, (DynamicObject) prototype);
             return resultObj;
@@ -545,7 +549,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length == 0"})
         protected DynamicObject constructArray0(DynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
-            return swapPrototype(JSArray.createConstantEmptyArray(getContextFromNewTarget(newTarget), arrayAllocationSite), newTarget);
+            return swapPrototype(JSArray.createConstantEmptyArray(getContext(), arrayAllocationSite), newTarget);
         }
 
         @Specialization(guards = "isOneIntegerArg(args)")
@@ -555,26 +559,18 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return swapPrototype(JSArray.create(getContext(), arrayAllocationSite.getInitialArrayType(), ((AbstractWritableArray) arrayAllocationSite.getInitialArrayType()).allocateArray(length),
                                 length), newTarget);
             }
-            return swapPrototype(JSArray.createConstantEmptyArray(getContextFromNewTarget(newTarget), arrayAllocationSite, length), newTarget);
+            return swapPrototype(JSArray.createConstantEmptyArray(getContext(), arrayAllocationSite, length), newTarget);
         }
 
         @Specialization(guards = "isOneNumberArg(args)")
-        protected DynamicObject constructArrayConstant(DynamicObject newTarget, Object[] args,
+        protected DynamicObject constructWithLength(DynamicObject newTarget, Object[] args,
                         @Cached("create()") JSToUInt32Node toUInt32Node,
-                        @Cached("createBinaryProfile()") ConditionProfile needLongLength,
-                        @Cached("createBinaryProfile()") ConditionProfile isLengthZero) {
+                        @Cached("create(getContext())") ArrayCreateNode arrayCreateNode) {
             Number origLen = (Number) args[0]; // guard ensures this is a Number
             Number origLen32 = (Number) toUInt32Node.execute(origLen);
             long len = JSArray.toArrayIndexOrRangeError(origLen, origLen32);
-            if (isLengthZero.profile(len == 0)) {
-                return swapPrototype(JSArray.createConstantEmptyArray(getContextFromNewTarget(newTarget)), newTarget);
-            } else {
-                if (needLongLength.profile(len > Integer.MAX_VALUE)) {
-                    return swapPrototype(JSArray.createSparseArray(getContextFromNewTarget(newTarget), len), newTarget);
-                } else {
-                    return swapPrototype(JSArray.createConstantEmptyArray(getContextFromNewTarget(newTarget), (int) len), newTarget);
-                }
-            }
+            DynamicObject array = arrayCreateNode.execute(len);
+            return swapPrototype(array, newTarget);
         }
 
         @Specialization(guards = "!isOneNumberArg(args)")
@@ -584,18 +580,18 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached("create()") BranchProfile isObjectCase,
                         @Cached("createBinaryProfile()") ConditionProfile isLengthZero) {
             if (isLengthZero.profile(args == null || args.length == 0)) {
-                return swapPrototype(JSArray.create(getContextFromNewTarget(newTarget), ScriptArray.createConstantEmptyArray(), args, 0), newTarget);
+                return swapPrototype(JSArray.create(getContext(), ScriptArray.createConstantEmptyArray(), args, 0), newTarget);
             } else {
                 ArrayContentType type = ArrayLiteralNode.identifyPrimitiveContentType(args, false);
                 if (type == ArrayContentType.Integer) {
                     isIntegerCase.enter();
-                    return swapPrototype(JSArray.createZeroBasedIntArray(getContextFromNewTarget(newTarget), ArrayLiteralNode.createIntArray(args)), newTarget);
+                    return swapPrototype(JSArray.createZeroBasedIntArray(getContext(), ArrayLiteralNode.createIntArray(args)), newTarget);
                 } else if (type == ArrayContentType.Double) {
                     isDoubleCase.enter();
-                    return swapPrototype(JSArray.createZeroBasedDoubleArray(getContextFromNewTarget(newTarget), ArrayLiteralNode.createDoubleArray(args)), newTarget);
+                    return swapPrototype(JSArray.createZeroBasedDoubleArray(getContext(), ArrayLiteralNode.createDoubleArray(args)), newTarget);
                 } else {
                     isObjectCase.enter();
-                    return swapPrototype(JSArray.create(getContextFromNewTarget(newTarget), ConstantObjectArray.createConstantObjectArray(), args, args.length), newTarget);
+                    return swapPrototype(JSArray.create(getContext(), ConstantObjectArray.createConstantObjectArray(), args, args.length), newTarget);
                 }
             }
         }
@@ -670,7 +666,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected DynamicObject constructBoolean(DynamicObject newTarget, Object value,
                         @Cached("create()") JSToBooleanNode toBoolean) {
-            return swapPrototype(JSBoolean.create(getContextFromNewTarget(newTarget), toBoolean.executeBoolean(value)), newTarget);
+            return swapPrototype(JSBoolean.create(getContext(), toBoolean.executeBoolean(value)), newTarget);
         }
 
         @Override
@@ -722,20 +718,20 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length == 0"})
         protected DynamicObject constructDateZero(DynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
-            return swapPrototype(JSDate.create(getContextFromNewTarget(newTarget), now()), newTarget);
+            return swapPrototype(JSDate.create(getContext(), now()), newTarget);
         }
 
         @Specialization(guards = {"args.length == 1"})
         protected DynamicObject constructDateOne(DynamicObject newTarget, Object[] args,
                         @Cached("createBinaryProfile()") ConditionProfile isSpecialCase) {
             double dateValue = getDateValue(args[0]);
-            return swapPrototype(JSDate.create(getContextFromNewTarget(newTarget), timeClip(dateValue, isSpecialCase)), newTarget);
+            return swapPrototype(JSDate.create(getContext(), timeClip(dateValue, isSpecialCase)), newTarget);
         }
 
         @Specialization(guards = {"args.length >= 2"})
         protected DynamicObject constructDateMult(DynamicObject newTarget, Object[] args) {
             double val = constructorImpl(args);
-            return swapPrototype(JSDate.create(getContextFromNewTarget(newTarget), val), newTarget);
+            return swapPrototype(JSDate.create(getContext(), val), newTarget);
         }
 
         // inlined JSDate.timeClip to use profiles
@@ -839,7 +835,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return constructRegExpImpl(getContext(), pattern, flags, patternIsRegExp);
             } else {
                 // we are in the "construct" case, i.e. NewTarget is NOT undefined
-                return swapPrototype(constructRegExpImpl(getContextFromNewTarget(newTarget), pattern, flags, patternIsRegExp), newTarget);
+                return swapPrototype(constructRegExpImpl(getContext(), pattern, flags, patternIsRegExp), newTarget);
             }
 
         }
@@ -969,13 +965,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length == 0"})
         protected DynamicObject constructStringInt0(DynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
-            return swapPrototype(JSString.create(getContextFromNewTarget(newTarget), ""), newTarget);
+            return swapPrototype(JSString.create(getContext(), ""), newTarget);
         }
 
         @Specialization(guards = {"args.length != 0"})
         protected DynamicObject constructString(DynamicObject newTarget, Object[] args,
                         @Cached("create()") JSToStringNode toStringNode) {
-            return swapPrototype(JSString.create(getContextFromNewTarget(newTarget), toStringNode.executeString(args[0])), newTarget);
+            return swapPrototype(JSString.create(getContext(), toStringNode.executeString(args[0])), newTarget);
         }
 
         @Override
@@ -1012,7 +1008,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructCollator(DynamicObject newTarget, Object locales, Object options) {
-            DynamicObject collator = swapPrototype(JSCollator.create(getContextFromNewTarget(newTarget)), newTarget);
+            DynamicObject collator = swapPrototype(JSCollator.create(getContext()), newTarget);
             return initializeCollatorNode.executeInit(collator, locales, options);
         }
 
@@ -1050,7 +1046,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructNumberFormat(DynamicObject newTarget, Object locales, Object options) {
-            DynamicObject numberFormat = swapPrototype(JSNumberFormat.create(getContextFromNewTarget(newTarget)), newTarget);
+            DynamicObject numberFormat = swapPrototype(JSNumberFormat.create(getContext()), newTarget);
             return initializeNumberFormatNode.executeInit(numberFormat, locales, options);
         }
 
@@ -1072,7 +1068,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructPluralRules(DynamicObject newTarget, Object locales, Object options) {
-            DynamicObject pluralRules = swapPrototype(JSPluralRules.create(getContextFromNewTarget(newTarget)), newTarget);
+            DynamicObject pluralRules = swapPrototype(JSPluralRules.create(getContext()), newTarget);
             return initializePluralRulesNode.executeInit(pluralRules, locales, options);
         }
 
@@ -1109,7 +1105,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructDateTimeFormat(DynamicObject newTarget, Object locales, Object options) {
-            DynamicObject dateTimeFormat = swapPrototype(JSDateTimeFormat.create(getContextFromNewTarget(newTarget)), newTarget);
+            DynamicObject dateTimeFormat = swapPrototype(JSDateTimeFormat.create(getContext()), newTarget);
             return initializeDateTimeFormatNode.executeInit(dateTimeFormat, locales, options);
         }
 
@@ -1147,7 +1143,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         private DynamicObject newObject(DynamicObject newTarget) {
-            return swapPrototype(JSUserObject.create(getContextFromNewTarget(newTarget)), newTarget);
+            return swapPrototype(JSUserObject.create(getContext()), newTarget);
         }
 
         @Override
@@ -1180,13 +1176,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length == 0"})
         protected DynamicObject constructNumberZero(DynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
-            return swapPrototype(JSNumber.create(getContextFromNewTarget(newTarget), 0), newTarget);
+            return swapPrototype(JSNumber.create(getContext(), 0), newTarget);
         }
 
         @Specialization(guards = {"args.length > 0"})
         protected DynamicObject constructNumber(DynamicObject newTarget, Object[] args,
                         @Cached("create()") JSToNumberNode toNumberNode) {
-            return swapPrototype(JSNumber.create(getContextFromNewTarget(newTarget), toNumberNode.executeNumber(args[0])), newTarget);
+            return swapPrototype(JSNumber.create(getContext(), toNumberNode.executeNumber(args[0])), newTarget);
         }
 
         @Override
@@ -1334,11 +1330,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
 
             if (badLengthCondition.profile(byteLength > JSTruffleOptions.MaxTypedArrayLength)) {
-                throw Errors.createRangeError("Invalid array buffer length");
+                throw Errors.createRangeError("Array buffer allocation failed");
             }
 
             DynamicObject arrayBuffer;
-            JSContext contextFromNewTarget = getContextFromNewTarget(newTarget);
+            JSContext contextFromNewTarget = getContext();
             if (useShared) {
                 arrayBuffer = JSSharedArrayBuffer.createSharedArrayBuffer(contextFromNewTarget, (int) byteLength);
             } else {
@@ -1357,7 +1353,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = "isByteBuffer(buffer)")
         protected DynamicObject constructFromByteBuffer(DynamicObject newTarget, Object buffer) {
             ByteBuffer byteBuffer = (ByteBuffer) buffer;
-            return swapPrototype(JSArrayBuffer.createArrayBuffer(getContextFromNewTarget(newTarget), byteBuffer.array()), newTarget);
+            return swapPrototype(JSArrayBuffer.createArrayBuffer(getContext(), byteBuffer.array()), newTarget);
         }
 
         @Override
@@ -1392,7 +1388,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         private DynamicObject constructErrorImpl(VirtualFrame frame, DynamicObject newTarget, String message) {
             DynamicObject errorObj;
-            JSContext context = getContextFromNewTarget(newTarget);
+            JSContext context = getContext();
             JSRealm realm = context.getRealm();
             if (message == null) {
                 errorObj = JSObject.create(context, context.getErrorFactory(errorType, false));
@@ -1466,7 +1462,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 viewByteLength = bufferByteLength - offset;
             }
             assert offset >= 0 && offset <= Integer.MAX_VALUE && viewByteLength >= 0 && viewByteLength <= Integer.MAX_VALUE;
-            return swapPrototype(JSDataView.createDataView(getContextFromNewTarget(newTarget), arrayBuffer, (int) offset, (int) viewByteLength), newTarget);
+            return swapPrototype(JSDataView.createDataView(getContext(), arrayBuffer, (int) offset, (int) viewByteLength), newTarget);
         }
 
         @Override
@@ -1543,7 +1539,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructJSProxy(DynamicObject newTarget, Object target, Object handler) {
-            if (targetNonObject.profile(!JSGuards.isTruffleObject(target) || target instanceof Symbol || target == Undefined.instance || target == Null.instance)) {
+            if (targetNonObject.profile(!JSGuards.isTruffleObject(target) || target instanceof Symbol || target == Undefined.instance || target == Null.instance || target instanceof JSLazyString ||
+                            target instanceof LargeInteger)) {
                 throw Errors.createTypeError("target expected to be an object");
             }
             if (handlerNonObject.profile(!JSGuards.isJSObject(handler))) {
@@ -1553,7 +1550,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             DynamicObject handlerObj = (DynamicObject) handler;
             checkRevokedProxy(targetObj);
             checkRevokedProxy(handlerObj);
-            return swapPrototype(JSProxy.create(getContextFromNewTarget(newTarget), targetObj, handlerObj), newTarget);
+            return swapPrototype(JSProxy.create(getContext(), targetObj, handlerObj), newTarget);
         }
 
         @Override
@@ -1654,7 +1651,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructMap(DynamicObject newTarget, Object iterable) {
-            JSContext context = getContextFromNewTarget(newTarget);
+            JSContext context = getContext();
             DynamicObject mapObj = JSObject.create(context, context.getMapFactory(), new JSHashMap());
             fillWithIterable(mapObj, iterable);
             return swapPrototype(mapObj, newTarget);
@@ -1723,7 +1720,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructSet(DynamicObject newTarget, Object iterable) {
-            JSContext context = getContextFromNewTarget(newTarget);
+            JSContext context = getContext();
             DynamicObject setObj = JSObject.create(context, context.getSetFactory(), new JSHashMap());
             fillWithIterable(setObj, iterable);
             return swapPrototype(setObj, newTarget);
@@ -1777,7 +1774,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         @Specialization
         protected DynamicObject constructSet(DynamicObject newTarget, Object iterable) {
-            JSContext context = getContextFromNewTarget(newTarget);
+            JSContext context = getContext();
             DynamicObject setObj = JSObject.create(context, context.getWeakSetFactory(), constructWeakHashMap());
             fillWithIterable(setObj, iterable);
             return swapPrototype(setObj, newTarget);
@@ -1803,7 +1800,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         @Specialization
         protected DynamicObject constructMap(DynamicObject newTarget, Object iterable) {
-            JSContext context = getContextFromNewTarget(newTarget);
+            JSContext context = getContext();
             DynamicObject mapObj = JSObject.create(context, context.getWeakMapFactory(), constructWeakMap());
             fillWithIterable(mapObj, iterable);
             return swapPrototype(mapObj, newTarget);

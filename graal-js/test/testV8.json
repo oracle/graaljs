@@ -32,10 +32,6 @@
     "filePath" : "mjsunit/asm/asm-validation.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/asm/call-stdlib.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
     "filePath" : "mjsunit/asm/global-imports.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
@@ -252,9 +248,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/proxies-bind.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/proxies-construct.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/proxies-cross-realm-exception.js",
@@ -1570,6 +1563,9 @@
     "filePath" : "mjsunit/regress/wasm/regress-709684.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-712569.js",
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-752423.js",
     "status" : "SKIP",

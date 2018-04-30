@@ -42,41 +42,28 @@ package com.oracle.truffle.trufflenode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import com.oracle.js.parser.ir.FunctionNode;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.util.Pair;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.WeakHashMap;
 
+/**
+ * Embedder data shared between realms.
+ */
 public final class ContextData {
-    private Object securityToken;
-    private final Map<Integer, Object> embedderData = new HashMap<>();
     private final Map<String, FunctionNode> functionNodeCache = new WeakHashMap<>();
     private final Map<Source, ScriptNode> scriptNodeCache = new WeakHashMap<>();
     private final List<Pair<JSFunctionData, JSFunctionData>> accessorPairs = new ArrayList<>();
     private final Shape externalObjectShape;
 
-    private DynamicObject nativeUtf8Write;
-    private DynamicObject nativeUtf8Slice;
-    private DynamicObject resolverFactory;
-
     public ContextData(JSContext context) {
         this.externalObjectShape = JSExternalObject.makeInitialShape(context);
-    }
-
-    public void setSecurityToken(Object securityToken) {
-        this.securityToken = securityToken;
-    }
-
-    public Object getSecurityToken() {
-        return securityToken;
     }
 
     public Pair<JSFunctionData, JSFunctionData> getAccessorPair(int id) {
@@ -98,38 +85,6 @@ public final class ContextData {
         return externalObjectShape;
     }
 
-    public DynamicObject getNativeUtf8Write() {
-        return nativeUtf8Write;
-    }
-
-    public void setNativeUtf8Write(DynamicObject nativeUtf8Write) {
-        this.nativeUtf8Write = nativeUtf8Write;
-    }
-
-    public DynamicObject getNativeUtf8Slice() {
-        return nativeUtf8Slice;
-    }
-
-    public void setNativeUtf8Slice(DynamicObject nativeUtf8Slice) {
-        this.nativeUtf8Slice = nativeUtf8Slice;
-    }
-
-    public void setEmbedderData(int index, Object value) {
-        embedderData.put(index, value);
-    }
-
-    public Object getEmbedderData(int index) {
-        return embedderData.get(index);
-    }
-
-    public void setResolverFactory(DynamicObject resolverFactory) {
-        this.resolverFactory = resolverFactory;
-    }
-
-    public DynamicObject getResolverFactory() {
-        return resolverFactory;
-    }
-
     public Map<Source, ScriptNode> getScriptNodeCache() {
         return scriptNodeCache;
     }
@@ -137,5 +92,4 @@ public final class ContextData {
     public Map<String, FunctionNode> getFunctionNodeCache() {
         return functionNodeCache;
     }
-
 }

@@ -60,7 +60,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * Contains builtins for the Realm function (constructor).
+ * Contains builtins for the Realm function (V8 compatibility).
  */
 public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<RealmFunctionBuiltins.RealmFunction> {
 
@@ -104,9 +104,13 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         return null;
     }
 
-    protected static int getIdx(Object realm) {
-        int realmIdx = JSRuntime.intValue(JSRuntime.toNumber(realm));
+    protected static int toRealmIndexOrThrow(JSContext context, Object index) {
+        int realmIdx = JSRuntime.intValue(JSRuntime.toNumber(index));
         if (realmIdx < 0) {
+            throw Errors.createTypeError("Invalid realm index");
+        }
+        JSRealm jsrealm = context.getFromRealmList(realmIdx);
+        if (jsrealm == null) {
             throw Errors.createTypeError("Invalid realm index");
         }
         return realmIdx;
@@ -118,9 +122,10 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             super(context, builtin);
         }
 
+        @TruffleBoundary
         @Specialization
         protected Object createRealm() {
-            JSRealm newRealm = getContext().createChildContext().getRealm();
+            JSRealm newRealm = getContext().getRealm().createChildRealm();
             return getContext().getIndexFromRealmList(newRealm);
         }
     }
@@ -131,12 +136,11 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             super(context, builtin);
         }
 
+        @TruffleBoundary
         @Specialization
-        protected Object dispose(Object realm) {
-            int idx = getIdx(realm);
-            if (idx >= 0) {
-                getContext().setInRealmList(idx, null);
-            }
+        protected Object dispose(Object index) {
+            int realmIndex = toRealmIndexOrThrow(getContext(), index);
+            getContext().removeFromRealmList(realmIndex);
             return Undefined.instance;
         }
     }
@@ -147,12 +151,14 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             super(context, builtin);
         }
 
+        @TruffleBoundary
         @Specialization
-        protected Object dispose(Object realm) {
-            int idx = getIdx(realm);
-            JSRealm jsrealm = getContext().getFromRealmList(idx);
+        protected Object global(Object index) {
+            int realmIndex = toRealmIndexOrThrow(getContext(), index);
+            JSRealm jsrealm = getContext().getFromRealmList(realmIndex);
             return jsrealm.getGlobalObject();
         }
+
     }
 
     public abstract static class RealmCurrentNode extends JSBuiltinNode {
@@ -161,6 +167,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             super(context, builtin);
         }
 
+        @TruffleBoundary
         @Specialization
         protected Object current() {
             return getContext().getIndexFromRealmList(getContext().getRealm());
@@ -173,19 +180,14 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             super(context, builtin);
         }
 
-        @Specialization
-        protected Object eval(Object realm, Object code) {
-            int idx = getIdx(realm);
-            JSRealm jsrealm = getContext().getFromRealmList(idx);
-            String sourceText = JSRuntime.toString(code);
-            return eval(jsrealm, sourceText);
-        }
-
         @TruffleBoundary
-        private Object eval(JSRealm realm, String sourceText) {
-            Source source = Source.newBuilder(sourceText).name(Evaluator.EVAL_SOURCE_NAME).mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build();
-            return realm.getContext().getEvaluator().evaluate(realm, this, source);
+        @Specialization
+        protected Object eval(Object index, Object code) {
+            int realmIndex = toRealmIndexOrThrow(getContext(), index);
+            JSRealm jsrealm = getContext().getFromRealmList(realmIndex);
+            String sourceText = JSRuntime.toString(code);
+            Source source = Source.newBuilder(sourceText).name(Evaluator.EVAL_SOURCE_NAME).language(AbstractJavaScriptLanguage.ID).build();
+            return jsrealm.getContext().getEvaluator().evaluate(jsrealm, this, source);
         }
-
     }
 }

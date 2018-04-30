@@ -152,6 +152,12 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         return NodeFactory.getInstance(getContext()).createReadElementNode(getContext(), null, null);
     }
 
+    private void checkDetachedBuffer(DynamicObject buffer) {
+        if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(buffer)) {
+            throw Errors.createTypeErrorDetachedBuffer();
+        }
+    }
+
     /**
      * %TypedArray%(buffer[, byteOffset[, length]]) (ES6 22.2.1.5).
      *
@@ -177,9 +183,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @Specialization(guards = {"isJSFunction(newTarget)", "isJSHeapArrayBuffer(arrayBuffer)"})
     protected DynamicObject doArrayBuffer(DynamicObject newTarget, DynamicObject arrayBuffer, Object byteOffset0, Object length0,
                     @Cached("createBinaryProfile()") ConditionProfile lengthIsUndefined) {
-        if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
-            throw Errors.createTypeErrorDetachedBuffer();
-        }
+        checkDetachedBuffer(arrayBuffer);
         byte[] byteArray = JSArrayBuffer.getByteArray(arrayBuffer);
         int arrayBufferLength = byteArray.length;
         return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, false, lengthIsUndefined);
@@ -188,9 +192,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @Specialization(guards = {"isJSFunction(newTarget)", "isJSDirectArrayBuffer(arrayBuffer)"})
     protected DynamicObject doDirectArrayBuffer(DynamicObject newTarget, DynamicObject arrayBuffer, Object byteOffset0, Object length0,
                     @Cached("createBinaryProfile()") ConditionProfile lengthIsUndefined) {
-        if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
-            throw Errors.createTypeErrorDetachedBuffer();
-        }
+        checkDetachedBuffer(arrayBuffer);
         ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
         int arrayBufferLength = byteBuffer.limit();
         return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, true, lengthIsUndefined);
@@ -209,9 +211,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
             assert length >= 0;
         }
 
-        if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
-            throw Errors.createTypeErrorDetachedBuffer();
-        }
+        checkDetachedBuffer(arrayBuffer);
 
         if (lengthIsUndefinedProfile.profile(length0 == Undefined.instance)) {
             rangeCheckIsMultipleOfElementSize(bufferByteLength % elementSize == 0, "buffer.byteLength", factory.getName(), elementSize);
@@ -261,6 +261,8 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         }
         DynamicObject arrayBuffer = createTypedArrayBuffer(length);
         JSObject.setPrototype(arrayBuffer, getPrototypeFromConstructorBuffer(bufferConstructor));
+
+        checkDetachedBuffer(srcData);
 
         TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);
         DynamicObject result = createTypedArray(arrayBuffer, typedArray, 0, (int) length, newTarget);

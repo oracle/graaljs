@@ -46,7 +46,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -64,9 +63,10 @@ import com.oracle.truffle.js.runtime.util.IteratorUtil;
  */
 public final class JSShapeData {
     private static final Property[] EMPTY_PROPERTY_ARRAY = new Property[0];
+    private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
     private Property[] propertyArray;
-    private Property[] enumerablePropertyArray;
+    private String[] enumerablePropertyNames;
 
     private JSShapeData() {
     }
@@ -79,22 +79,27 @@ public final class JSShapeData {
         return ownProperties.toArray(EMPTY_PROPERTY_ARRAY);
     }
 
-    private static Property[] createEnumerablePropertiesArray(Shape shape) {
+    private static String[] createEnumerablePropertyNamesArray(Shape shape) {
         CompilerAsserts.neverPartOfCompilation();
         enumerablePropertyListAllocCount.inc();
-        List<Property> ownProperties = new ArrayList<>();
+        List<String> ownProperties = new ArrayList<>();
         shape.getPropertyList().forEach(property -> {
             if (JSProperty.isEnumerable(property) && property.getKey() instanceof String) {
-                ownProperties.add(property);
+                ownProperties.add((String) property.getKey());
             }
         });
-        sortProperties(ownProperties);
-        return ownProperties.toArray(EMPTY_PROPERTY_ARRAY);
+        sortPropertyKeys(ownProperties);
+        return ownProperties.toArray(EMPTY_STRING_ARRAY);
     }
 
     private static void sortProperties(List<Property> ownProperties) {
         CompilerAsserts.neverPartOfCompilation();
         Collections.sort(ownProperties, (o1, o2) -> JSRuntime.comparePropertyKeys(o1.getKey(), o2.getKey()));
+    }
+
+    private static void sortPropertyKeys(List<? extends Object> ownProperties) {
+        CompilerAsserts.neverPartOfCompilation();
+        Collections.sort(ownProperties, JSRuntime::comparePropertyKeys);
     }
 
     private static JSShapeData getShapeData(Shape shape) {
@@ -124,25 +129,21 @@ public final class JSShapeData {
     }
 
     @TruffleBoundary
-    private static Property[] getEnumerablePropertyArray(Shape shape) {
+    private static String[] getEnumerablePropertyNamesArray(Shape shape) {
         if (shape.getPropertyCount() == 0) {
-            return EMPTY_PROPERTY_ARRAY;
+            return EMPTY_STRING_ARRAY;
         } else {
             JSShapeData shapeData = getShapeData(shape);
-            if (shapeData.enumerablePropertyArray == null) {
+            if (shapeData.enumerablePropertyNames == null) {
                 assert shape.getPropertyCount() != 0;
-                shapeData.enumerablePropertyArray = createEnumerablePropertiesArray(shape);
+                shapeData.enumerablePropertyNames = createEnumerablePropertyNamesArray(shape);
             }
-            return shapeData.enumerablePropertyArray;
+            return shapeData.enumerablePropertyNames;
         }
     }
 
-    static List<Property> getEnumerableProperties(Shape shape) {
-        return asUnmodifiableList(getEnumerablePropertyArray(shape));
-    }
-
     static List<String> getEnumerablePropertyNames(Shape shape) {
-        return asConvertedList(getEnumerablePropertyArray(shape), p -> (String) p.getKey());
+        return asUnmodifiableList(getEnumerablePropertyNamesArray(shape));
     }
 
     private static <T> List<T> asUnmodifiableList(T[] array) {
@@ -162,29 +163,6 @@ public final class JSShapeData {
                 return IteratorUtil.simpleArrayIterator(array);
             }
         };
-    }
-
-    private static <T, R> List<R> asConvertedList(T[] array, Function<T, R> converter) {
-        return new AbstractList<R>() {
-            @Override
-            public R get(int index) {
-                return converter.apply(array[index]);
-            }
-
-            @Override
-            public int size() {
-                return array.length;
-            }
-
-            @Override
-            public Iterator<R> iterator() {
-                return IteratorUtil.simpleListIterator(this);
-            }
-        };
-    }
-
-    static int getEnumerablePropertyCount(Shape shape) {
-        return getEnumerablePropertyArray(shape).length;
     }
 
     private static final DebugCounter enumerablePropertyListAllocCount = DebugCounter.create("Enumerable property lists allocated");

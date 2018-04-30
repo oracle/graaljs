@@ -94,10 +94,10 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         this.getPromiseResolve = PropertyGetNode.create("resolve", false, context);
         this.callPromiseResolveNode = JSFunctionCallNode.createCall();
         this.getPromise = PropertyGetNode.create("promise", false, context);
-        this.setPromiseIsHandled = PropertySetNode.create(JSPromise.PROMISE_IS_HANDLED, false, context, false);
-        this.setAsyncContext = PropertySetNode.create(ASYNC_CONTEXT, false, context, false);
-        this.setAsyncTarget = PropertySetNode.create(ASYNC_TARGET, false, context, false);
-        this.setAsyncGenerator = PropertySetNode.create(ASYNC_GENERATOR, false, context, false);
+        this.setPromiseIsHandled = PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context);
+        this.setAsyncContext = PropertySetNode.createSetHidden(ASYNC_CONTEXT, context);
+        this.setAsyncTarget = PropertySetNode.createSetHidden(ASYNC_TARGET, context);
+        this.setAsyncGenerator = PropertySetNode.createSetHidden(ASYNC_GENERATOR, context);
         this.createPromiseCapability = JSFunctionCallNode.createCall();
         this.callPerformPromiseThen = JSFunctionCallNode.createCall();
     }
@@ -183,9 +183,9 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     private static JSFunctionData createAwaitFulfilledImpl(JSContext context) {
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
             @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
-            @Child private PropertyGetNode getAsyncTarget = PropertyGetNode.create(ASYNC_TARGET, false, context);
-            @Child private PropertyGetNode getAsyncContext = PropertyGetNode.create(ASYNC_CONTEXT, false, context);
-            @Child private PropertyGetNode getAsyncGenerator = PropertyGetNode.create(ASYNC_GENERATOR, false, context);
+            @Child private PropertyGetNode getAsyncTarget = PropertyGetNode.createGetHidden(ASYNC_TARGET, context);
+            @Child private PropertyGetNode getAsyncContext = PropertyGetNode.createGetHidden(ASYNC_CONTEXT, context);
+            @Child private PropertyGetNode getAsyncGenerator = PropertyGetNode.createGetHidden(ASYNC_GENERATOR, context);
             @Child private AwaitResumeNode awaitResumeNode = AwaitResumeNode.create(false);
 
             @Override
@@ -213,9 +213,9 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     private static JSFunctionData createAwaitRejectedImpl(JSContext context) {
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
             @Child private JavaScriptNode reasonNode = AccessIndexedArgumentNode.create(0);
-            @Child private PropertyGetNode getAsyncTarget = PropertyGetNode.create(ASYNC_TARGET, false, context);
-            @Child private PropertyGetNode getAsyncContext = PropertyGetNode.create(ASYNC_CONTEXT, false, context);
-            @Child private PropertyGetNode getAsyncGenerator = PropertyGetNode.create(ASYNC_GENERATOR, false, context);
+            @Child private PropertyGetNode getAsyncTarget = PropertyGetNode.createGetHidden(ASYNC_TARGET, context);
+            @Child private PropertyGetNode getAsyncContext = PropertyGetNode.createGetHidden(ASYNC_CONTEXT, context);
+            @Child private PropertyGetNode getAsyncGenerator = PropertyGetNode.createGetHidden(ASYNC_GENERATOR, context);
             @Child private AwaitResumeNode awaitResumeNode = AwaitResumeNode.create(true);
 
             @Override

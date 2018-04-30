@@ -78,12 +78,12 @@ public final class UnboundScript {
         Source source;
         if (isCoreModule(name)) {
             // Core modules are kept in memory (i.e. there is no file that contains the source)
-            source = Source.newBuilder(code).name(name).mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build();
+            source = Source.newBuilder(code).name(name).language(AbstractJavaScriptLanguage.ID).build();
         } else {
             // We have the content already, but we need to associate the Source
             // with the corresponding file so that debugger knows where to add
             // the breakpoints.
-            source = Source.newBuilder(new File(name)).content(code).name(name).mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build();
+            source = Source.newBuilder(new File(name)).content(code).name(name).language(AbstractJavaScriptLanguage.ID).build();
         }
         return source;
     }

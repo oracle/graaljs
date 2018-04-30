@@ -46,6 +46,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.util.stream.Stream;
 import java.util.TimeZone;
 
 import org.graalvm.polyglot.Source;
@@ -65,28 +66,13 @@ public class Test262 extends TestSuite {
     private static final String TESTS_REL_LOC = "test";
     private static final String HARNESS_REL_LOC = "harness";
 
-    private static final String[] PREQUEL_FILES_ES5 = new String[]{
-                    "arrayContains.js",
+    private static final String[] COMMON_PREQUEL_FILES = new String[]{
                     "assert.js",
-                    "assertRelativeDateMs.js",
-                    "byteConversionValues.js",
-                    "compareArray.js",
-                    "dateConstants.js",
-                    "decimalToHexString.js",
-                    "detachArrayBuffer.js",
-                    "doneprintHandle.js",
-                    "fnGlobalObject.js",
-                    "nans.js",
-                    "promiseHelper.js",
-                    "propertyHelper.js",
-                    "proxyTrapsHelper.js",
-                    "regExpUtils.js",
-                    "sta.js",
-                    "tcoHelper.js",
-                    "testIntl.js",
-                    "testTypedArray.js",
+                    "sta.js"
     };
-    private static final String[] PREQUEL_FILES;
+    private static final String[] ASYNC_PREQUEL_FILES = new String[]{
+                    "doneprintHandle.js"
+    };
     private static final String[] TEST_DIRS = new String[]{
                     "annexB",
                     "built-ins",
@@ -98,29 +84,43 @@ public class Test262 extends TestSuite {
 
     private Source mockupSource;
 
-    static {
-        String[] prequelFilesES6 = new String[]{
-                        "atomicsHelper.js",
-                        "isConstructor.js",
-                        "nativeFunctionMatcher.js",
-                        "testAtomics.js", // see XXX comment in it!
-                        "typeCoercion.js"
-        };
-        PREQUEL_FILES = new String[PREQUEL_FILES_ES5.length + prequelFilesES6.length];
-        System.arraycopy(PREQUEL_FILES_ES5, 0, PREQUEL_FILES, 0, PREQUEL_FILES_ES5.length);
-        System.arraycopy(prequelFilesES6, 0, PREQUEL_FILES, PREQUEL_FILES_ES5.length, prequelFilesES6.length);
-    }
-
     public Test262(SuiteConfig config) {
         super(config);
     }
 
+    public Source[] getHarnessSources(boolean strict, boolean async, Stream<String> includes) {
+        Source prologSource = Source.newBuilder("js", strict ? "var strict_mode = true;" : "var strict_mode = false;", "").buildLiteral();
+        Stream<Source> prologStream = Stream.of(prologSource);
+        Stream<Source> mockupStream = Stream.of(getMockupSource());
+
+        String harnessLocation = getConfig().getSuiteHarnessLoc();
+        Stream<String> harnessNamesStream = Stream.of(COMMON_PREQUEL_FILES);
+        if (async) {
+            harnessNamesStream = Stream.concat(harnessNamesStream, Stream.of(ASYNC_PREQUEL_FILES));
+        }
+        Stream<Source> harnessStream = Stream.concat(harnessNamesStream, includes).map(pfn -> {
+            try {
+                return Source.newBuilder("js", Paths.get(harnessLocation, pfn).toFile()).build();
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        });
+
+        String prefix = strict ? "\"use strict\";" : "";
+        return Stream.concat(Stream.concat(prologStream, harnessStream).map(s -> applyPrefix(s, prefix)), mockupStream).toArray(Source[]::new);
+    }
+
+    private static Source applyPrefix(Source source, String prefix) {
+        if (prefix.isEmpty()) {
+            return source;
+        }
+        return Source.newBuilder("js", prefix + source.getCharacters(), source.getName()).buildLiteral();
+    }
+
     @Override
     public String[] getPrequelFiles(int ecmaVersion) {
-        if (ecmaVersion >= 6) {
-            return PREQUEL_FILES;
-        }
-        return PREQUEL_FILES_ES5;
+        return COMMON_PREQUEL_FILES;
     }
 
     @Override

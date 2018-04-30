@@ -310,7 +310,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary
         protected final Source sourceFromURL(URL url) {
             try {
-                return Source.newBuilder(url).name(url.getFile()).mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build();
+                return Source.newBuilder(url).name(url.getFile()).language(AbstractJavaScriptLanguage.ID).build();
             } catch (IOException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
@@ -777,7 +777,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (sourceName == null) {
                 sourceName = Evaluator.EVAL_SOURCE_NAME;
             }
-            return getContext().getEvaluator().evaluate(realm, this, Source.newBuilder(sourceText).name(sourceName).mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build());
+            return getContext().getEvaluator().evaluate(realm, this, Source.newBuilder(sourceText).name(sourceName).language(AbstractJavaScriptLanguage.ID).build());
         }
 
         @Specialization(guards = "!isString(source)")
@@ -992,7 +992,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
             if (stream != null) {
                 try {
-                    return Source.newBuilder(new InputStreamReader(stream, StandardCharsets.UTF_8)).name(resource).mimeType(AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).build();
+                    return Source.newBuilder(new InputStreamReader(stream, StandardCharsets.UTF_8)).name(resource).language(AbstractJavaScriptLanguage.ID).build();
                 } catch (IOException e) {
                 }
             }
@@ -1049,7 +1049,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             ScriptNode scriptNode = loadStringImpl(childRealm.getContext(), name, script);
             DynamicObject globalObject = childRealm.getGlobalObject();
             if (args.length > 0) {
-                DynamicObject argObj = JSArgumentsObject.createStrict(childRealm, args);
+                DynamicObject argObj = JSArgumentsObject.createStrict(getContext(), childRealm, args);
                 JSRuntime.createDataProperty(globalObject, JSFunction.ARGUMENTS, argObj);
             }
             return scriptNode.run(JSArguments.create(globalObject, JSFunction.create(childRealm, scriptNode.getFunctionData()), args));
@@ -1057,7 +1057,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @TruffleBoundary
         private JSRealm createRealm() {
-            return getContext().createChildContext().getRealm();
+            return getContext().getRealm().createChildRealm();
         }
     }
 

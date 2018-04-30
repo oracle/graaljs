@@ -111,6 +111,11 @@ public abstract class DynamicArray extends ScriptArray {
     }
 
     @Override
+    public boolean isExtensible() {
+        return !(integrityLevel >= INTEGRITY_LEVEL_NOT_EXTENSIBLE);
+    }
+
+    @Override
     public boolean isLengthNotWritable() {
         return (integrityLevel & LENGTH_WRITABLE_MASK) != 0;
     }
@@ -122,7 +127,12 @@ public abstract class DynamicArray extends ScriptArray {
 
     @Override
     public ScriptArray freeze() {
-        return isFrozen() ? this : setIntegrityLevel(INTEGRITY_LEVEL_FROZEN | (integrityLevel & ~INTEGRITY_LEVEL_MASK));
+        return isFrozen() ? this : setIntegrityLevel(INTEGRITY_LEVEL_FROZEN_LENGTH_READONLY | (integrityLevel & ~INTEGRITY_LEVEL_MASK));
+    }
+
+    @Override
+    public ScriptArray preventExtensions() {
+        return !isExtensible() ? this : setIntegrityLevel(INTEGRITY_LEVEL_NOT_EXTENSIBLE | (integrityLevel & ~INTEGRITY_LEVEL_MASK));
     }
 
     @Override

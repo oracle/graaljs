@@ -622,7 +622,7 @@ Once a socket is assigned to this request and is connected
 added: v0.5.9
 -->
 
-* `timeout` {number} Milliseconds before a request is considered to be timed out.
+* `timeout` {number} Milliseconds before a request times out.
 * `callback` {Function} Optional function to be called when a timeout occurs. Same as binding to the `timeout` event.
 
 Once a socket is assigned to this request and is connected
@@ -734,6 +734,11 @@ changes:
     description: The default action of calling `.destroy()` on the `socket`
                  will no longer take place if there are listeners attached
                  for `clientError`.
+  - version: v8.10.0
+    pr-url: https://github.com/nodejs/node/pull/17672
+    description: The rawPacket is the current buffer that just parsed. Adding
+                 this buffer to the error object of clientError event is to make
+                 it possible that developers can log the broken packet.
 -->
 
 * `exception` {Error}
@@ -764,6 +769,12 @@ When the `'clientError'` event occurs, there is no `request` or `response`
 object, so any HTTP response sent, including response headers and payload,
 *must* be written directly to the `socket` object. Care must be taken to
 ensure the response is a properly formatted HTTP response message.
+
+`err` is an instance of `Error` with two extra columns:
+
++ `bytesParsed`: the bytes count of request packet that Node.js may have parsed
+  correctly;
++ `rawPacket`: the raw packet of current request.
 
 ### Event: 'close'
 <!-- YAML
@@ -797,11 +808,14 @@ added: v0.1.0
 
 * `socket` {net.Socket}
 
-When a new TCP stream is established. `socket` is an object of type
-[`net.Socket`][]. Usually users will not want to access this event. In
-particular, the socket will not emit `'readable'` events because of how
-the protocol parser attaches to the socket. The `socket` can also be
-accessed at `request.connection`.
+This event is emitted when a new TCP stream is established. `socket` is
+typically an object of type [`net.Socket`][]. Usually users will not want to
+access this event. In particular, the socket will not emit `'readable'` events
+because of how the protocol parser attaches to the socket. The `socket` can
+also be accessed at `request.connection`.
+
+*Note*: This event can also be explicitly emitted by users to inject connections
+into the HTTP server. In that case, any [`Duplex`][] stream can be passed.
 
 ### Event: 'request'
 <!-- YAML
@@ -897,7 +911,7 @@ added: v0.9.12
 The number of milliseconds of inactivity before a socket is presumed
 to have timed out.
 
-A value of 0 will disable the timeout behavior on incoming connections.
+A value of `0` will disable the timeout behavior on incoming connections.
 
 *Note*: The socket timeout logic is set up on connection, so changing this
 value only affects new connections to the server, not any existing connections.
@@ -915,7 +929,9 @@ will be destroyed. If the server receives new data before the keep-alive
 timeout has fired, it will reset the regular inactivity timeout, i.e.,
 [`server.timeout`][].
 
-A value of 0 will disable the keep-alive timeout behavior on incoming connections.
+A value of `0` will disable the keep-alive timeout behavior on incoming connections.
+A value of `0` makes the http server behave similarly to Node.js versions prior to 8.0.0,
+which did not have a keep-alive timeout.
 
 *Note*: The socket timeout logic is set up on connection, so changing this
 value only affects new connections to the server, not any existing connections.
@@ -1769,7 +1785,7 @@ changes:
     use for the request when the `agent` option is not used. This can be used to
     avoid creating a custom `Agent` class just to override the default
     `createConnection` function. See [`agent.createConnection()`][] for more
-    details.
+    details. Any [`Duplex`][] stream is a valid return value.
   * `timeout` {number}: A number specifying the socket timeout in milliseconds.
     This will set the timeout before the socket is connected.
 * `callback` {Function}
@@ -1868,6 +1884,7 @@ const req = http.request(options, (res) => {
 [`'request'`]: #http_event_request
 [`'response'`]: #http_event_response
 [`Agent`]: #http_class_http_agent
+[`Duplex`]: stream.html#stream_class_stream_duplex
 [`EventEmitter`]: events.html#events_class_eventemitter
 [`TypeError`]: errors.html#errors_class_typeerror
 [`URL`]: url.html#url_the_whatwg_url_api

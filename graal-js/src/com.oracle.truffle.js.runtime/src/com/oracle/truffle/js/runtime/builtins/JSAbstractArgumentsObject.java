@@ -53,6 +53,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -173,11 +174,14 @@ public abstract class JSAbstractArgumentsObject extends JSAbstractArray {
             oldValue = super.get(thisObj, index);
             isMapped = !wasIndexDisconnected(thisObj, index);
 
-            if (arrayGetArrayType(thisObj, JSArgumentsObject.isJSArgumentsObject(thisObj)).hasElement(thisObj, index)) {
+            ScriptArray arrayType = arrayGetArrayType(thisObj, JSArgumentsObject.isJSArgumentsObject(thisObj));
+            if (arrayType.hasElement(thisObj, index)) {
                 // apply the default attributes to the property first
                 JSContext context = JSObject.getJSContext(thisObj);
                 JSObjectUtil.putDataProperty(context, thisObj, propertyKey, get(thisObj, index), JSAttributes.getDefault());
-                arraySetArrayType(thisObj, arrayGetArrayType(thisObj, JSArgumentsObject.isJSArgumentsObject(thisObj)).deleteElement(thisObj, index, false));
+                if (arrayType.canDeleteElement(thisObj, index, false)) {
+                    arraySetArrayType(thisObj, arrayType.deleteElement(thisObj, index, false));
+                }
             }
         }
 

@@ -45,6 +45,7 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
@@ -109,11 +110,12 @@ public final class JavaPackage extends JSBuiltinObject {
     @TruffleBoundary
     public static <T> T getClass(DynamicObject thisObj, String className, Class<? extends T> returnType) {
         JSContext context = JSObject.getJSContext(thisObj);
-        assert context.getEnv().isHostLookupAllowed();
+        TruffleLanguage.Env env = context.getRealm().getEnv();
+        assert env.isHostLookupAllowed();
         String qualifiedName = prependPackageName(thisObj, className);
         Object javaType;
         try {
-            javaType = context.getEnv().lookupHostSymbol(qualifiedName);
+            javaType = env.lookupHostSymbol(qualifiedName);
         } catch (Exception e) {
             return null;
         }

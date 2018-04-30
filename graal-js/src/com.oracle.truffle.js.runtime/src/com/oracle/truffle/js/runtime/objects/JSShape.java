@@ -198,11 +198,6 @@ public final class JSShape {
         return isFrozenHelper(shape, currentProperty -> JSProperty.isConfigurable(currentProperty) && !currentProperty.isHidden());
     }
 
-    public static List<Property> getEnumerableProperties(Shape shape) {
-        assert JSTruffleOptions.FastOwnKeys;
-        return JSShapeData.getEnumerableProperties(shape);
-    }
-
     public static List<Property> getProperties(Shape shape) {
         assert JSTruffleOptions.FastOwnKeys;
         return JSShapeData.getProperties(shape);

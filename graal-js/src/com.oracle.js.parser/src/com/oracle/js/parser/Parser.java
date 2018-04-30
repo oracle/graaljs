@@ -944,7 +944,7 @@ loop:
                 // A directive is either a string or an escape string
                 if (tt == TokenType.STRING || tt == TokenType.ESCSTRING) {
                     // Make sure that we don't unescape anything. Return as seen in source!
-                    return lexer.stringIntern(source.getString(lit.getStart() + 1, Token.descLength(litToken) - 2));
+                    return source.getString(lit.getStart() + 1, Token.descLength(litToken) - 2);
                 }
             }
         }
@@ -1106,54 +1106,54 @@ loop:
         switch (type) {
         case LBRACE:
             block();
-            break;
+            return;
         case VAR:
             variableStatement(type);
-            break;
+            return;
         case SEMICOLON:
             emptyStatement();
-            break;
+            return;
         case IF:
             ifStatement();
-            break;
+            return;
         case FOR:
             forStatement();
-            break;
+            return;
         case WHILE:
             whileStatement();
-            break;
+            return;
         case DO:
             doStatement();
-            break;
+            return;
         case CONTINUE:
             continueStatement();
-            break;
+            return;
         case BREAK:
             breakStatement();
-            break;
+            return;
         case RETURN:
             returnStatement();
-            break;
+            return;
         case WITH:
             withStatement();
-            break;
+            return;
         case SWITCH:
             switchStatement();
-            break;
+            return;
         case THROW:
             throwStatement();
-            break;
+            return;
         case TRY:
             tryStatement();
-            break;
+            return;
         case DEBUGGER:
             debuggerStatement();
-            break;
+            return;
         case RPAREN:
         case RBRACKET:
         case EOF:
             expect(SEMICOLON);
-            break;
+            return;
         case FUNCTION:
             // As per spec (ECMA section 12), function declarations as arbitrary statement
             // is not "portable". Implementation can issue a warning or disallow the same.
@@ -1168,34 +1168,39 @@ loop:
             }
             functionExpression(true, topLevel || labelledStatement, singleStatement);
             return;
+        case LET:
+        case CONST:
+            if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration(false) || type == CONST)) {
+                if (singleStatement) {
+                    throw error(AbstractParser.message("expected.stmt", type.getName() + " declaration"), token);
+                }
+                variableStatement(type);
+                return;
+            } else if (env.constAsVar && type == CONST) {
+                variableStatement(TokenType.VAR);
+                return;
+            }
+            break;
+        case CLASS:
+            if (ES6_CLASS && isES6()) {
+                if (singleStatement) {
+                    throw error(AbstractParser.message("expected.stmt", "class declaration"), token);
+                }
+                classDeclaration(inGeneratorFunction(), inAsyncFunction(), false);
+                return;
+            }
+            break;
+        case ASYNC:
+            if (isAsync() && lookaheadIsAsyncFunction()) {
+                if (singleStatement) {
+                    throw error(AbstractParser.message("expected.stmt", "async function declaration"), token);
+                }
+                asyncFunctionExpression(true, topLevel || labelledStatement);
+                return;
+            }
+            break;
         default:
-            statementDefault(topLevel, reparseFlags, singleStatement, labelledStatement, mayBeFunctionDeclaration);
-        }
-    }
-
-    private void statementDefault(final boolean topLevel, final int reparseFlags, final boolean singleStatement, final boolean labelledStatement, final boolean mayBeFunctionDeclaration) {
-        if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration(false) || type == CONST)) {
-            if (singleStatement) {
-                throw error(AbstractParser.message("expected.stmt", type.getName() + " declaration"), token);
-            }
-            variableStatement(type);
-            return;
-        } else if (ES6_CLASS && type == CLASS && isES6()) {
-            if (singleStatement) {
-                throw error(AbstractParser.message("expected.stmt", "class declaration"), token);
-            }
-            classDeclaration(inGeneratorFunction(), inAsyncFunction(), false);
-            return;
-        } else if (isAsync() && lookaheadIsAsyncFunction()) {
-            if (singleStatement) {
-                throw error(AbstractParser.message("expected.stmt", "async function declaration"), token);
-            }
-            asyncFunctionExpression(true, topLevel || labelledStatement);
-            return;
-        }
-        if (env.constAsVar && type == CONST) {
-            variableStatement(TokenType.VAR);
-            return;
+            break;
         }
 
         if (isBindingIdentifier()) {
@@ -1203,33 +1208,40 @@ loop:
                 labelStatement(mayBeFunctionDeclaration);
                 return;
             }
-            final boolean allowPropertyFunction = (reparseFlags & REPARSE_IS_PROPERTY_ACCESSOR) != 0;
-            final boolean isES6Method = (reparseFlags & REPARSE_IS_METHOD) != 0;
-            if (allowPropertyFunction) {
-                final long propertyToken = token;
-                final int propertyLine = line;
-                if (type == GET) {
-                    next();
-                    addPropertyFunctionStatement(propertyGetterFunction(propertyToken, propertyLine, false, false));
-                    return;
-                } else if (type == SET) {
-                    next();
-                    addPropertyFunctionStatement(propertySetterFunction(propertyToken, propertyLine, false, false));
-                    return;
-                }
-            } else if (isES6Method) {
-                final String ident = (String)getValue();
-                IdentNode identNode = createIdentNode(token, finish, ident).setIsPropertyName();
-                final long propertyToken = token;
-                final int propertyLine = line;
-                next();
-                final int flags = CONSTRUCTOR_NAME.equals(ident) ? FunctionNode.IS_CLASS_CONSTRUCTOR : FunctionNode.IS_METHOD;
-                addPropertyFunctionStatement(propertyMethodFunction(identNode, propertyToken, propertyLine, false, flags, false, false));
+            if (reparseFlags != 0 && reparseFunctionStatement(reparseFlags)) {
                 return;
             }
         }
 
         expressionStatement();
+    }
+
+    private boolean reparseFunctionStatement(final int reparseFlags) {
+        final boolean allowPropertyFunction = (reparseFlags & REPARSE_IS_PROPERTY_ACCESSOR) != 0;
+        final boolean isES6Method = (reparseFlags & REPARSE_IS_METHOD) != 0;
+        if (allowPropertyFunction) {
+            final long propertyToken = token;
+            final int propertyLine = line;
+            if (type == GET) {
+                next();
+                addPropertyFunctionStatement(propertyGetterFunction(propertyToken, propertyLine, false, false));
+                return true;
+            } else if (type == SET) {
+                next();
+                addPropertyFunctionStatement(propertySetterFunction(propertyToken, propertyLine, false, false));
+                return true;
+            }
+        } else if (isES6Method) {
+            final String ident = (String)getValue();
+            IdentNode identNode = createIdentNode(token, finish, ident).setIsPropertyName();
+            final long propertyToken = token;
+            final int propertyLine = line;
+            next();
+            final int flags = CONSTRUCTOR_NAME.equals(ident) ? FunctionNode.IS_CLASS_CONSTRUCTOR : FunctionNode.IS_METHOD;
+            addPropertyFunctionStatement(propertyMethodFunction(identNode, propertyToken, propertyLine, false, flags, false, false));
+            return true;
+        }
+        return false;
     }
 
     private void addPropertyFunctionStatement(final PropertyFunction propertyFunction) {
@@ -1457,8 +1469,8 @@ loop:
         final List<IdentNode> parameters;
         final long identToken = Token.recast(classToken, TokenType.IDENT);
         if (subclass) {
-            IdentNode superIdent = createIdentNode(identToken, ctorFinish, SUPER.getName()).setIsDirectSuper();
-            IdentNode argsIdent = createIdentNode(identToken, ctorFinish, "args").setIsRestParameter();
+            IdentNode superIdent = new IdentNode(identToken, ctorFinish, SUPER.getName()).setIsDirectSuper();
+            IdentNode argsIdent = new IdentNode(identToken, ctorFinish, "args").setIsRestParameter();
             Expression spreadArgs = new UnaryNode(Token.recast(classToken, TokenType.SPREAD_ARGUMENT), argsIdent);
             CallNode superCall = new CallNode(classLineNumber, classToken, ctorFinish, superIdent, Collections.singletonList(spreadArgs), false);
             statements = Collections.singletonList(new ExpressionStatement(classLineNumber, classToken, ctorFinish, superCall));
@@ -1469,7 +1481,7 @@ loop:
         }
 
         Block body = new Block(classToken, ctorFinish, Block.IS_BODY, statements);
-        final IdentNode ctorName = className != null ? className : createIdentNode(identToken, ctorFinish, CONSTRUCTOR_NAME);
+        final IdentNode ctorName = className != null ? className : new IdentNode(identToken, ctorFinish, CONSTRUCTOR_NAME);
         ParserContextFunctionNode function = createParserContextFunctionNode(ctorName, classToken, FunctionNode.Kind.NORMAL, classLineNumber, parameters);
         function.setLastToken(lastToken);
 
@@ -3453,12 +3465,11 @@ loop:
     private PropertyFunction propertyGetterFunction(long getSetToken, int functionLine, boolean yield, boolean await) {
         final boolean computed = type == LBRACKET;
         final Expression propertyName = propertyName(yield, await);
-        final String getterName = propertyName instanceof PropertyKey ? ((PropertyKey) propertyName).getPropertyName() : getDefaultFunctionName();
-        final IdentNode getNameNode = createIdentNode(propertyName.getToken(), finish, ("get " + getterName));
+        final IdentNode getterName = createMethodNameIdent(propertyName, "get ");
         expect(LPAREN);
         expect(RPAREN);
 
-        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(getNameNode, getSetToken, FunctionNode.Kind.GETTER, functionLine, Collections.<IdentNode>emptyList());
+        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(getterName, getSetToken, FunctionNode.Kind.GETTER, functionLine, Collections.<IdentNode>emptyList());
         functionNode.setFlag(FunctionNode.IS_METHOD);
         if (computed) {
             functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
@@ -3477,7 +3488,7 @@ loop:
         final FunctionNode  function = createFunctionNode(
                 functionNode,
                 getSetToken,
-                getNameNode,
+                getterName,
                 Collections.<IdentNode>emptyList(),
                 null,
                 FunctionNode.Kind.GETTER,
@@ -3490,8 +3501,7 @@ loop:
     private PropertyFunction propertySetterFunction(long getSetToken, int functionLine, boolean yield, boolean await) {
         final boolean computed = type == LBRACKET;
         final Expression propertyName = propertyName(yield, await);
-        final String setterName = propertyName instanceof PropertyKey ? ((PropertyKey) propertyName).getPropertyName() : getDefaultFunctionName();
-        final IdentNode setNameNode = createIdentNode(propertyName.getToken(), finish, ("set " + setterName));
+        final IdentNode setterName = createMethodNameIdent(propertyName, "set ");
         expect(LPAREN);
         // be sloppy and allow missing setter parameter even though
         // spec does not permit it!
@@ -3508,7 +3518,7 @@ loop:
         }
 
 
-        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(setNameNode, getSetToken, FunctionNode.Kind.SETTER, functionLine, parameters);
+        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(setterName, getSetToken, FunctionNode.Kind.SETTER, functionLine, parameters);
         functionNode.setFlag(FunctionNode.IS_METHOD);
         if (computed) {
             functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
@@ -3526,7 +3536,7 @@ loop:
         final FunctionNode  function = createFunctionNode(
                 functionNode,
                 getSetToken,
-                setNameNode,
+                setterName,
                 parameters,
                 null,
                 FunctionNode.Kind.SETTER,
@@ -3537,8 +3547,7 @@ loop:
     }
 
     private PropertyFunction propertyMethodFunction(Expression key, final long methodToken, final int methodLine, final boolean generator, final int flags, boolean computed, boolean async) {
-        final String methodName = key instanceof PropertyKey ? ((PropertyKey) key).getPropertyName() : getDefaultFunctionName();
-        final IdentNode methodNameNode = createIdentNode(key.getToken(), finish, methodName);
+        final IdentNode methodNameNode = createMethodNameIdent(key, "");
 
         FunctionNode.Kind functionKind = generator ? FunctionNode.Kind.GENERATOR : FunctionNode.Kind.NORMAL;
         final ParserContextFunctionNode functionNode = createParserContextFunctionNode(methodNameNode, methodToken, functionKind, methodLine, null);
@@ -3582,6 +3591,27 @@ loop:
         } finally {
             lc.pop(functionNode);
         }
+    }
+
+    private IdentNode createMethodNameIdent(Expression propertyKey, String prefix) {
+        String methodName;
+        boolean intern = false;
+        if (propertyKey instanceof IdentNode) {
+            methodName = ((IdentNode) propertyKey).getPropertyName();
+        } else if (propertyKey instanceof PropertyKey) {
+            methodName = ((PropertyKey) propertyKey).getPropertyName();
+            intern = true;
+        } else {
+            return new IdentNode(propertyKey.getToken(), propertyKey.getFinish(), getDefaultFunctionName());
+        }
+        if (!prefix.isEmpty()) {
+            methodName = new StringBuilder(prefix.length() + methodName.length()).append(prefix).append(methodName).toString();
+            intern = true;
+        }
+        if (intern) {
+            methodName = lexer.stringIntern(methodName);
+        }
+        return createIdentNode(propertyKey.getToken(), propertyKey.getFinish(), methodName);
     }
 
     private static class PropertyFunction {
@@ -3802,9 +3832,8 @@ loop:
             if (ES6_CLASS && isES6()) {
                 lhs = classExpression(yield, await);
                 break;
-            } else {
-                // fall through
             }
+            // fall through
 
         case SUPER:
             if (ES6_CLASS && isES6()) {
@@ -3812,7 +3841,7 @@ loop:
                 if (currentFunction.isMethod()) {
                     long identToken = Token.recast(token, IDENT);
                     next();
-                    lhs = createIdentNode(identToken, finish, SUPER.getName()).setIsSuper();
+                    lhs = new IdentNode(identToken, finish, SUPER.getName()).setIsSuper();
 
                     switch (type) {
                         case LBRACKET:
@@ -3831,19 +3860,18 @@ loop:
                             throw error(AbstractParser.message("invalid.super"), identToken);
                     }
                     break;
-                } else {
-                    // fall through
                 }
-            } else {
-                // fall through
             }
+            // fall through
 
-        default:
+        case ASYNC:
             if (isAsync() && lookaheadIsAsyncFunction()) {
                 lhs = asyncFunctionExpression(false, false);
                 break;
             }
+            // fall through
 
+        default:
             // Get primary expression.
             lhs = primaryExpression(yield, await);
             break;
@@ -4320,7 +4348,7 @@ loop:
             } else {
                 final Expression pattern = bindingPattern(yield, await);
                 // Introduce synthetic temporary parameter to capture the object to be destructured.
-                ident = createIdentNode(paramToken, pattern.getFinish(), String.format("arguments[%d]", parameters.size())).setIsDestructuredParameter();
+                ident = createDestructuredParamIdent(paramToken, pattern.getFinish(), parameters.size());
                 verifyDestructuringParameterBindingPattern(pattern, paramToken, paramLine, contextString);
 
                 Expression value = ident;
@@ -5206,7 +5234,7 @@ loop:
             } else if (isDestructuringLhs(lhs)) {
                 // binding pattern with initializer
                 // Introduce synthetic temporary parameter to capture the object to be destructured.
-                IdentNode ident = createIdentNode(paramToken, param.getFinish(), String.format("arguments[%d]", index)).setIsDestructuredParameter().setIsDefaultParameter();
+                IdentNode ident = createDestructuredParamIdent(paramToken, param.getFinish(), index).setIsDefaultParameter();
                 verifyDestructuringParameterBindingPattern(lhs, paramToken, paramLine, contextString);
 
                 ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
@@ -5223,7 +5251,7 @@ loop:
             long paramToken = param.getToken();
 
             // Introduce synthetic temporary parameter to capture the object to be destructured.
-            IdentNode ident = createIdentNode(paramToken, param.getFinish(), String.format("arguments[%d]", index)).setIsDestructuredParameter();
+            IdentNode ident = createDestructuredParamIdent(paramToken, param.getFinish(), index);
             verifyDestructuringParameterBindingPattern(param, paramToken, paramLine, contextString);
 
             ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
@@ -5234,6 +5262,11 @@ loop:
             return ident;
         }
         throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
+    }
+
+    private IdentNode createDestructuredParamIdent(long paramToken, int paramFinish, int paramIndex) {
+        final String name = lexer.stringIntern(String.format("arguments[%d]", paramIndex));
+        return new IdentNode(paramToken, paramFinish, name).setIsDestructuredParameter();
     }
 
     private boolean checkNoLineTerminator() {
@@ -5776,7 +5809,7 @@ loop:
                     lc.appendStatementToCurrentNode(new VarNode(lineNumber, Token.recast(rhsToken, LET), finish, ident, assignmentExpression).setFlag(VarNode.IS_EXPORT));
                     module.addLocalExportEntry(ExportEntry.exportDefault(ident.getName()));
                 } else {
-                    ident = createIdentNode(Token.recast(rhsToken, IDENT), finish, Module.DEFAULT_EXPORT_BINDING_NAME);
+                    ident = new IdentNode(Token.recast(rhsToken, IDENT), finish, Module.DEFAULT_EXPORT_BINDING_NAME);
                     lc.appendStatementToCurrentNode(new VarNode(lineNumber, Token.recast(rhsToken, LET), finish, ident, assignmentExpression).setFlag(VarNode.IS_EXPORT));
                     if (!declaration) {
                         endOfLine();

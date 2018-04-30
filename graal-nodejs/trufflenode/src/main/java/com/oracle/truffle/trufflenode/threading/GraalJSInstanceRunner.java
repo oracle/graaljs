@@ -101,7 +101,8 @@ public class GraalJSInstanceRunner {
         @SuppressWarnings("unused")
         public void init(Object proc, long loopPtr) {
             DynamicObject process = (DynamicObject) proc;
-            DynamicObject newEnv = JSObject.create(JSObject.getJSContext(process).getEmptyShape());
+            JSContext processContext = JSObject.getJSContext(process);
+            DynamicObject newEnv = JSObject.create(processContext, processContext.getEmptyShape());
             // Copy the original proxy-based env into the new threads' process.env
             if (env != null) {
                 for (String k : env.keySet()) {
@@ -110,7 +111,7 @@ public class GraalJSInstanceRunner {
             }
             JSObject.set(process, "env", newEnv, false);
             node.loop = loopPtr;
-            node.context = JSObject.getJSContext(process);
+            node.context = processContext;
             // JSObject.getJSContext(process).setNodeServer(node);
             if (node.startupBarrier != null) {
                 node.startupBarrier.countDown();

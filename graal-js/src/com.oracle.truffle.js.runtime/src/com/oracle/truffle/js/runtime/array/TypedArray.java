@@ -224,6 +224,11 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     @Override
+    public ScriptArray preventExtensions() {
+        return this;
+    }
+
+    @Override
     public final boolean isStatelessType() {
         return true;
     }

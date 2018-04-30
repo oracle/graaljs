@@ -358,7 +358,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
 
     public static DynamicObject create(JSContext context) {
         Shape shape = context.getRealm().getDictionaryShapeObjectPrototype();
-        DynamicObject object = JSObject.create(shape);
+        DynamicObject object = JSObject.create(context, shape);
         HASHMAP_PROPERTY.setSafe(object, new LinkedHashMap<>(), shape);
         return object;
     }

@@ -391,12 +391,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
                             execv(java.c_str(), argv);
                             perror(java.c_str());
                             exit(errno);
-                        } else {
-                            printf("Native Options:\n\n");
-                            printf("  --native.D<name>=<value>    set a system property\n");
-                            printf("  --native.XX:<name>=<value>  set a runtime option\n\n");
-                            // print list of runtime options and exit
-                            options.push_back({const_cast<char*> ("-XX:+PrintFlags"), nullptr});
                         }
                     }
                     option = strtok(nullptr, delimiters);
@@ -546,8 +540,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::array_buffer_new_buffer, "arrayBufferNew", "(Ljava/lang/Object;Ljava/lang/Object;J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_get_contents, "arrayBufferGetContents", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_buffer, "arrayBufferViewBuffer", "(Ljava/lang/Object;)Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_length, "arrayBufferViewByteLength", "(Ljava/lang/Object;Ljava/lang/Object;)I")
-    ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_offset, "arrayBufferViewByteOffset", "(Ljava/lang/Object;Ljava/lang/Object;)I")
+    ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_length, "arrayBufferViewByteLength", "(Ljava/lang/Object;)I")
+    ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_offset, "arrayBufferViewByteOffset", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::typed_array_length, "typedArrayLength", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::uint8_array_new, "uint8ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::uint8_clamped_array_new, "uint8ClampedArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")

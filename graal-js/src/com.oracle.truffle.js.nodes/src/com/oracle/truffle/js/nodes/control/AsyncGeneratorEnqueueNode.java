@@ -72,8 +72,8 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
 
     protected AsyncGeneratorEnqueueNode(JSContext context) {
         this.context = context;
-        this.getGeneratorState = PropertyGetNode.create(JSFunction.GENERATOR_STATE_ID, false, context);
-        this.getAsyncGeneratorQueueNode = PropertyGetNode.create(JSFunction.ASYNC_GENERATOR_QUEUE_ID, false, context);
+        this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_STATE_ID, context);
+        this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
         this.hasAsyncGeneratorInternalSlots = HasHiddenKeyCacheNode.create(JSFunction.ASYNC_GENERATOR_QUEUE_ID);
         this.getPromiseReject = PropertyGetNode.create("reject", false, context);
         this.callPromiseRejectNode = JSFunctionCallNode.createCall();
@@ -87,11 +87,11 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unchecked")
-    public Object execute(VirtualFrame frame, DynamicObject generator, Completion completion) {
+    public Object execute(VirtualFrame frame, Object generator, Completion completion) {
         DynamicObject promiseCapability = newPromiseCapability();
         if (!JSGuards.isJSObject(generator) || !hasAsyncGeneratorInternalSlots.executeHasHiddenKey(generator)) {
             Object badGeneratorError = Errors.createTypeErrorAsyncGeneratorObjectExpected().getErrorObjectEager(context);
-            Object reject = getPromiseReject.getValue(generator);
+            Object reject = getPromiseReject.getValue(promiseCapability);
             callPromiseRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, reject, badGeneratorError));
             return getPromise.getValue(promiseCapability);
         }
@@ -100,7 +100,7 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
         queueAdd(queue, request);
         AsyncGeneratorState state = (AsyncGeneratorState) getGeneratorState.getValue(generator);
         if (state != AsyncGeneratorState.Executing) {
-            asyncGeneratorResumeNextNode.execute(frame, generator);
+            asyncGeneratorResumeNextNode.execute(frame, (DynamicObject) generator);
         }
         return getPromise.getValue(promiseCapability);
     }

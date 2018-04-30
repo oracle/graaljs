@@ -368,7 +368,7 @@ changes:
 When using an authenticated encryption mode (only `GCM` is currently
 supported), the `decipher.setAuthTag()` method is used to pass in the
 received _authentication tag_. If no tag is provided, or if the cipher text
-has been tampered with, [`decipher.final()`][] with throw, indicating that the
+has been tampered with, [`decipher.final()`][] will throw, indicating that the
 cipher text should be discarded due to failed authentication.
 
 The `decipher.setAuthTag()` method must be called before
@@ -1196,7 +1196,7 @@ password always creates the same key. The low iteration count and
 non-cryptographically secure hash algorithm allow passwords to be tested very
 rapidly.
 
-In line with OpenSSL's recommendation to use pbkdf2 instead of
+In line with OpenSSL's recommendation to use PBKDF2 instead of
 [`EVP_BytesToKey`][] it is recommended that developers derive a key and IV on
 their own using [`crypto.pbkdf2()`][] and to use [`crypto.createCipheriv()`][]
 to create the `Cipher` object. Users should not use ciphers with counter mode
@@ -1258,7 +1258,7 @@ password always creates the same key. The low iteration count and
 non-cryptographically secure hash algorithm allow passwords to be tested very
 rapidly.
 
-In line with OpenSSL's recommendation to use pbkdf2 instead of
+In line with OpenSSL's recommendation to use PBKDF2 instead of
 [`EVP_BytesToKey`][] it is recommended that developers derive a key and IV on
 their own using [`crypto.pbkdf2()`][] and to use [`crypto.createDecipheriv()`][]
 to create the `Decipher` object.
@@ -1556,7 +1556,7 @@ higher the number of iterations, the more secure the derived key will be,
 but will take a longer amount of time to complete.
 
 The `salt` should also be as unique as possible. It is recommended that the
-salts are random and their lengths are greater than 16 bytes. See
+salts are random and their lengths are at least 16 bytes. See
 [NIST SP 800-132][] for details.
 
 Example:
@@ -1608,7 +1608,7 @@ higher the number of iterations, the more secure the derived key will be,
 but will take a longer amount of time to complete.
 
 The `salt` should also be as unique as possible. It is recommended that the
-salts are random and their lengths are greater than 16 bytes. See
+salts are random and their lengths are at least 16 bytes. See
 [NIST SP 800-132][] for details.
 
 Example:

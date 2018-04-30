@@ -44,6 +44,8 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.NoSuchFileException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -246,7 +248,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
         @Specialization
         protected Object doString(String identifier, Object value) {
-            TruffleObject polyglotBindings = (TruffleObject) getContext().getEnv().getPolyglotBindings();
+            TruffleObject polyglotBindings = (TruffleObject) getContext().getRealm().getEnv().getPolyglotBindings();
             Object exportedValue = export.executeWithTarget(value, Undefined.instance);
             try {
                 ForeignAccess.sendWrite(writeBinding, polyglotBindings, identifier, exportedValue);
@@ -291,7 +293,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
         @Specialization
         protected Object doString(String identifier) {
-            TruffleObject polyglotBindings = (TruffleObject) getContext().getEnv().getPolyglotBindings();
+            TruffleObject polyglotBindings = (TruffleObject) getContext().getRealm().getEnv().getPolyglotBindings();
             Object value;
             try {
                 value = ForeignAccess.sendRead(readBinding, polyglotBindings, identifier);
@@ -641,7 +643,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             CallTarget callTarget;
 
             try {
-                callTarget = getContext().getEnv().parse(sourceObject);
+                callTarget = getContext().getRealm().getEnv().parse(sourceObject);
             } catch (Exception e) {
                 throw Errors.createError(e.getMessage());
             }
@@ -670,13 +672,17 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             String languageIdOrMimeType = languageId.toString();
             try {
                 source = Source.newBuilder(new File(fileNameStr)).language(languageIdOrMimeType).mimeType(languageIdOrMimeType).build();
+            } catch (AccessDeniedException e) {
+                throw Errors.createError("Cannot evaluate file " + fileNameStr + ": permission denied");
+            } catch (NoSuchFileException e) {
+                throw Errors.createError("Cannot evaluate file " + fileNameStr + ": no such file");
             } catch (IOException e) {
-                throw Errors.createError(e.getMessage());
+                throw Errors.createError("Cannot evaluate file: " + e.getMessage());
             }
 
             CallTarget callTarget;
             try {
-                callTarget = getContext().getEnv().parse(source);
+                callTarget = getContext().getRealm().getEnv().parse(source);
             } catch (Exception e) {
                 throw Errors.createError(e.getMessage());
             }

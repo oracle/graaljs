@@ -3,7 +3,7 @@
 
 const path = require('path');
 const common = require('../common.js');
-const filename = path.resolve(__dirname,
+const filename = path.resolve(process.env.NODE_TMPDIR || __dirname,
                               `.removeme-benchmark-garbage-${process.pid}`);
 const fs = require('fs');
 
@@ -41,10 +41,6 @@ function main(conf) {
   var started = false;
   var ending = false;
   var ended = false;
-  setTimeout(function() {
-    ending = true;
-    f.end();
-  }, dur * 1000);
 
   var f = fs.createWriteStream(filename);
   f.on('drain', write);
@@ -66,6 +62,10 @@ function main(conf) {
 
     if (!started) {
       started = true;
+      setTimeout(function() {
+        ending = true;
+        f.end();
+      }, dur * 1000);
       bench.start();
     }
 

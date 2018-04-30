@@ -66,7 +66,7 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
 
     protected GetAsyncIteratorNode(JSContext context, JavaScriptNode objectNode) {
         super(context, objectNode);
-        this.setState = PropertySetNode.create(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, false, context, false);
+        this.setState = PropertySetNode.createSetHidden(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, context);
         this.getAsyncIteratorMethodNode = GetMethodNode.create(context, null, Symbol.SYMBOL_ASYNC_ITERATOR);
     }
 

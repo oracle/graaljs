@@ -19,7 +19,7 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#include "async-wrap-inl.h"
+#include "async_wrap-inl.h"
 #include "env.h"
 #include "env-inl.h"
 #include "handle_wrap.h"
@@ -137,4 +137,4 @@ class TimerWrap : public HandleWrap {
 }  // anonymous namespace
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_BUILTIN(timer_wrap, node::TimerWrap::Initialize)
+NODE_BUILTIN_MODULE_CONTEXT_AWARE(timer_wrap, node::TimerWrap::Initialize)

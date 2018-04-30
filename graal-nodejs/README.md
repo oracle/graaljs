@@ -169,23 +169,22 @@ officially supported platforms.
 
 ## Security
 
-All security bugs in Node.js are taken seriously and should be reported by
-emailing security@nodejs.org. This will be delivered to a subset of the project
-team who handle security issues. Please don't disclose security bugs
-publicly until they have been handled by the security team.
+Security flaws in Node.js should be reported by emailing security@nodejs.org.
+Please do not disclose security bugs publicly until they have been handled by
+the security team.
 
-Your email will be acknowledged within 24 hours, and you’ll receive a more
+Your email will be acknowledged within 24 hours, and you will receive a more
 detailed response to your email within 48 hours indicating the next steps in
 handling your report.
 
 There are no hard and fast rules to determine if a bug is worth reporting as
-a security issue. The general rule is any issue worth reporting
-must allow an attacker to compromise the confidentiality, integrity
-or availability of the Node.js application or its system for which the attacker
-does not already have the capability.
+a security issue. The general rule is an issue worth reporting should allow an
+attacker to compromise the confidentiality, integrity, or availability of the
+Node.js application or its system for which the attacker does not already have
+the capability.
 
 To illustrate the point, here are some examples of past issues and what the
-Security Reponse Team thinks of them. When in doubt, however, please do send
+Security Response Team thinks of them. When in doubt, however, please do send
 us a report nonetheless.
 
 
@@ -238,6 +237,8 @@ For more information about the governance of the Node.js project, see
 **Сковорода Никита Андреевич** &lt;chalkerx@gmail.com&gt; (he/him)
 * [cjihrig](https://github.com/cjihrig) -
 **Colin Ihrig** &lt;cjihrig@gmail.com&gt;
+* [danbev](https://github.com/danbev) -
+**Daniel Bevenius** &lt;daniel.bevenius@gmail.com&gt;
 * [evanlucas](https://github.com/evanlucas) -
 **Evan Lucas** &lt;evanlucas@me.com&gt; (he/him)
 * [fhinkel](https://github.com/fhinkel) -
@@ -248,8 +249,6 @@ For more information about the governance of the Node.js project, see
 **Fedor Indutny** &lt;fedor.indutny@gmail.com&gt;
 * [jasnell](https://github.com/jasnell) -
 **James M Snell** &lt;jasnell@gmail.com&gt; (he/him)
-* [joshgav](https://github.com/joshgav) -
-**Josh Gavant** &lt;josh.gavant@outlook.com&gt;
 * [joyeecheung](https://github.com/joyeecheung) -
 **Joyee Cheung** &lt;joyeec9h3@gmail.com&gt; (she/her)
 * [mcollina](https://github.com/mcollina) -
@@ -281,6 +280,8 @@ For more information about the governance of the Node.js project, see
 **Chris Dickinson** &lt;christopher.s.dickinson@gmail.com&gt;
 * [isaacs](https://github.com/isaacs) -
 **Isaac Z. Schlueter** &lt;i@izs.me&gt;
+* [joshgav](https://github.com/joshgav) -
+**Josh Gavant** &lt;josh.gavant@outlook.com&gt;
 * [nebrius](https://github.com/nebrius) -
 **Bryan Hughes** &lt;bryan@nebri.us&gt;
 * [orangemocha](https://github.com/orangemocha) -
@@ -404,14 +405,14 @@ For more information about the governance of the Node.js project, see
 **Kunal Pathak** &lt;kunal.pathak@microsoft.com&gt;
 * [lance](https://github.com/lance) -
 **Lance Ball** &lt;lball@redhat.com&gt;
+* [Leko](https://github.com/Leko) -
+**Shingo Inoue** &lt;leko.noor@gmail.com&gt; (he/him)
 * [lpinca](https://github.com/lpinca) -
 **Luigi Pinca** &lt;luigipinca@gmail.com&gt; (he/him)
 * [lucamaraschi](https://github.com/lucamaraschi) -
 **Luca Maraschi** &lt;luca.maraschi@gmail.com&gt; (he/him)
 * [maclover7](https://github.com/maclover7) -
 **Jon Moss** &lt;me@jonathanmoss.me&gt; (he/him)
-* [matthewloring](https://github.com/matthewloring) -
-**Matthew Loring** &lt;mattloring@google.com&gt;
 * [mcollina](https://github.com/mcollina) -
 **Matteo Collina** &lt;matteo.collina@gmail.com&gt; (he/him)
 * [mhdawson](https://github.com/mhdawson) -
@@ -474,6 +475,8 @@ For more information about the governance of the Node.js project, see
 **Roman Reiss** &lt;me@silverwind.io&gt;
 * [srl295](https://github.com/srl295) -
 **Steven R Loomis** &lt;srloomis@us.ibm.com&gt;
+* [starkwang](https://github.com/starkwang) -
+**Weijia Wang** &lt;starkwang@126.com&gt;
 * [stefanmb](https://github.com/stefanmb) -
 **Stefan Budeanu** &lt;stefan@budeanu.com&gt;
 * [targos](https://github.com/targos) -
@@ -485,7 +488,7 @@ For more information about the governance of the Node.js project, see
 * [thlorenz](https://github.com/thlorenz) -
 **Thorsten Lorenz** &lt;thlorenz@gmx.de&gt;
 * [TimothyGu](https://github.com/TimothyGu) -
-**Timothy Gu** &lt;timothygu99@gmail.com&gt; (he/him)
+**Tiancheng "Timothy" Gu** &lt;timothygu99@gmail.com&gt; (he/him)
 * [tniessen](https://github.com/tniessen) -
 **Tobias Nießen** &lt;tniessen@tnie.de&gt;
 * [trevnorris](https://github.com/trevnorris) -
@@ -494,6 +497,8 @@ For more information about the governance of the Node.js project, see
 **Rich Trott** &lt;rtrott@gmail.com&gt; (he/him)
 * [tunniclm](https://github.com/tunniclm) -
 **Mike Tunnicliffe** &lt;m.j.tunnicliffe@gmail.com&gt;
+* [vdeturckheim](https://github.com/vdeturckheim) -
+**Vladimir de Turckheim** &lt;vlad2t@hotmail.com&gt; (he/him)
 * [vkurchatkin](https://github.com/vkurchatkin) -
 **Vladimir Kurchatkin** &lt;vladimir.kurchatkin@gmail.com&gt;
 * [vsemozhetbyt](https://github.com/vsemozhetbyt) -
@@ -515,6 +520,8 @@ For more information about the governance of the Node.js project, see
 **Isaac Z. Schlueter** &lt;i@izs.me&gt;
 * [lxe](https://github.com/lxe) -
 **Aleksey Smolenchuk** &lt;lxe@lxe.co&gt;
+* [matthewloring](https://github.com/matthewloring) -
+**Matthew Loring** &lt;mattloring@google.com&gt;
 * [monsanto](https://github.com/monsanto) -
 **Christopher Monsanto** &lt;chris@monsan.to&gt;
 * [Olegas](https://github.com/Olegas) -

@@ -67,6 +67,7 @@
     if (global.__coverage__)
       NativeModule.require('internal/process/write-coverage').setup();
 
+    NativeModule.require('internal/trace_events_async_hooks').setup();
     NativeModule.require('internal/inspector_async_hook').setup();
 
     // Do not initialize channel in debugger agent, it deletes env variable
@@ -376,16 +377,16 @@
     // Arrays containing hook flags and ids for async_hook calls.
     const { async_hook_fields, async_id_fields } = async_wrap;
     // Internal functions needed to manipulate the stack.
-    const { clearAsyncIdStack, asyncIdStackSize } = async_wrap;
+    const { clearAsyncIdStack } = async_wrap;
     const { kAfter, kExecutionAsyncId,
-            kInitTriggerAsyncId } = async_wrap.constants;
+            kDefaultTriggerAsyncId, kStackLength } = async_wrap.constants;
 
     process._fatalException = function(er) {
       var caught;
 
-      // It's possible that kInitTriggerAsyncId was set for a constructor call
-      // that threw and was never cleared. So clear it now.
-      async_id_fields[kInitTriggerAsyncId] = 0;
+      // It's possible that kDefaultTriggerAsyncId was set for a constructor
+      // call that threw and was never cleared. So clear it now.
+      async_id_fields[kDefaultTriggerAsyncId] = -1;
 
       if (process.domain && process.domain._errorHandler)
         caught = process.domain._errorHandler(er);
@@ -412,9 +413,9 @@
         // Emit the after() hooks now that the exception has been handled.
         if (async_hook_fields[kAfter] > 0) {
           do {
-            NativeModule.require('async_hooks').emitAfter(
+            NativeModule.require('internal/async_hooks').emitAfter(
               async_id_fields[kExecutionAsyncId]);
-          } while (asyncIdStackSize() > 0);
+          } while (async_hook_fields[kStackLength] > 0);
         // Or completely empty the id stack.
         } else {
           clearAsyncIdStack();

@@ -149,6 +149,7 @@ import com.oracle.truffle.js.parser.env.FunctionEnvironment.JumpTargetCloseable;
 import com.oracle.truffle.js.parser.env.GlobalEnvironment;
 import com.oracle.truffle.js.parser.env.WithEnvironment;
 import com.oracle.truffle.js.parser.internal.ir.debug.PrintVisitor;
+import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
@@ -169,6 +170,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             throw new UnsupportedOperationException();
         }
     };
+
+    private static final SourceSection unavailableInternalSection = Source.newBuilder("<internal>").name("<internal>").mimeType(
+                    AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).internal().build().createUnavailableSection();
 
     private Environment environment;
     protected final JSContext context;
@@ -763,17 +767,22 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             for (int argIndex = currentFunction().getLeadingArgumentCount(); i < parameterSlots.length; i++, argIndex++) {
                 final JavaScriptNode valueNode;
                 if (hasRestParameter && i == parameterSlots.length - 1) {
-                    valueNode = factory.createAccessRestArgument(context, argIndex, currentFunction().getTrailingArgumentCount());
+                    valueNode = ensureHasHiddenSourceSection(factory.createAccessRestArgument(context, argIndex, currentFunction().getTrailingArgumentCount()));
                 } else {
-                    valueNode = factory.createAccessArgument(argIndex);
+                    valueNode = ensureHasHiddenSourceSection(factory.createAccessArgument(argIndex));
                 }
-                parameterAssignment[i] = factory.createWriteFrameSlot(parameterSlots[i], 0, 0, valueNode);
+                parameterAssignment[i] = ensureHasHiddenSourceSection(factory.createWriteFrameSlot(parameterSlots[i], 0, 0, valueNode));
             }
             parameterAssignment[i] = body;
             return factory.createExprBlock(parameterAssignment);
         } else {
             return body;
         }
+    }
+
+    private static JavaScriptNode ensureHasHiddenSourceSection(JavaScriptNode node) {
+        node.setSourceSection(unavailableInternalSection);
+        return node;
     }
 
     static int getBlockScopedSymbolFlags(VarNode varNode) {

@@ -48,11 +48,11 @@ class NextTickQueue {
 
 function setupNextTick() {
   const async_wrap = process.binding('async_wrap');
-  const async_hooks = require('async_hooks');
+  const async_hooks = require('internal/async_hooks');
   const promises = require('internal/process/promises');
   const errors = require('internal/errors');
   const emitPendingUnhandledRejections = promises.setup(scheduleMicrotasks);
-  const initTriggerId = async_hooks.initTriggerId;
+  const getDefaultTriggerAsyncId = async_hooks.getDefaultTriggerAsyncId;
   // Two arrays that share state between C++ and JS.
   const { async_hook_fields, async_id_fields } = async_wrap;
   // Used to change the state of the async id stack.
@@ -262,7 +262,7 @@ function setupNextTick() {
     }
 
     const asyncId = ++async_id_fields[kAsyncIdCounter];
-    const triggerAsyncId = initTriggerId();
+    const triggerAsyncId = getDefaultTriggerAsyncId();
     const obj = new TickObject(callback, args, asyncId, triggerAsyncId);
     nextTickQueue.push(obj);
     ++tickInfo[kLength];
@@ -282,7 +282,7 @@ function setupNextTick() {
       return;
 
     if (triggerAsyncId === null) {
-      triggerAsyncId = async_hooks.initTriggerId();
+      triggerAsyncId = async_hooks.getDefaultTriggerAsyncId();
     }
 
     var args;

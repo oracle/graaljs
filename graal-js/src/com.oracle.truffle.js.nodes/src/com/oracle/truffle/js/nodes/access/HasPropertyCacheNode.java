@@ -203,17 +203,23 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
 
     public static final class JSProxyDispatcherPropertyHasNode extends LinkedHasPropertyCacheNode {
 
+        private final boolean hasOwnProperty;
         @Child private JSProxyHasPropertyNode proxyGet;
 
-        public JSProxyDispatcherPropertyHasNode(JSContext context, Object key, ReceiverCheckNode receiverCheck, @SuppressWarnings("unused") boolean isMethod) {
+        public JSProxyDispatcherPropertyHasNode(JSContext context, Object key, ReceiverCheckNode receiverCheck, boolean hasOwnProperty) {
             super(key, receiverCheck);
+            this.hasOwnProperty = hasOwnProperty;
             assert JSRuntime.isPropertyKey(key);
-            this.proxyGet = JSProxyHasPropertyNodeGen.create(context);
+            this.proxyGet = hasOwnProperty ? null : JSProxyHasPropertyNodeGen.create(context);
         }
 
         @Override
         public boolean hasPropertyUnchecked(Object thisObj, boolean floatingCondition) {
-            return proxyGet.executeWithTargetAndKeyBoolean(receiverCheck.getStore(thisObj), key);
+            if (hasOwnProperty) {
+                return JSObject.getOwnProperty(receiverCheck.getStore(thisObj), key) != null;
+            } else {
+                return proxyGet.executeWithTargetAndKeyBoolean(receiverCheck.getStore(thisObj), key);
+            }
         }
     }
 
@@ -270,7 +276,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
         }
 
         @Override
-        protected boolean isHasOwnProperty() {
+        protected boolean isOwnProperty() {
             return hasOwnProperty;
         }
     }
@@ -319,7 +325,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
 
         @Override
         protected boolean isPropertyAssumptionCheckEnabled() {
-            return propertyAssumptionCheckEnabled;
+            return propertyAssumptionCheckEnabled && context.isSingleRealm();
         }
 
         @Override
@@ -328,7 +334,12 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
         }
 
         @Override
-        protected boolean isHasOwnProperty() {
+        public JSContext getContext() {
+            return context;
+        }
+
+        @Override
+        protected boolean isOwnProperty() {
             return hasOwnProperty;
         }
     }
@@ -385,9 +396,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
      */
     @Override
     protected LinkedHasPropertyCacheNode createCachedPropertyNode(Property property, Object thisObj, int depth, JSContext context, Object value) {
-        if (isHasOwnProperty() && depth > 0) {
-            return createUndefinedPropertyNode(thisObj, thisObj, 0, context, value);
-        }
+        assert !isOwnProperty() || depth == 0;
         ReceiverCheckNode check;
         if (JSObject.isDynamicObject(thisObj)) {
             Shape cacheShape = ((DynamicObject) thisObj).getShape();
@@ -412,7 +421,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
             if (JSAdapter.isJSAdapter(store)) {
                 return new JSAdapterHasPropertyCacheNode(key, receiverCheck, isMethod());
             } else if (JSProxy.isProxy(store)) {
-                return new JSProxyDispatcherPropertyHasNode(context, key, receiverCheck, isMethod());
+                return new JSProxyDispatcherPropertyHasNode(context, key, receiverCheck, isOwnProperty());
             } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
                 return new UnspecializedHasPropertyCacheNode(key, receiverCheck);
             } else {
@@ -464,7 +473,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
      */
     @Override
     protected HasPropertyCacheNode createGenericPropertyNode(JSContext context) {
-        return createGeneric(key, isHasOwnProperty());
+        return createGeneric(key, isOwnProperty());
     }
 
     private static HasPropertyCacheNode createGeneric(Object key, boolean hasOwnProperty) {
@@ -484,7 +493,8 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
         return false;
     }
 
-    protected boolean isHasOwnProperty() {
+    @Override
+    protected boolean isOwnProperty() {
         throw new UnsupportedOperationException();
     }
 
