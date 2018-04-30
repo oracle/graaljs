@@ -198,7 +198,15 @@ public final class JSModuleNamespace extends JSBuiltinObject {
         if (!(key instanceof String)) {
             return super.delete(thisObj, key, isStrict);
         }
-        return !Boundaries.mapContainsKey(getExports(thisObj), key);
+        if (Boundaries.mapContainsKey(getExports(thisObj), key)) {
+            if (isStrict) {
+                throw Errors.createTypeErrorNotConfigurableProperty(key);
+            } else {
+                return false;
+            }
+        } else {
+            return true;
+        }
     }
 
     @Override

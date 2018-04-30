@@ -6857,9 +6857,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-09-06)"
   }, {
-    "filePath" : "language/module-code/namespace/internals/delete-exported-init.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/module-code/namespace/internals/delete-exported-uninit.js",
     "status" : "FAIL"
   }, {
