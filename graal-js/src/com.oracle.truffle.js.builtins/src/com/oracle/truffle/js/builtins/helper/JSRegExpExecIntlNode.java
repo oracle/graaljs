@@ -205,7 +205,7 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         @Child private TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor = TRegexUtil.TRegexCompiledRegexAccessor.create();
         @Child private TRegexUtil.TRegexFlagsAccessor flagsAccessor = TRegexUtil.TRegexFlagsAccessor.create();
         @Child private TRegexUtil.TRegexResultAccessor regexResultAccessor = TRegexUtil.TRegexResultAccessor.create();
-        @Child private BuildGroupsObjectNode groupsBuilder = BuildGroupsObjectNode.create();
+        @Child private BuildGroupsObjectNode groupsBuilder;
 
         private JSRegExpExecBuiltinNode(JSContext context) {
             this.context = context;
@@ -249,7 +249,7 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 if (ecmaScriptVersion < 6) {
                     return result;
                 }
-                DynamicObject groups = groupsBuilder.execute(context, regExp, result);
+                DynamicObject groups = getGroupsObject(regExp, result);
                 return getMatchResult(result, input, groups);
             } else {
                 if (ecmaScriptVersion < 8 || global || sticky) {
@@ -274,6 +274,15 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         // converts RegexResult into DynamicObject
         private DynamicObject getMatchResult(TruffleObject result, String inputStr, DynamicObject groups) {
             return JSArray.createLazyRegexArray(context, regexResultAccessor.groupCount(result), result, inputStr, groups);
+        }
+
+        // builds the object containing the matches of the named capture groups
+        private DynamicObject getGroupsObject(DynamicObject regExp, TruffleObject result) {
+            if (groupsBuilder == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                groupsBuilder = insert(BuildGroupsObjectNode.create());
+            }
+            return groupsBuilder.execute(context, regExp, result);
         }
 
         private long getLastIndex(DynamicObject regExp) {

@@ -74,6 +74,7 @@ import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -629,6 +630,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSToBooleanNode toBoolean2Node;
         @Child private IsCallableNode isCallableNode;
         @Child private ReadElementNode readNamedCaptureGroupNode;
+        @Child private JSToObjectNode toObjectNode;
 
         private final ConditionProfile unicodeProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile globalProfile = ConditionProfile.createBinaryProfile();
@@ -747,7 +749,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     } else {
                         Object namedCaptures = getGroups(result);
                         if (namedCaptures != Undefined.instance) {
-                            namedCaptures = JSRuntime.toObject(getContext(), namedCaptures);
+                            namedCaptures = getToObjectNode().executeTruffleObject(namedCaptures);
                         }
                         appendSubstitution(accumulatedResult, result, (DynamicObject) namedCaptures, matchLength, s, position, replaceString);
                     }
@@ -980,6 +982,14 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 readNamedCaptureGroupNode = insert(ReadElementNode.create(getContext()));
             }
             return readNamedCaptureGroupNode.executeWithTargetAndIndex(namedCaptureGroups, groupName);
+        }
+
+        private JSToObjectNode getToObjectNode() {
+            if (toObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
+            }
+            return toObjectNode;
         }
     }
 

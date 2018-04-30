@@ -1536,7 +1536,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
     public static final class LazyNamedCaptureGroupPropertyGetNode extends LinkedPropertyGetNode {
 
-        private int groupIndex;
+        private final int groupIndex;
         @Child private PropertyGetNode getResultNode;
         @Child private TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.create();
 

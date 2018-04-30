@@ -79,7 +79,6 @@ public class RegExpLiteralNode extends JavaScriptNode {
         this.context = context;
         this.pattern = pattern;
         this.flags = flags;
-        this.createRegExpNode = CreateRegExpNode.create(context);
     }
 
     public static RegExpLiteralNode create(JSContext context, String pattern, String flags) {
@@ -92,7 +91,15 @@ public class RegExpLiteralNode extends JavaScriptNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             regex = RegexCompilerInterface.compile(pattern, flags, context);
         }
-        return createRegExpNode.execute(regex);
+        return getCreateRegExpNode().execute(regex);
+    }
+
+    private CreateRegExpNode getCreateRegExpNode() {
+        if (createRegExpNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            createRegExpNode = insert(CreateRegExpNode.create(context));
+        }
+        return createRegExpNode;
     }
 
     @Override
