@@ -242,7 +242,9 @@ public final class JSShape {
     }
 
     public static Allocator makeAllocator(Layout layout) {
-        return layout.createAllocator();
+        Allocator allocator = layout.createAllocator();
+        allocator.addLocation(JSObject.PROTO_PROPERTY.getLocation());
+        return allocator;
     }
 
     private static Shape makeRootShape(Layout layout, ObjectType jsclass, JSSharedData sharedData, int id) {

@@ -46,7 +46,6 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
@@ -114,7 +113,7 @@ public final class JSSIMD extends JSBuiltinObject {
 
     private static DynamicObject createTypedArrayPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.create(ctx, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
 
@@ -154,10 +153,10 @@ public final class JSSIMD extends JSBuiltinObject {
     }
 
     public static DynamicObject createSIMD(JSContext context, SIMDType simdType) {
-        DynamicObjectFactory objectFactory = context.getSIMDTypeFactory(simdType.getFactory());
         Object[] values = new Object[simdType.getNumberOfElements()];
         Arrays.fill(values, Null.instance);
-        DynamicObject simdObject = JSObject.create(context, objectFactory, simdType, values);
+        SIMDTypeFactory<? extends SIMDType> factory = simdType.getFactory();
+        DynamicObject simdObject = JSObject.create(context, context.getSIMDTypeFactory(factory), simdType, values);
         return simdObject;
     }
 
@@ -177,7 +176,7 @@ public final class JSSIMD extends JSBuiltinObject {
     private static DynamicObject createSIMDPrototype(JSRealm realm, DynamicObject ctor, SIMDTypeFactory<? extends SIMDType> factory,
                     DynamicObject taPrototype) {
         JSContext context = realm.getContext();
-        DynamicObject prototype = JSObject.create(context, taPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(realm, taPrototype, JSUserObject.INSTANCE);
         JSObjectUtil.putHiddenProperty(prototype, SIMD_TYPE_PROPERTY, factory.createSimdType());
         JSObjectUtil.putHiddenProperty(prototype, ARRAY_PROPERTY, new Object[0]);
         JSObjectUtil.putConstructorProperty(context, prototype, ctor);

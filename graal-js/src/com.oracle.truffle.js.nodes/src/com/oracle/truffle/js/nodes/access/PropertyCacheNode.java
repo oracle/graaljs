@@ -71,6 +71,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.java.adapter.JavaSuperAdapter;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -776,7 +777,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
      */
     protected static final class TraversePrototypeChainCheckNode extends AbstractShapeCheckNode {
         private final JSContext context;
-        private final JSClass jsclass;
+        private final PrototypeSupplier jsclass;
         @Children private final ShapeCheckNode[] shapeCheckNodes;
         @Children private final GetPrototypeNode[] getPrototypeNodes;
 
@@ -784,7 +785,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
             super(shape);
             assert depth >= 1;
             this.context = context;
-            this.jsclass = jsclass;
+            this.jsclass = (PrototypeSupplier) jsclass;
             this.shapeCheckNodes = new ShapeCheckNode[depth];
             this.getPrototypeNodes = new GetPrototypeNode[depth - 1];
 

@@ -69,7 +69,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  *
  * @see Symbol
  */
-public final class JSSymbol extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions {
+public final class JSSymbol extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final JSSymbol INSTANCE = new JSSymbol();
 
@@ -103,7 +103,7 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.create(ctx, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
@@ -114,7 +114,8 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
         return prototype;
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSSymbol.INSTANCE, context);
         initialShape = initialShape.addProperty(SYMBOL_DATA_PROPERTY);
         return initialShape;

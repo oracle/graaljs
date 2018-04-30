@@ -65,7 +65,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
-public final class JSSet extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctionsAndSpecies {
+public final class JSSet extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
 
     public static final JSSet INSTANCE = new JSSet();
 
@@ -144,7 +144,7 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.create(ctx, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         // sets the size just for the prototype
         JSObjectUtil.putConstantAccessorProperty(ctx, prototype, SIZE, createSizeGetterFunction(realm), Undefined.instance);
@@ -158,7 +158,8 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
         return prototype;
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSSet.INSTANCE, context);
         initialShape = initialShape.addProperty(SET_PROPERTY);
         return initialShape;
@@ -195,5 +196,10 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
 
     public static boolean isJSSet(DynamicObject obj) {
         return isInstance(obj, INSTANCE);
+    }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getSetConstructor().getPrototype();
     }
 }

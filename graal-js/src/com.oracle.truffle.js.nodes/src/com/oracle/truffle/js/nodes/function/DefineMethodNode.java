@@ -97,25 +97,26 @@ public class DefineMethodNode extends JavaScriptBaseNode {
         @Specialization(guards = {"prototype == cachedPrototype", "isJSObject(cachedPrototype)"}, limit = "PropertyCacheLimit")
         protected final DynamicObject doCached(VirtualFrame frame, DynamicObject prototype,
                         @Cached("prototype") DynamicObject cachedPrototype,
-                        @Cached("makeFactory(prototype)") DynamicObjectFactory factory) {
-            return makeFunction(factory, frame);
+                        @Cached("makeFactory(prototype)") JSFunctionFactory factory) {
+            return makeFunction(frame, factory, cachedPrototype);
 
         }
 
         @Specialization(guards = "isJSObject(prototype)", replaces = "doCached")
         protected final DynamicObject doUncached(VirtualFrame frame, DynamicObject prototype) {
-            DynamicObjectFactory factory = makeFactory(prototype);
-            return makeFunction(factory, frame);
+            JSFunctionFactory factory = makeFactory(prototype);
+            return makeFunction(frame, factory, prototype);
         }
 
         @TruffleBoundary
-        protected final DynamicObjectFactory makeFactory(DynamicObject prototype) {
-            return JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(getContext(), prototype, true, functionData.getName().isEmpty()),
-                            functionData.isPrototypeNotWritable()).createFactory();
+        protected final JSFunctionFactory makeFactory(DynamicObject prototype) {
+            return JSFunctionFactory.create(getContext(), JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(getContext(), prototype, true, functionData.getName().isEmpty()),
+                            functionData.isPrototypeNotWritable()).createFactory());
         }
 
-        protected final DynamicObject makeFunction(DynamicObjectFactory factory, VirtualFrame frame) {
-            return JSFunction.create(factory, getContext().getRealm(), functionData, functionData.needsParentFrame() ? frame.materialize() : JSFrameUtil.NULL_MATERIALIZED_FRAME);
+        protected final DynamicObject makeFunction(VirtualFrame frame, JSFunctionFactory factory, DynamicObject prototype) {
+            MaterializedFrame enclosingFrame = functionData.needsParentFrame() ? frame.materialize() : JSFrameUtil.NULL_MATERIALIZED_FRAME;
+            return JSFunction.createWithPrototype(factory, getContext().getRealm(), functionData, enclosingFrame, prototype);
         }
 
         private JSContext getContext() {

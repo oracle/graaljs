@@ -85,15 +85,15 @@ public final class JSBoolean extends JSPrimitiveObject implements JSConstructorF
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject booleanPrototype = JSObject.create(ctx, realm.getObjectPrototype(), INSTANCE);
+        DynamicObject booleanPrototype = JSObject.create(realm, realm.getObjectPrototype(), INSTANCE);
         JSObjectUtil.putHiddenProperty(booleanPrototype, VALUE_PROPERTY, Boolean.FALSE);
         JSObjectUtil.putConstructorProperty(ctx, booleanPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, booleanPrototype, PROTOTYPE_NAME);
         return booleanPrototype;
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype, INSTANCE) == null;
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         initialShape = initialShape.addProperty(VALUE_PROPERTY);
         return initialShape;

@@ -290,9 +290,10 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         }
 
         @TruffleBoundary
-        private static DynamicObject createErrorFromJSException(JSException exception, JSRealm realm) {
+        private DynamicObject createErrorFromJSException(JSException exception, JSRealm realm) {
             JSErrorType errorType = exception.getErrorType();
-            return JSObject.create(realm.getContext(), realm.getErrorFactory(errorType, true), Objects.requireNonNull(exception.getRawMessage()));
+            String message = Objects.requireNonNull(exception.getRawMessage());
+            return JSObject.createWithPrototype(context, context.getErrorFactory(errorType, true), realm, realm.getErrorConstructor(errorType).getPrototype(), message);
         }
     }
 

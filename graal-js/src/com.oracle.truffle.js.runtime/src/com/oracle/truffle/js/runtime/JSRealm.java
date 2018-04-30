@@ -61,13 +61,11 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
-import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -92,6 +90,7 @@ import com.oracle.truffle.js.runtime.builtins.JSMath;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.JSON;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSPerformance;
 import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
@@ -123,7 +122,7 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil;
 /**
  * Container for JavaScript globals (i.e. an ECMAScript 6 Realm object).
  */
-public class JSRealm implements ShapeContext {
+public class JSRealm {
 
     public static final String POLYGLOT_CLASS_NAME = "Polyglot";
     // used for non-public properties of Polyglot
@@ -149,66 +148,35 @@ public class JSRealm implements ShapeContext {
 
     @CompilationFinal private DynamicObject globalObject;
 
-    private final Shape initialUserObjectShape;
-    private final DynamicObjectFactory initialUserObjectFactory;
-
     private final DynamicObject objectConstructor;
     private final DynamicObject objectPrototype;
     private final DynamicObject functionConstructor;
     private final DynamicObject functionPrototype;
-    private final DynamicObjectFactory initialFunctionFactory;
-    private final DynamicObjectFactory initialAnonymousFunctionFactory;
-    private final DynamicObjectFactory initialConstructorFactory;
-    private final DynamicObjectFactory initialAnonymousConstructorFactory;
-    private final DynamicObjectFactory initialStrictFunctionFactory;
-    private final DynamicObjectFactory initialAnonymousStrictFunctionFactory;
-    private final DynamicObjectFactory initialStrictConstructorFactory;
-    private final DynamicObjectFactory initialAnonymousStrictConstructorFactory;
 
     private final JSConstructor arrayConstructor;
-    private final DynamicObjectFactory arrayFactory;
-    private final DynamicObjectFactory lazyRegexArrayFactory;
     private final JSConstructor booleanConstructor;
-    private final DynamicObjectFactory booleanFactory;
     private final JSConstructor numberConstructor;
-    private final DynamicObjectFactory numberFactory;
     private final JSConstructor bigIntConstructor;
-    private final DynamicObjectFactory bigIntFactory;
     private final JSConstructor stringConstructor;
-    private final DynamicObjectFactory stringFactory;
     private final JSConstructor regExpConstructor;
-    private final DynamicObjectFactory regExpFactory;
     private final JSConstructor collatorConstructor;
-    private final DynamicObjectFactory collatorFactory;
     private final JSConstructor numberFormatConstructor;
-    private final DynamicObjectFactory numberFormatFactory;
     private final JSConstructor pluralRulesConstructor;
-    private final DynamicObjectFactory pluralRulesFactory;
     private final JSConstructor dateTimeFormatConstructor;
-    private final DynamicObjectFactory dateTimeFormatFactory;
     private final JSConstructor dateConstructor;
-    private final DynamicObjectFactory dateFactory;
-
     @CompilationFinal(dimensions = 1) private final JSConstructor[] errorConstructors;
-    @CompilationFinal(dimensions = 1) private final DynamicObjectFactory[] errorObjectFactories;
-    @CompilationFinal(dimensions = 1) private final DynamicObjectFactory[] errorWithMessageObjectFactories;
     private final JSConstructor callSiteConstructor;
-    private final DynamicObjectFactory callSiteFactory;
+
+    private final Shape initialUserObjectShape;
+    private final Shape lazyRegexArrayShape;
+    private final JSObjectFactory.RealmData objectFactories;
 
     // ES6:
     private final JSConstructor symbolConstructor;
-    private final DynamicObjectFactory symbolFactory;
     private final JSConstructor mapConstructor;
-    private final DynamicObjectFactory mapFactory;
     private final JSConstructor setConstructor;
-    private final DynamicObjectFactory setFactory;
     private final JSConstructor weakMapConstructor;
-    private final DynamicObjectFactory weakMapFactory;
     private final JSConstructor weakSetConstructor;
-    private final DynamicObjectFactory weakSetFactory;
-
-    private final DynamicObjectFactory initialArgumentsFactory;
-    private final DynamicObjectFactory initialStrictArgumentsFactory;
 
     private final DynamicObject mathObject;
     private DynamicObject realmBuiltinObject;
@@ -218,21 +186,12 @@ public class JSRealm implements ShapeContext {
 
     private final JSConstructor arrayBufferConstructor;
     private final JSConstructor sharedArrayBufferConstructor;
-    private final DynamicObjectFactory arrayBufferFactory;
-    private final DynamicObjectFactory directArrayBufferFactory;
-    private final DynamicObjectFactory sharedArrayBufferFactory;
 
     @CompilationFinal(dimensions = 1) private final JSConstructor[] typedArrayConstructors;
-    @CompilationFinal(dimensions = 1) private final DynamicObjectFactory[] typedArrayFactories;
-    @CompilationFinal(dimensions = 1) private final DynamicObjectFactory[] directTypedArrayFactories;
     private final JSConstructor dataViewConstructor;
-    private final DynamicObjectFactory dataViewFactory;
     private final JSConstructor jsAdapterConstructor;
-    private final DynamicObjectFactory jsAdapterFactory;
     private final JSConstructor javaImporterConstructor;
-    private final DynamicObjectFactory javaImportFactory;
     private final JSConstructor proxyConstructor;
-    private final DynamicObjectFactory proxyFactory;
 
     private final DynamicObject iteratorPrototype;
     private final DynamicObject arrayIteratorPrototype;
@@ -240,40 +199,29 @@ public class JSRealm implements ShapeContext {
     private final DynamicObject mapIteratorPrototype;
     private final DynamicObject stringIteratorPrototype;
     private final DynamicObject regExpStringIteratorPrototype;
+    private final DynamicObject enumerateIteratorPrototype;
 
     @CompilationFinal(dimensions = 1) private final JSConstructor[] simdTypeConstructors;
-    @CompilationFinal(dimensions = 1) private final DynamicObjectFactory[] simdTypeFactories;
+    @CompilationFinal(dimensions = 1) private final JSObjectFactory[] simdTypeFactories;
 
     private final JSConstructor generatorFunctionConstructor;
-    private final DynamicObjectFactory initialGeneratorFactory;
-    private final DynamicObjectFactory initialAnonymousGeneratorFactory;
     private final Shape initialGeneratorObjectShape;
-    private final DynamicObjectFactory initialEnumerateIteratorFactory;
-    private final DynamicObjectFactory initialBoundFunctionFactory;
-    private final DynamicObjectFactory initialAnonymousBoundFunctionFactory;
 
     private final JSConstructor asyncFunctionConstructor;
-    private final DynamicObjectFactory initialAsyncFunctionFactory;
-    private final DynamicObjectFactory initialAnonymousAsyncFunctionFactory;
 
     private final DynamicObject asyncIteratorPrototype;
     private final DynamicObject asyncFromSyncIteratorPrototype;
     private final JSConstructor asyncGeneratorFunctionConstructor;
-    private final DynamicObjectFactory initialAsyncGeneratorFunctionFactory;
-    private final DynamicObjectFactory initialAnonymousAsyncGeneratorFunctionFactory;
     private final Shape initialAsyncGeneratorObjectShape;
 
     private final DynamicObject throwerFunction;
     private final Accessor throwerAccessor;
 
     private final JSConstructor promiseConstructor;
-    private final DynamicObjectFactory promiseFactory;
 
-    private final DynamicObjectFactory initialJavaPackageFactory;
     private DynamicObject javaPackageToPrimitiveFunction;
 
     private final JSConstructor javaInteropWorkerConstructor;
-    private final DynamicObjectFactory javaInteropWorkerFactory;
 
     @CompilationFinal private DynamicObject arrayProtoValuesIterator;
     @CompilationFinal private DynamicObject typedArrayConstructor;
@@ -339,18 +287,11 @@ public class JSRealm implements ShapeContext {
         this.objectPrototype = JSObjectPrototype.create(context);
 
         this.functionPrototype = JSFunction.createFunctionPrototype(this, objectPrototype);
-        this.initialFunctionFactory = JSFunction.makeInitialFunctionShape(context, functionPrototype, false, false).createFactory();
-        this.initialAnonymousFunctionFactory = JSFunction.makeInitialFunctionShape(context, functionPrototype, false, true).createFactory();
-        this.initialConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(context, functionPrototype, false, false)).createFactory();
-        this.initialAnonymousConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(context, functionPrototype, false, true)).createFactory();
+
+        this.objectFactories = context.newObjectFactoryRealmData();
 
         this.throwerFunction = createThrowerFunction();
         this.throwerAccessor = new Accessor(throwerFunction, throwerFunction);
-
-        this.initialStrictFunctionFactory = JSFunction.makeInitialFunctionShape(context, functionPrototype, true, false).createFactory();
-        this.initialAnonymousStrictFunctionFactory = JSFunction.makeInitialFunctionShape(context, functionPrototype, true, true).createFactory();
-        this.initialStrictConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(context, functionPrototype, true, false)).createFactory();
-        this.initialAnonymousStrictConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(context, functionPrototype, true, true)).createFactory();
 
         if (context.isOptionAnnexB()) {
             putProtoAccessorProperty(this);
@@ -366,81 +307,45 @@ public class JSRealm implements ShapeContext {
         JSFunction.fillFunctionPrototype(this);
 
         this.initialUserObjectShape = JSObjectUtil.getProtoChildShape(this.objectPrototype, JSUserObject.INSTANCE, context);
-        this.initialUserObjectFactory = initialUserObjectShape.createFactory();
 
         this.arrayConstructor = JSArray.createConstructor(this);
-        this.arrayFactory = JSArray.makeInitialArrayShape(context, arrayConstructor.getPrototype()).createFactory();
-        this.lazyRegexArrayFactory = JSRegExp.makeInitialShapeLazyArray(context, arrayConstructor.getPrototype()).createFactory();
+        this.lazyRegexArrayShape = JSRegExp.makeLazyRegexArrayShape(context, arrayConstructor.getPrototype());
         this.booleanConstructor = JSBoolean.createConstructor(this);
-        this.booleanFactory = JSBoolean.makeInitialShape(context, booleanConstructor.getPrototype()).createFactory();
         this.numberConstructor = JSNumber.createConstructor(this);
-        this.numberFactory = JSNumber.makeInitialShape(context, numberConstructor.getPrototype()).createFactory();
         this.bigIntConstructor = JSBigInt.createConstructor(this);
-        this.bigIntFactory = JSBigInt.makeInitialShape(context, bigIntConstructor.getPrototype()).createFactory();
         this.stringConstructor = JSString.createConstructor(this);
-        this.stringFactory = JSString.makeInitialShape(context, stringConstructor.getPrototype()).createFactory();
         this.regExpConstructor = JSRegExp.createConstructor(this);
-        this.regExpFactory = JSRegExp.makeInitialShape(context, regExpConstructor.getPrototype()).createFactory();
         this.dateConstructor = JSDate.createConstructor(this);
-        this.dateFactory = JSDate.makeInitialShape(context, dateConstructor.getPrototype()).createFactory();
         boolean es6 = JSTruffleOptions.MaxECMAScriptVersion >= 6;
         if (es6) {
             this.symbolConstructor = JSSymbol.createConstructor(this);
-            this.symbolFactory = JSSymbol.makeInitialShape(context, symbolConstructor.getPrototype()).createFactory();
             this.mapConstructor = JSMap.createConstructor(this);
-            this.mapFactory = JSMap.makeInitialShape(context, mapConstructor.getPrototype()).createFactory();
             this.setConstructor = JSSet.createConstructor(this);
-            this.setFactory = JSSet.makeInitialShape(context, setConstructor.getPrototype()).createFactory();
             this.weakMapConstructor = JSWeakMap.createConstructor(this);
-            this.weakMapFactory = JSWeakMap.makeInitialShape(context, weakMapConstructor.getPrototype()).createFactory();
             this.weakSetConstructor = JSWeakSet.createConstructor(this);
-            this.weakSetFactory = JSWeakSet.makeInitialShape(context, weakSetConstructor.getPrototype()).createFactory();
             this.proxyConstructor = JSProxy.createConstructor(this);
-            this.proxyFactory = JSProxy.makeInitialShape(context, proxyConstructor.getPrototype()).createFactory();
             this.promiseConstructor = JSPromise.createConstructor(this);
-            this.promiseFactory = JSPromise.makeInitialShape(this).createFactory();
         } else {
             this.symbolConstructor = null;
-            this.symbolFactory = null;
             this.mapConstructor = null;
-            this.mapFactory = null;
             this.setConstructor = null;
-            this.setFactory = null;
             this.weakMapConstructor = null;
-            this.weakMapFactory = null;
             this.weakSetConstructor = null;
-            this.weakSetFactory = null;
             this.proxyConstructor = null;
-            this.proxyFactory = null;
             this.promiseConstructor = null;
-            this.promiseFactory = null;
         }
 
         this.errorConstructors = new JSConstructor[JSErrorType.values().length];
-        this.errorObjectFactories = new DynamicObjectFactory[JSErrorType.values().length];
-        this.errorWithMessageObjectFactories = new DynamicObjectFactory[JSErrorType.values().length];
         initializeErrorConstructors();
         this.callSiteConstructor = JSError.createCallSiteConstructor(this);
-        this.callSiteFactory = JSError.makeInitialCallSiteShape(context, callSiteConstructor.getPrototype()).createFactory();
-
-        Shape initialArgumentsShape = JSArgumentsObject.makeInitialNonStrictArgumentsShape(this);
-        this.initialArgumentsFactory = initialArgumentsShape.createFactory();
-        Shape initialStrictArgumentsShape = JSArgumentsObject.makeInitialStrictArgumentsShape(this);
-        this.initialStrictArgumentsFactory = initialStrictArgumentsShape.createFactory();
 
         this.arrayBufferConstructor = JSArrayBuffer.createConstructor(this);
-        this.arrayBufferFactory = JSArrayBuffer.makeInitialArrayBufferShape(context, arrayBufferConstructor.getPrototype(), false).createFactory();
-        this.directArrayBufferFactory = JSArrayBuffer.makeInitialArrayBufferShape(context, arrayBufferConstructor.getPrototype(), true).createFactory();
-
         this.typedArrayConstructors = new JSConstructor[TypedArray.factories().length];
-        this.typedArrayFactories = new DynamicObjectFactory[TypedArray.factories().length];
-        this.directTypedArrayFactories = new DynamicObjectFactory[TypedArray.factories().length];
         initializeTypedArrayConstructors();
         this.dataViewConstructor = JSDataView.createConstructor(this);
-        this.dataViewFactory = JSDataView.makeInitialArrayBufferViewShape(context, dataViewConstructor.getPrototype()).createFactory();
 
         if (JSTruffleOptions.SIMDJS) {
-            this.simdTypeFactories = new DynamicObjectFactory[SIMDType.FACTORIES.length];
+            this.simdTypeFactories = new JSObjectFactory[SIMDType.FACTORIES.length];
             this.simdTypeConstructors = new JSConstructor[SIMDType.FACTORIES.length];
             initializeSIMDTypeConstructors();
         } else {
@@ -450,33 +355,22 @@ public class JSRealm implements ShapeContext {
 
         if (context.isOptionIntl402()) {
             this.collatorConstructor = JSCollator.createConstructor(this);
-            this.collatorFactory = JSCollator.makeInitialShape(context, collatorConstructor.getPrototype()).createFactory();
             this.numberFormatConstructor = JSNumberFormat.createConstructor(this);
-            this.numberFormatFactory = JSNumberFormat.makeInitialShape(context, numberFormatConstructor.getPrototype()).createFactory();
             this.dateTimeFormatConstructor = JSDateTimeFormat.createConstructor(this);
-            this.dateTimeFormatFactory = JSDateTimeFormat.makeInitialShape(context, dateTimeFormatConstructor.getPrototype()).createFactory();
             this.pluralRulesConstructor = JSPluralRules.createConstructor(this);
-            this.pluralRulesFactory = JSPluralRules.makeInitialShape(context, pluralRulesConstructor.getPrototype()).createFactory();
         } else {
             this.collatorConstructor = null;
-            this.collatorFactory = null;
             this.numberFormatConstructor = null;
-            this.numberFormatFactory = null;
             this.dateTimeFormatConstructor = null;
-            this.dateTimeFormatFactory = null;
             this.pluralRulesConstructor = null;
-            this.pluralRulesFactory = null;
         }
 
         boolean nashornCompat = context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
         boolean nashornJavaInterop = isJavaInteropAvailable() && (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop);
         this.jsAdapterConstructor = nashornCompat ? JSAdapter.createConstructor(this) : null;
-        this.jsAdapterFactory = nashornCompat ? JSAdapter.makeInitialShape(context, jsAdapterConstructor.getPrototype()).createFactory() : null;
         this.javaImporterConstructor = nashornJavaInterop ? JavaImporter.createConstructor(this) : null;
-        this.javaImportFactory = nashornJavaInterop ? JavaImporter.makeInitialShape(context, javaImporterConstructor.getPrototype()).createFactory() : null;
-        this.initialJavaPackageFactory = isJavaInteropAvailable() ? JavaPackage.createInitialShape(this).createFactory() : null;
 
-        this.iteratorPrototype = es6 ? createIteratorPrototype() : null;
+        this.iteratorPrototype = createIteratorPrototype();
         this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
         this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
         this.mapIteratorPrototype = es6 ? createMapIteratorPrototype() : null;
@@ -484,19 +378,13 @@ public class JSRealm implements ShapeContext {
         this.regExpStringIteratorPrototype = JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
 
         this.generatorFunctionConstructor = es6 ? JSFunction.createGeneratorFunctionConstructor(this) : null;
-        this.initialGeneratorFactory = es6 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(context, generatorFunctionConstructor.getPrototype(), false).createFactory() : null;
-        this.initialAnonymousGeneratorFactory = es6 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(context, generatorFunctionConstructor.getPrototype(), true).createFactory() : null;
         this.initialGeneratorObjectShape = es6 ? JSFunction.makeInitialGeneratorObjectShape(this) : null;
-        this.initialEnumerateIteratorFactory = JSFunction.makeInitialEnumerateIteratorShape(this).createFactory();
-        this.initialBoundFunctionFactory = JSFunction.makeInitialBoundFunctionShape(context, functionPrototype, false).createFactory();
-        this.initialAnonymousBoundFunctionFactory = JSFunction.makeInitialBoundFunctionShape(context, functionPrototype, true).createFactory();
+        this.enumerateIteratorPrototype = JSFunction.createEnumerateIteratorPrototype(this);
 
         if (context.isOptionSharedArrayBuffer()) {
             this.sharedArrayBufferConstructor = JSSharedArrayBuffer.createConstructor(this);
-            this.sharedArrayBufferFactory = JSSharedArrayBuffer.makeInitialArrayBufferShape(context, sharedArrayBufferConstructor.getPrototype()).createFactory();
         } else {
             this.sharedArrayBufferConstructor = null;
-            this.sharedArrayBufferFactory = null;
         }
 
         this.mathObject = JSMath.create(this);
@@ -509,22 +397,14 @@ public class JSRealm implements ShapeContext {
 
         boolean es8 = JSTruffleOptions.MaxECMAScriptVersion >= 8;
         this.asyncFunctionConstructor = es8 ? JSFunction.createAsyncFunctionConstructor(this) : null;
-        this.initialAsyncFunctionFactory = es8 ? JSFunction.makeInitialAsyncFunctionShape(context, asyncFunctionConstructor.getPrototype(), false).createFactory() : null;
-        this.initialAnonymousAsyncFunctionFactory = es8 ? JSFunction.makeInitialAsyncFunctionShape(context, asyncFunctionConstructor.getPrototype(), true).createFactory() : null;
 
         boolean es9 = JSTruffleOptions.MaxECMAScriptVersion >= 9;
         this.asyncIteratorPrototype = es9 ? JSFunction.createAsyncIteratorPrototype(this) : null;
         this.asyncFromSyncIteratorPrototype = es9 ? JSFunction.createAsyncFromSyncIteratorPrototype(this) : null;
         this.asyncGeneratorFunctionConstructor = es9 ? JSFunction.createAsyncGeneratorFunctionConstructor(this) : null;
-        this.initialAsyncGeneratorFunctionFactory = es9 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(context, asyncGeneratorFunctionConstructor.getPrototype(), false).createFactory()
-                        : null;
-        this.initialAnonymousAsyncGeneratorFunctionFactory = es9
-                        ? JSFunction.makeInitialGeneratorFunctionConstructorShape(context, asyncGeneratorFunctionConstructor.getPrototype(), true).createFactory()
-                        : null;
         this.initialAsyncGeneratorObjectShape = es9 ? JSFunction.makeInitialAsyncGeneratorObjectShape(this) : null;
 
         this.javaInteropWorkerConstructor = isJavaInteropAvailable() ? JSJavaWorkerBuiltin.createWorkerConstructor(this) : null;
-        this.javaInteropWorkerFactory = isJavaInteropAvailable() ? JSJavaWorkerBuiltin.makeInitialShape(context, javaInteropWorkerConstructor.getPrototype()).createFactory() : null;
 
         this.outputStream = System.out;
         this.errorStream = System.err;
@@ -540,8 +420,6 @@ public class JSRealm implements ShapeContext {
         for (TypedArrayFactory factory : TypedArray.factories()) {
             JSConstructor constructor = JSArrayBufferView.createConstructor(this, factory, taConst);
             typedArrayConstructors[factory.getFactoryIndex()] = constructor;
-            directTypedArrayFactories[factory.getFactoryIndex()] = JSArrayBufferView.makeInitialArrayBufferViewShape(context, constructor.getPrototype(), true).createFactory();
-            typedArrayFactories[factory.getFactoryIndex()] = JSArrayBufferView.makeInitialArrayBufferViewShape(context, constructor.getPrototype(), false).createFactory();
         }
     }
 
@@ -554,7 +432,6 @@ public class JSRealm implements ShapeContext {
         for (SIMDTypeFactory<? extends SIMDType> factory : SIMDType.FACTORIES) {
             JSConstructor constructor = JSSIMD.createConstructor(this, factory, taConst);
             simdTypeConstructors[factory.getFactoryIndex()] = constructor;
-            simdTypeFactories[factory.getFactoryIndex()] = JSSIMD.makeInitialSIMDShape(context, constructor.getPrototype()).createFactory();
         }
     }
 
@@ -562,9 +439,6 @@ public class JSRealm implements ShapeContext {
         for (JSErrorType type : JSErrorType.values()) {
             JSConstructor errorConstructor = JSError.createErrorConstructor(this, type);
             errorConstructors[type.ordinal()] = errorConstructor;
-            Shape initialShape = JSError.makeInitialShape(context, errorConstructor.getPrototype());
-            errorObjectFactories[type.ordinal()] = initialShape.createFactory();
-            errorWithMessageObjectFactories[type.ordinal()] = JSError.addMessagePropertyToShape(initialShape).createFactory();
         }
     }
 
@@ -590,14 +464,6 @@ public class JSRealm implements ShapeContext {
         return errorConstructors[type.ordinal()];
     }
 
-    public final DynamicObjectFactory getErrorFactory(JSErrorType type) {
-        return errorObjectFactories[type.ordinal()];
-    }
-
-    public final DynamicObjectFactory getErrorWithMessageFactory(JSErrorType type) {
-        return errorWithMessageObjectFactories[type.ordinal()];
-    }
-
     public final DynamicObject getGlobalObject() {
         return globalObject;
     }
@@ -620,54 +486,6 @@ public class JSRealm implements ShapeContext {
 
     public final DynamicObject getFunctionPrototype() {
         return functionPrototype;
-    }
-
-    public final DynamicObjectFactory getFunctionFactory() {
-        return initialFunctionFactory;
-    }
-
-    public final DynamicObjectFactory getStrictFunctionFactory() {
-        return initialStrictFunctionFactory;
-    }
-
-    public final DynamicObjectFactory getConstructorFactory() {
-        return initialConstructorFactory;
-    }
-
-    public final DynamicObjectFactory getStrictConstructorFactory() {
-        return initialStrictConstructorFactory;
-    }
-
-    public final DynamicObjectFactory getFunctionFactory(JSFunctionData functionData) {
-        boolean isBuiltin = functionData.isBuiltin();
-        boolean strictFunctionProperties = functionData.hasStrictFunctionProperties();
-        boolean isConstructor = functionData.isConstructor();
-        boolean isGenerator = functionData.isGenerator();
-        boolean isAsync = functionData.isAsync();
-        boolean isAnonymous = functionData.getName().isEmpty();
-        assert !isBuiltin || (!isGenerator && !isAsync) : "built-in functions are never generator or async functions!";
-        if (isAsync) {
-            if (isGenerator) {
-                return isAnonymous ? initialAnonymousAsyncGeneratorFunctionFactory : initialAsyncGeneratorFunctionFactory;
-            } else {
-                return isAnonymous ? initialAnonymousAsyncFunctionFactory : initialAsyncFunctionFactory;
-            }
-        } else if (isGenerator) {
-            return isAnonymous ? initialAnonymousGeneratorFactory : initialGeneratorFactory;
-        } else if (isConstructor && !isBuiltin) {
-            if (strictFunctionProperties) {
-                return isAnonymous ? initialAnonymousStrictConstructorFactory : initialStrictConstructorFactory;
-            } else {
-                return isAnonymous ? initialAnonymousConstructorFactory : initialConstructorFactory;
-            }
-        } else {
-            // Built-in constructor functions end up here due to the way they're initialized.
-            if (strictFunctionProperties) {
-                return isAnonymous ? initialAnonymousStrictFunctionFactory : initialStrictFunctionFactory;
-            } else {
-                return isAnonymous ? initialAnonymousFunctionFactory : initialFunctionFactory;
-            }
-        }
     }
 
     public final JSConstructor getArrayConstructor() {
@@ -734,7 +552,6 @@ public class JSRealm implements ShapeContext {
         return weakSetConstructor;
     }
 
-    @Override
     public final Shape getInitialUserObjectShape() {
         return initialUserObjectShape;
     }
@@ -747,38 +564,8 @@ public class JSRealm implements ShapeContext {
         return initialAsyncGeneratorObjectShape;
     }
 
-    public DynamicObjectFactory getInitialBoundFunctionFactory() {
-        return initialBoundFunctionFactory;
-    }
-
-    public DynamicObjectFactory getInitialAnonymousBoundFunctionFactory() {
-        return initialAnonymousBoundFunctionFactory;
-    }
-
-    public final DynamicObjectFactory getNonStrictArgumentsFactory() {
-        return initialArgumentsFactory;
-    }
-
-    public final DynamicObjectFactory getStrictArgumentsFactory() {
-        return initialStrictArgumentsFactory;
-    }
-
-    public final DynamicObjectFactory getUserObjectFactory() {
-        return initialUserObjectFactory;
-    }
-
     public final JSConstructor getArrayBufferConstructor() {
         return arrayBufferConstructor;
-    }
-
-    @Override
-    public final DynamicObjectFactory getArrayBufferFactory() {
-        return arrayBufferFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getDirectArrayBufferFactory() {
-        return directArrayBufferFactory;
     }
 
     public JSConstructor getSharedArrayBufferConstructor() {
@@ -788,16 +575,6 @@ public class JSRealm implements ShapeContext {
 
     public final JSConstructor getArrayBufferViewConstructor(TypedArrayFactory factory) {
         return typedArrayConstructors[factory.getFactoryIndex()];
-    }
-
-    @Override
-    public final DynamicObjectFactory getArrayBufferViewFactory(TypedArrayFactory factory) {
-        return typedArrayFactories[factory.getFactoryIndex()];
-    }
-
-    @Override
-    public final DynamicObjectFactory getDirectArrayBufferViewFactory(TypedArrayFactory factory) {
-        return directTypedArrayFactories[factory.getFactoryIndex()];
     }
 
     public final JSConstructor getDataViewConstructor() {
@@ -824,25 +601,20 @@ public class JSRealm implements ShapeContext {
         return generatorFunctionConstructor;
     }
 
-    public JSConstructor getAsyncFunctionConstructor() {
+    public final JSConstructor getAsyncFunctionConstructor() {
         return asyncFunctionConstructor;
     }
 
-    public JSConstructor getAsyncGeneratorFunctionConstructor() {
+    public final JSConstructor getAsyncGeneratorFunctionConstructor() {
         return asyncGeneratorFunctionConstructor;
     }
 
-    @Override
-    public DynamicObjectFactory getEnumerateIteratorFactory() {
-        return initialEnumerateIteratorFactory;
+    public final DynamicObject getEnumerateIteratorPrototype() {
+        return enumerateIteratorPrototype;
     }
 
     public final JSConstructor getJavaImporterConstructor() {
         return javaImporterConstructor;
-    }
-
-    public final DynamicObjectFactory getJavaPackageFactory() {
-        return initialJavaPackageFactory;
     }
 
     public final DynamicObject getJavaPackageToPrimitiveFunction() {
@@ -999,6 +771,10 @@ public class JSRealm implements ShapeContext {
         return promiseConstructor.getPrototype();
     }
 
+    public final JSObjectFactory.RealmData getObjectFactories() {
+        return objectFactories;
+    }
+
     public void setupGlobals() {
         CompilerAsserts.neverPartOfCompilation("do not setup globals from compiled code");
         long time = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
@@ -1050,7 +826,7 @@ public class JSRealm implements ShapeContext {
         putGlobalProperty(global, JSDataView.CLASS_NAME, getDataViewConstructor().getFunctionObject());
 
         if (JSTruffleOptions.SIMDJS) {
-            DynamicObject simdObject = JSObject.create(context, this.getObjectPrototype(), JSUserObject.INSTANCE);
+            DynamicObject simdObject = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
             for (SIMDTypeFactory<? extends SIMDType> factory : SIMDType.FACTORIES) {
                 JSObjectUtil.putDataProperty(context, simdObject, factory.getName(), getSIMDTypeConstructor(factory).getFunctionObject(), JSAttributes.getDefaultNotEnumerable());
             }
@@ -1150,12 +926,11 @@ public class JSRealm implements ShapeContext {
         }), 0, "isGraalRuntime");
     }
 
-    private JSConstructor getSIMDTypeConstructor(SIMDTypeFactory<? extends SIMDType> factory) {
+    public JSConstructor getSIMDTypeConstructor(SIMDTypeFactory<? extends SIMDType> factory) {
         return simdTypeConstructors[factory.getFactoryIndex()];
     }
 
-    @Override
-    public DynamicObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
+    public JSObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
         return simdTypeFactories[factory.getFactoryIndex()];
     }
 
@@ -1186,7 +961,7 @@ public class JSRealm implements ShapeContext {
         symbolFunction.define(name, symbol, JSAttributes.notConfigurableNotEnumerableNotWritable(), (s, v) -> s.allocator().constantLocation(v));
     }
 
-    private static boolean isJavaInteropAvailable() {
+    static boolean isJavaInteropAvailable() {
         return !JSTruffleOptions.SubstrateVM;
     }
 
@@ -1219,7 +994,7 @@ public class JSRealm implements ShapeContext {
     }
 
     private void setupPolyglot(DynamicObject global) {
-        DynamicObject obj = JSObject.create(context, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_CLASS_NAME);
         if (getContext().isOptionDebugBuiltin()) {
             JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_INTERNAL_CLASS_NAME);
@@ -1238,7 +1013,7 @@ public class JSRealm implements ShapeContext {
      * Creates the %IteratorPrototype% object as specified in ES6 25.1.2.
      */
     private DynamicObject createIteratorPrototype() {
-        DynamicObject prototype = JSObject.create(context, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(this), JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
@@ -1251,7 +1026,7 @@ public class JSRealm implements ShapeContext {
      * Creates the %ArrayIteratorPrototype% object as specified in ES6 22.1.5.2.
      */
     private DynamicObject createArrayIteratorPrototype() {
-        DynamicObject prototype = JSObject.create(context, this.iteratorPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(this, this.iteratorPrototype, JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, JSArray.ITERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSArray.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -1261,7 +1036,7 @@ public class JSRealm implements ShapeContext {
      * Creates the %SetIteratorPrototype% object.
      */
     private DynamicObject createSetIteratorPrototype() {
-        DynamicObject prototype = JSObject.create(context, this.iteratorPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(this, this.iteratorPrototype, JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, JSSet.ITERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSSet.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -1271,7 +1046,7 @@ public class JSRealm implements ShapeContext {
      * Creates the %MapIteratorPrototype% object.
      */
     private DynamicObject createMapIteratorPrototype() {
-        DynamicObject prototype = JSObject.create(context, this.iteratorPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(this, this.iteratorPrototype, JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, JSMap.ITERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSMap.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -1281,7 +1056,7 @@ public class JSRealm implements ShapeContext {
      * Creates the %StringIteratorPrototype% object.
      */
     private DynamicObject createStringIteratorPrototype() {
-        DynamicObject prototype = JSObject.create(context, this.iteratorPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(this, this.iteratorPrototype, JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, JSString.ITERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSString.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -1291,7 +1066,7 @@ public class JSRealm implements ShapeContext {
      * Creates the %RegExpStringIteratorPrototype% object.
      */
     private DynamicObject createRegExpStringIteratorPrototype() {
-        DynamicObject prototype = JSObject.create(context, this.iteratorPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(this, this.iteratorPrototype, JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, JSString.REGEXP_ITERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSString.REGEXP_ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -1303,154 +1078,21 @@ public class JSRealm implements ShapeContext {
     }
 
     private DynamicObject createReflect() {
-        DynamicObject obj = JSObject.create(context, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_STRING_TAG, REFLECT_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, obj, REFLECT_CLASS_NAME);
         return obj;
     }
 
     private DynamicObject createAtomics() {
-        DynamicObject obj = JSObject.create(context, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_STRING_TAG, ATOMICS_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, obj, ATOMICS_CLASS_NAME);
         return obj;
     }
 
-    @Override
-    public final DynamicObjectFactory getArrayFactory() {
-        return arrayFactory;
-    }
-
-    public DynamicObjectFactory getLazyRegexArrayFactory() {
-        return lazyRegexArrayFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getStringFactory() {
-        return stringFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getBooleanFactory() {
-        return booleanFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getNumberFactory() {
-        return numberFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getBigIntFactory() {
-        return bigIntFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getSymbolFactory() {
-        return symbolFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getRegExpFactory() {
-        return regExpFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getCollatorFactory() {
-        return collatorFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getNumberFormatFactory() {
-        return numberFormatFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getPluralRulesFactory() {
-        return pluralRulesFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getDateTimeFormatFactory() {
-        return dateTimeFormatFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getDateFactory() {
-        return dateFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getMapFactory() {
-        return mapFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getWeakMapFactory() {
-        return weakMapFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getSetFactory() {
-        return setFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getWeakSetFactory() {
-        return weakSetFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getDataViewFactory() {
-        return dataViewFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getProxyFactory() {
-        return proxyFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getSharedArrayBufferFactory() {
-        assert context.isOptionSharedArrayBuffer();
-        return sharedArrayBufferFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getJavaImporterFactory() {
-        return javaImportFactory;
-    }
-
-    @Override
-    public DynamicObjectFactory getJSAdapterFactory() {
-        return jsAdapterFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getPromiseFactory() {
-        return promiseFactory;
-    }
-
-    @Override
-    public final DynamicObjectFactory getErrorFactory(JSErrorType type, boolean withMessage) {
-        if (withMessage) {
-            return getErrorWithMessageFactory(type);
-        } else {
-            return getErrorFactory(type);
-        }
-    }
-
-    @Override
-    public final DynamicObjectFactory getModuleNamespaceFactory() {
-        return context.getModuleNamespaceFactory();
-    }
-
     public JSConstructor getCallSiteConstructor() {
         return callSiteConstructor;
-    }
-
-    public DynamicObjectFactory getCallSiteFactory() {
-        return callSiteFactory;
     }
 
     public final DynamicObject getGlobalScope() {
@@ -1514,7 +1156,7 @@ public class JSRealm implements ShapeContext {
     }
 
     private DynamicObject createRealmBuiltinObject() {
-        DynamicObject obj = JSObject.create(context, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(getContext(), obj, Symbol.SYMBOL_TO_STRING_TAG, REALM_BUILTIN_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, obj, REALM_BUILTIN_CLASS_NAME);
         return obj;
@@ -1529,8 +1171,8 @@ public class JSRealm implements ShapeContext {
         return dictionaryShapeObjectPrototype;
     }
 
-    public DynamicObjectFactory getJavaInteropWorkerFactory() {
-        return javaInteropWorkerFactory;
+    public JSConstructor getJSAdapterConstructor() {
+        return jsAdapterConstructor;
     }
 
     public JSConstructor getJavaInteropWorkerConstructor() {
@@ -1688,4 +1330,7 @@ public class JSRealm implements ShapeContext {
         return nanoTime(nanoToCurrentTimeOffset) / NANOSECONDS_PER_MILLISECOND;
     }
 
+    public Shape getLazyRegexArrayShape() {
+        return lazyRegexArrayShape;
+    }
 }

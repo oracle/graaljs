@@ -55,7 +55,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
-public abstract class JSPrimitiveObject extends JSBuiltinObject {
+public abstract class JSPrimitiveObject extends JSBuiltinObject implements PrototypeSupplier {
     protected JSPrimitiveObject() {
     }
 

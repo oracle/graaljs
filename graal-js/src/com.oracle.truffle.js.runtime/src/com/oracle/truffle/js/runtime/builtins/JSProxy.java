@@ -67,7 +67,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 import com.oracle.truffle.js.runtime.util.JSReflectUtils;
 
-public final class JSProxy extends AbstractJSClass {
+public final class JSProxy extends AbstractJSClass implements PrototypeSupplier {
 
     public static final String CLASS_NAME = "Proxy";
 
@@ -576,8 +576,8 @@ public final class JSProxy extends AbstractJSClass {
         }
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype, INSTANCE) == null;
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         initialShape = initialShape.addProperty(PROXY_TARGET_PROPERTY);
         initialShape = initialShape.addProperty(PROXY_HANDLER_PROPERTY);
@@ -835,4 +835,8 @@ public final class JSProxy extends AbstractJSClass {
         return JSObject.getJSContext(object).getInteropRuntime().getForeignAccessFactory();
     }
 
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getProxyConstructor().getPrototype();
+    }
 }

@@ -40,9 +40,8 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import com.oracle.truffle.api.object.DynamicObjectFactory;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 
@@ -50,65 +49,63 @@ import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
  * Temporary interface for shape access.
  */
 public interface ShapeContext {
-    Shape getInitialUserObjectShape();
+    JSObjectFactory getArrayFactory();
 
-    DynamicObjectFactory getArrayFactory();
+    JSObjectFactory getLazyRegexArrayFactory();
 
-    DynamicObjectFactory getStringFactory();
+    JSObjectFactory getStringFactory();
 
-    DynamicObjectFactory getBooleanFactory();
+    JSObjectFactory getBooleanFactory();
 
-    DynamicObjectFactory getNumberFactory();
+    JSObjectFactory getNumberFactory();
 
-    DynamicObjectFactory getBigIntFactory();
+    JSObjectFactory getBigIntFactory();
 
-    DynamicObjectFactory getSymbolFactory();
+    JSObjectFactory getSymbolFactory();
 
-    DynamicObjectFactory getArrayBufferViewFactory(TypedArrayFactory factory);
+    JSObjectFactory getArrayBufferViewFactory(TypedArrayFactory factory);
 
-    DynamicObjectFactory getArrayBufferFactory();
+    JSObjectFactory getArrayBufferFactory();
 
-    DynamicObjectFactory getDirectArrayBufferViewFactory(TypedArrayFactory factory);
+    JSObjectFactory getDirectArrayBufferViewFactory(TypedArrayFactory factory);
 
-    DynamicObjectFactory getDirectArrayBufferFactory();
+    JSObjectFactory getDirectArrayBufferFactory();
 
-    DynamicObjectFactory getRegExpFactory();
+    JSObjectFactory getRegExpFactory();
 
-    DynamicObjectFactory getDateFactory();
+    JSObjectFactory getDateFactory();
 
-    DynamicObjectFactory getModuleNamespaceFactory();
+    JSObjectFactory getEnumerateIteratorFactory();
 
-    DynamicObjectFactory getEnumerateIteratorFactory();
+    JSObjectFactory getMapFactory();
 
-    DynamicObjectFactory getMapFactory();
+    JSObjectFactory getWeakMapFactory();
 
-    DynamicObjectFactory getWeakMapFactory();
+    JSObjectFactory getSetFactory();
 
-    DynamicObjectFactory getSetFactory();
+    JSObjectFactory getCollatorFactory();
 
-    DynamicObjectFactory getCollatorFactory();
+    JSObjectFactory getNumberFormatFactory();
 
-    DynamicObjectFactory getNumberFormatFactory();
+    JSObjectFactory getPluralRulesFactory();
 
-    DynamicObjectFactory getPluralRulesFactory();
+    JSObjectFactory getDateTimeFormatFactory();
 
-    DynamicObjectFactory getDateTimeFormatFactory();
+    JSObjectFactory getWeakSetFactory();
 
-    DynamicObjectFactory getWeakSetFactory();
+    JSObjectFactory getDataViewFactory();
 
-    DynamicObjectFactory getDataViewFactory();
+    JSObjectFactory getProxyFactory();
 
-    DynamicObjectFactory getProxyFactory();
+    JSObjectFactory getSharedArrayBufferFactory();
 
-    DynamicObjectFactory getSharedArrayBufferFactory();
+    JSObjectFactory getJavaImporterFactory();
 
-    DynamicObjectFactory getJavaImporterFactory();
+    JSObjectFactory getJSAdapterFactory();
 
-    DynamicObjectFactory getJSAdapterFactory();
+    JSObjectFactory getErrorFactory(JSErrorType type, boolean withMessage);
 
-    DynamicObjectFactory getErrorFactory(JSErrorType type, boolean withMessage);
+    JSObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory);
 
-    DynamicObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory);
-
-    DynamicObjectFactory getPromiseFactory();
+    JSObjectFactory getPromiseFactory();
 }

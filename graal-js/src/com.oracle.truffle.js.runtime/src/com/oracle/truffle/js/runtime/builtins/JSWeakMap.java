@@ -58,7 +58,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
-public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions {
+public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final JSWeakMap INSTANCE = new JSWeakMap();
 
@@ -85,14 +85,15 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.create(ctx, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSWeakMap.INSTANCE, context);
         initialShape = initialShape.addProperty(WEAKMAP_PROPERTY);
         return initialShape;
@@ -128,5 +129,10 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
 
     public static boolean isJSWeakMap(DynamicObject obj) {
         return isInstance(obj, INSTANCE);
+    }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getWeakMapConstructor().getPrototype();
     }
 }

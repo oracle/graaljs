@@ -40,34 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.ibm.icu.text.DecimalFormat;
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
-import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.IntlUtil;
 import java.text.AttributedCharacterIterator;
-
-import com.ibm.icu.text.NumberFormat;
-
 import java.util.Arrays;
 import java.util.Currency;
 import java.util.EnumSet;
@@ -78,7 +51,33 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-public final class JSNumberFormat extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions {
+import com.ibm.icu.text.DecimalFormat;
+import com.ibm.icu.text.NumberFormat;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.object.LocationModifier;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
+
+public final class JSNumberFormat extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final String CLASS_NAME = "NumberFormat";
     public static final String PROTOTYPE_NAME = "NumberFormat.prototype";
@@ -86,7 +85,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     private static final HiddenKey INTERNAL_STATE_ID = new HiddenKey("_internalState");
     private static final Property INTERNAL_STATE_PROPERTY;
 
-    private static final JSNumberFormat INSTANCE = new JSNumberFormat();
+    public static final JSNumberFormat INSTANCE = new JSNumberFormat();
 
     public static final List<String> BCP47_CU_KEYS = Arrays.asList(new String[]{
                     "ADP",
@@ -429,7 +428,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject numberFormatPrototype = JSObject.create(ctx, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject numberFormatPrototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, numberFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, PROTOTYPE_NAME);
         JSObjectUtil.putConstantAccessorProperty(ctx, numberFormatPrototype, "format", createFormatFunctionGetter(realm, ctx), Undefined.instance);
@@ -463,8 +462,8 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         return a >= 'A' && a <= 'Z' && b >= 'A' && b <= 'Z' && c >= 'A' && c <= 'Z';
     }
 
-    public static Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype, INSTANCE) == null;
+    @Override
+    public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
         initialShape = initialShape.addProperty(INTERNAL_STATE_PROPERTY);
         return initialShape;
@@ -728,5 +727,10 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         JSFunctionData fd = JSFunctionData.create(context, ct, ct, 0, "get format", false, false, false, true);
         DynamicObject compareFunction = JSFunction.create(realm, fd);
         return compareFunction;
+    }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getNumberFormatConstructor().getPrototype();
     }
 }

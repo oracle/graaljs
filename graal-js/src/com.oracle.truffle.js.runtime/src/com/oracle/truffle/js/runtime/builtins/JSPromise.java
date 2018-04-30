@@ -52,7 +52,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class JSPromise extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctionsAndSpecies {
+public final class JSPromise extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
     public static final String CLASS_NAME = "Promise";
     public static final String PROTOTYPE_NAME = "Promise.prototype";
 
@@ -94,9 +94,9 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
         return CLASS_NAME;
     }
 
-    public static Shape makeInitialShape(JSRealm realm) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(realm.getPromisePrototype(), INSTANCE, realm.getContext());
-        return initialShape;
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+        return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
     }
 
     public static boolean isJSPromise(Object obj) {
@@ -162,5 +162,10 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
 
     public static JSConstructor createConstructor(JSRealm realm) {
         return INSTANCE.createConstructorAndPrototype(realm);
+    }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getPromisePrototype();
     }
 }

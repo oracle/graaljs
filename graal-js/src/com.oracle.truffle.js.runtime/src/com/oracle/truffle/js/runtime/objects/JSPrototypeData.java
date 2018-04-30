@@ -57,7 +57,7 @@ public final class JSPrototypeData {
         this.protoChildTrees = EMPTY_SHAPE_ARRAY;
     }
 
-    Shape getProtoChildTree(JSClass jsclass) {
+    public Shape getProtoChildTree(JSClass jsclass) {
         for (Shape childTree : protoChildTrees) {
             if (JSShape.getJSClassNoCast(childTree) == jsclass) {
                 return childTree;
@@ -66,7 +66,7 @@ public final class JSPrototypeData {
         return null;
     }
 
-    synchronized Shape getOrAddProtoChildTree(JSClass jsclass, Shape newRootShape) {
+    public synchronized Shape getOrAddProtoChildTree(JSClass jsclass, Shape newRootShape) {
         CompilerAsserts.neverPartOfCompilation();
         Shape existingRootShape = getProtoChildTree(jsclass);
         if (existingRootShape == null) {

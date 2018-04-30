@@ -231,7 +231,7 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.create(ctx, realm.getObjectPrototype(), JSString.INSTANCE);
+        DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSString.INSTANCE);
         JSObjectUtil.putHiddenProperty(prototype, STRING_PROPERTY, "");
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         // sets the length just for the prototype
@@ -250,8 +250,8 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
         return prototype;
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        // assert prototype.getShape(shapeStore).getProtoChildRoot() == null;
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSString.INSTANCE, context);
         initialShape = initialShape.addProperty(STRING_PROPERTY);
         initialShape = initialShape.addProperty(LENGTH_PROPERTY);

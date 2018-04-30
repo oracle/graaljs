@@ -249,6 +249,9 @@ public final class JSObjectUtil {
      */
     public static Shape getProtoChildShape(DynamicObject obj, JSClass jsclass, JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
+        if (obj == null) {
+            return context.makeEmptyShapeWithPrototypeInObject(jsclass, JSObject.PROTO_PROPERTY);
+        }
         Shape protoChild = getProtoChildShapeMaybe(obj, jsclass);
         if (protoChild != null) {
             return protoChild;
@@ -318,14 +321,15 @@ public final class JSObjectUtil {
     public static void setPrototype(DynamicObject object, DynamicObject newPrototype) {
         CompilerAsserts.neverPartOfCompilation("do not set object prototype from compiled code");
 
+        final JSContext context = JSObject.getJSContext(object);
         final Shape oldShape = object.getShape();
         JSShape.invalidatePrototypeAssumption(oldShape);
         final Shape newRootShape;
         if (newPrototype == Null.instance) {
-            newRootShape = JSShape.makeEmptyRoot(oldShape.getLayout(), oldShape.getObjectType(), JSShape.getJSContext(oldShape), JSShape.makePrototypeProperty(newPrototype));
+            newRootShape = context.makeEmptyShapeWithNullPrototype(JSShape.getJSClass(oldShape));
         } else {
             assert JSRuntime.isObject(newPrototype) : newPrototype;
-            newRootShape = JSObjectUtil.getProtoChildShape(newPrototype, JSShape.getJSClass(oldShape), JSShape.getJSContext(oldShape));
+            newRootShape = JSObjectUtil.getProtoChildShape(newPrototype, JSShape.getJSClass(oldShape), context);
         }
         Map<Object, Object> archive = archive(object);
         object.setShapeAndResize(oldShape, newRootShape);

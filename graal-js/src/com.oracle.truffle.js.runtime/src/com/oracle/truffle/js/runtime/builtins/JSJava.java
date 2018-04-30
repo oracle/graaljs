@@ -61,7 +61,7 @@ public final class JSJava {
 
     public static DynamicObject create(JSRealm realm) {
         JSContext context = realm.getContext();
-        DynamicObject obj = JSObject.create(context, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(context, obj, JAVA_WORKER_PROPERTY_NAME, realm.getJavaInteropWorkerConstructor().getFunctionObject(), JSAttributes.configurableNotEnumerableNotWritable());
         return obj;

@@ -52,7 +52,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
-public final class JSUserObject extends JSBuiltinObject {
+public final class JSUserObject extends JSBuiltinObject implements PrototypeSupplier {
 
     public static final String TYPE_NAME = "object";
     public static final String CLASS_NAME = "Object";
@@ -68,6 +68,9 @@ public final class JSUserObject extends JSBuiltinObject {
     }
 
     public static DynamicObject create(JSContext context, JSRealm realm) {
+        if (context.isMultiContext()) {
+            return createWithPrototypeInObject(realm.getObjectPrototype(), context);
+        }
         return JSObject.create(context, realm.getInitialUserObjectShape());
     }
 
@@ -126,5 +129,10 @@ public final class JSUserObject extends JSBuiltinObject {
     @Override
     public boolean hasOnlyShapeProperties(DynamicObject obj) {
         return true;
+    }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getObjectPrototype();
     }
 }

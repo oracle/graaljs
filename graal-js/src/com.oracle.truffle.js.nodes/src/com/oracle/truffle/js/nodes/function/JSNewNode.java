@@ -410,8 +410,13 @@ public abstract class JSNewNode extends JavaScriptNode {
             return Undefined.instance;
         }
 
+        @Specialization(guards = {"context.isMultiContext()"})
+        protected static Object doProtoInObject(Object prototype) {
+            return prototype;
+        }
+
         @SuppressWarnings("unused")
-        @Specialization(guards = "prototype == cachedPrototype", limit = "PropertyCacheLimit")
+        @Specialization(guards = {"!context.isMultiContext()", "prototype == cachedPrototype"}, limit = "PropertyCacheLimit")
         protected static Object doCached(Object prototype,
                         @Cached("prototype") Object cachedPrototype,
                         @Cached("getProtoChildShape(prototype)") Object cachedShape) {
@@ -419,7 +424,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         }
 
         /** Many different prototypes. */
-        @Specialization(replaces = "doCached")
+        @Specialization(guards = {"!context.isMultiContext()"}, replaces = "doCached")
         protected final Object doUncached(Object prototype,
                         @Cached("create()") BranchProfile notAnObjectBranch,
                         @Cached("create()") BranchProfile slowBranch) {

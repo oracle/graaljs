@@ -96,7 +96,7 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext context = realm.getContext();
-        DynamicObject numberPrototype = JSObject.create(context, realm.getObjectPrototype(), JSNumber.INSTANCE);
+        DynamicObject numberPrototype = JSObject.create(realm, realm.getObjectPrototype(), JSNumber.INSTANCE);
         JSObjectUtil.putHiddenProperty(numberPrototype, VALUE_PROPERTY, 0);
         JSObjectUtil.putConstructorProperty(context, numberPrototype, ctor);
 
@@ -104,8 +104,8 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
         return numberPrototype;
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype, INSTANCE) == null;
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         initialShape = initialShape.addProperty(VALUE_PROPERTY);
         return initialShape;

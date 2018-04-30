@@ -73,32 +73,67 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
+import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
+import com.oracle.truffle.js.runtime.builtins.JSAdapter;
+import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSBigInt;
+import com.oracle.truffle.js.runtime.builtins.JSBoolean;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSCollator;
+import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
+import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionLookup;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
+import com.oracle.truffle.js.runtime.builtins.JSJavaWorkerBuiltin;
+import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
+import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
+import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
+import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
+import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
+import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 import com.oracle.truffle.js.runtime.interop.DefaultJavaInteropWorker;
 import com.oracle.truffle.js.runtime.interop.DefaultJavaInteropWorker.DefaultMainWorker;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
+import com.oracle.truffle.js.runtime.interop.JavaImporter;
+import com.oracle.truffle.js.runtime.interop.JavaPackage;
 import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.joni.JoniRegexCompiler;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSPrototypeData;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.JSShapeData;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.CompilableFunction;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
 import com.oracle.truffle.regex.CachingRegexEngine;
@@ -157,8 +192,8 @@ public class JSContext implements ShapeContext {
     private JSInteropRuntime interopRuntime;
     private final TimeProfiler timeProfiler;
 
-    private final DynamicObjectFactory moduleNamespaceFactory;
-    private final DynamicObjectFactory javaWrapperFactory;
+    private final JSObjectFactory.BoundProto moduleNamespaceFactory;
+    private final JSObjectFactory.BoundProto javaWrapperFactory;
 
     private final Shape dictionaryShapeNullPrototype;
 
@@ -215,6 +250,7 @@ public class JSContext implements ShapeContext {
 
     final Assumption noChildRealmsAssumption;
     final Assumption singleRealmAssumption;
+    final boolean isMultiContext;
 
     private volatile boolean isRealmInitialized;
 
@@ -230,7 +266,7 @@ public class JSContext implements ShapeContext {
     /**
      * Temporary field until transition is complete.
      */
-    @CompilationFinal private JSRealm realm;
+    @CompilationFinal private JSRealm lastRealm;
 
     private final ContextReference<JSRealm> contextRef;
     @CompilationFinal private AllocationReporter allocationReporter;
@@ -255,7 +291,76 @@ public class JSContext implements ShapeContext {
 
     private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
 
+    private final JSPrototypeData nullPrototypeData = new JSPrototypeData();
+    private final JSPrototypeData inObjectPrototypeData = new JSPrototypeData();
+
     private volatile ClassValue<Class<?>> javaAdapterClasses;
+
+    private final JSFunctionFactory functionFactoryNamed;
+    private final JSFunctionFactory functionFactoryAnonymous;
+    private final JSFunctionFactory constructorFactoryNamed;
+    private final JSFunctionFactory constructorFactoryAnonymous;
+    private final JSFunctionFactory strictFunctionFactoryNamed;
+    private final JSFunctionFactory strictFunctionFactoryAnonymous;
+    private final JSFunctionFactory strictConstructorFactoryNamed;
+    private final JSFunctionFactory strictConstructorFactoryAnonymous;
+
+    private final JSFunctionFactory generatorFunctionFactoryNamed;
+    private final JSFunctionFactory generatorFunctionFactoryAnonymous;
+    private final JSFunctionFactory asyncFunctionFactoryNamed;
+    private final JSFunctionFactory asyncFunctionFactoryAnonymous;
+    private final JSFunctionFactory asyncGeneratorFunctionFactoryNamed;
+    private final JSFunctionFactory asyncGeneratorFunctionFactoryAnonymous;
+
+    private final JSFunctionFactory boundFunctionFactoryNamed;
+    private final JSFunctionFactory boundFunctionFactoryAnonymous;
+
+    static final CompilableFunction<JSRealm, DynamicObject> functionPrototypeSupplier = JSRealm::getFunctionPrototype;
+    static final CompilableFunction<JSRealm, DynamicObject> asyncFunctionPrototypeSupplier = r -> r.getAsyncFunctionConstructor().getPrototype();
+    static final CompilableFunction<JSRealm, DynamicObject> generatorFunctionPrototypeSupplier = r -> r.getGeneratorFunctionConstructor().getPrototype();
+    static final CompilableFunction<JSRealm, DynamicObject> asyncGeneratorFunctionPrototypeSupplier = r -> r.getAsyncGeneratorFunctionConstructor().getPrototype();
+
+    private final JSObjectFactory arrayFactory;
+    private final JSObjectFactory lazyRegexArrayFactory;
+    private final JSObjectFactory booleanFactory;
+    private final JSObjectFactory numberFactory;
+    private final JSObjectFactory bigIntFactory;
+    private final JSObjectFactory stringFactory;
+    private final JSObjectFactory regExpFactory;
+    private final JSObjectFactory dateFactory;
+    private final JSObjectFactory nonStrictArgumentsFactory;
+    private final JSObjectFactory strictArgumentsFactory;
+    private final JSObjectFactory callSiteFactory;
+    @CompilationFinal(dimensions = 1) private final JSObjectFactory[] errorObjectFactories;
+    @CompilationFinal(dimensions = 1) private final JSObjectFactory[] errorWithMessageObjectFactories;
+
+    private final JSObjectFactory symbolFactory;
+    private final JSObjectFactory mapFactory;
+    private final JSObjectFactory setFactory;
+    private final JSObjectFactory weakMapFactory;
+    private final JSObjectFactory weakSetFactory;
+    private final JSObjectFactory proxyFactory;
+    private final JSObjectFactory promiseFactory;
+    private final JSObjectFactory dataViewFactory;
+    private final JSObjectFactory arrayBufferFactory;
+    private final JSObjectFactory directArrayBufferFactory;
+    private final JSObjectFactory sharedArrayBufferFactory;
+    @CompilationFinal(dimensions = 1) private final JSObjectFactory[] typedArrayFactories;
+    @CompilationFinal(dimensions = 1) private final JSObjectFactory[] directTypedArrayFactories;
+
+    private final JSObjectFactory enumerateIteratorFactory;
+
+    private final JSObjectFactory collatorFactory;
+    private final JSObjectFactory numberFormatFactory;
+    private final JSObjectFactory pluralRulesFactory;
+    private final JSObjectFactory dateTimeFormatFactory;
+
+    private final JSObjectFactory javaImporterFactory;
+    private final JSObjectFactory javaPackageFactory;
+    private final JSObjectFactory javaInteropWorkerObjectFactory;
+    private final JSObjectFactory jsAdapterFactory;
+
+    private final int factoryCount;
 
     protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
         this.functionLookup = lookup;
@@ -283,7 +388,7 @@ public class JSContext implements ShapeContext {
         this.evaluator = evaluator;
         this.nodeFactory = evaluator.getDefaultNodeFactory();
 
-        this.moduleNamespaceFactory = JSModuleNamespace.makeInitialShape(this).createFactory();
+        this.moduleNamespaceFactory = JSObjectFactory.createBound(this, Null.instance, JSModuleNamespace.makeInitialShape(this).createFactory());
 
         this.promiseJobsQueue = new LinkedList<>();
         this.promiseJobsQueueNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseJobsQueueNotUsedAssumption");
@@ -297,7 +402,7 @@ public class JSContext implements ShapeContext {
         this.builtinFunctionData = new JSFunctionData[BuiltinFunctionKey.values().length];
 
         this.timeProfiler = JSTruffleOptions.ProfileTime ? new TimeProfiler() : null;
-        this.javaWrapperFactory = JSTruffleOptions.NashornJavaInterop ? JSJavaWrapper.makeShape(this).createFactory() : null;
+        this.javaWrapperFactory = JSTruffleOptions.NashornJavaInterop ? JSObjectFactory.createBound(this, Null.instance, JSJavaWrapper.makeShape(this).createFactory()) : null;
 
         this.dictionaryShapeNullPrototype = JSTruffleOptions.DictionaryObject ? JSDictionaryObject.makeDictionaryShape(this, null) : null;
 
@@ -312,6 +417,84 @@ public class JSContext implements ShapeContext {
         if (contextOptions.isV8RealmBuiltin()) {
             this.realmList = new ArrayList<>();
         }
+
+        this.isMultiContext = lang != null && lang.isMultiContext();
+
+        // shapes and factories
+        PrototypeSupplier objectPrototypeSupplier = JSUserObject.INSTANCE;
+        JSObjectFactory.IntrinsicBuilder builder = new JSObjectFactory.IntrinsicBuilder(this);
+
+        this.functionFactoryNamed = builder.function(functionPrototypeSupplier, false, false, false, false, false);
+        this.functionFactoryAnonymous = builder.function(functionPrototypeSupplier, false, true, false, false, false);
+        this.constructorFactoryNamed = builder.function(functionPrototypeSupplier, false, false, true, false, false);
+        this.constructorFactoryAnonymous = builder.function(functionPrototypeSupplier, false, true, true, false, false);
+        this.strictFunctionFactoryNamed = builder.function(functionPrototypeSupplier, true, false, false, false, false);
+        this.strictFunctionFactoryAnonymous = builder.function(functionPrototypeSupplier, true, true, false, false, false);
+        this.strictConstructorFactoryNamed = builder.function(functionPrototypeSupplier, true, false, true, false, false);
+        this.strictConstructorFactoryAnonymous = builder.function(functionPrototypeSupplier, true, true, true, false, false);
+
+        this.asyncFunctionFactoryNamed = builder.function(asyncFunctionPrototypeSupplier, true, false, false, false, false);
+        this.asyncFunctionFactoryAnonymous = builder.function(asyncFunctionPrototypeSupplier, true, true, false, false, false);
+        this.generatorFunctionFactoryNamed = builder.function(generatorFunctionPrototypeSupplier, true, false, false, true, false);
+        this.generatorFunctionFactoryAnonymous = builder.function(generatorFunctionPrototypeSupplier, true, true, false, true, false);
+        this.asyncGeneratorFunctionFactoryNamed = builder.function(asyncGeneratorFunctionPrototypeSupplier, true, false, false, true, false);
+        this.asyncGeneratorFunctionFactoryAnonymous = builder.function(asyncGeneratorFunctionPrototypeSupplier, true, true, false, true, false);
+
+        this.boundFunctionFactoryNamed = builder.function(functionPrototypeSupplier, true, false, false, false, true);
+        this.boundFunctionFactoryAnonymous = builder.function(functionPrototypeSupplier, true, true, false, false, true);
+
+        this.arrayFactory = builder.create(JSArray.INSTANCE);
+        this.lazyRegexArrayFactory = builder.create(JSArray.INSTANCE, JSRegExp::makeLazyRegexArrayShape);
+        this.booleanFactory = builder.create(JSBoolean.INSTANCE);
+        this.numberFactory = builder.create(JSNumber.INSTANCE);
+        this.bigIntFactory = builder.create(JSBigInt.INSTANCE);
+        this.stringFactory = builder.create(JSString.INSTANCE);
+        this.regExpFactory = builder.create(JSRegExp.INSTANCE);
+        this.dateFactory = builder.create(JSDate.INSTANCE);
+
+        this.symbolFactory = builder.create(JSSymbol.INSTANCE);
+        this.mapFactory = builder.create(JSMap.INSTANCE);
+        this.setFactory = builder.create(JSSet.INSTANCE);
+        this.weakMapFactory = builder.create(JSWeakMap.INSTANCE);
+        this.weakSetFactory = builder.create(JSWeakSet.INSTANCE);
+        this.proxyFactory = builder.create(JSProxy.INSTANCE);
+        this.promiseFactory = builder.create(JSPromise.INSTANCE);
+        this.dataViewFactory = builder.create(JSDataView.INSTANCE);
+        this.arrayBufferFactory = builder.create(JSArrayBuffer.HEAP_INSTANCE);
+        this.directArrayBufferFactory = builder.create(JSArrayBuffer.DIRECT_INSTANCE);
+        this.sharedArrayBufferFactory = isOptionSharedArrayBuffer() ? builder.create(JSSharedArrayBuffer.INSTANCE) : null;
+        this.typedArrayFactories = new JSObjectFactory[TypedArray.factories().length];
+        this.directTypedArrayFactories = new JSObjectFactory[TypedArray.factories().length];
+        for (TypedArrayFactory factory : TypedArray.factories()) {
+            directTypedArrayFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSArrayBufferView.makeInitialArrayBufferViewShape(c, p, true));
+            typedArrayFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSArrayBufferView.makeInitialArrayBufferViewShape(c, p, false));
+        }
+
+        JSErrorType[] errorTypes = JSErrorType.values();
+        this.errorObjectFactories = new JSObjectFactory[errorTypes.length];
+        this.errorWithMessageObjectFactories = new JSObjectFactory[errorTypes.length];
+        for (JSErrorType type : errorTypes) {
+            errorObjectFactories[type.ordinal()] = builder.create(type, JSError.INSTANCE::makeInitialShape);
+            errorWithMessageObjectFactories[type.ordinal()] = builder.create(type, (c, p) -> JSError.addMessagePropertyToShape(JSError.INSTANCE.makeInitialShape(c, p)));
+        }
+        this.callSiteFactory = builder.create(r -> r.getCallSiteConstructor().getPrototype(), JSError::makeInitialCallSiteShape);
+        this.nonStrictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialNonStrictArgumentsShape);
+        this.strictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialStrictArgumentsShape);
+        this.enumerateIteratorFactory = builder.create(JSRealm::getEnumerateIteratorPrototype, JSFunction::makeInitialEnumerateIteratorShape);
+
+        this.collatorFactory = builder.create(JSCollator.INSTANCE);
+        this.numberFormatFactory = builder.create(JSNumberFormat.INSTANCE);
+        this.dateTimeFormatFactory = builder.create(JSDateTimeFormat.INSTANCE);
+        this.pluralRulesFactory = builder.create(JSPluralRules.INSTANCE);
+
+        boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
+        boolean nashornJavaInterop = JSRealm.isJavaInteropAvailable() && (isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop);
+        this.javaImporterFactory = nashornJavaInterop ? builder.create(JavaImporter.instance()) : null;
+        this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
+        this.javaPackageFactory = JSRealm.isJavaInteropAvailable() ? builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape) : null;
+        this.javaInteropWorkerObjectFactory = JSRealm.isJavaInteropAvailable() ? builder.create(JSJavaWorkerBuiltin.INSTANCE) : null;
+
+        this.factoryCount = builder.finish();
     }
 
     public final JSFunctionLookup getFunctionLookup() {
@@ -388,11 +571,27 @@ public class JSContext implements ShapeContext {
     }
 
     public final Shape createEmptyShape() {
-        return JSShape.makeEmptyRoot(JSObject.LAYOUT, JSUserObject.INSTANCE, this);
+        return makeEmptyShapeWithNullPrototype(JSUserObject.INSTANCE);
     }
 
     private Shape createEmptyShapePrototypeInObject() {
-        return JSShape.makeEmptyRoot(JSObject.LAYOUT, JSUserObject.INSTANCE, this, JSObject.PROTO_PROPERTY);
+        return makeEmptyShapeWithPrototypeInObject(JSUserObject.INSTANCE, JSObject.PROTO_PROPERTY);
+    }
+
+    public final Shape makeEmptyShapeWithNullPrototype(JSClass jsclass) {
+        Shape protoChildTree = nullPrototypeData.getProtoChildTree(jsclass);
+        if (protoChildTree != null) {
+            return protoChildTree;
+        }
+        return nullPrototypeData.getOrAddProtoChildTree(jsclass, JSShape.makeEmptyRoot(JSObject.LAYOUT, jsclass, this));
+    }
+
+    public final Shape makeEmptyShapeWithPrototypeInObject(JSClass jsclass, Property protoProperty) {
+        Shape protoChildTree = inObjectPrototypeData.getProtoChildTree(jsclass);
+        if (protoChildTree != null) {
+            return protoChildTree;
+        }
+        return inObjectPrototypeData.getOrAddProtoChildTree(jsclass, JSShape.makeEmptyRoot(JSObject.LAYOUT, jsclass, this, protoProperty));
     }
 
     private Shape createGlobalScopeShape() {
@@ -522,14 +721,14 @@ public class JSContext implements ShapeContext {
         if (CompilerDirectives.inInterpreter() && !isRealmInitialized) {
             // Realm is being initialized, cannot use ContextReference yet
             // TODO avoid calling getRealm() during initialization
-            return realm;
+            return lastRealm;
         }
         if (contextRef == null) {
-            return realm;
+            return lastRealm;
         }
         if (isSingleRealm()) {
-            assert realm == contextRef.get();
-            return realm;
+            assert lastRealm == contextRef.get();
+            return lastRealm;
         }
         JSRealm currentRealm = contextRef.get();
         assert currentRealm != null;
@@ -549,167 +748,182 @@ public class JSContext implements ShapeContext {
     }
 
     @Override
-    public final Shape getInitialUserObjectShape() {
-        return getRealm().getInitialUserObjectShape();
+    public final JSObjectFactory getArrayFactory() {
+        return arrayFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getArrayFactory() {
-        return getRealm().getArrayFactory();
+    public final JSObjectFactory getLazyRegexArrayFactory() {
+        return lazyRegexArrayFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getStringFactory() {
-        return getRealm().getStringFactory();
+    public final JSObjectFactory getStringFactory() {
+        return stringFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getBooleanFactory() {
-        return getRealm().getBooleanFactory();
+    public final JSObjectFactory getBooleanFactory() {
+        return booleanFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getNumberFactory() {
-        return getRealm().getNumberFactory();
+    public final JSObjectFactory getNumberFactory() {
+        return numberFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getBigIntFactory() {
-        return getRealm().getBigIntFactory();
+    public final JSObjectFactory getBigIntFactory() {
+        return bigIntFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getSymbolFactory() {
-        return getRealm().getSymbolFactory();
+    public final JSObjectFactory getSymbolFactory() {
+        return symbolFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getArrayBufferViewFactory(TypedArrayFactory factory) {
-        return getRealm().getArrayBufferViewFactory(factory);
+    public final JSObjectFactory getArrayBufferViewFactory(TypedArrayFactory factory) {
+        return typedArrayFactories[factory.getFactoryIndex()];
     }
 
     @Override
-    public final DynamicObjectFactory getArrayBufferFactory() {
-        return getRealm().getArrayBufferFactory();
+    public final JSObjectFactory getArrayBufferFactory() {
+        return arrayBufferFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getDirectArrayBufferViewFactory(TypedArrayFactory factory) {
-        return getRealm().getDirectArrayBufferViewFactory(factory);
+    public final JSObjectFactory getDirectArrayBufferViewFactory(TypedArrayFactory factory) {
+        return directTypedArrayFactories[factory.getFactoryIndex()];
     }
 
     @Override
-    public final DynamicObjectFactory getDirectArrayBufferFactory() {
-        return getRealm().getDirectArrayBufferFactory();
+    public final JSObjectFactory getDirectArrayBufferFactory() {
+        return directArrayBufferFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getRegExpFactory() {
-        return getRealm().getRegExpFactory();
+    public final JSObjectFactory getRegExpFactory() {
+        return regExpFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getDateFactory() {
-        return getRealm().getDateFactory();
+    public final JSObjectFactory getDateFactory() {
+        return dateFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getEnumerateIteratorFactory() {
-        return getRealm().getEnumerateIteratorFactory();
+    public final JSObjectFactory getEnumerateIteratorFactory() {
+        return enumerateIteratorFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getMapFactory() {
-        return getRealm().getMapFactory();
+    public final JSObjectFactory getMapFactory() {
+        return mapFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getWeakMapFactory() {
-        return getRealm().getWeakMapFactory();
+    public final JSObjectFactory getWeakMapFactory() {
+        return weakMapFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getSetFactory() {
-        return getRealm().getSetFactory();
+    public final JSObjectFactory getSetFactory() {
+        return setFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getWeakSetFactory() {
-        return getRealm().getWeakSetFactory();
+    public final JSObjectFactory getWeakSetFactory() {
+        return weakSetFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getDataViewFactory() {
-        return getRealm().getDataViewFactory();
+    public final JSObjectFactory getDataViewFactory() {
+        return dataViewFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getProxyFactory() {
-        return getRealm().getProxyFactory();
+    public final JSObjectFactory getProxyFactory() {
+        return proxyFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getSharedArrayBufferFactory() {
+    public final JSObjectFactory getSharedArrayBufferFactory() {
         assert isOptionSharedArrayBuffer();
-        return getRealm().getSharedArrayBufferFactory();
+        return sharedArrayBufferFactory;
+    }
+
+    public final JSObjectFactory getNonStrictArgumentsFactory() {
+        return nonStrictArgumentsFactory;
+    }
+
+    public final JSObjectFactory getStrictArgumentsFactory() {
+        return strictArgumentsFactory;
+    }
+
+    public final JSObjectFactory getCallSiteFactory() {
+        return callSiteFactory;
     }
 
     @Override
-    public final DynamicObjectFactory getCollatorFactory() {
-        return getRealm().getCollatorFactory();
+    public final JSObjectFactory getErrorFactory(JSErrorType type, boolean withMessage) {
+        return (withMessage ? errorWithMessageObjectFactories : errorObjectFactories)[type.ordinal()];
     }
 
     @Override
-    public final DynamicObjectFactory getNumberFormatFactory() {
-        return getRealm().getNumberFormatFactory();
+    public final JSObjectFactory getPromiseFactory() {
+        return promiseFactory;
     }
 
-    @Override
-    public final DynamicObjectFactory getPluralRulesFactory() {
-        return getRealm().getPluralRulesFactory();
-    }
-
-    @Override
-    public final DynamicObjectFactory getDateTimeFormatFactory() {
-        return getRealm().getDateTimeFormatFactory();
-    }
-
-    @Override
-    public final DynamicObjectFactory getJavaImporterFactory() {
-        return getRealm().getJavaImporterFactory();
-    }
-
-    @Override
-    public final DynamicObjectFactory getJSAdapterFactory() {
-        return getRealm().getJSAdapterFactory();
-    }
-
-    @Override
-    public final DynamicObjectFactory getErrorFactory(JSErrorType type, boolean withMessage) {
-        return getRealm().getErrorFactory(type, withMessage);
-    }
-
-    @Override
-    public final DynamicObjectFactory getPromiseFactory() {
-        return getRealm().getPromiseFactory();
-    }
-
-    @Override
-    public DynamicObjectFactory getModuleNamespaceFactory() {
+    public final JSObjectFactory.BoundProto getModuleNamespaceFactory() {
         return moduleNamespaceFactory;
     }
 
     @Override
-    public DynamicObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
+    public final JSObjectFactory getCollatorFactory() {
+        return collatorFactory;
+    }
+
+    @Override
+    public final JSObjectFactory getNumberFormatFactory() {
+        return numberFormatFactory;
+    }
+
+    @Override
+    public final JSObjectFactory getPluralRulesFactory() {
+        return pluralRulesFactory;
+    }
+
+    @Override
+    public final JSObjectFactory getDateTimeFormatFactory() {
+        return dateTimeFormatFactory;
+    }
+
+    @Override
+    public final JSObjectFactory getJavaImporterFactory() {
+        return javaImporterFactory;
+    }
+
+    @Override
+    public final JSObjectFactory getJSAdapterFactory() {
+        return jsAdapterFactory;
+    }
+
+    public final JSObjectFactory getJavaPackageFactory() {
+        return javaPackageFactory;
+    }
+
+    public final JSObjectFactory.BoundProto getJavaWrapperFactory() {
+        return javaWrapperFactory;
+    }
+
+    @Override
+    public JSObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
         return getRealm().getSIMDTypeFactory(factory);
     }
 
     void setRealm(JSRealm realm) {
-        this.realm = realm;
-    }
-
-    public DynamicObjectFactory getJavaWrapperFactory() {
-        return javaWrapperFactory;
+        this.lastRealm = realm;
     }
 
     private static String createRegexEngineOptions() {
@@ -1021,43 +1235,17 @@ public class JSContext implements ShapeContext {
         this.allocationReporter = env.lookup(AllocationReporter.class);
     }
 
-    private AllocationReporter getAllocationReporter() {
+    public final AllocationReporter getAllocationReporter() {
         return allocationReporter;
     }
 
-    public final DynamicObject allocateObject(Shape shape) {
+    public final <T> T trackAllocation(T object) {
         AllocationReporter reporter = getAllocationReporter();
         if (reporter != null) {
             reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        DynamicObject object = shape.newInstance();
-        if (reporter != null) {
             reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
         }
         return object;
-    }
-
-    public final DynamicObject allocateObject(DynamicObjectFactory factory, Object... initialValues) {
-        AllocationReporter reporter = getAllocationReporter();
-        if (reporter != null) {
-            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        DynamicObject object;
-        if (CompilerDirectives.isPartialEvaluationConstant(factory)) {
-            object = factory.newInstance(initialValues);
-        } else {
-            // factory is not PE-constant in the case of multiple realms
-            object = newInstanceBoundary(factory, initialValues);
-        }
-        if (reporter != null) {
-            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        return object;
-    }
-
-    @TruffleBoundary
-    private static DynamicObject newInstanceBoundary(DynamicObjectFactory factory, Object[] initialValues) {
-        return factory.newInstance(initialValues);
     }
 
     public boolean isOptionAnnexB() {
@@ -1127,6 +1315,10 @@ public class JSContext implements ShapeContext {
             invalidatePromiseQueueNotUsedAssumption();
         }
         return javaInteropWorkersFactory;
+    }
+
+    public JSObjectFactory getJavaInteropWorkerObjectFactory() {
+        return javaInteropWorkerObjectFactory;
     }
 
     public EcmaAgent getMainWorker() {
@@ -1286,5 +1478,54 @@ public class JSContext implements ShapeContext {
             }
         }
         return javaAdapterClasses.get(clazz);
+    }
+
+    public final boolean isMultiContext() {
+        return isMultiContext;
+    }
+
+    public JSFunctionFactory getFunctionFactory(JSFunctionData functionData) {
+        boolean isBuiltin = functionData.isBuiltin();
+        boolean strictFunctionProperties = functionData.hasStrictFunctionProperties();
+        boolean isConstructor = functionData.isConstructor();
+        boolean isGenerator = functionData.isGenerator();
+        boolean isAsync = functionData.isAsync();
+        boolean isAnonymous = functionData.getName().isEmpty();
+        assert !isBuiltin || (!isGenerator && !isAsync) : "built-in functions are never generator or async functions!";
+        if (isAsync) {
+            if (isGenerator) {
+                return isAnonymous ? asyncGeneratorFunctionFactoryAnonymous : asyncGeneratorFunctionFactoryNamed;
+            } else {
+                return isAnonymous ? asyncFunctionFactoryAnonymous : asyncFunctionFactoryNamed;
+            }
+        } else if (isGenerator) {
+            return isAnonymous ? generatorFunctionFactoryAnonymous : generatorFunctionFactoryNamed;
+        } else if (isConstructor && !isBuiltin) {
+            if (strictFunctionProperties) {
+                return isAnonymous ? strictConstructorFactoryAnonymous : strictConstructorFactoryNamed;
+            } else {
+                return isAnonymous ? constructorFactoryAnonymous : constructorFactoryNamed;
+            }
+        } else {
+            // Built-in constructor functions end up here due to the way they're initialized.
+            if (strictFunctionProperties) {
+                return isAnonymous ? strictFunctionFactoryAnonymous : strictFunctionFactoryNamed;
+            } else {
+                return isAnonymous ? functionFactoryAnonymous : functionFactoryNamed;
+            }
+        }
+    }
+
+    public JSFunctionFactory getBoundFunctionFactory(JSFunctionData functionData, boolean isAnonymous) {
+        assert functionData.isStrict();
+        return isAnonymous ? boundFunctionFactoryAnonymous : boundFunctionFactoryNamed;
+    }
+
+    JSObjectFactory.RealmData newObjectFactoryRealmData() {
+        if (isMultiContext()) {
+            return null; // unused
+        } else {
+            return new JSObjectFactory.RealmData(factoryCount);
+        }
     }
 }
