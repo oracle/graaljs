@@ -339,18 +339,18 @@ public class JSRealm implements ShapeContext {
         this.objectPrototype = JSObjectPrototype.create(context);
 
         this.functionPrototype = JSFunction.createFunctionPrototype(this, objectPrototype);
-        this.initialFunctionFactory = JSFunction.makeInitialFunctionShape(this, functionPrototype, false, false).createFactory();
-        this.initialAnonymousFunctionFactory = JSFunction.makeInitialFunctionShape(this, functionPrototype, false, true).createFactory();
-        this.initialConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(this, functionPrototype, false, false)).createFactory();
-        this.initialAnonymousConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(this, functionPrototype, false, true)).createFactory();
+        this.initialFunctionFactory = JSFunction.makeInitialFunctionShape(context, functionPrototype, false, false).createFactory();
+        this.initialAnonymousFunctionFactory = JSFunction.makeInitialFunctionShape(context, functionPrototype, false, true).createFactory();
+        this.initialConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(context, functionPrototype, false, false)).createFactory();
+        this.initialAnonymousConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(context, functionPrototype, false, true)).createFactory();
 
         this.throwerFunction = createThrowerFunction();
         this.throwerAccessor = new Accessor(throwerFunction, throwerFunction);
 
-        this.initialStrictFunctionFactory = JSFunction.makeInitialFunctionShape(this, functionPrototype, true, false).createFactory();
-        this.initialAnonymousStrictFunctionFactory = JSFunction.makeInitialFunctionShape(this, functionPrototype, true, true).createFactory();
-        this.initialStrictConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(this, functionPrototype, true, false)).createFactory();
-        this.initialAnonymousStrictConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(this, functionPrototype, true, true)).createFactory();
+        this.initialStrictFunctionFactory = JSFunction.makeInitialFunctionShape(context, functionPrototype, true, false).createFactory();
+        this.initialAnonymousStrictFunctionFactory = JSFunction.makeInitialFunctionShape(context, functionPrototype, true, true).createFactory();
+        this.initialStrictConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(context, functionPrototype, true, false)).createFactory();
+        this.initialAnonymousStrictConstructorFactory = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(context, functionPrototype, true, true)).createFactory();
 
         if (context.isOptionAnnexB()) {
             putProtoAccessorProperty(this);
@@ -484,12 +484,12 @@ public class JSRealm implements ShapeContext {
         this.regExpStringIteratorPrototype = JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
 
         this.generatorFunctionConstructor = es6 ? JSFunction.createGeneratorFunctionConstructor(this) : null;
-        this.initialGeneratorFactory = es6 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(this, generatorFunctionConstructor.getPrototype(), false).createFactory() : null;
-        this.initialAnonymousGeneratorFactory = es6 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(this, generatorFunctionConstructor.getPrototype(), true).createFactory() : null;
+        this.initialGeneratorFactory = es6 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(context, generatorFunctionConstructor.getPrototype(), false).createFactory() : null;
+        this.initialAnonymousGeneratorFactory = es6 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(context, generatorFunctionConstructor.getPrototype(), true).createFactory() : null;
         this.initialGeneratorObjectShape = es6 ? JSFunction.makeInitialGeneratorObjectShape(this) : null;
         this.initialEnumerateIteratorFactory = JSFunction.makeInitialEnumerateIteratorShape(this).createFactory();
-        this.initialBoundFunctionFactory = JSFunction.makeInitialBoundFunctionShape(this, functionPrototype, false).createFactory();
-        this.initialAnonymousBoundFunctionFactory = JSFunction.makeInitialBoundFunctionShape(this, functionPrototype, true).createFactory();
+        this.initialBoundFunctionFactory = JSFunction.makeInitialBoundFunctionShape(context, functionPrototype, false).createFactory();
+        this.initialAnonymousBoundFunctionFactory = JSFunction.makeInitialBoundFunctionShape(context, functionPrototype, true).createFactory();
 
         if (context.isOptionSharedArrayBuffer()) {
             this.sharedArrayBufferConstructor = JSSharedArrayBuffer.createConstructor(this);
@@ -509,15 +509,17 @@ public class JSRealm implements ShapeContext {
 
         boolean es8 = JSTruffleOptions.MaxECMAScriptVersion >= 8;
         this.asyncFunctionConstructor = es8 ? JSFunction.createAsyncFunctionConstructor(this) : null;
-        this.initialAsyncFunctionFactory = es8 ? JSFunction.makeInitialAsyncFunctionShape(this, asyncFunctionConstructor.getPrototype(), false).createFactory() : null;
-        this.initialAnonymousAsyncFunctionFactory = es8 ? JSFunction.makeInitialAsyncFunctionShape(this, asyncFunctionConstructor.getPrototype(), true).createFactory() : null;
+        this.initialAsyncFunctionFactory = es8 ? JSFunction.makeInitialAsyncFunctionShape(context, asyncFunctionConstructor.getPrototype(), false).createFactory() : null;
+        this.initialAnonymousAsyncFunctionFactory = es8 ? JSFunction.makeInitialAsyncFunctionShape(context, asyncFunctionConstructor.getPrototype(), true).createFactory() : null;
 
         boolean es9 = JSTruffleOptions.MaxECMAScriptVersion >= 9;
         this.asyncIteratorPrototype = es9 ? JSFunction.createAsyncIteratorPrototype(this) : null;
         this.asyncFromSyncIteratorPrototype = es9 ? JSFunction.createAsyncFromSyncIteratorPrototype(this) : null;
         this.asyncGeneratorFunctionConstructor = es9 ? JSFunction.createAsyncGeneratorFunctionConstructor(this) : null;
-        this.initialAsyncGeneratorFunctionFactory = es9 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(this, asyncGeneratorFunctionConstructor.getPrototype(), false).createFactory() : null;
-        this.initialAnonymousAsyncGeneratorFunctionFactory = es9 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(this, asyncGeneratorFunctionConstructor.getPrototype(), true).createFactory()
+        this.initialAsyncGeneratorFunctionFactory = es9 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(context, asyncGeneratorFunctionConstructor.getPrototype(), false).createFactory()
+                        : null;
+        this.initialAnonymousAsyncGeneratorFunctionFactory = es9
+                        ? JSFunction.makeInitialGeneratorFunctionConstructorShape(context, asyncGeneratorFunctionConstructor.getPrototype(), true).createFactory()
                         : null;
         this.initialAsyncGeneratorObjectShape = es9 ? JSFunction.makeInitialAsyncGeneratorObjectShape(this) : null;
 

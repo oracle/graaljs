@@ -81,11 +81,10 @@ public class DefineMethodNode extends JavaScriptBaseNode {
     @ImportStatic(JSTruffleOptions.class)
     protected abstract static class FunctionCreateNode extends JavaScriptBaseNode {
         private final JSFunctionData functionData;
-        @Child private RealmNode realmNode;
 
         protected FunctionCreateNode(JSContext context, JSFunctionData functionData) {
+            assert context == functionData.getContext();
             this.functionData = functionData;
-            this.realmNode = RealmNode.create(context);
         }
 
         public static FunctionCreateNode create(JSContext context, JSFunctionData functionData) {
@@ -98,29 +97,29 @@ public class DefineMethodNode extends JavaScriptBaseNode {
         @Specialization(guards = {"prototype == cachedPrototype", "isJSObject(cachedPrototype)"}, limit = "PropertyCacheLimit")
         protected final DynamicObject doCached(VirtualFrame frame, DynamicObject prototype,
                         @Cached("prototype") DynamicObject cachedPrototype,
-                        @Cached("makeFactory(getRealm(frame), prototype)") DynamicObjectFactory factory) {
+                        @Cached("makeFactory(prototype)") DynamicObjectFactory factory) {
             return makeFunction(factory, frame);
 
         }
 
         @Specialization(guards = "isJSObject(prototype)", replaces = "doCached")
         protected final DynamicObject doUncached(VirtualFrame frame, DynamicObject prototype) {
-            DynamicObjectFactory factory = makeFactory(getRealm(frame), prototype);
+            DynamicObjectFactory factory = makeFactory(prototype);
             return makeFunction(factory, frame);
         }
 
         @TruffleBoundary
-        protected final DynamicObjectFactory makeFactory(JSRealm realm, DynamicObject prototype) {
-            return JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(realm, prototype, true, functionData.getName().isEmpty()),
+        protected final DynamicObjectFactory makeFactory(DynamicObject prototype) {
+            return JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(getContext(), prototype, true, functionData.getName().isEmpty()),
                             functionData.isPrototypeNotWritable()).createFactory();
         }
 
         protected final DynamicObject makeFunction(DynamicObjectFactory factory, VirtualFrame frame) {
-            return JSFunction.create(factory, getRealm(frame), functionData, functionData.needsParentFrame() ? frame.materialize() : JSFrameUtil.NULL_MATERIALIZED_FRAME);
+            return JSFunction.create(factory, getContext().getRealm(), functionData, functionData.needsParentFrame() ? frame.materialize() : JSFrameUtil.NULL_MATERIALIZED_FRAME);
         }
 
-        protected final JSRealm getRealm(VirtualFrame frame) {
-            return realmNode.execute(frame);
+        private JSContext getContext() {
+            return functionData.getContext();
         }
 
         @Specialization(guards = "!isJSObject(prototype)")

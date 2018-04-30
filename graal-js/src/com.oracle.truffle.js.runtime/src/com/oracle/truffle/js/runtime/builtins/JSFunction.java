@@ -298,7 +298,11 @@ public final class JSFunction extends JSBuiltinObject {
         assert factory.getShape().getObjectType() == JSFunction.INSTANCE;
         assert functionData != null;
         assert enclosingFrame != null; // use JSFrameUtil.NULL_MATERIALIZED_FRAME instead
-        return JSObject.create(functionData.getContext(), factory, functionData, enclosingFrame, classPrototype, realm);
+        JSContext context = functionData.getContext();
+        if (context.getEcmaScriptVersion() < 6 && functionData.isStrict()) {
+            return JSObject.create(context, factory, functionData, enclosingFrame, classPrototype, realm, realm.getThrowerAccessor(), realm.getThrowerAccessor());
+        }
+        return JSObject.create(context, factory, functionData, enclosingFrame, classPrototype, realm);
     }
 
     public static DynamicObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments,
@@ -663,8 +667,7 @@ public final class JSFunction extends JSBuiltinObject {
         }
     }
 
-    private static Shape makeBaseFunctionShape(JSRealm realm, DynamicObject prototype, boolean isStrict) {
-        JSContext context = realm.getContext();
+    private static Shape makeBaseFunctionShape(JSContext context, DynamicObject prototype, boolean isStrict) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         initialShape = initialShape.reservePrimitiveExtensionArray();
         initialShape = initialShape.addProperty(FUNCTION_DATA_PROPERTY);
@@ -678,7 +681,7 @@ public final class JSFunction extends JSBuiltinObject {
             }
         } else {
             if (isStrict) {
-                initialShape = makeStrictFunctionShape(realm, initialShape);
+                initialShape = makeStrictFunctionShape(context, initialShape);
             }
         }
 
@@ -690,9 +693,9 @@ public final class JSFunction extends JSBuiltinObject {
         return isAnonymous && !context.isOptionV8CompatibilityMode() ? shape : shape.addProperty(NAME_PROPERTY);
     }
 
-    public static Shape makeInitialFunctionShape(JSRealm realm, DynamicObject prototype, boolean isStrict, boolean isAnonymous) {
-        Shape initialShape = makeBaseFunctionShape(realm, prototype, isStrict);
-        initialShape = addLengthAndNameProxyProperties(initialShape, realm.getContext(), isAnonymous);
+    public static Shape makeInitialFunctionShape(JSContext context, DynamicObject prototype, boolean isStrict, boolean isAnonymous) {
+        Shape initialShape = makeBaseFunctionShape(context, prototype, isStrict);
+        initialShape = addLengthAndNameProxyProperties(initialShape, context, isAnonymous);
         return initialShape;
     }
 
@@ -737,12 +740,13 @@ public final class JSFunction extends JSBuiltinObject {
     /**
      * Set arguments and caller properties of strict function objects. ES5 Legacy.
      */
-    private static Shape makeStrictFunctionShape(JSRealm realm, Shape nonStrictShape) {
-        assert JSFunction.isJSFunction(realm.getThrowerFunction());
-        Location throwerAccessor = JSObjectUtil.createConstantLocation(new Accessor(realm.getThrowerFunction(), realm.getThrowerFunction()));
+    private static Shape makeStrictFunctionShape(JSContext context, Shape nonStrictShape) {
+        assert context.getEcmaScriptVersion() < 6;
         Shape strictShape = nonStrictShape;
-        strictShape = strictShape.addProperty(JSObjectUtil.makeAccessorProperty(ARGUMENTS, throwerAccessor, JSAttributes.notConfigurableNotEnumerable()));
-        strictShape = strictShape.addProperty(JSObjectUtil.makeAccessorProperty(CALLER, throwerAccessor, JSAttributes.notConfigurableNotEnumerable()));
+        strictShape = strictShape.addProperty(JSObjectUtil.makeAccessorProperty(ARGUMENTS,
+                        nonStrictShape.allocator().locationForType(Accessor.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.notConfigurableNotEnumerable()));
+        strictShape = strictShape.addProperty(JSObjectUtil.makeAccessorProperty(CALLER,
+                        nonStrictShape.allocator().locationForType(Accessor.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.notConfigurableNotEnumerable()));
         return strictShape;
     }
 
@@ -849,10 +853,10 @@ public final class JSFunction extends JSBuiltinObject {
         return new JSConstructor(constructor, prototype);
     }
 
-    public static Shape makeInitialGeneratorFunctionConstructorShape(JSRealm realm, DynamicObject prototype, boolean isAnonymous) {
-        Shape initialShape = makeBaseFunctionShape(realm, prototype, true);
+    public static Shape makeInitialGeneratorFunctionConstructorShape(JSContext context, DynamicObject prototype, boolean isAnonymous) {
+        Shape initialShape = makeBaseFunctionShape(context, prototype, true);
         initialShape = initialShape.addProperty(GENERATOR_FUNCTION_MARKER_PROPERTY);
-        initialShape = addLengthAndNameProxyProperties(initialShape, realm.getContext(), isAnonymous);
+        initialShape = addLengthAndNameProxyProperties(initialShape, context, isAnonymous);
         initialShape = makeConstructorShape(initialShape);
         return initialShape;
     }
@@ -888,8 +892,8 @@ public final class JSFunction extends JSBuiltinObject {
         return new JSConstructor(constructor, prototype);
     }
 
-    public static Shape makeInitialAsyncFunctionShape(JSRealm realm, DynamicObject prototype, boolean isAnonymous) {
-        return makeInitialFunctionShape(realm, prototype, true, isAnonymous);
+    public static Shape makeInitialAsyncFunctionShape(JSContext context, DynamicObject prototype, boolean isAnonymous) {
+        return makeInitialFunctionShape(context, prototype, true, isAnonymous);
     }
 
     /**
@@ -960,12 +964,12 @@ public final class JSFunction extends JSBuiltinObject {
         return JSObjectUtil.getProtoChildShape(enumerateIteratorPrototype, JSUserObject.INSTANCE, context).addProperty(iteratorProperty);
     }
 
-    public static Shape makeInitialBoundFunctionShape(JSRealm realm, DynamicObject prototype, boolean isAnonymous) {
-        Shape initialShape = makeBaseFunctionShape(realm, prototype, true);
+    public static Shape makeInitialBoundFunctionShape(JSContext context, DynamicObject prototype, boolean isAnonymous) {
+        Shape initialShape = makeBaseFunctionShape(context, prototype, true);
         initialShape = initialShape.addProperty(BOUND_TARGET_FUNCTION_PROPERTY);
         initialShape = initialShape.addProperty(BOUND_THIS_PROPERTY);
         initialShape = initialShape.addProperty(BOUND_ARGUMENTS_PROPERTY);
-        initialShape = addLengthAndNameProxyProperties(initialShape, realm.getContext(), isAnonymous);
+        initialShape = addLengthAndNameProxyProperties(initialShape, context, isAnonymous);
         return initialShape;
     }
 
