@@ -303,11 +303,13 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             return value.toString();
         } else if (value instanceof TruffleObject) {
             TruffleObject truffleObject = (TruffleObject) value;
+            Env env = realm.getEnv();
             try {
-                if (JavaInterop.isJavaObject(truffleObject)) {
-                    Class<?> clazz = JavaInterop.asJavaObject(Class.class, JavaInterop.toJavaClass(truffleObject));
+                if (env.isHostObject(truffleObject)) {
+                    Object hostObject = env.asHostObject(truffleObject);
+                    Class<?> clazz = hostObject.getClass();
                     if (clazz == Class.class) {
-                        clazz = JavaInterop.asJavaObject(Class.class, truffleObject);
+                        clazz = (Class<?>) hostObject;
                         return "JavaClass[" + clazz.getTypeName() + "]";
                     } else {
                         return "JavaObject[" + clazz.getTypeName() + "]";
@@ -542,8 +544,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             TruffleObject truffleObject = (TruffleObject) value;
             if (JSInteropNodeUtil.isBoxed(truffleObject)) {
                 return findMetaObject(realm, JSInteropNodeUtil.unbox(truffleObject));
-            } else if (JavaInterop.isJavaObject(Symbol.class, truffleObject)) {
-                return findMetaObject(realm, JavaInterop.asJavaObject(truffleObject));
             } else if (value instanceof InteropBoundFunction) {
                 return findMetaObject(realm, ((InteropBoundFunction) value).getFunction());
             }

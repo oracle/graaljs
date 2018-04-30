@@ -60,7 +60,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
@@ -781,7 +780,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                     if (testMapClass == null) {
                         testMapClass = Class.forName("com.oracle.truffle.js.test.interop.object.ForeignTestMap");
                     }
-                    return JavaInterop.asTruffleObject(testMapClass.newInstance());
+                    return getContext().getRealm().getEnv().asGuestValue(testMapClass.newInstance());
                 } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
                     throw Errors.createTypeError("cannot test with ForeignTestMap: " + e.getMessage());
                 }

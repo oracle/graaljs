@@ -47,6 +47,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -2564,15 +2565,16 @@ public final class JSRuntime {
             return value.toString();
         } else if (value instanceof LargeInteger) {
             return ((LargeInteger) value).doubleValue();
-        } else if (JSFunction.isJSFunction(value) && !JSFunction.isBoundFunction(((DynamicObject) value))) {
-            JSRealm realm = JSFunction.getRealm((DynamicObject) value);
-            return JSFunction.bind(realm, (DynamicObject) value, Undefined.instance, new Object[]{});
-        } else if (JSObject.isDynamicObject(value)) {
+        } else if (value instanceof TruffleObject) {
             return value;
-        } else if (value instanceof JavaClass) {
-            return JavaInterop.asTruffleObject(((JavaClass) value).getType());
+        } else if (JSRuntime.isJSPrimitive(value)) {
+            return value;
         }
-        return JavaInterop.asTruffleValue(value);
+        TruffleLanguage.Env env = AbstractJavaScriptLanguage.findCurrentJSRealm().getEnv();
+        if (value instanceof JavaClass) {
+            return env.asGuestValue(((JavaClass) value).getType());
+        }
+        return env.asGuestValue(value);
     }
 
     @TruffleBoundary

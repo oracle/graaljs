@@ -68,7 +68,6 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
@@ -85,6 +84,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -435,8 +435,14 @@ public abstract class JSScope {
     static Object getInteropValue(Object value) {
         if (JSRuntime.isLazyString(value)) {
             return value.toString();
+        } else if (value instanceof LargeInteger) {
+            return ((LargeInteger) value).doubleValue();
+        } else if (value instanceof TruffleObject) {
+            return value;
+        } else if (JSRuntime.isJSPrimitive(value)) {
+            return value;
         } else {
-            return JavaInterop.asTruffleValue(value);
+            return JavaScriptLanguage.findCurrentJSRealm().getEnv().asGuestValue(value);
         }
     }
 

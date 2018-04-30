@@ -44,10 +44,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -154,20 +153,24 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
     @Specialization(guards = {"!isJavaObject(obj)", "isJavaInteropClass(clazz)"})
     protected boolean instanceofJavaClass(Object obj, Object clazz) {
-        return ((Class<?>) JavaInterop.asJavaObject((TruffleObject) clazz)).isInstance(obj);
+        TruffleLanguage.Env env = context.getRealm().getEnv();
+        return ((Class<?>) env.asHostObject(clazz)).isInstance(obj);
     }
 
     @Specialization(guards = {"isJavaObject(obj)", "isJavaInteropClass(clazz)"})
     protected boolean instanceofJavaClassUnwrap(Object obj, Object clazz) {
-        return ((Class<?>) JavaInterop.asJavaObject((TruffleObject) clazz)).isInstance(JavaInterop.asJavaObject((TruffleObject) obj));
+        TruffleLanguage.Env env = context.getRealm().getEnv();
+        return ((Class<?>) env.asHostObject(clazz)).isInstance(env.asHostObject(obj));
     }
 
-    protected static boolean isJavaObject(Object obj) {
-        return JavaInterop.isJavaObject(obj);
+    protected final boolean isJavaObject(Object obj) {
+        TruffleLanguage.Env env = context.getRealm().getEnv();
+        return env.isHostObject(obj);
     }
 
-    protected static boolean isJavaInteropClass(Object obj) {
-        return JavaInterop.isJavaObject(obj) && JavaInterop.asJavaObject((TruffleObject) obj) instanceof Class;
+    protected final boolean isJavaInteropClass(Object obj) {
+        TruffleLanguage.Env env = context.getRealm().getEnv();
+        return env.isHostObject(obj) && env.asHostObject(obj) instanceof Class;
     }
 
     @Specialization(guards = {"!isJavaObject(obj)"})
@@ -176,8 +179,9 @@ public abstract class InstanceofNode extends JSBinaryNode {
     }
 
     @Specialization(guards = {"isJavaObject(obj)"})
-    protected static boolean doJavaUnwrap(Object obj, JavaClass clazz) {
-        return clazz.getType().isInstance(JavaInterop.asJavaObject((TruffleObject) obj));
+    protected final boolean doJavaUnwrap(Object obj, JavaClass clazz) {
+        TruffleLanguage.Env env = context.getRealm().getEnv();
+        return clazz.getType().isInstance(env.asHostObject(obj));
     }
 
     @Specialization(guards = {"!isDynamicObject(target)", "!isJavaInteropClass(target)", "!isJavaClass(target)"})
