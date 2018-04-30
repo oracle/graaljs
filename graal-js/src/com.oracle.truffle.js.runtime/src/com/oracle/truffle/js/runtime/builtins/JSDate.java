@@ -151,7 +151,7 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject datePrototype = JSObject.create(realm, realm.getObjectPrototype(), ctx.getEcmaScriptVersion() < 6 ? INSTANCE : JSUserObject.INSTANCE);
+        DynamicObject datePrototype = JSObject.create(ctx, realm.getObjectPrototype(), ctx.getEcmaScriptVersion() < 6 ? INSTANCE : JSUserObject.INSTANCE);
         if (ctx.getEcmaScriptVersion() < 6) {
             JSObjectUtil.putHiddenProperty(datePrototype, TIME_MILLIS_PROPERTY, Double.NaN);
         }

@@ -47,7 +47,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -73,9 +72,8 @@ public class DeclareEvalVariableNode extends StatementNode {
         DynamicObject dynamicScope = (DynamicObject) dynamicScopeNode.execute(frame);
         if (dynamicScope == Undefined.instance) {
             // NB: dynamic scope object must not have a prototype (visible to user code)
-            Shape shape = context.getEmptyShapePrototypeInObject();
+            Shape shape = context.getEmptyShape();
             dynamicScope = JSObject.create(context, shape);
-            JSShape.getPrototypeProperty(shape).setSafe(dynamicScope, Null.instance, null);
             // (GR-2060) consider eager initialization of dynamic scope object when
             // the function/block owning it is entered instead of at use (here).
             initScopeNode.executeWrite(frame, dynamicScope);

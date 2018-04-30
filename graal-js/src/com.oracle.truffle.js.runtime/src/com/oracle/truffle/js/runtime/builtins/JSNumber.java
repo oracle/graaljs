@@ -96,7 +96,7 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext context = realm.getContext();
-        DynamicObject numberPrototype = JSObject.create(realm, realm.getObjectPrototype(), JSNumber.INSTANCE);
+        DynamicObject numberPrototype = JSObject.create(context, realm.getObjectPrototype(), JSNumber.INSTANCE);
         JSObjectUtil.putHiddenProperty(numberPrototype, VALUE_PROPERTY, 0);
         JSObjectUtil.putConstructorProperty(context, numberPrototype, ctor);
 

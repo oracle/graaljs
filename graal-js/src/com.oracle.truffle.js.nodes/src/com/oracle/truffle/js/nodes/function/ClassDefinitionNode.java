@@ -97,7 +97,7 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
         if (classHeritageNode != null) {
             Object superclass = classHeritageNode.execute(frame);
             if (superclass == Null.instance) {
-                protoParent = null;
+                protoParent = Null.instance;
             } else if (!JSRuntime.isConstructor(superclass)) {
                 // 6.f. if IsConstructor(superclass) is false, throw a TypeError.
                 throw Errors.createTypeError("not a constructor", this);
@@ -107,7 +107,7 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
             } else {
                 protoParent = getPrototypeNode.getValue(superclass);
                 if (protoParent == Null.instance) {
-                    protoParent = null;
+                    protoParent = Null.instance;
                 } else if (!JSRuntime.isObject(protoParent)) {
                     assert protoParent != Null.instance;
                     throw Errors.createTypeError("protoParent is neither Object nor Null", this);

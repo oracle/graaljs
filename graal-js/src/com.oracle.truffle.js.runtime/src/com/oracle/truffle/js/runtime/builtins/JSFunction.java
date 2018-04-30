@@ -509,7 +509,7 @@ public final class JSFunction extends JSBuiltinObject {
         JSRealm realm = getRealm(constructor);
         JSContext context = functionData.getContext();
         if (!functionData.isGenerator()) {
-            DynamicObject prototype = JSUserObject.create(realm);
+            DynamicObject prototype = JSUserObject.create(context, realm);
             JSObjectUtil.putConstructorProperty(context, prototype, constructor);
             return prototype;
         } else {
@@ -632,8 +632,9 @@ public final class JSFunction extends JSBuiltinObject {
     }
 
     public static DynamicObject createFunctionPrototype(JSRealm realm, DynamicObject objectPrototype) {
-        DynamicObject obj = JSObject.create(realm, objectPrototype, INSTANCE);
-        JSObjectUtil.putHiddenProperty(obj, FUNCTION_DATA_PROPERTY, createEmptyFunctionData(realm.getContext()));
+        JSContext context = realm.getContext();
+        DynamicObject obj = JSObject.create(context, objectPrototype, INSTANCE);
+        JSObjectUtil.putHiddenProperty(obj, FUNCTION_DATA_PROPERTY, createEmptyFunctionData(context));
         JSObjectUtil.putHiddenProperty(obj, ENCLOSING_FRAME_PROPERTY, JSFrameUtil.NULL_MATERIALIZED_FRAME);
         JSObjectUtil.putHiddenProperty(obj, CLASS_PROTOTYPE_PROPERTY, CLASS_PROTOTYPE_PLACEHOLDER);
         JSObjectUtil.putHiddenProperty(obj, REALM_PROPERTY, realm);
@@ -826,7 +827,7 @@ public final class JSFunction extends JSBuiltinObject {
     public static DynamicObject createGeneratorFunctionPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
         // intrinsic object %Generator%
-        DynamicObject prototype = JSObject.create(realm, realm.getFunctionPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(ctx, realm.getFunctionPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.PROTOTYPE, createGeneratorPrototype(realm, prototype), JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, GENERATOR_FUNCTION_NAME, JSAttributes.configurableNotEnumerableNotWritable());
@@ -836,7 +837,7 @@ public final class JSFunction extends JSBuiltinObject {
     private static DynamicObject createGeneratorPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
         // intrinsic object %GeneratorPrototype%
-        DynamicObject generatorPrototype = JSObject.create(realm, realm.getIteratorPrototype(), JSUserObject.INSTANCE);
+        DynamicObject generatorPrototype = JSObject.create(ctx, realm.getIteratorPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(realm, generatorPrototype, JSFunction.GENERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(ctx, generatorPrototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, generatorPrototype, Symbol.SYMBOL_TO_STRING_TAG, GENERATOR_NAME, JSAttributes.configurableNotEnumerableNotWritable());
@@ -876,7 +877,7 @@ public final class JSFunction extends JSBuiltinObject {
     public static DynamicObject createAsyncFunctionPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
         // intrinsic object %AsyncFunctionPrototype%
-        DynamicObject prototype = JSObject.create(realm, realm.getFunctionPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(ctx, realm.getFunctionPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, ASYNC_FUNCTION_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -900,8 +901,8 @@ public final class JSFunction extends JSBuiltinObject {
      * Creates the %AsyncIteratorPrototype% object (ES2018 11.1.2).
      */
     public static DynamicObject createAsyncIteratorPrototype(JSRealm realm) {
-        DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSContext context = realm.getContext();
+        DynamicObject prototype = JSObject.create(context, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
@@ -925,7 +926,7 @@ public final class JSFunction extends JSBuiltinObject {
     public static DynamicObject createAsyncGeneratorFunctionPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
         // intrinsic object %AsyncGenerator%
-        DynamicObject prototype = JSObject.create(realm, realm.getFunctionPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(ctx, realm.getFunctionPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.PROTOTYPE, createAsyncGeneratorPrototype(realm, prototype), JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, ASYNC_GENERATOR_FUNCTION_NAME, JSAttributes.configurableNotEnumerableNotWritable());
@@ -935,7 +936,7 @@ public final class JSFunction extends JSBuiltinObject {
     private static DynamicObject createAsyncGeneratorPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
         // intrinsic object %AsyncGeneratorPrototype%
-        DynamicObject prototype = JSObject.create(realm, realm.getAsyncIteratorPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(ctx, realm.getAsyncIteratorPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, JSFunction.ASYNC_GENERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, ASYNC_GENERATOR_NAME, JSAttributes.configurableNotEnumerableNotWritable());
@@ -955,9 +956,9 @@ public final class JSFunction extends JSBuiltinObject {
     // ##### Bound functions and enumerate iterator
 
     public static Shape makeInitialEnumerateIteratorShape(JSRealm realm) {
-        DynamicObject iteratorPrototype = realm.getIteratorPrototype();
-        DynamicObject enumerateIteratorPrototype = JSObject.create(realm, iteratorPrototype, JSUserObject.INSTANCE);
         JSContext context = realm.getContext();
+        DynamicObject iteratorPrototype = realm.getIteratorPrototype();
+        DynamicObject enumerateIteratorPrototype = JSObject.create(context, iteratorPrototype, JSUserObject.INSTANCE);
         final Property iteratorProperty = JSObjectUtil.makeHiddenProperty(JSRuntime.ENUMERATE_ITERATOR_ID,
                         realm.getInitialUserObjectShape().allocator().locationForType(Iterator.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
         JSObjectUtil.putFunctionsFromContainer(realm, enumerateIteratorPrototype, JSFunction.ENUMERATE_ITERATOR_PROTOTYPE_NAME);

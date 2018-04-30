@@ -57,7 +57,7 @@ public final class JSON {
 
     public static DynamicObject create(JSRealm realm) {
         JSContext ctx = realm.getContext();
-        DynamicObject obj = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.create(ctx, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(ctx, obj, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(realm, obj, CLASS_NAME);
         return obj;

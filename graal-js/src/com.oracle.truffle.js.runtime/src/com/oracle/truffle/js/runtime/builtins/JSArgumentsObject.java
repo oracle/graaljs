@@ -82,7 +82,7 @@ public final class JSArgumentsObject extends JSAbstractArgumentsObject {
     public static Shape makeInitialNonStrictArgumentsShape(JSRealm realm) {
         JSContext context = realm.getContext();
         DynamicObject objectPrototype = realm.getObjectPrototype();
-        DynamicObject dummyArray = JSObject.create(realm, objectPrototype, INSTANCE);
+        DynamicObject dummyArray = JSObject.create(context, objectPrototype, INSTANCE);
 
         putArrayProperties(dummyArray, ScriptArray.createConstantEmptyArray());
 
@@ -104,7 +104,7 @@ public final class JSArgumentsObject extends JSAbstractArgumentsObject {
 
     public static Shape makeInitialStrictArgumentsShape(JSRealm realm) {
         JSContext context = realm.getContext();
-        DynamicObject dummyArray = JSObject.create(realm, realm.getObjectPrototype(), INSTANCE);
+        DynamicObject dummyArray = JSObject.create(context, realm.getObjectPrototype(), INSTANCE);
 
         putArrayProperties(dummyArray, ScriptArray.createConstantEmptyArray());
 

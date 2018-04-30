@@ -93,7 +93,7 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
         if (!JSObject.isJSObject(syncIterator)) {
             throw Errors.createTypeErrorNotAnObject(syncIterator, this);
         }
-        DynamicObject obj = JSObject.create(context.getRealm(), context.getRealm().getAsyncFromSyncIteratorPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.create(context, context.getRealm().getAsyncFromSyncIteratorPrototype(), JSUserObject.INSTANCE);
         setState.setValue(obj, syncIterator);
         return obj;
     }

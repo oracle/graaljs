@@ -46,7 +46,6 @@ import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -75,8 +74,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
@@ -99,7 +96,6 @@ import com.oracle.truffle.js.runtime.joni.JoniRegexCompiler;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.JSShapeData;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -396,9 +392,7 @@ public class JSContext implements ShapeContext {
     }
 
     private Shape createEmptyShapePrototypeInObject() {
-        Property prototypeProperty = JSObjectUtil.makeHiddenProperty(JSObject.HIDDEN_PROTO,
-                        JSShape.makeAllocator(JSObject.LAYOUT).locationForType(JSObject.CLASS, EnumSet.noneOf(LocationModifier.class)));
-        return JSShape.makeEmptyRoot(JSObject.LAYOUT, JSUserObject.INSTANCE, this, prototypeProperty);
+        return JSShape.makeEmptyRoot(JSObject.LAYOUT, JSUserObject.INSTANCE, this, JSObject.PROTO_PROPERTY);
     }
 
     private Shape createGlobalScopeShape() {

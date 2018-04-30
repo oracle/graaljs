@@ -173,9 +173,10 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
 
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
-        DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
-        JSObjectUtil.putDataProperty(realm.getContext(), prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        JSObjectUtil.putConstructorProperty(realm.getContext(), prototype, ctor);
+        JSContext context = realm.getContext();
+        DynamicObject prototype = JSObject.create(context, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putConstructorProperty(context, prototype, ctor);
         return prototype;
     }
 

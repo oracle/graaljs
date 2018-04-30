@@ -231,7 +231,7 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSString.INSTANCE);
+        DynamicObject prototype = JSObject.create(ctx, realm.getObjectPrototype(), JSString.INSTANCE);
         JSObjectUtil.putHiddenProperty(prototype, STRING_PROPERTY, "");
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         // sets the length just for the prototype

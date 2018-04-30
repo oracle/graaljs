@@ -1050,7 +1050,7 @@ public class JSRealm implements ShapeContext {
         putGlobalProperty(global, JSDataView.CLASS_NAME, getDataViewConstructor().getFunctionObject());
 
         if (JSTruffleOptions.SIMDJS) {
-            DynamicObject simdObject = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+            DynamicObject simdObject = JSObject.create(context, this.getObjectPrototype(), JSUserObject.INSTANCE);
             for (SIMDTypeFactory<? extends SIMDType> factory : SIMDType.FACTORIES) {
                 JSObjectUtil.putDataProperty(context, simdObject, factory.getName(), getSIMDTypeConstructor(factory).getFunctionObject(), JSAttributes.getDefaultNotEnumerable());
             }
@@ -1219,7 +1219,7 @@ public class JSRealm implements ShapeContext {
     }
 
     private void setupPolyglot(DynamicObject global) {
-        DynamicObject obj = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.create(context, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_CLASS_NAME);
         if (getContext().isOptionDebugBuiltin()) {
             JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_INTERNAL_CLASS_NAME);
@@ -1229,7 +1229,7 @@ public class JSRealm implements ShapeContext {
     }
 
     private void putConsoleObject(DynamicObject global) {
-        DynamicObject console = JSUserObject.create(this);
+        DynamicObject console = JSUserObject.create(context, this);
         putGlobalProperty(console, "log", JSObject.get(global, "print"));
         putGlobalProperty(global, "console", console);
     }
@@ -1238,7 +1238,7 @@ public class JSRealm implements ShapeContext {
      * Creates the %IteratorPrototype% object as specified in ES6 25.1.2.
      */
     private DynamicObject createIteratorPrototype() {
-        DynamicObject prototype = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(context, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(this), JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
@@ -1303,14 +1303,14 @@ public class JSRealm implements ShapeContext {
     }
 
     private DynamicObject createReflect() {
-        DynamicObject obj = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.create(context, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_STRING_TAG, REFLECT_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, obj, REFLECT_CLASS_NAME);
         return obj;
     }
 
     private DynamicObject createAtomics() {
-        DynamicObject obj = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.create(context, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_STRING_TAG, ATOMICS_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, obj, ATOMICS_CLASS_NAME);
         return obj;
@@ -1514,7 +1514,7 @@ public class JSRealm implements ShapeContext {
     }
 
     private DynamicObject createRealmBuiltinObject() {
-        DynamicObject obj = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.create(context, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(getContext(), obj, Symbol.SYMBOL_TO_STRING_TAG, REALM_BUILTIN_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, obj, REALM_BUILTIN_CLASS_NAME);
         return obj;

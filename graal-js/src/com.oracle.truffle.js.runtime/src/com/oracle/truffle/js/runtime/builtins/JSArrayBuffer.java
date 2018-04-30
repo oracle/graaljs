@@ -113,7 +113,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext context = realm.getContext();
-        DynamicObject arrayBufferPrototype = JSObject.create(realm, realm.getObjectPrototype(), context.getEcmaScriptVersion() < 6 ? HEAP_INSTANCE : JSUserObject.INSTANCE);
+        DynamicObject arrayBufferPrototype = JSObject.create(context, realm.getObjectPrototype(), context.getEcmaScriptVersion() < 6 ? HEAP_INSTANCE : JSUserObject.INSTANCE);
         if (context.getEcmaScriptVersion() < 6) {
             putHiddenProperty(arrayBufferPrototype, BYTE_ARRAY_PROPERTY, new byte[0]);
         }

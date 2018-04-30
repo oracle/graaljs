@@ -58,8 +58,9 @@ public final class JSDebug {
     }
 
     public static DynamicObject create(JSRealm realm) {
-        DynamicObject obj = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
-        JSObjectUtil.putDataProperty(realm.getContext(), obj, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSContext ctx = realm.getContext();
+        DynamicObject obj = JSUserObject.create(ctx, realm);
+        JSObjectUtil.putDataProperty(ctx, obj, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(realm, obj, CLASS_NAME);
         return obj;
     }

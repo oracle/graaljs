@@ -166,7 +166,7 @@ public final class JSError extends JSBuiltinObject {
         JSContext ctx = realm.getContext();
         DynamicObject proto = errorType == JSErrorType.Error ? realm.getObjectPrototype() : realm.getErrorConstructor(JSErrorType.Error).getPrototype();
 
-        DynamicObject errorPrototype = JSObject.create(realm, proto, ctx.getEcmaScriptVersion() < 6 ? INSTANCE : JSUserObject.INSTANCE);
+        DynamicObject errorPrototype = JSObject.create(ctx, proto, ctx.getEcmaScriptVersion() < 6 ? INSTANCE : JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(ctx, errorPrototype, MESSAGE, "", JSAttributes.getDefaultNotEnumerable());
 
         if (errorType == JSErrorType.Error) {

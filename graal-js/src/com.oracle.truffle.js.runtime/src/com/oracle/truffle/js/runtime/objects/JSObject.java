@@ -51,6 +51,8 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.LocationModifier;
+import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -83,6 +85,9 @@ public final class JSObject {
 
     public static final String NO_SUCH_PROPERTY_NAME = "__noSuchProperty__";
     public static final String NO_SUCH_METHOD_NAME = "__noSuchMethod__";
+
+    public static final Property PROTO_PROPERTY = JSObjectUtil.makeHiddenProperty(JSObject.HIDDEN_PROTO,
+                    JSShape.makeAllocator(JSObject.LAYOUT).locationForType(JSObject.CLASS, EnumSet.noneOf(LocationModifier.class)));
 
     private JSObject() {
         // use factory methods to create this class
@@ -119,16 +124,16 @@ public final class JSObject {
     @TruffleBoundary
     public static DynamicObject create(JSRealm realm, DynamicObject prototype, JSClass builtinObject) {
         // slow; only use for initialization
-        assert prototype == null || JSRuntime.isObject(prototype);
+        assert prototype == Null.instance || JSRuntime.isObject(prototype);
         JSContext context = realm.getContext();
-        return create(context, prototype == null ? context.getEmptyShape() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
+        return create(context, prototype == Null.instance ? context.getEmptyShape() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
     }
 
     @TruffleBoundary
     public static DynamicObject create(JSContext context, DynamicObject prototype, JSClass builtinObject) {
         // slow; only use for initialization
-        assert prototype == null || JSRuntime.isObject(prototype);
-        return create(context, prototype == null ? context.getEmptyShape() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
+        assert prototype == Null.instance || JSRuntime.isObject(prototype);
+        return create(context, prototype == Null.instance ? context.getEmptyShape() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
     }
 
     /**
