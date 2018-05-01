@@ -132,25 +132,37 @@ public class IncDecOperationTest extends FineGrainedAccessTest {
 
     @Test
     public void incLocal() {
-        evalAllTags("function inc(a) { var x = a++; return x; }; inc(42);");
-        assertAllLocalOperations("+", 43);
+        evalAllTags("function foo(a) { var x = a++; return x; }; foo(42);");
+        assertAllLocalOperationsPost("+", 43, 42);
     }
 
     @Test
     public void decLocal() {
-        evalAllTags("function inc(a) { var x = a--; return x; }; inc(42);");
-        assertAllLocalOperations("-", 41);
+        evalAllTags("function foo(a) { var x = a--; return x; }; foo(42);");
+        assertAllLocalOperationsPost("-", 41, 42);
     }
 
-    private void assertAllLocalOperations(String operator, int valueSet) {
-        assertGlobalFunctionExpressionDeclaration("inc");
+    @Test
+    public void incLocalPre() {
+        evalAllTags("function foo(a) { var x = ++a; return x; }; foo(42);");
+        assertAllLocalOperationsPost("+", 43, 43);
+    }
+
+    @Test
+    public void decLocalPre() {
+        evalAllTags("function foo(a) { var x = --a; return x; }; foo(42);");
+        assertAllLocalOperationsPost("-", 41, 41);
+    }
+
+    private void assertAllLocalOperationsPost(String operator, int valueSet, int exprReturns) {
+        assertGlobalFunctionExpressionDeclaration("foo");
 
         enter(FunctionCallExpressionTag.class, (e1, p1) -> {
             // Read target and arguments
             enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
             p1.input(Undefined.instance);
             enter(ReadPropertyExpressionTag.class, (e2, p2) -> {
-                assertAttribute(e2, KEY, "inc");
+                assertAttribute(e2, KEY, "foo");
                 p2.input(assertGlobalObjectInput);
             }).exit(assertJSFunctionReturn);
             p1.input(assertJSFunctionInput);
@@ -179,13 +191,14 @@ public class IncDecOperationTest extends FineGrainedAccessTest {
                     // Write to 'a' sets new value
                     p4.input(valueSet);
                 }).exit();
-                // expression returns 42
-                p3.input(42);
+                // expression returns
+                p3.input(exprReturns);
             }).exit();
             // return x;
             enter(ReadVariableExpressionTag.class, (e6, p6) -> {
                 assertAttribute(e6, NAME, "x");
-            }).exit(assertReturnValue(42));
+            }).exit(assertReturnValue(exprReturns));
         }).exit();
     }
+
 }
