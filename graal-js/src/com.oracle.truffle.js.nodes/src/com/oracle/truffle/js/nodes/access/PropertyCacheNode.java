@@ -694,7 +694,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            return JSObject.getPrototype((DynamicObject) thisObj);
+            return getPrototypeNode.executeDynamicObject((DynamicObject) thisObj);
         }
 
         @Override
