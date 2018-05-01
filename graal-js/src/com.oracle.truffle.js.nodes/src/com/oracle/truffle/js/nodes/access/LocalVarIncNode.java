@@ -208,11 +208,28 @@ class LocalVarPostfixIncMaterializedNode extends LocalVarIncNode {
         transferSourceSection(from, this);
     }
 
+    LocalVarPostfixIncMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode read) {
+        super(op, slot, hasTdz, scope);
+        readTmp = read;
+        one = JSConstantIntegerNode.create(1);
+        if (op instanceof DecOp) {
+            opNode = JSSubtractNode.create(readTmp, one);
+        } else {
+            opNode = JSAddNode.create(readTmp, one);
+        }
+        writeTmp = JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, opNode, hasTemporalDeadZone);
+    }
+
     @Override
     public Object execute(VirtualFrame frame) {
         Object value = readTmp.execute(frame);
         writeTmp.execute(frame);
         return value;
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized() {
+        return new LocalVarPostfixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), (ScopeFrameNode) scopeFrameNode.copy(), cloneUninitialized(readTmp));
     }
 
 }

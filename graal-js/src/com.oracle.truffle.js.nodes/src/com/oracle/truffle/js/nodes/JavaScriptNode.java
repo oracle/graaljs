@@ -364,7 +364,7 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
             return cloneUninitialized((JavaScriptNode) wrapperNode.getDelegateNode());
         }
 
-        throw Errors.notYetImplemented("copyUninitialized()");
+        throw Errors.notYetImplemented(getClass().getSimpleName() + ".copyUninitialized()");
     }
 
     @SuppressWarnings("unchecked")
