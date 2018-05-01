@@ -143,39 +143,26 @@ public class JSTags {
      *
      * Marks all code locations that perform unary operations, e.g., <code>!true</code>.
      * <p>
-     * Unary expressions have only one input Intermediate value:
+     * All unary expressions except <code>delete</code> have one input Intermediate value:
      * <ul>
      * <li><b>#0 Operand</b> The operand for the unary operation.</li>
+     * </ul>
+     * The ECMA2018 12.5.3 <code>delete</code> expression provides two intermediate values:
+     * <ul>
+     * <li><b>#0 Target</b> The target object instance.</li>
+     * <li><b>#1 Key</b> The property key to be deleted.</li>
      * </ul>
      *
      * Tagged nodes provide the following metadata:
      * <ul>
      * <li><b>operator</b> A <code>String</code> representation of the operator. Examples are:
-     * <code>!</code>, <code>~</code> etc.</li>
+     * <code>!</code>, <code>~</code>, <code>delete</code> etc.</li>
      * </ul>
      * </p>
      */
     @Tag.Identifier("UnaryExpression")
     public static final class UnaryExpressionTag extends Tag {
         private UnaryExpressionTag() {
-        }
-    }
-
-    /**
-     * ECMA2018 12.5.3 Delete expressions.
-     *
-     * Marks all code locations that remove a property from an object using <code>delete</code>.
-     * <p>
-     * Delete expressions have only two input Intermediate value:
-     * <ul>
-     * <li><b>#0 Target</b> The target object instance.</li>
-     * <li><b>#1 Key</b> The property name.</li>
-     * </ul>
-     * </p>
-     */
-    @Tag.Identifier("DeleteExpression")
-    public static final class DeleteExpressionTag extends Tag {
-        private DeleteExpressionTag() {
         }
     }
 

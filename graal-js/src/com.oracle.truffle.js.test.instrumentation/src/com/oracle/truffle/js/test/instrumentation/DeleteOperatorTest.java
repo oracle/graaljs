@@ -42,9 +42,9 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeleteExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 
 public class DeleteOperatorTest extends FineGrainedAccessTest {
@@ -63,7 +63,8 @@ public class DeleteOperatorTest extends FineGrainedAccessTest {
             p.input(assertJSObjectInput);
         }).exit();
         // delete a.x
-        enter(DeleteExpressionTag.class, (e, p) -> {
+        enter(UnaryExpressionTag.class, (e, p) -> {
+            assertAttribute(e, OPERATOR, "delete");
             enter(ReadPropertyExpressionTag.class, (e1, p1) -> {
                 p1.input(assertGlobalObjectInput);
             }).exit();
@@ -71,6 +72,25 @@ public class DeleteOperatorTest extends FineGrainedAccessTest {
             p.input(assertJSObjectInput);
             enter(LiteralExpressionTag.class).exit(assertReturnValue("x"));
             p.input("x");
+        }).exit(assertReturnValue(true));
+    }
+
+    @Test
+    public void deleteGlobal() {
+        evalAllTags("a = 'foo'; delete a;");
+        // a = 'foo'
+        enter(WritePropertyExpressionTag.class, (e, p) -> {
+            assertAttribute(e, KEY, "a");
+            p.input(assertGlobalObjectInput);
+            enter(LiteralExpressionTag.class).exit(assertReturnValue("foo"));
+            p.input("foo");
+        }).exit();
+        // delete a
+        enter(UnaryExpressionTag.class, (e, p) -> {
+            assertAttribute(e, OPERATOR, "delete");
+            p.input(assertGlobalObjectInput);
+            enter(LiteralExpressionTag.class).exit(assertReturnValue("a"));
+            p.input("a");
         }).exit(assertReturnValue(true));
     }
 

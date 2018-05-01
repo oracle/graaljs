@@ -2123,8 +2123,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode enterDeleteAccess(Expression rhs) {
         AccessNode accessNode = (AccessNode) rhs;
         JavaScriptNode target = transform(accessNode.getBase());
-        JavaScriptNode constantString = ensureHasSourceSection(factory.createConstantString(accessNode.getProperty()), rhs);
-        return result(factory.createDeleteProperty(target, constantString, environment.isStrictMode()));
+        return result(factory.createDeleteProperty(target, factory.createConstantString(accessNode.getProperty()), environment.isStrictMode()));
     }
 
     private JavaScriptNode[] transformArgs(List<Expression> argList) {
