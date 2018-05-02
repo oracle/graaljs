@@ -49,7 +49,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -145,7 +144,6 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
     @Child private PropertySetNode setAsyncContext;
 
     @CompilationFinal RootCallTarget resumeTarget;
-    @CompilationFinal DirectCallNode asyncCallNode;
     private final JSContext context;
 
     @Child private JavaScriptNode functionBody;
@@ -181,7 +179,6 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         atomic(() -> {
             AsyncGeneratorRootNode asyncGeneratorRootNode = new AsyncGeneratorRootNode(context, functionBody, writeYieldValueNode, readYieldResultNode, getRootNode().getSourceSection());
             this.resumeTarget = Truffle.getRuntime().createCallTarget(asyncGeneratorRootNode);
-            this.asyncCallNode = insert(DirectCallNode.create(resumeTarget));
             // these children have been transferred to the generator root node and are now disowned
             this.functionBody = null;
             this.writeYieldValueNode = null;
