@@ -129,6 +129,10 @@ public final class JSRuntime {
     public static final HiddenKey ITERATOR_NEXT_INDEX = new HiddenKey("IteratorNextIndex");
     public static final HiddenKey ENUMERATE_ITERATOR_ID = new HiddenKey("EnumerateIterator");
 
+    public static final int ITERATION_KIND_KEY = 1 << 0;
+    public static final int ITERATION_KIND_VALUE = 1 << 1;
+    public static final int ITERATION_KIND_KEY_PLUS_VALUE = ITERATION_KIND_KEY | ITERATION_KIND_VALUE;
+
     private JSRuntime() {
         // this class should not be instantiated
     }

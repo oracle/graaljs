@@ -49,6 +49,7 @@ import java.nio.ByteOrder;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -58,11 +59,13 @@ import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBuffer
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferSliceNode;
 import com.oracle.truffle.js.builtins.ArrayBufferViewPrototypeBuiltinsFactory.JSArrayBufferViewFillNodeGen;
 import com.oracle.truffle.js.builtins.ArrayBufferViewPrototypeBuiltinsFactory.JSArrayBufferViewForEachNodeGen;
+import com.oracle.truffle.js.builtins.ArrayBufferViewPrototypeBuiltinsFactory.JSArrayBufferViewIteratorNodeGen;
 import com.oracle.truffle.js.builtins.ArrayBufferViewPrototypeBuiltinsFactory.JSArrayBufferViewReverseNodeGen;
 import com.oracle.truffle.js.builtins.ArrayBufferViewPrototypeBuiltinsFactory.JSArrayBufferViewSetNodeGen;
 import com.oracle.truffle.js.builtins.ArrayBufferViewPrototypeBuiltinsFactory.JSArrayBufferViewSubarrayNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArrayForEachIndexCallOperation;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.CreateArrayIteratorNode;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperation;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperationWithToInt;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayCopyWithinNodeGen;
@@ -88,6 +91,7 @@ import com.oracle.truffle.js.nodes.access.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -131,6 +135,9 @@ public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.
         toLocaleString(0),
         join(1),
         reverse(0),
+        keys(0),
+        values(0),
+        entries(0),
 
         // ES7
         includes(1);
@@ -201,6 +208,13 @@ public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.
                 return JSArrayJoinNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case reverse:
                 return JSArrayBufferViewReverseNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case keys:
+                return JSArrayBufferViewIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY, args().withThis().createArgumentNodes(context));
+            case values:
+                return JSArrayBufferViewIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_VALUE, args().withThis().createArgumentNodes(context));
+            case entries:
+                return JSArrayBufferViewIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE, args().withThis().createArgumentNodes(context));
+
             case includes:
                 return JSArrayIncludesNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
         }
@@ -618,6 +632,35 @@ public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.
                 toNumberNode = insert(JSToNumberNode.create());
             }
             return toNumberNode.execute(value);
+        }
+    }
+
+    public abstract static class JSArrayBufferViewIteratorNode extends JSBuiltinNode {
+        @Child private CreateArrayIteratorNode createArrayIteratorNode;
+        private final BranchProfile errorBranch = BranchProfile.create();
+
+        public JSArrayBufferViewIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
+            super(context, builtin);
+            this.createArrayIteratorNode = CreateArrayIteratorNode.create(context, iterationKind);
+        }
+
+        @Specialization(guards = "isJSArrayBufferView(thisObj)")
+        protected DynamicObject doObject(VirtualFrame frame, DynamicObject thisObj) {
+            checkHasDetachedBuffer(thisObj);
+            return createArrayIteratorNode.execute(frame, thisObj);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSArrayBufferView(thisObj)")
+        protected DynamicObject doNotObject(Object thisObj) {
+            throw Errors.createTypeErrorArrayBufferViewExpected();
+        }
+
+        protected final void checkHasDetachedBuffer(DynamicObject view) {
+            if (JSArrayBufferView.hasDetachedBuffer(view, getContext())) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorDetachedBuffer();
+            }
         }
     }
 }

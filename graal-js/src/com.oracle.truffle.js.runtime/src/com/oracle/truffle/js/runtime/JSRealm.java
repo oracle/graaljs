@@ -235,6 +235,7 @@ public class JSRealm implements ShapeContext {
     private final JSConstructor proxyConstructor;
     private final DynamicObjectFactory proxyFactory;
     private final DynamicObject iteratorPrototype;
+    private final DynamicObject arrayIteratorPrototype;
 
     @CompilationFinal(dimensions = 1) private final JSConstructor[] simdTypeConstructors;
     @CompilationFinal(dimensions = 1) private final DynamicObjectFactory[] simdTypeFactories;
@@ -453,6 +454,7 @@ public class JSRealm implements ShapeContext {
         this.initialJavaPackageFactory = isJavaInteropAvailable() ? JavaPackage.createInitialShape(this).createFactory() : null;
 
         this.iteratorPrototype = es6 ? createIteratorPrototype() : null;
+        this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
         this.generatorFunctionConstructor = es6 ? JSFunction.createGeneratorFunctionConstructor(this) : null;
         this.initialGeneratorFactory = es6 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(this, generatorFunctionConstructor.getPrototype(), false).createFactory() : null;
         this.initialAnonymousGeneratorFactory = es6 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(this, generatorFunctionConstructor.getPrototype(), true).createFactory() : null;
@@ -915,6 +917,10 @@ public class JSRealm implements ShapeContext {
         return asyncFromSyncIteratorPrototype;
     }
 
+    public DynamicObject getArrayIteratorPrototype() {
+        return arrayIteratorPrototype;
+    }
+
     /**
      * This function is used whenever a function is required that throws a TypeError. It is used by
      * some of the builtins that provide accessor functions that should not be called (e.g., as a
@@ -1203,7 +1209,23 @@ public class JSRealm implements ShapeContext {
      * Creates the %IteratorPrototype% object as specified in ES6 25.1.2.
      */
     private DynamicObject createIteratorPrototype() {
-        return JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(this), JSAttributes.getDefaultNotEnumerable());
+        return prototype;
+    }
+
+    private static DynamicObject createIteratorPrototypeSymbolIteratorFunction(JSRealm realm) {
+        return JSFunction.create(realm, JSFunctionData.createCallOnly(realm.getContext(), realm.getContext().getSpeciesGetterFunctionCallTarget(), 0, "[Symbol.iterator]"));
+    }
+
+    /**
+     * Creates the %ArrayIteratorPrototype% object as specified in ES6 22.1.5.2.
+     */
+    private DynamicObject createArrayIteratorPrototype() {
+        DynamicObject prototype = JSObject.create(context, this.iteratorPrototype, JSUserObject.INSTANCE);
+        JSObjectUtil.putFunctionsFromContainer(this, prototype, JSArray.ITERATOR_PROTOTYPE_NAME);
+        JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSArray.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        return prototype;
     }
 
     public DynamicObject getArrayProtoValuesIterator() {

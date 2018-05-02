@@ -11,7 +11,6 @@
 
 const ITERATED_OBJECT_ID = Internal.GetHiddenKey("IteratedObject");
 const ITERATOR_NEXT_INDEX_ID = Internal.GetHiddenKey("IteratorNextIndex");
-const ARRAY_ITERATION_KIND_ID = Internal.HiddenKey("ArrayIterationKind");
 
 const ITERATION_KIND_KEY = 1 << 0;
 const ITERATION_KIND_VALUE = 1 << 1;
@@ -19,120 +18,9 @@ const ITERATION_KIND_KEY_PLUS_VALUE = ITERATION_KIND_KEY | ITERATION_KIND_VALUE;
 
 var TypedArray = Internal.TypedArray; // == Object.getPrototypeOf(Int8Array)
 
-function getIteratorPrototype() {
-  return this;
-}
-Internal.CreateMethodProperty(Internal.GetIteratorPrototype(), Symbol.iterator, getIteratorPrototype);
-
-Internal.SetFunctionName(getIteratorPrototype, "[Symbol.iterator]");
-
-// Array Iterator
-var ArrayIterator = Internal.MakeConstructor(function ArrayIterator() {});
-ArrayIterator.prototype = Object.create(Internal.GetIteratorPrototype());
-
-function CreateArrayIterator(array, kind) {
-  // Assert: Type(array) is Object.
-  var iterator = new ArrayIterator();
-  iterator[ITERATED_OBJECT_ID] = array;
-  iterator[ITERATOR_NEXT_INDEX_ID] = 0;
-  iterator[ARRAY_ITERATION_KIND_ID] = kind;
-  return iterator;
-}
-
 function CreateIterResultObject(value, done) {
   return { value, done };
 }
-
-function IsArrayIterator(iterator) {
-  // Returns true if iterator has all of the internal slots of an Array Iterator Instance (ES6 22.1.5.3).
-  if (Internal.HasHiddenKey(iterator, ARRAY_ITERATION_KIND_ID)) {
-    // If one of the Array Iterator internal slots is present, the others must be as well.
-    Internal.Assert(Internal.HasHiddenKey(iterator, ITERATED_OBJECT_ID));
-    Internal.Assert(Internal.HasHiddenKey(iterator, ITERATOR_NEXT_INDEX_ID));
-    return true;
-  }
-  return false;
-}
-
-function ArrayIteratorNext() {
-  var iterator = this;
-  if (!IsArrayIterator(iterator)) {
-    throw new TypeError("not an Array Iterator");
-  }
-  var array = iterator[ITERATED_OBJECT_ID];
-  if (array === undefined) {
-    return CreateIterResultObject(undefined, true);
-  }
-  var index = iterator[ITERATOR_NEXT_INDEX_ID];
-  var itemKind = iterator[ARRAY_ITERATION_KIND_ID];
-  var length;
-  if (Internal.IsArrayBufferView(array)) {
-    if (Internal.HasDetachedBuffer(array)) {
-      throw new TypeError("Cannot perform Array Iterator.prototype.next on a detached ArrayBuffer");
-    }
-    length = array.length; //should be a.[[ArrayLength]]
-  } else {
-    length = Internal.ToLength(array.length);
-  }
-  if (index >= length) {
-    iterator[ITERATED_OBJECT_ID] = undefined;
-    return CreateIterResultObject(undefined, true);
-  }
-  iterator[ITERATOR_NEXT_INDEX_ID] = index + 1;
-  if (itemKind === ITERATION_KIND_KEY) {
-    return CreateIterResultObject(index, false);
-  }
-  var elementValue = array[index];
-  var result;
-  if (itemKind === ITERATION_KIND_VALUE) {
-    result = elementValue;
-  } else {
-    Internal.Assert(itemKind === ITERATION_KIND_KEY_PLUS_VALUE);
-    result = [index, elementValue];
-  }
-  return CreateIterResultObject(result, false);
-}
-
-Internal.CreateMethodProperty(ArrayIterator.prototype, "next", ArrayIteratorNext);
-Internal.SetFunctionName(ArrayIteratorNext, "next");
-Internal.ObjectDefineProperty(ArrayIterator.prototype, Symbol.toStringTag, {value: "Array Iterator", writable: false, enumerable: false, configurable: true});
-
-var arrayKeys = function keys() {
-  return CreateArrayIterator(Internal.ToObject(this), ITERATION_KIND_KEY);
-};
-var arrayValues = function values() {
-  return CreateArrayIterator(Internal.ToObject(this), ITERATION_KIND_VALUE);
-};
-var arrayEntries = function entries() {
-  return CreateArrayIterator(Internal.ToObject(this), ITERATION_KIND_KEY_PLUS_VALUE);
-};
-
-Internal.CreateMethodProperty(Array.prototype, "keys", arrayKeys);
-Internal.CreateMethodProperty(Array.prototype, "values", arrayValues);
-Internal.CreateMethodProperty(Array.prototype, Symbol.iterator, arrayValues);
-Internal.CreateMethodProperty(Array.prototype, "entries", arrayEntries);
-
-function ValidateTypedArray(obj) {
-  if (!Internal.IsValidTypedArray(obj)) {
-    throw new TypeError("not an valid TypedArray");
-  }
-  return Internal.ToObject(obj);
-}
-
-var typedArrayKeys = function keys() {
-  return CreateArrayIterator(ValidateTypedArray(this), ITERATION_KIND_KEY);
-};
-var typedArrayValues = function values() {
-  return CreateArrayIterator(ValidateTypedArray(this), ITERATION_KIND_VALUE);
-};
-var typedArrayEntries = function entries() {
-  return CreateArrayIterator(ValidateTypedArray(this), ITERATION_KIND_KEY_PLUS_VALUE);
-};
-
-Internal.CreateMethodProperty(TypedArray.prototype, "keys", typedArrayKeys);
-Internal.CreateMethodProperty(TypedArray.prototype, "values", typedArrayValues);
-Internal.CreateMethodProperty(TypedArray.prototype, Symbol.iterator, typedArrayValues);
-Internal.CreateMethodProperty(TypedArray.prototype, "entries", typedArrayEntries);
 
 
 // Set Iterator

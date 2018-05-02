@@ -40,16 +40,23 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putConstructorProperty;
+import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putDataProperty;
+import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putFunctionsFromContainer;
+import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putProxyProperty;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
@@ -70,16 +77,16 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 
-import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putConstructorProperty;
-import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putFunctionsFromContainer;
-import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putProxyProperty;
-
 public final class JSArray extends JSAbstractArray implements JSConstructorFactory.Default.WithFunctionsAndSpecies {
 
     public static final String CLASS_NAME = "Array";
     public static final String PROTOTYPE_NAME = "Array.prototype";
+    public static final String ITERATOR_CLASS_NAME = "Array Iterator";
+    public static final String ITERATOR_PROTOTYPE_NAME = "Array Iterator.prototype";
 
     public static final JSArray INSTANCE = new JSArray();
+
+    public static final HiddenKey ARRAY_ITERATION_KIND_ID = new HiddenKey("ArrayIterationKind");
 
     private JSArray() {
     }
@@ -187,6 +194,11 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         putFunctionsFromContainer(realm, arrayPrototype, PROTOTYPE_NAME);
         // sets the length just for the prototype
         putProxyProperty(arrayPrototype, makeArrayLengthProxyProperty());
+        if (ctx.getEcmaScriptVersion() >= 6) {
+            // The initial value of the @@iterator property is the same function object as the
+            // initial value of the Array.prototype.values property.
+            putDataProperty(ctx, arrayPrototype, Symbol.SYMBOL_ITERATOR, arrayPrototype.get("values"), JSAttributes.getDefaultNotEnumerable());
+        }
         return arrayPrototype;
     }
 

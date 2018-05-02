@@ -126,6 +126,7 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
             defineBuiltins(new GeneratorPrototypeBuiltins());
             defineBuiltins(new ReflectBuiltins());
             defineBuiltins(new ProxyFunctionBuiltins());
+            defineBuiltins(new ArrayIteratorPrototypeBuiltins());
         }
 
         if (JSTruffleOptions.MaxECMAScriptVersion >= 8) {

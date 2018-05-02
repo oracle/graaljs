@@ -454,6 +454,9 @@ public final class JSArrayBufferView extends JSBuiltinObject {
             }
         }), 0, "get [Symbol.toStringTag]"));
         JSObjectUtil.putConstantAccessorProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTagGetter, Undefined.instance, JSAttributes.configurableNotEnumerable());
+        // The initial value of the @@iterator property is the same function object as the initial
+        // value of the %TypedArray%.prototype.values property.
+        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_ITERATOR, prototype.get("values"), JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
 
