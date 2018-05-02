@@ -116,8 +116,8 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     @Child private JSFunctionCallNode executePromiseMethod;
     @Child private PropertySetNode setAsyncContext;
 
-    @CompilationFinal CallTarget resumptionTarget;
-    @CompilationFinal DirectCallNode asyncCallNode;
+    @CompilationFinal private CallTarget resumptionTarget;
+    @Child private DirectCallNode asyncCallNode;
 
     public AsyncFunctionBodyNode(JSContext context, JavaScriptNode parameterInit, JavaScriptNode body, JSWriteFrameSlotNode asyncContext, JSWriteFrameSlotNode asyncResult) {
         this.functionBody = body;
@@ -151,7 +151,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     }
 
     private void ensureAsyncCallTargetInitialized() {
-        if (resumptionTarget == null) {
+        if (resumptionTarget == null || asyncCallNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             initializeAsyncCallTarget();
         }
