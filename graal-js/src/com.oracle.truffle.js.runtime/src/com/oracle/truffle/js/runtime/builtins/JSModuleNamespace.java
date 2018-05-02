@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -211,7 +212,7 @@ public final class JSModuleNamespace extends JSBuiltinObject {
 
     @Override
     public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
-        return false;
+        return newPrototype == Null.instance;
     }
 
     @Override

@@ -6882,9 +6882,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "language/module-code/namespace/internals/set-prototype-of-null.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/module-code/namespace/internals/set.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-09-06)"
