@@ -7578,14 +7578,6 @@
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
   }, {
-    "filePath" : "language/statements/for-await-of/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/statements/for-await-of/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/statements/for-in/head-const-bound-names-fordecl-tdz.js",
     "status" : "FAIL"
   }, {
@@ -7594,14 +7586,6 @@
   }, {
     "filePath" : "language/statements/for-in/head-var-bound-names-let.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-in/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/for-in/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
     "filePath" : "language/statements/for-in/scope-head-lex-open.js",
     "status" : "FAIL"
@@ -7656,24 +7640,8 @@
     "filePath" : "language/statements/for-of/iterator-next-result-value-attr-error.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/statements/for-of/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/for-of/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
     "filePath" : "language/statements/for-of/scope-head-lex-open.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/for/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
     "filePath" : "language/statements/for/S12.6.3_A9.1.js",
     "status" : "FAIL"
@@ -7756,14 +7724,6 @@
     "filePath" : "language/statements/if/labelled-fn-stmt-second.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/statements/if/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/if/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
     "filePath" : "language/statements/if/tco-else-body.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
@@ -7771,14 +7731,6 @@
     "filePath" : "language/statements/if/tco-if-body.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
-  }, {
-    "filePath" : "language/statements/labeled/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/labeled/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
     "filePath" : "language/statements/labeled/tco.js",
     "status" : "SKIP",
@@ -7846,25 +7798,9 @@
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
   }, {
-    "filePath" : "language/statements/while/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/while/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
     "filePath" : "language/statements/while/tco-body.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
-  }, {
-    "filePath" : "language/statements/with/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/with/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
     "filePath" : "language/statements/with/unscopables-inc-dec.js",
     "status" : "FAIL",
