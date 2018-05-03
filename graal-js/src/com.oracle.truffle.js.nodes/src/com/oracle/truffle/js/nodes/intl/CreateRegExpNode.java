@@ -38,72 +38,48 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.access;
+package com.oracle.truffle.js.nodes.intl;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.intl.CreateRegExpNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.RegexCompilerInterface;
+import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
-public class RegExpLiteralNode extends JavaScriptNode {
+public abstract class CreateRegExpNode extends JavaScriptBaseNode {
+
+    @Child private Node readNamedCG = TRegexUtil.createReadNode();
+    @Child private Node isNamedCGNull = JSInteropUtil.createIsNull();
     private final JSContext context;
-    private final String pattern;
-    private final String flags;
 
-    @CompilationFinal private TruffleObject regex;
-
-    @Child private CreateRegExpNode createRegExpNode;
-
-    @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == JSTags.LiteralExpressionTag.class) {
-            return true;
-        } else {
-            return super.hasTag(tag);
-        }
-    }
-
-    @Override
-    public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("type", LiteralExpressionTag.Type.RegExpLiteral.name());
-    }
-
-    RegExpLiteralNode(JSContext context, String pattern, String flags) {
+    protected CreateRegExpNode(JSContext context) {
         this.context = context;
-        this.pattern = pattern;
-        this.flags = flags;
     }
 
-    public static RegExpLiteralNode create(JSContext context, String pattern, String flags) {
-        return new RegExpLiteralNode(context, pattern, flags);
+    public static CreateRegExpNode create(JSContext context) {
+        return CreateRegExpNodeGen.create(context);
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        if (regex == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            regex = RegexCompilerInterface.compile(pattern, flags, context);
-        }
-        return getCreateRegExpNode().execute(regex);
+    public abstract DynamicObject execute(TruffleObject compiledRegex);
+
+    @Specialization(guards = {"!hasNamedCG(compiledRegex)"})
+    protected DynamicObject createWithoutNamedCG(TruffleObject compiledRegex) {
+        return JSRegExp.create(context, compiledRegex, null);
     }
 
-    private CreateRegExpNode getCreateRegExpNode() {
-        if (createRegExpNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            createRegExpNode = insert(CreateRegExpNode.create(context));
-        }
-        return createRegExpNode;
+    @Specialization(guards = {"hasNamedCG(compiledRegex)"})
+    protected DynamicObject createWithNamedCG(TruffleObject compiledRegex) {
+        TruffleObject namedCaptureGroups = TRegexUtil.readNamedCaptureGroups(readNamedCG, compiledRegex);
+        return JSRegExp.create(context, compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups));
     }
 
-    @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(context, pattern, flags);
+    protected boolean hasNamedCG(TruffleObject compiledRegex) {
+        TruffleObject namedCaptureGroups = TRegexUtil.readNamedCaptureGroups(readNamedCG, compiledRegex);
+        return !ForeignAccess.sendIsNull(isNamedCGNull, namedCaptureGroups);
     }
 }

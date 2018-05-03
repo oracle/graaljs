@@ -95,6 +95,7 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
@@ -113,6 +114,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
 
 /**
  * ES6 9.1.8 [[Get]] (P, Receiver).
@@ -1532,6 +1534,27 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
     }
 
+    public static final class LazyNamedCaptureGroupPropertyGetNode extends LinkedPropertyGetNode {
+
+        private final int groupIndex;
+        @Child private PropertyGetNode getResultNode;
+        @Child private TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.create();
+
+        public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, JSContext context, int groupIndex) {
+            super(property.getKey(), receiverCheck);
+            assert isLazyNamedCaptureGroupProperty(property);
+            this.groupIndex = groupIndex;
+            this.getResultNode = PropertyGetNode.create(JSRegExp.GROUPS_RESULT_ID, false, context);
+        }
+
+        @Override
+        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+            DynamicObject store = receiverCheck.getStore(thisObj);
+            TruffleObject regexResult = (TruffleObject) getResultNode.getValue(store);
+            return materializeNode.materializeGroup(regexResult, groupIndex);
+        }
+    }
+
     public static final class MapPropertyGetNode extends LinkedPropertyGetNode {
         public MapPropertyGetNode(Object key, ReceiverCheckNode receiverCheck) {
             super(key, receiverCheck);
@@ -1664,6 +1687,9 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 return new StringLengthPropertyGetNode(dataProperty, receiverCheck);
             } else if (isLazyRegexResultIndexProperty(property)) {
                 return new LazyRegexResultIndexPropertyGetNode(dataProperty, receiverCheck);
+            } else if (isLazyNamedCaptureGroupProperty(property)) {
+                int groupIndex = ((JSRegExp.LazyNamedCaptureGroupProperty) JSProperty.getConstantProxy(property)).getGroupIndex();
+                return new LazyNamedCaptureGroupPropertyGetNode(dataProperty, receiverCheck, context, groupIndex);
             } else {
                 return new ObjectPropertyGetNode(dataProperty, receiverCheck);
             }

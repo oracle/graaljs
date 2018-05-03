@@ -1407,6 +1407,36 @@ public class Lexer extends Scanner {
     }
 
     /**
+     * Determines if the specified character is permissible as the first character in a ECMAScript identifier.
+     * 
+     * @param codePoint the character to be tested
+     * @return {@code true} if the character may start an ECMAScript identifier; {@code false} otherwise
+     */
+    private static boolean isJSIdentifierStart(int codePoint) {
+        // Note that Character.isUnicodeIdentifierStart does not match the Unicode property ID_Start
+        // perfectly. Notably, it is missing the characters with the auxiliary property
+        // Other_ID_Start.
+        return Character.isUnicodeIdentifierStart(codePoint)
+                || codePoint == '$'
+                || codePoint == '_';
+    }
+
+    /**
+     * Determines if the specified character may be part of an ECMAScript identifier as other than the first character.
+     * 
+     * @param codePoint the character to be tested
+     * @return {@code true} if the character may be part of an ECMAScript identifier; {@code false} otherwise
+     */
+    private static boolean isJSIdentifierPart(int codePoint) {
+        // Character.isUnicodeIdentifierPart is not exactly the Unicode property ID_Continue. See
+        // the remark in #isJSIdentifierPart.
+        return Character.isUnicodeIdentifierPart(codePoint)
+                || codePoint == '$'
+                || codePoint == '\u200c'  // <ZWNJ>
+                || codePoint == '\u200d'; // <ZWJ>
+    }
+
+    /**
      * Scan over identifier characters.
      *
      * @return Length of identifier or zero if none found.
@@ -1417,12 +1447,16 @@ public class Lexer extends Scanner {
         // Make sure first character is valid start character.
         if (ch0 == '\\' && ch1 == 'u') {
             skip(2);
-            final int ch = unicodeEscapeSequence(TokenType.IDENT);
+            final int codePoint = unicodeEscapeSequence(TokenType.IDENT);
 
-            if (!Character.isJavaIdentifierStart(ch)) {
+            if (!isJSIdentifierStart(codePoint)) {
                 error(Lexer.message("illegal.identifier.character"), TokenType.IDENT, start, position - start);
             }
-        } else if (!Character.isJavaIdentifierStart(ch0)) {
+        } else if (isJSIdentifierStart(ch0)) {
+            skip(1);
+        } else if (Character.isHighSurrogate(ch0) && Character.isLowSurrogate(ch1) && isJSIdentifierStart(Character.toCodePoint(ch0, ch1))) {
+            skip(2);
+        } else {
             // Not an identifier.
             return 0;
         }
@@ -1431,13 +1465,15 @@ public class Lexer extends Scanner {
         while (!atEOF()) {
             if (ch0 == '\\' && ch1 == 'u') {
                 skip(2);
-                final int ch = unicodeEscapeSequence(TokenType.IDENT);
+                final int codePoint = unicodeEscapeSequence(TokenType.IDENT);
 
-                if (!Character.isJavaIdentifierPart(ch)) {
+                if (!isJSIdentifierPart(codePoint)) {
                     error(Lexer.message("illegal.identifier.character"), TokenType.IDENT, start, position - start);
                 }
-            } else if (Character.isJavaIdentifierPart(ch0)) {
+            } else if (isJSIdentifierPart(ch0)) {
                 skip(1);
+            } else if (Character.isHighSurrogate(ch0) && Character.isLowSurrogate(ch1) && isJSIdentifierPart(Character.toCodePoint(ch0, ch1))) {
+                skip(2);
             } else {
                 break;
             }

@@ -641,7 +641,8 @@
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/harmony/regexp-named-captures.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "Fails because of: missing negative lookbehind support in TRegex's parser, missing named capture groups in Joni and because some of the tests towards the end are outdated w.r.t. the spec (starting with line 374)."
   }, {
     "filePath" : "mjsunit/harmony/regexp-property-disabled.js",
     "status" : "SKIP",

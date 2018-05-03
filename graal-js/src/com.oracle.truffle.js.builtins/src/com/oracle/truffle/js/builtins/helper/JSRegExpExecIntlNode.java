@@ -41,9 +41,15 @@
 package com.oracle.truffle.js.builtins.helper;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNodeFactory.BuildGroupsObjectNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -148,6 +154,42 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         return regExpBuiltinNode;
     }
 
+    @ImportStatic(JSRegExp.class)
+    public abstract static class BuildGroupsObjectNode extends JavaScriptBaseNode {
+
+        public static BuildGroupsObjectNode create() {
+            return BuildGroupsObjectNodeGen.create();
+        }
+
+        public abstract DynamicObject execute(JSContext context, DynamicObject regExp, TruffleObject regexResult);
+
+        // We can reuse the cachedGroupsFactory even if the new groups factory is different, as long
+        // as the compiledRegex is the same. This can happen if a new RegExp instance is repeatedly
+        // created for the same regular expression.
+        @Specialization(guards = "getGroupsFactory(regExp) == cachedGroupsFactory || getCompiledRegex(regExp) == cachedCompiledRegex")
+        protected static DynamicObject doCachedGroupsFactory(JSContext context,
+                        @SuppressWarnings("unused") DynamicObject regExp,
+                        TruffleObject regexResult,
+                        @Cached("getCompiledRegex(regExp)") @SuppressWarnings("unused") TruffleObject cachedCompiledRegex,
+                        @Cached("getGroupsFactory(regExp)") DynamicObjectFactory cachedGroupsFactory) {
+            return doIt(context, cachedGroupsFactory, regexResult);
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected static DynamicObject doVaryingGroupsFactory(JSContext context, DynamicObject regExp, TruffleObject regexResult) {
+            return doIt(context, JSRegExp.getGroupsFactory(regExp), regexResult);
+        }
+
+        private static DynamicObject doIt(JSContext context, DynamicObjectFactory groupsFactory, TruffleObject regexResult) {
+            if (groupsFactory == null) {
+                return Undefined.instance;
+            } else {
+                return JSObject.create(context, groupsFactory, regexResult);
+            }
+        }
+    }
+
     // implements ES6 21.2.5.2.2 Runtime Semantics: RegExpBuiltinExec ( R, S )
     public static final class JSRegExpExecBuiltinNode extends JavaScriptBaseNode {
 
@@ -163,6 +205,7 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         @Child private TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor = TRegexUtil.TRegexCompiledRegexAccessor.create();
         @Child private TRegexUtil.TRegexFlagsAccessor flagsAccessor = TRegexUtil.TRegexFlagsAccessor.create();
         @Child private TRegexUtil.TRegexResultAccessor regexResultAccessor = TRegexUtil.TRegexResultAccessor.create();
+        @Child private BuildGroupsObjectNode groupsBuilder;
 
         private JSRegExpExecBuiltinNode(JSContext context) {
             this.context = context;
@@ -206,7 +249,8 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 if (ecmaScriptVersion < 6) {
                     return result;
                 }
-                return getMatchResult(result, input);
+                DynamicObject groups = getGroupsObject(regExp, result);
+                return getMatchResult(result, input, groups);
             } else {
                 if (ecmaScriptVersion < 8 || global || sticky) {
                     setLastIndex(regExp, 0);
@@ -228,8 +272,17 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         // converts RegexResult into DynamicObject
-        private DynamicObject getMatchResult(TruffleObject result, String inputStr) {
-            return JSArray.createLazyRegexArray(context, regexResultAccessor.groupCount(result), result, inputStr);
+        private DynamicObject getMatchResult(TruffleObject result, String inputStr, DynamicObject groups) {
+            return JSArray.createLazyRegexArray(context, regexResultAccessor.groupCount(result), result, inputStr, groups);
+        }
+
+        // builds the object containing the matches of the named capture groups
+        private DynamicObject getGroupsObject(DynamicObject regExp, TruffleObject result) {
+            if (groupsBuilder == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                groupsBuilder = insert(BuildGroupsObjectNode.create());
+            }
+            return groupsBuilder.execute(context, regExp, result);
         }
 
         private long getLastIndex(DynamicObject regExp) {

@@ -61,6 +61,7 @@ public final class TRegexUtil {
             public static final String PATTERN = "pattern";
             public static final String FLAGS = "flags";
             public static final String EXEC = "exec";
+            public static final String GROUPS = "groups";
         }
 
         public static final class Flags {
@@ -112,6 +113,10 @@ public final class TRegexUtil {
 
     public static TruffleObject readFlags(Node readNode, TruffleObject compiledRegexObject) {
         return (TruffleObject) readExceptionIsFatal(readNode, compiledRegexObject, Props.CompiledRegex.FLAGS);
+    }
+
+    public static TruffleObject readNamedCaptureGroups(Node readNode, TruffleObject compiledRegexObject) {
+        return (TruffleObject) readExceptionIsFatal(readNode, compiledRegexObject, Props.CompiledRegex.GROUPS);
     }
 
     public static TruffleObject readExecMethod(Node readNode, TruffleObject compiledRegexObject) {
@@ -202,6 +207,7 @@ public final class TRegexUtil {
         @Child private Node readFlagsNode;
         @Child private Node readExecMethodNode;
         @Child private Node execExecMethodNode;
+        @Child private Node readGroupsNode;
 
         private TRegexCompiledRegexAccessor() {
         }
@@ -220,6 +226,10 @@ public final class TRegexUtil {
 
         public TruffleObject exec(TruffleObject compiledRegexObject, String input, long fromIndex) {
             return execExecMethod(getExecExecMethodNode(), readExecMethod(getReadExecMethodNode(), compiledRegexObject), input, fromIndex);
+        }
+
+        public TruffleObject namedCaptureGroups(TruffleObject compiledRegexObject) {
+            return readNamedCaptureGroups(getReadGroupsNode(), compiledRegexObject);
         }
 
         private Node getReadPatternNode() {
@@ -252,6 +262,14 @@ public final class TRegexUtil {
                 execExecMethodNode = insert(Message.createExecute(2).createNode());
             }
             return execExecMethodNode;
+        }
+
+        private Node getReadGroupsNode() {
+            if (readGroupsNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                readGroupsNode = insert(createReadNode());
+            }
+            return readGroupsNode;
         }
     }
 

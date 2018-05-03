@@ -40,14 +40,15 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.intl.CreateRegExpNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 
 /**
  * Implements a cast from an value to a RegExp Object, as defined by String.prototype.match and
@@ -55,6 +56,7 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
  */
 public abstract class JSToRegExpNode extends JavaScriptBaseNode {
     protected final JSContext context;
+    @Child private CreateRegExpNode createRegExpNode;
 
     protected JSToRegExpNode(JSContext context) {
         this.context = context;
@@ -77,6 +79,14 @@ public abstract class JSToRegExpNode extends JavaScriptBaseNode {
                     @Cached("create(context)") CompileRegexNode compileRegexNode) {
         String pattern = toStringNode.executeString(patternObj);
         TruffleObject regex = compileRegexNode.compile(pattern);
-        return JSRegExp.create(context, regex);
+        return getCreateRegExpNode().execute(regex);
+    }
+
+    private CreateRegExpNode getCreateRegExpNode() {
+        if (createRegExpNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            createRegExpNode = insert(CreateRegExpNode.create(context));
+        }
+        return createRegExpNode;
     }
 }
