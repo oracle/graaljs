@@ -112,8 +112,8 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
 
         defineBuiltins(new ArrayBufferPrototypeBuiltins());
         defineBuiltins(new ArrayBufferFunctionBuiltins());
-        defineBuiltins(new ArrayBufferViewPrototypeBuiltins());
-        defineBuiltins(new ArrayBufferViewFunctionBuiltins());
+        defineBuiltins(new TypedArrayPrototypeBuiltins());
+        defineBuiltins(new TypedArrayFunctionBuiltins());
         defineBuiltins(new DataViewPrototypeBuiltins());
 
         defineBuiltins(new EnumerateIteratorPrototypeBuiltins());

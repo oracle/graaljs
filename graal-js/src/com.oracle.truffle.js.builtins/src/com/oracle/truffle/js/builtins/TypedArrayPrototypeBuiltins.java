@@ -57,12 +57,6 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferOperation;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferSliceNode;
-import com.oracle.truffle.js.builtins.ArrayBufferViewPrototypeBuiltinsFactory.JSArrayBufferViewFillNodeGen;
-import com.oracle.truffle.js.builtins.ArrayBufferViewPrototypeBuiltinsFactory.JSArrayBufferViewForEachNodeGen;
-import com.oracle.truffle.js.builtins.ArrayBufferViewPrototypeBuiltinsFactory.JSArrayBufferViewIteratorNodeGen;
-import com.oracle.truffle.js.builtins.ArrayBufferViewPrototypeBuiltinsFactory.JSArrayBufferViewReverseNodeGen;
-import com.oracle.truffle.js.builtins.ArrayBufferViewPrototypeBuiltinsFactory.JSArrayBufferViewSetNodeGen;
-import com.oracle.truffle.js.builtins.ArrayBufferViewPrototypeBuiltinsFactory.JSArrayBufferViewSubarrayNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArrayForEachIndexCallOperation;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.CreateArrayIteratorNode;
@@ -83,6 +77,12 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySlice
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySomeNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySortNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
+import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewFillNodeGen;
+import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewForEachNodeGen;
+import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewIteratorNodeGen;
+import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewReverseNodeGen;
+import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewSetNodeGen;
+import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewSubarrayNodeGen;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResultNode;
@@ -107,12 +107,12 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 /**
  * Contains %TypedArrayPrototype% methods.
  */
-public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ArrayBufferViewPrototypeBuiltins.ArrayBufferViewPrototype> {
-    protected ArrayBufferViewPrototypeBuiltins() {
-        super(JSArrayBufferView.PROTOTYPE_NAME, ArrayBufferViewPrototype.class);
+public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TypedArrayPrototypeBuiltins.TypedArrayPrototype> {
+    protected TypedArrayPrototypeBuiltins() {
+        super(JSArrayBufferView.PROTOTYPE_NAME, TypedArrayPrototype.class);
     }
 
-    public enum ArrayBufferViewPrototype implements BuiltinEnum<ArrayBufferViewPrototype> {
+    public enum TypedArrayPrototype implements BuiltinEnum<TypedArrayPrototype> {
         subarray(2),
         set(1),
         forEach(1),
@@ -142,7 +142,7 @@ public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.
 
         private final int length;
 
-        ArrayBufferViewPrototype(int length) {
+        TypedArrayPrototype(int length) {
             this.length = length;
         }
 
@@ -161,7 +161,7 @@ public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ArrayBufferViewPrototype builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TypedArrayPrototype builtinEnum) {
         switch (builtinEnum) {
             case subarray:
                 return JSArrayBufferViewSubarrayNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));

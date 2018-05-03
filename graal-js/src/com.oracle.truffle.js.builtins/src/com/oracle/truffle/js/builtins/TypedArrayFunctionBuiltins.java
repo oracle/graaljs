@@ -44,10 +44,10 @@ import java.util.ArrayList;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.builtins.ArrayBufferViewFunctionBuiltinsFactory.JSArrayBufferViewFromNodeGen;
-import com.oracle.truffle.js.builtins.ArrayBufferViewFunctionBuiltinsFactory.JSArrayBufferViewOfNodeGen;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltins.JSArrayFromNode;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltins.JSArrayFunctionOperation;
+import com.oracle.truffle.js.builtins.TypedArrayFunctionBuiltinsFactory.TypedArrayFromNodeGen;
+import com.oracle.truffle.js.builtins.TypedArrayFunctionBuiltinsFactory.TypedArrayOfNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -58,20 +58,20 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
 /**
- * Contains builtins for {@linkplain JSArrayBufferView} function (constructor).
+ * Contains functions of the %TypedArray% constructor function object.
  */
-public final class ArrayBufferViewFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<ArrayBufferViewFunctionBuiltins.ArrayBufferViewFunction> {
-    protected ArrayBufferViewFunctionBuiltins() {
-        super(JSArrayBufferView.CLASS_NAME, ArrayBufferViewFunction.class);
+public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TypedArrayFunctionBuiltins.TypedArrayFunction> {
+    protected TypedArrayFunctionBuiltins() {
+        super(JSArrayBufferView.CLASS_NAME, TypedArrayFunction.class);
     }
 
-    public enum ArrayBufferViewFunction implements BuiltinEnum<ArrayBufferViewFunction> {
+    public enum TypedArrayFunction implements BuiltinEnum<TypedArrayFunction> {
         of(0),
         from(1);
 
         private final int length;
 
-        ArrayBufferViewFunction(int length) {
+        TypedArrayFunction(int length) {
             this.length = length;
         }
 
@@ -82,18 +82,18 @@ public final class ArrayBufferViewFunctionBuiltins extends JSBuiltinsContainer.S
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ArrayBufferViewFunction builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TypedArrayFunction builtinEnum) {
         switch (builtinEnum) {
             case of:
-                return JSArrayBufferViewOfNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
+                return TypedArrayOfNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
             case from:
-                return JSArrayBufferViewFromNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
+                return TypedArrayFromNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
         }
         return null;
     }
 
-    public abstract static class JSArrayBufferViewOfNode extends JSArrayFunctionOperation {
-        public JSArrayBufferViewOfNode(JSContext context, JSBuiltin builtin) {
+    public abstract static class TypedArrayOfNode extends JSArrayFunctionOperation {
+        public TypedArrayOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, true);
         }
 
@@ -114,9 +114,9 @@ public final class ArrayBufferViewFunctionBuiltins extends JSBuiltinsContainer.S
         }
     }
 
-    public abstract static class JSArrayBufferViewFromNode extends JSArrayFromNode {
+    public abstract static class TypedArrayFromNode extends JSArrayFromNode {
 
-        public JSArrayBufferViewFromNode(JSContext context, JSBuiltin builtin) {
+        public TypedArrayFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, true);
         }
 
