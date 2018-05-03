@@ -93,7 +93,7 @@ public class GraalJSInstanceRunner {
         private final GraalJSInstanceRunner node;
         private final Map<String, Object> env;
 
-        public NodeJSLoopActivationCallback(GraalJSInstanceRunner node, Map<String, Object> env) {
+        NodeJSLoopActivationCallback(GraalJSInstanceRunner node, Map<String, Object> env) {
             this.node = node;
             this.env = env;
         }
@@ -167,7 +167,7 @@ public class GraalJSInstanceRunner {
         // TODO: when/how to nodeThread.join();
     }
 
-    public static interface GraalJSAsyncHandleCallback {
+    public interface GraalJSAsyncHandleCallback {
 
         void send();
     }

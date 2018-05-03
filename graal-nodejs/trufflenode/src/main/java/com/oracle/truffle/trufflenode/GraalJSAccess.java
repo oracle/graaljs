@@ -1500,23 +1500,23 @@ public final class GraalJSAccess {
     }
 
     public Object unboundScriptCompile(Object sourceCode, Object fileName) {
-        String sourceCode_ = (String) sourceCode;
-        String fileName_ = (String) fileName;
-        Source source = UnboundScript.createSource(internSourceCode(sourceCode_), fileName_);
+        String sourceCodeStr = (String) sourceCode;
+        String fileNameStr = (String) fileName;
+        Source source = UnboundScript.createSource(internSourceCode(sourceCodeStr), fileNameStr);
 
-        if (USE_SNAPSHOTS && fileName_ != null && UnboundScript.isCoreModule(fileName_)) {
+        if (USE_SNAPSHOTS && fileNameStr != null && UnboundScript.isCoreModule(fileNameStr)) {
             // bootstrap_node.js is located in the internal folder,
             // but is loaded as bootstrap_node.js
-            String modulePath = fileName_.equals("bootstrap_node.js") ? "internal/bootstrap_node.js" : fileName_;
+            String modulePath = fileNameStr.equals("bootstrap_node.js") ? "internal/bootstrap_node.js" : fileNameStr;
             ByteBuffer snapshotBinary = NativeAccess.getCoreModuleBinarySnapshot(modulePath);
             if (snapshotBinary != null) {
                 if (VERBOSE) {
-                    System.out.printf("successfully read snapshot for %s (%d bytes, %d source chars)\n", fileName_, snapshotBinary.limit(), sourceCode_.length());
+                    System.out.printf("successfully read snapshot for %s (%d bytes, %d source chars)\n", fileNameStr, snapshotBinary.limit(), sourceCodeStr.length());
                 }
                 return new UnboundScript(source, snapshotBinary);
             } else {
                 if (VERBOSE) {
-                    System.out.printf("no snapshot for %s\n", fileName_);
+                    System.out.printf("no snapshot for %s\n", fileNameStr);
                 }
             }
         }
@@ -2235,13 +2235,13 @@ public final class GraalJSAccess {
         }
     }
 
-    public void isolateEnterPolyglotEngine(long callback, long isolate, long param1, long param2, int argc, long argv, int exec_argc, long exec_argv) {
+    public void isolateEnterPolyglotEngine(long callback, long isolate, long param1, long param2, int argc, long argv, int execArgc, long execArgv) {
         org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(JavaScriptLanguage.ID, "(function(r) { r.run(); })", "polyglotEngineWrapper").internal(true).buildLiteral();
         org.graalvm.polyglot.Value wrapper = evaluator.eval(source);
         wrapper.execute(new RunnableInvoker(new Runnable() {
             @Override
             public void run() {
-                NativeAccess.polyglotEngineEntered(callback, isolate, param1, param2, argc, argv, exec_argc, exec_argv);
+                NativeAccess.polyglotEngineEntered(callback, isolate, param1, param2, argc, argv, execArgc, execArgv);
             }
         }));
     }
@@ -2311,6 +2311,8 @@ public final class GraalJSAccess {
             builder.append('y');
         } else if ((flags & 16 /* kUnicode */) != 0) {
             builder.append('u');
+        } else if ((flags & 32 /* kDotAll */) != 0) {
+            builder.append('s');
         }
         return builder.toString();
     }

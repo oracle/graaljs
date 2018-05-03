@@ -69,7 +69,7 @@ public class JSFunctionCallsInstrumenter {
 
     private static class JSFunctionProfilerClassVisitor extends ClassVisitor implements Opcodes {
 
-        public JSFunctionProfilerClassVisitor(final ClassVisitor cv) {
+        JSFunctionProfilerClassVisitor(final ClassVisitor cv) {
             super(ASM5, cv);
         }
 
@@ -86,7 +86,7 @@ public class JSFunctionCallsInstrumenter {
 
     private static class JSFunctionMethodVisitor extends MethodVisitor implements Opcodes {
 
-        public JSFunctionMethodVisitor(MethodVisitor mv) {
+        JSFunctionMethodVisitor(MethodVisitor mv) {
             super(ASM5, mv);
         }
 

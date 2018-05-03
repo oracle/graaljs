@@ -56,7 +56,7 @@ public final class NIOBufferBuiltins extends JSBuiltinsContainer.SwitchEnum<NIOB
 
         private final int length;
 
-        private Buffer(int length) {
+        Buffer(int length) {
             this.length = length;
         }
 

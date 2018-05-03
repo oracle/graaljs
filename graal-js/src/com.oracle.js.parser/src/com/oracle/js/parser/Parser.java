@@ -1169,14 +1169,31 @@ loop:
             functionExpression(true, topLevel || labelledStatement, singleStatement);
             return;
         case LET:
+            if (useBlockScope()) {
+                TokenType lookahead = lookaheadOfLetDeclaration(false);
+                if (lookahead != null) { // lookahead is let declaration
+                    if (singleStatement) {
+                        // ExpressionStatement should not have "let [" in its lookahead.
+                        // The IDENT check is not needed here - the only purpose of this
+                        // shortcut is to produce the same error mesage as Nashorn.
+                        if (lookahead == LBRACKET || T(k + 1) == IDENT) {
+                            throw error(AbstractParser.message("expected.stmt", "let declaration"), token);
+                        } // else break and call expressionStatement()
+                    } else {
+                        variableStatement(type);
+                        return;
+                    }
+                }
+            }
+            break;
         case CONST:
-            if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration(false) || type == CONST)) {
+            if (useBlockScope()) {
                 if (singleStatement) {
-                    throw error(AbstractParser.message("expected.stmt", type.getName() + " declaration"), token);
+                    throw error(AbstractParser.message("expected.stmt", "const declaration"), token);
                 }
                 variableStatement(type);
                 return;
-            } else if (env.constAsVar && type == CONST) {
+            } else if (env.constAsVar) {
                 variableStatement(TokenType.VAR);
                 return;
             }
@@ -2300,6 +2317,10 @@ loop:
     }
 
     private boolean lookaheadIsLetDeclaration(boolean ofContextualKeyword) {
+        return lookaheadOfLetDeclaration(ofContextualKeyword) != null;
+    }
+
+    private TokenType lookaheadOfLetDeclaration(boolean ofContextualKeyword) {
         assert type == LET;
         for (int i = 1;; i++) {
             TokenType t = T(k + i);
@@ -2309,19 +2330,19 @@ loop:
                 continue;
             case OF:
                 if (ofContextualKeyword && ES6_FOR_OF) {
-                    return false;
+                    return null;
                 }
                 // fall through
             case IDENT:
             case LBRACKET:
             case LBRACE:
-                return true;
+                return t;
             default:
                 // accept future strict tokens in non-strict mode (including LET)
                 if (t.isContextualKeyword() || (!isStrictMode && t.isFutureStrict())) {
-                    return true;
+                    return t;
                 }
-                return false;
+                return null;
             }
         }
     }

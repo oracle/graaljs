@@ -67,6 +67,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.trufflenode"
       ],
+      "checkstyle" : "com.oracle.truffle.trufflenode",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },

@@ -107,6 +107,7 @@ import com.oracle.truffle.js.nodes.cast.JSTrimWhitespaceNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.intl.CreateRegExpNode;
 import com.oracle.truffle.js.nodes.intl.InitializeCollatorNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.intl.JSToCanonicalizedLocaleListNode;
@@ -1571,7 +1572,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * 21.1.3.15.
      */
     public abstract static class JSStringSearchNode extends JSStringOperationWithRegExpArgument {
-        @Child protected CompileRegexNode compileRegexNode;
+        @Child private CompileRegexNode compileRegexNode;
+        @Child private CreateRegExpNode createRegExpNode;
 
         public JSStringSearchNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1594,7 +1596,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private Object builtinSearch(Object thisObj, Object regex) {
             String thisStr = toString(thisObj);
             TruffleObject cRe = getCompileRegexNode().compile(regex == Undefined.instance ? "" : toString(regex));
-            DynamicObject regExp = JSRegExp.create(getContext(), cRe);
+            DynamicObject regExp = getCreateRegExpNode().execute(cRe);
             return invoke(regExp, Symbol.SYMBOL_SEARCH, thisStr);
         }
 
@@ -1604,6 +1606,14 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 compileRegexNode = insert(CompileRegexNode.create(getContext()));
             }
             return compileRegexNode;
+        }
+
+        private CreateRegExpNode getCreateRegExpNode() {
+            if (createRegExpNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                createRegExpNode = insert(CreateRegExpNode.create(getContext()));
+            }
+            return createRegExpNode;
         }
     }
 
@@ -1670,6 +1680,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     public abstract static class JSStringMatchNode extends JSStringOperationWithRegExpArgument {
         @Child private CompileRegexNode compileRegexNode;
+        @Child private CreateRegExpNode createRegExpNode;
 
         protected JSStringMatchNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1691,7 +1702,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private Object builtinMatch(Object thisObj, Object regex) {
             String thisStr = toString(thisObj);
             TruffleObject cRe = getCompileRegexNode().compile(regex == Undefined.instance ? "" : toString(regex));
-            DynamicObject regExp = JSRegExp.create(getContext(), cRe);
+            DynamicObject regExp = getCreateRegExpNode().execute(cRe);
             return invoke(regExp, Symbol.SYMBOL_MATCH, thisStr);
         }
 
@@ -1701,6 +1712,14 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 compileRegexNode = insert(CompileRegexNode.create(getContext()));
             }
             return compileRegexNode;
+        }
+
+        private CreateRegExpNode getCreateRegExpNode() {
+            if (createRegExpNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                createRegExpNode = insert(CreateRegExpNode.create(getContext()));
+            }
+            return createRegExpNode;
         }
     }
 

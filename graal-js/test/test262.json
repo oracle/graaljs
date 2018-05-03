@@ -17,8 +17,8 @@
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "annexB/built-ins/RegExp/named-groups/non-unicode-malformed.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
+    "status" : "FAIL",
+    "comment" : "Uses negative lookbehind, which is missing from TRegex's parser."
   }, {
     "filePath" : "annexB/language/comments/multi-line-html-close.js",
     "status" : "FAIL"
@@ -674,93 +674,29 @@
     "status" : "SKIP",
     "comment" : "Unimplemented RegExp proposal (GR-6965)."
   }, {
-    "filePath" : "built-ins/RegExp/named-groups/functional-replace-global.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/functional-replace-non-global.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/groups-object-subclass-sans.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/groups-object-subclass.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/groups-object-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/groups-object-unmatched.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/groups-object.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/groups-properties.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
-  }, {
     "filePath" : "built-ins/RegExp/named-groups/lookbehind.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
+    "status" : "FAIL",
+    "comment" : "Uses lookbehind, which is not yet implemented."
   }, {
     "filePath" : "built-ins/RegExp/named-groups/non-unicode-malformed.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
+    "status" : "FAIL",
+    "comment" : "Uses named backreferences. Backreferences are missing from TRegex and named capture groups are missing from Joni."
   }, {
     "filePath" : "built-ins/RegExp/named-groups/non-unicode-match.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/non-unicode-property-names.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
+    "status" : "FAIL",
+    "comment" : "Uses named backreferences. Backreferences are missing from TRegex and named capture groups are missing from Joni."
   }, {
     "filePath" : "built-ins/RegExp/named-groups/non-unicode-references.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/string-replace-escaped.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/string-replace-get.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/string-replace-missing.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/string-replace-numbered.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/string-replace-unclosed.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/string-replace-undefined.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
+    "status" : "FAIL",
+    "comment" : "Uses named backreferences. Backreferences are missing from TRegex and named capture groups are missing from Joni."
   }, {
     "filePath" : "built-ins/RegExp/named-groups/unicode-match.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/unicode-property-names.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
+    "status" : "FAIL",
+    "comment" : "Uses named backreferences. Backreferences are missing from TRegex and named capture groups are missing from Joni."
   }, {
     "filePath" : "built-ins/RegExp/named-groups/unicode-references.js",
-    "status" : "SKIP",
-    "comment" : "Unimplemented RegExp proposal (GR-6963)."
+    "status" : "FAIL",
+    "comment" : "Uses named backreferences. Backreferences are missing from TRegex and named capture groups are missing from Joni."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Alphabetic.js",
     "status" : "SKIP",
@@ -6857,24 +6793,14 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-09-06)"
   }, {
-    "filePath" : "language/module-code/namespace/internals/delete-exported-init.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/module-code/namespace/internals/delete-exported-uninit.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/module-code/namespace/internals/delete-non-exported.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
     "filePath" : "language/module-code/namespace/internals/enumerate-binding-uninit.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "language/module-code/namespace/internals/get-own-property-str-found-uninit.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/module-code/namespace/internals/get-own-property-sym.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/module-code/namespace/internals/get-str-found-uninit.js",
@@ -6892,15 +6818,9 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "language/module-code/namespace/internals/set-prototype-of-null.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/module-code/namespace/internals/set.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-09-06)"
-  }, {
-    "filePath" : "language/module-code/namespace/Symbol.toStringTag.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "language/module-code/parse-err-hoist-lex-fun.js",
     "status" : "FAIL"
@@ -7594,14 +7514,6 @@
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
   }, {
-    "filePath" : "language/statements/for-await-of/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/statements/for-await-of/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/statements/for-in/head-const-bound-names-fordecl-tdz.js",
     "status" : "FAIL"
   }, {
@@ -7610,14 +7522,6 @@
   }, {
     "filePath" : "language/statements/for-in/head-var-bound-names-let.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-in/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/for-in/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
     "filePath" : "language/statements/for-in/scope-head-lex-open.js",
     "status" : "FAIL"
@@ -7672,24 +7576,8 @@
     "filePath" : "language/statements/for-of/iterator-next-result-value-attr-error.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/statements/for-of/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/for-of/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
     "filePath" : "language/statements/for-of/scope-head-lex-open.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/for/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
     "filePath" : "language/statements/for/S12.6.3_A9.1.js",
     "status" : "FAIL"
@@ -7772,14 +7660,6 @@
     "filePath" : "language/statements/if/labelled-fn-stmt-second.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/statements/if/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/if/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
     "filePath" : "language/statements/if/tco-else-body.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
@@ -7787,14 +7667,6 @@
     "filePath" : "language/statements/if/tco-if-body.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
-  }, {
-    "filePath" : "language/statements/labeled/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/labeled/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
     "filePath" : "language/statements/labeled/tco.js",
     "status" : "SKIP",
@@ -7862,25 +7734,9 @@
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
   }, {
-    "filePath" : "language/statements/while/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/while/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
     "filePath" : "language/statements/while/tco-body.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
-  }, {
-    "filePath" : "language/statements/with/let-block-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/with/let-identifier-with-newline.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
     "filePath" : "language/statements/with/unscopables-inc-dec.js",
     "status" : "FAIL",

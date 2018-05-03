@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -132,10 +133,10 @@ public final class JSModuleNamespace extends JSBuiltinObject {
          * The initial value of the @@toStringTag property is the String value "Module".
          *
          * This property has the attributes { [[Writable]]: false, [[Enumerable]]: false,
-         * [[Configurable]]: true }.
+         * [[Configurable]]: false }.
          */
         Property toStringTagProperty = JSObjectUtil.makeDataProperty(Symbol.SYMBOL_TO_STRING_TAG, initialShape.allocator().constantLocation(CLASS_NAME),
-                        JSAttributes.configurableNotEnumerableNotWritable());
+                        JSAttributes.notConfigurableNotEnumerableNotWritable());
         initialShape = initialShape.addProperty(toStringTagProperty);
 
         return JSShape.makeNotExtensible(initialShape);
@@ -195,12 +196,23 @@ public final class JSModuleNamespace extends JSBuiltinObject {
 
     @Override
     public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
-        return !Boundaries.mapContainsKey(getExports(thisObj), key);
+        if (!(key instanceof String)) {
+            return super.delete(thisObj, key, isStrict);
+        }
+        if (Boundaries.mapContainsKey(getExports(thisObj), key)) {
+            if (isStrict) {
+                throw Errors.createTypeErrorNotConfigurableProperty(key);
+            } else {
+                return false;
+            }
+        } else {
+            return true;
+        }
     }
 
     @Override
     public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
-        return false;
+        return newPrototype == Null.instance;
     }
 
     @Override

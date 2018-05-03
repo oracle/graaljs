@@ -103,7 +103,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbol
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakSetNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CreateDynamicFunctionNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CreateRegExpNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRegExpNodeGen;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -137,6 +137,7 @@ import com.oracle.truffle.js.nodes.control.TryCatchNode.InitErrorObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.intl.CreateRegExpNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -314,9 +315,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 : CallDateNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case RegExp:
                 return construct ? (newTarget
-                                ? CreateRegExpNodeGen.create(context, builtin, false, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
-                                : CreateRegExpNodeGen.create(context, builtin, false, false, args().function().fixedArgs(2).createArgumentNodes(context)))
-                                : CreateRegExpNodeGen.create(context, builtin, true, false, args().function().fixedArgs(2).createArgumentNodes(context));
+                                ? ConstructRegExpNodeGen.create(context, builtin, false, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
+                                : ConstructRegExpNodeGen.create(context, builtin, false, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                                : ConstructRegExpNodeGen.create(context, builtin, true, false, args().function().fixedArgs(2).createArgumentNodes(context));
             case String:
                 return construct ? (newTarget
                                 ? ConstructStringNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
@@ -797,10 +798,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     }
 
-    public abstract static class CreateRegExpNode extends ConstructWithNewTargetNode {
+    public abstract static class ConstructRegExpNode extends ConstructWithNewTargetNode {
         private final boolean isCall;
 
-        public CreateRegExpNode(JSContext context, JSBuiltin builtin, boolean isCall, boolean isNewTargetCase) {
+        public ConstructRegExpNode(JSContext context, JSBuiltin builtin, boolean isCall, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
             this.isCall = isCall;
         }
@@ -808,6 +809,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child private JSToStringNode patternToStringNode;
         @Child private JSToStringNode flagsToStringNode;
         @Child private CompileRegexNode compileRegexNode;
+        @Child private CreateRegExpNode createRegExpNode;
         @Child private PropertyGetNode getConstructorNode;
         @Child private PropertyGetNode getSourceNode;
         @Child private PropertyGetNode getFlagsNode;
@@ -832,29 +834,30 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         return patternObj;
                     }
                 }
-                return constructRegExpImpl(getContext(), pattern, flags, patternIsRegExp);
+                return constructRegExpImpl(pattern, flags, patternIsRegExp);
             } else {
                 // we are in the "construct" case, i.e. NewTarget is NOT undefined
-                return swapPrototype(constructRegExpImpl(getContext(), pattern, flags, patternIsRegExp), newTarget);
+                return swapPrototype(constructRegExpImpl(pattern, flags, patternIsRegExp), newTarget);
             }
 
         }
 
-        protected DynamicObject constructRegExpImpl(JSContext context, Object patternObj, Object flags, boolean patternIsRegExp) {
+        protected DynamicObject constructRegExpImpl(Object patternObj, Object flags, boolean patternIsRegExp) {
             Object p;
             Object f;
             if (JSRegExp.isJSRegExp(patternObj)) {
                 regexpObject.enter();
                 TruffleObject compiledRegex = JSRegExp.getCompiledRegex((DynamicObject) patternObj);
                 if (flags == Undefined.instance) {
-                    return JSRegExp.create(context, compiledRegex);
+                    return getCreateRegExpNode().execute(compiledRegex);
                 } else {
                     if (getContext().getEcmaScriptVersion() < 6) {
                         throw Errors.createTypeError("Cannot supply flags when constructing one RegExp from another");
                     }
                     String flagsStr = flagsToString(flags);
                     regexpObjectNewFlagsBranch.enter();
-                    return JSRegExp.create(context, getCompileRegexNode().compile(TRegexUtil.readPattern(getInteropReadPatternNode(), compiledRegex), flagsStr));
+                    TruffleObject newCompiledRegex = getCompileRegexNode().compile(TRegexUtil.readPattern(getInteropReadPatternNode(), compiledRegex), flagsStr);
+                    return getCreateRegExpNode().execute(newCompiledRegex);
                 }
             } else if (patternIsRegExp) {
                 regexpMatcherObject.enter();
@@ -873,8 +876,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             String patternStr = getPatternToStringNode().executeString(p);
             String flagsStr = flagsToString(f);
-            TruffleObject regex = getCompileRegexNode().compile(patternStr, flagsStr);
-            return JSRegExp.create(context, regex);
+            TruffleObject compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
+            return getCreateRegExpNode().execute(compiledRegex);
         }
 
         private JSToStringNode getPatternToStringNode() {
@@ -899,6 +902,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 compileRegexNode = insert(CompileRegexNode.create(getContext()));
             }
             return compileRegexNode;
+        }
+
+        private CreateRegExpNode getCreateRegExpNode() {
+            if (createRegExpNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                createRegExpNode = insert(CreateRegExpNode.create(getContext()));
+            }
+            return createRegExpNode;
         }
 
         private String flagsToString(Object f) {

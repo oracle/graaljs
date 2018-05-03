@@ -67,7 +67,7 @@ public class JavaCallsInstrumenter {
 
     private static class CustomClassWriter extends ClassWriter {
 
-        public CustomClassWriter(ClassReader cr) {
+        CustomClassWriter(ClassReader cr) {
             super(cr, ClassWriter.COMPUTE_FRAMES);
         }
 
@@ -89,7 +89,7 @@ public class JavaCallsInstrumenter {
 
         private final String className;
 
-        public InvCounterClassVisitor(final ClassVisitor cv, String className) {
+        InvCounterClassVisitor(final ClassVisitor cv, String className) {
             super(ASM5, cv);
             this.className = className;
         }
@@ -112,7 +112,7 @@ public class JavaCallsInstrumenter {
 
         private final String label;
 
-        public InvCounterMethodVisitor(MethodVisitor mv, String owner, String name) {
+        InvCounterMethodVisitor(MethodVisitor mv, String owner, String name) {
             super(ASM5, mv);
             this.label = "[" + owner + "] " + name;
         }
