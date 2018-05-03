@@ -106,13 +106,6 @@ suite = {
         "artifactId" : "graal-nodejs-jniboundaryprofiler",
       }
     },
-    "TRUFFLENODE_NATIVE" : {
-      "dependencies" : ["trufflenodeNative"],
-      "native" : True,
-      "platformDependent" : True,
-      "relpath" : True,
-      "description" : "Graal Node.js native components",
-    },
     "TRUFFLENODE_GRAALVM_SUPPORT" : {
       "native" : True,
       "platformDependent" : True,

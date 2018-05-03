@@ -321,7 +321,7 @@ def setupNodeEnvironment(args):
 
     if isinstance(_suite, BinarySuite):
         mx.logv('%s is a binary suite' % _suite.name)
-        tarfilepath = mx.distribution('TRUFFLENODE_NATIVE').path
+        tarfilepath = mx.distribution('TRUFFLENODE_GRAALVM_SUPPORT').path
         with tarfile.open(tarfilepath, 'r:') as tar:
             mx.logv('Extracting {} to {}'.format(tarfilepath, _suite.dir))
             tar.extractall(_suite.dir)
@@ -484,7 +484,7 @@ def _import_substratevm():
 def buildSvmImage(args):
     """build a shared SubstrateVM library to run Graal.nodejs"""
     _svm = _import_substratevm()
-    _svm.flag_suitename_map['nodejs'] = ('graal-nodejs', ['TRUFFLENODE'], ['TRUFFLENODE_NATIVE'], 'js')
+    _svm.flag_suitename_map['nodejs'] = ('graal-nodejs', ['TRUFFLENODE'], ['TRUFFLENODE_GRAALVM_SUPPORT'], 'js')
     _js_version = VC.get_vc(_suite.vc_dir).parent(_suite.vc_dir)
     mx.logv('Fetch JS version {}'.format(_js_version))
     for _lang in ['js', 'nodejs']:
