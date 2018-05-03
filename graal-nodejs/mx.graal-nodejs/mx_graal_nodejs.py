@@ -465,8 +465,6 @@ def overrideBuild():
         # add custom build arguments
         parser = ArgumentParser(prog='mx build')
         parser.add_argument('--debug', action='store_true', dest='debug', help='build in debug mode')
-        parser.add_argument('--shared-library', action='store_true', dest='sharedlibrary', help='build as shared library')
-        parser.add_argument('--threading', action='store_true', dest='threading', help='build with threading support')
         mx.build(args, parser)
         return 0
 
