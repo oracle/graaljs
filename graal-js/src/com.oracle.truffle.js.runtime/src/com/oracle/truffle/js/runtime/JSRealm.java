@@ -1125,9 +1125,6 @@ public class JSRealm implements ShapeContext {
             loadInternal("typedarray.js");
             loadInternal("string.js");
 
-            if (context.isOptionAnnexB()) {
-                loadInternal("annexb.js");
-            }
             if (context.getEcmaScriptVersion() >= 6) {
                 loadInternal("promise.js");
                 initPromiseFields();
