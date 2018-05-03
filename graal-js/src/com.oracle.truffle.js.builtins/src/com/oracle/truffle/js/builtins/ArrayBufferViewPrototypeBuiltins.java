@@ -83,7 +83,6 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySlice
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySomeNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySortNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToStringNodeGen;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResultNode;
@@ -106,7 +105,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
- * Contains builtins for {@linkplain JSArrayBuffer}.prototype.
+ * Contains %TypedArrayPrototype% methods.
  */
 public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ArrayBufferViewPrototypeBuiltins.ArrayBufferViewPrototype> {
     protected ArrayBufferViewPrototypeBuiltins() {
@@ -131,7 +130,6 @@ public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.
         filter(1),
         some(1),
         map(1),
-        toString(0),
         toLocaleString(0),
         join(1),
         reverse(0),
@@ -200,8 +198,6 @@ public final class ArrayBufferViewPrototypeBuiltins extends JSBuiltinsContainer.
                 return JSArraySomeNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case map:
                 return JSArrayMapNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
-            case toString:
-                return JSArrayToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case toLocaleString:
                 return JSArrayToLocaleStringNodeGen.create(context, builtin, true, args().withThis().createArgumentNodes(context));
             case join:

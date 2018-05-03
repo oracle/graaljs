@@ -457,6 +457,8 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         // The initial value of the @@iterator property is the same function object as the initial
         // value of the %TypedArray%.prototype.values property.
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_ITERATOR, prototype.get("values"), JSAttributes.getDefaultNotEnumerable());
+        // %TypedArray%.prototype.toString is the same function object as Array.prototype.toString
+        JSObjectUtil.putDataProperty(ctx, prototype, "toString", realm.getArrayConstructor().getPrototype().get("toString"), JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
 
