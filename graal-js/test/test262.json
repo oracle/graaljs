@@ -2195,7 +2195,8 @@
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/Final_Sigma_U180E.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "String.toLowerCase() does not handle Final_Sigma special casing with respect to u180e correctly"
   }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
