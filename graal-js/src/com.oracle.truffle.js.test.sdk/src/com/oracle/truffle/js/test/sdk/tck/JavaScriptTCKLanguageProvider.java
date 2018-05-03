@@ -150,16 +150,19 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
     @Override
     public Collection<? extends Snippet> createExpressions(final Context context) {
         final List<Snippet> ops = new ArrayList<>();
-        final TypeDescriptor numeric = TypeDescriptor.union(
+        final TypeDescriptor numericAndNull = TypeDescriptor.union(
                         TypeDescriptor.NUMBER,
-                        TypeDescriptor.BOOLEAN);
+                        TypeDescriptor.BOOLEAN,
+                        TypeDescriptor.NULL);
+        final TypeDescriptor noType = TypeDescriptor.intersection();
         final TypeDescriptor nonNumeric = TypeDescriptor.union(
                         TypeDescriptor.STRING,
                         TypeDescriptor.OBJECT,
                         TypeDescriptor.ARRAY,
-                        TypeDescriptor.EXECUTABLE_ANY);
+                        TypeDescriptor.EXECUTABLE_ANY,
+                        noType);
         // +
-        ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numeric, numeric));
+        ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numericAndNull, numericAndNull));
         ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, nonNumeric, ANY));
         ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, ANY, nonNumeric));
         // -
@@ -240,10 +243,17 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         JavaScriptVerifier.unsupportedDynamicObjectVerifier(null),
                         ANY));
         // for of
+        final TypeDescriptor noType = TypeDescriptor.intersection();
         res.add(createStatement(context, "for-of", "for (let v of {1});",
                         TypeDescriptor.NULL,
                         JavaScriptVerifier.foreignOrHasIteratorVerifier(context, null),
-                        TypeDescriptor.union(TypeDescriptor.STRING, TypeDescriptor.OBJECT, TypeDescriptor.ARRAY, TypeDescriptor.EXECUTABLE_ANY)));
+                        TypeDescriptor.union(
+                                        TypeDescriptor.STRING,
+                                        TypeDescriptor.OBJECT,
+                                        TypeDescriptor.ARRAY,
+                                        TypeDescriptor.EXECUTABLE_ANY,
+                                        TypeDescriptor.NULL,
+                                        noType)));
         // with
         res.add(createStatement(context, "with", "with({1}) undefined",
                         TypeDescriptor.NULL,
