@@ -439,12 +439,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return parseFloatIntl(value);
         }
 
-        @Specialization(guards = "isJSObject(value)")
-        protected double parseFloat(DynamicObject value) {
-            return parseFloatIntl(toString1(value));
-        }
-
-        @Specialization(guards = "!isDynamicObject(value)")
+        @Specialization(guards = {"!isJSNull(value)", "!isUndefined(value)"})
         protected double parseFloat(TruffleObject value) {
             return parseFloatIntl(toString1(value));
         }
