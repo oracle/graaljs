@@ -42,13 +42,22 @@
 var assert = require('assert');
 var spawnSync = require('child_process').spawnSync;
 
+function checkTheAnswerToLifeTheUniverseAndEverything(answer) {
+    assert.strictEqual(answer.stderr.toString(), '');
+    assert.strictEqual(answer.stdout.toString(), '42\n');
+    assert.strictEqual(answer.status, 0);
+}
+
 describe('Spawn', function () {
+    this.timeout(10000);
     it('should spawn a child node process when env. variables are cleared', function () {
         var result = spawnSync(process.execPath, ['-p', '6*7'], {env: {}});
-        assert.strictEqual(result.stderr.toString(), '');
-        assert.strictEqual(result.stdout.toString(), '42\n');
-        assert.strictEqual(result.status, 0);
-    }).timeout(10000);
+        checkTheAnswerToLifeTheUniverseAndEverything(result);
+    });
+    it('should accept max_old_space_size option', function () {
+        var result = spawnSync(process.execPath, ['--max_old_space_size=1024', '-p', '6*7'], {env: {}});
+        checkTheAnswerToLifeTheUniverseAndEverything(result);
+    })
     if (typeof java === 'object') {
         it('should finish gracefully when a native method is called from a wrong thread', function () {
             var code = `var vm = require('vm');
