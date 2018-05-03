@@ -43,6 +43,8 @@ package com.oracle.truffle.js.nodes.control;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
 
+import java.util.Set;
+
 import javax.script.Bindings;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -51,6 +53,8 @@ import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -65,6 +69,8 @@ import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -101,6 +107,40 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     public static DeletePropertyNode create(JavaScriptNode object, JavaScriptNode property, boolean strict) {
         return DeletePropertyNodeGen.create(strict, object, property);
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == UnaryExpressionTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor("operator", getClass().getAnnotation(NodeInfo.class).shortName());
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializationNeeded() && materializedTags.contains(UnaryExpressionTag.class)) {
+            JavaScriptNode key = cloneUninitialized(propertyNode);
+            JavaScriptNode target = cloneUninitialized(targetNode);
+            transferSourceSectionNoTags(this, key);
+            transferSourceSectionNoTags(this, target);
+            DeletePropertyNode node = DeletePropertyNode.create(target, key, strict);
+            transferSourceSection(this, node);
+            return node;
+        } else {
+            return this;
+        }
+    }
+
+    private boolean materializationNeeded() {
+        // Both nodes must have a source section in order to be instrumentable.
+        return !(propertyNode.hasSourceSection() && targetNode.hasSourceSection());
     }
 
     @Override

@@ -63,6 +63,7 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
             assertAttribute(e, KEY, "b");
             write.input(assertGlobalObjectInput);
             enter(UnaryExpressionTag.class, (e2, unary) -> {
+                assertAttribute(e2, OPERATOR, "typeof");
                 enter(ReadPropertyExpressionTag.class, (e3, prop) -> {
                     assertAttribute(e3, KEY, "Uint8Array");
                     prop.input((e4) -> {
@@ -84,6 +85,7 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
         enter(WriteVariableExpressionTag.class, (e, var) -> {
             assertAttribute(e, NAME, "<return>");
             enter(UnaryExpressionTag.class, (e2, unary) -> {
+                assertAttribute(e2, OPERATOR, "void");
                 enter(FunctionCallExpressionTag.class, (e3, call) -> {
                     enter(LiteralExpressionTag.class).exit();
                     call.input(assertUndefinedInput);
@@ -100,25 +102,25 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
 
     @Test
     public void toInt() {
-        assertBasicUnaryOperation("var x = true; var b = ~x;", -2);
+        assertBasicUnaryOperation("var x = true; var b = ~x;", -2, "~");
     }
 
     @Test
     public void not() {
-        assertBasicUnaryOperation("var x = true; var b = !x;", false);
+        assertBasicUnaryOperation("var x = true; var b = !x;", false, "!");
     }
 
     @Test
     public void minus() {
-        assertBasicUnaryOperation("var x = true; var b = -x;", -1);
+        assertBasicUnaryOperation("var x = true; var b = -x;", -1, "-");
     }
 
     @Test
     public void plus() {
-        assertBasicUnaryOperation("var x = true; var b = +x;", 1);
+        assertBasicUnaryOperation("var x = true; var b = +x;", 1, "+");
     }
 
-    private void assertBasicUnaryOperation(String src, Object expectedPostUnaryOpValue) {
+    private void assertBasicUnaryOperation(String src, Object expectedPostUnaryOpValue, String operator) {
         evalAllTags(src);
 
         assertGlobalVarDeclaration("x", true);
@@ -127,6 +129,7 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
             assertAttribute(e, KEY, "b");
             write.input(assertGlobalObjectInput);
             enter(UnaryExpressionTag.class, (e2, unary) -> {
+                assertAttribute(e2, OPERATOR, operator);
                 enter(ReadPropertyExpressionTag.class, (e3, prop) -> {
                     assertAttribute(e3, KEY, "x");
                     prop.input(assertGlobalObjectInput);
