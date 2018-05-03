@@ -42,7 +42,9 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.CreateSetIteratorNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetAddNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetClearNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetDeleteNodeGen;
@@ -50,6 +52,8 @@ import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetForEachNo
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetHasNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNodeGen;
+import com.oracle.truffle.js.nodes.access.CreateObjectNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -76,7 +80,9 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         delete(1),
         add(1),
         has(1),
-        forEach(1);
+        forEach(1),
+        values(0),
+        entries(0);
 
         private final int length;
 
@@ -103,6 +109,10 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 return JSSetHasNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case forEach:
                 return JSSetForEachNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case values:
+                return CreateSetIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_VALUE, args().withThis().createArgumentNodes(context));
+            case entries:
+                return CreateSetIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -259,6 +269,38 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 Object key = cursor.getKey();
                 call(thisArg, callbackObj, new Object[]{key, key, thisObj});
             }
+        }
+    }
+
+    public abstract static class CreateSetIteratorNode extends JSBuiltinNode {
+        private final int iterationKind;
+        @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
+        @Child private PropertySetNode setNextIndexNode;
+        @Child private PropertySetNode setIteratedObjectNode;
+        @Child private PropertySetNode setIterationKindNode;
+
+        public CreateSetIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
+            super(context, builtin);
+            this.iterationKind = iterationKind;
+            this.createObjectNode = CreateObjectNode.createWithCachedPrototype(context, null);
+            this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
+            this.setNextIndexNode = PropertySetNode.createSetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
+            this.setIterationKindNode = PropertySetNode.createSetHidden(JSSet.SET_ITERATION_KIND_ID, context);
+        }
+
+        @Specialization(guards = "isJSSet(set)")
+        protected DynamicObject doSet(VirtualFrame frame, DynamicObject set) {
+            DynamicObject iterator = createObjectNode.executeDynamicObject(frame, getContext().getRealm().getSetIteratorPrototype());
+            setIteratedObjectNode.setValue(iterator, set);
+            setNextIndexNode.setValue(iterator, JSSet.getInternalSet(set).getEntries());
+            setIterationKindNode.setValueInt(iterator, iterationKind);
+            return iterator;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSSet(thisObj)")
+        protected DynamicObject doIncompatibleReceiver(Object thisObj) {
+            throw Errors.createTypeError("not a Set");
         }
     }
 }

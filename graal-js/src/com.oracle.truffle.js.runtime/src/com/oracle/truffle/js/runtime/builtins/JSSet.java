@@ -72,10 +72,15 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
     public static final String CLASS_NAME = "Set";
     public static final String PROTOTYPE_NAME = "Set.prototype";
 
+    public static final String ITERATOR_CLASS_NAME = "Set Iterator";
+    public static final String ITERATOR_PROTOTYPE_NAME = "Set Iterator.prototype";
+
     private static final String SIZE = "size";
 
     private static final HiddenKey SET_ID = new HiddenKey("set");
     private static final Property SET_PROPERTY;
+
+    public static final HiddenKey SET_ITERATION_KIND_ID = new HiddenKey("SetIterationKind");
 
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
@@ -139,6 +144,11 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
         JSObjectUtil.putConstantAccessorProperty(ctx, prototype, SIZE, createSizeGetterFunction(realm), Undefined.instance, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        Object values = prototype.get("values");
+        // The initial value of the keys and @@iterator properties is the same function object as
+        // the initial value of the values property.
+        JSObjectUtil.putDataProperty(ctx, prototype, "keys", values, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_ITERATOR, values, JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
 
