@@ -1171,7 +1171,7 @@ namespace v8 {
         CurrentIsolate()->AddGCEpilogueCallback(GraalIsolate::kV8GCCallbackType, (void*) callback);
     }
 
-    bool EqualFlags(char* name, const char* normalized_name) {
+    bool EqualOptions(char* name, const char* normalized_name) {
         while (*name && *normalized_name) {
             char c = *name;
             if (c == '_') {
@@ -1183,7 +1183,8 @@ namespace v8 {
             name++;
             normalized_name++;
         }
-        return *name == *normalized_name;
+        return (*name == *normalized_name // option without a value
+                || (!*normalized_name && *name == '=')); // option with a value
     }
 
     void V8::SetFlagsFromCommandLine(int* argc, char** argv, bool remove_flags) {
@@ -1211,9 +1212,9 @@ namespace v8 {
                     vm_args.append(" ");
                 }
                 vm_args.append("-").append(trailing);
-            } else if (EqualFlags(arg, "--abort-on-uncaught-exception")) {
+            } else if (EqualOptions(arg, "--abort-on-uncaught-exception")) {
                 GraalIsolate::SetAbortOnUncaughtException(true);
-            } else if (!strncmp(arg, "--max-old-space-size=", sizeof ("--max-old-space-size=") - 1)) {
+            } else if (EqualOptions(arg, "--max-old-space-size")) {
                 char* start = arg + sizeof ("--max-old-space-size");
                 char* end = nullptr;
                 long value = strtol(start, &end, 10);
