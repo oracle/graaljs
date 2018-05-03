@@ -71,7 +71,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
 
     public JSBuiltin(String containerName, Object key, int length, int attributeFlags, int ecmaScriptVersion, boolean annexB,
                     BuiltinNodeFactory functionNodeFactory, BuiltinNodeFactory constructorNodeFactory, BuiltinNodeFactory newTargetConstructorFactory) {
-        assert key instanceof Symbol || (key instanceof String && !((String) key).isEmpty() && !((String) key).endsWith("_") && !((String) key).startsWith("_"));
+        assert isAllowedKey(key);
         assert (byte) ecmaScriptVersion == ecmaScriptVersion && (byte) attributeFlags == attributeFlags;
         this.name = key instanceof Symbol ? ((Symbol) key).toFunctionNameString() : (String) key;
         this.fullName = (containerName == null) ? name : (containerName + "." + name);
@@ -170,6 +170,18 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
     @TruffleBoundary
     public String toString() {
         return "JSBuiltin [name=" + name + ", length=" + length + "]";
+    }
+
+    private static boolean isAllowedKey(Object key) {
+        if (key instanceof Symbol) {
+            return true;
+        } else if (key instanceof String) {
+            String name = (String) key;
+            if (!name.isEmpty() && !name.endsWith("_") && !name.startsWith("_") || (name.startsWith("__") && name.endsWith("__"))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
