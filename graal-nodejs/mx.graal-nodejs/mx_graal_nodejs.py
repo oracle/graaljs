@@ -39,23 +39,9 @@ _currentArch = mx.get_arch()
 _jdkHome = None
 
 class GraalNodeJsTags:
-    sharedBuild = 'sharedbuild'
     allTests = 'all'
     unitTests = 'unit'
     jniProfilerTests = 'jniprofiler'
-
-def _graal_nodejs_pre_gate_runner(args, tasks):
-    with Task('SharedBuildWithThreading', tasks, tags=[GraalNodeJsTags.sharedBuild, Tags.fullbuild]) as t:
-        if t:
-            cleanArgs = mx_gate.check_gate_noclean_arg(args)
-            mx.command_function('clean')(cleanArgs)
-            mx.command_function('build')(['--shared-library', '--threading'])
-
-    with Task('ListFiles', tasks, tags=[GraalNodeJsTags.sharedBuild, Tags.fullbuild]) as t:
-        if t:
-            mx.run(['ls', join('out', 'Release')])
-            mx.run(['ls', join('out', 'Release', 'obj.target')])
-            mx.run(['ls', join('out', 'Release', 'lib.target')])
 
 def _graal_nodejs_post_gate_runner(args, tasks):
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
@@ -85,7 +71,6 @@ def _graal_nodejs_post_gate_runner(args, tasks):
             npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
             node(['-profile-native-boundary', '-Dtruffle.js.NashornJavaInterop=true', 'test.js'] + commonArgs, cwd=unitTestDir)
 
-mx_gate.prepend_gate_runner(_suite, _graal_nodejs_pre_gate_runner)
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 
 def _build(args, debug, shared_library, threading, parallelism, debug_mode, output_dir):

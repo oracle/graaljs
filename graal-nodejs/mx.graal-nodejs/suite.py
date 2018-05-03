@@ -40,7 +40,6 @@ suite = {
 
   "defaultLicense" : "UPL",
 
-  # If you add/remove/rename projects, update also the SharedBuild task of the gate
   "projects" : {
     "trufflenodeNative" : {
       "dependencies" : [
