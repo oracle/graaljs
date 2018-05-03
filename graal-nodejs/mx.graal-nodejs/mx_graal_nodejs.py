@@ -494,7 +494,7 @@ def buildSvmImage(args):
         _svm.fetch_languages(['--language:{}=version={}'.format(_lang, _js_version)])
     _svm.fetch_languages(['--tool:regex'])
     with _svm.native_image_context() as _native_image:
-        _native_image(['--language:nodejs', '-H:JNIConfigurationFiles={}'.format(join(_suite.dir, 'svmnodejs.jniconfig'))] + args)
+        _native_image(['--language:nodejs', '-H:JNIConfigurationResources=svmnodejs.jniconfig'] + args)
 
 def _prepare_svm_env():
     setLibraryPath()
