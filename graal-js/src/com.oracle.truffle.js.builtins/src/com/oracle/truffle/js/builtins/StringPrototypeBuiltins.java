@@ -59,6 +59,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins.JSNumberOperation;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.JSRegExpExecES5Node;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecES5NodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateHTMLNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateStringIteratorNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringCharAtNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringCharCodeAtNodeGen;
@@ -164,6 +165,19 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         // Annex B
         substr(2),
+        anchor(1),
+        big(0),
+        blink(0),
+        bold(0),
+        fixed(0),
+        fontcolor(1),
+        fontsize(1),
+        italics(0),
+        link(1),
+        small(0),
+        strike(0),
+        sub(0),
+        sup(0),
 
         // ES6
         startsWith(1),
@@ -196,7 +210,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Override
         public boolean isAnnexB() {
-            return substr == this;
+            return EnumSet.range(substr, sup).contains(this);
         }
 
         @Override
@@ -316,6 +330,33 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSStringPadNodeGen.create(context, builtin, true, args().withThis().varArgs().createArgumentNodes(context));
             case padEnd:
                 return JSStringPadNodeGen.create(context, builtin, false, args().withThis().varArgs().createArgumentNodes(context));
+
+            case anchor:
+                return createHTMLNode(context, builtin, "a", "name");
+            case big:
+                return createHTMLNode(context, builtin, "big", "");
+            case blink:
+                return createHTMLNode(context, builtin, "blink", "");
+            case bold:
+                return createHTMLNode(context, builtin, "b", "");
+            case fixed:
+                return createHTMLNode(context, builtin, "tt", "");
+            case fontcolor:
+                return createHTMLNode(context, builtin, "font", "color");
+            case fontsize:
+                return createHTMLNode(context, builtin, "font", "size");
+            case italics:
+                return createHTMLNode(context, builtin, "i", "");
+            case link:
+                return createHTMLNode(context, builtin, "a", "href");
+            case small:
+                return createHTMLNode(context, builtin, "small", "");
+            case strike:
+                return createHTMLNode(context, builtin, "strike", "");
+            case sub:
+                return createHTMLNode(context, builtin, "sub", "");
+            case sup:
+                return createHTMLNode(context, builtin, "sup", "");
         }
         return null;
     }
@@ -2258,6 +2299,44 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
                         @Cached("create()") JSToStringNode toStringNode) {
             return doString(frame, toStringNode.executeString(requireObjectCoercibleNode.execute(thisObj)));
+        }
+    }
+
+    static CreateHTMLNode createHTMLNode(JSContext context, JSBuiltin builtin, String tag, String attribute) {
+        return CreateHTMLNodeGen.create(context, builtin, tag, attribute, args().withThis().fixedArgs(1).createArgumentNodes(context));
+    }
+
+    abstract static class CreateHTMLNode extends JSBuiltinNode {
+        private final String tag;
+        private final String attribute;
+
+        CreateHTMLNode(JSContext context, JSBuiltin builtin, String tag, String attribute) {
+            super(context, builtin);
+            this.tag = tag;
+            this.attribute = attribute;
+        }
+
+        @Specialization
+        protected String createHTML(Object thisObj, Object value,
+                        @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
+                        @Cached("create()") JSToStringNode toStringNode) {
+            String string = toStringNode.executeString(requireObjectCoercibleNode.execute(thisObj));
+            if (!attribute.isEmpty()) {
+                String attrVal = toStringNode.executeString(value);
+                return wrapInTagWithAttribute(string, attrVal);
+            }
+            return wrapInTag(string);
+        }
+
+        @TruffleBoundary
+        private String wrapInTag(String string) {
+            return "<" + tag + ">" + string + "</" + tag + ">";
+        }
+
+        @TruffleBoundary
+        private String wrapInTagWithAttribute(String string, String attrVal) {
+            String escapedVal = attrVal.replace("\"", "&quot;");
+            return "<" + tag + " " + attribute + "=\"" + escapedVal + "\"" + ">" + string + "</" + tag + ">";
         }
     }
 }
