@@ -24,12 +24,11 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import mx, mx_gate, mx_subst, mx_sdk, mx_graal_js, os, re, shutil, tarfile, tempfile
+import mx, mx_gate, mx_subst, mx_sdk, mx_graal_js, os, shutil, tarfile, tempfile
 
 from mx import BinarySuite, VC
-from mx_gate import Task, Tags
+from mx_gate import Task
 from argparse import ArgumentParser
-from contextlib import contextmanager
 from os import remove, symlink, unlink
 from os.path import dirname, exists, join, isdir, isfile, islink
 
