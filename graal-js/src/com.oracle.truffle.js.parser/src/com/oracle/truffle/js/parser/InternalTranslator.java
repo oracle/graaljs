@@ -74,9 +74,7 @@ import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.cast.JSEnqueueJobNode;
 import com.oracle.truffle.js.nodes.cast.JSIsConstructorFunctionNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.nodes.cast.JSToConstructorFunctionNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode.JSToNumberWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode.JSToObjectWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
@@ -94,9 +92,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
@@ -112,7 +108,6 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.JSHashMap;
 
 final class InternalTranslator extends GraalJSTranslator {
     static final String INTERNAL_NAME = "Internal";
@@ -146,10 +141,6 @@ final class InternalTranslator extends GraalJSTranslator {
                     return realm.getDataViewConstructor().getFunctionObject();
                 case "Symbol":
                     return realm.getSymbolConstructor() == null ? null : realm.getSymbolConstructor().getFunctionObject();
-                case "Map":
-                    return realm.getMapConstructor() == null ? null : realm.getMapConstructor().getFunctionObject();
-                case "Set":
-                    return realm.getSetConstructor() == null ? null : realm.getSetConstructor().getFunctionObject();
                 case "TypeError":
                     return realm.getErrorConstructor(JSErrorType.TypeError).getFunctionObject();
                 default:
@@ -185,7 +176,6 @@ final class InternalTranslator extends GraalJSTranslator {
         @Override
         public JavaScriptNode createFunctionCall(JSContext context, JavaScriptNode function, JavaScriptNode[] arguments) {
             if (function instanceof InternalPropertyNode) {
-                JSRealm realm = context.getRealm();
                 String name = ((InternalPropertyNode) function).name;
                 switch (name) {
                     case "ToObject":
@@ -210,8 +200,6 @@ final class InternalTranslator extends GraalJSTranslator {
                         return GlobalObjectNode.create(context);
                     case "NextTick":
                         return JSEnqueueJobNode.create(context, arguments[0]);
-                    case "MakeConstructor":
-                        return JSToConstructorFunctionNode.create(context, arguments[0]);
                     case "IsConstructor":
                         return JSIsConstructorFunctionNode.create(arguments[0]);
                     case "ToLength":
@@ -231,10 +219,6 @@ final class InternalTranslator extends GraalJSTranslator {
                         return IsArrayWrappedNode.createIsArray(arguments[0]);
                     case "IsObject":
                         return IsObjectWrappedNode.create(arguments[0]);
-                    case "IsValidTypedArray":
-                        return new InternalIsValidTypedArrayNode(arguments[0]);
-                    case "HasDetachedBuffer":
-                        return new InternalHasDetachedBufferNode(arguments[0]);
                     case "RequireObject":
                         return RequireObjectNode.create(arguments[0]);
                     case "HiddenKey":
@@ -245,16 +229,6 @@ final class InternalTranslator extends GraalJSTranslator {
                         return new InternalHasHiddenKeyNode(arguments[0], arguments[1]);
                     case "CreateMethodProperty":
                         return CreateMethodPropertyNode.create(context, ((JSConstantNode) arguments[1]).getValue(), arguments[0], arguments[2]);
-                    case "GetIteratorPrototype":
-                        return JSConstantNode.create(realm.getIteratorPrototype());
-                    case "GetKeyFromMapCursor":
-                        return new InternalGetKeyFromMapCursorNode(arguments[0]);
-                    case "GetValueFromMapCursor":
-                        return new InternalGetValueFromMapCursorNode(arguments[0]);
-                    case "AdvanceMapCursor":
-                        return new InternalAdvanceMapCursorNode(arguments[0]);
-                    case "GetMapCursor":
-                        return new InternalGetMapCursorNode(arguments[0]);
                     case "SetFunctionName":
                         return new InternalSetFunctionNameNode(arguments[0], arguments[1]);
                     case "StringReplace":
@@ -326,10 +300,6 @@ final class InternalTranslator extends GraalJSTranslator {
 
         private static HiddenKey getSharedHiddenKey(String keyName) {
             switch (keyName) {
-                case "IteratedObject":
-                    return JSRuntime.ITERATED_OBJECT_ID;
-                case "IteratorNextIndex":
-                    return JSRuntime.ITERATOR_NEXT_INDEX;
                 case "PromiseState":
                     return JSPromise.PROMISE_STATE;
                 case "PromiseResult":
@@ -481,103 +451,6 @@ final class InternalTranslator extends GraalJSTranslator {
         return new InternalTranslator(factory, context, source, env);
     }
 
-    public abstract static class InternalMapCursorOperation extends JavaScriptNode {
-        @Child protected JavaScriptNode indexNode;
-        @Child private JSToNumberNode toNumberNode;
-
-        InternalMapCursorOperation(JavaScriptNode indexNode) {
-            this.indexNode = indexNode;
-        }
-
-        public static JSHashMap getInternalMap(DynamicObject collection) {
-            if (JSSet.isJSSet(collection)) {
-                return JSSet.getInternalSet(collection);
-            } else if (JSMap.isJSMap(collection)) {
-                return JSMap.getInternalMap(collection);
-            }
-            throw Errors.createTypeError("collection expected");
-        }
-
-        protected Object executeIndexNode(VirtualFrame frame) {
-            return indexNode.execute(frame);
-        }
-    }
-
-    public static class InternalGetKeyFromMapCursorNode extends InternalMapCursorOperation {
-
-        InternalGetKeyFromMapCursorNode(JavaScriptNode index) {
-            super(index);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return ((JSHashMap.Cursor) executeIndexNode(frame)).getKey();
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new InternalGetKeyFromMapCursorNode(cloneUninitialized(indexNode));
-        }
-    }
-
-    public static class InternalGetValueFromMapCursorNode extends InternalMapCursorOperation {
-
-        InternalGetValueFromMapCursorNode(JavaScriptNode index) {
-            super(index);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return ((JSHashMap.Cursor) executeIndexNode(frame)).getValue();
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new InternalGetValueFromMapCursorNode(cloneUninitialized(indexNode));
-        }
-    }
-
-    public static class InternalAdvanceMapCursorNode extends InternalMapCursorOperation {
-
-        InternalAdvanceMapCursorNode(JavaScriptNode index) {
-            super(index);
-        }
-
-        @Override
-        public Boolean execute(VirtualFrame frame) {
-            return ((JSHashMap.Cursor) executeIndexNode(frame)).advance();
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new InternalAdvanceMapCursorNode(cloneUninitialized(indexNode));
-        }
-
-        @Override
-        public boolean isResultAlwaysOfType(Class<?> clazz) {
-            return clazz == Boolean.class || clazz == boolean.class;
-        }
-    }
-
-    public static class InternalGetMapCursorNode extends JavaScriptNode {
-        @Child private JavaScriptNode collectionNode;
-
-        InternalGetMapCursorNode(JavaScriptNode collection) {
-            this.collectionNode = collection;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            DynamicObject collection = (DynamicObject) collectionNode.execute(frame);
-            return InternalMapCursorOperation.getInternalMap(collection).getEntries();
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new InternalGetMapCursorNode(cloneUninitialized(collectionNode));
-        }
-    }
-
     public static class InternalRegisterAsyncFunctionBuiltins extends JavaScriptNode {
 
         @Child private JavaScriptNode performPromiseThen;
@@ -708,47 +581,6 @@ final class InternalTranslator extends GraalJSTranslator {
         @Override
         protected JavaScriptNode copyUninitialized() {
             return create(cloneUninitialized(valueNode), cloneUninitialized(searchNode), cloneUninitialized(replacementNode));
-        }
-    }
-
-    /**
-     * ES2015, 22.2.3.5.1 ValidateTypedArray.
-     */
-    public static class InternalIsValidTypedArrayNode extends JavaScriptNode {
-        @Child private JavaScriptNode arrayNode;
-
-        InternalIsValidTypedArrayNode(JavaScriptNode node) {
-            this.arrayNode = node;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            Object target = arrayNode.execute(frame);
-            return JSArrayBufferView.isJSArrayBufferView(target) && !JSArrayBuffer.isDetachedBuffer(JSArrayBufferView.getArrayBuffer((DynamicObject) target));
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new InternalIsValidTypedArrayNode(cloneUninitialized(arrayNode));
-        }
-    }
-
-    public static class InternalHasDetachedBufferNode extends JavaScriptNode {
-        @Child private JavaScriptNode arrayNode;
-
-        InternalHasDetachedBufferNode(JavaScriptNode node) {
-            this.arrayNode = node;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            Object target = arrayNode.execute(frame);
-            return JSArrayBuffer.isDetachedBuffer(JSArrayBufferView.getArrayBuffer((DynamicObject) target));
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new InternalHasDetachedBufferNode(cloneUninitialized(arrayNode));
         }
     }
 
