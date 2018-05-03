@@ -84,9 +84,9 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!cachedIsProxy", "cachedClass.isInstance(object)"}, replaces = "doIsArrayShape", limit = "MAX_JSCLASS_COUNT")
+    @Specialization(guards = {"!cachedIsProxy", "cachedClass != null", "cachedClass.isInstance(object)"}, replaces = "doIsArrayShape", limit = "MAX_JSCLASS_COUNT")
     protected static boolean doIsArrayJSClass(DynamicObject object,
-                    @Cached("getJSClass(object)") JSClass cachedClass,
+                    @Cached("getJSClassChecked(object)") JSClass cachedClass,
                     @Cached("isJSArray(object)") boolean cachedIsArray,
                     @Cached("isJSProxy(object)") boolean cachedIsProxy) {
         return cachedIsArray;

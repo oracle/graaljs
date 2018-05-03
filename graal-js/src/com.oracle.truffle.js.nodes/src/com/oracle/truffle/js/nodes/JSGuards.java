@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
@@ -489,6 +490,14 @@ public final class JSGuards {
             return value.getClass();
         }
         return null;
+    }
+
+    public static JSClass getJSClassChecked(DynamicObject object) {
+        if (JSObject.isJSObject(object)) {
+            return JSObject.getJSClass(object);
+        } else {
+            return null;
+        }
     }
 
     public static boolean isReferenceEquals(Object a, Object b) {
