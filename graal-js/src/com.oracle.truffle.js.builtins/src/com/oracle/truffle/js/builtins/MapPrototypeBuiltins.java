@@ -42,7 +42,9 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.CreateMapIteratorNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapClearNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapDeleteNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapForEachNodeGen;
@@ -51,6 +53,8 @@ import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapHasNodeGe
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapSetNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNodeGen;
+import com.oracle.truffle.js.nodes.access.CreateObjectNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -77,7 +81,10 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         set(2),
         get(1),
         has(1),
-        forEach(1);
+        forEach(1),
+        keys(0),
+        values(0),
+        entries(0);
 
         private final int length;
 
@@ -106,6 +113,12 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                 return JSMapHasNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case forEach:
                 return JSMapForEachNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case keys:
+                return CreateMapIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY, args().withThis().createArgumentNodes(context));
+            case values:
+                return CreateMapIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_VALUE, args().withThis().createArgumentNodes(context));
+            case entries:
+                return CreateMapIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -287,6 +300,38 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                 Object key = cursor.getKey();
                 call(thisArg, callbackObj, new Object[]{value, key, thisObj});
             }
+        }
+    }
+
+    public abstract static class CreateMapIteratorNode extends JSBuiltinNode {
+        private final int iterationKind;
+        @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
+        @Child private PropertySetNode setNextIndexNode;
+        @Child private PropertySetNode setIteratedObjectNode;
+        @Child private PropertySetNode setIterationKindNode;
+
+        public CreateMapIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
+            super(context, builtin);
+            this.iterationKind = iterationKind;
+            this.createObjectNode = CreateObjectNode.createWithCachedPrototype(context, null);
+            this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
+            this.setNextIndexNode = PropertySetNode.createSetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
+            this.setIterationKindNode = PropertySetNode.createSetHidden(JSMap.MAP_ITERATION_KIND_ID, context);
+        }
+
+        @Specialization(guards = "isJSMap(map)")
+        protected DynamicObject doMap(VirtualFrame frame, DynamicObject map) {
+            DynamicObject iterator = createObjectNode.executeDynamicObject(frame, getContext().getRealm().getMapIteratorPrototype());
+            setIteratedObjectNode.setValue(iterator, map);
+            setNextIndexNode.setValue(iterator, JSMap.getInternalMap(map).getEntries());
+            setIterationKindNode.setValueInt(iterator, iterationKind);
+            return iterator;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSMap(thisObj)")
+        protected DynamicObject doIncompatibleReceiver(Object thisObj) {
+            throw Errors.createTypeError("not a Map");
         }
     }
 }

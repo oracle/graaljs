@@ -238,6 +238,7 @@ public class JSRealm implements ShapeContext {
     private final DynamicObject iteratorPrototype;
     private final DynamicObject arrayIteratorPrototype;
     private final DynamicObject setIteratorPrototype;
+    private final DynamicObject mapIteratorPrototype;
 
     @CompilationFinal(dimensions = 1) private final JSConstructor[] simdTypeConstructors;
     @CompilationFinal(dimensions = 1) private final DynamicObjectFactory[] simdTypeFactories;
@@ -458,6 +459,7 @@ public class JSRealm implements ShapeContext {
         this.iteratorPrototype = es6 ? createIteratorPrototype() : null;
         this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
         this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
+        this.mapIteratorPrototype = es6 ? createMapIteratorPrototype() : null;
 
         this.generatorFunctionConstructor = es6 ? JSFunction.createGeneratorFunctionConstructor(this) : null;
         this.initialGeneratorFactory = es6 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(this, generatorFunctionConstructor.getPrototype(), false).createFactory() : null;
@@ -929,6 +931,10 @@ public class JSRealm implements ShapeContext {
         return setIteratorPrototype;
     }
 
+    public DynamicObject getMapIteratorPrototype() {
+        return mapIteratorPrototype;
+    }
+
     /**
      * This function is used whenever a function is required that throws a TypeError. It is used by
      * some of the builtins that provide accessor functions that should not be called (e.g., as a
@@ -1243,6 +1249,16 @@ public class JSRealm implements ShapeContext {
         DynamicObject prototype = JSObject.create(context, this.iteratorPrototype, JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, JSSet.ITERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSSet.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        return prototype;
+    }
+
+    /**
+     * Creates the %MapIteratorPrototype% object.
+     */
+    private DynamicObject createMapIteratorPrototype() {
+        DynamicObject prototype = JSObject.create(context, this.iteratorPrototype, JSUserObject.INSTANCE);
+        JSObjectUtil.putFunctionsFromContainer(this, prototype, JSMap.ITERATOR_PROTOTYPE_NAME);
+        JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSMap.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
     }
 
