@@ -48,8 +48,8 @@ suite = {
         "coremodules",
       ],
       "class" : "GraalNodeJsProject",
-      "results" : ["node"],
-      "output" : "."
+      "results" : ["Release/node"],
+      "output" : "out"
     },
     "com.oracle.truffle.trufflenode" : {
       "subDir" : "mx.graal-nodejs",
@@ -121,7 +121,7 @@ suite = {
         "./" : ["file:deps/npm"],
         "NODE_README.md" : "file:README.md",
         "bin/" : [
-          "dependency:trufflenodeNative/node"
+          "dependency:trufflenodeNative/Release/node"
         ],
         "bin/npm" : "file:mx.graal-nodejs/graalvm_launchers/npm",
         "include/node/" : [
