@@ -42,7 +42,6 @@ package com.oracle.truffle.js.parser;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -57,7 +56,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
-import com.oracle.truffle.js.nodes.access.GetViewValueNode;
 import com.oracle.truffle.js.nodes.access.GlobalConstantNode;
 import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
@@ -69,7 +67,6 @@ import com.oracle.truffle.js.nodes.access.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.OrdinaryCreateFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectNode;
-import com.oracle.truffle.js.nodes.access.SetViewValueNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.cast.JSEnqueueJobNode;
 import com.oracle.truffle.js.nodes.cast.JSIsConstructorFunctionNode;
@@ -78,7 +75,6 @@ import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode.JSToNumberWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode.JSToObjectWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode.JSToStringWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node.JSToUInt32WrapperNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
@@ -86,7 +82,6 @@ import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.parser.InternalTranslatorFactory.InternalArrayPushNodeGen;
-import com.oracle.truffle.js.parser.InternalTranslatorFactory.InternalStringReplaceNodeGen;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -131,14 +126,8 @@ final class InternalTranslator extends GraalJSTranslator {
             switch (name) {
                 case "Object":
                     return realm.getObjectConstructor();
-                case "Array":
-                    return realm.getArrayConstructor().getFunctionObject();
                 case "String":
                     return realm.getStringConstructor().getFunctionObject();
-                case "Date":
-                    return realm.getDateConstructor().getFunctionObject();
-                case "DataView":
-                    return realm.getDataViewConstructor().getFunctionObject();
                 case "Symbol":
                     return realm.getSymbolConstructor() == null ? null : realm.getSymbolConstructor().getFunctionObject();
                 case "TypeError":
@@ -156,8 +145,6 @@ final class InternalTranslator extends GraalJSTranslator {
                         return JSConstantNode.createBoolean(context.isOptionAnnexB());
                     case "V8CompatibilityMode":
                         return JSConstantNode.createBoolean(context.isOptionV8CompatibilityMode());
-                    case "TypedArray":
-                        return JSConstantNode.create(context.getRealm().getTypedArrayConstructor());
                 }
                 return new InternalPropertyNode(propertyName);
             } else if (base instanceof GlobalConstantNode) {
@@ -193,9 +180,6 @@ final class InternalTranslator extends GraalJSTranslator {
                         return JSToBooleanNode.create(arguments[0]);
                     case "CallFunction":
                         return JSFunctionCallNode.createInternalCall(arguments);
-                    case "GetViewValue":
-                    case "SetViewValue":
-                        return makeDataViewValueNode(context, name, arguments);
                     case "GetGlobalObject":
                         return GlobalObjectNode.create(context);
                     case "NextTick":
@@ -231,8 +215,6 @@ final class InternalTranslator extends GraalJSTranslator {
                         return CreateMethodPropertyNode.create(context, ((JSConstantNode) arguments[1]).getValue(), arguments[0], arguments[2]);
                     case "SetFunctionName":
                         return new InternalSetFunctionNameNode(arguments[0], arguments[1]);
-                    case "StringReplace":
-                        return InternalStringReplaceNode.create(arguments[0], arguments[1], arguments[2]);
                     case "ObjectDefineProperty":
                         return ObjectDefinePropertyNodeGen.create(context, null, arguments);
                     case "ToPropertyKey":
@@ -312,17 +294,6 @@ final class InternalTranslator extends GraalJSTranslator {
                     return JSPromise.PROMISE_IS_HANDLED;
             }
             throw new IllegalArgumentException(keyName);
-        }
-
-        private static JavaScriptNode makeDataViewValueNode(JSContext context, String name, JavaScriptNode[] arguments) {
-            String type = (String) ((JSConstantNode) arguments[3]).getValue();
-            switch (name) {
-                case "GetViewValue":
-                    return GetViewValueNode.create(context, type, arguments[0], arguments[1], arguments[2]);
-                case "SetViewValue":
-                    return SetViewValueNode.create(context, type, arguments[0], arguments[1], arguments[2], arguments[4]);
-            }
-            throw Errors.shouldNotReachHere();
         }
 
         private static JavaScriptNode makeInstanceOfJSClassNode(String name, JavaScriptNode[] arguments) {
@@ -545,42 +516,6 @@ final class InternalTranslator extends GraalJSTranslator {
         protected JavaScriptNode copyUninitialized() {
             return new InternalHasHiddenKeyNode(cloneUninitialized(targetNode), cloneUninitialized(keyNode));
 
-        }
-    }
-
-    public abstract static class InternalStringReplaceNode extends JavaScriptNode {
-        @Child @Executed JavaScriptNode valueNode;
-        @Child @Executed JavaScriptNode searchNode;
-        @Child @Executed JavaScriptNode replacementNode;
-
-        protected InternalStringReplaceNode(JavaScriptNode valueNode, JavaScriptNode searchNode, JavaScriptNode replacementNode) {
-            this.valueNode = valueNode;
-            this.searchNode = searchNode;
-            this.replacementNode = replacementNode;
-        }
-
-        public static InternalStringReplaceNode create(JavaScriptNode valueNode, JavaScriptNode searchNode, JavaScriptNode replacementNode) {
-            return InternalStringReplaceNodeGen.create(valueNode, searchNode, replacementNode);
-        }
-
-        @Specialization
-        protected String stringReplace(Object value, Object search, Object replacement,
-                        @Cached("create()") JSToStringNode toString) {
-            String valueStr = toString.executeString(value);
-            String searchStr = toString.executeString(search);
-            String replacementStr = toString.executeString(replacement);
-            return doStringReplace(valueStr, searchStr, replacementStr);
-        }
-
-        @TruffleBoundary
-        private static String doStringReplace(String valueStr, String searchStr, String replacementStr) {
-            /* String.replace is complex and not suitable for partial evaluation. */
-            return valueStr.replace(searchStr, replacementStr);
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return create(cloneUninitialized(valueNode), cloneUninitialized(searchNode), cloneUninitialized(replacementNode));
         }
     }
 
