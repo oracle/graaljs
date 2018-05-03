@@ -114,6 +114,7 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         defineBuiltins(new ArrayBufferFunctionBuiltins());
         defineBuiltins(new ArrayBufferViewPrototypeBuiltins());
         defineBuiltins(new ArrayBufferViewFunctionBuiltins());
+        defineBuiltins(new DataViewPrototypeBuiltins());
 
         defineBuiltins(new EnumerateIteratorPrototypeBuiltins());
         if (JSTruffleOptions.MaxECMAScriptVersion >= 6) {
