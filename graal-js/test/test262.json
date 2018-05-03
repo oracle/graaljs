@@ -7741,11 +7741,5 @@
     "filePath" : "language/statements/with/unscopables-inc-dec.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/white-space/mongolian-vowel-separator-eval.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/white-space/mongolian-vowel-separator.js",
-    "status" : "FAIL"
   } ]
 }

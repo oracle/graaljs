@@ -103,7 +103,6 @@ public class Lexer extends Scanner {
 
     private static final String JAVASCRIPT_WHITESPACE_HIGH =
         "\u1680" + // Ogham space mark
-        "\u180e" + // separator, Mongolian vowel
         "\u2000" + // en quad
         "\u2001" + // em quad
         "\u2002" + // en space
