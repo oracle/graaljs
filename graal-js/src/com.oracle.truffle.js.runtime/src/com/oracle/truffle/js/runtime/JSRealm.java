@@ -1122,7 +1122,6 @@ public class JSRealm implements ShapeContext {
         long time = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
         allowLoadInternal = true;
         try {
-            loadInternal("array.js");
             loadInternal("typedarray.js");
             loadInternal("string.js");
 

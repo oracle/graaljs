@@ -88,6 +88,8 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
 
     public static final HiddenKey ARRAY_ITERATION_KIND_ID = new HiddenKey("ArrayIterationKind");
 
+    private static final String[] ARRAY_PROTOTYPE_UNSCOPABLES = new String[]{"copyWithin", "entries", "fill", "find", "findIndex", "includes", "keys", "values"};
+
     private JSArray() {
     }
 
@@ -198,8 +200,17 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
             // The initial value of the @@iterator property is the same function object as the
             // initial value of the Array.prototype.values property.
             putDataProperty(ctx, arrayPrototype, Symbol.SYMBOL_ITERATOR, arrayPrototype.get("values"), JSAttributes.getDefaultNotEnumerable());
+            putDataProperty(ctx, arrayPrototype, Symbol.SYMBOL_UNSCOPABLES, createUnscopables(ctx, ARRAY_PROTOTYPE_UNSCOPABLES), JSAttributes.configurableNotEnumerableNotWritable());
         }
         return arrayPrototype;
+    }
+
+    private static DynamicObject createUnscopables(JSContext context, String[] unscopableNames) {
+        DynamicObject unscopables = JSObject.create(context, context.getEmptyShape());
+        for (String name : unscopableNames) {
+            putDataProperty(unscopables, name, true, JSAttributes.getDefault());
+        }
+        return unscopables;
     }
 
     public static Shape makeInitialArrayShape(JSContext context, DynamicObject prototype) {
