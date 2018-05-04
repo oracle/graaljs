@@ -1415,7 +1415,7 @@ public class Lexer extends Scanner {
         // Note that Character.isUnicodeIdentifierStart does not match the Unicode property ID_Start
         // perfectly. Notably, it is missing the characters with the auxiliary property
         // Other_ID_Start.
-        return Character.isUnicodeIdentifierStart(codePoint)
+        return (Character.isUnicodeIdentifierStart(codePoint) && codePoint != '\u2e2f')
                 || codePoint == '$'
                 || codePoint == '_';
     }
@@ -1429,7 +1429,7 @@ public class Lexer extends Scanner {
     private static boolean isJSIdentifierPart(int codePoint) {
         // Character.isUnicodeIdentifierPart is not exactly the Unicode property ID_Continue. See
         // the remark in #isJSIdentifierPart.
-        return (Character.isUnicodeIdentifierPart(codePoint) && !Character.isIdentifierIgnorable(codePoint))
+        return (Character.isUnicodeIdentifierPart(codePoint) && !Character.isIdentifierIgnorable(codePoint) && codePoint != '\u2e2f')
                 || codePoint == '$'
                 || codePoint == '\u200c'  // <ZWNJ>
                 || codePoint == '\u200d'; // <ZWJ>
