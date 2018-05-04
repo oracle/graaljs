@@ -1429,7 +1429,7 @@ public class Lexer extends Scanner {
     private static boolean isJSIdentifierPart(int codePoint) {
         // Character.isUnicodeIdentifierPart is not exactly the Unicode property ID_Continue. See
         // the remark in #isJSIdentifierPart.
-        return (Character.isUnicodeIdentifierPart(codePoint) && codePoint != '\u180e')
+        return (Character.isUnicodeIdentifierPart(codePoint) && !Character.isIdentifierIgnorable(codePoint))
                 || codePoint == '$'
                 || codePoint == '\u200c'  // <ZWNJ>
                 || codePoint == '\u200d'; // <ZWJ>
