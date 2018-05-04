@@ -41,10 +41,12 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNodeGen.IsArrayWrappedNodeGen;
@@ -61,6 +63,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  *
  * @see JSIsArrayNode
  */
+@ImportStatic(value = JSGuards.class)
 public abstract class IsArrayNode extends JavaScriptBaseNode {
 
     protected static final int MAX_SHAPE_COUNT = 1;
@@ -87,15 +90,11 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
         return cachedResult && cachedShape.check(object);
     }
 
-    protected static JSClass getJSClass(DynamicObject object) {
-        return JSObject.getJSClass(object);
-    }
-
     @SuppressWarnings("unused")
-    @Specialization(replaces = "doIsArrayShape", guards = "cachedClass.isInstance(object)", limit = "MAX_JSCLASS_COUNT")
-    protected static boolean doIsArrayJSClass(DynamicObject object, //
-                    @Cached("getJSClass(object)") JSClass cachedClass, //
-                    @Cached("isArray(object)") boolean cachedResult) {
+    @Specialization(replaces = "doIsArrayShape", guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "MAX_JSCLASS_COUNT")
+    protected static boolean doIsArrayJSClass(DynamicObject object,
+                    @Cached("isArray(object)") boolean cachedResult,
+                    @Cached("getJSClassChecked(object)") JSClass cachedClass) {
         return cachedResult;
     }
 

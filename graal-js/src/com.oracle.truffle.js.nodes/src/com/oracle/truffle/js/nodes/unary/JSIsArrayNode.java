@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -53,6 +54,7 @@ import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
  * ES6 7.2.2 IsArray(argument).
@@ -66,6 +68,7 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
 
     @CompilationFinal private ConditionProfile isArrayProfile;
     @CompilationFinal private ConditionProfile isProxyProfile;
+    @Child private Node hasSizeNode;
 
     protected JSIsArrayNode() {
     }
@@ -84,9 +87,9 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!cachedIsProxy", "cachedClass.isInstance(object)"}, replaces = "doIsArrayShape", limit = "MAX_JSCLASS_COUNT")
+    @Specialization(guards = {"!cachedIsProxy", "cachedClass != null", "cachedClass.isInstance(object)"}, replaces = "doIsArrayShape", limit = "MAX_JSCLASS_COUNT")
     protected static boolean doIsArrayJSClass(DynamicObject object,
-                    @Cached("getJSClass(object)") JSClass cachedClass,
+                    @Cached("getJSClassChecked(object)") JSClass cachedClass,
                     @Cached("isJSArray(object)") boolean cachedIsArray,
                     @Cached("isJSProxy(object)") boolean cachedIsProxy) {
         return cachedIsArray;
@@ -94,23 +97,23 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isJSProxy(object)"})
     protected boolean doIsProxy(DynamicObject object) {
-        initProfiles();
-        return JSRuntime.isArray(object, isArrayProfile, isProxyProfile);
+        init();
+        return JSRuntime.isArray(object, isArrayProfile, isProxyProfile, hasSizeNode);
     }
 
     @Specialization(replaces = {"doIsArrayJSClass", "doIsProxy"})
     protected boolean doGeneric(DynamicObject object) {
-        initProfiles();
-        return JSRuntime.isArray(object, isArrayProfile, isProxyProfile);
+        init();
+        return JSRuntime.isArray(object, isArrayProfile, isProxyProfile, hasSizeNode);
     }
 
     @Specialization(guards = {"!isDynamicObject(object)"})
     protected boolean doNotObject(Object object) {
-        initProfiles();
-        return JSRuntime.isArray(object, isArrayProfile, isProxyProfile);
+        init();
+        return JSRuntime.isArray(object, isArrayProfile, isProxyProfile, hasSizeNode);
     }
 
-    private void initProfiles() {
+    private void init() {
         if (isArrayProfile == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             isArrayProfile = ConditionProfile.createBinaryProfile();
@@ -118,6 +121,10 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
         if (isProxyProfile == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             isProxyProfile = ConditionProfile.createBinaryProfile();
+        }
+        if (hasSizeNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            hasSizeNode = insert(JSInteropUtil.createHasSize());
         }
     }
 

@@ -552,7 +552,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
-        @Specialization
+        @Specialization(guards = "isJSType(thisObj)")
         protected DynamicObject keysDynamicObject(DynamicObject thisObj) {
             List<? extends Object> propertyList = listClassProfile.profile(JSObject.enumerableOwnNames(toOrAsObject(thisObj)));
             return keysIntl(propertyList);
