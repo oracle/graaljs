@@ -1829,9 +1829,6 @@
     "status" : "SKIP",
     "comment" : "fails due to GenericPropertyGetNode (in noIC mode)"
   }, {
-    "filePath" : "mjsunit/var.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/verify-assert-false.js",
     "status" : "SKIP",
     "comment" : "two tests using internal functions, just to ensure assertFalse etc. are working properly"

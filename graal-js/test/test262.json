@@ -6580,22 +6580,6 @@
     "filePath" : "language/global-code/script-decl-var.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/identifiers/other_id_continue-escaped.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/identifiers/other_id_continue.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/identifiers/other_id_start-escaped.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/identifiers/other_id_start.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "language/import/dup-bound-names.js",
     "status" : "FAIL"
   }, {
