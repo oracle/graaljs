@@ -103,7 +103,6 @@ public class Lexer extends Scanner {
 
     private static final String JAVASCRIPT_WHITESPACE_HIGH =
         "\u1680" + // Ogham space mark
-        "\u180e" + // separator, Mongolian vowel
         "\u2000" + // en quad
         "\u2001" + // em quad
         "\u2002" + // en space
@@ -1430,7 +1429,7 @@ public class Lexer extends Scanner {
     private static boolean isJSIdentifierPart(int codePoint) {
         // Character.isUnicodeIdentifierPart is not exactly the Unicode property ID_Continue. See
         // the remark in #isJSIdentifierPart.
-        return Character.isUnicodeIdentifierPart(codePoint)
+        return (Character.isUnicodeIdentifierPart(codePoint) && codePoint != '\u180e')
                 || codePoint == '$'
                 || codePoint == '\u200c'  // <ZWNJ>
                 || codePoint == '\u200d'; // <ZWJ>
