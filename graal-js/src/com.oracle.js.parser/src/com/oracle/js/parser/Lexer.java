@@ -1412,12 +1412,26 @@ public class Lexer extends Scanner {
      * @return {@code true} if the character may start an ECMAScript identifier; {@code false} otherwise
      */
     private static boolean isJSIdentifierStart(int codePoint) {
-        // Note that Character.isUnicodeIdentifierStart does not match the Unicode property ID_Start
-        // perfectly. Notably, it is missing the characters with the auxiliary property
-        // Other_ID_Start.
-        return Character.isUnicodeIdentifierStart(codePoint)
+        return (Character.isUnicodeIdentifierStart(codePoint) && codePoint != '\u2e2f')
                 || codePoint == '$'
-                || codePoint == '_';
+                || codePoint == '_'
+                || isOtherIDStart(codePoint);
+    }
+
+    /**
+     * Determines if the specified character has Other_ID_Start Unicode property.
+     * 
+     * @param codePoint the character to be tested.
+     * @return {@code true} if the character has Other_ID_Start Unicode property,
+     * {@code false} otherwise.
+     */
+    private static boolean isOtherIDStart(int codePoint) {
+        return codePoint == 0x1885
+                || codePoint == 0x1886
+                || codePoint == 0x2118
+                || codePoint == 0x212e
+                || codePoint == 0x309b
+                || codePoint == 0x309c;
     }
 
     /**
@@ -1427,12 +1441,34 @@ public class Lexer extends Scanner {
      * @return {@code true} if the character may be part of an ECMAScript identifier; {@code false} otherwise
      */
     private static boolean isJSIdentifierPart(int codePoint) {
-        // Character.isUnicodeIdentifierPart is not exactly the Unicode property ID_Continue. See
-        // the remark in #isJSIdentifierPart.
-        return (Character.isUnicodeIdentifierPart(codePoint) && codePoint != '\u180e')
+        return (Character.isUnicodeIdentifierPart(codePoint) && !Character.isIdentifierIgnorable(codePoint) && codePoint != '\u2e2f')
                 || codePoint == '$'
                 || codePoint == '\u200c'  // <ZWNJ>
-                || codePoint == '\u200d'; // <ZWJ>
+                || codePoint == '\u200d'  // <ZWJ>
+                || isOtherIDContinue(codePoint);
+    }
+
+    /**
+     * Determines if the specified character has Other_ID_Continue Unicode property.
+     * 
+     * @param codePoint the character to be tested.
+     * @return {@code true} if the character has Other_ID_Continue Unicode property,
+     * {@code false} otherwise.
+     */
+    private static boolean isOtherIDContinue(int codePoint) {
+        return isOtherIDStart(codePoint)
+                || codePoint == 0x00b7
+                || codePoint == 0x0387
+                || codePoint == 0x1369
+                || codePoint == 0x136a
+                || codePoint == 0x136b
+                || codePoint == 0x136c
+                || codePoint == 0x136d
+                || codePoint == 0x136e
+                || codePoint == 0x136f
+                || codePoint == 0x1370
+                || codePoint == 0x1371
+                || codePoint == 0x19da;
     }
 
     /**
@@ -1838,7 +1874,7 @@ public class Lexer extends Scanner {
                 } else if (type == RBRACE && pauseOnRightBrace) {
                     break;
                 }
-            } else if (Character.isJavaIdentifierStart(ch0) || ch0 == '\\' && ch1 == 'u') {
+            } else if (isJSIdentifierStart(ch0) || ch0 == '\\' && ch1 == 'u') {
                 // Scan and add identifier or keyword.
                 scanIdentifierOrKeyword();
             } else if (isStringDelimiter(ch0)) {
