@@ -1838,7 +1838,7 @@ public class Lexer extends Scanner {
                 } else if (type == RBRACE && pauseOnRightBrace) {
                     break;
                 }
-            } else if (Character.isJavaIdentifierStart(ch0) || ch0 == '\\' && ch1 == 'u') {
+            } else if (isJSIdentifierStart(ch0) || ch0 == '\\' && ch1 == 'u') {
                 // Scan and add identifier or keyword.
                 scanIdentifierOrKeyword();
             } else if (isStringDelimiter(ch0)) {
