@@ -180,11 +180,11 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
 
     std::string node = nodeExe();
 
-    if (ends_with(up(node), "/jre/bin")) {
+    if (ends_with(up(node), "/jre/languages/js/bin")) {
         // Part of GraalVM: take precedence over any JAVA_HOME.
         // We set environment variables to ensure these values are correctly
         // propagated to child processes.
-        std::string graalvm_home = up(node, 3);
+        std::string graalvm_home = up(node, 5);
         setenv("JAVA_HOME", graalvm_home.c_str(), 1);
 
 #       ifdef LIBNODESVM_RELPATH
@@ -470,7 +470,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     // Graal.js access
     jclass access_class = findClassExtra(env, "com/oracle/truffle/trufflenode/GraalJSAccess");
     jmethodID createID = env->GetStaticMethodID(access_class, "create", "([Ljava/lang/String;J)Ljava/lang/Object;");
-    if (createID == NULL) EXIT_WITH_MESSAGE(env, "GraalAccess.create(String[],long) method not found!\n")
+    if (createID == NULL) EXIT_WITH_MESSAGE(env, "GraalJSAccess.create(String[],long) method not found!\n")
     jobject access = env->functions->CallStaticObjectMethod(env, access_class, createID, args, (jlong) uv_default_loop());
     if (access == NULL) EXIT_WITH_MESSAGE(env, "GraalJSAccess.create() failed!\n")
     access_class_ = (jclass) env->NewGlobalRef(access_class);

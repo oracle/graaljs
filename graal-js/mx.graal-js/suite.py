@@ -8,7 +8,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "9d8c4bfe915a79ef640f6f510f5e4b3092e3d5ea",
+           "version" : "8ed0b0b53c7e722b0779c29d7e3532fcf27ab3ac",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -17,7 +17,7 @@ suite = {
         {
            "name" : "tools",
            "subdir" : True,
-           "version" : "1f2fbfb014677bd1f16bcb98ebe998e904a5a7b9",
+           "version" : "8ed0b0b53c7e722b0779c29d7e3532fcf27ab3ac",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -473,6 +473,15 @@ suite = {
         "sdk:POLYGLOT_TCK"
       ],
       "maven" : False
+    },
+
+    "GRAALJS_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "description" : "Graal.js support distribution for the GraalVM",
+      "layout" : {
+        "native-image.properties": "file:mx.graal-js/native-image.properties",
+        "./": "file:README.md",
+      },
     },
   }
 }
