@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSError;
@@ -202,22 +203,26 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
                 return tryBlock.execute(frame);
             } catch (ControlFlowException cfe) {
                 throw cfe;
-            } catch (GraalJSException | StackOverflowError ex) {
+            } catch (Throwable ex) {
                 catchBranch.enter();
-                VirtualFrame catchFrame = blockScope == null ? frame : blockScope.appendScopeFrame(frame);
-                try {
-                    return executeCatchInner(catchFrame, ex);
-                } catch (YieldException e) {
-                    setState(frame, catchFrame);
-                    throw e;
-                } finally {
-                    if (blockScope != null) {
-                        blockScope.exitScope(catchFrame);
+                if (shouldCatch(ex)) {
+                    VirtualFrame catchFrame = blockScope == null ? frame : blockScope.appendScopeFrame(frame);
+                    try {
+                        return executeCatchInner(catchFrame, ex);
+                    } catch (YieldException e) {
+                        setState(frame, catchFrame.materialize());
+                        throw e;
+                    } finally {
+                        if (blockScope != null) {
+                            blockScope.exitScope(catchFrame);
+                        }
                     }
+                } else {
+                    throw ex;
                 }
             }
         } else {
-            VirtualFrame catchFrame = (VirtualFrame) state;
+            VirtualFrame catchFrame = JSFrameUtil.castMaterializedFrame(state);
             try {
                 return catchBlock.execute(catchFrame);
             } catch (YieldException e) {
