@@ -42,9 +42,12 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -68,6 +71,102 @@ public class EvalTest extends FineGrainedAccessTest {
                 }).exit();
             }).exit();
             var.input(Undefined.instance);
+        }).exit();
+    }
+
+    @Test
+    public void evalVariableReadWrite() {
+        evalAllTags("function foo(a) {" +
+                        "  function bar() {" +
+                        "    a = a+1;" +
+                        "    return a;" +
+                        "  }" +
+                        "  eval('var a = 30');" +
+                        "  return bar;" +
+                        "}" +
+                        "foo(42)();");
+
+        // write function foo
+        enter(WritePropertyExpressionTag.class, (e, wp) -> {
+            wp.input(assertGlobalObjectInput);
+            enter(LiteralExpressionTag.class).exit((e2) -> {
+                assertAttribute(e2, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+            });
+            wp.input(assertJSFunctionInput);
+        }).exit();
+
+        // foo(42)();
+        enter(FunctionCallExpressionTag.class, (e1, call) -> {
+            // receiver undefined
+            enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+            call.input(assertUndefinedInput);
+
+            // foo(42);
+            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+                call.input(assertUndefinedInput);
+                // get the function from the property foo
+                enter(ReadPropertyExpressionTag.class, (e3, pr) -> {
+                    assertAttribute(e3, KEY, "foo");
+                    pr.input(assertGlobalObjectInput);
+                }).exit();
+                call.input(assertJSFunctionInput);
+
+                // argument 42
+                enter(LiteralExpressionTag.class).exit();
+                call.input(42);
+
+                // inside the foo function
+                // write the 42 into the argument variable
+                enter(WriteVariableExpressionTag.class, (e3, vw) -> {
+                    vw.input(42);
+                }).exit();
+
+                // create a local function bar
+                enter(WriteVariableExpressionTag.class, (e3, vw) -> {
+                    enter(LiteralExpressionTag.class).exit();
+                    vw.input(assertJSFunctionInput);
+                }).exit();
+
+                // eval
+                enter(EvalCallTag.class, (e3, eval) -> {
+                    // read the eval function
+                    enter(ReadVariableExpressionTag.class).exit();
+                    eval.input();
+                    // read the String
+                    enter(LiteralExpressionTag.class).exit();
+                    eval.input();
+
+                    // var a = 30
+                    enter(WriteVariableExpressionTag.class, (e4, vw) -> {
+                        enter(LiteralExpressionTag.class).exit();
+                        vw.input(30);
+                    }).exit();
+                }).exit();
+
+                // return bar
+                enter(ReadVariableExpressionTag.class).exit();
+            }).exit();
+
+            // foo(42) returns the function (bar)
+            call.input(assertJSFunctionInput);
+
+            // inside bar
+            // a = a + 1;
+            enter(WriteVariableExpressionTag.class, (e2, vw) -> {
+
+                // a + 1
+                enter(BinaryExpressionTag.class, (e3, b) -> {
+                    enter(ReadVariableExpressionTag.class).exit();
+                    b.input(30);
+                    enter(LiteralExpressionTag.class).exit();
+                    b.input(1);
+                }).exit();
+                vw.input(31);
+            }).exit();
+
+            // return a;
+            enter(ReadVariableExpressionTag.class).exit();
         }).exit();
     }
 

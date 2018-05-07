@@ -43,10 +43,14 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 
 public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode implements WriteNode {
@@ -55,15 +59,32 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
     @Child @Executed JavaScriptNode rhsNode;
     @Child private WriteElementNode writeArgumentsElementNode;
 
-    JSGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs) {
+    private final FrameSlot slot;
+
+    JSGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, FrameSlot slot) {
         this.index = index;
         this.argumentsArrayNode = argumentsArray;
         this.rhsNode = rhs;
         this.writeArgumentsElementNode = argumentsArrayAccess;
+        this.slot = slot;
     }
 
-    public static JSGuardDisconnectedArgumentWrite create(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs) {
-        return JSGuardDisconnectedArgumentWriteNodeGen.create(index, argumentsArrayAccess, argumentsArray, rhs);
+    public static JSGuardDisconnectedArgumentWrite create(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, FrameSlot slot) {
+        return JSGuardDisconnectedArgumentWriteNodeGen.create(index, argumentsArrayAccess, argumentsArray, rhs, slot);
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == WriteVariableExpressionTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor("name", slot.getIdentifier());
     }
 
     @Specialization(guards = "!isArgumentsDisconnected(argumentsArray)")
@@ -103,6 +124,6 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSGuardDisconnectedArgumentWriteNodeGen.create(index, cloneUninitialized(writeArgumentsElementNode), cloneUninitialized(argumentsArrayNode), cloneUninitialized(rhsNode));
+        return JSGuardDisconnectedArgumentWriteNodeGen.create(index, cloneUninitialized(writeArgumentsElementNode), cloneUninitialized(argumentsArrayNode), cloneUninitialized(rhsNode), slot);
     }
 }
