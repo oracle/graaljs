@@ -289,13 +289,6 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @Override
-    public Object loadInternal(JSRealm realm, String fileName) {
-        JSContext context = realm.getContext();
-        ScriptNode scriptNode = InternalTranslationProvider.translateInternal(context, fileName);
-        return scriptNode.runWithThisObject(realm, Undefined.instance);
-    }
-
-    @Override
     public Object getDefaultNodeFactory() {
         return NodeFactory.getDefaultInstance();
     }

@@ -48,16 +48,9 @@ import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.nodes.NodeFactory;
-import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
@@ -181,39 +174,6 @@ public class InternalTranslationProvider {
             return Source.newBuilder(new InputStreamReader(stream)).name(JSRealm.INTERNAL_JS_FILE_NAME_PREFIX + fileName).language(AbstractJavaScriptLanguage.ID).internal().build();
         } catch (IOException ex) {
             throw new IllegalStateException(ex);
-        }
-    }
-
-    private static Source getInternalFileSource(String fileName) {
-        assert internalSources.containsKey(fileName) : "Internal source file not registered: " + fileName;
-        return internalSources.get(fileName);
-    }
-
-    public static ScriptNode translateInternal(JSContext context, String fileName) {
-        Source source = getInternalFileSource(fileName);
-        if (JSTruffleOptions.Snapshots) {
-            SnapshotProvider snapshotProvider = internalSnapshots.get(fileName);
-            if (snapshotProvider != null) {
-                return ScriptNode.fromFunctionRoot(context, (FunctionRootNode) snapshotProvider.apply(InternalTranslator.INTERNAL_NODE_FACTORY, context, source));
-            }
-        }
-
-        try {
-            return InternalTranslator.translateSource(context, source);
-        } catch (com.oracle.js.parser.ParserException e) {
-            throw Errors.createSyntaxError(e.getMessage(), e, null);
-        }
-    }
-
-    public static void forEachInternalSourceFile(Consumer<String> consumer) {
-        Arrays.asList(internalFileNames).forEach(consumer);
-    }
-
-    public static ScriptNode interceptTranslation(JSContext context, String fileName, Function<NodeFactory, NodeFactory> nodeFactorySupplier) {
-        try {
-            return InternalTranslator.translateSource(nodeFactorySupplier.apply(InternalTranslator.INTERNAL_NODE_FACTORY), context, internalSources.get(fileName));
-        } catch (com.oracle.js.parser.ParserException e) {
-            throw Errors.createSyntaxError(e.getMessage(), e, null);
         }
     }
 }

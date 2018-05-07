@@ -74,8 +74,6 @@ public interface Evaluator {
 
     String parseToJSON(JSContext context, final String code, final String name, final boolean includeLoc);
 
-    Object loadInternal(JSRealm realm, String fileName);
-
     /**
      * Returns the NodeFactory used by this parser instance to create AST nodes.
      */
