@@ -132,8 +132,9 @@ class GraalJsBuildTask(mx.ArchivableBuildTask):
         for root, _, files in os.walk(_output_dir_src_gen, followlinks=True):
             java_file_list += [join(root, name) for name in files if name.endswith('.java')]
 
-        java_file_list = sorted(java_file_list)  # for reproducibility
-        mx.run([jdk.javac, '-source', str(compliance), '-target', str(compliance), '-classpath', mx.classpath('com.oracle.truffle.js.parser'), '-d', _output_dir_bin] + java_file_list)
+        if len(java_file_list) > 0:
+            java_file_list = sorted(java_file_list)  # for reproducibility
+            mx.run([jdk.javac, '-source', str(compliance), '-target', str(compliance), '-classpath', mx.classpath('com.oracle.truffle.js.parser'), '-d', _output_dir_bin] + java_file_list)
 
     def clean(self, forBuild=False):
         _output_dir = join(_suite.dir, self.subject.outputDir)

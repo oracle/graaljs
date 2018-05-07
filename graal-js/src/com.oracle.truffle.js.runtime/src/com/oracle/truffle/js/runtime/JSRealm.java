@@ -275,8 +275,6 @@ public class JSRealm implements ShapeContext {
     private final JSConstructor javaInteropWorkerConstructor;
     private final DynamicObjectFactory javaInteropWorkerFactory;
 
-    private boolean allowLoadInternal;
-
     @CompilationFinal private DynamicObject arrayProtoValuesIterator;
     @CompilationFinal private DynamicObject typedArrayConstructor;
     @CompilationFinal private DynamicObject typedArrayPrototype;
@@ -1083,9 +1081,6 @@ public class JSRealm implements ShapeContext {
         if (JSTruffleOptions.ProfileTime) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
         }
-        if (JSTruffleOptions.LoadInternalScripts) {
-            loadInternalScripts();
-        }
 
         arrayProtoValuesIterator = (DynamicObject) getArrayConstructor().getPrototype().get(Symbol.SYMBOL_ITERATOR, Undefined.instance);
     }
@@ -1117,28 +1112,6 @@ public class JSRealm implements ShapeContext {
     @Override
     public DynamicObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
         return simdTypeFactories[factory.getFactoryIndex()];
-    }
-
-    private void loadInternalScripts() {
-        long time = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
-        allowLoadInternal = true;
-        try {
-            loadInternal("string.js");
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
-        } finally {
-            allowLoadInternal = false;
-            if (JSTruffleOptions.ProfileTime) {
-                System.out.println("LoadInternalScripts: " + (System.nanoTime() - time) / 1000000);
-            }
-        }
-    }
-
-    private void loadInternal(String fileName) {
-        if (!allowLoadInternal) {
-            throw new AssertionError("realm already initialized");
-        }
-        context.getEvaluator().loadInternal(this, fileName);
     }
 
     /**
