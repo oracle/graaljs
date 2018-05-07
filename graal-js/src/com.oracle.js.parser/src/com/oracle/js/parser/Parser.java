@@ -1800,6 +1800,9 @@ loop:
                     @Override
                     public void accept(IdentNode identNode) {
                         verifyStrictIdent(identNode, contextString);
+                        if (varType != VAR && identNode.getName().equals(LET.getName())) {
+                            throw error(AbstractParser.message("let.lexical.binding")); // ES8 13.3.1.1
+                        }
                         final VarNode var = new VarNode(varLine, varToken, sourceOrder, identNode.getFinish(), identNode.setIsDeclaredHere(), null, finalVarFlags);
                         appendStatement(var);
                     }
@@ -1839,10 +1842,10 @@ loop:
             if (!isDestructuring) {
                 assert init != null || varType != CONST || !isStatement;
                 final IdentNode ident = (IdentNode)binding;
+                if (varType != VAR && ident.getName().equals(LET.getName())) {
+                    throw error(AbstractParser.message("let.lexical.binding")); // ES8 13.3.1.1
+                }
                 if (!isStatement) {
-                    if (ident.getName().equals(LET.getName())) {
-                        throw error("let is not a valid binding name in a for loop"); // ES6 13.7.5.1
-                    }
                     if (init == null && varType == CONST) {
                         forResult.recordMissingAssignment(binding);
                     }
