@@ -205,9 +205,6 @@ public class JSTruffleOptions {
     /** Expose {@code Debug} built-in object with a custom property name. */
     public static final String DebugPropertyName = stringOption("DebugPropertyName", JSDebug.CLASS_NAME, OPTION_LANGUAGE_FEATURE);
     public static final boolean DebugCounters = booleanOption("DebugCounters", false, OPTION_SETUP);
-    /** Use snapshots. */
-    public static final boolean Snapshots = booleanOption("Snapshots", true, OPTION_SETUP | OPTION_PERFORMANCE);
-    public static final boolean LoadInternalScripts = booleanOption("LoadInternalScripts", true, OPTION_SETUP);
     /** Load per-function data lazily. */
     public static final boolean LazyFunctionData = booleanOption("LazyFunctionData", true, OPTION_SETUP | OPTION_PERFORMANCE);
     /** Translate function bodies lazily. */

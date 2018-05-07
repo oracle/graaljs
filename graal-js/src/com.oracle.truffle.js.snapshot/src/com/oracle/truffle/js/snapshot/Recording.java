@@ -96,7 +96,6 @@ import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.parser.BinarySnapshotProvider;
-import com.oracle.truffle.js.parser.InternalTranslationProvider;
 import com.oracle.truffle.js.parser.SnapshotProvider;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.json.JSONParser;
@@ -1710,7 +1709,7 @@ public class Recording {
     }
 
     private void saveAsJava(String fileName, OutputStream outs) {
-        String qualifiedClassName = InternalTranslationProvider.classNameFromFileName(fileName);
+        String qualifiedClassName = mangleFileName(fileName);
         String packageName = qualifiedClassName.substring(0, qualifiedClassName.lastIndexOf('.'));
         String unqualifiedClassName = qualifiedClassName.substring(qualifiedClassName.lastIndexOf('.') + 1, qualifiedClassName.length());
         try (PrintStream out = new PrintStream(outs, false, "UTF-8")) {
@@ -1807,6 +1806,27 @@ public class Recording {
 
     static String packageName(Class<?> clazz) {
         return clazz.getName().substring(0, clazz.getName().lastIndexOf('.'));
+    }
+
+    /**
+     * Replace non-word characters with {@code '_'}.
+     */
+    private static String mangleFileName(String fileName) {
+        StringBuilder sb = null;
+        for (int i = 0; i < fileName.length(); i++) {
+            char ch = fileName.charAt(i);
+            if (!isAsciiWordChar(ch)) {
+                if (sb == null) {
+                    sb = new StringBuilder(fileName);
+                }
+                sb.setCharAt(i, '_');
+            }
+        }
+        return sb == null ? fileName : sb.toString();
+    }
+
+    private static boolean isAsciiWordChar(char ch) {
+        return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || (ch == '_');
     }
 
     static void logv(String line) {

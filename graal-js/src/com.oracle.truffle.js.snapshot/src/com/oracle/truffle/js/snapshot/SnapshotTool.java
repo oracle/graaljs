@@ -60,7 +60,6 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 public class SnapshotTool {
     static {
-        System.setProperty("truffle.js.Snapshots", "false");
         System.setProperty("truffle.js.LazyTranslation", "false");
     }
 
@@ -75,7 +74,6 @@ public class SnapshotTool {
     }
 
     public static void main(String[] args) throws IOException {
-        assert !JSTruffleOptions.Snapshots;
         assert !JSTruffleOptions.LazyTranslation;
 
         boolean binary = true;
