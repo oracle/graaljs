@@ -45,6 +45,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -71,6 +72,7 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode newPromise;
     @Child private IsCallableNode isCallable;
     @Child private PropertySetNode setPromiseCapability;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected NewPromiseCapabilityNode(JSContext context) {
         this.context = context;
@@ -90,12 +92,14 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
 
     public PromiseCapabilityRecord execute(DynamicObject constructor) {
         if (!isConstructor.executeBoolean(constructor)) {
+            errorBranch.enter();
             throw Errors.createTypeErrorConstructorExpected();
         }
         PromiseCapabilityRecord promiseCapability = PromiseCapabilityRecord.create(Undefined.instance, Undefined.instance, Undefined.instance);
         DynamicObject executor = getCapabilitiesExecutor(promiseCapability);
         DynamicObject promise = (DynamicObject) newPromise.executeCall(JSArguments.create(Undefined.instance, constructor, executor));
         if (!isCallable.executeBoolean(promiseCapability.getResolve()) || !isCallable.executeBoolean(promiseCapability.getReject())) {
+            errorBranch.enter();
             throw Errors.createTypeError("cannot create promise");
         }
         promiseCapability.setPromise(promise);
@@ -114,12 +118,14 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
             @Child private JavaScriptNode resolveNode = AccessIndexedArgumentNode.create(0);
             @Child private JavaScriptNode rejectNode = AccessIndexedArgumentNode.create(1);
             @Child private PropertyGetNode getPromiseCapability = PropertyGetNode.createGetHidden(PROMISE_CAPABILITY_KEY, context);
+            private final BranchProfile errorBranch = BranchProfile.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
                 DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
                 PromiseCapabilityRecord capability = (PromiseCapabilityRecord) getPromiseCapability.getValue(functionObject);
                 if (capability.getResolve() != Undefined.instance || capability.getReject() != Undefined.instance) {
+                    errorBranch.enter();
                     throw Errors.createTypeError("error while creating capability!");
                 }
                 Object resolve = resolveNode.execute(frame);

@@ -154,7 +154,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         }
     }
 
-    private static boolean shouldCatch(Throwable ex) {
+    public static boolean shouldCatch(Throwable ex) {
         if (ex instanceof TruffleException) {
             TruffleException truffleEx = (TruffleException) ex;
             return !(truffleEx.isExit() || truffleEx.isCancelled() || truffleEx.isInternalError());
@@ -232,8 +232,8 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         }
     }
 
-    static final class GetErrorObjectNode extends JavaScriptBaseNode {
-        @Child InitErrorObjectNode initErrorObjectNode;
+    public static final class GetErrorObjectNode extends JavaScriptBaseNode {
+        @Child private InitErrorObjectNode initErrorObjectNode;
         private final ConditionProfile isJSError = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isJSException = ConditionProfile.createBinaryProfile();
         private final BranchProfile truffleExceptionBranch = BranchProfile.create();
@@ -244,11 +244,11 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
             this.initErrorObjectNode = InitErrorObjectNode.create(context, JSTruffleOptions.NashornCompatibilityMode);
         }
 
-        static GetErrorObjectNode create(JSContext context) {
+        public static GetErrorObjectNode create(JSContext context) {
             return new GetErrorObjectNode(context);
         }
 
-        Object execute(Throwable ex) {
+        public Object execute(Throwable ex) {
             if (isJSError.profile(ex instanceof JSException)) {
                 return doJSException((JSException) ex);
             } else if (isJSException.profile(ex instanceof GraalJSException)) {

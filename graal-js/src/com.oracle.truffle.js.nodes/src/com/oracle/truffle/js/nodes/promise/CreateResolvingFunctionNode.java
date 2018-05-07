@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -51,9 +52,9 @@ import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
+import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -111,9 +112,10 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             @Child private PropertyGetNode getAlreadyResolved = PropertyGetNode.createGetHidden(ALREADY_RESOLVED_KEY, context);
             @Child private PropertyGetNode getThen = PropertyGetNode.create(JSPromise.THEN, false, context);
             @Child private IsCallableNode isCallable = IsCallableNode.create();
-            @Child private FulfillPromiseNode fulfillPromise = FulfillPromiseNode.create(context);
-            @Child private RejectPromiseNode rejectPromise = RejectPromiseNode.create(context);
             @Child private IsObjectNode isObjectNode = IsObjectNode.create();
+            @Child private FulfillPromiseNode fulfillPromise = FulfillPromiseNode.create(context);
+            @Child private RejectPromiseNode rejectPromise;
+            @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
             // PromiseResolveThenableJob
             @Child private PropertySetNode setPromise = PropertySetNode.createSetHidden(PROMISE_KEY, context);
@@ -133,8 +135,8 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
 
                 Object resolution = resolutionNode.execute(frame);
                 if (resolution == promise) {
-                    Object reason = Errors.createTypeError("self resolution!").getErrorObjectEager(context);
-                    return rejectPromise.execute(promise, reason);
+                    enterErrorBranch();
+                    return rejectPromise(promise, Errors.createTypeError("self resolution!"));
                 }
                 if (!isObjectNode.executeBoolean(resolution)) {
                     return fulfillPromise.execute(promise, resolution);
@@ -142,8 +144,13 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 Object then;
                 try {
                     then = getThen.getValue(resolution);
-                } catch (GraalJSException error) {
-                    return rejectPromise.execute(promise, error.getErrorObjectEager(context));
+                } catch (Throwable ex) {
+                    enterErrorBranch();
+                    if (TryCatchNode.shouldCatch(ex)) {
+                        return rejectPromise(promise, ex);
+                    } else {
+                        throw ex;
+                    }
                 }
                 if (!isCallable.executeBoolean(then)) {
                     return fulfillPromise.execute(promise, resolution);
@@ -151,6 +158,19 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 DynamicObject job = promiseResolveThenableJob(promise, resolution, then);
                 context.promiseEnqueueJob(job);
                 return Undefined.instance;
+            }
+
+            private Object rejectPromise(DynamicObject promise, Throwable exception) {
+                Object error = getErrorObjectNode.execute(exception);
+                return rejectPromise.execute(promise, error);
+            }
+
+            private void enterErrorBranch() {
+                if (rejectPromise == null || getErrorObjectNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    rejectPromise = insert(RejectPromiseNode.create(context));
+                    getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+                }
             }
 
             private DynamicObject promiseResolveThenableJob(DynamicObject promise, Object thenable, Object then) {

@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -53,6 +54,7 @@ public class PromiseResolveThenableNode extends JavaScriptBaseNode {
     private final JSContext context;
     @Child private CreateResolvingFunctionNode createResolvingFunctions;
     @Child private JSFunctionCallNode callNode;
+    @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
     protected PromiseResolveThenableNode(JSContext context) {
         this.context = context;
@@ -70,8 +72,20 @@ public class PromiseResolveThenableNode extends JavaScriptBaseNode {
         DynamicObject reject = resolvingFunctions.getSecond();
         try {
             return callNode.executeCall(JSArguments.create(thenable, then, resolve, reject));
-        } catch (GraalJSException error) {
-            return callNode.executeCall(JSArguments.create(Undefined.instance, reject, error.getErrorObjectEager(context)));
+        } catch (Throwable ex) {
+            if (shouldCatch(ex)) {
+                return callNode.executeCall(JSArguments.create(Undefined.instance, reject, getErrorObjectNode.execute(ex)));
+            } else {
+                throw ex;
+            }
         }
+    }
+
+    private boolean shouldCatch(Throwable exception) {
+        if (getErrorObjectNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+        }
+        return TryCatchNode.shouldCatch(exception);
     }
 }

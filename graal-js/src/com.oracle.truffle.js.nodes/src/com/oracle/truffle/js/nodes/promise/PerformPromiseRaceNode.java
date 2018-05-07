@@ -45,7 +45,6 @@ import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -83,7 +82,7 @@ public class PerformPromiseRaceNode extends PerformPromiseAllOrRaceNode {
             Object next;
             try {
                 next = iteratorStep.execute(iteratorRecord.getIterator());
-            } catch (GraalJSException error) {
+            } catch (Throwable error) {
                 iteratorRecord.setDone(true);
                 throw error;
             }
@@ -94,7 +93,7 @@ public class PerformPromiseRaceNode extends PerformPromiseAllOrRaceNode {
             Object nextValue;
             try {
                 nextValue = iteratorValue.execute((DynamicObject) next);
-            } catch (GraalJSException error) {
+            } catch (Throwable error) {
                 iteratorRecord.setDone(true);
                 throw error;
             }

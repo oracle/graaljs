@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -48,8 +49,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -92,6 +93,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
             @Child private PropertyGetNode getReaction = PropertyGetNode.createGetHidden(REACTION_KEY, context);
             @Child private PropertyGetNode getArgument = PropertyGetNode.createGetHidden(ARGUMENT_KEY, context);
             @Child private JSFunctionCallNode callNode = JSFunctionCallNode.createCall();
+            @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -99,7 +101,6 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                 PromiseReactionRecord reaction = (PromiseReactionRecord) getReaction.getValue(functionObject);
                 Object argument = getArgument.getValue(functionObject);
 
-                // Assert: reaction is a PromiseReaction Record.
                 PromiseCapabilityRecord promiseCapability = reaction.getCapability();
                 DynamicObject handler = reaction.getHandler();
 
@@ -121,15 +122,27 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                     try {
                         handlerResult = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, handler, argument));
                         resolutionFn = resolve;
-                    } catch (GraalJSException error) {
-                        handlerResult = error.getErrorObjectEager(context);
-                        resolutionFn = reject;
+                    } catch (Throwable ex) {
+                        if (shouldCatch(ex)) {
+                            handlerResult = getErrorObjectNode.execute(ex);
+                            resolutionFn = reject;
+                        } else {
+                            throw ex;
+                        }
                     }
                     status = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, resolutionFn, handlerResult));
                 }
 
                 context.notifyPromiseHook(PromiseHook.TYPE_AFTER, promiseCapability.getPromise());
                 return status;
+            }
+
+            private boolean shouldCatch(Throwable exception) {
+                if (getErrorObjectNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+                }
+                return TryCatchNode.shouldCatch(exception);
             }
         });
         return JSFunctionData.createCallOnly(context, callTarget, 0, "");

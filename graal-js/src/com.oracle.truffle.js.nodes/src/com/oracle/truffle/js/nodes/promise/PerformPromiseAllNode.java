@@ -55,7 +55,6 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Boundaries;
-import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -132,7 +131,7 @@ public class PerformPromiseAllNode extends PerformPromiseAllOrRaceNode {
             Object next;
             try {
                 next = iteratorStep.execute(iteratorRecord.getIterator());
-            } catch (GraalJSException error) {
+            } catch (Throwable error) {
                 iteratorRecord.setDone(true);
                 throw error;
             }
@@ -148,7 +147,7 @@ public class PerformPromiseAllNode extends PerformPromiseAllOrRaceNode {
             Object nextValue;
             try {
                 nextValue = iteratorValue.execute((DynamicObject) next);
-            } catch (GraalJSException error) {
+            } catch (Throwable error) {
                 iteratorRecord.setDone(true);
                 throw error;
             }

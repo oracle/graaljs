@@ -48,6 +48,7 @@ import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.RejectNodeG
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.ResolveNodeGen;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
+import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -57,7 +58,6 @@ import com.oracle.truffle.js.nodes.promise.PerformPromiseAllOrRaceNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseRaceNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -113,6 +113,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private PerformPromiseAllOrRaceNode performPromiseOp;
         @Child private JSFunctionCallNode callReject;
         @Child private IteratorCloseNode iteratorClose;
+        @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
         protected PromiseAllOrRaceNode(JSContext context, JSBuiltin builtin, PerformPromiseAllOrRaceNode performPromiseOp) {
             super(context, builtin);
@@ -129,16 +130,24 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             try {
                 DynamicObject iterator = getIterator.execute(iterable);
                 iteratorRecord = IteratorRecord.create(iterator, false);
-            } catch (GraalJSException error) {
-                return rejectPromise(error.getErrorObjectEager(getContext()), promiseCapability);
+            } catch (Throwable ex) {
+                if (shouldCatch(ex)) {
+                    return rejectPromise(getErrorObjectNode.execute(ex), promiseCapability);
+                } else {
+                    throw ex;
+                }
             }
             try {
                 return performPromiseOp.execute(iteratorRecord, constructor, promiseCapability);
-            } catch (GraalJSException error) {
-                if (!iteratorRecord.isDone()) {
-                    iteratorClose(iteratorRecord);
+            } catch (Throwable ex) {
+                if (shouldCatch(ex)) {
+                    if (!iteratorRecord.isDone()) {
+                        iteratorClose(iteratorRecord);
+                    }
+                    return rejectPromise(getErrorObjectNode.execute(ex), promiseCapability);
+                } else {
+                    throw ex;
                 }
-                return rejectPromise(error.getErrorObjectEager(getContext()), promiseCapability);
             }
         }
 
@@ -157,6 +166,14 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
                 iteratorClose = insert(IteratorCloseNode.create(getContext()));
             }
             iteratorClose.executeAbrupt(iteratorRecord.getIterator());
+        }
+
+        private boolean shouldCatch(Throwable exception) {
+            if (getErrorObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
+            }
+            return TryCatchNode.shouldCatch(exception);
         }
 
         @SuppressWarnings("unused")
