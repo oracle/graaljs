@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags.TryBlockTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -115,7 +116,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ControlFlowRootTag.class) {
+        if (tag == ControlFlowRootTag.class || tag == TryBlockTag.class) {
             return true;
         }
         return super.hasTag(tag);
