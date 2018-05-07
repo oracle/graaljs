@@ -7476,9 +7476,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "language/statements/const/syntax/const-declaring-let-split-across-two-lines.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/statements/do-while/tco-body.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
@@ -7487,9 +7484,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/statements/for-in/head-let-bound-names-fordecl-tdz.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-in/head-var-bound-names-let.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/statements/for-in/scope-head-lex-open.js",
@@ -7530,9 +7524,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/statements/for-of/head-lhs-let.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-of/head-var-bound-names-let.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/statements/for-of/iterator-next-error.js",
@@ -7644,12 +7635,6 @@
     "filePath" : "language/statements/labeled/value-yield-strict-escaped.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/let/syntax/let-let-declaration-split-across-two-lines.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/let/syntax/let-let-declaration-with-initializer-split-across-two-lines.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "language/statements/return/tco.js",
     "status" : "SKIP",
