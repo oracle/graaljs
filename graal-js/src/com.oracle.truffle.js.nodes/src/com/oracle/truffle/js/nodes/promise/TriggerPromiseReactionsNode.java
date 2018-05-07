@@ -38,48 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.objects;
+package com.oracle.truffle.js.nodes.promise;
 
-public final class AsyncGeneratorRequest {
-    private final Completion.Type completionType;
-    private final Object completionValue;
-    private final PromiseCapabilityRecord promiseCapability;
+import java.util.ArrayList;
 
-    private AsyncGeneratorRequest(Completion.Type completionType, Object completionValue, PromiseCapabilityRecord promiseCapability) {
-        this.completionType = completionType;
-        this.completionValue = completionValue;
-        this.promiseCapability = promiseCapability;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.Undefined;
+
+public class TriggerPromiseReactionsNode extends JavaScriptBaseNode {
+    private final JSContext context;
+    @Child private PromiseReactionJobNode promiseReactionJob;
+
+    protected TriggerPromiseReactionsNode(JSContext context) {
+        this.context = context;
+        this.promiseReactionJob = PromiseReactionJobNode.create(context);
     }
 
-    public Completion getCompletion() {
-        return new Completion(completionType, completionValue);
+    public static TriggerPromiseReactionsNode create(JSContext context) {
+        return new TriggerPromiseReactionsNode(context);
     }
 
-    public Object getCompletionValue() {
-        return completionValue;
-    }
-
-    public PromiseCapabilityRecord getPromiseCapability() {
-        return promiseCapability;
-    }
-
-    public boolean isNormal() {
-        return completionType == Completion.Type.Normal;
-    }
-
-    public boolean isAbruptCompletion() {
-        return completionType != Completion.Type.Normal;
-    }
-
-    public boolean isReturn() {
-        return completionType == Completion.Type.Return;
-    }
-
-    public boolean isThrow() {
-        return completionType == Completion.Type.Throw;
-    }
-
-    public static AsyncGeneratorRequest create(Completion completion, PromiseCapabilityRecord promiseCapability) {
-        return new AsyncGeneratorRequest(completion.type, completion.value, promiseCapability);
+    /**
+     * For each reaction in reactions, in original insertion order, do Perform
+     * EnqueueJob("PromiseJobs", PromiseReactionJob, << reaction, argument >>).
+     */
+    public Object execute(Object reactions, Object argument) {
+        ArrayList<?> list = (ArrayList<?>) reactions;
+        for (int i = 0; i < list.size(); i++) {
+            Object reaction = list.get(i);
+            DynamicObject job = promiseReactionJob.execute(reaction, argument);
+            context.promiseEnqueueJob(job);
+        }
+        return Undefined.instance;
     }
 }

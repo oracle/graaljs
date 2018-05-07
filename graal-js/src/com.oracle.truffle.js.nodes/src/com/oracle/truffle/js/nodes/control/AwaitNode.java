@@ -52,6 +52,8 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
+import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -61,6 +63,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendNode {
@@ -69,11 +72,10 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     @Child protected JSReadFrameSlotNode readAsyncResultNode;
     @Child protected JSReadFrameSlotNode readAsyncContextNode;
     @Child protected JSFunctionCallNode awaitTrampolineCall;
-    @Child private JSFunctionCallNode createPromiseCapability;
-    @Child private PropertyGetNode getPromiseResolve;
+    @Child private NewPromiseCapabilityNode newPromiseCapability;
+    @Child private PerformPromiseThenNode performPromiseThenNode;
     @Child private JSFunctionCallNode callPromiseResolveNode;
     @Child private JSFunctionCallNode callPerformPromiseThen;
-    @Child private PropertyGetNode getPromise;
     @Child private PropertySetNode setPromiseIsHandled;
     @Child private PropertySetNode setAsyncContext;
     @Child private PropertySetNode setAsyncTarget;
@@ -91,15 +93,14 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         this.readAsyncContextNode = readAsyncContextNode;
         this.awaitTrampolineCall = JSFunctionCallNode.createCall();
 
-        this.getPromiseResolve = PropertyGetNode.create("resolve", false, context);
         this.callPromiseResolveNode = JSFunctionCallNode.createCall();
-        this.getPromise = PropertyGetNode.create("promise", false, context);
         this.setPromiseIsHandled = PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context);
         this.setAsyncContext = PropertySetNode.createSetHidden(ASYNC_CONTEXT, context);
         this.setAsyncTarget = PropertySetNode.createSetHidden(ASYNC_TARGET, context);
         this.setAsyncGenerator = PropertySetNode.createSetHidden(ASYNC_GENERATOR, context);
-        this.createPromiseCapability = JSFunctionCallNode.createCall();
-        this.callPerformPromiseThen = JSFunctionCallNode.createCall();
+
+        this.newPromiseCapability = NewPromiseCapabilityNode.create(context);
+        this.performPromiseThenNode = PerformPromiseThenNode.create(context);
     }
 
     public static AwaitNode create(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode) {
@@ -115,24 +116,24 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     protected final Object suspendAwait(VirtualFrame frame, Object value) {
         Object[] initialState = (Object[]) readAsyncContextNode.execute(frame);
         CallTarget resumeTarget = (CallTarget) initialState[0];
-        DynamicObject generator = (DynamicObject) initialState[1];
+        Object generator = initialState[1];
         MaterializedFrame asyncContext = (MaterializedFrame) initialState[2];
 
-        if (JSPromise.isJSPromise(generator)) {
-            DynamicObject currentCapability = generator;
-            Object parentPromise = getPromise.getValue(currentCapability);
+        if (generator instanceof PromiseCapabilityRecord) {
+            PromiseCapabilityRecord currentCapability = (PromiseCapabilityRecord) generator;
+            Object parentPromise = currentCapability.getPromise();
             context.notifyPromiseHook(-1 /* parent info */, (DynamicObject) parentPromise);
         }
 
-        DynamicObject promiseCapability = newPromiseCapability();
-        Object resolve = getPromiseResolve.getValue(promiseCapability);
+        PromiseCapabilityRecord promiseCapability = newPromiseCapability();
+        Object resolve = promiseCapability.getResolve();
         callPromiseResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, resolve, value));
         DynamicObject onFulfilled = createAwaitFulfilledFunction(resumeTarget, asyncContext, generator);
         DynamicObject onRejected = createAwaitRejectedFunction(resumeTarget, asyncContext, generator);
-        DynamicObject throwawayCapability = newPromiseCapability();
-        setPromiseIsHandled.setValueBoolean(getPromise.getValue(throwawayCapability), true);
+        PromiseCapabilityRecord throwawayCapability = newPromiseCapability();
+        setPromiseIsHandled.setValueBoolean(throwawayCapability.getPromise(), true);
 
-        DynamicObject promise = (DynamicObject) getPromise.getValue(promiseCapability);
+        DynamicObject promise = promiseCapability.getPromise();
         context.notifyPromiseHook(-1 /* parent info */, promise);
         performPromiseThen(promise, onFulfilled, onRejected, throwawayCapability);
         throw YieldException.AWAIT_NULL; // value is ignored
@@ -163,12 +164,12 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         }
     }
 
-    private DynamicObject newPromiseCapability() {
-        return (DynamicObject) createPromiseCapability.executeCall(JSArguments.createZeroArg(Undefined.instance, context.getRealm().getAsyncFunctionPromiseCapabilityConstructor()));
+    private PromiseCapabilityRecord newPromiseCapability() {
+        return newPromiseCapability.executeDefault();
     }
 
-    private void performPromiseThen(Object promise, DynamicObject onFulfilled, DynamicObject onRejected, DynamicObject resultCapability) {
-        callPerformPromiseThen.executeCall(JSArguments.create(Undefined.instance, context.getRealm().getPerformPromiseThen(), promise, onFulfilled, onRejected, resultCapability));
+    private void performPromiseThen(DynamicObject promise, DynamicObject onFulfilled, DynamicObject onRejected, PromiseCapabilityRecord resultCapability) {
+        performPromiseThenNode.execute(promise, onFulfilled, onRejected, resultCapability);
     }
 
     private DynamicObject createAwaitFulfilledFunction(CallTarget resumeTarget, MaterializedFrame asyncContext, Object generator) {

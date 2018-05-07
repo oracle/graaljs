@@ -40,46 +40,44 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-public final class AsyncGeneratorRequest {
-    private final Completion.Type completionType;
-    private final Object completionValue;
-    private final PromiseCapabilityRecord promiseCapability;
+import com.oracle.truffle.api.object.DynamicObject;
 
-    private AsyncGeneratorRequest(Completion.Type completionType, Object completionValue, PromiseCapabilityRecord promiseCapability) {
-        this.completionType = completionType;
-        this.completionValue = completionValue;
-        this.promiseCapability = promiseCapability;
+public final class PromiseCapabilityRecord {
+    private DynamicObject promise;
+    private Object resolve;
+    private Object reject;
+
+    private PromiseCapabilityRecord(DynamicObject promise, DynamicObject resolve, DynamicObject reject) {
+        this.promise = promise;
+        this.resolve = resolve;
+        this.reject = reject;
     }
 
-    public Completion getCompletion() {
-        return new Completion(completionType, completionValue);
+    public static PromiseCapabilityRecord create(DynamicObject promise, DynamicObject resolve, DynamicObject reject) {
+        return new PromiseCapabilityRecord(promise, resolve, reject);
     }
 
-    public Object getCompletionValue() {
-        return completionValue;
+    public DynamicObject getPromise() {
+        return promise;
     }
 
-    public PromiseCapabilityRecord getPromiseCapability() {
-        return promiseCapability;
+    public Object getResolve() {
+        return resolve;
     }
 
-    public boolean isNormal() {
-        return completionType == Completion.Type.Normal;
+    public Object getReject() {
+        return reject;
     }
 
-    public boolean isAbruptCompletion() {
-        return completionType != Completion.Type.Normal;
+    public void setPromise(DynamicObject promise) {
+        this.promise = promise;
     }
 
-    public boolean isReturn() {
-        return completionType == Completion.Type.Return;
+    public void setResolve(Object resolve) {
+        this.resolve = resolve;
     }
 
-    public boolean isThrow() {
-        return completionType == Completion.Type.Throw;
-    }
-
-    public static AsyncGeneratorRequest create(Completion completion, PromiseCapabilityRecord promiseCapability) {
-        return new AsyncGeneratorRequest(completion.type, completion.value, promiseCapability);
+    public void setReject(Object reject) {
+        this.reject = reject;
     }
 }

@@ -72,19 +72,20 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBooleanNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallCollatorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateTimeFormatNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberFormatNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallRequiresNewNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallSymbolNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallTypedArrayNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayBufferNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructCollatorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructBooleanNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructCollatorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDataViewNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructErrorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFunctionNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSAdapterNodeGen;
@@ -92,18 +93,18 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSProx
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJavaImporterNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJavaInteropWorkerNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructMapNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumberNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumberFormatNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructPluralRulesNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDateTimeFormatNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumberNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructObjectNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructPluralRulesNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRegExpNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakSetNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CreateDynamicFunctionNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRegExpNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.PromiseConstructorNodeGen;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -120,7 +121,9 @@ import com.oracle.truffle.js.nodes.access.IsRegExpNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
+import com.oracle.truffle.js.nodes.access.OrdinaryCreateFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
@@ -129,16 +132,18 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.nodes.intl.InitializeCollatorNode;
-import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
-import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.control.TryCatchNode.InitErrorObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.intl.CreateRegExpNode;
+import com.oracle.truffle.js.nodes.intl.InitializeCollatorNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
+import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
+import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
+import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
@@ -150,6 +155,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -160,14 +166,15 @@ import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
-import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSCollator;
+import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
+import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
@@ -180,8 +187,8 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
-import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
+import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.WeakMap;
 
 /**
@@ -232,6 +239,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         WeakSet(0),
         GeneratorFunction(1),
         Proxy(2),
+        Promise(1),
 
         AsyncFunction(1),
         SharedArrayBuffer(1),
@@ -464,6 +472,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if (construct) {
                     return newTarget ? ConstructJSProxyNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(3).createArgumentNodes(context))
                                     : ConstructJSProxyNodeGen.create(context, builtin, false, args().function().fixedArgs(3).createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
+            case Promise:
+                if (construct) {
+                    return newTarget ? PromiseConstructorNodeGen.create(context, builtin, args().newTarget().fixedArgs(1).createArgumentNodes(context))
+                                    : PromiseConstructorNodeGen.create(context, builtin, args().function().fixedArgs(1).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -1846,6 +1861,44 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected static final DynamicObject construct() {
             throw Errors.createTypeError("cannot construct a Symbol");
+        }
+    }
+
+    public abstract static class PromiseConstructorNode extends JSBuiltinNode {
+        @Child private IsCallableNode isCallable;
+        @Child private PromiseResolveThenableNode promiseResolveThenable;
+        @Child private OrdinaryCreateFromConstructorNode createPromiseFromConstructor;
+        @Child private PropertySetNode setPromiseState;
+        @Child private PropertySetNode setPromiseFulfillReactions;
+        @Child private PropertySetNode setPromiseRejectReactions;
+        @Child private PropertySetNode setPromiseIsHandled;
+
+        public PromiseConstructorNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.isCallable = IsCallableNode.create();
+            this.promiseResolveThenable = PromiseResolveThenableNode.create(context);
+            this.createPromiseFromConstructor = OrdinaryCreateFromConstructorNode.create(context, null, JSRealm::getPromisePrototype, JSPromise.INSTANCE);
+            this.setPromiseState = PropertySetNode.createSetHidden(JSPromise.PROMISE_STATE, context);
+            this.setPromiseFulfillReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
+            this.setPromiseRejectReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_REJECT_REACTIONS, context);
+            this.setPromiseIsHandled = PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context);
+        }
+
+        @Specialization
+        protected DynamicObject construct(VirtualFrame frame, DynamicObject newTarget, Object executor) {
+            if (!isCallable.executeBoolean(executor)) {
+                throw Errors.createTypeError("cannot create promise: executor not callable");
+            }
+            DynamicObject promise = createPromiseFromConstructor.executeWithConstructor(frame, newTarget);
+            setPromiseState.setValueInt(promise, JSPromise.PENDING);
+            setPromiseFulfillReactions.setValue(promise, new ArrayList<>());
+            setPromiseRejectReactions.setValue(promise, new ArrayList<>());
+            setPromiseIsHandled.setValueBoolean(promise, false);
+
+            getContext().notifyPromiseHook(PromiseHook.TYPE_INIT, promise);
+
+            promiseResolveThenable.execute(promise, Undefined.instance, executor);
+            return promise;
         }
     }
 }

@@ -130,6 +130,8 @@ final class InternalTranslator extends GraalJSTranslator {
                     return realm.getStringConstructor().getFunctionObject();
                 case "Symbol":
                     return realm.getSymbolConstructor() == null ? null : realm.getSymbolConstructor().getFunctionObject();
+                case "Promise":
+                    return realm.getPromiseConstructor();
                 case "TypeError":
                     return realm.getErrorConstructor(JSErrorType.TypeError).getFunctionObject();
                 default:
@@ -229,8 +231,6 @@ final class InternalTranslator extends GraalJSTranslator {
                         return InternalArrayPushNode.create(context, arguments[0], arguments[1]);
                     case "GetIterator":
                         return GetIteratorNode.create(context, arguments[0]);
-                    case "RegisterAsyncFunctionBuiltins":
-                        return InternalRegisterAsyncFunctionBuiltins.create(context, arguments[0], arguments[1]);
                     case "PromiseRejectionTracker":
                         return PromiseRejectionTrackerNode.create(context, arguments[0], arguments[1]);
                     case "PromiseHook":
@@ -420,40 +420,6 @@ final class InternalTranslator extends GraalJSTranslator {
     @Override
     protected GraalJSTranslator newTranslator(Environment env) {
         return new InternalTranslator(factory, context, source, env);
-    }
-
-    public static class InternalRegisterAsyncFunctionBuiltins extends JavaScriptNode {
-
-        @Child private JavaScriptNode performPromiseThen;
-        @Child private JavaScriptNode newDefaultCapability;
-
-        private final JSContext context;
-
-        InternalRegisterAsyncFunctionBuiltins(JSContext context, JavaScriptNode newDefaultCapability, JavaScriptNode performPromiseThen) {
-            this.context = context;
-            this.newDefaultCapability = newDefaultCapability;
-            this.performPromiseThen = performPromiseThen;
-        }
-
-        public static JavaScriptNode create(JSContext context, JavaScriptNode newDefaultCapability, JavaScriptNode performPromiseThen) {
-            return new InternalRegisterAsyncFunctionBuiltins(context, newDefaultCapability, performPromiseThen);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            DynamicObject constructor = (DynamicObject) newDefaultCapability.execute(frame);
-            assert JSFunction.isJSFunction(constructor);
-            context.getRealm().setAsyncFunctionPromiseCapabilityConstructor(constructor);
-            DynamicObject promiseThen = (DynamicObject) performPromiseThen.execute(frame);
-            assert JSFunction.isJSFunction(promiseThen);
-            context.getRealm().setPerformPromiseThen(promiseThen);
-            return Undefined.instance;
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new InternalRegisterAsyncFunctionBuiltins(context, cloneUninitialized(newDefaultCapability), cloneUninitialized(performPromiseThen));
-        }
     }
 
     public static class InternalSetFunctionNameNode extends JavaScriptNode {

@@ -38,48 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.objects;
+package com.oracle.truffle.js.nodes.promise;
 
-public final class AsyncGeneratorRequest {
-    private final Completion.Type completionType;
-    private final Object completionValue;
-    private final PromiseCapabilityRecord promiseCapability;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 
-    private AsyncGeneratorRequest(Completion.Type completionType, Object completionValue, PromiseCapabilityRecord promiseCapability) {
-        this.completionType = completionType;
-        this.completionValue = completionValue;
-        this.promiseCapability = promiseCapability;
+public abstract class PerformPromiseAllOrRaceNode extends JavaScriptBaseNode {
+    protected final JSContext context;
+
+    protected PerformPromiseAllOrRaceNode(JSContext context) {
+        this.context = context;
     }
 
-    public Completion getCompletion() {
-        return new Completion(completionType, completionValue);
-    }
-
-    public Object getCompletionValue() {
-        return completionValue;
-    }
-
-    public PromiseCapabilityRecord getPromiseCapability() {
-        return promiseCapability;
-    }
-
-    public boolean isNormal() {
-        return completionType == Completion.Type.Normal;
-    }
-
-    public boolean isAbruptCompletion() {
-        return completionType != Completion.Type.Normal;
-    }
-
-    public boolean isReturn() {
-        return completionType == Completion.Type.Return;
-    }
-
-    public boolean isThrow() {
-        return completionType == Completion.Type.Throw;
-    }
-
-    public static AsyncGeneratorRequest create(Completion completion, PromiseCapabilityRecord promiseCapability) {
-        return new AsyncGeneratorRequest(completion.type, completion.value, promiseCapability);
-    }
+    public abstract DynamicObject execute(IteratorRecord iteratorRecord, DynamicObject constructor, PromiseCapabilityRecord resultCapability);
 }

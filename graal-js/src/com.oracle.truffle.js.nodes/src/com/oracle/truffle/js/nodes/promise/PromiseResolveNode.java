@@ -38,48 +38,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.objects;
+package com.oracle.truffle.js.nodes.promise;
 
-public final class AsyncGeneratorRequest {
-    private final Completion.Type completionType;
-    private final Object completionValue;
-    private final PromiseCapabilityRecord promiseCapability;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
-    private AsyncGeneratorRequest(Completion.Type completionType, Object completionValue, PromiseCapabilityRecord promiseCapability) {
-        this.completionType = completionType;
-        this.completionValue = completionValue;
-        this.promiseCapability = promiseCapability;
+public class PromiseResolveNode extends JavaScriptBaseNode {
+    @Child private NewPromiseCapabilityNode newPromiseCapability;
+    @Child private JSFunctionCallNode callResolve;
+    @Child private PropertyGetNode getConstructor;
+
+    protected PromiseResolveNode(JSContext context) {
+        this.newPromiseCapability = NewPromiseCapabilityNode.create(context);
+        this.callResolve = JSFunctionCallNode.createCall();
+        this.getConstructor = PropertyGetNode.create(JSObject.CONSTRUCTOR, false, context);
     }
 
-    public Completion getCompletion() {
-        return new Completion(completionType, completionValue);
+    public static PromiseResolveNode create(JSContext context) {
+        return new PromiseResolveNode(context);
     }
 
-    public Object getCompletionValue() {
-        return completionValue;
-    }
-
-    public PromiseCapabilityRecord getPromiseCapability() {
-        return promiseCapability;
-    }
-
-    public boolean isNormal() {
-        return completionType == Completion.Type.Normal;
-    }
-
-    public boolean isAbruptCompletion() {
-        return completionType != Completion.Type.Normal;
-    }
-
-    public boolean isReturn() {
-        return completionType == Completion.Type.Return;
-    }
-
-    public boolean isThrow() {
-        return completionType == Completion.Type.Throw;
-    }
-
-    public static AsyncGeneratorRequest create(Completion completion, PromiseCapabilityRecord promiseCapability) {
-        return new AsyncGeneratorRequest(completion.type, completion.value, promiseCapability);
+    public DynamicObject execute(DynamicObject constructor, Object value) {
+        assert JSRuntime.isObject(constructor);
+        if (JSPromise.isJSPromise(value)) {
+            Object otherConstructor = getConstructor.getValue(value);
+            if (otherConstructor == constructor) {
+                return (DynamicObject) value;
+            }
+        }
+        PromiseCapabilityRecord promiseCapability = newPromiseCapability.execute(constructor);
+        callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), value));
+        return promiseCapability.getPromise();
     }
 }

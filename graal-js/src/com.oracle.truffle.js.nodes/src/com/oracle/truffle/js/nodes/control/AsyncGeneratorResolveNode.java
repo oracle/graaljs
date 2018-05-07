@@ -53,19 +53,18 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorResolveNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getAsyncGeneratorQueueNode;
     @Child private CreateIterResultObjectNode createIterResultObjectNode;
-    @Child private PropertyGetNode getPromiseResolve;
     @Child private JSFunctionCallNode callResolveNode;
     @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
 
     protected AsyncGeneratorResolveNode(JSContext context) {
         this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
         this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
-        this.getPromiseResolve = PropertyGetNode.create("resolve", false, context);
         this.callResolveNode = JSFunctionCallNode.createCall();
     }
 
@@ -88,13 +87,13 @@ public class AsyncGeneratorResolveNode extends JavaScriptBaseNode {
         ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getAsyncGeneratorQueueNode.getValue(generator);
         assert !queue.isEmpty();
         AsyncGeneratorRequest next = queue.removeFirst();
-        DynamicObject promiseCapability = next.getPromiseCapability();
+        PromiseCapabilityRecord promiseCapability = next.getPromiseCapability();
         DynamicObject iteratorResult = createIterResultObjectNode.execute(frame, value, done);
-        Object resolve = getPromiseResolve.getValue(promiseCapability);
+        Object resolve = promiseCapability.getResolve();
         callResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, resolve, iteratorResult));
     }
 
     private JSContext getContext() {
-        return getPromiseResolve.getContext();
+        return getAsyncGeneratorQueueNode.getContext();
     }
 }

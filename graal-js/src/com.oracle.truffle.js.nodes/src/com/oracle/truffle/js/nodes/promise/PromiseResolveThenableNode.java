@@ -38,48 +38,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.objects;
+package com.oracle.truffle.js.nodes.promise;
 
-public final class AsyncGeneratorRequest {
-    private final Completion.Type completionType;
-    private final Object completionValue;
-    private final PromiseCapabilityRecord promiseCapability;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.Pair;
 
-    private AsyncGeneratorRequest(Completion.Type completionType, Object completionValue, PromiseCapabilityRecord promiseCapability) {
-        this.completionType = completionType;
-        this.completionValue = completionValue;
-        this.promiseCapability = promiseCapability;
+public class PromiseResolveThenableNode extends JavaScriptBaseNode {
+    private final JSContext context;
+    @Child private CreateResolvingFunctionNode createResolvingFunctions;
+    @Child private JSFunctionCallNode callNode;
+
+    protected PromiseResolveThenableNode(JSContext context) {
+        this.context = context;
+        this.createResolvingFunctions = CreateResolvingFunctionNode.create(context);
+        this.callNode = JSFunctionCallNode.createCall();
     }
 
-    public Completion getCompletion() {
-        return new Completion(completionType, completionValue);
+    public static PromiseResolveThenableNode create(JSContext context) {
+        return new PromiseResolveThenableNode(context);
     }
 
-    public Object getCompletionValue() {
-        return completionValue;
-    }
-
-    public PromiseCapabilityRecord getPromiseCapability() {
-        return promiseCapability;
-    }
-
-    public boolean isNormal() {
-        return completionType == Completion.Type.Normal;
-    }
-
-    public boolean isAbruptCompletion() {
-        return completionType != Completion.Type.Normal;
-    }
-
-    public boolean isReturn() {
-        return completionType == Completion.Type.Return;
-    }
-
-    public boolean isThrow() {
-        return completionType == Completion.Type.Throw;
-    }
-
-    public static AsyncGeneratorRequest create(Completion completion, PromiseCapabilityRecord promiseCapability) {
-        return new AsyncGeneratorRequest(completion.type, completion.value, promiseCapability);
+    public Object execute(DynamicObject promiseToResolve, Object thenable, Object then) {
+        Pair<DynamicObject, DynamicObject> resolvingFunctions = createResolvingFunctions.execute(promiseToResolve);
+        DynamicObject resolve = resolvingFunctions.getFirst();
+        DynamicObject reject = resolvingFunctions.getSecond();
+        try {
+            return callNode.executeCall(JSArguments.create(thenable, then, resolve, reject));
+        } catch (GraalJSException error) {
+            return callNode.executeCall(JSArguments.create(Undefined.instance, reject, error.getErrorObjectEager(context)));
+        }
     }
 }

@@ -200,6 +200,16 @@ public class JSContext implements ShapeContext {
         AsyncGeneratorReturnRejected,
         AsyncFromSyncIteratorValueUnwrap,
         ProxyRevokerFunction,
+        PromiseResolveFunction,
+        PromiseRejectFunction,
+        PromiseGetCapabilitiesExecutor,
+        PromiseResolveThenableJob,
+        PromiseReactionJob,
+        PromiseAllResolveElement,
+        PromiseThenFinally,
+        PromiseCatchFinally,
+        PromiseValueThunk,
+        PromiseThrower,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;

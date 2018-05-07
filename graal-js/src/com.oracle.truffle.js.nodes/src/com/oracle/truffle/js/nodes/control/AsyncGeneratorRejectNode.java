@@ -53,19 +53,18 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorRejectNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getAsyncGeneratorQueueNode;
     @Child private CreateIterResultObjectNode createIterResultObjectNode;
-    @Child private PropertyGetNode getPromiseReject;
     @Child private JSFunctionCallNode callRejectNode;
     @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
 
     protected AsyncGeneratorRejectNode(JSContext context) {
         this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
         this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
-        this.getPromiseReject = PropertyGetNode.create("reject", false, context);
         this.callRejectNode = JSFunctionCallNode.createCall();
     }
 
@@ -88,12 +87,12 @@ public class AsyncGeneratorRejectNode extends JavaScriptBaseNode {
         ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getAsyncGeneratorQueueNode.getValue(generator);
         assert !queue.isEmpty();
         AsyncGeneratorRequest next = queue.removeFirst();
-        DynamicObject promiseCapability = next.getPromiseCapability();
-        Object resolve = getPromiseReject.getValue(promiseCapability);
-        callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, resolve, exception));
+        PromiseCapabilityRecord promiseCapability = next.getPromiseCapability();
+        Object reject = promiseCapability.getReject();
+        callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, reject, exception));
     }
 
     private JSContext getContext() {
-        return getPromiseReject.getContext();
+        return getAsyncGeneratorQueueNode.getContext();
     }
 }

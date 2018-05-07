@@ -251,7 +251,6 @@ public class JSRealm implements ShapeContext {
     private final DynamicObjectFactory initialEnumerateIteratorFactory;
     private final DynamicObjectFactory initialBoundFunctionFactory;
     private final DynamicObjectFactory initialAnonymousBoundFunctionFactory;
-    private final DynamicObjectFactory promiseFactory;
 
     private final JSConstructor asyncFunctionConstructor;
     private final DynamicObjectFactory initialAsyncFunctionFactory;
@@ -267,6 +266,9 @@ public class JSRealm implements ShapeContext {
     private final DynamicObject throwerFunction;
     private final Accessor throwerAccessor;
 
+    private final JSConstructor promiseConstructor;
+    private final DynamicObjectFactory promiseFactory;
+
     private final DynamicObjectFactory initialJavaPackageFactory;
     private DynamicObject javaPackageToPrimitiveFunction;
 
@@ -278,8 +280,6 @@ public class JSRealm implements ShapeContext {
     @CompilationFinal private DynamicObject arrayProtoValuesIterator;
     @CompilationFinal private DynamicObject typedArrayConstructor;
     @CompilationFinal private DynamicObject typedArrayPrototype;
-    @CompilationFinal private DynamicObject promiseConstructor;
-    @CompilationFinal private DynamicObject promisePrototype;
 
     @CompilationFinal private DynamicObject simdTypeConstructor;
     @CompilationFinal private DynamicObject simdTypePrototype;
@@ -382,6 +382,7 @@ public class JSRealm implements ShapeContext {
             this.weakSetFactory = JSWeakSet.makeInitialShape(context, weakSetConstructor.getPrototype()).createFactory();
             this.proxyConstructor = JSProxy.createConstructor(this);
             this.proxyFactory = JSProxy.makeInitialShape(context, proxyConstructor.getPrototype()).createFactory();
+            this.promiseConstructor = JSPromise.createConstructor(this);
             this.promiseFactory = JSPromise.makeInitialShape(this).createFactory();
         } else {
             this.symbolConstructor = null;
@@ -396,6 +397,7 @@ public class JSRealm implements ShapeContext {
             this.weakSetFactory = null;
             this.proxyConstructor = null;
             this.proxyFactory = null;
+            this.promiseConstructor = null;
             this.promiseFactory = null;
         }
 
@@ -964,13 +966,11 @@ public class JSRealm implements ShapeContext {
     }
 
     public DynamicObject getPromiseConstructor() {
-        assert promiseConstructor != null;
-        return promiseConstructor;
+        return promiseConstructor.getFunctionObject();
     }
 
     public DynamicObject getPromisePrototype() {
-        assert promisePrototype != null;
-        return promisePrototype;
+        return promiseConstructor.getPrototype();
     }
 
     public void setupGlobals() {
@@ -1064,6 +1064,7 @@ public class JSRealm implements ShapeContext {
             setupPredefinedSymbols(getSymbolConstructor().getFunctionObject());
             putGlobalProperty(global, REFLECT_CLASS_NAME, createReflect());
             putGlobalProperty(global, JSProxy.CLASS_NAME, getProxyConstructor().getFunctionObject());
+            putGlobalProperty(global, JSPromise.CLASS_NAME, getPromiseConstructor());
         }
 
         if (context.isOptionSharedArrayBuffer()) {
@@ -1126,7 +1127,6 @@ public class JSRealm implements ShapeContext {
 
             if (context.getEcmaScriptVersion() >= 6) {
                 loadInternal("promise.js");
-                initPromiseFields();
             }
         } catch (Exception ex) {
             throw new RuntimeException(ex);
@@ -1136,12 +1136,6 @@ public class JSRealm implements ShapeContext {
                 System.out.println("LoadInternalScripts: " + (System.nanoTime() - time) / 1000000);
             }
         }
-    }
-
-    private void initPromiseFields() {
-        assert promiseConstructor == null && promisePrototype == null;
-        promiseConstructor = (DynamicObject) Objects.requireNonNull(JSObject.get(getGlobalObject(), JSPromise.CLASS_NAME));
-        promisePrototype = (DynamicObject) JSObject.get(promiseConstructor, JSObject.PROTOTYPE);
     }
 
     private void loadInternal(String fileName) {
@@ -1512,24 +1506,6 @@ public class JSRealm implements ShapeContext {
         truffleLanguageEnv = env;
         context.setAllocationReporter(env);
         context.getContextOptions().setEnv(env);
-    }
-
-    public void setPerformPromiseThen(DynamicObject promiseThen) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.performPromiseThen = promiseThen;
-    }
-
-    public Object getPerformPromiseThen() {
-        return performPromiseThen;
-    }
-
-    public Object getAsyncFunctionPromiseCapabilityConstructor() {
-        return asyncFunctionPromiseCapabilityConstructor;
-    }
-
-    public void setAsyncFunctionPromiseCapabilityConstructor(Object promiseConstructor) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.asyncFunctionPromiseCapabilityConstructor = promiseConstructor;
     }
 
     @TruffleBoundary

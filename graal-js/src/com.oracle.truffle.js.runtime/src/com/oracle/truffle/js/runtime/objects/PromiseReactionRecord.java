@@ -40,46 +40,36 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-public final class AsyncGeneratorRequest {
-    private final Completion.Type completionType;
-    private final Object completionValue;
-    private final PromiseCapabilityRecord promiseCapability;
+import com.oracle.truffle.api.object.DynamicObject;
 
-    private AsyncGeneratorRequest(Completion.Type completionType, Object completionValue, PromiseCapabilityRecord promiseCapability) {
-        this.completionType = completionType;
-        this.completionValue = completionValue;
-        this.promiseCapability = promiseCapability;
+public final class PromiseReactionRecord {
+    private final PromiseCapabilityRecord capability;
+    private final boolean fulfill;
+    private final DynamicObject handler;
+
+    private PromiseReactionRecord(PromiseCapabilityRecord capability, DynamicObject handler, boolean fulfill) {
+        this.capability = capability;
+        this.handler = handler;
+        this.fulfill = fulfill;
     }
 
-    public Completion getCompletion() {
-        return new Completion(completionType, completionValue);
+    public PromiseCapabilityRecord getCapability() {
+        return capability;
     }
 
-    public Object getCompletionValue() {
-        return completionValue;
+    public DynamicObject getHandler() {
+        return handler;
     }
 
-    public PromiseCapabilityRecord getPromiseCapability() {
-        return promiseCapability;
+    public boolean isFulfill() {
+        return fulfill;
     }
 
-    public boolean isNormal() {
-        return completionType == Completion.Type.Normal;
+    public boolean isReject() {
+        return !isFulfill();
     }
 
-    public boolean isAbruptCompletion() {
-        return completionType != Completion.Type.Normal;
-    }
-
-    public boolean isReturn() {
-        return completionType == Completion.Type.Return;
-    }
-
-    public boolean isThrow() {
-        return completionType == Completion.Type.Throw;
-    }
-
-    public static AsyncGeneratorRequest create(Completion completion, PromiseCapabilityRecord promiseCapability) {
-        return new AsyncGeneratorRequest(completion.type, completion.value, promiseCapability);
+    public static PromiseReactionRecord create(PromiseCapabilityRecord capability, DynamicObject handler, boolean fulfill) {
+        return new PromiseReactionRecord(capability, handler, fulfill);
     }
 }

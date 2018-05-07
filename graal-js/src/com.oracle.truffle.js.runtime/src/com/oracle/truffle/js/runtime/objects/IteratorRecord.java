@@ -40,46 +40,30 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-public final class AsyncGeneratorRequest {
-    private final Completion.Type completionType;
-    private final Object completionValue;
-    private final PromiseCapabilityRecord promiseCapability;
+import com.oracle.truffle.api.object.DynamicObject;
 
-    private AsyncGeneratorRequest(Completion.Type completionType, Object completionValue, PromiseCapabilityRecord promiseCapability) {
-        this.completionType = completionType;
-        this.completionValue = completionValue;
-        this.promiseCapability = promiseCapability;
+public final class IteratorRecord {
+    private final DynamicObject iterator;
+    private boolean done;
+
+    private IteratorRecord(DynamicObject iterator, boolean done) {
+        this.iterator = iterator;
+        this.done = done;
     }
 
-    public Completion getCompletion() {
-        return new Completion(completionType, completionValue);
+    public static IteratorRecord create(DynamicObject iterator, boolean done) {
+        return new IteratorRecord(iterator, done);
     }
 
-    public Object getCompletionValue() {
-        return completionValue;
+    public DynamicObject getIterator() {
+        return iterator;
     }
 
-    public PromiseCapabilityRecord getPromiseCapability() {
-        return promiseCapability;
+    public boolean isDone() {
+        return done;
     }
 
-    public boolean isNormal() {
-        return completionType == Completion.Type.Normal;
-    }
-
-    public boolean isAbruptCompletion() {
-        return completionType != Completion.Type.Normal;
-    }
-
-    public boolean isReturn() {
-        return completionType == Completion.Type.Return;
-    }
-
-    public boolean isThrow() {
-        return completionType == Completion.Type.Throw;
-    }
-
-    public static AsyncGeneratorRequest create(Completion completion, PromiseCapabilityRecord promiseCapability) {
-        return new AsyncGeneratorRequest(completion.type, completion.value, promiseCapability);
+    public void setDone(boolean done) {
+        this.done = done;
     }
 }
