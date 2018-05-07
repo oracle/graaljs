@@ -143,8 +143,7 @@ public abstract class Environment {
     }
 
     protected final JavaScriptNode createLocal(FrameSlot frameSlot, int level, int scopeLevel, boolean checkTDZ) {
-        JavaScriptNode local = factory.createLocal(frameSlot, level, scopeLevel, checkTDZ);
-        return local;
+        return factory.createLocal(frameSlot, level, scopeLevel, checkTDZ);
     }
 
     protected final VarRef findInternalSlot(String name) {
@@ -374,7 +373,7 @@ public abstract class Environment {
         int parameterIndex = current.function().getParameterIndex(slot);
         JavaScriptNode readArgumentsObject = createReadArgumentObject(current, frameLevel, scopeLevel);
         ReadElementNode readArgumentsObjectElement = factory.createReadElementNode(context, factory.copy(readArgumentsObject), factory.createConstantInteger(parameterIndex));
-        return factory.createGuardDisconnectedArgumentRead(parameterIndex, readArgumentsObjectElement, readArgumentsObject);
+        return factory.createGuardDisconnectedArgumentRead(parameterIndex, readArgumentsObjectElement, readArgumentsObject, slot);
     }
 
     private JavaScriptNode createWriteParameterFromMappedArguments(Environment current, int frameLevel, int scopeLevel, FrameSlot slot, JavaScriptNode rhs) {
@@ -383,7 +382,7 @@ public abstract class Environment {
         int parameterIndex = current.function().getParameterIndex(slot);
         JavaScriptNode readArgumentsObject = createReadArgumentObject(current, frameLevel, scopeLevel);
         WriteElementNode writeArgumentsObjectElement = factory.createWriteElementNode(factory.copy(readArgumentsObject), factory.createConstantInteger(parameterIndex), null, context, false);
-        return factory.createGuardDisconnectedArgumentWrite(parameterIndex, writeArgumentsObjectElement, readArgumentsObject, rhs);
+        return factory.createGuardDisconnectedArgumentWrite(parameterIndex, writeArgumentsObjectElement, readArgumentsObject, rhs, slot);
     }
 
     private JavaScriptNode createReadArgumentObject(Environment current, int frameLevel, int scopeLevel) {

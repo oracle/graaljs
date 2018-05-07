@@ -977,12 +977,12 @@ public class NodeFactory {
         return CallApplyArgumentsNode.create(context, callNode);
     }
 
-    public JavaScriptNode createGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray) {
-        return JSGuardDisconnectedArgumentRead.create(index, readElementNode, argumentsArray);
+    public JavaScriptNode createGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, FrameSlot slot) {
+        return JSGuardDisconnectedArgumentRead.create(index, readElementNode, argumentsArray, slot);
     }
 
-    public JavaScriptNode createGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs) {
-        return JSGuardDisconnectedArgumentWrite.create(index, argumentsArrayAccess, argumentsArray, rhs);
+    public JavaScriptNode createGuardDisconnectedArgumentWrite(int index, WriteElementNode argumentsArrayAccess, JavaScriptNode argumentsArray, JavaScriptNode rhs, FrameSlot slot) {
+        return JSGuardDisconnectedArgumentWrite.create(index, argumentsArrayAccess, argumentsArray, rhs, slot);
     }
 
     public JavaScriptNode createSetModuleEnvironment(JSModuleRecord moduleRecord) {

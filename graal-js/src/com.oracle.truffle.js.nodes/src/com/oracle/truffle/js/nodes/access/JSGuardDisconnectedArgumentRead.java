@@ -43,11 +43,15 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -56,14 +60,31 @@ public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode imp
     @Child @Executed JavaScriptNode argumentsArrayNode;
     @Child private ReadElementNode readElementNode;
 
-    JSGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray) {
+    private final FrameSlot slot;
+
+    JSGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, FrameSlot slot) {
         this.index = index;
         this.argumentsArrayNode = argumentsArray;
         this.readElementNode = readElementNode;
+        this.slot = slot;
     }
 
-    public static JSGuardDisconnectedArgumentRead create(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray) {
-        return JSGuardDisconnectedArgumentReadNodeGen.create(index, readElementNode, argumentsArray);
+    public static JSGuardDisconnectedArgumentRead create(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, FrameSlot slot) {
+        return JSGuardDisconnectedArgumentReadNodeGen.create(index, readElementNode, argumentsArray, slot);
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == ReadVariableExpressionTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor("name", slot.getIdentifier());
     }
 
     @Specialization(guards = "!isArgumentsDisconnected(argumentsArray)")
@@ -94,6 +115,6 @@ public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode imp
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSGuardDisconnectedArgumentReadNodeGen.create(index, cloneUninitialized(readElementNode), cloneUninitialized(argumentsArrayNode));
+        return JSGuardDisconnectedArgumentReadNodeGen.create(index, cloneUninitialized(readElementNode), cloneUninitialized(argumentsArrayNode), slot);
     }
 }
