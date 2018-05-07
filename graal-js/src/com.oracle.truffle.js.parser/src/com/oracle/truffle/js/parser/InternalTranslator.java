@@ -42,10 +42,7 @@ package com.oracle.truffle.js.parser;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Executed;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
@@ -63,13 +60,9 @@ import com.oracle.truffle.js.nodes.access.IsArrayNode.IsArrayWrappedNode;
 import com.oracle.truffle.js.nodes.access.IsJSClassNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode.IsObjectWrappedNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
-import com.oracle.truffle.js.nodes.access.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
-import com.oracle.truffle.js.nodes.access.OrdinaryCreateFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectNode;
-import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.cast.JSEnqueueJobNode;
-import com.oracle.truffle.js.nodes.cast.JSIsConstructorFunctionNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode.JSToNumberWrapperNode;
@@ -81,13 +74,11 @@ import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
-import com.oracle.truffle.js.parser.InternalTranslatorFactory.InternalArrayPushNodeGen;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
@@ -130,8 +121,6 @@ final class InternalTranslator extends GraalJSTranslator {
                     return realm.getStringConstructor().getFunctionObject();
                 case "Symbol":
                     return realm.getSymbolConstructor() == null ? null : realm.getSymbolConstructor().getFunctionObject();
-                case "Promise":
-                    return realm.getPromiseConstructor();
                 case "TypeError":
                     return realm.getErrorConstructor(JSErrorType.TypeError).getFunctionObject();
                 default:
@@ -186,8 +175,6 @@ final class InternalTranslator extends GraalJSTranslator {
                         return GlobalObjectNode.create(context);
                     case "NextTick":
                         return JSEnqueueJobNode.create(context, arguments[0]);
-                    case "IsConstructor":
-                        return JSIsConstructorFunctionNode.create(arguments[0]);
                     case "ToLength":
                         return com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugToLengthNodeGen.create(context, null, arguments);
                     case "IsFunction":
@@ -221,20 +208,12 @@ final class InternalTranslator extends GraalJSTranslator {
                         return ObjectDefinePropertyNodeGen.create(context, null, arguments);
                     case "ToPropertyKey":
                         return JSToPropertyKeyWrapperNode.create(arguments[0]);
-                    case "CreatePromiseFromConstructor":
-                        return OrdinaryCreateFromConstructorNode.create(context, arguments[0], JSRealm::getPromisePrototype, JSPromise.INSTANCE);
                     case "IsCallable":
                         return IsCallableNode.create(arguments[0]);
                     case "Assert":
                         return createAssert(arguments[0]);
-                    case "ArrayPush":
-                        return InternalArrayPushNode.create(context, arguments[0], arguments[1]);
                     case "GetIterator":
                         return GetIteratorNode.create(context, arguments[0]);
-                    case "PromiseRejectionTracker":
-                        return PromiseRejectionTrackerNode.create(context, arguments[0], arguments[1]);
-                    case "PromiseHook":
-                        return PromiseHookNode.create(context, arguments[0], arguments[1]);
                 }
                 return new InternalFunctionCallNode(name);
             }
@@ -281,18 +260,6 @@ final class InternalTranslator extends GraalJSTranslator {
         }
 
         private static HiddenKey getSharedHiddenKey(String keyName) {
-            switch (keyName) {
-                case "PromiseState":
-                    return JSPromise.PROMISE_STATE;
-                case "PromiseResult":
-                    return JSPromise.PROMISE_RESULT;
-                case "OnFinally":
-                    return JSPromise.PROMISE_ON_FINALLY;
-                case "PromiseFinallyConstructor":
-                    return JSPromise.PROMISE_FINALLY_CONSTRUCTOR;
-                case "PromiseIsHandled":
-                    return JSPromise.PROMISE_IS_HANDLED;
-            }
             throw new IllegalArgumentException(keyName);
         }
 
@@ -482,116 +449,6 @@ final class InternalTranslator extends GraalJSTranslator {
         protected JavaScriptNode copyUninitialized() {
             return new InternalHasHiddenKeyNode(cloneUninitialized(targetNode), cloneUninitialized(keyNode));
 
-        }
-    }
-
-    public static class PromiseRejectionTrackerNode extends JavaScriptNode {
-
-        @Child private JavaScriptNode promiseNode;
-        @Child private JavaScriptNode operationNode;
-
-        private final JSContext context;
-
-        PromiseRejectionTrackerNode(JSContext context, JavaScriptNode promiseNode, JavaScriptNode operationNode) {
-            this.context = context;
-            this.promiseNode = promiseNode;
-            this.operationNode = operationNode;
-        }
-
-        public static JavaScriptNode create(JSContext context, JavaScriptNode promiseNode, JavaScriptNode operationNode) {
-            return new PromiseRejectionTrackerNode(context, promiseNode, operationNode);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            try {
-                DynamicObject promise = promiseNode.executeDynamicObject(frame);
-                int operation = operationNode.executeInt(frame);
-                context.notifyPromiseRejectionTracker(promise, operation);
-            } catch (UnexpectedResultException ex) {
-                throw new AssertionError();
-            }
-            return Undefined.instance;
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new PromiseRejectionTrackerNode(context, cloneUninitialized(promiseNode), cloneUninitialized(operationNode));
-        }
-    }
-
-    public static class PromiseHookNode extends JavaScriptNode {
-
-        @Child private JavaScriptNode changeTypeNode;
-        @Child private JavaScriptNode promiseNode;
-
-        private final JSContext context;
-
-        PromiseHookNode(JSContext context, JavaScriptNode typeNode, JavaScriptNode promiseNode) {
-            this.context = context;
-            this.changeTypeNode = typeNode;
-            this.promiseNode = promiseNode;
-        }
-
-        public static JavaScriptNode create(JSContext context, JavaScriptNode typeNode, JavaScriptNode promiseNode) {
-            return new PromiseHookNode(context, typeNode, promiseNode);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            try {
-                int changeType = changeTypeNode.executeInt(frame);
-                DynamicObject promise = promiseNode.executeDynamicObject(frame);
-                context.notifyPromiseHook(changeType, promise);
-            } catch (UnexpectedResultException ex) {
-                throw new AssertionError();
-            }
-            return Undefined.instance;
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new PromiseHookNode(context, cloneUninitialized(changeTypeNode), cloneUninitialized(promiseNode));
-        }
-    }
-
-    abstract static class InternalArrayPushNode extends JavaScriptNode {
-        @Child @Executed JavaScriptNode arrayNode;
-        @Child @Executed JavaScriptNode valueNode;
-        @Child private WriteElementNode writeElementNode;
-        @Child private JSGetLengthNode getLengthNode;
-        private final JSContext context;
-
-        protected InternalArrayPushNode(JSContext context, JavaScriptNode arrayNode, JavaScriptNode valueNode) {
-            this.arrayNode = arrayNode;
-            this.valueNode = valueNode;
-            this.context = context;
-        }
-
-        static InternalArrayPushNode create(JSContext context, JavaScriptNode arrayNode, JavaScriptNode valueNode) {
-            return InternalArrayPushNodeGen.create(context, arrayNode, valueNode);
-        }
-
-        @Specialization
-        protected int doPush(Object array, Object value) {
-            assert JSArray.isJSArray(array);
-            DynamicObject arrayObject = (DynamicObject) array;
-            if (getLengthNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getLengthNode = insert(JSGetLengthNode.create(context));
-            }
-            if (writeElementNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                writeElementNode = insert(WriteElementNode.create(context, true, true));
-            }
-            int len = (int) getLengthNode.executeLong(arrayObject);
-            writeElementNode.executeWithTargetAndIndexAndValue(arrayObject, len, value);
-            return len + 1;
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return create(context, cloneUninitialized(arrayNode), cloneUninitialized(valueNode));
         }
     }
 }
