@@ -1124,10 +1124,6 @@ public class JSRealm implements ShapeContext {
         allowLoadInternal = true;
         try {
             loadInternal("string.js");
-
-            if (context.getEcmaScriptVersion() >= 6) {
-                loadInternal("promise.js");
-            }
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         } finally {

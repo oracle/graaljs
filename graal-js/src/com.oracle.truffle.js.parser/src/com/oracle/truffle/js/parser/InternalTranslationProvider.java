@@ -67,7 +67,7 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 public class InternalTranslationProvider {
     private static final String RESOURCES_PATH = "resources/";
 
-    private static final String[] internalFileNames = new String[]{"promise.js", "string.js"};
+    private static final String[] internalFileNames = new String[]{"string.js"};
     private static final Map<String, Source> internalSources;
 
     private static final String SNAPSHOT_CLASS_PREFIX = "com.oracle.truffle.js.parser.snapshots.Internal_";
