@@ -49,7 +49,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -138,7 +137,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             }
         } else if (value instanceof TruffleObject) {
             jsonTruffleObject(builder, data, (TruffleObject) value);
-        } else if (JSTruffleOptions.NashornJavaInterop || JavaInterop.isPrimitive(value)) {
+        } else if (JSTruffleOptions.NashornJavaInterop || isJavaPrimitive(value)) {
             // call toString on Java objects, GR-3722
             jsonQuote(builder, value.toString());
         } else {
@@ -495,4 +494,15 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         return ForeignAccess.sendIsBoxed(isBoxedNode, obj);
     }
 
+    private static boolean isJavaPrimitive(Object value) {
+        return value != null &&
+                        value instanceof Boolean ||
+                        value instanceof Byte ||
+                        value instanceof Short ||
+                        value instanceof Integer ||
+                        value instanceof Long ||
+                        value instanceof Float ||
+                        value instanceof Double ||
+                        value instanceof Character;
+    }
 }
