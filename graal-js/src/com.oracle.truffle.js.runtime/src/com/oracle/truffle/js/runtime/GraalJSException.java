@@ -130,7 +130,11 @@ public abstract class GraalJSException extends RuntimeException implements Truff
 
     @Override
     public int getStackTraceElementLimit() {
-        return stackTraceLimit;
+        if (stackTraceLimit <= 0) {
+            return 0;
+        }
+        // since we might skip stack frames, we do not know in advance how many we have to visit.
+        return -1;
     }
 
     /** Could still be null due to lazy initialization. */
