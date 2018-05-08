@@ -198,13 +198,12 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
             RootNode rootNode = new RootNode(this) {
                 @Child private DirectCallNode directCallNode = DirectCallNode.create(program.getCallTarget());
-                @Child private ExportValueNode exportValueNode = ExportValueNode.create();
+                @Child private ExportValueNode exportValueNode = ExportValueNode.create(context);
 
                 @Override
                 public Object execute(VirtualFrame frame) {
                     JSRealm realm = getContextReference().get();
-                    JSContext currentContext = realm.getContext();
-                    assert currentContext == context : "unexpected JSContext";
+                    assert realm.getContext() == context : "unexpected JSContext";
                     try {
                         context.interopBoundaryEnter();
                         Object result = directCallNode.call(program.argumentsToRun(realm));
@@ -240,12 +239,11 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         final JSContext context = getContextReference().get().getContext();
         final ExecutableNode executableNode = new ExecutableNode(this) {
             @Child private JavaScriptNode expression = insert(parseInline(source, context, requestFrame));
-            @Child private ExportValueNode exportValueNode = ExportValueNode.create();
+            @Child private ExportValueNode exportValueNode = ExportValueNode.create(context);
 
             @Override
             public Object execute(VirtualFrame frame) {
-                JSContext currentContext = getContextReference().get().getContext();
-                assert currentContext == context : "unexpected JSContext";
+                assert getContextReference().get().getContext() == context : "unexpected JSContext";
                 Object result = expression.execute(frame);
                 return exportValueNode.executeWithTarget(result, Undefined.instance);
             }

@@ -105,15 +105,16 @@ public class JSForeignAccessFactory {
         private final ConditionProfile rejected = ConditionProfile.createBinaryProfile();
 
         @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createExecute();
-        @Child private ExportValueNode export = ExportValueNode.create();
-
+        @Child private ExportValueNode export;
         @CompilationFinal ContextReference<JSRealm> contextRef;
 
         public Object access(DynamicObject target, Object[] args) {
             if (JSRuntime.isCallable(target)) {
-                if (contextRef == null) {
+                if (contextRef == null || export == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    contextRef = JSObject.getJSContext(target).getLanguage().getContextReference();
+                    JSContext context = JSObject.getJSContext(target);
+                    contextRef = context.getLanguage().getContextReference();
+                    export = insert(ExportValueNode.create(context.getLanguage()));
                 }
                 JSContext context = contextRef.get().getContext();
                 context.interopBoundaryEnter();
@@ -160,18 +161,16 @@ public class JSForeignAccessFactory {
     abstract static class InvokeNode extends Node {
 
         @Child private JSInteropInvokeNode callNode;
-        @Child private ExportValueNode export = ExportValueNode.create();
-
+        @Child private ExportValueNode export;
         @CompilationFinal ContextReference<JSRealm> contextRef;
 
         public Object access(DynamicObject target, String id, Object[] args) {
-            if (callNode == null) {
+            if (callNode == null || export == null || contextRef == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                callNode = insert(JSInteropInvokeNode.create(JSObject.getJSContext(target)));
-            }
-            if (contextRef == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                contextRef = JSObject.getJSContext(target).getLanguage().getContextReference();
+                JSContext context = JSObject.getJSContext(target);
+                callNode = insert(JSInteropInvokeNode.create(context));
+                export = insert(ExportValueNode.create(context.getLanguage()));
+                contextRef = context.getLanguage().getContextReference();
             }
             JSContext context = contextRef.get().getContext();
             context.interopBoundaryEnter();
@@ -186,15 +185,16 @@ public class JSForeignAccessFactory {
     @Resolve(message = "NEW")
     abstract static class NewNode extends Node {
 
-        @Child private ExportValueNode export = ExportValueNode.create();
         @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createNew();
-
+        @Child private ExportValueNode export;
         @CompilationFinal ContextReference<JSRealm> contextRef;
 
         public Object access(DynamicObject target, Object[] args) {
-            if (contextRef == null) {
+            if (contextRef == null || export == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                contextRef = JSObject.getJSContext(target).getLanguage().getContextReference();
+                JSContext context = JSObject.getJSContext(target);
+                contextRef = context.getLanguage().getContextReference();
+                export = insert(ExportValueNode.create(context.getLanguage()));
             }
             JSContext context = contextRef.get().getContext();
             context.interopBoundaryEnter();
@@ -210,13 +210,15 @@ public class JSForeignAccessFactory {
     abstract static class ReadNode extends Node {
 
         @Child private ReadElementNode readNode;
-        @Child private ExportValueNode export = ExportValueNode.create();
+        @Child private ExportValueNode export;
         @Child private JSForeignToJSTypeNode castKey = JSForeignToJSTypeNode.create();
 
         public Object access(DynamicObject target, Object key) {
-            if (readNode == null) {
+            if (readNode == null || export == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                readNode = insert(ReadElementNode.create(JSObject.getJSContext(target)));
+                JSContext context = JSObject.getJSContext(target);
+                readNode = insert(ReadElementNode.create(context));
+                export = insert(ExportValueNode.create(context.getLanguage()));
             }
             return export.executeWithTarget(readNode.executeWithTargetAndIndex(target, castKey.executeWithTarget(key)), target);
         }
@@ -379,7 +381,8 @@ public class JSForeignAccessFactory {
         public Object access(DynamicObject target, Object key) {
             if (deleteNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                deleteNode = insert(DeletePropertyNode.create(true));
+                JSContext context = JSObject.getJSContext(target);
+                deleteNode = insert(DeletePropertyNode.create(true, context));
             }
             Object castKey = toKey.execute(cast.executeWithTarget(key));
             return deleteNode.executeEvaluated(target, castKey);

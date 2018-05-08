@@ -64,4 +64,8 @@ public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm
     public static JSRealm findCurrentJSRealm() {
         return getCurrentContext(AbstractJavaScriptLanguage.class);
     }
+
+    public static AbstractJavaScriptLanguage getCurrentLanguage() {
+        return getCurrentLanguage(AbstractJavaScriptLanguage.class);
+    }
 }

@@ -549,7 +549,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization(guards = "isJSArrayBufferView(thisObj)")
         protected DynamicObject reverse(DynamicObject thisObj,
-                        @Cached("create(THROW_ERROR)") DeletePropertyNode deletePropertyNode) {
+                        @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode) {
             checkHasDetachedBuffer(thisObj);
             long len = getLength(thisObj);
             long middle = (long) JSRuntime.mathFloor(len / 2);

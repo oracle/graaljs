@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -59,6 +59,7 @@ import com.oracle.truffle.js.nodes.unary.IsIdenticalIntegerNode;
 import com.oracle.truffle.js.nodes.unary.IsIdenticalStringNode;
 import com.oracle.truffle.js.nodes.unary.IsIdenticalUndefinedNode;
 import com.oracle.truffle.js.nodes.unary.IsNullNode;
+import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 
@@ -266,7 +267,8 @@ public abstract class JSIdenticalNode extends JSCompareNode {
 
     @Specialization(guards = {"isTruffleJavaObject(a)", "isTruffleJavaObject(b)"})
     protected static boolean doTruffleJavaObjects(TruffleObject a, TruffleObject b) {
-        return JavaInterop.asJavaObject(a) == JavaInterop.asJavaObject(b);
+        TruffleLanguage.Env env = AbstractJavaScriptLanguage.findCurrentJSRealm().getEnv();
+        return env.asHostObject(a) == env.asHostObject(b);
     }
 
     @Fallback

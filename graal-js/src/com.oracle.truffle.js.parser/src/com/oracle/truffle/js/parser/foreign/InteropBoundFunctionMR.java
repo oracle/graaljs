@@ -80,15 +80,16 @@ public class InteropBoundFunctionMR {
         private final ConditionProfile rejected = ConditionProfile.createBinaryProfile();
 
         @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createExecute();
-        @Child private ExportValueNode export = ExportValueNode.create();
-
+        @Child private ExportValueNode export;
         @CompilationFinal ContextReference<JSRealm> contextRef;
 
         public Object access(InteropBoundFunction target, Object[] args) {
             DynamicObject function = target.getFunction();
-            if (contextRef == null) {
+            if (contextRef == null || export == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                contextRef = JSObject.getJSContext(function).getLanguage().getContextReference();
+                JSContext context = JSObject.getJSContext(function);
+                contextRef = context.getLanguage().getContextReference();
+                export = insert(ExportValueNode.create(context.getLanguage()));
             }
             JSContext context = contextRef.get().getContext();
             context.interopBoundaryEnter();
@@ -132,21 +133,19 @@ public class InteropBoundFunctionMR {
     abstract static class InvokeNode extends Node {
 
         @Child private JSInteropInvokeNode callNode;
-        @Child private ExportValueNode export = ExportValueNode.create();
-
+        @Child private ExportValueNode export;
         @CompilationFinal ContextReference<JSRealm> contextRef;
 
         public Object access(InteropBoundFunction target, String id, Object[] args) {
             DynamicObject function = target.getFunction();
-            if (contextRef == null) {
+            if (callNode == null || export == null || contextRef == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                contextRef = JSObject.getJSContext(function).getLanguage().getContextReference();
+                JSContext context = JSObject.getJSContext(function);
+                callNode = insert(JSInteropInvokeNode.create(context));
+                export = insert(ExportValueNode.create(context.getLanguage()));
+                contextRef = context.getLanguage().getContextReference();
             }
             JSContext context = contextRef.get().getContext();
-            if (callNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                callNode = insert(JSInteropInvokeNode.create(context));
-            }
             context.interopBoundaryEnter();
             try {
                 return export.executeWithTarget(callNode.execute(function, id, args), Undefined.instance);
@@ -159,16 +158,17 @@ public class InteropBoundFunctionMR {
     @Resolve(message = "NEW")
     abstract static class NewNode extends Node {
 
-        @Child private ExportValueNode export = ExportValueNode.create();
         @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createNew();
-
+        @Child private ExportValueNode export;
         @CompilationFinal ContextReference<JSRealm> contextRef;
 
         public Object access(InteropBoundFunction target, Object[] args) {
             DynamicObject function = target.getFunction();
-            if (contextRef == null) {
+            if (contextRef == null || export == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                contextRef = JSObject.getJSContext(function).getLanguage().getContextReference();
+                JSContext context = JSObject.getJSContext(function);
+                contextRef = context.getLanguage().getContextReference();
+                export = insert(ExportValueNode.create(context.getLanguage()));
             }
             JSContext context = contextRef.get().getContext();
             context.interopBoundaryEnter();
@@ -184,15 +184,16 @@ public class InteropBoundFunctionMR {
     abstract static class ReadNode extends Node {
 
         @Child private ReadElementNode readNode;
-        @Child private ExportValueNode export = ExportValueNode.create();
+        @Child private ExportValueNode export;
         @Child private JSForeignToJSTypeNode castKey = JSForeignToJSTypeNode.create();
 
         public Object access(InteropBoundFunction target, Object key) {
             DynamicObject function = target.getFunction();
-            if (readNode == null) {
+            if (readNode == null || export == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 JSContext context = JSObject.getJSContext(function);
                 readNode = insert(ReadElementNode.create(context));
+                export = insert(ExportValueNode.create(context.getLanguage()));
             }
             return export.executeWithTarget(readNode.executeWithTargetAndIndex(function, castKey.executeWithTarget(key)), function);
         }
@@ -280,7 +281,8 @@ public class InteropBoundFunctionMR {
         public Object access(InteropBoundFunction target, Object key) {
             if (deleteNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                deleteNode = insert(DeletePropertyNode.create(true));
+                JSContext context = JSObject.getJSContext(target.getFunction());
+                deleteNode = insert(DeletePropertyNode.create(true, context));
             }
             Object castKey = toKey.execute(cast.executeWithTarget(key));
             return deleteNode.executeEvaluated(target.getFunction(), castKey);

@@ -159,22 +159,23 @@ public final class JavaInteropWorkerPrototypeBuiltins extends JSBuiltinsContaine
         }
 
         private Object scheduleInWorkerThread(DynamicObject worker, Object method, Object arguments) {
-            EcmaAgent mainAgent = getContext().getMainWorker();
+            JSContext context = getContext();
+            EcmaAgent mainAgent = context.getMainWorker();
             EcmaAgent agent = JSJavaWorkerBuiltin.getAgent(worker);
 
             // Equivalent to: new Promise(function promiseFunctionBody(accept,reject){ ... });
-            CallTarget promiseFunctionBody = createPromiseBody(method, arguments, mainAgent, agent);
-            DynamicObject promiseBody = JSFunction.create(getContext().getRealm(),
-                            JSFunctionData.create(getContext(), promiseFunctionBody, 0, "JavaWorkerPromiseTask"));
-            DynamicObject promiseConstructor = getContext().getRealm().getPromiseConstructor();
+            CallTarget promiseFunctionBody = createPromiseBody(method, arguments, mainAgent, agent, context);
+            DynamicObject promiseBody = JSFunction.create(context.getRealm(),
+                            JSFunctionData.create(context, promiseFunctionBody, 0, "JavaWorkerPromiseTask"));
+            DynamicObject promiseConstructor = context.getRealm().getPromiseConstructor();
             return callPromiseConstructor.executeCall(JSArguments.create(promiseConstructor, promiseConstructor, new Object[]{promiseBody}));
         }
 
         @TruffleBoundary
-        private static CallTarget createPromiseBody(Object method, Object arguments, EcmaAgent mainAgent, EcmaAgent agent) {
+        private static CallTarget createPromiseBody(Object method, Object arguments, EcmaAgent mainAgent, EcmaAgent agent, JSContext context) {
             CallTarget promiseFunctionBody = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
 
-                @Child private ExportValueNode export = ExportValueNodeGen.create();
+                @Child private ExportValueNode export = ExportValueNodeGen.create(context);
                 @Child private JSFunctionCallNode call = JSFunctionCallNode.create(false);
 
                 private Object[] exportArguments(Object[] argz) {

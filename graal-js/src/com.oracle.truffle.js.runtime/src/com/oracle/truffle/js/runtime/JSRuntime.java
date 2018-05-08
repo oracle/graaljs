@@ -51,7 +51,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -1429,8 +1428,9 @@ public final class JSRuntime {
         if (isString(a) && isString(b)) {
             return a.toString().equals(b.toString());
         }
-        if (JavaInterop.isJavaObject(a) && JavaInterop.isJavaObject(b)) {
-            return JavaInterop.asJavaObject((TruffleObject) a) == JavaInterop.asJavaObject((TruffleObject) b);
+        TruffleLanguage.Env env = AbstractJavaScriptLanguage.findCurrentJSRealm().getEnv();
+        if (env.isHostObject(a) && env.isHostObject(b)) {
+            return env.asHostObject(a) == env.asHostObject(b);
         }
         return false;
     }

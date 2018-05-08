@@ -45,9 +45,10 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -64,7 +65,10 @@ import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
  */
 @ImportStatic(JSTruffleOptions.class)
 public abstract class ExportValueNode extends JavaScriptBaseNode {
-    ExportValueNode() {
+    private final AbstractJavaScriptLanguage language;
+
+    ExportValueNode(AbstractJavaScriptLanguage language) {
+        this.language = language;
     }
 
     public abstract Object executeWithTarget(Object property, Object thiz);
@@ -130,18 +134,22 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static Object doJavaClass(JavaClass clazz, @SuppressWarnings("unused") Object thiz) {
-        return JavaInterop.asTruffleObject(clazz.getType());
+    protected final Object doJavaClass(JavaClass clazz, @SuppressWarnings("unused") Object thiz) {
+        return language.getContextReference().get().getEnv().asGuestValue(clazz.getType());
     }
 
     @TruffleBoundary
     @Fallback
-    protected static Object doOther(Object value, @SuppressWarnings("unused") Object thiz) {
+    protected final Object doOther(Object value, @SuppressWarnings("unused") Object thiz) {
         assert !(value instanceof TruffleObject);
-        return JavaInterop.asTruffleValue(value);
+        return language.getContextReference().get().getEnv().asGuestValue(value);
     }
 
-    public static ExportValueNode create() {
-        return ExportValueNodeGen.create();
+    public static ExportValueNode create(AbstractJavaScriptLanguage language) {
+        return ExportValueNodeGen.create(language);
+    }
+
+    public static ExportValueNode create(JSContext context) {
+        return create(context.getLanguage());
     }
 }

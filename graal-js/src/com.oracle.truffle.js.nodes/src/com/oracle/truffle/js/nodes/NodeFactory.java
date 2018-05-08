@@ -554,8 +554,8 @@ public class NodeFactory {
         return JSFunctionCallNode.create(function, target, JSFunctionArgumentsNode.create(arguments), false, true);
     }
 
-    public JavaScriptNode createNew(@SuppressWarnings("unused") JSContext context, JavaScriptNode function, JavaScriptNode[] arguments) {
-        return JSNewNode.create(function, JSFunctionArgumentsNode.create(arguments));
+    public JavaScriptNode createNew(JSContext context, JavaScriptNode function, JavaScriptNode[] arguments) {
+        return JSNewNode.create(context, function, JSFunctionArgumentsNode.create(arguments));
     }
 
     // ##### Argument nodes
@@ -636,8 +636,8 @@ public class NodeFactory {
         return GlobalPropertyNode.createPropertyNode(context, name);
     }
 
-    public JSTargetableNode createDeleteProperty(JavaScriptNode target, JavaScriptNode property, boolean strictMode) {
-        return DeletePropertyNode.create(target, property, strictMode);
+    public JSTargetableNode createDeleteProperty(JavaScriptNode target, JavaScriptNode property, boolean strictMode, JSContext context) {
+        return DeletePropertyNode.create(target, property, strictMode, context);
     }
 
     // ##### Function nodes

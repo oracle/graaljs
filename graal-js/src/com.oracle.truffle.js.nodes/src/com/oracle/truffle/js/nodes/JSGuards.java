@@ -46,8 +46,8 @@ import java.util.List;
 import javax.script.Bindings;
 
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -517,7 +517,6 @@ public final class JSGuards {
     }
 
     public static boolean isTruffleJavaObject(TruffleObject object) {
-        return JavaInterop.isJavaObject(object);
+        return AbstractJavaScriptLanguage.findCurrentJSRealm().getEnv().isHostObject(object);
     }
-
 }

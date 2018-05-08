@@ -104,10 +104,13 @@ public abstract class JSNewNode extends JavaScriptNode {
     @Child private JSFunctionCallNode callNewTarget;
     @Child private AbstractFunctionArgumentsNode arguments;
 
-    protected JSNewNode(AbstractFunctionArgumentsNode arguments, JSFunctionCallNode callNew, JavaScriptNode targetNode) {
+    protected final JSContext context;
+
+    protected JSNewNode(AbstractFunctionArgumentsNode arguments, JSFunctionCallNode callNew, JavaScriptNode targetNode, JSContext context) {
         this.callNew = callNew;
         this.arguments = arguments;
         this.targetNode = targetNode;
+        this.context = context;
     }
 
     @Override
@@ -131,7 +134,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ObjectAllocationExpressionTag.class) && materializationNeeded()) {
-            JavaScriptNode newNew = create(cloneUninitialized(getTarget()), AbstractFunctionArgumentsNode.materializeArgumentsNode(arguments, getSourceSection()));
+            JavaScriptNode newNew = create(context, cloneUninitialized(getTarget()), AbstractFunctionArgumentsNode.materializeArgumentsNode(arguments, getSourceSection()));
             transferSourceSection(this, newNew);
             return newNew;
         }
@@ -143,9 +146,9 @@ public abstract class JSNewNode extends JavaScriptNode {
         return arguments instanceof JSFunctionOneConstantArgumentNode;
     }
 
-    public static JSNewNode create(JavaScriptNode function, AbstractFunctionArgumentsNode arguments) {
+    public static JSNewNode create(JSContext context, JavaScriptNode function, AbstractFunctionArgumentsNode arguments) {
         JSFunctionCallNode callNew = JSFunctionCallNode.createNew();
-        return JSNewNodeGen.create(arguments, callNew, function);
+        return JSNewNodeGen.create(arguments, callNew, function, context);
     }
 
     public JavaScriptNode getTarget() {
@@ -233,7 +236,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     @Specialization(guards = {"isForeignObject(target)"})
     public Object doNewForeignObject(VirtualFrame frame, TruffleObject target,
                     @Cached("createNewCache()") Node newNode,
-                    @Cached("create()") ExportValueNode convert,
+                    @Cached("create(context)") ExportValueNode convert,
                     @Cached("create()") JSForeignToJSTypeNode toJSType) {
         int count = arguments.getCount(frame);
         Object[] args = new Object[count];
@@ -271,7 +274,7 @@ public abstract class JSNewNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(getTarget()), AbstractFunctionArgumentsNode.cloneUninitialized(arguments));
+        return create(context, cloneUninitialized(getTarget()), AbstractFunctionArgumentsNode.cloneUninitialized(arguments));
     }
 
     public abstract static class SpecializedNewObjectNode extends JSTargetableNode {

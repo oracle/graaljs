@@ -92,6 +92,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpression
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.unary.FlattenNode;
+import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -832,6 +833,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         private AbstractCacheNode specializeForeignCall(Object[] arguments) {
             int userArgumentCount = JSArguments.getUserArgumentCount(arguments);
             Object thisObject = JSArguments.getThisObject(arguments);
+            AbstractJavaScriptLanguage language = AbstractJavaScriptLanguage.getCurrentLanguage();
             if (JSGuards.isForeignObject(thisObject)) {
                 Node parent = getParent();
                 while (parent instanceof AbstractCacheNode) {
@@ -841,11 +843,10 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 JSFunctionCallNode functionCallNode = (JSFunctionCallNode) parent;
                 Object propertyKey = functionCallNode.getPropertyKey();
                 if (propertyKey != null && propertyKey instanceof String) {
-                    return replace(new CallForeignTargetCacheNode(true, new ForeignInvokeNode(ExportArgumentsNode.create(userArgumentCount), (String) propertyKey),
-                                    createUninitialized()));
+                    return replace(new CallForeignTargetCacheNode(true, new ForeignInvokeNode(ExportArgumentsNode.create(userArgumentCount, language), (String) propertyKey), createUninitialized()));
                 }
             }
-            return replace(new CallForeignTargetCacheNode(false, new ForeignExecuteNode(ExportArgumentsNode.create(userArgumentCount)), createUninitialized()));
+            return replace(new CallForeignTargetCacheNode(false, new ForeignExecuteNode(ExportArgumentsNode.create(userArgumentCount, language)), createUninitialized()));
         }
 
     }
@@ -1020,9 +1021,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     abstract static class ExportArgumentsNode extends JavaScriptBaseNode {
         abstract Object[] export(Object[] extractedUserArguments);
 
-        static ExportArgumentsNode create(int expectedLength) {
+        static ExportArgumentsNode create(int expectedLength, AbstractJavaScriptLanguage language) {
             final class VariableLength extends ExportArgumentsNode {
-                @Child private ExportValueNode exportNode = ExportValueNode.create();
+                @Child private ExportValueNode exportNode = ExportValueNode.create(language);
 
                 @Override
                 Object[] export(Object[] extractedUserArguments) {
@@ -1039,7 +1040,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 FixedLength(int userArgumentCount) {
                     ExportValueNode[] exportNodeArray = new ExportValueNode[userArgumentCount];
                     for (int i = 0; i < exportNodeArray.length; i++) {
-                        exportNodeArray[i] = ExportValueNode.create();
+                        exportNodeArray[i] = ExportValueNode.create(language);
                     }
                     this.exportNodes = exportNodeArray;
                 }
