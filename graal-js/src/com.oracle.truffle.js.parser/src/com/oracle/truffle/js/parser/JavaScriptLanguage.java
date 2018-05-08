@@ -53,6 +53,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
@@ -69,9 +70,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -89,16 +90,16 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
@@ -129,6 +130,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 @ProvidedTags({StandardTags.CallTag.class,
                 StandardTags.StatementTag.class,
@@ -318,13 +320,11 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     long pointer = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), truffleObject);
                     return "Pointer[0x" + Long.toHexString(pointer) + "]";
                 } else if (ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), truffleObject)) {
-                    List<?> list = JavaInterop.asJavaObject(List.class, truffleObject);
-                    return "Array" + list.toString();
+                    return "Array" + foreignArrayToString(realm, truffleObject);
                 } else if (ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), truffleObject)) {
                     return "Executable";
                 } else {
-                    Map<?, ?> map = JavaInterop.asJavaObject(Map.class, truffleObject);
-                    return "Object" + map.toString();
+                    return "Object" + foreignObjectToString(realm, truffleObject);
                 }
             } catch (Exception e) {
                 return "Object";
@@ -621,5 +621,53 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         } finally {
             context.leave();
         }
+    }
+
+    private String foreignArrayToString(JSRealm realm, TruffleObject truffleObject) throws InteropException {
+        CompilerAsserts.neverPartOfCompilation();
+        assert ForeignAccess.sendHasSize(JSInteropUtil.createHasSize(), truffleObject);
+        int size = ((Number) ForeignAccess.sendGetSize(JSInteropUtil.createGetSize(), truffleObject)).intValue();
+        if (size == 0) {
+            return "[]";
+        }
+        Node readNode = JSInteropUtil.createRead();
+        StringBuilder sb = new StringBuilder();
+        sb.append('[');
+        for (int i = 0; i < size; i++) {
+            Object value = ForeignAccess.sendRead(readNode, truffleObject, i);
+            sb.append(value == truffleObject ? "(this)" : toString(realm, value));
+            if (i + 1 < size) {
+                sb.append(',').append(' ');
+            }
+        }
+        sb.append(']');
+        return sb.toString();
+    }
+
+    private String foreignObjectToString(JSRealm realm, TruffleObject truffleObject) throws InteropException {
+        CompilerAsserts.neverPartOfCompilation();
+        if (!ForeignAccess.sendHasKeys(JSInteropUtil.createHasKeys(), truffleObject)) {
+            return "";
+        }
+        TruffleObject keys = ForeignAccess.sendKeys(JSInteropUtil.createKeys(), truffleObject);
+        int keyCount = ((Number) ForeignAccess.sendGetSize(JSInteropUtil.createGetSize(), keys)).intValue();
+        if (keyCount == 0) {
+            return "{}";
+        }
+        Node readNode = JSInteropUtil.createRead();
+        StringBuilder sb = new StringBuilder();
+        sb.append('{');
+        for (int i = 0; i < keyCount; i++) {
+            Object key = ForeignAccess.sendRead(readNode, keys, i);
+            Object value = ForeignAccess.sendRead(readNode, truffleObject, key);
+            sb.append(toString(realm, value));
+            sb.append('=');
+            sb.append(value == truffleObject ? "(this)" : toString(realm, value));
+            if (i + 1 < keyCount) {
+                sb.append(',').append(' ');
+            }
+        }
+        sb.append('}');
+        return sb.toString();
     }
 }
