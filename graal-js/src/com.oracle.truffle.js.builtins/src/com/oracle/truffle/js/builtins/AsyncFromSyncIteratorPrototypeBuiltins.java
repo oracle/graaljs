@@ -134,7 +134,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         @Child private JSFunctionCallNode executePromiseMethod;
         @Child private NewPromiseCapabilityNode newPromiseCapability;
-        @Child private PerformPromiseThenNode performPromiseThenNode;
+        @Child protected PerformPromiseThenNode performPromiseThenNode;
 
         @Child protected IteratorNextNode iteratorNext;
         @Child protected IteratorValueNode iteratorValue;
@@ -178,10 +178,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         protected Object getPromise(DynamicObject promiseCapability) {
             return getPromise.getValue(promiseCapability);
-        }
-
-        protected void performPromiseThen(DynamicObject promise, DynamicObject onFulfilled, DynamicObject instance, PromiseCapabilityRecord promiseCapability) {
-            performPromiseThenNode.execute(promise, onFulfilled, instance, promiseCapability);
         }
 
         /**
@@ -256,7 +252,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             PromiseCapabilityRecord valueWrapperCapability = createPromiseCapability();
             promiseCapabilityResolve(valueWrapperCapability, nextValue);
             DynamicObject onFulfilled = createIteratorValueUnwrapFunction(getContext().getRealm(), nextDone);
-            performPromiseThen(valueWrapperCapability.getPromise(), onFulfilled, Undefined.instance, promiseCapability);
+            performPromiseThenNode.execute(valueWrapperCapability.getPromise(), onFulfilled, Undefined.instance, promiseCapability);
             return promiseCapability.getPromise();
         }
 
@@ -309,7 +305,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             PromiseCapabilityRecord valueWrapperCapability = createPromiseCapability();
             promiseCapabilityResolve(valueWrapperCapability, returnValue);
             DynamicObject onFulfilled = createIteratorValueUnwrapFunction(getContext().getRealm(), done);
-            performPromiseThen(valueWrapperCapability.getPromise(), onFulfilled, Undefined.instance, promiseCapability);
+            performPromiseThenNode.execute(valueWrapperCapability.getPromise(), onFulfilled, Undefined.instance, promiseCapability);
             return promiseCapability.getPromise();
         }
     }

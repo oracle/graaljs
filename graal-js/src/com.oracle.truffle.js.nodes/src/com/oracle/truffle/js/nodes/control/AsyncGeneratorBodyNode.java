@@ -63,7 +63,6 @@ import com.oracle.truffle.js.nodes.arguments.AccessFunctionNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode.SpecializedNewObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -85,6 +84,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         @Child private JSReadFrameSlotNode readYieldResult;
         @Child private AsyncGeneratorResolveNode asyncGeneratorResolveNode;
         @Child private AsyncGeneratorRejectNode asyncGeneratorRejectNode;
+        @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
         private final JSContext context;
 
         AsyncGeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, SourceSection functionSourceSection) {
@@ -97,7 +97,6 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             this.readYieldResult = readYieldResultNode;
             this.context = context;
             this.asyncGeneratorResolveNode = AsyncGeneratorResolveNode.create(context);
-            this.asyncGeneratorRejectNode = AsyncGeneratorRejectNode.create(context);
         }
 
         @Override
@@ -122,12 +121,25 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
                     setGeneratorState.setValue(generatorObject, state = AsyncGeneratorState.SuspendedYield);
                     asyncGeneratorResolveNode.execute(frame, generatorObject, e.getResult(), false);
                 }
-            } catch (GraalJSException e) {
-                setGeneratorState.setValue(generatorObject, state = AsyncGeneratorState.Completed);
-                Object reason = e.getErrorObjectEager(context);
-                asyncGeneratorRejectNode.execute(generatorFrame, generatorObject, reason);
+            } catch (Throwable e) {
+                if (shouldCatch(e)) {
+                    setGeneratorState.setValue(generatorObject, state = AsyncGeneratorState.Completed);
+                    Object reason = getErrorObjectNode.execute(e);
+                    asyncGeneratorRejectNode.execute(generatorFrame, generatorObject, reason);
+                } else {
+                    throw e;
+                }
             }
             return Undefined.instance;
+        }
+
+        private boolean shouldCatch(Throwable exception) {
+            if (getErrorObjectNode == null || asyncGeneratorRejectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+                asyncGeneratorRejectNode = insert(AsyncGeneratorRejectNode.create(context));
+            }
+            return TryCatchNode.shouldCatch(exception);
         }
     }
 

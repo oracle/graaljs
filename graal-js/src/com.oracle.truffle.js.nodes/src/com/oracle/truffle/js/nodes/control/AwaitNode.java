@@ -46,6 +46,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -81,6 +82,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     @Child private PropertySetNode setAsyncTarget;
     @Child private PropertySetNode setAsyncGenerator;
     protected final JSContext context;
+    private final ConditionProfile asyncTypeProf = ConditionProfile.createBinaryProfile();
 
     static final HiddenKey ASYNC_CONTEXT = new HiddenKey("AsyncContext");
     static final HiddenKey ASYNC_TARGET = new HiddenKey("AsyncTarget");
@@ -116,26 +118,25 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     protected final Object suspendAwait(VirtualFrame frame, Object value) {
         Object[] initialState = (Object[]) readAsyncContextNode.execute(frame);
         CallTarget resumeTarget = (CallTarget) initialState[0];
-        Object generator = initialState[1];
+        Object generatorOrCapability = initialState[1];
         MaterializedFrame asyncContext = (MaterializedFrame) initialState[2];
 
-        if (generator instanceof PromiseCapabilityRecord) {
-            PromiseCapabilityRecord currentCapability = (PromiseCapabilityRecord) generator;
-            Object parentPromise = currentCapability.getPromise();
+        if (asyncTypeProf.profile(generatorOrCapability instanceof PromiseCapabilityRecord)) {
+            Object parentPromise = ((PromiseCapabilityRecord) generatorOrCapability).getPromise();
             context.notifyPromiseHook(-1 /* parent info */, (DynamicObject) parentPromise);
         }
 
         PromiseCapabilityRecord promiseCapability = newPromiseCapability();
         Object resolve = promiseCapability.getResolve();
         callPromiseResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, resolve, value));
-        DynamicObject onFulfilled = createAwaitFulfilledFunction(resumeTarget, asyncContext, generator);
-        DynamicObject onRejected = createAwaitRejectedFunction(resumeTarget, asyncContext, generator);
+        DynamicObject onFulfilled = createAwaitFulfilledFunction(resumeTarget, asyncContext, generatorOrCapability);
+        DynamicObject onRejected = createAwaitRejectedFunction(resumeTarget, asyncContext, generatorOrCapability);
         PromiseCapabilityRecord throwawayCapability = newPromiseCapability();
         setPromiseIsHandled.setValueBoolean(throwawayCapability.getPromise(), true);
 
         DynamicObject promise = promiseCapability.getPromise();
         context.notifyPromiseHook(-1 /* parent info */, promise);
-        performPromiseThen(promise, onFulfilled, onRejected, throwawayCapability);
+        performPromiseThenNode.execute(promise, onFulfilled, onRejected, throwawayCapability);
         throw YieldException.AWAIT_NULL; // value is ignored
     }
 
@@ -166,10 +167,6 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
 
     private PromiseCapabilityRecord newPromiseCapability() {
         return newPromiseCapability.executeDefault();
-    }
-
-    private void performPromiseThen(DynamicObject promise, DynamicObject onFulfilled, DynamicObject onRejected, PromiseCapabilityRecord resultCapability) {
-        performPromiseThenNode.execute(promise, onFulfilled, onRejected, resultCapability);
     }
 
     private DynamicObject createAwaitFulfilledFunction(CallTarget resumeTarget, MaterializedFrame asyncContext, Object generator) {
