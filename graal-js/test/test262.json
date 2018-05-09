@@ -6480,9 +6480,6 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
-    "filePath" : "language/expressions/yield/star-rhs-iter-thrw-violation-rtrn-call-err.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/function-code/each-param-has-own-non-shared-eval-scope.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
