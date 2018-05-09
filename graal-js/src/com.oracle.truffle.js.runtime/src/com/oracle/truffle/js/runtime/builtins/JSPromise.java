@@ -46,26 +46,41 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class JSPromise extends JSBuiltinObject {
+public final class JSPromise extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctionsAndSpecies {
     public static final String CLASS_NAME = "Promise";
+    public static final String PROTOTYPE_NAME = "Promise.prototype";
 
     public static final JSPromise INSTANCE = new JSPromise();
+
+    public static final String RESOLVE = "resolve";
+    public static final String REJECT = "reject";
+    public static final String THEN = "then";
 
     public static final HiddenKey PROMISE_STATE = new HiddenKey("PromiseState");
     public static final HiddenKey PROMISE_RESULT = new HiddenKey("PromiseResult");
     public static final HiddenKey PROMISE_IS_HANDLED = new HiddenKey("PromiseIsHandled");
 
+    public static final HiddenKey PROMISE_FULFILL_REACTIONS = new HiddenKey("PromiseFulfillReactions");
+    public static final HiddenKey PROMISE_REJECT_REACTIONS = new HiddenKey("PromiseRejectReactions");
+
     // for Promise.prototype.finally
     public static final HiddenKey PROMISE_ON_FINALLY = new HiddenKey("OnFinally");
     public static final HiddenKey PROMISE_FINALLY_CONSTRUCTOR = new HiddenKey("Constructor");
 
-    private static final Integer PENDING = 0;
-    private static final Integer FULFILLED = 1;
-    private static final Integer REJECTED = 2;
+    // Promise states
+    public static final Integer PENDING = 0;
+    public static final Integer FULFILLED = 1;
+    public static final Integer REJECTED = 2;
+
+    // HostPromiseRejectionTracker operations
+    public static final int REJECTION_TRACKER_OPERATION_REJECT = 0;
+    public static final int REJECTION_TRACKER_OPERATION_HANDLE = 1;
 
     private JSPromise() {
     }
@@ -80,7 +95,7 @@ public final class JSPromise extends JSBuiltinObject {
     }
 
     public static Shape makeInitialShape(JSRealm realm) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(realm.getObjectPrototype(), INSTANCE, realm.getContext());
+        Shape initialShape = JSObjectUtil.getProtoChildShape(realm.getPromisePrototype(), INSTANCE, realm.getContext());
         return initialShape;
     }
 
@@ -130,4 +145,22 @@ public final class JSPromise extends JSBuiltinObject {
         return (result == null) ? Undefined.instance : result;
     }
 
+    @Override
+    public String getClassName() {
+        return CLASS_NAME;
+    }
+
+    @Override
+    public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
+        JSContext context = realm.getContext();
+        DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        JSObjectUtil.putConstructorProperty(context, prototype, constructor);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
+        JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        return prototype;
+    }
+
+    public static JSConstructor createConstructor(JSRealm realm) {
+        return INSTANCE.createConstructorAndPrototype(realm);
+    }
 }

@@ -72,10 +72,15 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
     public static final String CLASS_NAME = "Map";
     public static final String PROTOTYPE_NAME = "Map.prototype";
 
+    public static final String ITERATOR_CLASS_NAME = "Map Iterator";
+    public static final String ITERATOR_PROTOTYPE_NAME = "Map Iterator.prototype";
+
     private static final String SIZE = "size";
 
     private static final HiddenKey MAP_ID = new HiddenKey("map");
     private static final Property MAP_PROPERTY;
+
+    public static final HiddenKey MAP_ITERATION_KIND_ID = new HiddenKey("MapIterationKind");
 
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
@@ -123,6 +128,9 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
         JSObjectUtil.putConstantAccessorProperty(ctx, prototype, SIZE, createSizeGetterFunction(realm), Undefined.instance, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        // The initial value of the @@iterator property is the same function object as
+        // the initial value of the entries property.
+        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_ITERATOR, prototype.get("entries"), JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
 

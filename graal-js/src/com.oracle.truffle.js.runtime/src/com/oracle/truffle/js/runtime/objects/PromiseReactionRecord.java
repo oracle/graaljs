@@ -38,50 +38,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.cast;
+package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
-/**
- * This node can be used to create a callable 'constructor' function for self-hosted internal
- * JavaScript builtins.
- */
-@NodeChild(value = "function")
-public abstract class JSIsConstructorFunctionNode extends JavaScriptNode {
+public final class PromiseReactionRecord {
+    private final PromiseCapabilityRecord capability;
+    private final boolean fulfill;
+    private final DynamicObject handler;
 
-    public static JSIsConstructorFunctionNode create(JavaScriptNode argument) {
-        return JSIsConstructorFunctionNodeGen.create(argument);
+    private PromiseReactionRecord(PromiseCapabilityRecord capability, DynamicObject handler, boolean fulfill) {
+        this.capability = capability;
+        this.handler = handler;
+        this.fulfill = fulfill;
     }
 
-    /**
-     * Checks whether this {@link JSFunction} can be called as constructor using 'new'.
-     *
-     * @param function The function to be checked.
-     * @return True, if the function is a constructor.
-     */
-    @Specialization(guards = "isJSFunction(function)")
-    protected boolean doFunction(DynamicObject function) {
-        return JSFunction.isConstructor(function);
+    public PromiseCapabilityRecord getCapability() {
+        return capability;
     }
 
-    @Specialization(guards = "!isJSFunction(function)")
-    protected boolean doNonFunction(@SuppressWarnings("unused") Object function) {
-        return false;
+    public DynamicObject getHandler() {
+        return handler;
     }
 
-    abstract JavaScriptNode getFunction();
-
-    @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSIsConstructorFunctionNodeGen.create(cloneUninitialized(getFunction()));
+    public boolean isFulfill() {
+        return fulfill;
     }
 
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == boolean.class;
+    public boolean isReject() {
+        return !isFulfill();
+    }
+
+    public static PromiseReactionRecord create(PromiseCapabilityRecord capability, DynamicObject handler, boolean fulfill) {
+        return new PromiseReactionRecord(capability, handler, fulfill);
     }
 }

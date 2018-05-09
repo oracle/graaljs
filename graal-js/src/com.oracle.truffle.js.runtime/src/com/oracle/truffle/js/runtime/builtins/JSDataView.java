@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class JSDataView extends JSBuiltinObject implements JSConstructorFactory.Default {
 
     public static final String CLASS_NAME = "DataView";
+    public static final String PROTOTYPE_NAME = "DataView.prototype";
 
     private static final JSDataView INSTANCE = new JSDataView();
 
@@ -134,6 +135,7 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
         DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(context, prototype, ctor);
         putGetters(realm, prototype);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
     }

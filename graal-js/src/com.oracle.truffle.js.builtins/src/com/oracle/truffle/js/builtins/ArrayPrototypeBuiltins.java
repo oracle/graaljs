@@ -56,6 +56,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -73,6 +74,7 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFindN
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayForEachNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIncludesNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIndexOfNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIteratorNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayJoinNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayMapNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayPopNodeGen;
@@ -93,8 +95,9 @@ import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
-import com.oracle.truffle.js.nodes.access.ArrayLengthNode.ArrayLengthWriteNode;
 import com.oracle.truffle.js.nodes.access.ArrayCreateNode;
+import com.oracle.truffle.js.nodes.access.ArrayLengthNode.ArrayLengthWriteNode;
+import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.CallbackNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
@@ -109,6 +112,7 @@ import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.JSSetLengthNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
@@ -191,6 +195,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         findIndex(1),
         fill(1),
         copyWithin(2),
+        keys(0),
+        values(0),
+        entries(0),
 
         // ES7
         includes(1);
@@ -208,7 +215,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Override
         public int getECMAScriptVersion() {
-            if (EnumSet.of(find, findIndex, fill, copyWithin).contains(this)) {
+            if (EnumSet.of(find, findIndex, fill, copyWithin, keys, values, entries).contains(this)) {
                 return 6;
             } else if (this == includes) {
                 return 7;
@@ -271,6 +278,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSArrayFillNodeGen.create(context, builtin, false, args().withThis().fixedArgs(3).createArgumentNodes(context));
             case copyWithin:
                 return JSArrayCopyWithinNodeGen.create(context, builtin, false, args().withThis().fixedArgs(3).createArgumentNodes(context));
+            case keys:
+                return JSArrayIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY, args().withThis().createArgumentNodes(context));
+            case values:
+                return JSArrayIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_VALUE, args().withThis().createArgumentNodes(context));
+            case entries:
+                return JSArrayIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE, args().withThis().createArgumentNodes(context));
+
             case includes:
                 return JSArrayIncludesNodeGen.create(context, builtin, false, args().withThis().fixedArgs(2).createArgumentNodes(context));
         }
@@ -2590,6 +2604,57 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
 
             return array;
+        }
+    }
+
+    public static class CreateArrayIteratorNode extends JavaScriptBaseNode {
+        private final JSContext context;
+        private final int iterationKind;
+        @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
+        @Child private PropertySetNode setNextIndexNode;
+        @Child private PropertySetNode setIteratedObjectNode;
+        @Child private PropertySetNode setIterationKindNode;
+
+        protected CreateArrayIteratorNode(JSContext context, int iterationKind) {
+            this.context = context;
+            this.iterationKind = iterationKind;
+            this.createObjectNode = CreateObjectNode.createWithCachedPrototype(context, null);
+            this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
+            this.setNextIndexNode = PropertySetNode.createSetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
+            this.setIterationKindNode = PropertySetNode.createSetHidden(JSArray.ARRAY_ITERATION_KIND_ID, context);
+        }
+
+        public static CreateArrayIteratorNode create(JSContext context, int iterationKind) {
+            return new CreateArrayIteratorNode(context, iterationKind);
+        }
+
+        public DynamicObject execute(VirtualFrame frame, TruffleObject array) {
+            assert JSGuards.isJSObject(array) || JSGuards.isForeignObject(array);
+            DynamicObject iterator = createObjectNode.executeDynamicObject(frame, context.getRealm().getArrayIteratorPrototype());
+            setIteratedObjectNode.setValue(iterator, array);
+            setNextIndexNode.setValue(iterator, 0L);
+            setIterationKindNode.setValueInt(iterator, iterationKind);
+            return iterator;
+        }
+    }
+
+    public abstract static class JSArrayIteratorNode extends JSBuiltinNode {
+        @Child private CreateArrayIteratorNode createArrayIteratorNode;
+
+        public JSArrayIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
+            super(context, builtin);
+            this.createArrayIteratorNode = CreateArrayIteratorNode.create(context, iterationKind);
+        }
+
+        @Specialization(guards = "isJSObject(thisObj)")
+        protected DynamicObject doJSObject(VirtualFrame frame, DynamicObject thisObj) {
+            return createArrayIteratorNode.execute(frame, thisObj);
+        }
+
+        @Specialization(guards = "!isJSObject(thisObj)")
+        protected DynamicObject doNotJSObject(VirtualFrame frame, Object thisObj,
+                        @Cached("createToObject(getContext())") JSToObjectNode toObjectNode) {
+            return createArrayIteratorNode.execute(frame, toObjectNode.executeTruffleObject(thisObj));
         }
     }
 }

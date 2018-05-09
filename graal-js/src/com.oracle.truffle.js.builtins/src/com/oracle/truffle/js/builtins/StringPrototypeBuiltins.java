@@ -51,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -58,6 +59,8 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins.JSNumberOperation;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.JSRegExpExecES5Node;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecES5NodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateHTMLNodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateStringIteratorNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringCharAtNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringCharCodeAtNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringCodePointAtNodeGen;
@@ -66,10 +69,8 @@ import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringEnd
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringIncludesNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringIndexOfNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringLastIndexOfNodeGen;
-import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringLocaleCompareNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringLocaleCompareIntlNodeGen;
-import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToLocaleLowerCaseIntlNodeGen;
-import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToLocaleUpperCaseIntlNodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringLocaleCompareNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringMatchES5NodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringMatchNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringNormalizeNodeGen;
@@ -84,6 +85,8 @@ import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringSpl
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringStartsWithNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringSubstrNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringSubstringNodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToLocaleLowerCaseIntlNodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToLocaleUpperCaseIntlNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToLowerCaseNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToStringNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToUpperCaseNodeGen;
@@ -93,6 +96,7 @@ import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringTri
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IsRegExpNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -109,8 +113,8 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.intl.CreateRegExpNode;
 import com.oracle.truffle.js.nodes.intl.InitializeCollatorNode;
-import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.intl.JSToCanonicalizedLocaleListNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -161,6 +165,19 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         // Annex B
         substr(2),
+        anchor(1),
+        big(0),
+        blink(0),
+        bold(0),
+        fixed(0),
+        fontcolor(1),
+        fontsize(1),
+        italics(0),
+        link(1),
+        small(0),
+        strike(0),
+        sub(0),
+        sup(0),
 
         // ES6
         startsWith(1),
@@ -169,6 +186,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         includes(1),
         repeat(1),
         codePointAt(1),
+        _iterator(0),
         normalize(0),
 
         // ES8
@@ -192,7 +210,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Override
         public boolean isAnnexB() {
-            return substr == this;
+            return EnumSet.range(substr, sup).contains(this);
         }
 
         @Override
@@ -211,6 +229,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return (JSTruffleOptions.Stage1 || JSTruffleOptions.NashornExtensions);
             }
             return true;
+        }
+
+        @Override
+        public Object getKey() {
+            return this == _iterator ? Symbol.SYMBOL_ITERATOR : BuiltinEnum.super.getKey();
         }
     }
 
@@ -294,6 +317,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSStringRepeatNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case codePointAt:
                 return JSStringCodePointAtNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case _iterator:
+                return CreateStringIteratorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case normalize:
                 return JSStringNormalizeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
 
@@ -305,6 +330,33 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSStringPadNodeGen.create(context, builtin, true, args().withThis().varArgs().createArgumentNodes(context));
             case padEnd:
                 return JSStringPadNodeGen.create(context, builtin, false, args().withThis().varArgs().createArgumentNodes(context));
+
+            case anchor:
+                return createHTMLNode(context, builtin, "a", "name");
+            case big:
+                return createHTMLNode(context, builtin, "big", "");
+            case blink:
+                return createHTMLNode(context, builtin, "blink", "");
+            case bold:
+                return createHTMLNode(context, builtin, "b", "");
+            case fixed:
+                return createHTMLNode(context, builtin, "tt", "");
+            case fontcolor:
+                return createHTMLNode(context, builtin, "font", "color");
+            case fontsize:
+                return createHTMLNode(context, builtin, "font", "size");
+            case italics:
+                return createHTMLNode(context, builtin, "i", "");
+            case link:
+                return createHTMLNode(context, builtin, "a", "href");
+            case small:
+                return createHTMLNode(context, builtin, "small", "");
+            case strike:
+                return createHTMLNode(context, builtin, "strike", "");
+            case sub:
+                return createHTMLNode(context, builtin, "sub", "");
+            case sup:
+                return createHTMLNode(context, builtin, "sup", "");
         }
         return null;
     }
@@ -2219,6 +2271,72 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 sb.append(str);
             }
             return sb.toString();
+        }
+    }
+
+    public abstract static class CreateStringIteratorNode extends JSBuiltinNode {
+        @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
+        @Child private PropertySetNode setNextIndexNode;
+        @Child private PropertySetNode setIteratedObjectNode;
+
+        public CreateStringIteratorNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.createObjectNode = CreateObjectNode.createWithCachedPrototype(context, null);
+            this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSString.ITERATED_STRING_ID, context);
+            this.setNextIndexNode = PropertySetNode.createSetHidden(JSString.STRING_ITERATOR_NEXT_INDEX_ID, context);
+        }
+
+        @Specialization
+        protected DynamicObject doString(VirtualFrame frame, String string) {
+            DynamicObject iterator = createObjectNode.executeDynamicObject(frame, getContext().getRealm().getStringIteratorPrototype());
+            setIteratedObjectNode.setValue(iterator, string);
+            setNextIndexNode.setValueInt(iterator, 0);
+            return iterator;
+        }
+
+        @Specialization(guards = "!isString(thisObj)")
+        protected DynamicObject doCoerce(VirtualFrame frame, Object thisObj,
+                        @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
+                        @Cached("create()") JSToStringNode toStringNode) {
+            return doString(frame, toStringNode.executeString(requireObjectCoercibleNode.execute(thisObj)));
+        }
+    }
+
+    static CreateHTMLNode createHTMLNode(JSContext context, JSBuiltin builtin, String tag, String attribute) {
+        return CreateHTMLNodeGen.create(context, builtin, tag, attribute, args().withThis().fixedArgs(1).createArgumentNodes(context));
+    }
+
+    abstract static class CreateHTMLNode extends JSBuiltinNode {
+        private final String tag;
+        private final String attribute;
+
+        CreateHTMLNode(JSContext context, JSBuiltin builtin, String tag, String attribute) {
+            super(context, builtin);
+            this.tag = tag;
+            this.attribute = attribute;
+        }
+
+        @Specialization
+        protected String createHTML(Object thisObj, Object value,
+                        @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
+                        @Cached("create()") JSToStringNode toStringNode) {
+            String string = toStringNode.executeString(requireObjectCoercibleNode.execute(thisObj));
+            if (!attribute.isEmpty()) {
+                String attrVal = toStringNode.executeString(value);
+                return wrapInTagWithAttribute(string, attrVal);
+            }
+            return wrapInTag(string);
+        }
+
+        @TruffleBoundary
+        private String wrapInTag(String string) {
+            return "<" + tag + ">" + string + "</" + tag + ">";
+        }
+
+        @TruffleBoundary
+        private String wrapInTagWithAttribute(String string, String attrVal) {
+            String escapedVal = attrVal.replace("\"", "&quot;");
+            return "<" + tag + " " + attribute + "=\"" + escapedVal + "\"" + ">" + string + "</" + tag + ">";
         }
     }
 }

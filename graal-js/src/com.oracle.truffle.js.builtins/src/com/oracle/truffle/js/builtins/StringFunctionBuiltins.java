@@ -43,15 +43,25 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins.JSNumberOperation;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.JSFromCharCodeNodeGen;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.JSFromCodePointNodeGen;
+import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.StringRawNodeGen;
+import com.oracle.truffle.js.nodes.access.JSGetLengthNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt16Node;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 
@@ -67,7 +77,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         fromCharCode(1),
 
         // ES6
-        fromCodePoint(1);
+        fromCodePoint(1),
+        raw(1);
 
         private final int length;
 
@@ -96,6 +107,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSFromCharCodeNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
             case fromCodePoint:
                 return JSFromCodePointNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+            case raw:
+                return StringRawNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
         }
         return null;
     }
@@ -168,6 +181,72 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @TruffleBoundary
         private static void throwRangeError(Number value) {
             throw Errors.createRangeError("Invalid code point " + value);
+        }
+    }
+
+    public abstract static class StringRawNode extends JSBuiltinNode {
+        @Child private JSToObjectNode templateToObjectNode;
+        @Child private JSToObjectNode rawToObjectNode;
+        @Child private PropertyGetNode getRawNode;
+        @Child private JSGetLengthNode getRawLengthNode;
+        @Child private JSToStringNode segToStringNode;
+        @Child private JSToStringNode subToStringNode;
+        @Child private ReadElementNode readRawElementNode;
+        private final ConditionProfile emptyProf = ConditionProfile.createBinaryProfile();
+
+        public StringRawNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.templateToObjectNode = JSToObjectNode.createToObject(context);
+            this.rawToObjectNode = JSToObjectNode.createToObject(context);
+            this.getRawNode = PropertyGetNode.create("raw", false, context);
+            this.getRawLengthNode = JSGetLengthNode.create(context);
+            this.segToStringNode = JSToStringNode.create();
+            this.subToStringNode = JSToStringNode.create();
+            this.readRawElementNode = ReadElementNode.create(context);
+        }
+
+        @Specialization
+        protected String raw(Object template, Object[] substitutions) {
+            int numberOfSubstitutions = substitutions.length;
+            TruffleObject cooked = templateToObjectNode.executeTruffleObject(template);
+            TruffleObject raw = rawToObjectNode.executeTruffleObject(getRawNode.getValue(cooked));
+
+            int literalSegments = getRawLength(raw);
+            if (emptyProf.profile(literalSegments <= 0)) {
+                return "";
+            }
+
+            StringBuilder result = new StringBuilder();
+            for (int i = 0;; i++) {
+                Object rawElement = readRawElementNode.executeWithTargetAndIndex(raw, i);
+                String nextSeg = segToStringNode.executeString(rawElement);
+                appendChecked(result, nextSeg);
+                if (i + 1 == literalSegments) {
+                    break;
+                }
+                if (i < numberOfSubstitutions) {
+                    String nextSub = subToStringNode.executeString(substitutions[i]);
+                    appendChecked(result, nextSub);
+                }
+            }
+            return Boundaries.builderToString(result);
+        }
+
+        private int getRawLength(TruffleObject raw) {
+            long length = getRawLengthNode.executeLong(raw);
+            try {
+                return Math.toIntExact(length);
+            } catch (ArithmeticException e) {
+                return 0;
+            }
+        }
+
+        private static void appendChecked(StringBuilder result, String str) {
+            if (result.length() + str.length() > JSTruffleOptions.StringLengthLimit) {
+                CompilerDirectives.transferToInterpreter();
+                throw Errors.createRangeErrorInvalidStringLength();
+            }
+            Boundaries.builderAppend(result, str);
         }
     }
 }

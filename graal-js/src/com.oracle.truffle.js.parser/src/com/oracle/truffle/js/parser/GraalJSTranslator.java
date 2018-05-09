@@ -197,28 +197,22 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (node != null) {
             JavaScriptNode resultNode = node.accept(this);
             assert resultNode != null;
-            if (!isInternal()) {
-                if (!resultNode.hasSourceSection()) {
-                    assignSourceSection(resultNode, node);
-                }
-                assert resultNode.getSourceSection() != null;
+            if (!resultNode.hasSourceSection()) {
+                assignSourceSection(resultNode, node);
             }
+            assert resultNode.getSourceSection() != null;
             return resultNode;
         }
         return null;
     }
 
-    private JavaScriptNode tagWithHaltTag(JavaScriptNode resultNode) {
-        if (!isInternal()) {
-            resultNode.addStatementTag();
-        }
+    private static JavaScriptNode tagWithHaltTag(JavaScriptNode resultNode) {
+        resultNode.addStatementTag();
         return resultNode;
     }
 
-    private JavaScriptNode tagWithCallTag(JavaScriptNode resultNode) {
-        if (!isInternal()) {
-            resultNode.addCallTag();
-        }
+    private static JavaScriptNode tagWithCallTag(JavaScriptNode resultNode) {
+        resultNode.addCallTag();
         return resultNode;
     }
 
@@ -258,17 +252,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return transform(functionNode);
     }
 
-    private boolean isInternal() {
-        return this instanceof InternalTranslator;
-    }
-
     protected abstract GraalJSTranslator newTranslator(Environment env);
 
     // ---
 
     @Override
     public JavaScriptNode enterFunctionNode(FunctionNode functionNode) {
-        if (JSTruffleOptions.PrintParse && !isInternal()) {
+        if (JSTruffleOptions.PrintParse) {
             printParse(functionNode);
         }
 
@@ -285,9 +275,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         assert !isDerivedConstructor || isConstructor;
         boolean strictFunctionProperties = isStrict || isArrowFunction || isMethod || isGeneratorFunction;
         boolean isBuiltin = false;
-        if (isInternal() && !isClassConstructor && !needsNewTarget) {
-            isConstructor = false;
-        }
         GraalJSParserOptions parserOptions = (GraalJSParserOptions) context.getParserOptions();
 
         boolean isGlobal;
@@ -479,7 +466,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         FunctionRootNode functionRoot = factory.createFunctionRootNode(functionBody, environment.getFunctionFrameDescriptor(), functionData, functionSourceSection,
                         currentFunction.getInternalFunctionName());
 
-        if (JSTruffleOptions.PrintAst && !isInternal()) {
+        if (JSTruffleOptions.PrintAst) {
             printAST(functionRoot);
         }
         return functionRoot;

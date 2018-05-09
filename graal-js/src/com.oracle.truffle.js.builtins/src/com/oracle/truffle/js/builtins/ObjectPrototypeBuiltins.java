@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import java.util.EnumSet;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -49,8 +51,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeDefineGetterOrSetterNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeHasOwnPropertyNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeIsPrototypeOfNodeGen;
+import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeLookupGetterOrSetterNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypePropertyIsEnumerableNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeToStringNodeGen;
@@ -63,6 +67,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -80,6 +85,7 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
@@ -97,7 +103,13 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         propertyIsEnumerable(1),
         toLocaleString(0),
         toString(0),
-        valueOf(0);
+        valueOf(0),
+
+        // Annex B
+        __defineGetter__(2),
+        __defineSetter__(2),
+        __lookupGetter__(1),
+        __lookupSetter__(1);
 
         private final int length;
 
@@ -108,6 +120,16 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Override
         public int getLength() {
             return length;
+        }
+
+        @Override
+        public String getName() {
+            return super.name();
+        }
+
+        @Override
+        public boolean isAnnexB() {
+            return EnumSet.of(__defineGetter__, __defineSetter__, __lookupGetter__, __lookupSetter__).contains(this);
         }
     }
 
@@ -126,6 +148,15 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return ObjectPrototypeToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case valueOf:
                 return ObjectPrototypeValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+
+            case __defineGetter__:
+            case __defineSetter__:
+                return ObjectPrototypeDefineGetterOrSetterNodeGen.create(context, builtin, builtinEnum == ObjectPrototype.__defineGetter__,
+                                args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case __lookupGetter__:
+            case __lookupSetter__:
+                return ObjectPrototypeLookupGetterOrSetterNodeGen.create(context, builtin, builtinEnum == ObjectPrototype.__lookupGetter__,
+                                args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -482,6 +513,71 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "!isJSObject(arg)")
         protected boolean isPrototypeOfNoObject(Object thisObj, Object arg) {
             return false;
+        }
+    }
+
+    public abstract static class ObjectPrototypeDefineGetterOrSetterNode extends ObjectOperation {
+        private final boolean getter;
+        @Child private IsCallableNode isCallableNode = IsCallableNode.create();
+        @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
+
+        public ObjectPrototypeDefineGetterOrSetterNode(JSContext context, JSBuiltin builtin, boolean getter) {
+            super(context, builtin);
+            this.getter = getter;
+        }
+
+        @Specialization
+        protected Object define(Object thisObj, Object prop, Object getterOrSetter) {
+            DynamicObject object = toObject(thisObj);
+            if (!isCallableNode.executeBoolean(getterOrSetter)) {
+                throw createTypeErrorExpectingFunction();
+            }
+            Object key = toPropertyKeyNode.execute(prop);
+            PropertyDescriptor desc = PropertyDescriptor.createEmpty();
+            if (getter) {
+                desc.setGet((DynamicObject) getterOrSetter);
+            } else {
+                desc.setSet((DynamicObject) getterOrSetter);
+            }
+            desc.setEnumerable(true);
+            desc.setConfigurable(true);
+            JSRuntime.definePropertyOrThrow(object, key, desc, getContext());
+            return Undefined.instance;
+        }
+
+        @TruffleBoundary
+        private JSException createTypeErrorExpectingFunction() {
+            return Errors.createTypeErrorFormat("%s: Expecting function", getBuiltin().getFullName());
+        }
+    }
+
+    public abstract static class ObjectPrototypeLookupGetterOrSetterNode extends ObjectOperation {
+        private final boolean getter;
+        @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
+
+        public ObjectPrototypeLookupGetterOrSetterNode(JSContext context, JSBuiltin builtin, boolean getter) {
+            super(context, builtin);
+            this.getter = getter;
+        }
+
+        @Specialization
+        protected Object lookup(Object thisObj, Object prop) {
+            DynamicObject object = toObject(thisObj);
+            Object key = toPropertyKeyNode.execute(prop);
+
+            DynamicObject current = object;
+            do {
+                PropertyDescriptor desc = JSObject.getOwnProperty(current, key);
+                if (desc != null) {
+                    if (desc.isAccessorDescriptor()) {
+                        return getter ? desc.getGet() : desc.getSet();
+                    } else {
+                        return Undefined.instance;
+                    }
+                }
+                current = JSObject.getPrototype(current);
+            } while (current != Null.instance);
+            return Undefined.instance;
         }
     }
 }

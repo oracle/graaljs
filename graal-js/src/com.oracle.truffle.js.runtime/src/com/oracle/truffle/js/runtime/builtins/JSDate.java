@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -156,6 +157,10 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         }
         JSObjectUtil.putConstructorProperty(ctx, datePrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, datePrototype, PROTOTYPE_NAME);
+
+        if (ctx.isOptionAnnexB()) {
+            JSObjectUtil.putDataProperty(ctx, datePrototype, "toGMTString", datePrototype.get("toUTCString"), JSAttributes.getDefaultNotEnumerable());
+        }
         return datePrototype;
     }
 

@@ -45,7 +45,6 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk8 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'directbytebuffer'}}   + {name: 'js-gate-directbytebuffer-graal-tip-jdk8-linux-amd64'},
     graalJs + common.jdk8 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'cloneuninitialized'}} + {name: 'js-gate-cloneuninitialized-graal-tip-jdk8-linux-amd64'},
     graalJs + common.jdk8 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'lazytranslation'}}    + {name: 'js-gate-lazytranslation-graal-tip-jdk8-linux-amd64'},
-    graalJs + common.jdk8 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'nosnapshots'}}        + {name: 'js-gate-nosnapshots-graal-tip-jdk8-linux-amd64'},
 
     // jdk 8 - sparc
     graalJs + common.jdk8 + common.gate + common.sparc + gateGraalTip    + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk8-solaris-sparcv9'},

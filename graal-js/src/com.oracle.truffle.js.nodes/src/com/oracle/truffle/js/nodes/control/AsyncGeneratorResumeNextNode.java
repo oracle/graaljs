@@ -55,6 +55,8 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.InternalCallNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
+import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -64,6 +66,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
@@ -72,13 +75,11 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getGeneratorTarget;
     @Child private PropertyGetNode getGeneratorContext;
     @Child private PropertyGetNode getAsyncGeneratorQueueNode;
-    @Child private PropertyGetNode getPromiseResolve;
     @Child private JSFunctionCallNode callPromiseResolveNode;
-    @Child private JSFunctionCallNode callPerformPromiseThen;
-    @Child private JSFunctionCallNode createPromiseCapability;
+    @Child private PerformPromiseThenNode performPromiseThenNode;
+    @Child private NewPromiseCapabilityNode newPromiseCapability;
     @Child private AsyncGeneratorResolveNode asyncGeneratorResolveNode;
     @Child private AsyncGeneratorRejectNode asyncGeneratorRejectNode;
-    @Child private PropertyGetNode getPromise;
     @Child private PropertySetNode setGenerator;
     @Child private PropertySetNode setPromiseIsHandled;
     @Child private InternalCallNode callNode;
@@ -93,15 +94,13 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
         this.getGeneratorTarget = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_TARGET_ID, context);
         this.getGeneratorContext = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_CONTEXT_ID, context);
         this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
-        this.getPromiseResolve = PropertyGetNode.create("resolve", false, context);
         this.callPromiseResolveNode = JSFunctionCallNode.createCall();
         this.asyncGeneratorResolveNode = AsyncGeneratorResolveNode.create(context);
-        this.getPromise = PropertyGetNode.create("promise", false, context);
         this.setGenerator = PropertySetNode.createSetHidden(RETURN_PROCESSOR_GENERATOR, context);
         this.setPromiseIsHandled = PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context);
         this.callNode = InternalCallNode.create();
-        this.callPerformPromiseThen = JSFunctionCallNode.createCall();
-        this.createPromiseCapability = JSFunctionCallNode.createCall();
+        this.performPromiseThenNode = PerformPromiseThenNode.create(context);
+        this.newPromiseCapability = NewPromiseCapabilityNode.create(context);
     }
 
     public static AsyncGeneratorResumeNextNode create(JSContext context) {
@@ -128,14 +127,14 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
                 if (state == AsyncGeneratorState.Completed) {
                     if (next.isReturn()) {
                         setGeneratorState.setValue(generator, AsyncGeneratorState.AwaitingReturn);
-                        DynamicObject promiseCapability = newPromiseCapability();
-                        Object resolve = getPromiseResolve.getValue(promiseCapability);
+                        PromiseCapabilityRecord promiseCapability = newPromiseCapability();
+                        Object resolve = promiseCapability.getResolve();
                         callPromiseResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, resolve, next.getCompletionValue()));
                         DynamicObject onFulfilled = createAsyncGeneratorReturnProcessorFulfilledFunction(generator);
                         DynamicObject onRejected = createAsyncGeneratorReturnProcessorRejectedFunction(generator);
-                        DynamicObject throwawayCapability = newPromiseCapability();
-                        setPromiseIsHandled.setValueBoolean(getPromise.getValue(throwawayCapability), true);
-                        performPromiseThen(getPromise.getValue(promiseCapability), onFulfilled, onRejected, throwawayCapability);
+                        PromiseCapabilityRecord throwawayCapability = newPromiseCapability();
+                        setPromiseIsHandled.setValueBoolean(throwawayCapability.getPromise(), true);
+                        performPromiseThen(promiseCapability.getPromise(), onFulfilled, onRejected, throwawayCapability);
                         return Undefined.instance;
                     } else {
                         assert next.isThrow();
@@ -163,12 +162,12 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
         }
     }
 
-    private DynamicObject newPromiseCapability() {
-        return (DynamicObject) createPromiseCapability.executeCall(JSArguments.createZeroArg(Undefined.instance, context.getRealm().getAsyncFunctionPromiseCapabilityConstructor()));
+    private PromiseCapabilityRecord newPromiseCapability() {
+        return newPromiseCapability.executeDefault();
     }
 
-    private void performPromiseThen(Object promise, DynamicObject onFulfilled, DynamicObject onRejected, DynamicObject resultCapability) {
-        callPerformPromiseThen.executeCall(JSArguments.create(Undefined.instance, context.getRealm().getPerformPromiseThen(), promise, onFulfilled, onRejected, resultCapability));
+    private void performPromiseThen(DynamicObject promise, DynamicObject onFulfilled, DynamicObject onRejected, PromiseCapabilityRecord throwawayCapability) {
+        performPromiseThenNode.execute(promise, onFulfilled, onRejected, throwawayCapability);
     }
 
     private DynamicObject createAsyncGeneratorReturnProcessorFulfilledFunction(DynamicObject generator) {

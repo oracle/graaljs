@@ -38,52 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime;
+package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.api.object.DynamicObject;
 
-public interface Evaluator {
+public final class IteratorRecord {
+    private final DynamicObject iterator;
+    private boolean done;
 
-    String EVAL_SOURCE_NAME = "<eval>";
-    String FUNCTION_SOURCE_NAME = "<function>";
-    String EVAL_AT_SOURCE_NAME_PREFIX = "eval at ";
+    private IteratorRecord(DynamicObject iterator, boolean done) {
+        this.iterator = iterator;
+        this.done = done;
+    }
 
-    /**
-     * Evaluate using the global execution context. For example, this method can be used to compute
-     * the result of indirect calls to eval.
-     *
-     * @param lastNode the node invoking the eval or {@code null}
-     */
-    Object evaluate(JSRealm realm, Node lastNode, Source code);
+    public static IteratorRecord create(DynamicObject iterator, boolean done) {
+        return new IteratorRecord(iterator, done);
+    }
 
-    /**
-     * Evaluate using the local execution context. For example, this method can be used to compute
-     * the result of direct calls to eval.
-     *
-     * @param lastNode the node invoking the eval or {@code null}
-     */
-    Object evaluate(JSRealm realm, Node lastNode, Source source, Object currEnv, MaterializedFrame frame, Object thisObj);
+    public DynamicObject getIterator() {
+        return iterator;
+    }
 
-    Object parseJSON(JSContext context, String jsonString);
+    public boolean isDone() {
+        return done;
+    }
 
-    Integer[] parseDate(JSRealm realm, String date);
-
-    String parseToJSON(JSContext context, final String code, final String name, final boolean includeLoc);
-
-    /**
-     * Returns the NodeFactory used by this parser instance to create AST nodes.
-     */
-    Object getDefaultNodeFactory();
-
-    JSModuleRecord parseModule(JSContext context, Source source, JSModuleLoader moduleLoader);
-
-    JSModuleRecord hostResolveImportedModule(JSModuleRecord referencingModule, String specifier);
-
-    void moduleDeclarationInstantiation(JSModuleRecord moduleRecord);
-
-    Object moduleEvaluation(JSRealm realm, JSModuleRecord moduleRecord);
+    public void setDone(boolean done) {
+        this.done = done;
+    }
 }

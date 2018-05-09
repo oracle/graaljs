@@ -112,8 +112,9 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
 
         defineBuiltins(new ArrayBufferPrototypeBuiltins());
         defineBuiltins(new ArrayBufferFunctionBuiltins());
-        defineBuiltins(new ArrayBufferViewPrototypeBuiltins());
-        defineBuiltins(new ArrayBufferViewFunctionBuiltins());
+        defineBuiltins(new TypedArrayPrototypeBuiltins());
+        defineBuiltins(new TypedArrayFunctionBuiltins());
+        defineBuiltins(new DataViewPrototypeBuiltins());
 
         defineBuiltins(new EnumerateIteratorPrototypeBuiltins());
         if (JSTruffleOptions.MaxECMAScriptVersion >= 6) {
@@ -126,6 +127,12 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
             defineBuiltins(new GeneratorPrototypeBuiltins());
             defineBuiltins(new ReflectBuiltins());
             defineBuiltins(new ProxyFunctionBuiltins());
+            defineBuiltins(new ArrayIteratorPrototypeBuiltins());
+            defineBuiltins(new SetIteratorPrototypeBuiltins());
+            defineBuiltins(new MapIteratorPrototypeBuiltins());
+            defineBuiltins(new StringIteratorPrototypeBuiltins());
+            defineBuiltins(new PromisePrototypeBuiltins());
+            defineBuiltins(new PromiseFunctionBuiltins());
         }
 
         if (JSTruffleOptions.MaxECMAScriptVersion >= 8) {

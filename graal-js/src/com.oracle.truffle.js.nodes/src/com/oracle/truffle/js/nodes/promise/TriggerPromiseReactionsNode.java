@@ -38,52 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime;
+package com.oracle.truffle.js.nodes.promise;
 
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import java.util.ArrayList;
 
-public interface Evaluator {
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
-    String EVAL_SOURCE_NAME = "<eval>";
-    String FUNCTION_SOURCE_NAME = "<function>";
-    String EVAL_AT_SOURCE_NAME_PREFIX = "eval at ";
+public class TriggerPromiseReactionsNode extends JavaScriptBaseNode {
+    private final JSContext context;
+    @Child private PromiseReactionJobNode promiseReactionJob;
 
-    /**
-     * Evaluate using the global execution context. For example, this method can be used to compute
-     * the result of indirect calls to eval.
-     *
-     * @param lastNode the node invoking the eval or {@code null}
-     */
-    Object evaluate(JSRealm realm, Node lastNode, Source code);
+    protected TriggerPromiseReactionsNode(JSContext context) {
+        this.context = context;
+        this.promiseReactionJob = PromiseReactionJobNode.create(context);
+    }
 
-    /**
-     * Evaluate using the local execution context. For example, this method can be used to compute
-     * the result of direct calls to eval.
-     *
-     * @param lastNode the node invoking the eval or {@code null}
-     */
-    Object evaluate(JSRealm realm, Node lastNode, Source source, Object currEnv, MaterializedFrame frame, Object thisObj);
-
-    Object parseJSON(JSContext context, String jsonString);
-
-    Integer[] parseDate(JSRealm realm, String date);
-
-    String parseToJSON(JSContext context, final String code, final String name, final boolean includeLoc);
+    public static TriggerPromiseReactionsNode create(JSContext context) {
+        return new TriggerPromiseReactionsNode(context);
+    }
 
     /**
-     * Returns the NodeFactory used by this parser instance to create AST nodes.
+     * For each reaction in reactions, in original insertion order, do Perform
+     * EnqueueJob("PromiseJobs", PromiseReactionJob, << reaction, argument >>).
      */
-    Object getDefaultNodeFactory();
-
-    JSModuleRecord parseModule(JSContext context, Source source, JSModuleLoader moduleLoader);
-
-    JSModuleRecord hostResolveImportedModule(JSModuleRecord referencingModule, String specifier);
-
-    void moduleDeclarationInstantiation(JSModuleRecord moduleRecord);
-
-    Object moduleEvaluation(JSRealm realm, JSModuleRecord moduleRecord);
+    public Object execute(Object reactions, Object argument) {
+        ArrayList<?> list = (ArrayList<?>) reactions;
+        for (int i = 0; i < list.size(); i++) {
+            Object reaction = list.get(i);
+            DynamicObject job = promiseReactionJob.execute(reaction, argument);
+            context.promiseEnqueueJob(job);
+        }
+        return Undefined.instance;
+    }
 }

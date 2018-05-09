@@ -40,14 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.object.DynamicObject;
-
 public final class AsyncGeneratorRequest {
     private final Completion.Type completionType;
     private final Object completionValue;
-    private final DynamicObject promiseCapability;
+    private final PromiseCapabilityRecord promiseCapability;
 
-    private AsyncGeneratorRequest(Completion.Type completionType, Object completionValue, DynamicObject promiseCapability) {
+    private AsyncGeneratorRequest(Completion.Type completionType, Object completionValue, PromiseCapabilityRecord promiseCapability) {
         this.completionType = completionType;
         this.completionValue = completionValue;
         this.promiseCapability = promiseCapability;
@@ -61,7 +59,7 @@ public final class AsyncGeneratorRequest {
         return completionValue;
     }
 
-    public DynamicObject getPromiseCapability() {
+    public PromiseCapabilityRecord getPromiseCapability() {
         return promiseCapability;
     }
 
@@ -81,7 +79,7 @@ public final class AsyncGeneratorRequest {
         return completionType == Completion.Type.Throw;
     }
 
-    public static AsyncGeneratorRequest create(Completion completion, DynamicObject promiseCapability) {
+    public static AsyncGeneratorRequest create(Completion completion, PromiseCapabilityRecord promiseCapability) {
         return new AsyncGeneratorRequest(completion.type, completion.value, promiseCapability);
     }
 }

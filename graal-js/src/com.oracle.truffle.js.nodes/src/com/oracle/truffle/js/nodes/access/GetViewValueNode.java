@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -61,6 +62,7 @@ public abstract class GetViewValueNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode viewNode;
     @Child @Executed protected JavaScriptNode requestIndexNode;
     @Child @Executed protected JavaScriptNode isLittleEndianNode;
+    @Child private JSToBooleanNode toBooleanNode;
 
     protected GetViewValueNode(JSContext context, String type, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian) {
         this(context, typedArrayFactoryFromType(type), view, requestIndex, isLittleEndian);
@@ -72,6 +74,7 @@ public abstract class GetViewValueNode extends JavaScriptNode {
         this.viewNode = view;
         this.requestIndexNode = requestIndex;
         this.isLittleEndianNode = isLittleEndian;
+        this.toBooleanNode = factory.bytesPerElement() == 1 ? null : JSToBooleanNode.create();
     }
 
     static TypedArrayFactory typedArrayFactoryFromType(String type) {
@@ -83,8 +86,10 @@ public abstract class GetViewValueNode extends JavaScriptNode {
         throw new IllegalArgumentException(type);
     }
 
+    public abstract Object execute(Object dataView, Object requestIndex, Object littleEndian);
+
     @Specialization
-    protected final Object doGet(Object view, Object requestIndex, boolean isLittleEndian,
+    protected final Object doGet(Object view, Object requestIndex, Object littleEndian,
                     @Cached("create()") JSToIndexNode toIndexNode,
                     @Cached("create()") BranchProfile errorBranch,
                     @Cached("createClassProfile()") ValueProfile typeProfile) {
@@ -95,6 +100,7 @@ public abstract class GetViewValueNode extends JavaScriptNode {
         DynamicObject dataView = (DynamicObject) view;
         DynamicObject buffer = JSDataView.getArrayBuffer(dataView);
         long getIndex = toIndexNode.executeLong(requestIndex);
+        boolean isLittleEndian = factory.bytesPerElement() == 1 ? true : toBooleanNode.executeBoolean(littleEndian);
 
         if (!context.getTypedArrayNotDetachedAssumption().isValid()) {
             if (JSArrayBuffer.isDetachedBuffer(buffer)) {

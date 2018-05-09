@@ -38,61 +38,54 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.control;
-
-import java.util.ArrayDeque;
+package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
-import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.Pair;
 
-public class AsyncGeneratorRejectNode extends JavaScriptBaseNode {
-    @Child private PropertyGetNode getAsyncGeneratorQueueNode;
-    @Child private CreateIterResultObjectNode createIterResultObjectNode;
-    @Child private JSFunctionCallNode callRejectNode;
-    @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
+public class PromiseResolveThenableNode extends JavaScriptBaseNode {
+    private final JSContext context;
+    @Child private CreateResolvingFunctionNode createResolvingFunctions;
+    @Child private JSFunctionCallNode callNode;
+    @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
-    protected AsyncGeneratorRejectNode(JSContext context) {
-        this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-        this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
-        this.callRejectNode = JSFunctionCallNode.createCall();
+    protected PromiseResolveThenableNode(JSContext context) {
+        this.context = context;
+        this.createResolvingFunctions = CreateResolvingFunctionNode.create(context);
+        this.callNode = JSFunctionCallNode.createCall();
     }
 
-    public static AsyncGeneratorRejectNode create(JSContext context) {
-        return new AsyncGeneratorRejectNode(context);
+    public static PromiseResolveThenableNode create(JSContext context) {
+        return new PromiseResolveThenableNode(context);
     }
 
-    public Object execute(VirtualFrame frame, DynamicObject generator, Object exception) {
-        performReject(frame, generator, exception);
-        if (asyncGeneratorResumeNextNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.asyncGeneratorResumeNextNode = insert(AsyncGeneratorResumeNextNode.create(getContext()));
+    public Object execute(DynamicObject promiseToResolve, Object thenable, Object then) {
+        Pair<DynamicObject, DynamicObject> resolvingFunctions = createResolvingFunctions.execute(promiseToResolve);
+        DynamicObject resolve = resolvingFunctions.getFirst();
+        DynamicObject reject = resolvingFunctions.getSecond();
+        try {
+            return callNode.executeCall(JSArguments.create(thenable, then, resolve, reject));
+        } catch (Throwable ex) {
+            if (shouldCatch(ex)) {
+                return callNode.executeCall(JSArguments.create(Undefined.instance, reject, getErrorObjectNode.execute(ex)));
+            } else {
+                throw ex;
+            }
         }
-        asyncGeneratorResumeNextNode.execute(frame, generator);
-        return Undefined.instance;
     }
 
-    @SuppressWarnings({"unchecked", "unused"})
-    void performReject(VirtualFrame frame, DynamicObject generator, Object exception) {
-        ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getAsyncGeneratorQueueNode.getValue(generator);
-        assert !queue.isEmpty();
-        AsyncGeneratorRequest next = queue.removeFirst();
-        PromiseCapabilityRecord promiseCapability = next.getPromiseCapability();
-        Object reject = promiseCapability.getReject();
-        callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, reject, exception));
-    }
-
-    private JSContext getContext() {
-        return getAsyncGeneratorQueueNode.getContext();
+    private boolean shouldCatch(Throwable exception) {
+        if (getErrorObjectNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+        }
+        return TryCatchNode.shouldCatch(exception);
     }
 }

@@ -79,6 +79,11 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     private static final Property STRING_PROPERTY;
     private static final Property LENGTH_PROPERTY;
 
+    public static final String ITERATOR_CLASS_NAME = "String Iterator";
+    public static final String ITERATOR_PROTOTYPE_NAME = "String Iterator.prototype";
+    public static final HiddenKey ITERATED_STRING_ID = new HiddenKey("IteratedString");
+    public static final HiddenKey STRING_ITERATOR_NEXT_INDEX_ID = new HiddenKey("StringIteratorNextIndex");
+
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
         STRING_PROPERTY = JSObjectUtil.makeHiddenProperty(STRING_ID, allocator.locationForType(CharSequence.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));

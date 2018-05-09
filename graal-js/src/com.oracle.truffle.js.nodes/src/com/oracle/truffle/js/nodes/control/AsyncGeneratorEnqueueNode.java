@@ -50,6 +50,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -57,16 +58,15 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
 import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getGeneratorState;
     @Child private PropertyGetNode getAsyncGeneratorQueueNode;
     @Child private HasHiddenKeyCacheNode hasAsyncGeneratorInternalSlots;
-    @Child private PropertyGetNode getPromiseReject;
     @Child private JSFunctionCallNode callPromiseRejectNode;
-    @Child private JSFunctionCallNode createPromiseCapability;
-    @Child private PropertyGetNode getPromise;
+    @Child private NewPromiseCapabilityNode newPromiseCapability;
     @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
     private final JSContext context;
 
@@ -75,10 +75,8 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
         this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_STATE_ID, context);
         this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
         this.hasAsyncGeneratorInternalSlots = HasHiddenKeyCacheNode.create(JSFunction.ASYNC_GENERATOR_QUEUE_ID);
-        this.getPromiseReject = PropertyGetNode.create("reject", false, context);
         this.callPromiseRejectNode = JSFunctionCallNode.createCall();
-        this.createPromiseCapability = JSFunctionCallNode.createCall();
-        this.getPromise = PropertyGetNode.create("promise", false, context);
+        this.newPromiseCapability = NewPromiseCapabilityNode.create(context);
         this.asyncGeneratorResumeNextNode = AsyncGeneratorResumeNextNode.create(context);
     }
 
@@ -88,12 +86,12 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
 
     @SuppressWarnings("unchecked")
     public Object execute(VirtualFrame frame, Object generator, Completion completion) {
-        DynamicObject promiseCapability = newPromiseCapability();
+        PromiseCapabilityRecord promiseCapability = newPromiseCapability();
         if (!JSGuards.isJSObject(generator) || !hasAsyncGeneratorInternalSlots.executeHasHiddenKey(generator)) {
             Object badGeneratorError = Errors.createTypeErrorAsyncGeneratorObjectExpected().getErrorObjectEager(context);
-            Object reject = getPromiseReject.getValue(promiseCapability);
+            Object reject = promiseCapability.getReject();
             callPromiseRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, reject, badGeneratorError));
-            return getPromise.getValue(promiseCapability);
+            return promiseCapability.getPromise();
         }
         ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getAsyncGeneratorQueueNode.getValue(generator);
         AsyncGeneratorRequest request = AsyncGeneratorRequest.create(completion, promiseCapability);
@@ -102,11 +100,11 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
         if (state != AsyncGeneratorState.Executing) {
             asyncGeneratorResumeNextNode.execute(frame, (DynamicObject) generator);
         }
-        return getPromise.getValue(promiseCapability);
+        return promiseCapability.getPromise();
     }
 
-    private DynamicObject newPromiseCapability() {
-        return (DynamicObject) createPromiseCapability.executeCall(JSArguments.createZeroArg(Undefined.instance, context.getRealm().getAsyncFunctionPromiseCapabilityConstructor()));
+    private PromiseCapabilityRecord newPromiseCapability() {
+        return newPromiseCapability.executeDefault();
     }
 
     @TruffleBoundary
