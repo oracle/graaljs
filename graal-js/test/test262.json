@@ -6480,12 +6480,6 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
-    "filePath" : "language/expressions/yield/star-rhs-iter-thrw-res-done-no-value.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/yield/star-rhs-iter-thrw-res-value-final.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/yield/star-rhs-iter-thrw-violation-rtrn-call-err.js",
     "status" : "FAIL"
   }, {
