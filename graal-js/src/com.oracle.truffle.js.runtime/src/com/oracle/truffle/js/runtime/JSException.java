@@ -56,15 +56,15 @@ public final class JSException extends GraalJSException {
     private JSRealm realm;
     private boolean useCallerRealm;
 
-    private JSException(JSErrorType type, String message, Throwable cause, Node originatingNode, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean capture) {
-        super(message, cause, originatingNode, stackTraceLimit, skipFramesUpTo, capture);
+    private JSException(JSErrorType type, String message, Throwable cause, Node originatingNode, int stackTraceLimit) {
+        super(message, cause, originatingNode, stackTraceLimit);
         CompilerAsserts.neverPartOfCompilation("JSException constructor");
         this.type = type;
         this.exceptionObj = null;
     }
 
-    private JSException(JSErrorType type, String message, Node originatingNode, DynamicObject exceptionObj, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean capture) {
-        super(message, originatingNode, stackTraceLimit, skipFramesUpTo, capture);
+    private JSException(JSErrorType type, String message, Node originatingNode, DynamicObject exceptionObj, int stackTraceLimit) {
+        super(message, originatingNode, stackTraceLimit);
         CompilerAsserts.neverPartOfCompilation("JSException constructor");
         this.type = type;
         this.exceptionObj = exceptionObj;
@@ -72,18 +72,19 @@ public final class JSException extends GraalJSException {
 
     private JSException(JSErrorType type, String message, SourceSection sourceLocation, int stackTraceLimit) {
         super(message, sourceLocation, stackTraceLimit);
+        CompilerAsserts.neverPartOfCompilation("JSException constructor");
         this.type = type;
         this.exceptionObj = null;
     }
 
     @TruffleBoundary
     public static JSException createCapture(JSErrorType type, String message, DynamicObject exceptionObj, int stackTraceLimit, DynamicObject skipFramesUpTo) {
-        return new JSException(type, message, null, exceptionObj, stackTraceLimit, skipFramesUpTo, true);
+        return fillInStackTrace(new JSException(type, message, null, exceptionObj, stackTraceLimit), skipFramesUpTo, true);
     }
 
     @TruffleBoundary
     public static JSException createCapture(JSErrorType type, String message, DynamicObject exceptionObj) {
-        return new JSException(type, message, null, exceptionObj, JSTruffleOptions.StackTraceLimit, Undefined.instance, true);
+        return createCapture(type, message, exceptionObj, JSTruffleOptions.StackTraceLimit, Undefined.instance);
     }
 
     public static JSException create(JSErrorType type, String message) {
@@ -91,15 +92,15 @@ public final class JSException extends GraalJSException {
     }
 
     public static JSException create(JSErrorType type, String message, Node originatingNode) {
-        return new JSException(type, message, originatingNode, null, JSTruffleOptions.StackTraceLimit, Undefined.instance, false);
+        return fillInStackTrace(new JSException(type, message, originatingNode, null, JSTruffleOptions.StackTraceLimit), Undefined.instance, false);
     }
 
     public static JSException create(JSErrorType type, String message, Throwable cause, Node originatingNode) {
-        return new JSException(type, message, cause, originatingNode, JSTruffleOptions.StackTraceLimit, Undefined.instance, false);
+        return fillInStackTrace(new JSException(type, message, cause, originatingNode, JSTruffleOptions.StackTraceLimit), Undefined.instance, false);
     }
 
     public static JSException create(JSErrorType type, String message, SourceSection sourceLocation) {
-        return new JSException(type, message, sourceLocation, JSTruffleOptions.StackTraceLimit);
+        return fillInStackTrace(new JSException(type, message, sourceLocation, JSTruffleOptions.StackTraceLimit), Undefined.instance, false);
     }
 
     @Override

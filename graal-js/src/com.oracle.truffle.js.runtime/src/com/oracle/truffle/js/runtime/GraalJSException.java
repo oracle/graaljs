@@ -47,13 +47,9 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
-import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -75,37 +71,42 @@ public abstract class GraalJSException extends RuntimeException implements Truff
     private Object location;
     private int stackTraceLimit;
 
-    protected GraalJSException(String message, Throwable cause, Node node, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean capture) {
+    protected GraalJSException(String message, Throwable cause, Node node, int stackTraceLimit) {
         super(message, cause);
         this.location = node;
         this.stackTraceLimit = stackTraceLimit;
-        this.jsStackTrace = initStackTrace(node, stackTraceLimit, skipFramesUpTo, capture);
+        this.jsStackTrace = stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null;
     }
 
-    protected GraalJSException(String message, Node node, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean capture) {
+    protected GraalJSException(String message, Node node, int stackTraceLimit) {
         super(message);
         this.location = node;
         this.stackTraceLimit = stackTraceLimit;
-        this.jsStackTrace = initStackTrace(node, stackTraceLimit, skipFramesUpTo, capture);
+        this.jsStackTrace = stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null;
     }
 
     protected GraalJSException(String message, SourceSection location, int stackTraceLimit) {
         super(message);
         this.location = location;
         this.stackTraceLimit = stackTraceLimit;
-        this.jsStackTrace = initStackTrace(null, stackTraceLimit, Undefined.instance, false);
+        this.jsStackTrace = stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null;
     }
 
-    private static JSStackTraceElement[] initStackTrace(Node node, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean capture) {
+    protected static <T extends GraalJSException> T fillInStackTrace(T exception, DynamicObject skipFramesUpTo, boolean capture) {
+        exception.fillInStackTrace(skipFramesUpTo, capture);
+        return exception;
+    }
+
+    protected final GraalJSException fillInStackTrace(DynamicObject skipFramesUpTo, boolean capture) {
         // We can only skip frames when capturing eagerly.
         assert capture || skipFramesUpTo == Undefined.instance;
-        if (stackTraceLimit == 0) {
-            return EMPTY_STACK_TRACE;
-        } else if (capture || JSTruffleOptions.EagerStackTrace) {
-            return getJSStackTrace(node, stackTraceLimit, skipFramesUpTo);
-        } else {
-            return null;
+        assert jsStackTrace == (stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null);
+        if (capture || JSTruffleOptions.EagerStackTrace) {
+            if (stackTraceLimit > 0) {
+                this.jsStackTrace = getJSStackTrace(skipFramesUpTo);
+            }
         }
+        return this;
     }
 
     @Override
@@ -129,7 +130,11 @@ public abstract class GraalJSException extends RuntimeException implements Truff
 
     @Override
     public int getStackTraceElementLimit() {
-        return stackTraceLimit;
+        if (stackTraceLimit <= 0) {
+            return 0;
+        }
+        // since we might skip stack frames, we do not know in advance how many we have to visit.
+        return -1;
     }
 
     /** Could still be null due to lazy initialization. */
@@ -164,31 +169,25 @@ public abstract class GraalJSException extends RuntimeException implements Truff
 
     @TruffleBoundary
     private JSStackTraceElement[] materializeJSStackTrace() {
-        List<TruffleStackTraceElement> stackTrace = TruffleStackTraceElement.getStackTrace(this);
-        if (stackTrace != null) {
-            FrameVisitorImpl visitor = new FrameVisitorImpl(getLocation(), stackTraceLimit, Undefined.instance);
-            for (TruffleStackTraceElement element : stackTrace) {
-                if (visitor.visitFrame(element) != null) {
-                    break;
-                }
-            }
-            return visitor.getStackTrace().toArray(EMPTY_STACK_TRACE);
-        } else {
-            return EMPTY_STACK_TRACE;
-        }
+        return getJSStackTrace(Undefined.instance);
     }
 
     @TruffleBoundary
-    private static JSStackTraceElement[] getJSStackTrace(Node originatingNode, int stackTraceLimit, DynamicObject skipUpTo) {
-        if (stackTraceLimit > 0) {
-            // Nashorn does not support skipping of frames
-            DynamicObject skipFramesUpTo = JSTruffleOptions.NashornCompatibilityMode ? Undefined.instance : skipUpTo;
-            FrameVisitorImpl visitor = new FrameVisitorImpl(originatingNode, stackTraceLimit, skipFramesUpTo);
-            Truffle.getRuntime().iterateFrames(visitor);
-            return visitor.getStackTrace().toArray(EMPTY_STACK_TRACE);
+    private JSStackTraceElement[] getJSStackTrace(DynamicObject skipUpTo) {
+        assert stackTraceLimit > 0;
+        // Nashorn does not support skipping of frames
+        DynamicObject skipFramesUpTo = JSTruffleOptions.NashornCompatibilityMode ? Undefined.instance : skipUpTo;
+        List<TruffleStackTraceElement> stackTrace = TruffleStackTraceElement.getStackTrace(this);
+        if (stackTrace == null) {
+            return EMPTY_STACK_TRACE;
         }
-
-        return EMPTY_STACK_TRACE;
+        FrameVisitorImpl visitor = new FrameVisitorImpl(getLocation(), stackTraceLimit, skipFramesUpTo);
+        for (TruffleStackTraceElement element : stackTrace) {
+            if (!visitor.visitFrame(element)) {
+                break;
+            }
+        }
+        return visitor.getStackTrace().toArray(EMPTY_STACK_TRACE);
     }
 
     public void setJSStackTrace(JSStackTraceElement[] jsStackTrace) {
@@ -197,10 +196,10 @@ public abstract class GraalJSException extends RuntimeException implements Truff
 
     @TruffleBoundary
     public static JSStackTraceElement[] getJSStackTrace(Node originatingNode) {
-        return getJSStackTrace(originatingNode, JSTruffleOptions.StackTraceLimit, Undefined.instance);
+        return UserScriptException.createCapture("", originatingNode, JSTruffleOptions.StackTraceLimit, Undefined.instance).getJSStackTrace();
     }
 
-    private static final class FrameVisitorImpl implements FrameInstanceVisitor<List<JSStackTraceElement>> {
+    private static final class FrameVisitorImpl {
         private static final int STACK_FRAME_SKIP = 0;
         private static final int STACK_FRAME_JS = 1;
         private static final int STACK_FRAME_FOREIGN = 2;
@@ -247,15 +246,14 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             }
         }
 
-        @Override
-        public List<JSStackTraceElement> visitFrame(FrameInstance frameInstance) {
-            Node callNode = frameInstance.getCallNode();
+        public boolean visitFrame(TruffleStackTraceElement element) {
+            Node callNode = element.getLocation();
             if (first) {
                 first = false;
                 callNode = originatingNode;
             }
             if (callNode == null) {
-                CallTarget callTarget = frameInstance.getCallTarget();
+                CallTarget callTarget = element.getTarget();
                 if (callTarget instanceof RootCallTarget) {
                     callNode = ((RootCallTarget) callTarget).getRootNode();
                 }
@@ -263,7 +261,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             switch (stackFrameType(callNode)) {
                 case STACK_FRAME_JS:
                     if (JSRuntime.isJSFunctionRootNode(callNode.getRootNode())) {
-                        Frame frame = frameInstance.getFrame(FrameAccess.READ_ONLY);
+                        Frame frame = element.getFrame();
                         Object thisObj = JSArguments.getThisObject(frame.getArguments());
                         Object functionObj = JSArguments.getFunctionObject(frame.getArguments());
                         if (JSFunction.isJSFunction(functionObj)) {
@@ -275,11 +273,11 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                             }
                             if (skippingFrames && functionObj == skipFramesUpTo) {
                                 skippingFrames = false;
-                                return null; // skip this frame as well
+                                return true; // skip this frame as well
                             }
                             JSRealm realm = JSFunction.getRealm((DynamicObject) functionObj);
                             if (functionObj == realm.getApplyFunctionObject() || functionObj == realm.getCallFunctionObject()) {
-                                return null; // skip Function.apply and Function.call
+                                return true; // skip Function.apply and Function.call
                             }
                         }
                         if (!skippingFrames) {
@@ -296,35 +294,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                     }
                     break;
             }
-            if (stackTrace.size() < stackTraceLimit) {
-                return null;
-            } else {
-                return stackTrace;
-            }
-        }
-
-        public List<JSStackTraceElement> visitFrame(TruffleStackTraceElement element) {
-            return visitFrame(new FrameInstance() {
-                @Override
-                public CallTarget getCallTarget() {
-                    return element.getTarget();
-                }
-
-                @Override
-                public Node getCallNode() {
-                    return element.getLocation();
-                }
-
-                @Override
-                public Frame getFrame(FrameAccess access) {
-                    return element.getFrame();
-                }
-
-                @Override
-                public boolean isVirtualFrame() {
-                    return false;
-                }
-            });
+            return stackTrace.size() < stackTraceLimit;
         }
 
         public List<JSStackTraceElement> getStackTrace() {
