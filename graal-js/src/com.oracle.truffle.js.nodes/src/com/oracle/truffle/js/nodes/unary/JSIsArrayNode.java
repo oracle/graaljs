@@ -76,9 +76,10 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
     public abstract boolean execute(Object operand);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!cachedIsProxy", "cachedShape.check(object)"}, limit = "MAX_SHAPE_COUNT")
+    @Specialization(guards = {"cachedIsJSObject", "!cachedIsProxy", "cachedShape.check(object)"}, limit = "MAX_SHAPE_COUNT")
     protected static boolean doIsArrayShape(DynamicObject object,
                     @Cached("object.getShape()") Shape cachedShape,
+                    @Cached("isJSObject(object)") boolean cachedIsJSObject, // ignore non-JS objects
                     @Cached("isJSArray(object)") boolean cachedIsArray,
                     @Cached("isJSProxy(object)") boolean cachedIsProxy) {
         // (aw) must do the shape check again to preserve the unsafe condition,
