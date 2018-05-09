@@ -262,7 +262,7 @@ class YieldStarNode extends YieldNode {
         if (throwMethod != Undefined.instance) {
             DynamicObject innerResult = callThrowMethod(iterator, received, throwMethod);
             if (iteratorCompleteNode.execute(innerResult)) {
-                return returnValue(frame, iteratorValueNode.execute(innerResult));
+                return iteratorValueNode.execute(innerResult);
             }
             return saveStateAndYield(frame, iterator, innerResult);
         } else {
