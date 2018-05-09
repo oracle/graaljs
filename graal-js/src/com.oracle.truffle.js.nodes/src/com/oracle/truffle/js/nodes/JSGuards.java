@@ -517,6 +517,6 @@ public final class JSGuards {
     }
 
     public static boolean isTruffleJavaObject(TruffleObject object) {
-        return AbstractJavaScriptLanguage.findCurrentJSRealm().getEnv().isHostObject(object);
+        return AbstractJavaScriptLanguage.getCurrentEnv().isHostObject(object);
     }
 }

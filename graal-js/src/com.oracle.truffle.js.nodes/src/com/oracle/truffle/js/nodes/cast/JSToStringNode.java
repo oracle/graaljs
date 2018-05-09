@@ -164,7 +164,7 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     @Specialization(guards = "isTruffleJavaObject(object)")
     protected String doTruffleJavaObject(TruffleObject object) {
         String result = null;
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.findCurrentJSRealm().getEnv();
+        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
         Object javaObject = env.asHostObject(object);
         if (javaObject != null) {
             result = Boundaries.javaToString(javaObject);

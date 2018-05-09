@@ -186,7 +186,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isTruffleJavaObject(object)")
     protected Object doTruffleJavaObject(TruffleObject object) {
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.findCurrentJSRealm().getEnv();
+        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
         Object javaObject = env.asHostObject(object);
         return (javaObject == null) ? Null.instance : doGeneric(javaObject);
     }

@@ -477,7 +477,7 @@ public final class Errors {
             reason = cause.getClass().getSimpleName();
         }
         String receiverStr = "foreign object";
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.findCurrentJSRealm().getEnv();
+        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
         if (env.isHostObject(receiver)) {
             try {
                 receiverStr = receiver.toString();

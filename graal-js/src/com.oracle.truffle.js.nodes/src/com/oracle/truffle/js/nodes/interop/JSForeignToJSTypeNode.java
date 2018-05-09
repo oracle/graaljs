@@ -128,7 +128,7 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
         if (value instanceof InteropBoundFunction) {
             return ((InteropBoundFunction) value).getFunction();
         } else {
-            TruffleLanguage.Env env = AbstractJavaScriptLanguage.findCurrentJSRealm().getEnv();
+            TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
             if (env.isHostObject(value)) {
                 Object object = env.asHostObject(value);
                 if (object == null) {

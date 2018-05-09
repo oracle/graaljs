@@ -442,7 +442,7 @@ public abstract class JSScope {
         } else if (JSRuntime.isJSPrimitive(value)) {
             return value;
         } else {
-            return JavaScriptLanguage.findCurrentJSRealm().getEnv().asGuestValue(value);
+            return JavaScriptLanguage.getCurrentEnv().asGuestValue(value);
         }
     }
 

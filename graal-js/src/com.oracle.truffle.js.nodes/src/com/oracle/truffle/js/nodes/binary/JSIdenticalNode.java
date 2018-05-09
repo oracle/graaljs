@@ -267,7 +267,7 @@ public abstract class JSIdenticalNode extends JSCompareNode {
 
     @Specialization(guards = {"isTruffleJavaObject(a)", "isTruffleJavaObject(b)"})
     protected static boolean doTruffleJavaObjects(TruffleObject a, TruffleObject b) {
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.findCurrentJSRealm().getEnv();
+        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
         return env.asHostObject(a) == env.asHostObject(b);
     }
 

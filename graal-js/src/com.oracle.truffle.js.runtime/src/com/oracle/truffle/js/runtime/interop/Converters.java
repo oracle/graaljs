@@ -961,7 +961,7 @@ public class Converters {
 
         static boolean isJavaObject(Class<?> destType, Object value) {
             if (JSRuntime.isForeignObject(value)) {
-                TruffleLanguage.Env env = AbstractJavaScriptLanguage.findCurrentJSRealm().getEnv();
+                TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
                 if (env.isHostObject(value)) {
                     return destType == Object.class || destType.isInstance(env.asHostObject(value));
                 }
@@ -970,7 +970,7 @@ public class Converters {
         }
 
         static Object asJavaObject(Object argument) {
-            TruffleLanguage.Env env = AbstractJavaScriptLanguage.findCurrentJSRealm().getEnv();
+            TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
             return env.asHostObject(argument);
         }
     }

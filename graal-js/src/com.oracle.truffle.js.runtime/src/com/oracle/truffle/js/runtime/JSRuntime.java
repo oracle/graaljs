@@ -1428,7 +1428,7 @@ public final class JSRuntime {
         if (isString(a) && isString(b)) {
             return a.toString().equals(b.toString());
         }
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.findCurrentJSRealm().getEnv();
+        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
         if (env.isHostObject(a) && env.isHostObject(b)) {
             return env.asHostObject(a) == env.asHostObject(b);
         }
@@ -2570,7 +2570,7 @@ public final class JSRuntime {
         } else if (JSRuntime.isJSPrimitive(value)) {
             return value;
         }
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.findCurrentJSRealm().getEnv();
+        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
         if (value instanceof JavaClass) {
             return env.asGuestValue(((JavaClass) value).getType());
         }
