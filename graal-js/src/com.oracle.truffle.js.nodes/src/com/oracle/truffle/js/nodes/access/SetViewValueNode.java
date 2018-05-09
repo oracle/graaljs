@@ -78,7 +78,7 @@ public abstract class SetViewValueNode extends JavaScriptNode {
         this.requestIndexNode = requestIndex;
         this.isLittleEndianNode = isLittleEndian;
         this.valueNode = value;
-        this.toBooleanNode = JSToBooleanNode.create();
+        this.toBooleanNode = factory.bytesPerElement() == 1 ? null : JSToBooleanNode.create();
     }
 
     public abstract Object execute(DynamicObject dataView, Object byteOffset, Object littleEndian, Object value);

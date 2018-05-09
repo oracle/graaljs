@@ -1865,7 +1865,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     }
 
     public abstract static class PromiseConstructorNode extends JSBuiltinNode {
-        @Child private IsCallableNode isCallable;
+        @Child protected IsCallableNode isCallable;
         @Child private PromiseResolveThenableNode promiseResolveThenable;
         @Child private OrdinaryCreateFromConstructorNode createPromiseFromConstructor;
         @Child private PropertySetNode setPromiseState;
@@ -1884,11 +1884,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.setPromiseIsHandled = PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context);
         }
 
-        @Specialization
+        @Specialization(guards = "isCallable.executeBoolean(executor)")
         protected DynamicObject construct(VirtualFrame frame, DynamicObject newTarget, Object executor) {
-            if (!isCallable.executeBoolean(executor)) {
-                throw Errors.createTypeError("cannot create promise: executor not callable");
-            }
             DynamicObject promise = createPromiseFromConstructor.executeWithConstructor(frame, newTarget);
             setPromiseState.setValueInt(promise, JSPromise.PENDING);
             setPromiseFulfillReactions.setValue(promise, new ArrayList<>());
@@ -1899,6 +1896,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             promiseResolveThenable.execute(promise, Undefined.instance, executor);
             return promise;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isCallable.executeBoolean(executor)")
+        protected DynamicObject notCallable(DynamicObject newTarget, Object executor) {
+            throw Errors.createTypeError("cannot create promise: executor not callable");
         }
     }
 }

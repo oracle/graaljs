@@ -74,7 +74,7 @@ public abstract class GetViewValueNode extends JavaScriptNode {
         this.viewNode = view;
         this.requestIndexNode = requestIndex;
         this.isLittleEndianNode = isLittleEndian;
-        this.toBooleanNode = JSToBooleanNode.create();
+        this.toBooleanNode = factory.bytesPerElement() == 1 ? null : JSToBooleanNode.create();
     }
 
     static TypedArrayFactory typedArrayFactoryFromType(String type) {

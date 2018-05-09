@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.SetIteratorPrototypeBuiltinsFactory.SetIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
@@ -100,6 +101,9 @@ public final class SetIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Child private PropertyGetNode getIterationKindNode;
         @Child private PropertySetNode setIteratedObjectNode;
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
+        private final ConditionProfile detachedProf = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile doneProf = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile iterKindProf = ConditionProfile.createBinaryProfile();
 
         public SetIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -114,21 +118,21 @@ public final class SetIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization(guards = "isSetIterator(iterator)")
         protected DynamicObject doSetIterator(VirtualFrame frame, DynamicObject iterator) {
             Object set = getIteratedObjectNode.getValue(iterator);
-            if (set == Undefined.instance) {
+            if (detachedProf.profile(set == Undefined.instance)) {
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
             JSHashMap.Cursor mapCursor = (JSHashMap.Cursor) getNextIndexNode.getValue(iterator);
             int itemKind = getIterationKind(iterator);
 
-            if (!mapCursor.advance()) {
+            if (doneProf.profile(!mapCursor.advance())) {
                 setIteratedObjectNode.setValue(iterator, Undefined.instance);
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
             Object elementValue = mapCursor.getKey();
             Object result;
-            if (itemKind == JSRuntime.ITERATION_KIND_VALUE) {
+            if (iterKindProf.profile(itemKind == JSRuntime.ITERATION_KIND_VALUE)) {
                 result = elementValue;
             } else {
                 assert itemKind == JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE;

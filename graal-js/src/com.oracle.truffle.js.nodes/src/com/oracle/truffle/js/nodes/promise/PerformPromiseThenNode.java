@@ -44,6 +44,7 @@ import java.util.ArrayList;
 
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -67,6 +68,8 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getPromiseIsHandled;
     @Child private PropertySetNode setPromiseIsHandled;
     @Child private PromiseReactionJobNode promiseReactionJob;
+    private final ConditionProfile pendingProf = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile fulfilledProf = ConditionProfile.createBinaryProfile();
 
     protected PerformPromiseThenNode(JSContext context) {
         this.context = context;
@@ -92,10 +95,10 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
         PromiseReactionRecord rejectReaction = PromiseReactionRecord.create(resultCapability, onRejectedHandler, false);
 
         int promiseState = getPromiseState(promise);
-        if (promiseState == JSPromise.PENDING) {
+        if (pendingProf.profile(promiseState == JSPromise.PENDING)) {
             Boundaries.listAdd((ArrayList<? super PromiseReactionRecord>) getPromiseFulfillReactions.getValue(promise), fulfillReaction);
             Boundaries.listAdd((ArrayList<? super PromiseReactionRecord>) getPromiseRejectReactions.getValue(promise), rejectReaction);
-        } else if (promiseState == JSPromise.FULFILLED) {
+        } else if (fulfilledProf.profile(promiseState == JSPromise.FULFILLED)) {
             Object value = getPromiseResult.getValue(promise);
             DynamicObject job = promiseReactionJob.execute(fulfillReaction, value);
             context.promiseEnqueueJob(job);

@@ -193,9 +193,8 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.callReject = JSFunctionCallNode.createCall();
         }
 
-        @Specialization(guards = "isJSObject(thisObj)")
-        protected DynamicObject doObject(DynamicObject thisObj, Object reason) {
-            DynamicObject constructor = thisObj;
+        @Specialization(guards = "isJSObject(constructor)")
+        protected DynamicObject doObject(DynamicObject constructor, Object reason) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapability.execute(constructor);
             callReject.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), reason));
             return promiseCapability.getPromise();
@@ -216,9 +215,8 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.promiseResolve = PromiseResolveNode.create(context);
         }
 
-        @Specialization(guards = "isJSObject(thisObj)")
-        protected DynamicObject doObject(DynamicObject thisObj, Object value) {
-            DynamicObject constructor = thisObj;
+        @Specialization(guards = "isJSObject(constructor)")
+        protected DynamicObject doObject(DynamicObject constructor, Object value) {
             return promiseResolve.execute(constructor, value);
         }
 

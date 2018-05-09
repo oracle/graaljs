@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.MapIteratorPrototypeBuiltinsFactory.MapIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
@@ -100,6 +101,10 @@ public final class MapIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Child private PropertyGetNode getIterationKindNode;
         @Child private PropertySetNode setIteratedObjectNode;
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
+        private final ConditionProfile detachedProf = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile doneProf = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile iterKindKey = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile iterKindValue = ConditionProfile.createBinaryProfile();
 
         public MapIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -114,14 +119,14 @@ public final class MapIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization(guards = "isMapIterator(iterator)")
         protected DynamicObject doMapIterator(VirtualFrame frame, DynamicObject iterator) {
             Object map = getIteratedObjectNode.getValue(iterator);
-            if (map == Undefined.instance) {
+            if (detachedProf.profile(map == Undefined.instance)) {
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
             JSHashMap.Cursor mapCursor = (JSHashMap.Cursor) getNextIndexNode.getValue(iterator);
             int itemKind = getIterationKind(iterator);
 
-            if (!mapCursor.advance()) {
+            if (doneProf.profile(!mapCursor.advance())) {
                 setIteratedObjectNode.setValue(iterator, Undefined.instance);
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
@@ -129,9 +134,9 @@ public final class MapIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
             Object elementKey = mapCursor.getKey();
             Object elementValue = mapCursor.getValue();
             Object result;
-            if (itemKind == JSRuntime.ITERATION_KIND_KEY) {
+            if (iterKindKey.profile(itemKind == JSRuntime.ITERATION_KIND_KEY)) {
                 result = elementKey;
-            } else if (itemKind == JSRuntime.ITERATION_KIND_VALUE) {
+            } else if (iterKindValue.profile(itemKind == JSRuntime.ITERATION_KIND_VALUE)) {
                 result = elementValue;
             } else {
                 assert itemKind == JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE;
