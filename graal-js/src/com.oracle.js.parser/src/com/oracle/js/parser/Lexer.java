@@ -1874,7 +1874,8 @@ public class Lexer extends Scanner {
                 } else if (type == RBRACE && pauseOnRightBrace) {
                     break;
                 }
-            } else if (isJSIdentifierStart(ch0) || ch0 == '\\' && ch1 == 'u') {
+            } else if (isJSIdentifierStart((Character.isHighSurrogate(ch0) && Character.isLowSurrogate(ch1)) ? Character.toCodePoint(ch0, ch1) : ch0)
+                    || (ch0 == '\\' && ch1 == 'u')) {
                 // Scan and add identifier or keyword.
                 scanIdentifierOrKeyword();
             } else if (isStringDelimiter(ch0)) {
