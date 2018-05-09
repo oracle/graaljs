@@ -73,6 +73,7 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropInvokeNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -104,12 +105,13 @@ public class JSForeignAccessFactory {
 
         private final ConditionProfile rejected = ConditionProfile.createBinaryProfile();
 
+        @Child private IsCallableNode isCallableNode = IsCallableNode.create();
         @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createExecute();
         @Child private ExportValueNode export;
         @CompilationFinal ContextReference<JSRealm> contextRef;
 
         public Object access(DynamicObject target, Object[] args) {
-            if (JSRuntime.isCallable(target)) {
+            if (isCallableNode.executeBoolean(target)) {
                 if (contextRef == null || export == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     JSContext context = JSObject.getJSContext(target);
