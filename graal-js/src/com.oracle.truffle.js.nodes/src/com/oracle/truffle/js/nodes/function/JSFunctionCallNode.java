@@ -63,7 +63,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -89,7 +88,7 @@ import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.interop.ExportArgumentsNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.unary.FlattenNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
@@ -843,10 +842,10 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 JSFunctionCallNode functionCallNode = (JSFunctionCallNode) parent;
                 Object propertyKey = functionCallNode.getPropertyKey();
                 if (propertyKey != null && propertyKey instanceof String) {
-                    return replace(new CallForeignTargetCacheNode(true, new ForeignInvokeNode(ExportArgumentsNode.create(userArgumentCount, language), (String) propertyKey), createUninitialized()));
+                    return replace(new CallForeignTargetCacheNode(true, new ForeignInvokeNode(language, (String) propertyKey, userArgumentCount), createUninitialized()));
                 }
             }
-            return replace(new CallForeignTargetCacheNode(false, new ForeignExecuteNode(ExportArgumentsNode.create(userArgumentCount, language)), createUninitialized()));
+            return replace(new CallForeignTargetCacheNode(false, new ForeignExecuteNode(language, userArgumentCount), createUninitialized()));
         }
 
     }
@@ -1018,60 +1017,15 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    abstract static class ExportArgumentsNode extends JavaScriptBaseNode {
-        abstract Object[] export(Object[] extractedUserArguments);
-
-        static ExportArgumentsNode create(int expectedLength, AbstractJavaScriptLanguage language) {
-            final class VariableLength extends ExportArgumentsNode {
-                @Child private ExportValueNode exportNode = ExportValueNode.create(language);
-
-                @Override
-                Object[] export(Object[] extractedUserArguments) {
-                    for (int i = 0; i < extractedUserArguments.length; i++) {
-                        extractedUserArguments[i] = exportNode.executeWithTarget(extractedUserArguments[i], Undefined.instance);
-                    }
-                    return extractedUserArguments;
-                }
-            }
-
-            final class FixedLength extends ExportArgumentsNode {
-                @Children private final ExportValueNode[] exportNodes;
-
-                FixedLength(int userArgumentCount) {
-                    ExportValueNode[] exportNodeArray = new ExportValueNode[userArgumentCount];
-                    for (int i = 0; i < exportNodeArray.length; i++) {
-                        exportNodeArray[i] = ExportValueNode.create(language);
-                    }
-                    this.exportNodes = exportNodeArray;
-                }
-
-                @ExplodeLoop
-                @Override
-                Object[] export(Object[] extractedUserArguments) {
-                    if (extractedUserArguments.length == exportNodes.length) {
-                        for (int i = 0; i < exportNodes.length; i++) {
-                            extractedUserArguments[i] = exportNodes[i].executeWithTarget(extractedUserArguments[i], Undefined.instance);
-                        }
-                        return extractedUserArguments;
-                    } else {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        return replace(new VariableLength()).export(extractedUserArguments);
-                    }
-                }
-            }
-
-            return new FixedLength(expectedLength);
-        }
-    }
-
     private static class ForeignExecuteNode extends JSDirectCallNode {
         @Child private ExportArgumentsNode exportArgumentsNode;
-        @Child private JSForeignToJSTypeNode typeConvertNode = JSForeignToJSTypeNode.create();
+        @Child private JSForeignToJSTypeNode typeConvertNode;
         @Child protected Node callNode;
         private final ValueProfile classProfile = ValueProfile.createClassProfile();
 
-        ForeignExecuteNode(ExportArgumentsNode exportArgumentsNode) {
-            this.exportArgumentsNode = exportArgumentsNode;
+        ForeignExecuteNode(AbstractJavaScriptLanguage language, int expectedArgumentCount) {
+            this.exportArgumentsNode = ExportArgumentsNode.create(expectedArgumentCount, language);
+            this.typeConvertNode = JSForeignToJSTypeNode.create();
         }
 
         @Override
@@ -1093,8 +1047,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     private static final class ForeignInvokeNode extends ForeignExecuteNode {
         private final String functionName;
 
-        ForeignInvokeNode(ExportArgumentsNode exportArgumentsNode, String functionName) {
-            super(exportArgumentsNode);
+        ForeignInvokeNode(AbstractJavaScriptLanguage language, String functionName, int expectedArgumentCount) {
+            super(language, expectedArgumentCount);
             this.functionName = functionName;
         }
 
