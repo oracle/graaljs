@@ -91,11 +91,11 @@ public final class RegExpScanner extends Scanner {
     /** Forward references to capturing parenthesis to be resolved later.*/
     private final LinkedList<Integer> forwardReferences = new LinkedList<>();
 
-    /** Current level of zero-width negative lookahead assertions. */
-    private int negLookaheadLevel;
+    /** Current level of zero-width negative lookaround assertions. */
+    private int negLookaroundLevel;
 
-    /** Sequential id of current top-level zero-width negative lookahead assertion. */
-    private int negLookaheadGroup;
+    /** Sequential id of current top-level zero-width negative lookaround assertion. */
+    private int negLookaroundGroup;
 
     /** Are we currently inside a character class? */
     private boolean inCharClass = false;
@@ -104,23 +104,23 @@ public final class RegExpScanner extends Scanner {
     private boolean inNegativeClass = false;
 
     /** Was the last assertion a lookahead? Required for V8 compatibility. */
-    private boolean lastAssertionWasLookeahead = false;
+    private boolean lastAssertionWasLookahead = false;
 
     private static final String NON_IDENT_ESCAPES = "$^*+(){}[]|\\.?-";
 
     private static class Capture {
-        /** Zero-width negative lookaheads enclosing the capture. */
-        private final int negLookaheadLevel;
-        /** Sequential id of top-level negative lookaheads containing the capture. */
-        private  final int negLookaheadGroup;
+        /** Zero-width negative lookarounds enclosing the capture. */
+        private final int negLookaroundLevel;
+        /** Sequential id of top-level negative lookarounds containing the capture. */
+        private  final int negLookaroundGroup;
 
-        Capture(final int negLookaheadGroup, final int negLookaheadLevel) {
-            this.negLookaheadGroup = negLookaheadGroup;
-            this.negLookaheadLevel = negLookaheadLevel;
+        Capture(final int negLookaroundGroup, final int negLookaroundLevel) {
+            this.negLookaroundGroup = negLookaroundGroup;
+            this.negLookaroundLevel = negLookaroundLevel;
         }
 
         boolean isContained(final int group, final int level) {
-            return negLookaheadLevel == 0 || (group == this.negLookaheadGroup && level >= this.negLookaheadLevel);
+            return negLookaroundLevel == 0 || (group == this.negLookaroundGroup && level >= this.negLookaroundLevel);
         }
     }
 
@@ -193,7 +193,7 @@ public final class RegExpScanner extends Scanner {
         BitVector vec = null;
         for (int i = 0; i < caps.size(); i++) {
             final Capture cap = caps.get(i);
-            if (cap.negLookaheadLevel > 0) {
+            if (cap.negLookaroundLevel > 0) {
                 if (vec == null) {
                     vec = new BitVector(caps.size() + 1);
                 }
@@ -298,7 +298,7 @@ public final class RegExpScanner extends Scanner {
         if (assertion()) {
             // For compatability with JSC and ES3, V8 allows quantifiers after lookaheads
             // warning: this is out of the ES 262 spec
-            if (lastAssertionWasLookeahead) {
+            if (lastAssertionWasLookahead) {
                 quantifier();
             }
             return true;
@@ -321,11 +321,13 @@ public final class RegExpScanner extends Scanner {
      *      \B
      *      ( ? = Disjunction )
      *      ( ? ! Disjunction )
+     *      ( ? <= Disjunction )
+     *      ( ? <! Disjunction )
      */
     private boolean assertion() {
         final int startIn  = position;
         final int startOut = sb.length();
-        lastAssertionWasLookeahead = false;
+        lastAssertionWasLookahead = false;
 
         switch (ch0) {
         case '^':
@@ -342,29 +344,33 @@ public final class RegExpScanner extends Scanner {
             if (ch1 != '?') {
                 break;
             }
-            if (ch2 != '=' && ch2 != '!') {
+            commit(2); // commit "(?"
+            final boolean lookbehind = ch0 == '<';
+            if (lookbehind) {
+                commit(1); // commit "<"
+            }
+            if (ch0 != '=' && ch0 != '!') {
                 break;
             }
-            final boolean isNegativeLookahead = (ch2 == '!');
-            commit(3);
+            final boolean isNegativeLookaround = (ch0 == '!');
+            commit(1); // commit "=" or "!"
 
-            if (isNegativeLookahead) {
-                if (negLookaheadLevel == 0) {
-                    negLookaheadGroup++;
+            if (isNegativeLookaround) {
+                if (negLookaroundLevel == 0) {
+                    negLookaroundGroup++;
                 }
-                negLookaheadLevel++;
+                negLookaroundLevel++;
             }
             disjunction();
-            if (isNegativeLookahead) {
-                negLookaheadLevel--;
+            if (isNegativeLookaround) {
+                negLookaroundLevel--;
             }
 
             if (ch0 == ')') {
-                lastAssertionWasLookeahead = true;
+                lastAssertionWasLookahead = !lookbehind;
                 return commit(1);
             }
             break;
-
         default:
             break;
         }
@@ -479,7 +485,7 @@ public final class RegExpScanner extends Scanner {
             if (ch0 == '?' && ch1 == ':') {
                 commit(2);
             } else {
-                caps.add(new Capture(negLookaheadGroup, negLookaheadLevel));
+                caps.add(new Capture(negLookaroundGroup, negLookaroundLevel));
             }
 
             disjunction();
@@ -709,9 +715,9 @@ public final class RegExpScanner extends Scanner {
                     octalOrLiteral(Integer.toString(decimalValue), sb);
 
                 } else if (decimalValue <= caps.size()) {
-                    //  Captures inside a negative lookahead are undefined when referenced from the outside.
-                    if (!caps.get(decimalValue - 1).isContained(negLookaheadGroup, negLookaheadLevel)) {
-                        // Reference to capture in negative lookahead, omit from output buffer.
+                    //  Captures inside a negative lookaround are undefined when referenced from the outside.
+                    if (!caps.get(decimalValue - 1).isContained(negLookaroundGroup, negLookaroundLevel)) {
+                        // Reference to capture in negative lookaround, omit from output buffer.
                         sb.setLength(sb.length() - 1);
                     } else {
                         // Append backreference to output buffer.
