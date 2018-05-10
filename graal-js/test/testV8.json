@@ -311,6 +311,10 @@
     "filePath" : "mjsunit/es6/super.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/es6/templates.js",
+    "status" : "FAIL",
+    "comment" : "Not up to date with the latest spec. Passes on V8 with --no-harmony-template-escapes only."
+  }, {
     "filePath" : "mjsunit/es6/throw-type-error-function-restrictions.js",
     "status" : "FAIL"
   }, {
@@ -664,16 +668,8 @@
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
   }, {
-    "filePath" : "mjsunit/harmony/regress/regress-6100.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
     "filePath" : "mjsunit/harmony/sloppy-legacy-duplicate-generators.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/harmony/template-escapes.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/html-comments.js",
     "status" : "FAIL"
