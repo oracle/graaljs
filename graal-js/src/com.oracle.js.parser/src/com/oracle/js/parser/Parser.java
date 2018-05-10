@@ -4338,7 +4338,6 @@ loop:
                     // rest parameter must be last
                     expectDontAdvance(endType);
                     parameters.add(ident);
-                    break;
                 } else if (type == ASSIGN && (ES6_DEFAULT_PARAMETER && isES6())) {
                     next();
                     ident = ident.setIsDefaultParameter();
@@ -4368,6 +4367,9 @@ loop:
                     if (ident.isRestParameter() || ident.isDefaultParameter()) {
                         currentFunction.setSimpleParameterList(false);
                     }
+                }
+                if (restParameter) {
+                    break;
                 }
             } else {
                 final Expression pattern = bindingPattern(yield, await);
