@@ -60,7 +60,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
@@ -541,7 +541,7 @@ public class JSForeignAccessFactory {
     @CanResolve
     public abstract static class CanResolveNode extends Node {
 
-        @Child private IsJSObjectNode isJSObjectNode = IsJSObjectNode.create();
+        @Child private IsObjectNode isJSObjectNode = IsObjectNode.create();
 
         protected boolean test(TruffleObject receiver) {
             return isJSObjectNode.executeBoolean(receiver);
