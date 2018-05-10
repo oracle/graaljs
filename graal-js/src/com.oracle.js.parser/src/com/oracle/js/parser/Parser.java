@@ -5503,10 +5503,17 @@ loop:
     private void addTemplateLiteralString(final ArrayList<Expression> rawStrings, final ArrayList<Expression> cookedStrings) {
         final long stringToken = token;
         final String rawString = lexer.valueOfRawString(stringToken);
-        final String cookedString = (String) getValue();
+        final String cookedString = lexer.valueOfTaggedTemplateString(stringToken);
         next();
+        Expression cookedExpression;
+        if (cookedString == null) {
+            // A tagged template string with an invalid escape sequence has value 'undefined'
+            cookedExpression = newUndefinedLiteral(stringToken, finish);
+        } else {
+            cookedExpression = LiteralNode.newInstance(stringToken, finish, cookedString);
+        }
         rawStrings.add(LiteralNode.newInstance(stringToken, finish, rawString));
-        cookedStrings.add(LiteralNode.newInstance(stringToken, finish, cookedString));
+        cookedStrings.add(cookedExpression);
     }
 
 

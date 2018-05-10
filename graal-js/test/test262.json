@@ -6425,9 +6425,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "language/expressions/tagged-template/invalid-escape-sequences.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/tagged-template/tco-call.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"

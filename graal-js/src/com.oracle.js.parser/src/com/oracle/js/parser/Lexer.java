@@ -1978,6 +1978,26 @@ public class Lexer extends Scanner {
     }
 
     /**
+     * Returns the Template Value of the specified part of a tagged template literal.
+     *
+     * @param token template string token.
+     * @return Template Value if the value is string, returns {@code null}
+     * otherwise (i.e. if the value is undefined).
+     */
+    String valueOfTaggedTemplateString(final long token) {
+        final int savePosition = position;
+
+        try {
+            return valueOfString(Token.descPosition(token), Token.descLength(token), true);
+        } catch (ParserException ex) {
+            // An invalid escape sequence in a tagged template string is not an error.
+            return null;
+        } finally {
+            reset(savePosition);
+        }
+    }
+
+    /**
      * Get the raw string value of a template literal string part.
      *
      * @param token template string token
