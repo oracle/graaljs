@@ -4338,7 +4338,6 @@ loop:
                     // rest parameter must be last
                     expectDontAdvance(endType);
                     parameters.add(ident);
-                    break;
                 } else if (type == ASSIGN && (ES6_DEFAULT_PARAMETER && isES6())) {
                     next();
                     ident = ident.setIsDefaultParameter();
@@ -4368,6 +4367,9 @@ loop:
                     if (ident.isRestParameter() || ident.isDefaultParameter()) {
                         currentFunction.setSimpleParameterList(false);
                     }
+                }
+                if (restParameter) {
+                    break;
                 }
             } else {
                 final Expression pattern = bindingPattern(yield, await);
@@ -4901,11 +4903,22 @@ loop:
                 return new ExpressionList(primaryToken, finish, Collections.emptyList());
             } else if (ES6_REST_PARAMETER && type == ELLIPSIS) {
                 // (...rest)
-                IdentNode restParam = formalParameterList(false, false).get(0);
-                expectDontAdvance(RPAREN);
-                nextOrEOL();
-                expectDontAdvance(ARROW);
-                return new ExpressionList(primaryToken, finish, Collections.singletonList(restParam));
+                final IdentNode name = new IdentNode(primaryToken, Token.descPosition(primaryToken), ARROW_FUNCTION_NAME);
+                final ParserContextFunctionNode functionNode = createParserContextFunctionNode(name, primaryToken, FunctionNode.Kind.ARROW, 0, null);
+                // Push a dummy functionNode at the top of the stack to avoid
+                // pollution of the current function by parameters of the arrow function.
+                // Real processing/verification of the parameters of the arrow function
+                // is performed later through convertArrowFunctionParameterList().
+                lc.push(functionNode);
+                try {
+                    IdentNode restParam = formalParameterList(false, false).get(0);
+                    expectDontAdvance(RPAREN);
+                    nextOrEOL();
+                    expectDontAdvance(ARROW);
+                    return new ExpressionList(primaryToken, finish, Collections.singletonList(restParam));
+                } finally {
+                    lc.pop(functionNode);
+                }
             }
         }
 
