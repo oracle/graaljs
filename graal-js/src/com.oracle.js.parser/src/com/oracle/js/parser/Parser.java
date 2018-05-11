@@ -806,7 +806,7 @@ loop:
 
     private boolean isDestructuringLhs(Expression lhs) {
         if (lhs instanceof ObjectNode || lhs instanceof ArrayLiteralNode) {
-            return ES6_DESTRUCTURING && isES6();
+            return ES6_DESTRUCTURING && isES6() && !lhs.isParenthesized();
         }
         return false;
     }
@@ -4955,9 +4955,15 @@ loop:
             assignmentExpression = new BinaryNode(commaToken, assignmentExpression, rhs);
         }
 
-        if (hasCoverInitializedName && !(type == RPAREN && lookaheadIsArrow())) {
+        boolean arrowAhead = lookaheadIsArrow();
+        if (hasCoverInitializedName && !(type == RPAREN && arrowAhead)) {
             throw error(AbstractParser.message("invalid.property.initializer"));
         }
+
+        if (!arrowAhead) {
+            // parenthesized expression
+            assignmentExpression.makeParenthesized();
+        } // else arrow parameter list
 
         expect(RPAREN);
         return assignmentExpression;
