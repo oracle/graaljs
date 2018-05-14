@@ -633,7 +633,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         public boolean guard(Object target) {
-            return JSObject.isDynamicObject(target);
+            return JSObject.isJSObject(target);
         }
 
         private Object getProperty(DynamicObject targetObject, Object objIndex) {
