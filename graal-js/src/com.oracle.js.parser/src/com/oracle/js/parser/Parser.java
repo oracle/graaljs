@@ -1940,6 +1940,9 @@ loop:
         @Override
         public boolean enterLiteralNode(LiteralNode<?> literalNode) {
             if (literalNode.isArray()) {
+                if (literalNode.isParenthesized()) {
+                    throw error(AbstractParser.message("invalid.lvalue"), literalNode.getToken());
+                }
                 if (((ArrayLiteralNode)literalNode).hasSpread() && ((ArrayLiteralNode)literalNode).hasTrailingComma()) {
                     throw error("Rest element must be last", literalNode.getElementExpressions().get(literalNode.getElementExpressions().size() - 1).getToken());
                 }
@@ -1968,6 +1971,9 @@ loop:
 
         @Override
         public boolean enterObjectNode(ObjectNode objectNode) {
+            if (objectNode.isParenthesized()) {
+                throw error(AbstractParser.message("invalid.lvalue"), objectNode.getToken());
+            }
             boolean restElement = false;
             for (PropertyNode property : objectNode.getElements()) {
                 if (property != null) {
