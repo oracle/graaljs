@@ -137,7 +137,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             }
         } else if (value instanceof TruffleObject) {
             jsonTruffleObject(builder, data, (TruffleObject) value);
-        } else if (JSTruffleOptions.NashornJavaInterop || isJavaPrimitive(value)) {
+        } else if (JSTruffleOptions.NashornJavaInterop || JSRuntime.isJavaPrimitive(value)) {
             // call toString on Java objects, GR-3722
             jsonQuote(builder, value.toString());
         } else {
@@ -492,17 +492,5 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             isBoxedNode = insert(Message.IS_BOXED.createNode());
         }
         return ForeignAccess.sendIsBoxed(isBoxedNode, obj);
-    }
-
-    private static boolean isJavaPrimitive(Object value) {
-        return value != null &&
-                        value instanceof Boolean ||
-                        value instanceof Byte ||
-                        value instanceof Short ||
-                        value instanceof Integer ||
-                        value instanceof Long ||
-                        value instanceof Float ||
-                        value instanceof Double ||
-                        value instanceof Character;
     }
 }

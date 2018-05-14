@@ -2633,4 +2633,15 @@ public final class JSRuntime {
         return (MIN_SAFE_INTEGER_IN_FLOAT <= value && value <= MAX_SAFE_INTEGER_IN_FLOAT);
     }
 
+    public static boolean isJavaPrimitive(Object value) {
+        return value != null &&
+                        value instanceof Boolean ||
+                        value instanceof Byte ||
+                        value instanceof Short ||
+                        value instanceof Integer ||
+                        value instanceof Long ||
+                        value instanceof Float ||
+                        value instanceof Double ||
+                        value instanceof Character;
+    }
 }
