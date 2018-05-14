@@ -42,10 +42,10 @@ package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
@@ -477,7 +477,8 @@ public final class Errors {
             reason = cause.getClass().getSimpleName();
         }
         String receiverStr = "foreign object";
-        if (JavaInterop.isJavaObject(receiver)) {
+        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
+        if (env.isHostObject(receiver)) {
             try {
                 receiverStr = receiver.toString();
             } catch (Exception e) {

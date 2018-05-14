@@ -269,7 +269,7 @@ public abstract class Environment {
                 JavaScriptNode dynamicScopeNode = createLocal(dynamicScopeSlot, frameLevel, scopeLevel);
                 JSTargetableNode scopeAccessNode;
                 if (access == WrapAccess.Delete) {
-                    scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode());
+                    scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode(), context);
                 } else if (access == WrapAccess.Write) {
                     assert delegateNode instanceof WriteNode : delegateNode;
                     scopeAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode());
@@ -290,7 +290,7 @@ public abstract class Environment {
             public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
                 JSTargetableNode withAccessNode;
                 if (access == WrapAccess.Delete) {
-                    withAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode());
+                    withAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode(), context);
                 } else if (access == WrapAccess.Write) {
                     assert delegateNode instanceof WriteNode : delegateNode;
                     withAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode());
@@ -688,7 +688,7 @@ public abstract class Environment {
         public JavaScriptNode createDeleteNode() {
             JavaScriptNode element = factory.createConstantString(name);
             JavaScriptNode object = factory.createGlobalObject(context);
-            return factory.createDeleteProperty(object, element, isStrictMode());
+            return factory.createDeleteProperty(object, element, isStrictMode(), context);
         }
 
         @Override

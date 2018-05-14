@@ -60,12 +60,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -907,15 +907,18 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization(guards = "isForeignObject(scriptObj)")
         protected Object loadTruffleObject(VirtualFrame frame, TruffleObject scriptObj,
                         @Cached("createUnbox()") Node unboxNode) {
-            if (JavaInterop.isJavaObject(File.class, scriptObj)) {
-                return loadFile(frame, JavaInterop.asJavaObject(File.class, scriptObj));
-            } else if (JavaInterop.isJavaObject(URL.class, scriptObj)) {
-                return loadURL(frame, JavaInterop.asJavaObject(URL.class, scriptObj));
-            } else {
-                Object unboxed = JSInteropNodeUtil.unbox(scriptObj, unboxNode);
-                String stringPath = toString1(unboxed);
-                return loadString(frame, stringPath);
+            TruffleLanguage.Env env = realmNode.execute(frame).getEnv();
+            if (env.isHostObject(scriptObj)) {
+                Object hostObject = env.asHostObject(scriptObj);
+                if (hostObject instanceof File) {
+                    return loadFile(frame, (File) hostObject);
+                } else if (hostObject instanceof URL) {
+                    return loadURL(frame, (URL) hostObject);
+                }
             }
+            Object unboxed = JSInteropNodeUtil.unbox(scriptObj, unboxNode);
+            String stringPath = toString1(unboxed);
+            return loadString(frame, stringPath);
         }
 
         @Specialization(guards = "isJSObject(scriptObj)")
@@ -1107,14 +1110,14 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
     }
 
-    static File getFileFromArgument(Object arg) {
+    static File getFileFromArgument(Object arg, TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
         String path;
         File file = null;
         if (JSRuntime.isString(arg)) {
             path = arg.toString();
-        } else if (!JSTruffleOptions.SubstrateVM && JavaInterop.isJavaObject(arg) && JavaInterop.isJavaObject(File.class, (TruffleObject) arg)) {
-            file = JavaInterop.asJavaObject(File.class, (TruffleObject) arg);
+        } else if (!JSTruffleOptions.SubstrateVM && env.isHostObject(arg) && env.asHostObject(arg) instanceof File) {
+            file = (File) env.asHostObject(arg);
             path = file.getPath();
         } else if (JSTruffleOptions.NashornJavaInterop && arg instanceof File) {
             file = (File) arg;
@@ -1147,7 +1150,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected String read(Object fileParam) {
-            File file = getFileFromArgument(fileParam);
+            File file = getFileFromArgument(fileParam, getContext().getRealm().getEnv());
 
             try {
                 return readImpl(file);
@@ -1181,7 +1184,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected final DynamicObject readbuffer(Object fileParam) {
-            File file = getFileFromArgument(fileParam);
+            File file = getFileFromArgument(fileParam, getContext().getRealm().getEnv());
 
             try {
                 final byte[] bytes = Files.readAllBytes(file.toPath());

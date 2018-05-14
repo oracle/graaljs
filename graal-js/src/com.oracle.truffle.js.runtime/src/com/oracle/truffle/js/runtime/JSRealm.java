@@ -1482,7 +1482,7 @@ public class JSRealm implements ShapeContext {
         TruffleContext nestedContext = getEnv().newContextBuilder().build();
         Object prev = nestedContext.enter();
         try {
-            JSRealm childRealm = AbstractJavaScriptLanguage.findCurrentJSRealm();
+            JSRealm childRealm = AbstractJavaScriptLanguage.getCurrentJSRealm();
             // "Realm" object is shared by all realms (V8 compatibility mode)
             childRealm.setRealmBuiltinObject(getRealmBuiltinObject());
             return childRealm;

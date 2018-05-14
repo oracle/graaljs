@@ -105,7 +105,7 @@ public class DebugJSAgent extends JSAgent {
                 polyglotContext.enter();
                 try {
                     polyglotContext.eval(AbstractJavaScriptLanguage.ID, init);
-                    DebugJSAgent debugJSAgent = (DebugJSAgent) AbstractJavaScriptLanguage.findCurrentJSRealm().getContext().getJSAgent();
+                    DebugJSAgent debugJSAgent = (DebugJSAgent) AbstractJavaScriptLanguage.getCurrentJSRealm().getContext().getJSAgent();
                     AgentExecutor executor = registerChildAgent(Thread.currentThread(), debugJSAgent);
 
                     polyglotContext.eval(AbstractJavaScriptLanguage.ID, source);

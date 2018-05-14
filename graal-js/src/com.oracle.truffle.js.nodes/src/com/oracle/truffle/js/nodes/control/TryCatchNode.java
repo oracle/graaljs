@@ -49,7 +49,6 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags.TryBlockTag;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -270,7 +269,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
                 if (JSTruffleOptions.NashornJavaInterop) {
                     return ex;
                 } else {
-                    return JavaInterop.asTruffleObject(ex);
+                    return context.getRealm().getEnv().asGuestValue(ex);
                 }
             }
         }

@@ -60,7 +60,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
@@ -73,6 +73,7 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropInvokeNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -95,6 +96,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
 
 @MessageResolution(receiverType = DynamicObject.class)
 public class JSForeignAccessFactory {
@@ -104,45 +106,55 @@ public class JSForeignAccessFactory {
 
         private final ConditionProfile rejected = ConditionProfile.createBinaryProfile();
 
+        @Child private IsCallableNode isCallableNode = IsCallableNode.create();
         @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createExecute();
-        @Child private ExportValueNode export = ExportValueNode.create();
-
+        @Child private ExportValueNode export;
         @CompilationFinal ContextReference<JSRealm> contextRef;
 
         public Object access(DynamicObject target, Object[] args) {
-            if (JSRuntime.isCallable(target)) {
-                if (contextRef == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    contextRef = JSObject.getJSContext(target).getLanguage().getContextReference();
-                }
-                JSContext context = contextRef.get().getContext();
-                context.interopBoundaryEnter();
-                Object result = null;
-                boolean asyncFunction = isAsyncFunction(target);
-                try {
-                    result = export.executeWithTarget(callNode.executeInterop(target, args), Undefined.instance);
-                } finally {
-                    context.interopBoundaryExit();
-                }
-                if (asyncFunction && result != null && JSPromise.isJSPromise(result)) {
-                    /*
-                     * InteropCompletePromises semantics: interop calls to async functions return
-                     * the async resolved value (if any). If the promise resolves, its value is made
-                     * available by flushing the queue of pending jobs.
-                     */
-                    DynamicObject promise = (DynamicObject) result;
-                    if (rejected.profile(JSPromise.isRejected(promise))) {
-                        Object rejectReason = promise.get(JSPromise.PROMISE_RESULT);
-                        throw UserScriptException.create(rejectReason);
-                    } else {
-                        assert JSPromise.isFulfilled(promise);
-                        return promise.get(JSPromise.PROMISE_RESULT);
-                    }
-                }
-                return result;
+            if (isCallableNode.executeBoolean(target)) {
+                return common(target, Undefined.instance, args);
             } else {
                 throw UnsupportedTypeException.raise(new Object[]{target});
             }
+        }
+
+        public Object access(InteropBoundFunction target, Object[] args) {
+            return common(target.getFunction(), target.getReceiver(), args);
+        }
+
+        private Object common(DynamicObject function, Object receiver, Object[] args) {
+            if (contextRef == null || export == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                JSContext context = JSObject.getJSContext(function);
+                contextRef = context.getLanguage().getContextReference();
+                export = insert(ExportValueNode.create(context.getLanguage()));
+            }
+            JSContext context = contextRef.get().getContext();
+            context.interopBoundaryEnter();
+            Object result = null;
+            boolean asyncFunction = isAsyncFunction(function);
+            try {
+                result = export.executeWithTarget(callNode.execute(function, receiver, args), Undefined.instance);
+            } finally {
+                context.interopBoundaryExit();
+            }
+            if (asyncFunction && result != null && JSPromise.isJSPromise(result)) {
+                /*
+                 * InteropCompletePromises semantics: interop calls to async functions return the
+                 * async resolved value (if any). If the promise resolves, its value is made
+                 * available by flushing the queue of pending jobs.
+                 */
+                DynamicObject promise = (DynamicObject) result;
+                if (rejected.profile(JSPromise.isRejected(promise))) {
+                    Object rejectReason = promise.get(JSPromise.PROMISE_RESULT);
+                    throw UserScriptException.create(rejectReason);
+                } else {
+                    assert JSPromise.isFulfilled(promise);
+                    return promise.get(JSPromise.PROMISE_RESULT);
+                }
+            }
+            return result;
         }
 
         private static boolean isAsyncFunction(DynamicObject target) {
@@ -160,18 +172,16 @@ public class JSForeignAccessFactory {
     abstract static class InvokeNode extends Node {
 
         @Child private JSInteropInvokeNode callNode;
-        @Child private ExportValueNode export = ExportValueNode.create();
-
+        @Child private ExportValueNode export;
         @CompilationFinal ContextReference<JSRealm> contextRef;
 
         public Object access(DynamicObject target, String id, Object[] args) {
-            if (callNode == null) {
+            if (callNode == null || export == null || contextRef == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                callNode = insert(JSInteropInvokeNode.create(JSObject.getJSContext(target)));
-            }
-            if (contextRef == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                contextRef = JSObject.getJSContext(target).getLanguage().getContextReference();
+                JSContext context = JSObject.getJSContext(target);
+                callNode = insert(JSInteropInvokeNode.create(context));
+                export = insert(ExportValueNode.create(context.getLanguage()));
+                contextRef = context.getLanguage().getContextReference();
             }
             JSContext context = contextRef.get().getContext();
             context.interopBoundaryEnter();
@@ -181,28 +191,37 @@ public class JSForeignAccessFactory {
                 context.interopBoundaryExit();
             }
         }
+
+        public Object access(InteropBoundFunction target, String id, Object[] args) {
+            return access(target.getFunction(), id, args);
+        }
     }
 
     @Resolve(message = "NEW")
     abstract static class NewNode extends Node {
 
-        @Child private ExportValueNode export = ExportValueNode.create();
         @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createNew();
-
+        @Child private ExportValueNode export;
         @CompilationFinal ContextReference<JSRealm> contextRef;
 
         public Object access(DynamicObject target, Object[] args) {
-            if (contextRef == null) {
+            if (contextRef == null || export == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                contextRef = JSObject.getJSContext(target).getLanguage().getContextReference();
+                JSContext context = JSObject.getJSContext(target);
+                contextRef = context.getLanguage().getContextReference();
+                export = insert(ExportValueNode.create(context.getLanguage()));
             }
             JSContext context = contextRef.get().getContext();
             context.interopBoundaryEnter();
             try {
-                return export.executeWithTarget(callNode.executeInterop(target, args), Undefined.instance);
+                return export.executeWithTarget(callNode.execute(target, Undefined.instance, args), Undefined.instance);
             } finally {
                 context.interopBoundaryExit();
             }
+        }
+
+        public Object access(InteropBoundFunction target, Object[] args) {
+            return access(target.getFunction(), args);
         }
     }
 
@@ -210,17 +229,22 @@ public class JSForeignAccessFactory {
     abstract static class ReadNode extends Node {
 
         @Child private ReadElementNode readNode;
-        @Child private ExportValueNode export = ExportValueNode.create();
+        @Child private ExportValueNode export;
         @Child private JSForeignToJSTypeNode castKey = JSForeignToJSTypeNode.create();
 
         public Object access(DynamicObject target, Object key) {
-            if (readNode == null) {
+            if (readNode == null || export == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                readNode = insert(ReadElementNode.create(JSObject.getJSContext(target)));
+                JSContext context = JSObject.getJSContext(target);
+                readNode = insert(ReadElementNode.create(context));
+                export = insert(ExportValueNode.create(context.getLanguage()));
             }
             return export.executeWithTarget(readNode.executeWithTargetAndIndex(target, castKey.executeWithTarget(key)), target);
         }
 
+        public Object access(InteropBoundFunction target, Object key) {
+            return access(target.getFunction(), key);
+        }
     }
 
     @Resolve(message = "WRITE")
@@ -238,6 +262,10 @@ public class JSForeignAccessFactory {
             }
             writeNode.executeWithTargetAndIndexAndValue(target, castKey.executeWithTarget(key), castValue.executeWithTarget(value));
             return value;
+        }
+
+        public Object access(InteropBoundFunction target, Object key, Object value) {
+            return access(target.getFunction(), key, value);
         }
     }
 
@@ -316,6 +344,10 @@ public class JSForeignAccessFactory {
         public Object access(DynamicObject target) {
             return JSRuntime.isConstructor(target);
         }
+
+        public Object access(InteropBoundFunction target) {
+            return JSRuntime.isConstructor(target.getFunction());
+        }
     }
 
     @Resolve(message = "HAS_SIZE")
@@ -344,6 +376,10 @@ public class JSForeignAccessFactory {
             JSContext context = JSObject.getJSContext(target);
             return JSArray.createConstant(context, keys);
         }
+
+        public Object access(InteropBoundFunction target, boolean internal) {
+            return access(target.getFunction(), internal);
+        }
     }
 
     @Resolve(message = "KEY_INFO")
@@ -367,6 +403,10 @@ public class JSForeignAccessFactory {
             boolean removable = desc.getIfHasConfigurable(false);
             return (readable ? KeyInfo.READABLE : 0) | (writable ? KeyInfo.MODIFIABLE : 0) | (invocable ? KeyInfo.INVOCABLE : 0) | (removable ? KeyInfo.REMOVABLE : 0);
         }
+
+        public Object access(InteropBoundFunction target, Object key) {
+            return access(target.getFunction(), key);
+        }
     }
 
     @Resolve(message = "REMOVE")
@@ -379,12 +419,16 @@ public class JSForeignAccessFactory {
         public Object access(DynamicObject target, Object key) {
             if (deleteNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                deleteNode = insert(DeletePropertyNode.create(true));
+                JSContext context = JSObject.getJSContext(target);
+                deleteNode = insert(DeletePropertyNode.create(true, context));
             }
             Object castKey = toKey.execute(cast.executeWithTarget(key));
             return deleteNode.executeEvaluated(target, castKey);
         }
 
+        public Object access(InteropBoundFunction target, Object key) {
+            return access(target.getFunction(), key);
+        }
     }
 
     // ##### Extra, non-standard interop messages
@@ -497,7 +541,7 @@ public class JSForeignAccessFactory {
     @CanResolve
     public abstract static class CanResolveNode extends Node {
 
-        @Child private IsJSObjectNode isJSObjectNode = IsJSObjectNode.create();
+        @Child private IsObjectNode isJSObjectNode = IsObjectNode.create();
 
         protected boolean test(TruffleObject receiver) {
             return isJSObjectNode.executeBoolean(receiver);

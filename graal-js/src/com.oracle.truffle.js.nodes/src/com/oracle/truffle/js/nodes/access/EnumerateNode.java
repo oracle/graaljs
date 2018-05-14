@@ -46,6 +46,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -55,7 +56,6 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -167,13 +167,15 @@ public abstract class EnumerateNode extends JavaScriptNode {
 
     @Specialization(guards = "isMapJavaObject(iteratedObject)")
     protected DynamicObject doEnumerateMap(TruffleObject iteratedObject) {
-        Map<?, ?> map = (Map<?, ?>) JavaInterop.asJavaObject(iteratedObject);
+        TruffleLanguage.Env env = context.getRealm().getEnv();
+        Map<?, ?> map = (Map<?, ?>) env.asHostObject(iteratedObject);
         Iterator<?> iterator = values ? map.values().iterator() : map.keySet().iterator();
         return JSObject.create(context, context.getEnumerateIteratorFactory(), iterator);
     }
 
-    protected static boolean isMapJavaObject(TruffleObject object) {
-        return JavaInterop.isJavaObject(object) && JavaInterop.asJavaObject(object) instanceof Map;
+    protected final boolean isMapJavaObject(TruffleObject object) {
+        TruffleLanguage.Env env = context.getRealm().getEnv();
+        return env.isHostObject(object) && env.asHostObject(object) instanceof Map;
     }
 
     @Specialization(guards = {"isForeignObject(iteratedObject)", "!isMapJavaObject(iteratedObject)"})

@@ -47,10 +47,10 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -1428,8 +1428,9 @@ public final class JSRuntime {
         if (isString(a) && isString(b)) {
             return a.toString().equals(b.toString());
         }
-        if (JavaInterop.isJavaObject(a) && JavaInterop.isJavaObject(b)) {
-            return JavaInterop.asJavaObject((TruffleObject) a) == JavaInterop.asJavaObject((TruffleObject) b);
+        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
+        if (env.isHostObject(a) && env.isHostObject(b)) {
+            return env.asHostObject(a) == env.asHostObject(b);
         }
         return false;
     }
@@ -2564,15 +2565,16 @@ public final class JSRuntime {
             return value.toString();
         } else if (value instanceof LargeInteger) {
             return ((LargeInteger) value).doubleValue();
-        } else if (JSFunction.isJSFunction(value) && !JSFunction.isBoundFunction(((DynamicObject) value))) {
-            JSRealm realm = JSFunction.getRealm((DynamicObject) value);
-            return JSFunction.bind(realm, (DynamicObject) value, Undefined.instance, new Object[]{});
-        } else if (JSObject.isDynamicObject(value)) {
+        } else if (value instanceof TruffleObject) {
             return value;
-        } else if (value instanceof JavaClass) {
-            return JavaInterop.asTruffleObject(((JavaClass) value).getType());
+        } else if (JSRuntime.isJSPrimitive(value)) {
+            return value;
         }
-        return JavaInterop.asTruffleValue(value);
+        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
+        if (value instanceof JavaClass) {
+            return env.asGuestValue(((JavaClass) value).getType());
+        }
+        return env.asGuestValue(value);
     }
 
     @TruffleBoundary
@@ -2631,4 +2633,15 @@ public final class JSRuntime {
         return (MIN_SAFE_INTEGER_IN_FLOAT <= value && value <= MAX_SAFE_INTEGER_IN_FLOAT);
     }
 
+    public static boolean isJavaPrimitive(Object value) {
+        return value != null &&
+                        value instanceof Boolean ||
+                        value instanceof Byte ||
+                        value instanceof Short ||
+                        value instanceof Integer ||
+                        value instanceof Long ||
+                        value instanceof Float ||
+                        value instanceof Double ||
+                        value instanceof Character;
+    }
 }

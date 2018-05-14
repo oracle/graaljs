@@ -48,16 +48,15 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
-import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -932,8 +931,8 @@ public class Converters {
 
         @Override
         public boolean accept(Class<?> destType, Object value) {
-            return !destType.isPrimitive() && value instanceof TruffleObject && !(value instanceof Symbol) && JavaInterop.isJavaObject(destType, (TruffleObject) value) &&
-                            nested.accept(destType, JavaInterop.asJavaObject((TruffleObject) value));
+            return !destType.isPrimitive() && TruffleJavaObjectConverter.isJavaObject(destType, value) &&
+                            nested.accept(destType, TruffleJavaObjectConverter.asJavaObject(value));
         }
 
         @Override
@@ -952,13 +951,27 @@ public class Converters {
 
         @Override
         public Object convert(Object argument) {
-            return JavaInterop.asJavaObject((TruffleObject) argument);
+            return asJavaObject(argument);
         }
 
         @Override
         public boolean guard(Object argument) {
-            return argument instanceof TruffleObject && !(argument instanceof Symbol) && JavaInterop.isJavaObject((TruffleObject) argument) &&
-                            (destType == Object.class || JavaInterop.isJavaObject(destType, (TruffleObject) argument));
+            return isJavaObject(destType, argument);
+        }
+
+        static boolean isJavaObject(Class<?> destType, Object value) {
+            if (JSRuntime.isForeignObject(value)) {
+                TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
+                if (env.isHostObject(value)) {
+                    return destType == Object.class || destType.isInstance(env.asHostObject(value));
+                }
+            }
+            return false;
+        }
+
+        static Object asJavaObject(Object argument) {
+            TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
+            return env.asHostObject(argument);
         }
     }
 }

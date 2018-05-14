@@ -317,7 +317,7 @@ public class MaterializedNodes {
     public void materializeNew() {
         JSTargetableNode prop = GlobalPropertyNode.createPropertyNode(getDummyCx(), "foo");
         AbstractFunctionArgumentsNode args = JSFunctionArgumentsNode.create(new JavaScriptNode[]{});
-        JSNewNode newnode = JSNewNode.create(prop, args);
+        JSNewNode newnode = JSNewNode.create(getDummyCx(), prop, args);
         assertNotMaterializedTwice(newnode, ObjectAllocationExpressionTag.class);
     }
 

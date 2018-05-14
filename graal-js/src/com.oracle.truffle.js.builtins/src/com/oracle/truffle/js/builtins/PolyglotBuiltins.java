@@ -60,7 +60,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
@@ -239,11 +238,12 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
     @ImportStatic({JSInteropUtil.class})
     abstract static class PolyglotExportNode extends JSBuiltinNode {
-        @Child private ExportValueNode export = ExportValueNode.create();
+        @Child private ExportValueNode export;
         @Child private Node writeBinding = Message.WRITE.createNode();
 
         PolyglotExportNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            export = ExportValueNode.create(context);
         }
 
         @Specialization
@@ -467,7 +467,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected Object write(TruffleObject obj, Object name, Object value,
                         @Cached("createWrite()") Node write,
-                        @Cached("create()") ExportValueNode exportValue) {
+                        @Cached("create(getContext())") ExportValueNode exportValue) {
             try {
                 Object identifier = exportValue.executeWithTarget(name, Undefined.instance);
                 Object convertedValue = exportValue.executeWithTarget(value, Undefined.instance);
@@ -494,7 +494,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected Object remove(TruffleObject obj, Object key,
                         @Cached("createRemove()") Node remove,
-                        @Cached("create()") ExportValueNode exportValue) {
+                        @Cached("create(getContext())") ExportValueNode exportValue) {
             try {
                 Object exportedKey = exportValue.executeWithTarget(key, Undefined.instance);
                 return ForeignAccess.sendRemove(remove, obj, exportedKey);
@@ -553,7 +553,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected Object execute(TruffleObject obj, Object[] arguments,
                         @Cached("createCall()") Node execute,
-                        @Cached("create()") ExportValueNode exportValue) {
+                        @Cached("create(getContext())") ExportValueNode exportValue) {
             try {
                 TruffleObject target = (TruffleObject) exportValue.executeWithTarget(obj, Undefined.instance);
                 Object[] convertedArgs = new Object[arguments.length];
@@ -583,7 +583,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected Object doNew(TruffleObject obj, Object[] arguments,
                         @Cached("createNew()") Node newNode,
-                        @Cached("create()") ExportValueNode exportValue) {
+                        @Cached("create(getContext())") ExportValueNode exportValue) {
             try {
                 TruffleObject target = (TruffleObject) exportValue.executeWithTarget(obj, Undefined.instance);
                 Object[] convertedArgs = new Object[arguments.length];
@@ -781,7 +781,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                     if (testMapClass == null) {
                         testMapClass = Class.forName("com.oracle.truffle.js.test.interop.object.ForeignTestMap");
                     }
-                    return JavaInterop.asTruffleObject(testMapClass.newInstance());
+                    return getContext().getRealm().getEnv().asGuestValue(testMapClass.newInstance());
                 } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
                     throw Errors.createTypeError("cannot test with ForeignTestMap: " + e.getMessage());
                 }
@@ -893,10 +893,11 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
      * by user code.
      */
     abstract static class PolyglotToPolyglotValueNode extends JSBuiltinNode {
-        @Child private ExportValueNode exportValueNode = ExportValueNode.create();
+        @Child private ExportValueNode exportValueNode;
 
         PolyglotToPolyglotValueNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            this.exportValueNode = ExportValueNode.create(context);
         }
 
         @Specialization

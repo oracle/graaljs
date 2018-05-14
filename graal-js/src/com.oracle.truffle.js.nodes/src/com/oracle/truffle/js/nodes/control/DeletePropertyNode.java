@@ -72,6 +72,7 @@ import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -88,25 +89,27 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 @ImportStatic(value = JSInteropUtil.class)
 public abstract class DeletePropertyNode extends JSTargetableNode {
     private final boolean strict;
+    protected final JSContext context;
     @Child @Executed protected JavaScriptNode targetNode;
     @Child @Executed protected JavaScriptNode propertyNode;
 
-    protected DeletePropertyNode(boolean strict, JavaScriptNode targetNode, JavaScriptNode propertyNode) {
+    protected DeletePropertyNode(boolean strict, JSContext context, JavaScriptNode targetNode, JavaScriptNode propertyNode) {
         this.strict = strict;
+        this.context = context;
         this.targetNode = targetNode;
         this.propertyNode = propertyNode;
     }
 
-    public static DeletePropertyNode create(boolean strict) {
-        return create(null, null, strict);
+    public static DeletePropertyNode create(boolean strict, JSContext context) {
+        return create(null, null, strict, context);
     }
 
-    public static DeletePropertyNode createNonStrict() {
-        return create(null, null, false);
+    public static DeletePropertyNode createNonStrict(JSContext context) {
+        return create(null, null, false, context);
     }
 
-    public static DeletePropertyNode create(JavaScriptNode object, JavaScriptNode property, boolean strict) {
-        return DeletePropertyNodeGen.create(strict, object, property);
+    public static DeletePropertyNode create(JavaScriptNode object, JavaScriptNode property, boolean strict, JSContext context) {
+        return DeletePropertyNodeGen.create(strict, context, object, property);
     }
 
     @Override
@@ -130,7 +133,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
             JavaScriptNode target = cloneUninitialized(targetNode);
             transferSourceSectionNoTags(this, key);
             transferSourceSectionNoTags(this, target);
-            DeletePropertyNode node = DeletePropertyNode.create(target, key, strict);
+            DeletePropertyNode node = DeletePropertyNode.create(target, key, strict, context);
             transferSourceSection(this, node);
             return node;
         } else {
@@ -227,7 +230,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Specialization(guards = {"isForeignObject(target)"})
     protected static boolean doInterop(TruffleObject target, Object property,
                     @Cached("createRemove()") Node removeNode,
-                    @Cached("create()") ExportValueNode exportNode) {
+                    @Cached("create(context)") ExportValueNode exportNode) {
         try {
             ForeignAccess.sendRemove(removeNode, target, exportNode.executeWithTarget(property, Undefined.instance));
             return true;
@@ -244,7 +247,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(getTarget()), cloneUninitialized(propertyNode), strict);
+        return create(cloneUninitialized(getTarget()), cloneUninitialized(propertyNode), strict, context);
     }
 
     @Override

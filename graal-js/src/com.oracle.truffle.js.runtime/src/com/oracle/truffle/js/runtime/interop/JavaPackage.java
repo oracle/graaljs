@@ -47,8 +47,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
@@ -122,8 +120,8 @@ public final class JavaPackage extends JSBuiltinObject {
         if (javaType == null) {
             return null;
         }
-        if (JavaInterop.isJavaObject(javaType)) {
-            Object clazz = JavaInterop.asJavaObject((TruffleObject) javaType);
+        if (env.isHostObject(javaType)) {
+            Object clazz = env.asHostObject(javaType);
             if (clazz instanceof Class<?>) {
                 if (returnType == Class.class) {
                     return returnType.cast(clazz);

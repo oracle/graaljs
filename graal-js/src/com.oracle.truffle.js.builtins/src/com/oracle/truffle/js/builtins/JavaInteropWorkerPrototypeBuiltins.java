@@ -41,19 +41,23 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JavaInteropWorkerPrototypeBuiltinsFactory.JavaInteropWorkerSubmitNodeGen;
 import com.oracle.truffle.js.builtins.JavaInteropWorkerPrototypeBuiltinsFactory.JavaInteropWorkerTerminateNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.interop.ExportValueNode;
-import com.oracle.truffle.js.nodes.interop.ExportValueNodeGen;
+import com.oracle.truffle.js.nodes.interop.ExportArgumentsNode;
+import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.EcmaAgent;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -67,6 +71,8 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSJavaWorkerBuiltin;
 import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
  * Contains builtins for {@linkplain JSJavaWorkerBuiltin}.prototype.
@@ -159,30 +165,31 @@ public final class JavaInteropWorkerPrototypeBuiltins extends JSBuiltinsContaine
         }
 
         private Object scheduleInWorkerThread(DynamicObject worker, Object method, Object arguments) {
-            EcmaAgent mainAgent = getContext().getMainWorker();
+            JSContext context = getContext();
+            EcmaAgent mainAgent = context.getMainWorker();
             EcmaAgent agent = JSJavaWorkerBuiltin.getAgent(worker);
 
             // Equivalent to: new Promise(function promiseFunctionBody(accept,reject){ ... });
-            CallTarget promiseFunctionBody = createPromiseBody(method, arguments, mainAgent, agent);
-            DynamicObject promiseBody = JSFunction.create(getContext().getRealm(),
-                            JSFunctionData.create(getContext(), promiseFunctionBody, 0, "JavaWorkerPromiseTask"));
-            DynamicObject promiseConstructor = getContext().getRealm().getPromiseConstructor();
+            CallTarget promiseFunctionBody = createPromiseBody(method, arguments, mainAgent, agent, context.getLanguage());
+            DynamicObject promiseBody = JSFunction.create(context.getRealm(),
+                            JSFunctionData.create(context, promiseFunctionBody, 0, "JavaWorkerPromiseTask"));
+            DynamicObject promiseConstructor = context.getRealm().getPromiseConstructor();
             return callPromiseConstructor.executeCall(JSArguments.create(promiseConstructor, promiseConstructor, new Object[]{promiseBody}));
         }
 
         @TruffleBoundary
-        private static CallTarget createPromiseBody(Object method, Object arguments, EcmaAgent mainAgent, EcmaAgent agent) {
-            CallTarget promiseFunctionBody = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+        private static CallTarget createPromiseBody(Object method, Object arguments, EcmaAgent mainAgent, EcmaAgent agent, AbstractJavaScriptLanguage language) {
+            CallTarget promiseFunctionBody = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(language, null, null) {
 
-                @Child private ExportValueNode export = ExportValueNodeGen.create();
-                @Child private JSFunctionCallNode call = JSFunctionCallNode.create(false);
+                @Child private ExportArgumentsNode exportArguments;
+                @Child private Node callNode = JSInteropUtil.createCall();
 
-                private Object[] exportArguments(Object[] argz) {
-                    Object[] exported = new Object[argz.length];
-                    for (int i = 0; i < argz.length; i++) {
-                        exported[i] = export.executeWithTarget(argz[i], Undefined.instance);
+                private Object[] exportArguments(Object[] args) {
+                    if (exportArguments == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        exportArguments = insert(ExportArgumentsNode.create(args.length, language));
                     }
-                    return exported;
+                    return exportArguments.export(args);
                 }
 
                 @Override
@@ -208,20 +215,30 @@ public final class JavaInteropWorkerPrototypeBuiltins extends JSBuiltinsContaine
                         agent.execute(mainAgent, new Runnable() {
                             @Override
                             public void run() {
-                                Object[] javaResult = null;
+                                DynamicObject action;
+                                Object result;
                                 try {
-                                    Object val = call.executeCall(JSArguments.create(method, method, exportedArgs));
-                                    javaResult = JSArguments.create(Undefined.instance, resolve, val);
+                                    if (method instanceof JavaMethod) {
+                                        result = ((JavaMethod) method).invoke(Undefined.instance, exportedArgs);
+                                    } else {
+                                        result = JSRuntime.importValue(JSInteropNodeUtil.call((TruffleObject) method, exportedArgs, callNode));
+                                    }
+                                    action = resolve;
                                 } catch (Throwable t) {
-                                    javaResult = JSArguments.create(Undefined.instance, reject, t);
+                                    if (t instanceof TruffleException) {
+                                        result = ((TruffleException) t).getExceptionObject();
+                                        action = reject;
+                                    } else {
+                                        throw t;
+                                    }
                                 }
-                                final Object[] args = javaResult;
+                                final DynamicObject function = action;
+                                final Object value = result;
                                 mainAgent.execute(agent, new Runnable() {
-
                                     @Override
                                     public void run() {
                                         // will be scheduled in the main thread
-                                        JSFunction.call(args);
+                                        JSFunction.call(JSArguments.create(Undefined.instance, function, value));
                                     }
                                 });
                             }

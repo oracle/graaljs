@@ -41,13 +41,14 @@
 package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -124,20 +125,23 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
 
     @Specialization
     public Object fromTruffleJavaObject(TruffleObject value) {
-        if (JavaInterop.isJavaObject(value)) {
-            Object object = JavaInterop.asJavaObject(value);
-            if (object == null) {
-                return Null.instance;
-            }
-            if (JSTruffleOptions.NashornJavaInterop) {
-                if (object instanceof Class) {
-                    return JavaClass.forClass((Class<?>) object);
-                } else {
-                    return object;
+        if (value instanceof InteropBoundFunction) {
+            return ((InteropBoundFunction) value).getFunction();
+        } else {
+            TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
+            if (env.isHostObject(value)) {
+                Object object = env.asHostObject(value);
+                if (object == null) {
+                    return Null.instance;
+                }
+                if (JSTruffleOptions.NashornJavaInterop) {
+                    if (object instanceof Class) {
+                        return JavaClass.forClass((Class<?>) object);
+                    } else {
+                        return object;
+                    }
                 }
             }
-        } else if (value instanceof InteropBoundFunction) {
-            return ((InteropBoundFunction) value).getFunction();
         }
         return value;
     }

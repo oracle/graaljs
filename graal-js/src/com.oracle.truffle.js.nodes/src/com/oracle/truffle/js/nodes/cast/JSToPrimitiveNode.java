@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
+import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -185,7 +186,8 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isTruffleJavaObject(object)")
     protected Object doTruffleJavaObject(TruffleObject object) {
-        Object javaObject = JavaInterop.asJavaObject(object);
+        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
+        Object javaObject = env.asHostObject(object);
         return (javaObject == null) ? Null.instance : doGeneric(javaObject);
     }
 

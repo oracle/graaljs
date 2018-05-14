@@ -992,7 +992,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
             } else if (isForeignObject.profile(JSGuards.isForeignObject(thisObj))) {
                 if (foreignSetNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    foreignSetNode = insert(new ForeignPropertySetNode(key));
+                    foreignSetNode = insert(new ForeignPropertySetNode(key, context));
                 }
                 foreignSetNode.setValue(thisObj, value, receiver);
             } else {
@@ -1017,9 +1017,10 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         @Child private Node foreignSet;
         @Child private ExportValueNode export;
 
-        public ForeignPropertySetNode(Object key) {
+        public ForeignPropertySetNode(Object key, JSContext context) {
             super(key, new ForeignLanguageCheckNode());
             this.foreignSet = Message.WRITE.createNode();
+            this.export = ExportValueNode.create(context);
         }
 
         @Override
@@ -1043,10 +1044,6 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         @Override
         public void setValueUnchecked(Object thisObj, Object value, Object receiver, boolean condition) {
             try {
-                if (export == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    export = ExportValueNode.create();
-                }
                 Object boundValue = export.executeWithTarget(value, Undefined.instance);
                 ForeignAccess.sendWrite(foreignSet, (TruffleObject) thisObj, key, boundValue);
             } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
@@ -1382,7 +1379,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
 
     @Override
     protected PropertySetNode createTruffleObjectPropertyNode(TruffleObject thisObject, JSContext context) {
-        return new ForeignPropertySetNode(key);
+        return new ForeignPropertySetNode(key, context);
     }
 
     protected int getAttributeFlags() {

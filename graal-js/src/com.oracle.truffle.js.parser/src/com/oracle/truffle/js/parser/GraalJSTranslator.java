@@ -2104,13 +2104,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         IndexNode indexNode = (IndexNode) rhs;
         JavaScriptNode target = transform(indexNode.getBase());
         JavaScriptNode element = transform(indexNode.getIndex());
-        return result(factory.createDeleteProperty(target, element, environment.isStrictMode()));
+        return result(factory.createDeleteProperty(target, element, environment.isStrictMode(), context));
     }
 
     private JavaScriptNode enterDeleteAccess(Expression rhs) {
         AccessNode accessNode = (AccessNode) rhs;
         JavaScriptNode target = transform(accessNode.getBase());
-        return result(factory.createDeleteProperty(target, factory.createConstantString(accessNode.getProperty()), environment.isStrictMode()));
+        return result(factory.createDeleteProperty(target, factory.createConstantString(accessNode.getProperty()), environment.isStrictMode(), context));
     }
 
     private JavaScriptNode[] transformArgs(List<Expression> argList) {
