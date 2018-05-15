@@ -137,3 +137,9 @@ SOFTWARE.
 
 For the license of Node.js, see ./graal-nodejs/LICENSE
 
+--------------------------------------------------------------------------------
+
+          MX build system
+
+The GraalVM JavaScript component is using MX as build system. The relevant files in graal-js/mx.graal-js and graal-nodejs/mx.graal-nodejs are licensed under the GNU General Public License (GPL) version 2 with Classpath Exception.
+
