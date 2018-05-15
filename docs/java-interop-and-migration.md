@@ -7,10 +7,10 @@ It also serves as migration guide to users porting existing applications written
 
 For a reference of Graal.js' public API, see [GRAAL.JS-API.md](GRAAL.JS-API.md).
 
-* [Launching Graal.js](#launching-graal.js)
+* [Launching Graal.js](#launching-graaljs)
 * [Java interoperability features](#java-interoperability-features)
-* [Rhino to Graal.js migration guide](#rhino-to-graal.js-migration-guide)
-* [Nashorn to Graal.js migration guide](#nashorn-to-graal.js-migration-guide)
+* [Rhino to Graal.js migration guide](#rhino-to-graaljs-migration-guide)
+* [Nashorn to Graal.js migration guide](#nashorn-to-graaljs-migration-guide)
 
 ## Launching Graal.js
 
