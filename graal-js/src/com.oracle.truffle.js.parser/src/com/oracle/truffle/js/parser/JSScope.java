@@ -134,7 +134,7 @@ public abstract class JSScope {
     }
 
     public static Iterable<Scope> createGlobalScopes(JSRealm realm) {
-        Scope globalLexicalScope = Scope.newBuilder("global", createVariablesMapObject(realm.getGlobalScope(), null)).build();
+        Scope globalLexicalScope = Scope.newBuilder("global", createVariablesMapObject(realm.getGlobalScope().getFrameDescriptor(), realm.getGlobalScope(), null)).build();
         Scope globalVarScope = Scope.newBuilder("global", realm.getGlobalObject()).build();
         return Arrays.asList(globalLexicalScope, globalVarScope);
     }
@@ -175,10 +175,10 @@ public abstract class JSScope {
         return new JSFunctionScope(node, frame);
     }
 
-    protected static Object createVariablesMapObject(MaterializedFrame frame, Object[] args) {
-        FrameDescriptor fDesc = frame.getFrameDescriptor();
+    protected static Object createVariablesMapObject(FrameDescriptor frameDesc, MaterializedFrame frame, Object[] args) {
+        assert frame == null || frame.getFrameDescriptor() == frameDesc;
         Map<String, Variable> slotMap = new HashMap<>();
-        for (FrameSlot slot : fDesc.getSlots()) {
+        for (FrameSlot slot : frameDesc.getSlots()) {
             if (slot.getIdentifier().equals(THIS_SLOT_ID)) {
                 slotMap.put(THIS_NAME, new FrameSlotVariable(slot));
                 continue;
@@ -195,8 +195,8 @@ public abstract class JSScope {
         return new VariablesMapObject(slotMap, args, frame);
     }
 
-    private static boolean isUnsetFrameSlot(MaterializedFrame frame, FrameSlot slot) {
-        if (frame.isObject(slot)) {
+    static boolean isUnsetFrameSlot(Frame frame, FrameSlot slot) {
+        if (frame != null && frame.isObject(slot)) {
             Object value = FrameUtil.getObjectSafe(frame, slot);
             if (value == null || value == Dead.instance() || value instanceof Frame) {
                 return true;
@@ -241,6 +241,7 @@ public abstract class JSScope {
         @Override
         public Object get(Frame frame, Object[] args) {
             assert frame.getFrameDescriptor() == slot.getFrameDescriptor();
+            assert !isUnsetFrameSlot(frame, slot);
             return frame.getValue(slot);
         }
 
@@ -315,9 +316,12 @@ public abstract class JSScope {
 
         @Override
         protected Object getVariables(Frame frame) {
+            if (mFrame == null && frame == null) {
+                return new VariablesMapObject(Collections.emptyMap(), null, null);
+            }
             MaterializedFrame f = mFrame != null ? mFrame : frame.materialize();
             assert f.getFrameDescriptor() == blockScopeNode.getFrameDescriptor();
-            return createVariablesMapObject(f, null);
+            return createVariablesMapObject(f.getFrameDescriptor(), f, null);
         }
 
         @Override
@@ -372,10 +376,7 @@ public abstract class JSScope {
 
         @Override
         protected Object getVariables(Frame frame) {
-            if (mFrame == null) {
-                return new VariablesMapObject(Collections.emptyMap(), null, null);
-            }
-            return createVariablesMapObject(mFrame, null);
+            return createVariablesMapObject(rootNode.getFrameDescriptor(), mFrame, null);
         }
 
         @Override
@@ -486,9 +487,11 @@ public abstract class JSScope {
                 public Object access(VariablesMapObject varMap, Object key) {
                     Variable slot = varMap.slots.get(key);
                     if (slot == null) {
-                        return 0;
+                        return KeyInfo.NONE;
                     }
-
+                    if (varMap.frame == null) {
+                        return KeyInfo.READABLE;
+                    }
                     return KeyInfo.READABLE | (slot.isWritable() ? KeyInfo.MODIFIABLE : 0);
                 }
             }
@@ -498,12 +501,11 @@ public abstract class JSScope {
 
                 @TruffleBoundary
                 public Object access(VariablesMapObject varMap, String name) {
-                    if (varMap.frame == null) {
-                        throw UnsupportedMessageException.raise(Message.READ);
-                    }
                     Variable slot = varMap.slots.get(name);
                     if (slot == null) {
                         throw UnknownIdentifierException.raise(name);
+                    } else if (varMap.frame == null) {
+                        return Undefined.instance;
                     } else {
                         Object value = slot.get(varMap.frame, varMap.args);
                         return getInteropValue(value);

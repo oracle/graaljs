@@ -601,7 +601,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected Iterable<Scope> findLocalScopes(JSRealm realm, Node node, Frame frame) {
-        return JSScope.createLocalScopes(node, frame.materialize());
+        return JSScope.createLocalScopes(node, frame == null ? null : frame.materialize());
     }
 
     @Override
