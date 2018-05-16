@@ -71,12 +71,33 @@ public class SetBreakPointNode extends JavaScriptRootNode {
             if (callTarget instanceof RootCallTarget) {
                 SourceSection sourceSection = ((RootCallTarget) callTarget).getRootNode().getSourceSection();
                 Source source = sourceSection.getSource();
-                Object arg1 = JSArguments.getUserArgument(args, 1);
-                if (arg1 instanceof Number) {
-                    int lineNo = ((Number) arg1).intValue() + 1;
-                    addBreakPoint(source, lineNo);
-                    return 0;
+                int lineNo = sourceSection.getStartLine();
+                int columnNo = sourceSection.getStartColumn();
+                int userLine = 0;
+                int numArgs = JSArguments.getUserArgumentCount(args);
+                if (numArgs >= 1) {
+                    Object arg1 = JSArguments.getUserArgument(args, 1);
+                    if (arg1 instanceof Number) {
+                        userLine = ((Number) arg1).intValue();
+                        lineNo += userLine;
+                    }
                 }
+                if (userLine > 0) {
+                    columnNo = 0; // ignore the section column
+                } else {
+                    // skip "function"
+                    if (startsWith(sourceSection, "function")) {
+                        columnNo += 9;
+                    }
+                }
+                if (numArgs >= 2) {
+                    Object arg2 = JSArguments.getUserArgument(args, 2);
+                    if (arg2 instanceof Number) {
+                        columnNo += ((Number) arg2).intValue();
+                    }
+                }
+                addBreakPoint(source, lineNo, columnNo);
+                return 0;
             }
         }
         unsupported();
@@ -84,8 +105,8 @@ public class SetBreakPointNode extends JavaScriptRootNode {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private void addBreakPoint(Source source, int lineNo) {
-        Breakpoint breakpoint = Breakpoint.newBuilder(source).lineIs(lineNo).build();
+    private void addBreakPoint(Source source, int lineNo, int columnNo) {
+        Breakpoint breakpoint = Breakpoint.newBuilder(source).lineIs(lineNo).columnIs(columnNo).build();
         Debugger debugger = graalJSAccess.lookupInstrument("debugger", Debugger.class);
         debugger.install(breakpoint);
     }
@@ -93,6 +114,16 @@ public class SetBreakPointNode extends JavaScriptRootNode {
     @CompilerDirectives.TruffleBoundary
     private static void unsupported() {
         System.err.println("Unsupported usage of Debug.setBreakpoint!");
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static boolean startsWith(SourceSection sourceSection, String prefix) {
+        CharSequence characters = sourceSection.getCharacters();
+        int n = prefix.length();
+        if (n > characters.length()) {
+            return false;
+        }
+        return characters.subSequence(0, n).toString().equals(prefix);
     }
 
 }
