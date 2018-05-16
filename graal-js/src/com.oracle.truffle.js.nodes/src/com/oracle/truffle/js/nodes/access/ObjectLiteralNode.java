@@ -54,6 +54,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -102,8 +103,17 @@ public class ObjectLiteralNode extends JavaScriptNode {
             this.makeMethodNode = PropertySetNode.createSetHidden(JSFunction.HOME_OBJECT_ID, context);
         }
 
+        private MakeMethodNode(JSContext context, JavaScriptNode functionNode, HiddenKey key) {
+            this.functionNode = functionNode;
+            this.makeMethodNode = PropertySetNode.createSetHidden(key, context);
+        }
+
         public static JavaScriptNode create(JSContext context, JavaScriptNode functionNode) {
             return new MakeMethodNode(context, functionNode);
+        }
+
+        public static JavaScriptNode createWithKey(JSContext context, JavaScriptNode functionNode, HiddenKey key) {
+            return new MakeMethodNode(context, functionNode, key);
         }
 
         @Override

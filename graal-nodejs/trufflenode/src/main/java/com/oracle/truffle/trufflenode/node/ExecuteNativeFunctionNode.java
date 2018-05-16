@@ -52,6 +52,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -60,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
 import com.oracle.truffle.trufflenode.info.FunctionTemplate;
@@ -88,6 +90,11 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     @Children private final FlattenNode[] flattenNodes;
     @Child private GetPrototypeNode getPrototypeNode;
     @Child private PropertyGetNode prototypePropertyGetNode;
+
+    private static final boolean USE_TEMPLATE_NODES = true;
+    @Child private ObjectTemplateNode instanceTemplateNode;
+    @Child private PropertySetNode setConstructorTemplateNode;
+    @Child private PropertyGetNode getConstructorTemplateNode;
 
     ExecuteNativeFunctionNode(GraalJSAccess graalAccess, JSContext context, FunctionTemplate template, boolean isNew, boolean isNewTarget) {
         super(createSourceSection());
@@ -127,25 +134,13 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         DynamicObject thisObject = (DynamicObject) arguments[0];
         JSRealm realm = context.getRealm();
         if (isNew) {
-            graalAccess.objectTemplateInstantiate(realm, instanceTemplate, thisObject);
+            objectTemplateInstantiate(frame, thisObject, realm);
             if (hasPropertyHandler) {
                 thisObject = graalAccess.propertyHandlerInstantiate(context, realm, instanceTemplate, thisObject, false);
             }
-            thisObject.define(FunctionTemplate.CONSTRUCTOR, functionTemplate);
+            setConstructorTemplate(thisObject);
         } else if (signature != null) {
-            Object constructorTemplate = thisObject.get(FunctionTemplate.CONSTRUCTOR);
-            if (constructorTemplate == null) {
-                errorBranch.enter();
-                illegalInvocation();
-            }
-            if (constructorTemplate != signature) { // checking the most common case
-                DynamicObject signatureFunction = (DynamicObject) graalAccess.functionTemplateGetFunction(realm, signature);
-                DynamicObject signaturePrototype = (DynamicObject) prototypePropertyGetNode.getValue(signatureFunction);
-                if (!JSRuntime.isPrototypeOf(thisObject, signaturePrototype)) {
-                    errorBranch.enter();
-                    illegalInvocation();
-                }
-            }
+            checkConstructorTemplate(thisObject, realm);
         }
         Object result;
         int offset = isNewTarget ? 1 : 0;
@@ -201,6 +196,59 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
             result = executeFunction(arguments, realm);
         }
         return graalAccess.correctReturnValue(result);
+    }
+
+    private void objectTemplateInstantiate(VirtualFrame frame, DynamicObject thisObject, JSRealm realm) {
+        if (USE_TEMPLATE_NODES) {
+            if (instanceTemplateNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                instanceTemplateNode = insert(ObjectTemplateNode.fromObjectTemplate(instanceTemplate, context, graalAccess));
+            }
+            instanceTemplateNode.executeWithObject(frame, thisObject);
+        } else {
+            graalAccess.objectTemplateInstantiate(realm, instanceTemplate, thisObject);
+        }
+    }
+
+    private void setConstructorTemplate(DynamicObject thisObject) {
+        if (USE_TEMPLATE_NODES) {
+            if (setConstructorTemplateNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                setConstructorTemplateNode = insert(PropertySetNode.createSetHidden(FunctionTemplate.CONSTRUCTOR, context));
+            }
+            setConstructorTemplateNode.setValue(thisObject, functionTemplate);
+        } else {
+            thisObject.define(FunctionTemplate.CONSTRUCTOR, functionTemplate);
+        }
+    }
+
+    private Object getConstructorTemplate(DynamicObject thisObject) {
+        if (USE_TEMPLATE_NODES) {
+            if (getConstructorTemplateNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getConstructorTemplateNode = insert(PropertyGetNode.createGetHidden(FunctionTemplate.CONSTRUCTOR, context));
+            }
+            Object result = getConstructorTemplateNode.getValue(thisObject);
+            return result == Undefined.instance ? null : result;
+        } else {
+            return thisObject.get(FunctionTemplate.CONSTRUCTOR);
+        }
+    }
+
+    private void checkConstructorTemplate(DynamicObject thisObject, JSRealm realm) {
+        Object constructorTemplate = getConstructorTemplate(thisObject);
+        if (constructorTemplate == null) {
+            errorBranch.enter();
+            illegalInvocation();
+        }
+        if (constructorTemplate != signature) { // checking the most common case
+            DynamicObject signatureFunction = (DynamicObject) graalAccess.functionTemplateGetFunction(realm, signature);
+            DynamicObject signaturePrototype = (DynamicObject) prototypePropertyGetNode.getValue(signatureFunction);
+            if (!JSRuntime.isPrototypeOf(thisObject, signaturePrototype)) {
+                errorBranch.enter();
+                illegalInvocation();
+            }
+        }
     }
 
     private static void illegalInvocation() {
