@@ -35,7 +35,7 @@ import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
  * IR for CoverParenthesizedExpressionAndArrowParameterList, used only during parsing.
  */
 public class ExpressionList extends Expression {
-    private final List<Expression> expressions;
+    private final List<? extends Expression> expressions;
 
     /**
      * Constructor.
@@ -44,7 +44,7 @@ public class ExpressionList extends Expression {
      * @param finish finish
      * @param expressions expression
      */
-    public ExpressionList(final long token, final int finish, final List<Expression> expressions) {
+    public ExpressionList(final long token, final int finish, final List<? extends Expression> expressions) {
         super(token, finish);
         this.expressions = expressions;
     }
@@ -52,7 +52,7 @@ public class ExpressionList extends Expression {
     /**
      * Get the list of expressions.
      */
-    public List<Expression> getExpressions() {
+    public List<? extends Expression> getExpressions() {
         return Collections.unmodifiableList(expressions);
     }
 

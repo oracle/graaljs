@@ -456,7 +456,7 @@ public class Parser extends AbstractParser {
 
             final IdentNode ident = new IdentNode(functionToken, Token.descPosition(functionToken), PROGRAM_NAME);
             final FunctionNode.Kind functionKind = generator ? FunctionNode.Kind.GENERATOR : FunctionNode.Kind.NORMAL;
-            final ParserContextFunctionNode function = createParserContextFunctionNode(ident, functionToken, functionKind, functionLine, Collections.<IdentNode>emptyList());
+            final ParserContextFunctionNode function = createParserContextFunctionNode(ident, functionToken, functionKind, functionLine, Collections.<IdentNode>emptyList(), 0);
             if (async) {
                 function.setFlag(FunctionNode.IS_ASYNC);
             }
@@ -481,7 +481,6 @@ public class Parser extends AbstractParser {
                     function,
                     functionToken,
                     ident,
-                    Collections.<IdentNode>emptyList(),
                     null,
                     FunctionNode.Kind.NORMAL,
                     functionLine,
@@ -571,7 +570,12 @@ loop:
         return lc.push(new ParserContextBlockNode(token));
     }
 
-    private ParserContextFunctionNode createParserContextFunctionNode(final IdentNode ident, final long functionToken, final FunctionNode.Kind kind, final int functionLine, final List<IdentNode> parameters) {
+    private ParserContextFunctionNode createParserContextFunctionNode(final IdentNode ident, final long functionToken, final FunctionNode.Kind kind, final int functionLine) {
+        return createParserContextFunctionNode(ident, functionToken, kind, functionLine, null, 0);
+    }
+
+    private ParserContextFunctionNode createParserContextFunctionNode(final IdentNode ident, final long functionToken, final FunctionNode.Kind kind, final int functionLine,
+                    final List<IdentNode> parameters, int functionLength) {
         final ParserContextFunctionNode parentFunction = lc.getCurrentFunction();
 
         assert ident.getName() != null;
@@ -585,13 +589,13 @@ loop:
             flags |= FunctionNode.IS_PROGRAM;
         }
 
-        final ParserContextFunctionNode functionNode = new ParserContextFunctionNode(functionToken, ident, name, namespace, functionLine, kind, parameters);
+        final ParserContextFunctionNode functionNode = new ParserContextFunctionNode(functionToken, ident, name, namespace, functionLine, kind, parameters, functionLength);
         functionNode.setFlag(flags);
         return functionNode;
     }
 
     private FunctionNode createFunctionNode(final ParserContextFunctionNode function, final long startToken, final IdentNode ident,
-                    final List<IdentNode> parameters, final Block parameterBlock, final FunctionNode.Kind kind, final int functionLine, final Block body) {
+                    final Block parameterBlock, final FunctionNode.Kind kind, final int functionLine, final Block body) {
         assert body.isFunctionBody();
         assert parameterBlock == null || parameterBlock.isParameterBlock();
 
@@ -609,7 +613,8 @@ loop:
                 function.getLastToken(),
                 ident,
                 function.getName(),
-                parameters,
+                function.getLength(),
+                optimizeList(function.getParameters()),
                 parameterBlock,
                 kind,
                 function.getFlags(),
@@ -907,7 +912,7 @@ loop:
                 functionToken,
                 FunctionNode.Kind.SCRIPT,
                 functionLine,
-                Collections.<IdentNode>emptyList());
+                Collections.<IdentNode>emptyList(), 0);
         lc.push(script);
         final ParserContextBlockNode body = newBlock();
         functionDeclarations = new ArrayList<>();
@@ -925,7 +930,7 @@ loop:
 
         expect(EOF);
 
-        return createFunctionNode(script, functionToken, ident, Collections.<IdentNode>emptyList(), null, FunctionNode.Kind.SCRIPT, functionLine, programBody);
+        return createFunctionNode(script, functionToken, ident, null, FunctionNode.Kind.SCRIPT, functionLine, programBody);
     }
 
     /**
@@ -1463,7 +1468,7 @@ loop:
                     flags |= FunctionNode.IS_ANONYMOUS;
                 }
                 constructor = constructor.setValue(new FunctionNode(ctor.getSource(), ctor.getLineNumber(), ctor.getToken(), classFinish, classToken, lastToken, ctor.getIdent(), className == null ? null : className.getName(),
-                                ctor.getParameters(), ctor.getParameterBlock(), ctor.getKind(), flags, ctor.getBody(), ctor.getEndParserState(), ctor.getModule()));
+                                ctor.getLength(), ctor.getParameters(), ctor.getParameterBlock(), ctor.getKind(), flags, ctor.getBody(), ctor.getEndParserState(), ctor.getModule()));
             }
 
             ClassNode classBody = new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements);
@@ -1499,7 +1504,7 @@ loop:
 
         Block body = new Block(classToken, ctorFinish, Block.IS_BODY, statements);
         final IdentNode ctorName = className != null ? className : new IdentNode(identToken, ctorFinish, CONSTRUCTOR_NAME);
-        ParserContextFunctionNode function = createParserContextFunctionNode(ctorName, classToken, FunctionNode.Kind.NORMAL, classLineNumber, parameters);
+        ParserContextFunctionNode function = createParserContextFunctionNode(ctorName, classToken, FunctionNode.Kind.NORMAL, classLineNumber, parameters, 0);
         function.setLastToken(lastToken);
 
         function.setFlag(FunctionNode.IS_METHOD);
@@ -1516,7 +1521,6 @@ loop:
                         function,
                         classToken,
                         ctorName,
-                        parameters,
                         null,
                         FunctionNode.Kind.NORMAL,
                         classLineNumber,
@@ -3499,7 +3503,7 @@ loop:
         expect(LPAREN);
         expect(RPAREN);
 
-        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(getterName, getSetToken, FunctionNode.Kind.GETTER, functionLine, Collections.<IdentNode>emptyList());
+        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(getterName, getSetToken, FunctionNode.Kind.GETTER, functionLine, Collections.<IdentNode>emptyList(), 0);
         functionNode.setFlag(FunctionNode.IS_METHOD);
         if (computed) {
             functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
@@ -3519,7 +3523,6 @@ loop:
                 functionNode,
                 getSetToken,
                 getterName,
-                Collections.<IdentNode>emptyList(),
                 null,
                 FunctionNode.Kind.GETTER,
                 functionLine,
@@ -3548,7 +3551,7 @@ loop:
         }
 
 
-        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(setterName, getSetToken, FunctionNode.Kind.SETTER, functionLine, parameters);
+        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(setterName, getSetToken, FunctionNode.Kind.SETTER, functionLine, parameters, parameters.size());
         functionNode.setFlag(FunctionNode.IS_METHOD);
         if (computed) {
             functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
@@ -3567,7 +3570,6 @@ loop:
                 functionNode,
                 getSetToken,
                 setterName,
-                parameters,
                 null,
                 FunctionNode.Kind.SETTER,
                 functionLine,
@@ -3580,7 +3582,7 @@ loop:
         final IdentNode methodNameNode = createMethodNameIdent(key, "");
 
         FunctionNode.Kind functionKind = generator ? FunctionNode.Kind.GENERATOR : FunctionNode.Kind.NORMAL;
-        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(methodNameNode, methodToken, functionKind, methodLine, null);
+        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(methodNameNode, methodToken, functionKind, methodLine);
         functionNode.setFlag(flags);
         if (computed) {
             functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
@@ -3593,11 +3595,9 @@ loop:
         try {
             final ParserContextBlockNode parameterBlock = newBlock();
             parameterBlock.setFlag(Block.IS_PARAMETER_BLOCK);
-            final List<IdentNode> parameters;
             try {
                 expect(LPAREN);
-                parameters = formalParameterList(generator, async);
-                functionNode.setParameters(parameters);
+                formalParameterList(generator, async);
                 expect(RPAREN);
             } finally {
                 restoreBlock(parameterBlock);
@@ -3605,14 +3605,13 @@ loop:
 
             final Block functionBody = functionBody(functionNode);
 
-            verifyParameterList(parameters, functionNode);
+            verifyParameterList(functionNode);
 
             final Block parameterBlockNode = createParameterBlock(parameterBlock, functionBody);
             final FunctionNode  function = createFunctionNode(
                             functionNode,
                             methodToken,
                             methodNameNode,
-                            parameters,
                             parameterBlockNode,
                             functionKind,
                             methodLine,
@@ -4037,6 +4036,18 @@ loop:
         }
     }
 
+    private static <T> List<T> optimizeList(final List<T> list) {
+        switch(list.size()) {
+            case 0:
+                return Collections.emptyList();
+            case 1:
+                return Collections.singletonList(list.get(0));
+            default:
+                ((ArrayList<T>) list).trimToSize();
+                return list;
+        }
+    }
+
     /**
      * AsyncFunctionExpression :
      *     async [no LineTerminator here] function ( FormalParameters[Await] ) { AsyncFunctionBody }
@@ -4112,8 +4123,7 @@ loop:
         }
 
         FunctionNode.Kind functionKind = generator ? FunctionNode.Kind.GENERATOR : FunctionNode.Kind.NORMAL;
-        List<IdentNode> parameters = Collections.emptyList();
-        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(name, functionToken, functionKind, functionLine, parameters);
+        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(name, functionToken, functionKind, functionLine);
         if (async) {
             functionNode.setFlag(FunctionNode.IS_ASYNC);
         }
@@ -4131,8 +4141,7 @@ loop:
             parameterBlock.setFlag(Block.IS_PARAMETER_BLOCK);
             try {
                 expect(LPAREN);
-                parameters = formalParameterList(generator, async);
-                functionNode.setParameters(parameters);
+                formalParameterList(generator, async);
                 expect(RPAREN);
             } finally {
                 restoreBlock(parameterBlock);
@@ -4166,13 +4175,12 @@ loop:
             functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
         }
 
-        verifyParameterList(parameters, functionNode);
+        verifyParameterList(functionNode);
 
         final FunctionNode function = createFunctionNode(
                 functionNode,
                 functionToken,
                 name,
-                parameters,
                 parameterBlockNode,
                 functionKind,
                 functionLine,
@@ -4204,13 +4212,14 @@ loop:
         return parameterBlock.getStatements().isEmpty() ? null : new Block(parameterBlock.getToken(), functionBody.getFinish(), parameterBlock.getFlags(), parameterBlock.getStatements());
     }
 
-    private void verifyParameterList(final List<IdentNode> parameters, final ParserContextFunctionNode functionNode) {
+    private void verifyParameterList(final ParserContextFunctionNode functionNode) {
         IdentNode duplicateParameter = functionNode.getDuplicateParameterBinding();
         if (duplicateParameter != null) {
             if (functionNode.isStrict() || functionNode.isMethod() || functionNode.getKind() == FunctionNode.Kind.ARROW || !functionNode.isSimpleParameterList()) {
                 throw error(AbstractParser.message("strict.param.redefinition", duplicateParameter.getName()), duplicateParameter.getToken());
             }
 
+            final List<IdentNode> parameters = functionNode.getParameters();
             final int arity = parameters.size();
             final HashSet<String> parametersSet = new HashSet<>(arity);
 
@@ -4272,35 +4281,23 @@ loop:
     }
 
     /**
-     * FormalParameterList :
-     *      Identifier
-     *      FormalParameterList , Identifier
-     *
-     * See 13
-     *
      * Parse function parameter list.
-     * @return List of parameter nodes.
      */
-    private List<IdentNode> formalParameterList(final boolean yield, final boolean async) {
-        return formalParameterList(RPAREN, yield, async);
+    private void formalParameterList(final boolean yield, final boolean async) {
+        formalParameterList(RPAREN, yield, async);
     }
 
     /**
+     * Parse function parameter list.
      * Same as the other method of the same name - except that the end
      * token type expected is passed as argument to this method.
      *
      * FormalParameterList :
      *      Identifier
      *      FormalParameterList , Identifier
-     *
-     * See 13
-     *
-     * Parse function parameter list.
-     * @return List of parameter nodes.
      */
-    private List<IdentNode> formalParameterList(final TokenType endType, final boolean yield, final boolean await) {
-        // Prepare to gather parameters.
-        final ArrayList<IdentNode> parameters = new ArrayList<>();
+    private void formalParameterList(final TokenType endType, final boolean yield, final boolean await) {
+        final ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
         // Track commas.
         boolean first = true;
 
@@ -4336,14 +4333,15 @@ loop:
                 if (restParameter) {
                     ident = ident.setIsRestParameter();
                     if (isArguments(ident)) {
-                        ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
                         if (currentFunction != null) {
                             currentFunction.setFlag(FunctionNode.DEFINES_ARGUMENTS);
                         }
                     }
                     // rest parameter must be last
                     expectDontAdvance(endType);
-                    parameters.add(ident);
+                    if (currentFunction != null) {
+                        currentFunction.addParameter(ident);
+                    }
                 } else if (type == ASSIGN && (ES6_DEFAULT_PARAMETER && isES6())) {
                     next();
                     ident = ident.setIsDefaultParameter();
@@ -4356,7 +4354,6 @@ loop:
                     // default parameter
                     Expression initializer = assignmentExpression(true, yield, await);
 
-                    ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
                     if (currentFunction != null) {
                         // desugar to: param = (param === undefined) ? initializer : param;
                         // possible alternative: if (param === undefined) param = initializer;
@@ -4367,7 +4364,6 @@ loop:
                     }
                 }
 
-                ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
                 if (currentFunction != null) {
                     currentFunction.addParameterBinding(ident);
                     if (ident.isRestParameter() || ident.isDefaultParameter()) {
@@ -4380,7 +4376,7 @@ loop:
             } else {
                 final Expression pattern = bindingPattern(yield, await);
                 // Introduce synthetic temporary parameter to capture the object to be destructured.
-                ident = createDestructuredParamIdent(paramToken, pattern.getFinish(), parameters.size());
+                ident = createDestructuredParamIdent(paramToken, pattern.getFinish(), currentFunction.getParameterCount());
                 verifyDestructuringParameterBindingPattern(pattern, paramToken, paramLine, contextString);
 
                 Expression value = ident;
@@ -4394,18 +4390,16 @@ loop:
                     value = new TernaryNode(Token.recast(paramToken, TERNARY), test, new JoinPredecessorExpression(initializer), new JoinPredecessorExpression(ident));
                 }
 
-                ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
                 if (currentFunction != null) {
                     // destructuring assignment
                     BinaryNode assignment = new BinaryNode(Token.recast(paramToken, ASSIGN), pattern, value);
                     lc.getFunctionBody(currentFunction).appendStatement(new ExpressionStatement(paramLine, assignment.getToken(), assignment.getFinish(), assignment));
                 }
             }
-            parameters.add(ident);
+            if (currentFunction != null) {
+                currentFunction.addParameter(ident);
+            }
         }
-
-        parameters.trimToSize();
-        return optimizeList(parameters);
     }
 
     private void verifyDestructuringParameterBindingPattern(final Expression pattern, final long paramToken, final int paramLine, final String contextString) {
@@ -4910,18 +4904,18 @@ loop:
             } else if (ES6_REST_PARAMETER && type == ELLIPSIS) {
                 // (...rest)
                 final IdentNode name = new IdentNode(primaryToken, Token.descPosition(primaryToken), ARROW_FUNCTION_NAME);
-                final ParserContextFunctionNode functionNode = createParserContextFunctionNode(name, primaryToken, FunctionNode.Kind.ARROW, 0, null);
+                final ParserContextFunctionNode functionNode = createParserContextFunctionNode(name, primaryToken, FunctionNode.Kind.ARROW, 0);
                 // Push a dummy functionNode at the top of the stack to avoid
                 // pollution of the current function by parameters of the arrow function.
                 // Real processing/verification of the parameters of the arrow function
                 // is performed later through convertArrowFunctionParameterList().
                 lc.push(functionNode);
                 try {
-                    IdentNode restParam = formalParameterList(false, false).get(0);
+                    formalParameterList(false, false);
                     expectDontAdvance(RPAREN);
                     nextOrEOL();
                     expectDontAdvance(ARROW);
-                    return new ExpressionList(primaryToken, finish, Collections.singletonList(restParam));
+                    return new ExpressionList(primaryToken, finish, Collections.singletonList(functionNode.getParameters().get(0)));
                 } finally {
                     lc.pop(functionNode);
                 }
@@ -5139,7 +5133,7 @@ loop:
 
         final long functionToken = Token.recast(startToken, ARROW);
         final IdentNode name = new IdentNode(functionToken, Token.descPosition(functionToken), ARROW_FUNCTION_NAME);
-        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(name, functionToken, FunctionNode.Kind.ARROW, functionLine, null);
+        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(name, functionToken, FunctionNode.Kind.ARROW, functionLine);
         functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
         if (async) {
             functionNode.setFlag(FunctionNode.IS_ASYNC);
@@ -5149,10 +5143,8 @@ loop:
         try {
             final ParserContextBlockNode parameterBlock = newBlock();
             parameterBlock.setFlag(Block.IS_PARAMETER_BLOCK);
-            final List<IdentNode> parameters;
             try {
-                parameters = convertArrowFunctionParameterList(paramListExpr, functionLine);
-                functionNode.setParameters(parameters);
+                convertArrowFunctionParameterList(paramListExpr, functionNode);
 
                 if (!functionNode.isSimpleParameterList()) {
                     markEvalInArrowParameterList(parameterBlock);
@@ -5162,14 +5154,13 @@ loop:
             }
             Block functionBody = functionBody(functionNode);
 
-            verifyParameterList(parameters, functionNode);
+            verifyParameterList(functionNode);
 
             final Block parameterBlockNode = createParameterBlock(parameterBlock, functionBody);
             final FunctionNode function = createFunctionNode(
                             functionNode,
                             functionToken,
                             name,
-                            parameters,
                             parameterBlockNode,
                             FunctionNode.Kind.ARROW,
                             functionLine,
@@ -5217,35 +5208,36 @@ loop:
         }
     }
 
-    private List<IdentNode> convertArrowFunctionParameterList(Expression paramListExpr, int functionLine) {
-        List<IdentNode> parameters;
+    private void convertArrowFunctionParameterList(Expression paramListExpr, ParserContextFunctionNode function) {
+        final int functionLine = function.getLineNumber();
         if (paramListExpr == null) {
             // empty parameter list, i.e. () =>
-            parameters = Collections.emptyList();
+            return;
         } else if (paramListExpr instanceof IdentNode || paramListExpr.isTokenType(ASSIGN) || isDestructuringLhs(paramListExpr)) {
-            parameters = Collections.singletonList(verifyArrowParameter(paramListExpr, 0, functionLine));
+            function.addParameter(verifyArrowParameter(paramListExpr, 0, functionLine, function));
         } else if (paramListExpr instanceof BinaryNode && Token.descType(paramListExpr.getToken()) == COMMARIGHT) {
-            ArrayList<IdentNode> param2 = new ArrayList<>();
+            ArrayList<Expression> params = new ArrayList<>();
             Expression car = paramListExpr;
             do {
                 Expression cdr = ((BinaryNode) car).rhs();
-                param2.add(0, verifyArrowParameter(cdr, param2.size(), functionLine));
+                params.add(cdr);
                 car = ((BinaryNode) car).lhs();
             } while (car instanceof BinaryNode && Token.descType(car.getToken()) == COMMARIGHT);
-            param2.add(0, verifyArrowParameter(car, param2.size(), functionLine));
-            parameters = optimizeList(param2);
+            params.add(car);
+
+            for (int i = params.size() - 1, pos = 0; i >= 0; i--, pos++) {
+                function.addParameter(verifyArrowParameter(params.get(i), pos, functionLine, function));
+            }
         } else {
             throw error(AbstractParser.message("expected.arrow.parameter"), paramListExpr.getToken());
         }
-        return parameters;
     }
 
-    private IdentNode verifyArrowParameter(Expression param, int index, int paramLine) {
+    private IdentNode verifyArrowParameter(Expression param, int index, int paramLine, ParserContextFunctionNode currentFunction) {
         final String contextString = "function parameter";
         if (param instanceof IdentNode) {
             IdentNode ident = (IdentNode)param;
             verifyStrictIdent(ident, contextString);
-            ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
             if (currentFunction != null && currentFunction.isAsync() && AWAIT.getName().equals(ident.getName())) {
                 throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
             }
@@ -5269,7 +5261,6 @@ loop:
                 IdentNode ident = (IdentNode) lhs;
                 ident = ident.setIsDefaultParameter();
 
-                ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
                 if (currentFunction != null) {
                     BinaryNode test = new BinaryNode(Token.recast(paramToken, EQ_STRICT), ident, newUndefinedLiteral(paramToken, finish));
                     TernaryNode value = new TernaryNode(Token.recast(paramToken, TERNARY), test, new JoinPredecessorExpression(initializer), new JoinPredecessorExpression(ident));
@@ -5286,7 +5277,6 @@ loop:
                 IdentNode ident = createDestructuredParamIdent(paramToken, param.getFinish(), index).setIsDefaultParameter();
                 verifyDestructuringParameterBindingPattern(lhs, paramToken, paramLine, contextString);
 
-                ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
                 if (currentFunction != null) {
                     BinaryNode test = new BinaryNode(Token.recast(paramToken, EQ_STRICT), ident, newUndefinedLiteral(paramToken, finish));
                     TernaryNode value = new TernaryNode(Token.recast(paramToken, TERNARY), test, new JoinPredecessorExpression(initializer), new JoinPredecessorExpression(ident));
@@ -5303,7 +5293,6 @@ loop:
             IdentNode ident = createDestructuredParamIdent(paramToken, param.getFinish(), index);
             verifyDestructuringParameterBindingPattern(param, paramToken, paramLine, contextString);
 
-            ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
             if (currentFunction != null) {
                 BinaryNode assignment = new BinaryNode(Token.recast(paramToken, ASSIGN), param, ident);
                 lc.getFunctionBody(currentFunction).appendStatement(new ExpressionStatement(paramLine, assignment.getToken(), assignment.getFinish(), assignment));
@@ -5556,7 +5545,7 @@ loop:
                             functionToken,
                             FunctionNode.Kind.MODULE,
                             functionLine,
-                            Collections.<IdentNode>emptyList());
+                            Collections.<IdentNode>emptyList(), 0);
             lc.push(script);
 
             final ParserContextModuleNode module = new ParserContextModuleNode(moduleName);
@@ -5579,7 +5568,7 @@ loop:
             expect(EOF);
 
             script.setModule(module.createModule());
-            return createFunctionNode(script, functionToken, ident, Collections.<IdentNode>emptyList(), null, FunctionNode.Kind.MODULE, functionLine, programBody);
+            return createFunctionNode(script, functionToken, ident, null, FunctionNode.Kind.MODULE, functionLine, programBody);
         } finally {
             isStrictMode = oldStrictMode;
             isModule = oldModule;

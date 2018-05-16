@@ -305,7 +305,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             // function needs parent frame analysis has already been done
             boolean needsParentFrame = functionNode.usesAncestorScope();
 
-            functionData = factory.createFunctionData(context, getFunctionLength(functionNode), functionName, isConstructor, isDerivedConstructor, isStrict, isBuiltin,
+            functionData = factory.createFunctionData(context, functionNode.getLength(), functionName, isConstructor, isDerivedConstructor, isStrict, isBuiltin,
                             needsParentFrame, isGeneratorFunction, isAsyncFunction, isClassConstructor, strictFunctionProperties, needsNewTarget);
 
             Environment parentEnv = environment;
@@ -696,19 +696,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 currentFunction.setSimpleParameterList(false);
             }
         }
-        return length;
-    }
-
-    private static int getFunctionLength(FunctionNode functionNode) {
-        List<IdentNode> parameters = functionNode.getParameters();
-        int length = parameters.size();
-        for (int i = 0; i < parameters.size(); i++) {
-            IdentNode parameter = parameters.get(i);
-            if (parameter.isDefaultParameter() || parameter.isRestParameter()) {
-                // default/rest parameter not included in formal parameter count
-                length = Math.min(i, length);
-            }
-        }
+        assert length == functionNode.getLength();
         return length;
     }
 

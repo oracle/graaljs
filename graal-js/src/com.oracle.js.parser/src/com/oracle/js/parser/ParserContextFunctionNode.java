@@ -24,6 +24,8 @@
  */
 package com.oracle.js.parser;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
@@ -48,9 +50,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     /** Line number for function declaration */
     private final int line;
 
-    /**
-     * Function node kind, see FunctionNode.Kind
-     */
+    /** Function node kind, see FunctionNode.Kind */
     private final FunctionNode.Kind kind;
 
     /** List of parameter identifiers for function */
@@ -65,9 +65,11 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     /** Opaque node for parser end state, see {@link Parser} */
     private Object endParserState;
 
+    private int length;
     private HashSet<String> parameterBoundNames;
     private IdentNode duplicateParameterBinding;
     private boolean simpleParameterList = true;
+    private boolean containsDefaultParameter;
 
     private Module module;
 
@@ -81,7 +83,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * @param parameters The parameters of the function
      */
     ParserContextFunctionNode(final long token, final IdentNode ident, final String name, final Namespace namespace, final int line, final FunctionNode.Kind kind,
-                    final List<IdentNode> parameters) {
+                    final List<IdentNode> parameters, final int length) {
         this.ident = ident;
         this.namespace = namespace;
         this.line = line;
@@ -89,6 +91,8 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         this.name = name;
         this.parameters = parameters;
         this.token = token;
+        this.length = length;
+        assert calculateLength(parameters) == length;
     }
 
     /**
@@ -166,6 +170,9 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * @return The parameters of the function
      */
     public List<IdentNode> getParameters() {
+        if (parameters == null) {
+            return Collections.emptyList();
+        }
         return parameters;
     }
 
@@ -229,6 +236,29 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         return getFlag(FunctionNode.IS_SUBCLASS_CONSTRUCTOR) != 0;
     }
 
+    public int getLength() {
+        return length;
+    }
+
+    public void addParameter(IdentNode param) {
+        if (parameters == null) {
+            parameters = new ArrayList<>();
+        }
+        parameters.add(param);
+
+        if (!param.isDefaultParameter() && !param.isRestParameter()) {
+            if (!containsDefaultParameter) {
+                length++;
+            }
+        } else {
+            containsDefaultParameter = true;
+        }
+    }
+
+    public int getParameterCount() {
+        return parameters == null ? 0 : parameters.size();
+    }
+
     boolean addParameterBinding(IdentNode bindingIdentifier) {
         if (Parser.isArguments(bindingIdentifier)) {
             setFlag(FunctionNode.DEFINES_ARGUMENTS);
@@ -267,5 +297,18 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public boolean isAsync() {
         return getFlag(FunctionNode.IS_ASYNC) != 0;
+    }
+
+    private static int calculateLength(final List<IdentNode> parameters) {
+        int length = 0;
+        if (parameters != null) {
+            for (IdentNode param : parameters) {
+                if (param.isDefaultParameter() || param.isRestParameter()) {
+                    break;
+                }
+                length++;
+            }
+        }
+        return length;
     }
 }
