@@ -124,273 +124,101 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
+    "filePath" : "built-ins/Atomics/add/bad-range.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/add/nonshared-int-views.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/and/bad-range.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/and/nonshared-int-views.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/compareExchange/bad-range.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/compareExchange/nonshared-int-views.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/exchange/bad-range.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/exchange/nonshared-int-views.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/load/bad-range.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/load/nonshared-int-views.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/or/bad-range.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/or/nonshared-int-views.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/store/bad-range.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/store/nonshared-int-views.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/sub/bad-range.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/sub/nonshared-int-views.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bad-range.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
+  }, {
     "filePath" : "built-ins/Atomics/wait/negative-index-throws.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/nonshared-int-views.js",
+    "status" : "FAIL",
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
   }, {
     "filePath" : "built-ins/Atomics/wait/undefined-index-defaults-to-zero.js",
     "status" : "SKIP",
     "comment" : "fails randomly, highly timing sensitive (sleep(5) + wait(10)), will be fixed by Test262 update"
   }, {
-    "filePath" : "built-ins/BigInt/asIntN/arithmetic.js",
+    "filePath" : "built-ins/Atomics/wake/bad-range.js",
     "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
   }, {
-    "filePath" : "built-ins/BigInt/asIntN/asIntN.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/asIntN/bigint-tobigint-errors.js",
+    "filePath" : "built-ins/Atomics/wake/nonshared-int-views.js",
     "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
   }, {
-    "filePath" : "built-ins/BigInt/asIntN/bigint-tobigint-toprimitive.js",
+    "filePath" : "built-ins/Atomics/xor/bad-range.js",
     "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
   }, {
-    "filePath" : "built-ins/BigInt/asIntN/bigint-tobigint-wrapped-values.js",
+    "filePath" : "built-ins/Atomics/xor/nonshared-int-views.js",
     "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/asIntN/bigint-tobigint.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/asIntN/bits-toindex-errors.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/asIntN/bits-toindex-toprimitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/asIntN/bits-toindex-wrapped-values.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/asIntN/bits-toindex.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/asIntN/length.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/asIntN/name.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/asIntN/order-of-steps.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/asUintN/arithmetic.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/asUintN/asUintN.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/asUintN/bigint-tobigint-errors.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/asUintN/bigint-tobigint-toprimitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/asUintN/bigint-tobigint-wrapped-values.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/asUintN/bigint-tobigint.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/asUintN/bits-toindex-errors.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/asUintN/bits-toindex-toprimitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/asUintN/bits-toindex-wrapped-values.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/asUintN/bits-toindex.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/asUintN/length.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/asUintN/name.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/asUintN/order-of-steps.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/call-value-of-when-to-string-present.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/constructor-empty-string.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/constructor-from-binary-string.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/constructor-from-decimal-string.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/constructor-from-hex-string.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/constructor-from-octal-string.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/constructor-from-string-syntax-errors.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/constructor-trailing-leading-spaces.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/infinity-throws-rangeerror.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/issafeinteger-true.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/length.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/name.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/nan-throws-rangeerror.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/negative-infinity-throws.rangeerror.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/new-target-throws.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/non-integer-rangeerror.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/out-of-bounds-integer-rangeerror.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/parseInt/nonexistent.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prop-desc.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/proto.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/constructor.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/prop-desc.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/proto.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/Symbol.toStringTag.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/toString/length.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/toString/name.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/toString/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/toString/prototype-call.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/toString/radix-2-to-36.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/toString/radix-err.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/toString/string-is-code-units-of-decimal-digits-only.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/toString/thisbigintvalue-not-valid-throws.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/valueOf/length.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/valueOf/name.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/valueOf/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/valueOf/return.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/valueOf/this-value-invalid-object-throws.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/prototype/valueOf/this-value-invalid-primitive-throws.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/BigInt/value-of-throws.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
+    "comment" : "BigInt64Array and BigUInt64Array is missing"
   }, {
     "filePath" : "built-ins/DataView/prototype/getBigInt64/detached-buffer-after-toindex-byteoffset.js",
     "status" : "FAIL",
@@ -574,33 +402,9 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
-    "filePath" : "built-ins/JSON/stringify/bigint-replacer.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
     "filePath" : "built-ins/JSON/stringify/bigint-tojson.js",
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/JSON/stringify/bigint.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/Number/bigint-conversion.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/Object/bigint.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "built-ins/Object/prototype/toString/Object.prototype.toString.call-bigint.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/Object/setPrototypeOf/bigint.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
     "status" : "SKIP",
@@ -2169,14 +1973,6 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/XID_Start.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
-  }, {
-    "filePath" : "built-ins/String/prototype/indexOf/position-tointeger-bigint.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/String/prototype/indexOf/searchstring-tostring-bigint.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/Final_Sigma_U180E.js",
     "status" : "FAIL",
@@ -4806,10 +4602,6 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/bigint-tonumber.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
     "filePath" : "built-ins/TypedArrayConstructors/internals/Set/BigInt/bigint-tobigint64.js",
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
@@ -5160,26 +4952,6 @@
     "filePath" : "language/eval-code/indirect/non-definable-function-with-function.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/addition/bigint-and-number.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/addition/bigint-arithmetic.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/addition/bigint-toprimitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/addition/bigint-wrapped-values.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/addition/coerce-bigint-to-string.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
     "filePath" : "language/expressions/arrow-function/param-dflt-yield-expr.js",
     "status" : "FAIL"
   }, {
@@ -5276,74 +5048,6 @@
     "filePath" : "language/expressions/async-generator/yield-star-sync-next.js",
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/expressions/bitwise-and/bigint-and-number.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-and/bigint-non-primitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-and/bigint-toprimitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-and/bigint-wrapped-values.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-and/bigint.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-not/bigint-non-primitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-not/bigint.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-or/bigint-and-number.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-or/bigint-non-primitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-or/bigint-toprimitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-or/bigint-wrapped-values.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-or/bigint.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-xor/bigint-and-number.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-xor/bigint-non-primitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-xor/bigint-toprimitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-xor/bigint-wrapped-values.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/bitwise-xor/bigint.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
   }, {
     "filePath" : "language/expressions/call/eval-spread-empty-leading.js",
     "status" : "FAIL",
@@ -5899,78 +5603,6 @@
     "filePath" : "language/expressions/delete/super-property.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/division/bigint-and-number.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/division/bigint-arithmetic.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/division/bigint-complex-infinity.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "language/expressions/division/bigint-toprimitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/division/bigint-wrapped-values.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/does-not-equals/bigint-and-bigint.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/does-not-equals/bigint-and-number-extremes.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/does-not-equals/bigint-and-object.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/does-not-equals/bigint-and-string.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/equals/bigint-and-bigint.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/equals/bigint-and-number-extremes.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/equals/bigint-and-object.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/equals/bigint-and-string.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/exponentiation/bigint-and-number.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/exponentiation/bigint-exp-operator-negative-throws.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "language/expressions/exponentiation/bigint-toprimitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/exponentiation/bigint-wrapped-values.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/exponentiation/bigint-zero-base-zero-exponent.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
     "filePath" : "language/expressions/function/arguments-with-arguments-fn.js",
     "status" : "FAIL",
     "comment" : "TODO: script passes with disabled assertions"
@@ -6009,121 +5641,13 @@
     "filePath" : "language/expressions/generators/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/greater-than-or-equal/bigint-and-bigint.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/greater-than-or-equal/bigint-and-number-extremes.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/greater-than-or-equal/bigint-and-number.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "language/expressions/greater-than/bigint-and-bigint.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/greater-than/bigint-and-number-extremes.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/greater-than/bigint-and-number.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "language/expressions/left-shift/bigint-and-number.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/left-shift/bigint-non-primitive.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/left-shift/bigint-toprimitive.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/left-shift/bigint-wrapped-values.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/left-shift/bigint.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/less-than-or-equal/bigint-and-bigint.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/less-than-or-equal/bigint-and-number-extremes.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/less-than-or-equal/bigint-and-number.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "language/expressions/less-than/bigint-and-bigint.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/less-than/bigint-and-number-extremes.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/less-than/bigint-and-number.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
     "filePath" : "language/expressions/logical-and/tco-right.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests SKIPing due to StackOverflow"
   }, {
-    "filePath" : "language/expressions/logical-not/bigint.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
     "filePath" : "language/expressions/logical-or/tco-right.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests SKIPing due to StackOverflow"
-  }, {
-    "filePath" : "language/expressions/modulus/bigint-and-number.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/modulus/bigint-arithmetic.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/modulus/bigint-modulo-zero.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "language/expressions/modulus/bigint-toprimitive.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/modulus/bigint-wrapped-values.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/multiplication/bigint-and-number.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/multiplication/bigint-arithmetic.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/multiplication/bigint-toprimitive.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/multiplication/bigint-wrapped-values.js",
-    "status" : "SKIP",
-    "comment" : "new SKIPs after update 2018-03-19"
   }, {
     "filePath" : "language/expressions/object/method-definition/async-gen-yield-star-async-next.js",
     "status" : "FAIL",
@@ -6177,66 +5701,6 @@
   }, {
     "filePath" : "language/expressions/object/setter-length-dflt.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/right-shift/bigint-and-number.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/right-shift/bigint-non-primitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/right-shift/bigint-toprimitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/right-shift/bigint-wrapped-values.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/right-shift/bigint.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/strict-does-not-equals/bigint-and-bigint.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/strict-does-not-equals/bigint-and-number-extremes.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/strict-does-not-equals/bigint-and-number.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/strict-equals/bigint-and-bigint.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/strict-equals/bigint-and-number-extremes.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/strict-equals/bigint-and-number.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/subtraction/bigint-and-number.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/subtraction/bigint-arithmetic.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/subtraction/bigint-toprimitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/subtraction/bigint-wrapped-values.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
   }, {
     "filePath" : "language/expressions/super/call-proto-not-ctor.js",
     "status" : "FAIL"
@@ -6323,42 +5787,6 @@
     "filePath" : "language/expressions/this/S11.1.1_A1.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/expressions/typeof/bigint.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/unary-minus/bigint-non-primitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/unary-minus/bigint.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/unary-plus/bigint-throws.js",
-    "status" : "SKIP",
-    "comment" : "GR-6710 BigInt propsal"
-  }, {
-    "filePath" : "language/expressions/unsigned-right-shift/bigint-and-number.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/unsigned-right-shift/bigint-non-primitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/unsigned-right-shift/bigint-toprimitive.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/unsigned-right-shift/bigint-wrapped-values.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "language/expressions/unsigned-right-shift/bigint.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
   }, {
     "filePath" : "language/function-code/each-param-has-own-non-shared-eval-scope.js",
     "status" : "FAIL",

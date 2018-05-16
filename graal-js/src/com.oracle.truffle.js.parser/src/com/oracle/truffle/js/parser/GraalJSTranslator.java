@@ -2006,8 +2006,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else {
             BinaryOperation operation = unaryNode.tokenType() == TokenType.INCPREFIX || unaryNode.tokenType() == TokenType.INCPOSTFIX ? BinaryOperation.ADD : BinaryOperation.SUBTRACT;
             boolean isPostfix = unaryNode.tokenType() == TokenType.INCPOSTFIX || unaryNode.tokenType() == TokenType.DECPOSTFIX;
-            JavaScriptNode constInt = ensureHasSourceSection(factory.createConstantInteger(1), unaryNode);
-            return result(transformAssignment(unaryNode.getExpression(), constInt, operation, isPostfix, true, false));
+            JavaScriptNode constNumericUnit = ensureHasSourceSection(factory.createConstantNumericUnit(), unaryNode);
+            return result(transformAssignment(unaryNode.getExpression(), constNumericUnit, operation, isPostfix, true, false));
         }
     }
 
@@ -2313,9 +2313,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
-    private JavaScriptNode transformAssignment(Expression lhsExpression, JavaScriptNode assignedValue, BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertRHSToNumber,
+    private JavaScriptNode transformAssignment(Expression lhsExpression, JavaScriptNode assignedValue, BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertLHSToNumeric,
                     boolean initializationAssignment) {
-        assert shortcutOperation != null || (!returnOldValue && !convertRHSToNumber) : "returnOldValue / convertRHSToNumber can only be used with shortcut assignments";
+        assert shortcutOperation != null || (!returnOldValue && !convertLHSToNumeric) : "returnOldValue / convertLHSToNumeric can only be used with shortcut assignments";
         JavaScriptNode assignedNode = null;
         JavaScriptNode prev = null;
         VarRef resultTemp = (shortcutOperation != null && returnOldValue) ? environment.createTempVar() : null;
@@ -2326,7 +2326,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         switch (tokenType) {
             case IDENT: {
                 setAnonymousFunctionName(assignedValue, ((IdentNode) lhsExpression).getName());
-                assignedNode = transformAssignmentIdent((IdentNode) lhsExpression, assignedValue, shortcutOperation, returnOldValue, convertRHSToNumber, resultTemp, initializationAssignment);
+                assignedNode = transformAssignmentIdent((IdentNode) lhsExpression, assignedValue, shortcutOperation, returnOldValue, convertLHSToNumeric, resultTemp, initializationAssignment);
                 break;
             }
             case LBRACKET: {
@@ -2364,8 +2364,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     // perform the key type conversion in WriteElementNode (evaluated first)
                     elem = keyTemp.createWriteNode(factory.createToArrayIndex(elem));
 
-                    if (convertRHSToNumber) {
-                        shortcutNode = factory.createUnaryPlus(shortcutNode);
+                    if (convertLHSToNumeric) {
+                        shortcutNode = factory.numericConversion(shortcutNode);
                     }
 
                     if (returnOldValue) {
@@ -2403,8 +2403,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
                     target = ensureHasSourceSection(factory.copy(target), accessNode);
 
-                    if (convertRHSToNumber) {
-                        shortcutNode = ensureHasSourceSection(factory.createUnaryPlus(shortcutNode), accessNode);
+                    if (convertLHSToNumeric) {
+                        shortcutNode = ensureHasSourceSection(factory.numericConversion(shortcutNode), accessNode);
                     }
 
                     if (returnOldValue) {
@@ -2541,7 +2541,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         throw Errors.createReferenceError("unsupported assignment to token type: " + lhsExpression.tokenType().toString() + " " + lhsExpression.toString());
     }
 
-    private JavaScriptNode transformAssignmentIdent(IdentNode identNode, JavaScriptNode assignedValue, BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertRHSToNumber,
+    private JavaScriptNode transformAssignmentIdent(IdentNode identNode, JavaScriptNode assignedValue, BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertLHSToNumeric,
                     VarRef resultTemp, boolean initializationAssignment) {
         JavaScriptNode rhs;
         String ident = identNode.getName();
@@ -2549,7 +2549,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         if (shortcutOperation != null) {
             JavaScriptNode operand = ensureHasSourceSection(scopeVar.createReadNode(), identNode);
-            JavaScriptNode shortcutNode = convertRHSToNumber ? factory.createUnaryPlus(operand) : operand;
+            JavaScriptNode shortcutNode = convertLHSToNumeric ? factory.numericConversion(operand) : operand;
 
             if (returnOldValue) {
                 shortcutNode = resultTemp.createWriteNode(shortcutNode);

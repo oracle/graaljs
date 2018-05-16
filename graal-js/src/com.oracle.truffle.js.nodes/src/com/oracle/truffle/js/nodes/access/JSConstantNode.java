@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.math.BigInteger;
 import java.util.Map;
 import java.util.Objects;
 
@@ -50,8 +51,10 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -61,7 +64,9 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
 
     public static JSConstantNode create(Object value) {
         assert !(value instanceof Long);
-        if (value instanceof Integer) {
+        if (value instanceof BigInteger) {
+            return createBigInt(new BigInt((BigInteger) value));
+        } else if (value instanceof Integer) {
             return createInt((Integer) value);
         } else if (value instanceof Double) {
             double doubleValue = (Double) value;
@@ -123,8 +128,16 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
         return new JSConstantIntegerNode(value);
     }
 
+    public static JSConstantNode createBigInt(BigInt value) {
+        return new JSConstantBigIntNode(value);
+    }
+
     public static JSConstantNode createDouble(double value) {
         return new JSConstantDoubleNode(value);
+    }
+
+    public static JSConstantNode createConstantNumericUnit() {
+        return new JSConstantNumericUnitNode();
     }
 
     public static JSConstantNode createBoolean(boolean value) {
@@ -193,6 +206,59 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
         @Override
         public Object getValue() {
             return intValue;
+        }
+    }
+
+    public static final class JSConstantNumericUnitNode extends JSConstantNode {
+
+        private JSConstantNumericUnitNode() {
+        }
+
+        @Override
+        public boolean isInstrumentable() {
+            return false;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw Errors.shouldNotReachHere();
+        }
+
+        @Override
+        public Object getValue() {
+            throw Errors.shouldNotReachHere();
+        }
+    }
+
+    public static final class JSConstantBigIntNode extends JSConstantNode {
+        private final BigInt bigIntValue;
+
+        private JSConstantBigIntNode(BigInt value) {
+            this.bigIntValue = value;
+        }
+
+        @Override
+        public boolean isInstrumentable() {
+            return false;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return bigIntValue;
+        }
+
+        public BigInt executeBigInt(@SuppressWarnings("unused") VirtualFrame frame) {
+            return bigIntValue;
+        }
+
+        @Override
+        public boolean isResultAlwaysOfType(Class<?> clazz) {
+            return clazz == BigInt.class;
+        }
+
+        @Override
+        public Object getValue() {
+            return bigIntValue;
         }
     }
 

@@ -71,6 +71,7 @@ public class SuiteConfig {
     private int timeoutTest; // individual timeouts not supported by all engines
     private int timeoutOverall;
     private String containsFilter;
+    private String regexFilter;
     private String endsWithFilter;
     private boolean printFullOutput;
     private String outputFilter;
@@ -242,8 +243,16 @@ public class SuiteConfig {
         return containsFilter;
     }
 
+    public synchronized String getRegexFilter() {
+        return regexFilter;
+    }
+
     public synchronized void setContainsFilter(String containsFilter) {
         this.containsFilter = containsFilter;
+    }
+
+    public synchronized void setRegexFilter(String regexFilter) {
+        this.regexFilter = regexFilter;
     }
 
     public synchronized String getEndsWithFilter() {

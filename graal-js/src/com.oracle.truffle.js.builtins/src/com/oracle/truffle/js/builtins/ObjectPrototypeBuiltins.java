@@ -68,6 +68,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -243,6 +244,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toObject(thisObj);
         }
 
+        @Specialization
+        protected DynamicObject valueOf(BigInt thisObj) {
+            return toObject(thisObj);
+        }
+
         @Specialization(guards = "!isTruffleObject(thisObj)")
         protected DynamicObject valueOf(Object thisObj) {
             return toObject(thisObj);
@@ -348,6 +354,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return JSObject.defaultToString(toObject(thisObj));
         }
 
+        @Specialization
+        protected String doBigInt(BigInt thisObj) {
+            return JSObject.defaultToString(toObject(thisObj));
+        }
+
         @Specialization(guards = {"!isTruffleObject(thisObj)"})
         protected String doObject(Object thisObj) {
             assert thisObj != null;
@@ -449,7 +460,12 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected boolean hasOwnPropertySymbol(LargeInteger thisObj, Object propName) {
+        protected boolean hasOwnPropertyLargeInteger(LargeInteger thisObj, Object propName) {
+            return hasOwnPropertyPrimitive(thisObj, propName);
+        }
+
+        @Specialization
+        protected boolean hasOwnPropertyBigInt(BigInt thisObj, Object propName) {
             return hasOwnPropertyPrimitive(thisObj, propName);
         }
 

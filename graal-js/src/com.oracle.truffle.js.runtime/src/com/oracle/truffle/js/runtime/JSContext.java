@@ -640,6 +640,11 @@ public class JSContext implements ShapeContext {
     }
 
     @Override
+    public final DynamicObjectFactory getBigIntFactory() {
+        return getRealm().getBigIntFactory();
+    }
+
+    @Override
     public final DynamicObjectFactory getSymbolFactory() {
         return getRealm().getSymbolFactory();
     }

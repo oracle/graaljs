@@ -69,6 +69,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBigIntNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBooleanNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallCollatorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateNodeGen;
@@ -81,6 +82,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallSymbolNodeG
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallTypedArrayNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayBufferNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructBigIntNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructBooleanNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructCollatorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructDataViewNodeGen;
@@ -124,10 +126,13 @@ import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.OrdinaryCreateFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
+import com.oracle.truffle.js.nodes.cast.JSNumericToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
@@ -144,6 +149,7 @@ import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
@@ -207,6 +213,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         String(1),
         Object(1),
         Number(1),
+        BigInt(1),
         Function(1),
         ArrayBuffer(1),
         Collator(0),
@@ -361,6 +368,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 ? ConstructNumberNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
                                 : ConstructNumberNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context)))
                                 : CallNumberNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+            case BigInt:
+                return construct ? ConstructBigIntNodeGen.create(context, builtin, args().createArgumentNodes(context))
+                                : CallBigIntNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
             case Function:
                 if (newTarget) {
                     return ConstructFunctionNodeGen.create(context, builtin, false, false, true, args().newTarget().varArgs().createArgumentNodes(context));
@@ -1190,8 +1200,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = {"args.length > 0"})
-        protected Number callNumber(Object[] args, @Cached("create()") JSToNumberNode toNumberNode) {
-            return toNumberNode.executeNumber(args[0]);
+        protected Number callNumber(Object[] args,
+                        @Cached("create()") JSToNumericNode toNumericNode,
+                        @Cached("create()") JSNumericToNumberNode toNumberFromNumericNode) {
+            return (Number) toNumberFromNumericNode.executeObject((toNumericNode.executeObject(args[0])));
         }
     }
 
@@ -1207,8 +1219,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length > 0"})
         protected DynamicObject constructNumber(DynamicObject newTarget, Object[] args,
-                        @Cached("create()") JSToNumberNode toNumberNode) {
-            return swapPrototype(JSNumber.create(getContext(), toNumberNode.executeNumber(args[0])), newTarget);
+                        @Cached("create()") JSToNumericNode toNumericNode,
+                        @Cached("create()") JSNumericToNumberNode toNumberFromNumericNode) {
+            return swapPrototype(JSNumber.create(getContext(), (Number) toNumberFromNumericNode.executeObject(toNumericNode.executeObject(args[0]))), newTarget);
         }
 
         @Override
@@ -1216,6 +1229,53 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getNumberConstructor().getPrototype();
         }
 
+    }
+
+    public abstract static class CallBigIntNode extends JSBuiltinNode {
+
+        @Child JSToPrimitiveNode toPrimitiveNode;
+
+        public CallBigIntNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        private Object toPrimitive(Object target) {
+            if (toPrimitiveNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toPrimitiveNode = insert(JSToPrimitiveNode.create(Hint.Number));
+            }
+            return toPrimitiveNode.execute(target);
+        }
+
+        @Specialization(guards = {"args.length == 0"})
+        protected void callBigIntZero(@SuppressWarnings("unused") Object[] args) {
+            throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, Undefined.instance);
+        }
+
+        @Specialization(guards = {"args.length > 0"})
+        protected Object callBigInt(Object[] args,
+                        @Cached("create()") JSNumberToBigIntNode numberToBigIntNode,
+                        @Cached("create()") JSToBigIntNode toBigIntNode) {
+
+            Object primitiveObj = toPrimitive(args[0]);
+            if (JSRuntime.isNumber(primitiveObj)) {
+                return numberToBigIntNode.executeBigInt(primitiveObj);
+            } else {
+                return toBigIntNode.executeBigInteger(args[0]);
+            }
+        }
+    }
+
+    public abstract static class ConstructBigIntNode extends JSBuiltinNode {
+
+        public ConstructBigIntNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected static final DynamicObject construct() {
+            throw Errors.createTypeError("BigInt is not a constructor");
+        }
     }
 
     public abstract static class ConstructFunctionNode extends ConstructWithNewTargetNode {
@@ -1566,7 +1626,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected DynamicObject constructJSProxy(DynamicObject newTarget, Object target, Object handler) {
             if (targetNonObject.profile(!JSGuards.isTruffleObject(target) || target instanceof Symbol || target == Undefined.instance || target == Null.instance || target instanceof JSLazyString ||
-                            target instanceof LargeInteger)) {
+                            target instanceof LargeInteger || target instanceof BigInt)) {
                 throw Errors.createTypeError("target expected to be an object");
             }
             if (handlerNonObject.profile(!JSGuards.isJSObject(handler))) {

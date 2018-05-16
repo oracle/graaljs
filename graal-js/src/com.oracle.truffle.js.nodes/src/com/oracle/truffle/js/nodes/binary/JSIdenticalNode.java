@@ -60,6 +60,7 @@ import com.oracle.truffle.js.nodes.unary.IsIdenticalStringNode;
 import com.oracle.truffle.js.nodes.unary.IsIdenticalUndefinedNode;
 import com.oracle.truffle.js.nodes.unary.IsNullNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 
@@ -151,6 +152,21 @@ public abstract class JSIdenticalNode extends JSCompareNode {
     @Specialization
     protected static boolean doBoolean(boolean a, boolean b) {
         return a == b;
+    }
+
+    @Specialization
+    protected static boolean doBigInt(BigInt a, BigInt b) {
+        return a.compareTo(b) == 0;
+    }
+
+    @Specialization
+    protected static boolean doBigIntDouble(@SuppressWarnings("unused") BigInt a, @SuppressWarnings("unused") double b) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doDoubleBigInt(double a, BigInt b) {
+        return doBigIntDouble(b, a);
     }
 
     @Specialization

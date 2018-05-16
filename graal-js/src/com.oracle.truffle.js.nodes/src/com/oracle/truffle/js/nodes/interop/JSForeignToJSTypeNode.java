@@ -49,6 +49,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -82,6 +83,11 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
 
     @Specialization
     public String fromString(String value) {
+        return value;
+    }
+
+    @Specialization
+    public BigInt fromBigInt(BigInt value) {
         return value;
     }
 

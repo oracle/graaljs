@@ -48,6 +48,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.JSProxyHasPropertyNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -105,6 +106,11 @@ public abstract class InNode extends JSBinaryNode {
 
     @Specialization
     protected static Object doLargeInteger(@SuppressWarnings("unused") Object needle, LargeInteger haystack) {
+        throw Errors.createTypeErrorNotAnObject(haystack);
+    }
+
+    @Specialization
+    protected static Object doBigInt(@SuppressWarnings("unused") Object needle, BigInt haystack) {
         throw Errors.createTypeErrorNotAnObject(haystack);
     }
 

@@ -55,6 +55,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNodeGen.JSToStringWrapperNodeG
 import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -127,6 +128,11 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
 
     @Specialization
     protected String doInteger(int value) {
+        return Boundaries.stringValueOf(value);
+    }
+
+    @Specialization
+    protected String doBigInt(BigInt value) {
         return Boundaries.stringValueOf(value);
     }
 

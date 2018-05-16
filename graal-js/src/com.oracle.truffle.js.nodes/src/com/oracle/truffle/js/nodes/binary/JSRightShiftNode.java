@@ -48,8 +48,11 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 /**
@@ -65,7 +68,7 @@ public abstract class JSRightShiftNode extends JSBinaryIntegerShiftNode {
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         Truncatable.truncate(left);
         Truncatable.truncate(right);
-        if (JSTruffleOptions.UseSuperOperations && right instanceof JSConstantIntegerNode) {
+        if (JSTruffleOptions.UseSuperOperations && (right instanceof JSConstantIntegerNode)) {
             return JSRightShiftConstantNode.create(left, right);
         }
         return JSRightShiftNodeGen.create(left, right);
@@ -80,24 +83,42 @@ public abstract class JSRightShiftNode extends JSBinaryIntegerShiftNode {
         }
     }
 
-    public abstract int executeInt(int a, Object b);
+    public abstract Object execute(Object a, Object b);
 
     @Specialization
     protected int doInteger(int a, int b) {
         return a >> b;
     }
 
+    @Specialization
+    protected BigInt doBigInt(BigInt a, BigInt b,
+                    @Cached("create()") JSLeftShiftNode leftShift) {
+        return leftShift.doBigInt(a, b.negate());
+    }
+
     @Specialization(guards = "!largerThan2e32(b)")
-    protected int doDouble(int a, double b) {
+    protected int doIntDouble(int a, double b) {
         return a >> (int) ((long) b);
     }
 
-    @Specialization(replaces = {"doInteger", "doDouble"})
-    protected int doGeneric(Object a, Object b,
+    @Specialization
+    protected Object doDouble(double a, double b,
                     @Cached("create()") JSRightShiftNode rightShift,
                     @Cached("create()") JSToInt32Node leftInt32,
                     @Cached("create()") JSToUInt32Node rightUInt32) {
-        return rightShift.executeInt(leftInt32.executeInt(a), rightUInt32.execute(b));
+
+        return rightShift.execute(leftInt32.executeInt(a), rightUInt32.execute(b));
+    }
+
+    @Specialization(replaces = {"doInteger", "doIntDouble", "doDouble", "doBigInt"})
+    protected Object doGeneric(Object a, Object b,
+                    @Cached("create()") JSRightShiftNode rightShift,
+                    @Cached("create()") JSToNumericNode leftToNumeric,
+                    @Cached("create()") JSToNumericNode rightToNumeric) {
+        Object operandA = leftToNumeric.execute(a);
+        Object operandB = rightToNumeric.execute(b);
+        JSRuntime.ensureBothSameNumericType(operandA, operandB);
+        return rightShift.execute(operandA, operandB);
     }
 
     public static JSRightShiftNode create() {

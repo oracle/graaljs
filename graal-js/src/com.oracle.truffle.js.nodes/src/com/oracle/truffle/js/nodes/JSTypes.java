@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.TypeCheck;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -58,7 +59,8 @@ import com.oracle.truffle.js.runtime.objects.PropertyReference;
 /**
  * @see JavaScriptNode
  */
-@TypeSystem({boolean.class, int.class, double.class, long.class, LargeInteger.class, String.class, DynamicObject.class, TruffleObject.class, char.class, byte.class, float.class, Object[].class})
+@TypeSystem({boolean.class, int.class, double.class, long.class, LargeInteger.class, BigInt.class, String.class, DynamicObject.class, TruffleObject.class, char.class, byte.class, float.class,
+                Object[].class})
 public class JSTypes {
 
     @ImplicitCast

@@ -45,7 +45,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
 @NodeInfo(shortName = "%")
 public abstract class JSModuloNode extends JSBinaryNode {
@@ -105,12 +108,25 @@ public abstract class JSModuloNode extends JSBinaryNode {
         return a % b;
     }
 
-    @Specialization(replaces = {"doInt", "doDouble"})
+    @Specialization(guards = "isBigIntZero(b)")
+    protected void doBigIntegerZeroDivision(@SuppressWarnings("unused") BigInt a, @SuppressWarnings("unused") BigInt b) {
+        throw Errors.createRangeError("Remainder of zero division");
+    }
+
+    @Specialization(guards = {"!isBigIntZero(b)"})
+    protected BigInt doBigInteger(BigInt a, BigInt b) {
+        return a.remainder(b);
+    }
+
+    @Specialization(replaces = {"doInt", "doDouble", "doBigIntegerZeroDivision", "doBigInteger"})
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSModuloNode nestedModuloNode,
-                    @Cached("create()") JSToNumberNode toNumber1Node,
-                    @Cached("create()") JSToNumberNode toNumber2Node) {
-        return nestedModuloNode.execute(toNumber1Node.execute(a), toNumber2Node.execute(b));
+                    @Cached("create()") JSToNumericNode toNumeric1Node,
+                    @Cached("create()") JSToNumericNode toNumeric2Node) {
+        Object operandA = toNumeric1Node.execute(a);
+        Object operandB = toNumeric2Node.execute(b);
+        JSRuntime.ensureBothSameNumericType(operandA, operandB);
+        return nestedModuloNode.execute(operandA, operandB);
     }
 
     @Override

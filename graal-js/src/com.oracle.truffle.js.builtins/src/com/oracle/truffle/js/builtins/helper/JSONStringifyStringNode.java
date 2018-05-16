@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -128,6 +129,8 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             jsonQuote(builder, value.toString());
         } else if (JSRuntime.isNumber(value)) {
             appendNumber(builder, (Number) value);
+        } else if (JSRuntime.isBigInt(value)) {
+            throw Errors.createTypeError("Do not know how to serialize a BigInt");
         } else if (JSObject.isJSObject(value) && !JSRuntime.isCallable(value)) {
             TruffleObject valueObj = (TruffleObject) value;
             if (JSRuntime.isArray(valueObj)) {
@@ -218,6 +221,8 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         JSClass builtinClass = JSObject.getJSClass(valueObj);
         if (builtinClass == JSNumber.INSTANCE) {
             return JSRuntime.toNumber(valueObj);
+        } else if (builtinClass == JSBigInt.INSTANCE) {
+            return JSBigInt.valueOf(valueObj);
         } else if (builtinClass == JSString.INSTANCE) {
             return JSRuntime.toString(valueObj);
         } else if (builtinClass == JSBoolean.INSTANCE) {

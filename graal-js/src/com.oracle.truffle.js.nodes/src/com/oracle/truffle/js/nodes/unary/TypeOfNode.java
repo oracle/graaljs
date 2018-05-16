@@ -58,8 +58,10 @@ import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -131,6 +133,11 @@ public abstract class TypeOfNode extends JSUnaryNode {
     @Specialization
     protected String doBoolean(boolean operand) {
         return JSBoolean.TYPE_NAME;
+    }
+
+    @Specialization
+    protected String doBigInt(BigInt operand) {
+        return JSBigInt.TYPE_NAME;
     }
 
     @Specialization(guards = "isJSNull(operand)")

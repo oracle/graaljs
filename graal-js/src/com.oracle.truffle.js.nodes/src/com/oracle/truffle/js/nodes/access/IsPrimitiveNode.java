@@ -49,6 +49,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -65,6 +66,11 @@ public abstract class IsPrimitiveNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isUndefined(operand)"})
     protected static boolean doUndefined(@SuppressWarnings("unused") DynamicObject operand) {
+        return true;
+    }
+
+    @Specialization
+    protected static boolean doBigInt(@SuppressWarnings("unused") BigInt operand) {
         return true;
     }
 

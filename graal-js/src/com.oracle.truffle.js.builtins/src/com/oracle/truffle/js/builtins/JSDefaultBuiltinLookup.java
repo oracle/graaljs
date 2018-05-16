@@ -143,6 +143,8 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         if (JSTruffleOptions.MaxECMAScriptVersion >= 9) {
             defineBuiltins(new AsyncFromSyncIteratorPrototypeBuiltins());
             defineBuiltins(new AsyncGeneratorPrototypeBuiltins());
+            defineBuiltins(new BigIntPrototypeBuiltins());
+            defineBuiltins(new BigIntFunctionBuiltins());
         }
 
         if (JSTruffleOptions.Test262Mode) {

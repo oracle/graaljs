@@ -42,67 +42,77 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.cast.JSToBigIntNodeGen.JSToBigIntInnerConversionNodeGen;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.Symbol;
 
-/**
- * Implementation of the abstract operation ToIndex(value) (ES7 7.1.17).
- */
-public abstract class JSToIndexNode extends JavaScriptBaseNode {
+public abstract class JSToBigIntNode extends JavaScriptBaseNode {
 
-    final BranchProfile negativeIndexBranch = BranchProfile.create();
+    public abstract Object execute(Object value);
 
-    public static JSToIndexNode create() {
-        return JSToIndexNodeGen.create();
+    public final BigInt executeBigInteger(Object value) {
+        return (BigInt) execute(value);
     }
 
-    public abstract long executeLong(Object value);
-
-    @Specialization(guards = "isUndefined(value)")
-    protected long doUndefined(@SuppressWarnings("unused") DynamicObject value) {
-        return 0;
+    public static JSToBigIntNode create() {
+        return JSToBigIntNodeGen.create();
     }
 
     @Specialization
-    protected long doInt(int value) {
-        if (value < 0) {
-            negativeIndexBranch.enter();
-            throw Errors.createRangeError("index is negative");
+    protected Object doIt(Object value,
+                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Cached("create()") JSToBigIntInnerConversionNode innerConversionNode) {
+
+        return innerConversionNode.execute(toPrimitiveNode.execute(value));
+    }
+
+    public abstract static class JSToBigIntInnerConversionNode extends JavaScriptBaseNode {
+
+        public static JSToBigIntInnerConversionNode create() {
+            return JSToBigIntInnerConversionNodeGen.create();
         }
-        return value;
-    }
 
-    @Specialization
-    protected long doDouble(double value,
-                    @Cached("create()") BranchProfile tooLargeIndexBranch) {
-        long integerIndex = (long) value;
-        if (integerIndex < 0) {
-            negativeIndexBranch.enter();
-            throw Errors.createRangeError("index is negative");
+        public abstract Object execute(Object value);
+
+        public final BigInt executeBigInteger(Object value) {
+            return (BigInt) execute(value);
         }
-        if (integerIndex <= JSRuntime.MAX_SAFE_INTEGER_LONG) {
-            return integerIndex;
-        } else {
-            tooLargeIndexBranch.enter();
-            throw Errors.createRangeError("index is too large");
+
+        @Specialization
+        protected static BigInt doBoolean(boolean value) {
+            return value ? BigInt.ONE : BigInt.ZERO;
         }
-    }
 
-    @Specialization
-    protected long doBigInt(@SuppressWarnings("unused") BigInt value) {
-        throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value", this);
-    }
+        @Specialization
+        protected static BigInt doBigInt(BigInt value) {
+            return value;
+        }
 
-    @Specialization
-    protected static long doObject(Object value,
-                    @Cached("create()") JSToNumberNode toNumberNode,
-                    @Cached("create()") JSToIndexNode recursiveToIndexNode) {
-        Number number = (Number) toNumberNode.execute(value);
-        assert number instanceof Integer || number instanceof Double;
-        return recursiveToIndexNode.executeLong(number);
+        @Specialization(guards = "isNumber(value)")
+        protected static void doDouble(Object value) {
+            throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, value);
+        }
+
+        @Specialization
+        protected static void doSymbol(Symbol value) {
+            throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, value);
+        }
+
+        @Specialization(guards = "isNullOrUndefined(value)")
+        protected static void doNullOrUndefined(Object value) {
+            throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, value);
+        }
+
+        @Specialization
+        protected static BigInt doString(String value) {
+            try {
+                return BigInt.valueOf(value);
+            } catch (NumberFormatException e) {
+                throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.SyntaxError, value);
+            }
+        }
     }
 }

@@ -49,8 +49,12 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 /**
@@ -64,6 +68,7 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     }
 
     @Child private JSToUInt32Node toUInt32Node;
+    @Child private JSToNumericNode toNumericNode;
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         Truncatable.truncate(left);
@@ -73,6 +78,8 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
         }
         return JSUnsignedRightShiftNodeGen.create(left, right);
     }
+
+    protected abstract Number executeNumber(Object a, Object b);
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
@@ -108,20 +115,56 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     }
 
     @Specialization(guards = "!rvalZero(b)")
-    protected int doDouble(double a, int b) {
-        return (int) (toUInt32(a) >>> (b & 0x1F));
+    protected Number doDouble(double a, int b,
+                    @Cached("createBinaryProfile()") ConditionProfile returnType) {
+
+        long lnum = toUInt32(a);
+        int shiftCount = b & 0x1F;
+        if (returnType.profile(lnum >= Integer.MAX_VALUE || lnum <= Integer.MIN_VALUE)) {
+            return lnum >>> shiftCount;
+        }
+        return (lnum >>> shiftCount);
     }
 
-    @Specialization(guards = "!isHandled(lval, rval)")
-    protected Object doGeneric(Object lval, Object rval,
+    @Specialization
+    protected Number doIntDouble(int a, double b,
                     @Cached("create()") JSToUInt32Node rvalToUint32Node,
                     @Cached("createBinaryProfile()") ConditionProfile returnType) {
-        long lnum = toUInt32(lval);
-        int shiftCount = (int) (rvalToUint32Node.executeLong(rval) & 0x1F);
+
+        long lnum = toUInt32(a);
+        int shiftCount = (int) rvalToUint32Node.executeLong(b) & 0x1F;
         if (returnType.profile(lnum >= Integer.MAX_VALUE || lnum <= Integer.MIN_VALUE)) {
             return (double) (lnum >>> shiftCount);
         }
-        return (int) (lnum >>> shiftCount);
+        return (lnum >>> shiftCount);
+    }
+
+    @Specialization
+    protected double doDoubleDouble(double a, double b) {
+        return (toUInt32(a) >>> ((int) toUInt32(b) & 0x1F));
+    }
+
+    @Specialization
+    protected void doBigInt(@SuppressWarnings("unused") BigInt a, @SuppressWarnings("unused") BigInt b) {
+        throw Errors.createTypeError("BigInts have no unsigned right shift, use >> instead");
+    }
+
+    @Specialization(guards = "!isHandled(lval, rval)")
+    protected Number doGeneric(Object lval, Object rval,
+                    @Cached("create()") JSToNumericNode rvalToNumericNode,
+                    @Cached("copyUninitialized()") JavaScriptNode innerShiftNode) {
+        Object lnum = toNumeric(lval);
+        Object rnum = rvalToNumericNode.executeObject(rval);
+        JSRuntime.ensureBothSameNumericType(lnum, rnum);
+        return ((JSUnsignedRightShiftNode) innerShiftNode).executeNumber(lnum, rnum);
+    }
+
+    private Object toNumeric(Object target) {
+        if (toNumericNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            toNumericNode = insert(JSToNumericNode.create());
+        }
+        return toNumericNode.executeObject(target);
     }
 
     private long toUInt32(Object target) {
@@ -133,7 +176,7 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     }
 
     protected static boolean isHandled(Object lval, Object rval) {
-        return (lval instanceof Integer || lval instanceof Double) && rval instanceof Integer;
+        return (lval instanceof Integer || lval instanceof Double) && (rval instanceof Integer || rval instanceof Double);
     }
 
     @Override

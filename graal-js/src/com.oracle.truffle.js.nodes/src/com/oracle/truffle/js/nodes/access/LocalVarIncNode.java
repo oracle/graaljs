@@ -57,9 +57,10 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.binary.JSAddNode;
 import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
@@ -81,6 +82,8 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
         public abstract double doDouble(double value);
 
         public abstract Number doNumber(Number value, ConditionProfile isIntegerProfile, ConditionProfile isBoundaryValue);
+
+        public abstract BigInt doBigInt(BigInt value);
 
         public abstract LargeInteger doLargeInteger(LargeInteger value);
     }
@@ -109,6 +112,11 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
                 double doubleValue = JSRuntime.doubleValue(numValue);
                 return doubleValue + 1d;
             }
+        }
+
+        @Override
+        public BigInt doBigInt(BigInt value) {
+            return value.add(BigInt.ONE);
         }
 
         @Override
@@ -144,6 +152,11 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
         }
 
         @Override
+        public BigInt doBigInt(BigInt value) {
+            return value.add(BigInt.ONE);
+        }
+
+        @Override
         public LargeInteger doLargeInteger(LargeInteger value) {
             return value.decrementExact();
         }
@@ -176,11 +189,6 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
     @Override
     public final ScopeFrameNode getLevelFrameNode() {
         return scopeFrameNode;
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == Number.class;
     }
 }
 
@@ -347,15 +355,20 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     @Specialization(guards = {"isObject(frame)", "ensureObjectKind(frame)"})
     public Object doObject(Frame frame,
                     @Cached("createBinaryProfile()") ConditionProfile isIntegerProfile,
+                    @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
-                    @Cached("create()") JSToNumberNode toNumber,
+                    @Cached("create()") JSToNumericNode toNumeric,
                     @Cached("create()") BranchProfile deadBranch) {
         Object value = getObject(frame);
         if (hasTemporalDeadZone()) {
             checkNotDead(value, deadBranch);
         }
-        Number number = toNumber.executeNumber(value);
-        frame.setObject(frameSlot, op.doNumber(number, isIntegerProfile, isBoundaryProfile));
+        Object number = toNumeric.executeObject(value);
+        if (isBigIntProfile.profile(number instanceof BigInt)) {
+            frame.setObject(frameSlot, op.doBigInt((BigInt) number));
+        } else {
+            frame.setObject(frameSlot, op.doNumber((Number) number, isIntegerProfile, isBoundaryProfile));
+        }
         return number;
     }
 
@@ -472,14 +485,21 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     @Specialization(guards = {"isObject(frame)", "ensureObjectKind(frame)"})
     public Object doObject(Frame frame,
                     @Cached("createBinaryProfile()") ConditionProfile isIntegerProfile,
+                    @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
-                    @Cached("create()") JSToNumberNode toNumber,
+                    @Cached("create()") JSToNumericNode toNumeric,
                     @Cached("create()") BranchProfile deadBranch) {
         Object value = getObject(frame);
         if (hasTemporalDeadZone()) {
             checkNotDead(value, deadBranch);
         }
-        Number newValue = op.doNumber(toNumber.executeNumber(value), isIntegerProfile, isBoundaryProfile);
+        Object number = toNumeric.executeObject(value);
+        Object newValue;
+        if (isBigIntProfile.profile(number instanceof BigInt)) {
+            newValue = op.doBigInt((BigInt) number);
+        } else {
+            newValue = op.doNumber((Number) number, isIntegerProfile, isBoundaryProfile);
+        }
         frame.setObject(frameSlot, newValue);
         return newValue;
     }

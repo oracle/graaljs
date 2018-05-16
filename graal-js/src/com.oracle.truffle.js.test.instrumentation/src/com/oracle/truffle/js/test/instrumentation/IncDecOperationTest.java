@@ -47,6 +47,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpression
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -63,17 +64,14 @@ public class IncDecOperationTest extends FineGrainedAccessTest {
         enter(WritePropertyExpressionTag.class, (e, write) -> {
             assertAttribute(e, KEY, "a");
             write.input(assertJSObjectInput);
-            enter(BinaryExpressionTag.class, (e1, bin) -> {
-                assertAttribute(e1, OPERATOR, "+");
+            enter(UnaryExpressionTag.class, (e1, bin) -> {
+                assertAttribute(e1, OPERATOR, "++");
                 // read lhs global 'a'
                 enter(ReadPropertyExpressionTag.class, (e2, p) -> {
                     assertAttribute(e2, KEY, "a");
                     p.input(assertGlobalObjectInput);
                 }).exit(assertReturnValue(42));
                 bin.input(42);
-                // read rhs '1'
-                enter(LiteralExpressionTag.class).exit(assertReturnValue(1));
-                bin.input(1);
             }).exit();
             write.input(43);
         }).exit();
@@ -89,17 +87,14 @@ public class IncDecOperationTest extends FineGrainedAccessTest {
         enter(WritePropertyExpressionTag.class, (e, write) -> {
             assertAttribute(e, KEY, "a");
             write.input(assertJSObjectInput);
-            enter(BinaryExpressionTag.class, (e1, bin) -> {
-                assertAttribute(e1, OPERATOR, "-");
+            enter(UnaryExpressionTag.class, (e1, bin) -> {
+                assertAttribute(e1, OPERATOR, "--");
                 // read lhs global 'a'
                 enter(ReadPropertyExpressionTag.class, (e2, p) -> {
                     assertAttribute(e2, KEY, "a");
                     p.input(assertGlobalObjectInput);
                 }).exit(assertReturnValue(42));
                 bin.input(42);
-                // read rhs '1'
-                enter(LiteralExpressionTag.class).exit(assertReturnValue(1));
-                bin.input(1);
             }).exit();
             write.input(41);
         }).exit();
@@ -107,12 +102,11 @@ public class IncDecOperationTest extends FineGrainedAccessTest {
 
     @Test
     public void decProperty() {
-        evalWithTag("var a = {x:42}; a.x--;", BinaryExpressionTag.class);
+        evalWithTag("var a = {x:42}; a.x--;", UnaryExpressionTag.class);
 
-        enter(BinaryExpressionTag.class, (e, b) -> {
-            assertAttribute(e, OPERATOR, "-");
+        enter(UnaryExpressionTag.class, (e, b) -> {
+            assertAttribute(e, OPERATOR, "--");
             b.input(42);
-            b.input(1);
         }).exit();
     }
 

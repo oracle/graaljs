@@ -135,6 +135,7 @@ import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
 import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
 import com.oracle.truffle.js.nodes.binary.JSUnsignedRightShiftNode;
 import com.oracle.truffle.js.nodes.cast.JSPrepareThisNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode.JSToStringWrapperNode;
@@ -277,8 +278,8 @@ public class NodeFactory {
         }
     }
 
-    public JavaScriptNode createUnaryPlus(JavaScriptNode operand) {
-        return JSUnaryPlusNode.create(operand);
+    public JavaScriptNode numericConversion(JavaScriptNode operand) {
+        return JSToNumericNode.create(operand);
     }
 
     public JavaScriptNode createDual(JSContext context, JavaScriptNode left, JavaScriptNode right) {
@@ -392,6 +393,10 @@ public class NodeFactory {
 
     public JavaScriptNode createConstantInteger(int value) {
         return JSConstantNode.createInt(value);
+    }
+
+    public JavaScriptNode createConstantNumericUnit() {
+        return JSConstantNode.createConstantNumericUnit();
     }
 
     public JavaScriptNode createConstantDouble(double value) {

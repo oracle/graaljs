@@ -53,6 +53,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSEqualNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -96,6 +97,11 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
 
     @Specialization
     protected static boolean doLargeInteger(@SuppressWarnings("unused") LargeInteger operand) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doBigInt(@SuppressWarnings("unused") BigInt operand) {
         return false;
     }
 

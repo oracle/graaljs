@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -47,7 +48,9 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
 @NodeInfo(shortName = "*")
@@ -107,12 +110,25 @@ public abstract class JSMultiplyNode extends JSBinaryNode {
         return a * b;
     }
 
+    @Specialization
+    @TruffleBoundary
+    protected BigInt doBigInts(BigInt a, BigInt b) {
+        try {
+            return a.multiply(b);
+        } catch (ArithmeticException ae) {
+            throw Errors.createRangeErrorBigIntMaxSizeExceeded();
+        }
+    }
+
     @Specialization(replaces = "doDouble")
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSMultiplyNode nestedMultiplyNode,
-                    @Cached("create()") JSToNumberNode toNumber1Node,
-                    @Cached("create()") JSToNumberNode toNumber2Node) {
-        return nestedMultiplyNode.execute(toNumber1Node.execute(a), toNumber2Node.execute(b));
+                    @Cached("create()") JSToNumericNode toNumeric1Node,
+                    @Cached("create()") JSToNumericNode toNumeric2Node) {
+        Object operandA = toNumeric1Node.execute(a);
+        Object operandB = toNumeric2Node.execute(b);
+        JSRuntime.ensureBothSameNumericType(operandA, operandB);
+        return nestedMultiplyNode.execute(operandA, operandB);
     }
 
     @Override

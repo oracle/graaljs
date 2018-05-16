@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode.JSStringToNumberWit
 import com.oracle.truffle.js.nodes.cast.JSToNumberNodeGen.JSToNumberWrapperNodeGen;
 import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -88,6 +89,11 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     @Specialization
     protected static double doDouble(double value) {
         return value;
+    }
+
+    @Specialization
+    protected static void doBigInt(@SuppressWarnings("unused") BigInt value) {
+        throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
     }
 
     @Specialization(guards = "isJSNull(value)")

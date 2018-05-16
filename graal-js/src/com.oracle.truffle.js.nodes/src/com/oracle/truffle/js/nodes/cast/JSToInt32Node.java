@@ -55,6 +55,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -171,6 +172,11 @@ public abstract class JSToInt32Node extends JSUnaryNode {
     @Specialization
     protected final int doSymbol(@SuppressWarnings("unused") Symbol value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
+    }
+
+    @Specialization
+    protected int doBigInt(@SuppressWarnings("unused") BigInt value) {
+        throw Errors.createTypeErrorCanNotConvertBigIntToNumber();
     }
 
     @Specialization(guards = "isJSObject(value)")

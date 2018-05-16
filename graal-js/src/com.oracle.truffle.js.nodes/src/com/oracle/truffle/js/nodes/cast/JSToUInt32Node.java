@@ -58,6 +58,7 @@ import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode.JSStringToNumberWit
 import com.oracle.truffle.js.nodes.cast.JSToUInt32NodeGen.JSToUInt32WrapperNodeGen;
 import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -141,6 +142,11 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
     @Specialization
     protected final Number doSymbol(@SuppressWarnings("unused") Symbol value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
+    }
+
+    @Specialization
+    protected int doBigInt(@SuppressWarnings("unused") BigInt value) {
+        throw Errors.createTypeErrorCanNotConvertBigIntToNumber();
     }
 
     @Specialization(guards = "isJSObject(value)")

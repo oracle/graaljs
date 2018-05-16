@@ -40,13 +40,16 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.runtime.BigInt;
 
 @NodeInfo(shortName = "~")
 public abstract class JSComplementNode extends JSUnaryNode {
@@ -57,7 +60,7 @@ public abstract class JSComplementNode extends JSUnaryNode {
 
     public static JSComplementNode create(JavaScriptNode operand) {
         Truncatable.truncate(operand);
-        return JSComplementNodeGen.create(JSToInt32Node.create(operand));
+        return JSComplementNodeGen.create(JSToNumericNode.create(operand));
     }
 
     @Override
@@ -74,9 +77,21 @@ public abstract class JSComplementNode extends JSUnaryNode {
         return ~a;
     }
 
+    @Specialization
+    protected int doDouble(double a,
+                    @Cached("create()") JSToInt32Node toInt32Node) {
+
+        return doInteger(toInt32Node.executeInt(a));
+    }
+
+    @Specialization
+    protected BigInt doBigInt(BigInt a) {
+        return a.not();
+    }
+
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == int.class;
+        return clazz == Number.class;
     }
 
     @Override

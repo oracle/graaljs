@@ -76,8 +76,8 @@ import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToLocal
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToLocaleTimeStringIntlNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToLocaleTimeStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToPrimitiveNodeGen;
-import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStringIntlNodeGen;
+import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToTimeStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateValueOfNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltins.ObjectOperation;
@@ -211,19 +211,19 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return JSDateToTimeStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case toLocaleString:
                 if (context.isOptionIntl402()) {
-                    return JSDateToStringIntlNodeGen.create(context, builtin, NO_UTC, args().withThis().fixedArgs(3).createArgumentNodes(context));
+                    return JSDateToStringIntlNodeGen.create(context, builtin, NO_UTC, args().withThis().fixedArgs(2).createArgumentNodes(context));
                 } else {
                     return JSDateToStringNodeGen.create(context, builtin, NO_UTC, args().withThis().createArgumentNodes(context));
                 }
             case toLocaleDateString:
                 if (context.isOptionIntl402()) {
-                    return JSDateToLocaleDateStringIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
+                    return JSDateToLocaleDateStringIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
                 } else {
                     return JSDateToLocaleDateStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
                 }
             case toLocaleTimeString:
                 if (context.isOptionIntl402()) {
-                    return JSDateToLocaleTimeStringIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
+                    return JSDateToLocaleTimeStringIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
                 } else {
                     return JSDateToLocaleTimeStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
                 }

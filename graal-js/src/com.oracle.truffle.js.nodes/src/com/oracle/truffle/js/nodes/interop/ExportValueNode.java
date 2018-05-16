@@ -48,6 +48,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -120,6 +121,11 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static boolean doBoolean(boolean value, @SuppressWarnings("unused") Object thiz) {
+        return value;
+    }
+
+    @Specialization
+    protected static BigInt doBigInt(BigInt value, @SuppressWarnings("unused") Object thiz) {
         return value;
     }
 

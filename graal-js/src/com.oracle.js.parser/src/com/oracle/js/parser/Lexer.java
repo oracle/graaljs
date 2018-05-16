@@ -1407,7 +1407,7 @@ public class Lexer extends Scanner {
 
     /**
      * Determines if the specified character is permissible as the first character in a ECMAScript identifier.
-     * 
+     *
      * @param codePoint the character to be tested
      * @return {@code true} if the character may start an ECMAScript identifier; {@code false} otherwise
      */
@@ -1436,7 +1436,7 @@ public class Lexer extends Scanner {
 
     /**
      * Determines if the specified character may be part of an ECMAScript identifier as other than the first character.
-     * 
+     *
      * @param codePoint the character to be tested
      * @return {@code true} if the character may be part of an ECMAScript identifier; {@code false} otherwise
      */
