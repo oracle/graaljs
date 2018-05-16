@@ -31,6 +31,11 @@ package com.oracle.js.parser.ir;
  *
  */
 public abstract class Expression extends Node {
+    /**
+     * Determines whether this expression is enclosed in parenthesis.
+     */
+    private boolean parenthesized;
+
     Expression(final long token, final int start, final int finish) {
         super(token, start, finish);
     }
@@ -71,4 +76,22 @@ public abstract class Expression extends Node {
     public boolean isAlwaysTrue() {
         return false;
     }
+
+    /**
+     * Determines whether this expression is enclosed in parenthesis.
+     *
+     * @return {@code true} if this expression is enclosed in parenthesis, returns {@code false}
+     *         otherwise.
+     */
+    public boolean isParenthesized() {
+        return parenthesized;
+    }
+
+    /**
+     * Marks this expression as enclosed in parenthesis.
+     */
+    public void makeParenthesized() {
+        parenthesized = true;
+    }
+
 }
