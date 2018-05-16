@@ -710,8 +710,8 @@ public class NodeFactory {
         return ObjectLiteralNode.newDataMember(keyName, isStatic, enumerable, value);
     }
 
-    public ObjectLiteralMemberNode createProtoMember(String keyName, boolean isStatic, boolean enumerable, JavaScriptNode value) {
-        return ObjectLiteralNode.newProtoMember(keyName, isStatic, enumerable, value);
+    public ObjectLiteralMemberNode createProtoMember(String keyName, boolean isStatic, JavaScriptNode value) {
+        return ObjectLiteralNode.newProtoMember(keyName, isStatic, value);
     }
 
     public ObjectLiteralMemberNode createComputedDataMember(JavaScriptNode key, boolean isStatic, boolean enumerable, JavaScriptNode value) {
@@ -722,8 +722,8 @@ public class NodeFactory {
         return ObjectLiteralNode.newComputedAccessorMember(key, isStatic, enumerable, getter, setter);
     }
 
-    public ObjectLiteralMemberNode createSpreadObjectMember(boolean isStatic, boolean enumerable, JavaScriptNode value) {
-        return ObjectLiteralNode.newSpreadObjectMember(isStatic, enumerable, value);
+    public ObjectLiteralMemberNode createSpreadObjectMember(boolean isStatic, JavaScriptNode value) {
+        return ObjectLiteralNode.newSpreadObjectMember(isStatic, value);
     }
 
     public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members, String className) {

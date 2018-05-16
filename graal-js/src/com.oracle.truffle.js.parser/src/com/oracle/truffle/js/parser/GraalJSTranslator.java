@@ -2659,7 +2659,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (property.getValue() != null) {
                 member = enterObjectPropertyNode(property, keyName, isClass);
             } else if (property.isRest()) {
-                member = factory.createSpreadObjectMember(property.isStatic(), !isClass, transform(((UnaryNode) property.getKey()).getExpression()));
+                member = factory.createSpreadObjectMember(property.isStatic(), transform(((UnaryNode) property.getKey()).getExpression()));
             } else {
                 member = enterObjectAccessorNode(property, keyName, isClass);
             }
@@ -2701,7 +2701,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (property.isComputed()) {
             return factory.createComputedDataMember(transform(property.getKey()), property.isStatic(), enumerable, value);
         } else if (!isClass && property.isProto()) {
-            return factory.createProtoMember(keyName, property.isStatic(), enumerable, value);
+            return factory.createProtoMember(keyName, property.isStatic(), value);
         } else {
             setAnonymousFunctionName(value, keyName);
             return factory.createDataMember(keyName, property.isStatic(), enumerable, value);

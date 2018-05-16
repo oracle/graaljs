@@ -298,7 +298,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
     private static PropertyDescriptor toPropertyDescriptor(Property p, Object value) {
         PropertyDescriptor desc;
         if (JSProperty.isAccessor(p)) {
-            desc = PropertyDescriptor.createAccessor(((Accessor) value).getSetter(), ((Accessor) value).getGetter());
+            desc = PropertyDescriptor.createAccessor(((Accessor) value).getGetter(), ((Accessor) value).getSetter());
             desc.setConfigurable(JSProperty.isConfigurable(p));
             desc.setEnumerable(JSProperty.isEnumerable(p));
         } else {
