@@ -5199,9 +5199,6 @@
     "filePath" : "language/expressions/arrow-function/dflt-params-ref-later.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/arrow-function/dflt-params-ref-prior.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/arrow-function/dflt-params-ref-self.js",
     "status" : "FAIL"
   }, {
@@ -5260,10 +5257,6 @@
   }, {
     "filePath" : "language/expressions/assignment/S11.13.1_A7_T3.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/async-arrow-function/dflt-params-ref-prior.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
     "filePath" : "language/expressions/async-arrow-function/early-errors-arrow-formals-lineterminator.js",
     "status" : "FAIL",
