@@ -461,8 +461,8 @@ public abstract class Environment {
     }
 
     public void addFrameSlotFromSymbol(com.oracle.js.parser.ir.Symbol symbol) {
-        assert !getBlockFrameDescriptor().getIdentifiers().contains(symbol.getName()) || this instanceof FunctionEnvironment &&
-                        (function().isParameter(symbol.getName()) || symbol.getName().equals(ARGUMENTS_NAME));
+        // Frame slot may already exist for simple parameters and "arguments".
+        assert !getBlockFrameDescriptor().getIdentifiers().contains(symbol.getName()) || this instanceof FunctionEnvironment;
         int flags = symbol.getFlags();
         getBlockFrameDescriptor().findOrAddFrameSlot(symbol.getName(), FrameSlotFlags.of(flags), FrameSlotKind.Illegal);
     }

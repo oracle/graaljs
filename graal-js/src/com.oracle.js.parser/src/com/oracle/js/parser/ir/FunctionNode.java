@@ -99,6 +99,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /** Line number of function start */
     private final int lineNumber;
 
+    /** Number of formal parameters (including optional ones). */
+    private final int numOfParams;
+
     /** The typical number of arguments expected by the function. */
     private final int length;
 
@@ -214,6 +217,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /** Is it an async function? */
     public static final int IS_ASYNC = 1 << 25;
 
+    /** Flag indicating that this function has a non-simple parameter list. */
+    public static final int HAS_NON_SIMPLE_PARAMETER_LIST = 1 << 26;
+
     /**
      * Constructor
      *
@@ -241,6 +247,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         final IdentNode ident,
         final String name,
         final int length,
+        final int numOfParams,
         final List<IdentNode> parameters,
         final Block parameterBlock,
         final FunctionNode.Kind kind,
@@ -256,6 +263,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         this.name             = name;
         this.kind             = kind;
         this.length           = length;
+        this.numOfParams      = numOfParams;
         this.parameters       = parameters;
         this.parameterBlock   = parameterBlock;
         this.firstToken       = firstToken;
@@ -274,7 +282,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         final int flags,
         final String name,
         final Block body,
-        final int length,
         final List<IdentNode> parameters,
         final Block parameterBlock,
         final int thisProperties,
@@ -287,7 +294,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         this.name             = name;
         this.lastToken        = lastToken;
         this.body             = body;
-        this.length           = length;
         this.parameters       = parameters;
         this.parameterBlock   = parameterBlock;
         this.thisProperties   = thisProperties;
@@ -297,6 +303,8 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         this.ident           = functionNode.ident;
         this.kind            = functionNode.kind;
         this.firstToken      = functionNode.firstToken;
+        this.length          = functionNode.length;
+        this.numOfParams     = functionNode.numOfParams;
         this.module          = functionNode.module;
     }
 
@@ -414,7 +422,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
                         flags,
                         name,
                         body,
-                        length,
                         parameters,
                         parameterBlock,
                         thisProperties,
@@ -476,6 +483,13 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         return body;
     }
 
+    public Block getBodyBlock() {
+        if (body.isParameterBlock()) {
+            return ((BlockStatement) body.getLastStatement()).getBlock();
+        }
+        return body;
+    }
+
     /**
      * Reset the function body
      * @param lc lexical context
@@ -499,7 +513,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
                                     0),
                         name,
                         body,
-                        length,
                         parameters,
                         parameterBlock,
                         thisProperties,
@@ -607,7 +620,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      * @return the number of parameters
      */
     public int getNumOfParams() {
-        return parameters.size();
+        return numOfParams;
     }
 
     /**
@@ -642,7 +655,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
                         flags,
                         name,
                         body,
-                        length,
                         parameters,
                         parameterBlock,
                         thisProperties,
@@ -720,6 +732,10 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     public boolean isAsync() {
         return getFlag(IS_ASYNC);
+    }
+
+    public boolean hasSimpleParameterList() {
+        return !getFlag(HAS_NON_SIMPLE_PARAMETER_LIST);
     }
 
     public boolean isAnalyzed() {

@@ -216,6 +216,9 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
         case DECPREFIX:
             sb.append("++");
             break;
+        case ASSIGN_INIT:
+            sb.append(":=");
+            break;
         default:
             sb.append(tokenType.getName());
             break;

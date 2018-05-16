@@ -60,6 +60,7 @@ import com.oracle.js.parser.ir.NameSpaceImportNode;
 import com.oracle.js.parser.ir.NamedImportsNode;
 import com.oracle.js.parser.ir.Node;
 import com.oracle.js.parser.ir.ObjectNode;
+import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyNode;
 import com.oracle.js.parser.ir.ReturnNode;
 import com.oracle.js.parser.ir.RuntimeNode;
@@ -504,5 +505,14 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
      */
     public R enterBlockExpression(BlockExpression blockExpression) {
         return enterDefault(blockExpression);
+    }
+
+    /**
+     * Callback for entering a ParameterNode
+     *
+     * @param  paramNode the node
+     */
+    public R enterParameterNode(final ParameterNode paramNode) {
+        return enterDefault(paramNode);
     }
 }
