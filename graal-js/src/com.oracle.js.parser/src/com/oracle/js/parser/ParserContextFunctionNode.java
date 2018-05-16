@@ -252,6 +252,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             }
         } else {
             containsDefaultParameter = true;
+            simpleParameterList = false;
         }
     }
 

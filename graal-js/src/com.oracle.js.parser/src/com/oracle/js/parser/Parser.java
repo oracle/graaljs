@@ -4366,9 +4366,6 @@ loop:
 
                 if (currentFunction != null) {
                     currentFunction.addParameterBinding(ident);
-                    if (ident.isRestParameter() || ident.isDefaultParameter()) {
-                        currentFunction.setSimpleParameterList(false);
-                    }
                 }
                 if (restParameter) {
                     break;
