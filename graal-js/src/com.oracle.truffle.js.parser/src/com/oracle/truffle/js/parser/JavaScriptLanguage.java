@@ -323,6 +323,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     return "Array" + foreignArrayToString(realm, truffleObject);
                 } else if (ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), truffleObject)) {
                     return "Executable";
+                } else if (ForeignAccess.sendIsBoxed(Message.IS_BOXED.createNode(), truffleObject)) {
+                    return toString(realm, ForeignAccess.sendUnbox(Message.UNBOX.createNode(), truffleObject));
                 } else {
                     return "Object" + foreignObjectToString(realm, truffleObject);
                 }
