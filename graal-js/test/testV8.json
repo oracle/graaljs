@@ -1151,9 +1151,6 @@
     "status" : "SKIP",
     "comment" : "timeout unknown"
   }, {
-    "filePath" : "mjsunit/regress/regress-4577.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-458987.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"

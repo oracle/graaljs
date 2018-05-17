@@ -5196,9 +5196,6 @@
     "status" : "SKIP",
     "comment" : "GR-6710 BigInt propsal"
   }, {
-    "filePath" : "language/expressions/arrow-function/dflt-params-ref-later.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/arrow-function/dflt-params-ref-self.js",
     "status" : "FAIL"
   }, {
@@ -5262,10 +5259,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
-    "filePath" : "language/expressions/async-generator/dflt-params-ref-later.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/expressions/async-generator/dflt-params-ref-self.js",
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
@@ -5290,10 +5283,6 @@
   }, {
     "filePath" : "language/expressions/async-generator/expression-yield-star-before-newline.js",
     "status" : "SKIP"
-  }, {
-    "filePath" : "language/expressions/async-generator/named-dflt-params-ref-later.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
   }, {
     "filePath" : "language/expressions/async-generator/named-dflt-params-ref-self.js",
     "status" : "FAIL",
@@ -5427,15 +5416,7 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
-    "filePath" : "language/expressions/class/async-gen-meth-dflt-params-ref-later.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/expressions/class/async-gen-meth-dflt-params-ref-self.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/expressions/class/async-gen-meth-static-dflt-params-ref-later.js",
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
   }, {
@@ -5923,25 +5904,13 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-09-06)"
   }, {
-    "filePath" : "language/expressions/class/gen-meth-dflt-params-ref-later.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/class/gen-meth-dflt-params-ref-self.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/class/gen-meth-static-dflt-params-ref-later.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/class/gen-meth-static-dflt-params-ref-self.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/class/meth-dflt-params-ref-later.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/class/meth-dflt-params-ref-self.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/class/meth-static-dflt-params-ref-later.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/class/meth-static-dflt-params-ref-self.js",
@@ -6053,9 +6022,6 @@
     "status" : "FAIL",
     "comment" : "TODO: script passes with disabled assertions"
   }, {
-    "filePath" : "language/expressions/function/dflt-params-ref-later.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/function/dflt-params-ref-self.js",
     "status" : "FAIL"
   }, {
@@ -6077,9 +6043,6 @@
     "filePath" : "language/expressions/generators/arguments-with-arguments-fn.js",
     "status" : "FAIL",
     "comment" : "TODO: script passes with disabled assertions"
-  }, {
-    "filePath" : "language/expressions/generators/dflt-params-ref-later.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/generators/dflt-params-ref-self.js",
     "status" : "FAIL"
@@ -6215,10 +6178,6 @@
     "status" : "SKIP",
     "comment" : "new SKIPs after update 2018-03-19"
   }, {
-    "filePath" : "language/expressions/object/method-definition/async-gen-meth-dflt-params-ref-later.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/expressions/object/method-definition/async-gen-meth-dflt-params-ref-self.js",
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
@@ -6231,13 +6190,7 @@
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
   }, {
-    "filePath" : "language/expressions/object/method-definition/gen-meth-dflt-params-ref-later.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/object/method-definition/gen-meth-dflt-params-ref-self.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/object/method-definition/meth-dflt-params-ref-later.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/object/method-definition/meth-dflt-params-ref-self.js",
@@ -6790,10 +6743,6 @@
     "status" : "FAIL",
     "comment" : "ES7 tests"
   }, {
-    "filePath" : "language/statements/async-generator/dflt-params-ref-later.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/statements/async-generator/dflt-params-ref-self.js",
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
@@ -6822,15 +6771,7 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
-    "filePath" : "language/statements/class/async-gen-meth-dflt-params-ref-later.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/statements/class/async-gen-meth-dflt-params-ref-self.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/statements/class/async-gen-meth-static-dflt-params-ref-later.js",
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
   }, {
@@ -7330,25 +7271,13 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-09-06)"
   }, {
-    "filePath" : "language/statements/class/gen-meth-dflt-params-ref-later.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/statements/class/gen-meth-dflt-params-ref-self.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/class/gen-meth-static-dflt-params-ref-later.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/statements/class/gen-meth-static-dflt-params-ref-self.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/statements/class/meth-dflt-params-ref-later.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/statements/class/meth-dflt-params-ref-self.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/class/meth-static-dflt-params-ref-later.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/statements/class/meth-static-dflt-params-ref-self.js",
@@ -7546,9 +7475,6 @@
     "status" : "FAIL",
     "comment" : "TODO: script passes with disabled assertions"
   }, {
-    "filePath" : "language/statements/function/dflt-params-ref-later.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/statements/function/dflt-params-ref-self.js",
     "status" : "FAIL"
   }, {
@@ -7570,9 +7496,6 @@
     "filePath" : "language/statements/generators/arguments-with-arguments-fn.js",
     "status" : "FAIL",
     "comment" : "TODO: script passes with disabled assertions"
-  }, {
-    "filePath" : "language/statements/generators/dflt-params-ref-later.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "language/statements/generators/dflt-params-ref-self.js",
     "status" : "FAIL"
