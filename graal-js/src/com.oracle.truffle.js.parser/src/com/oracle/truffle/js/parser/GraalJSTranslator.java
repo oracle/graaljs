@@ -378,29 +378,15 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     JavaScriptNode translateFunctionBody(FunctionNode functionNode, boolean isArrowFunction, boolean isGeneratorFunction, boolean isAsyncFunction, boolean isDerivedConstructor,
                     boolean needsNewTarget, FunctionEnvironment currentFunction, List<JavaScriptNode> declarations) {
-        JavaScriptNode parameterBlock = null;
-        if (functionNode.getParameterBlock() != null) {
-            parameterBlock = transform(functionNode.getParameterBlock());
-        }
-
         JavaScriptNode body = transform(functionNode.getBody());
 
-        body = handleFunctionReturn(functionNode, body);
+        if (!isGeneratorFunction) {
+            // finishGeneratorBody has already taken care of this for (async) generator functions
+            body = handleFunctionReturn(functionNode, body);
 
-        if (isGeneratorFunction || isAsyncFunction) {
-            if (isGeneratorFunction && isAsyncFunction) {
-                body = handleAsyncGeneratorBody(body);
-            } else if (isGeneratorFunction) {
-                body = handleGeneratorBody(body);
-            } else if (isAsyncFunction) {
-                body = handleAsyncFunctionBody(body, parameterBlock);
-                parameterBlock = null;
+            if (isAsyncFunction) {
+                body = handleAsyncFunctionBody(body);
             }
-        }
-
-        // parameter initialization must precede (i.e. wrap) the (async) generator function body
-        if (parameterBlock != null) {
-            body = factory.createExprBlock(parameterBlock, body);
         }
 
         if (!declarations.isEmpty()) {
@@ -486,13 +472,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      *
      * @return instrumented function body
      */
-    private JavaScriptNode handleAsyncFunctionBody(JavaScriptNode body, JavaScriptNode parameterInit) {
+    private JavaScriptNode handleAsyncFunctionBody(JavaScriptNode body) {
+        assert currentFunction().isAsyncFunction() && !currentFunction().isGeneratorFunction();
         VarRef asyncContextVar = environment.findAsyncContextVar();
         VarRef asyncResultVar = environment.findAsyncResultVar();
         JSWriteFrameSlotNode writeResultNode = (JSWriteFrameSlotNode) asyncResultVar.createWriteNode(null);
         JSWriteFrameSlotNode writeContextNode = (JSWriteFrameSlotNode) asyncContextVar.createWriteNode(null);
         JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
-        return factory.createAsyncFunctionBody(context, parameterInit, instrumentedBody, writeContextNode, writeResultNode);
+        return factory.createAsyncFunctionBody(context, null, instrumentedBody, writeContextNode, writeResultNode);
     }
 
     /**
@@ -500,7 +487,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      *
      * @return instrumented function body
      */
+    private JavaScriptNode finishGeneratorBody(JavaScriptNode bodyBlock) {
+        JavaScriptNode body = handleFunctionReturn(lc.getCurrentFunction(), bodyBlock);
+        // Note: parameter initialization must precede (i.e. wrap) the (async) generator body
+        if (currentFunction().isAsyncGeneratorFunction()) {
+            return handleAsyncGeneratorBody(body);
+        } else {
+            return handleGeneratorBody(body);
+        }
+    }
+
     private JavaScriptNode handleGeneratorBody(JavaScriptNode body) {
+        assert currentFunction().isGeneratorFunction() && !currentFunction().isAsyncGeneratorFunction();
         VarRef yieldVar = environment.findYieldValueVar();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
         JSReadFrameSlotNode readYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
@@ -508,12 +506,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return factory.createGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode);
     }
 
-    /**
-     * Generator function parse-time AST modifications.
-     *
-     * @return instrumented function body
-     */
     private JavaScriptNode handleAsyncGeneratorBody(JavaScriptNode body) {
+        assert currentFunction().isAsyncGeneratorFunction();
         JSWriteFrameSlotNode writeAsyncContextNode = (JSWriteFrameSlotNode) environment.findAsyncContextVar().createWriteNode(null);
         VarRef yieldVar = environment.findAsyncResultVar();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
@@ -1277,15 +1271,21 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterBlock(Block block) {
+        JavaScriptNode result;
         try (EnvironmentCloseable blockEnv = enterBlockEnvironment(block)) {
             List<Statement> blockStatements = block.getStatements();
             List<JavaScriptNode> scopeInit = createTemporalDeadZoneInit(block);
-            JavaScriptNode blockNode = transformStatements(blockStatements, block.isTerminal(), scopeInit, block.isExpressionBlock());
-            if (currentFunction().isCallerContextEval()) {
+            JavaScriptNode blockNode = transformStatements(blockStatements, block.isTerminal(), scopeInit, block.isExpressionBlock() || block.isParameterBlock());
+            if (block.isFunctionBody() && currentFunction().isCallerContextEval()) {
                 blockNode = prependDynamicScopeBindingInit(block, blockNode);
             }
-            return result(blockEnv.wrapBlockScope(blockNode));
+            result = blockEnv.wrapBlockScope(blockNode);
         }
+        // Parameter initialization must precede (i.e. wrap) the (async) generator function body
+        if (block.isFunctionBody() && currentFunction().isGeneratorFunction()) {
+            result = finishGeneratorBody(result);
+        }
+        return result(result);
     }
 
     /**
