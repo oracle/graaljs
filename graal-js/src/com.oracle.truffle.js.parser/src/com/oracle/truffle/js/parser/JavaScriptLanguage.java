@@ -161,6 +161,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
                 JavaScriptLanguage.APPLICATION_MIME_TYPE, JavaScriptLanguage.TEXT_MIME_TYPE})
 public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private static final HiddenKey META_OBJECT_KEY = new HiddenKey("meta object");
+    private static final int MAX_TOSTRING_DEPTH = 10;
 
     private final Map<ParserOptions, Queue<JSContext>> contextPools = new ConcurrentHashMap<>();
     private volatile Boolean useContextPool;
@@ -286,6 +287,14 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     @TruffleBoundary
     @Override
     protected String toString(JSRealm realm, Object value) {
+        return toStringIntl(realm, value, 0);
+    }
+
+    protected String toStringIntl(JSRealm realm, Object value, int inDepth) {
+        int depth = inDepth + 1;
+        if (depth >= MAX_TOSTRING_DEPTH) {
+            return "..."; // bail-out from recursions or deep nesting
+        }
         if (value == null) {
             return "null";
         } else if (JSObject.isJSObject(value)) {
@@ -320,13 +329,13 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     long pointer = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), truffleObject);
                     return "Pointer[0x" + Long.toHexString(pointer) + "]";
                 } else if (ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), truffleObject)) {
-                    return "Array" + foreignArrayToString(realm, truffleObject);
+                    return "Array" + foreignArrayToString(realm, truffleObject, depth);
                 } else if (ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), truffleObject)) {
                     return "Executable";
                 } else if (ForeignAccess.sendIsBoxed(Message.IS_BOXED.createNode(), truffleObject)) {
-                    return toString(realm, ForeignAccess.sendUnbox(Message.UNBOX.createNode(), truffleObject));
+                    return toStringIntl(realm, ForeignAccess.sendUnbox(Message.UNBOX.createNode(), truffleObject), depth);
                 } else {
-                    return "Object" + foreignObjectToString(realm, truffleObject);
+                    return "Object" + foreignObjectToString(realm, truffleObject, depth);
                 }
             } catch (Exception e) {
                 return "Object";
@@ -625,7 +634,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
     }
 
-    private String foreignArrayToString(JSRealm realm, TruffleObject truffleObject) throws InteropException {
+    private String foreignArrayToString(JSRealm realm, TruffleObject truffleObject, int depth) throws InteropException {
         CompilerAsserts.neverPartOfCompilation();
         assert ForeignAccess.sendHasSize(JSInteropUtil.createHasSize(), truffleObject);
         int size = ((Number) ForeignAccess.sendGetSize(JSInteropUtil.createGetSize(), truffleObject)).intValue();
@@ -637,7 +646,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         sb.append('[');
         for (int i = 0; i < size; i++) {
             Object value = ForeignAccess.sendRead(readNode, truffleObject, i);
-            sb.append(value == truffleObject ? "(this)" : toString(realm, value));
+            sb.append(value == truffleObject ? "(this)" : toStringIntl(realm, value, depth));
             if (i + 1 < size) {
                 sb.append(',').append(' ');
             }
@@ -646,7 +655,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         return sb.toString();
     }
 
-    private String foreignObjectToString(JSRealm realm, TruffleObject truffleObject) throws InteropException {
+    private String foreignObjectToString(JSRealm realm, TruffleObject truffleObject, int depth) throws InteropException {
         CompilerAsserts.neverPartOfCompilation();
         if (!ForeignAccess.sendHasKeys(JSInteropUtil.createHasKeys(), truffleObject)) {
             return "";
@@ -662,9 +671,9 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         for (int i = 0; i < keyCount; i++) {
             Object key = ForeignAccess.sendRead(readNode, keys, i);
             Object value = ForeignAccess.sendRead(readNode, truffleObject, key);
-            sb.append(toString(realm, key));
+            sb.append(toStringIntl(realm, key, depth));
             sb.append('=');
-            sb.append(value == truffleObject ? "(this)" : toString(realm, value));
+            sb.append(value == truffleObject ? "(this)" : toStringIntl(realm, value, depth));
             if (i + 1 < keyCount) {
                 sb.append(',').append(' ');
             }
