@@ -104,7 +104,7 @@ public final class WhileNode extends StatementNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (hasMaterializationTag(materializedTags) && materializationNeeded()) {
+        if (hasMaterializationTag(materializedTags) && AbstractRepeatingNode.materializationNeeded(loop.getRepeatingNode())) {
             if (loop.getRepeatingNode() instanceof AbstractRepeatingNode) {
                 AbstractRepeatingNode repeatingNode = (AbstractRepeatingNode) loop.getRepeatingNode();
                 JavaScriptNode bodyNode = JSTaggedExecutionNode.createFor(repeatingNode.bodyNode, ControlFlowBlockTag.class);
@@ -128,17 +128,6 @@ public final class WhileNode extends StatementNode {
     private static boolean hasMaterializationTag(Set<Class<? extends Tag>> materializedTags) {
         return materializedTags.contains(ControlFlowRootTag.class) || materializedTags.contains(ControlFlowBlockTag.class) ||
                         materializedTags.contains(ControlFlowBranchTag.class);
-    }
-
-    private boolean materializationNeeded() {
-        RepeatingNode repeatingNode = loop.getRepeatingNode();
-        if (!(repeatingNode instanceof AbstractRepeatingNode)) {
-            // Other repeating nodes e.g. Generators are not instrumentable yet.
-            return false;
-        }
-        assert repeatingNode instanceof AbstractRepeatingNode;
-        // If we are using tagged nodes, this node is already materialized.
-        return !(((AbstractRepeatingNode) loop.getRepeatingNode()).bodyNode instanceof JSTaggedExecutionNode);
     }
 
     @Override

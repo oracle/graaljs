@@ -126,6 +126,7 @@ import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode;
 import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
 import com.oracle.truffle.js.nodes.control.SequenceNode;
+import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.nodes.control.SuspendNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
@@ -1789,11 +1790,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (forNode.hasPerIterationScope()) {
             VarRef firstTempVar = environment.createTempVar();
             FrameDescriptor iterationBlockFrameDescriptor = environment.getBlockFrameDescriptor();
-            return createBlock(
-                            init,
-                            firstTempVar.createWriteNode(factory.createConstantBoolean(true)),
-                            factory.createFor(test, wrappedBody, modify, iterationBlockFrameDescriptor, firstTempVar.createReadNode(),
-                                            firstTempVar.createWriteNode(factory.createConstantBoolean(false))));
+            StatementNode newFor = factory.createFor(test, wrappedBody, modify, iterationBlockFrameDescriptor, firstTempVar.createReadNode(),
+                            firstTempVar.createWriteNode(factory.createConstantBoolean(false)));
+            ensureHasSourceSection(newFor, forNode);
+            return createBlock(init, firstTempVar.createWriteNode(factory.createConstantBoolean(true)), newFor);
         }
         JavaScriptNode whileDo = createWhileDo(test, createBlock(wrappedBody, modify));
         return createBlock(init, ensureHasSourceSection(whileDo, forNode));
