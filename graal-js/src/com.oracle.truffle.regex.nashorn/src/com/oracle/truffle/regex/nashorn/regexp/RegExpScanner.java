@@ -69,7 +69,6 @@ import java.util.Map;
 import java.util.regex.PatternSyntaxException;
 
 import com.oracle.truffle.regex.nashorn.parser.Scanner;
-import com.oracle.truffle.regex.nashorn.runtime.BitVector;
 
 /**
  * Scan a JavaScript regexp, converting to Java regex if necessary.
@@ -187,20 +186,6 @@ public final class RegExpScanner extends Scanner {
 
     public String getJavaPattern() {
         return sb.toString();
-    }
-
-    BitVector getGroupsInNegativeLookahead() {
-        BitVector vec = null;
-        for (int i = 0; i < caps.size(); i++) {
-            final Capture cap = caps.get(i);
-            if (cap.negLookaroundLevel > 0) {
-                if (vec == null) {
-                    vec = new BitVector(caps.size() + 1);
-                }
-                vec.set(i + 1);
-            }
-        }
-        return vec;
     }
 
     /**
