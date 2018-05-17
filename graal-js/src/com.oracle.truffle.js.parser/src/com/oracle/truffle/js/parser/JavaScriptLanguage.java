@@ -660,7 +660,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         for (int i = 0; i < keyCount; i++) {
             Object key = ForeignAccess.sendRead(readNode, keys, i);
             Object value = ForeignAccess.sendRead(readNode, truffleObject, key);
-            sb.append(toString(realm, value));
+            sb.append(toString(realm, key));
             sb.append('=');
             sb.append(value == truffleObject ? "(this)" : toString(realm, value));
             if (i + 1 < keyCount) {
