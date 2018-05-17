@@ -13,16 +13,26 @@ Graal.js is compatible with [ECMAScript 2017](http://www.ecma-international.org/
 5. Run `mx build`
 
 ## Running
-### Without Graal
+### As normal Java application
+To execute Graal.js as a normal Java application, execute this command:
 ```
 mx js [OPTION]... [FILE]... -- [ARG]...
 ```
-### With Graal
+Note that this will execute Graal.js on your default JVM.
+You will likely experience mediocre performance, as Graal.js will not use Graal to compile frequently executed JavaScript code to optimized machine code.
+
+### With Graal as compiler
+Executing Graal.js with Graal as a compiler will improve performance significantly.
+Graal will compile frequently executed methods run by the Graal.js interpreter - this is called "partial evaluation".
+To use Graal.js together with the Graal compiler built from source, use the following command:
+
 1. Enter the graal-js dir
 2. Run `mx --dynamicimports /compiler build`
 ```
-mx --dynamicimports /compiler --jdk jvmci js [OPTION]... [FILE]... -- [ARG]...
+mx --jdk jvmci --dynamicimports /compiler js [OPTION]... [FILE]... -- [ARG]...
 ```
+
+The `graal` and `graaljs` directories should be sibling directories.
 
 ### With Internationalization API (ECMA-402) support
 1. Use the following option with `mx js` to turn on the ECMA-402 features: `-Dpolyglot.js.intl-402=true`
