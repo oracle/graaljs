@@ -24,8 +24,6 @@
  */
 package com.oracle.js.parser;
 
-import static com.oracle.js.parser.TokenType.LET;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -255,9 +253,12 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         return parameterCount;
     }
 
+    /**
+     * Add simple or rest parameter.
+     */
     public void addParameter(IdentNode param) {
         assert !param.isDefaultParameter() && !param.isDestructuredParameter();
-        addParameterBindingInner(param);
+        addParameterBinding(param);
         if (parameterBlock != null) {
             addParameterInit(param, getParameterCount());
         } else {
@@ -291,16 +292,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         setFlag(FunctionNode.HAS_NON_SIMPLE_PARAMETER_LIST);
     }
 
-    boolean addParameterBinding(IdentNode bindingIdentifier) {
-        if (addParameterBindingInner(bindingIdentifier)) {
-            ensureParameterBlock();
-            parameterBlock.appendStatement(new VarNode(line, Token.recast(bindingIdentifier.getToken(), LET), bindingIdentifier.getFinish(), bindingIdentifier, null).setFlag(VarNode.IS_LET));
-            return true;
-        }
-        return false;
-    }
-
-    boolean addParameterBindingInner(IdentNode bindingIdentifier) {
+    private boolean addParameterBinding(IdentNode bindingIdentifier) {
         if (Parser.isArguments(bindingIdentifier)) {
             setFlag(FunctionNode.DEFINES_ARGUMENTS);
         }
@@ -340,10 +332,17 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         return parameterBlock;
     }
 
+    public void addDefaultParameter(VarNode varNode) {
+        ensureParameterBlock();
+        parameterBlock.appendStatement(varNode);
+        addParameterBinding(varNode.getName());
+        recordParameter(true, false, false);
+    }
+
     public void addParameterBindingDeclaration(VarNode varNode) {
         ensureParameterBlock();
         parameterBlock.appendStatement(varNode);
-        addParameterBindingInner(varNode.getName());
+        addParameterBinding(varNode.getName());
     }
 
     public void addParameterInitialization(int lineNumber, Expression assignment, boolean isDefault) {

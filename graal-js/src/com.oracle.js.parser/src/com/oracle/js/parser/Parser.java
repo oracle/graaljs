@@ -4346,8 +4346,7 @@ loop:
                     Expression initializer = assignmentExpression(true, yield, await);
 
                     if (currentFunction != null) {
-                        currentFunction.addParameterBinding(ident);
-                        initializeParameter(paramToken, finish, paramLine, ident, initializer, currentFunction);
+                        addDefaultParameter(paramToken, finish, paramLine, ident, initializer, currentFunction);
                     }
                 } else {
                     if (currentFunction != null) {
@@ -4370,16 +4369,27 @@ loop:
                 }
 
                 if (currentFunction != null) {
-                    initializeParameter(paramToken, finish, paramLine, pattern, initializer, currentFunction);
+                    addDestructuringParameter(paramToken, finish, paramLine, pattern, initializer, currentFunction);
                 }
             }
         }
     }
 
-    private void initializeParameter(long paramToken, int paramFinish, int paramLine, Expression target, Expression initializer, ParserContextFunctionNode function) {
+    private static void addDefaultParameter(long paramToken, int paramFinish, int paramLine, IdentNode target, Expression initializer, ParserContextFunctionNode function) {
+        assert target != null && initializer != null;
+        // desugar to: let target = (param === undefined) ? initializer : param;
+        // we use an special positional parameter node not subjected to TDZ rules;
+        // thereby, we forego the need for a synthethic param symbol to refer to the passed value.
+        final int paramIndex = function.getParameterCount();
+        final ParameterNode param = ParameterNode.newParam(paramToken, paramFinish, paramIndex);
+        final BinaryNode test = new BinaryNode(Token.recast(paramToken, EQ_STRICT), param, newUndefinedLiteral(paramToken, paramFinish));
+        final Expression value = new TernaryNode(Token.recast(paramToken, TERNARY), test, new JoinPredecessorExpression(initializer), new JoinPredecessorExpression(param));
+        function.addDefaultParameter(new VarNode(paramLine, Token.recast(paramToken, LET), paramFinish, target, value, VarNode.IS_LET));
+    }
+
+    private void addDestructuringParameter(long paramToken, int paramFinish, int paramLine, Expression target, Expression initializer, ParserContextFunctionNode function) {
+        assert isDestructuringLhs(target);
         // desugar to: target := (param === undefined) ? initializer : param;
-        // where target is either a binding identifier or pattern
-        assert target instanceof IdentNode || isDestructuringLhs(target);
         // we use an special positional parameter node not subjected to TDZ rules;
         // thereby, we forego the need for a synthethic param symbol to refer to the passed value.
         final int paramIndex = function.getParameterCount();
@@ -4404,7 +4414,7 @@ loop:
                 ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
                 if (currentFunction != null) {
                     // declare function-scope variables for destructuring bindings
-                    VarNode declaration = new VarNode(paramLine, Token.recast(paramToken, LET), pattern.getFinish(), identNode, null).setFlag(VarNode.IS_LET | VarNode.IS_DESTRUCTURING);
+                    VarNode declaration = new VarNode(paramLine, Token.recast(paramToken, LET), pattern.getFinish(), identNode, null, VarNode.IS_LET | VarNode.IS_DESTRUCTURING);
                     currentFunction.addParameterBindingDeclaration(declaration);
                     // detect duplicate bounds names in parameter list
                 }
@@ -5248,8 +5258,7 @@ loop:
                 ident = ident.setIsDefaultParameter();
 
                 if (currentFunction != null) {
-                    currentFunction.addParameterBinding(ident);
-                    initializeParameter(paramToken, param.getFinish(), paramLine, ident, initializer, currentFunction);
+                    addDefaultParameter(paramToken, param.getFinish(), paramLine, ident, initializer, currentFunction);
                 }
                 return;
             } else if (isDestructuringLhs(lhs)) {
@@ -5257,7 +5266,7 @@ loop:
                 verifyDestructuringParameterBindingPattern(lhs, paramToken, paramLine);
 
                 if (currentFunction != null) {
-                    initializeParameter(paramToken, param.getFinish(), paramLine, lhs, initializer, currentFunction);
+                    addDestructuringParameter(paramToken, param.getFinish(), paramLine, lhs, initializer, currentFunction);
                 }
             }
         } else if (isDestructuringLhs(param)) {
@@ -5267,7 +5276,7 @@ loop:
             verifyDestructuringParameterBindingPattern(param, paramToken, paramLine);
 
             if (currentFunction != null) {
-                initializeParameter(paramToken, param.getFinish(), paramLine, param, null, currentFunction);
+                addDestructuringParameter(paramToken, param.getFinish(), paramLine, param, null, currentFunction);
             }
         } else {
             throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
