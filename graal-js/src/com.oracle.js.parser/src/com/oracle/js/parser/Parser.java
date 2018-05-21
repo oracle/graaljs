@@ -4328,7 +4328,6 @@ loop:
                 }
                 if (type == ASSIGN && (ES6_DEFAULT_PARAMETER && isES6())) {
                     next();
-                    ident = ident.setIsDefaultParameter();
 
                     if (type == YIELD && yield || isAwait() && await) {
                         // error: yield in default expression
@@ -5247,7 +5246,6 @@ loop:
             if (lhs instanceof IdentNode) {
                 // default parameter
                 IdentNode ident = (IdentNode) lhs;
-                ident = ident.setIsDefaultParameter();
 
                 if (currentFunction != null) {
                     addDefaultParameter(paramToken, param.getFinish(), paramLine, ident, initializer, currentFunction);

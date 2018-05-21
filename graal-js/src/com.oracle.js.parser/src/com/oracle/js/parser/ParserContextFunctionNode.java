@@ -257,7 +257,6 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * Add simple or rest parameter.
      */
     public void addParameter(IdentNode param) {
-        assert !param.isDefaultParameter() && !param.isDestructuredParameter();
         addParameterBinding(param);
         if (parameterBlock != null) {
             addParameterInit(param, getParameterCount());
@@ -267,7 +266,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             }
             parameters.add(param);
         }
-        recordParameter(param.isDefaultParameter(), param.isRestParameter(), param.isDestructuredParameter());
+        recordParameter(false, param.isRestParameter(), false);
     }
 
     /**
@@ -386,7 +385,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         int length = 0;
         if (parameters != null) {
             for (IdentNode param : parameters) {
-                if (param.isDefaultParameter() || param.isRestParameter()) {
+                if (param.isRestParameter()) {
                     break;
                 }
                 length++;
