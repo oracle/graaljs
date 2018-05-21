@@ -70,8 +70,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /** External function identifier. */
     /*@Ignore*/ private final IdentNode ident;
 
-    private final Block parameterBlock;
-
     /** The body of the function node */
     private final Block body;
 
@@ -249,7 +247,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         final int length,
         final int numOfParams,
         final List<IdentNode> parameters,
-        final Block parameterBlock,
         final FunctionNode.Kind kind,
         final int flags,
         final Block body,
@@ -265,7 +262,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         this.length           = length;
         this.numOfParams      = numOfParams;
         this.parameters       = parameters;
-        this.parameterBlock   = parameterBlock;
         this.firstToken       = firstToken;
         this.lastToken        = lastToken;
         this.flags            = flags;
@@ -283,7 +279,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         final String name,
         final Block body,
         final List<IdentNode> parameters,
-        final Block parameterBlock,
         final int thisProperties,
         final Source source) {
         super(functionNode);
@@ -295,7 +290,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         this.lastToken        = lastToken;
         this.body             = body;
         this.parameters       = parameters;
-        this.parameterBlock   = parameterBlock;
         this.thisProperties   = thisProperties;
         this.source           = source;
 
@@ -311,7 +305,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     @Override
     public Node accept(final LexicalContext lc, final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterFunctionNode(this)) {
-            return visitor.leaveFunctionNode(setParameterBlock(lc, parameterBlock == null ? null : (Block) parameterBlock.accept(visitor)).setBody(lc, (Block) body.accept(visitor)));
+            return visitor.leaveFunctionNode(setBody(lc, (Block) body.accept(visitor)));
         }
         return this;
     }
@@ -423,7 +417,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
                         name,
                         body,
                         parameters,
-                        parameterBlock,
                         thisProperties,
                         source));
     }
@@ -514,7 +507,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
                         name,
                         body,
                         parameters,
-                        parameterBlock,
                         thisProperties,
                         source));
     }
@@ -629,36 +621,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      */
     public int getLength() {
         return length;
-    }
-
-    public Block getParameterBlock() {
-        return parameterBlock;
-    }
-
-    /**
-     * Reset the parameter initialization block.
-     * @param lc lexical context
-     * @param parameterBlock new parameter initialization block
-     * @return new function node if body changed, same if not
-     */
-    public FunctionNode setParameterBlock(final LexicalContext lc, final Block parameterBlock) {
-        if (this.parameterBlock == parameterBlock) {
-            return this;
-        }
-        return Node.replaceInLexicalContext(
-                lc,
-                this,
-                new FunctionNode(
-                        this,
-                        lastToken,
-                        endParserState,
-                        flags,
-                        name,
-                        body,
-                        parameters,
-                        parameterBlock,
-                        thisProperties,
-                        source));
     }
 
     /**

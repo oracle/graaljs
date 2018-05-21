@@ -484,7 +484,6 @@ public class Parser extends AbstractParser {
                     function,
                     functionToken,
                     ident,
-                    null,
                     FunctionNode.Kind.NORMAL,
                     functionLine,
                     functionBody);
@@ -598,7 +597,7 @@ loop:
     }
 
     private FunctionNode createFunctionNode(final ParserContextFunctionNode function, final long startToken, final IdentNode ident,
-                    final Block parameterBlock, final FunctionNode.Kind kind, final int functionLine, final Block body) {
+                    final FunctionNode.Kind kind, final int functionLine, final Block body) {
         assert body.isFunctionBody() || (body.isParameterBlock() && ((BlockStatement) body.getLastStatement()).getBlock().isFunctionBody());
 
         long lastTokenWithDelimiter = Token.withDelimiter(function.getLastToken());
@@ -618,7 +617,6 @@ loop:
                 function.getLength(),
                 function.getParameterCount(),
                 optimizeList(function.getParameters()),
-                parameterBlock,
                 kind,
                 function.getFlags(),
                 body,
@@ -933,7 +931,7 @@ loop:
 
         expect(EOF);
 
-        return createFunctionNode(script, functionToken, ident, null, FunctionNode.Kind.SCRIPT, functionLine, programBody);
+        return createFunctionNode(script, functionToken, ident, FunctionNode.Kind.SCRIPT, functionLine, programBody);
     }
 
     /**
@@ -1471,7 +1469,7 @@ loop:
                     flags |= FunctionNode.IS_ANONYMOUS;
                 }
                 constructor = constructor.setValue(new FunctionNode(ctor.getSource(), ctor.getLineNumber(), ctor.getToken(), classFinish, classToken, lastToken, ctor.getIdent(), className == null ? null : className.getName(),
-                                ctor.getLength(), ctor.getNumOfParams(), ctor.getParameters(), ctor.getParameterBlock(), ctor.getKind(), flags, ctor.getBody(), ctor.getEndParserState(), ctor.getModule()));
+                                ctor.getLength(), ctor.getNumOfParams(), ctor.getParameters(), ctor.getKind(), flags, ctor.getBody(), ctor.getEndParserState(), ctor.getModule()));
             }
 
             ClassNode classBody = new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements);
@@ -1524,7 +1522,6 @@ loop:
                         function,
                         classToken,
                         ctorName,
-                        null,
                         FunctionNode.Kind.NORMAL,
                         classLineNumber,
                         body
@@ -3526,7 +3523,6 @@ loop:
                 functionNode,
                 getSetToken,
                 getterName,
-                null,
                 FunctionNode.Kind.GETTER,
                 functionLine,
                 functionBody);
@@ -3573,7 +3569,6 @@ loop:
                 functionNode,
                 getSetToken,
                 setterName,
-                null,
                 FunctionNode.Kind.SETTER,
                 functionLine,
                 functionBody);
@@ -3611,7 +3606,6 @@ loop:
                             functionNode,
                             methodToken,
                             methodNameNode,
-                            null,
                             functionKind,
                             methodLine,
                             functionBody);
@@ -4175,7 +4169,6 @@ loop:
                 functionNode,
                 functionToken,
                 name,
-                null,
                 functionKind,
                 functionLine,
                 functionBody);
@@ -5157,7 +5150,6 @@ loop:
                             functionNode,
                             functionToken,
                             name,
-                            null,
                             FunctionNode.Kind.ARROW,
                             functionLine,
                             functionBody);
@@ -5544,7 +5536,7 @@ loop:
             expect(EOF);
 
             script.setModule(module.createModule());
-            return createFunctionNode(script, functionToken, ident, null, FunctionNode.Kind.MODULE, functionLine, programBody);
+            return createFunctionNode(script, functionToken, ident, FunctionNode.Kind.MODULE, functionLine, programBody);
         } finally {
             isStrictMode = oldStrictMode;
             isModule = oldModule;
