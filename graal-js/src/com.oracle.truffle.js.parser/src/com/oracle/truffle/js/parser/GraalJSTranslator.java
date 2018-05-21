@@ -479,7 +479,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JSWriteFrameSlotNode writeResultNode = (JSWriteFrameSlotNode) asyncResultVar.createWriteNode(null);
         JSWriteFrameSlotNode writeContextNode = (JSWriteFrameSlotNode) asyncContextVar.createWriteNode(null);
         JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
-        return factory.createAsyncFunctionBody(context, null, instrumentedBody, writeContextNode, writeResultNode);
+        return factory.createAsyncFunctionBody(context, instrumentedBody, writeContextNode, writeResultNode);
     }
 
     /**
