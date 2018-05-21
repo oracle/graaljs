@@ -32,23 +32,17 @@ import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
  * IR representation of a positional parameter value. Used for desugaring parameter initialization.
  */
 public final class ParameterNode extends Expression {
-    private static final int REST_PARAMETER = 1 << 0;
-
     private final int index;
-    private final int flags;
+    private final boolean rest;
 
-    private ParameterNode(final long token, final int finish, final int index, final int flags) {
+    public ParameterNode(final long token, final int finish, final int index, final boolean rest) {
         super(token, finish);
         this.index = index;
-        this.flags = flags;
+        this.rest = rest;
     }
 
-    public static ParameterNode newParam(final long token, final int finish, final int index) {
-        return new ParameterNode(token, finish, index, 0);
-    }
-
-    public static ParameterNode newRestParam(final long token, final int finish, final int index) {
-        return new ParameterNode(token, finish, index, REST_PARAMETER);
+    public ParameterNode(final long token, final int finish, final int index) {
+        this(token, finish, index, false);
     }
 
     @Override
@@ -85,6 +79,6 @@ public final class ParameterNode extends Expression {
      * If true, this is a rest parameter.
      */
     public boolean isRestParameter() {
-        return (flags & REST_PARAMETER) != 0;
+        return rest;
     }
 }

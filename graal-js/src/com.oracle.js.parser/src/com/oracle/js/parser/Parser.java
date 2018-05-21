@@ -4374,7 +4374,7 @@ loop:
         // we use an special positional parameter node not subjected to TDZ rules;
         // thereby, we forego the need for a synthethic param symbol to refer to the passed value.
         final int paramIndex = function.getParameterCount();
-        final ParameterNode param = ParameterNode.newParam(paramToken, paramFinish, paramIndex);
+        final ParameterNode param = new ParameterNode(paramToken, paramFinish, paramIndex);
         final BinaryNode test = new BinaryNode(Token.recast(paramToken, EQ_STRICT), param, newUndefinedLiteral(paramToken, paramFinish));
         final Expression value = new TernaryNode(Token.recast(paramToken, TERNARY), test, new JoinPredecessorExpression(initializer), new JoinPredecessorExpression(param));
         function.addDefaultParameter(new VarNode(paramLine, Token.recast(paramToken, LET), paramFinish, target, value, VarNode.IS_LET));
@@ -4386,7 +4386,7 @@ loop:
         // we use an special positional parameter node not subjected to TDZ rules;
         // thereby, we forego the need for a synthethic param symbol to refer to the passed value.
         final int paramIndex = function.getParameterCount();
-        final ParameterNode param = ParameterNode.newParam(paramToken, paramFinish, paramIndex);
+        final ParameterNode param = new ParameterNode(paramToken, paramFinish, paramIndex);
         final Expression value;
         if (initializer == null) {
             value = param; // binding pattern without initializer

@@ -375,9 +375,9 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         int paramFinish = param.getFinish();
         ParameterNode paramValue;
         if (param.isRestParameter()) {
-            paramValue = ParameterNode.newRestParam(paramToken, paramFinish, index);
+            paramValue = new ParameterNode(paramToken, paramFinish, index, true);
         } else {
-            paramValue = ParameterNode.newParam(paramToken, paramFinish, index);
+            paramValue = new ParameterNode(paramToken, paramFinish, index);
         }
         parameterBlock.appendStatement(new VarNode(line, Token.recast(paramToken, TokenType.LET), paramFinish, param, paramValue, VarNode.IS_LET));
     }
