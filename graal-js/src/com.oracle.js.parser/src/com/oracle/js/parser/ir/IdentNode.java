@@ -45,7 +45,6 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     private static final int DIRECT_SUPER      = 1 << 7;
     private static final int REST_PARAMETER    = 1 << 8;
     private static final int CATCH_PARAMETER   = 1 << 9;
-    private static final int IS_DEAD           = 1 << 10;
 
     /** Identifier. */
     private final String name;
@@ -165,15 +164,6 @@ public final class IdentNode extends Expression implements PropertyKey, Function
             return this;
         }
         return new IdentNode(this, name, flags | INITIALIZED_HERE);
-    }
-
-    /**
-     * Is this a LET or CONST identifier used before its declaration?
-     *
-     * @return true if identifier is dead
-     */
-    public boolean isDead() {
-        return (flags & IS_DEAD) != 0;
     }
 
     /**
