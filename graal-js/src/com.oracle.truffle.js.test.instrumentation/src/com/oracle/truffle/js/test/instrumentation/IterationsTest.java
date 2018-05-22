@@ -88,4 +88,24 @@ public class IterationsTest extends FineGrainedAccessTest {
         }).exit();
     }
 
+    @Test
+    public void emptyForLet() {
+        String src = "for (let i = 0; i < 10; i++) {};";
+
+        evalWithTags(src, new Class[]{
+                        ControlFlowRootTag.class,
+                        ControlFlowBranchTag.class,
+                        ControlFlowBlockTag.class
+        }, new Class[]{/* no input events */});
+
+        enter(ControlFlowRootTag.class, (e) -> {
+            assertAttribute(e, TYPE, ControlFlowRootTag.Type.Iteration.name());
+            for (int a = 0; a < 10; a++) {
+                enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
+                enter(ControlFlowBlockTag.class).exit();
+            }
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+        }).exit();
+    }
+
 }

@@ -96,6 +96,24 @@ public final class ForNode extends StatementNode implements ResumableNode {
     }
 
     @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (hasMaterializationTag(materializedTags) && AbstractRepeatingNode.materializationNeeded(loop.getRepeatingNode())) {
+            IterationScopeNode newCopy = cloneUninitialized(copy);
+            InstrumentableNode materializedLoop = ((AbstractRepeatingNode) loop.getRepeatingNode()).materializeInstrumentableNodes(materializedTags);
+            ForNode materializedNode = new ForNode((RepeatingNode) materializedLoop, newCopy);
+            transferSourceSection(this, materializedNode);
+            return materializedNode;
+        } else {
+            return this;
+        }
+    }
+
+    private static boolean hasMaterializationTag(Set<Class<? extends Tag>> materializedTags) {
+        return materializedTags.contains(ControlFlowRootTag.class) || materializedTags.contains(ControlFlowBlockTag.class) ||
+                        materializedTags.contains(ControlFlowBranchTag.class);
+    }
+
+    @Override
     public Object execute(VirtualFrame frame) {
         executeVoid(frame);
         return EMPTY;
@@ -153,19 +171,16 @@ public final class ForNode extends StatementNode implements ResumableNode {
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (hasMaterializationTag(materializedTags) && materializationNeeded()) {
                 JavaScriptNode newBody = JSTaggedExecutionNode.createFor(bodyNode, ControlFlowBlockTag.class);
-                JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(conditionNode, ControlFlowBranchTag.class,
+                JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(conditionNode,
+                                ControlFlowBranchTag.class,
                                 JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
-                JavaScriptNode newLoop = new ForRepeatingNode(newCondition, newBody, cloneUninitialized(modify), cloneUninitialized(copy), isFirstNode, cloneUninitialized(setNotFirstNode));
+                JavaScriptNode newLoop = new ForRepeatingNode(newCondition, newBody, cloneUninitialized(modify),
+                                cloneUninitialized(copy), isFirstNode, cloneUninitialized(setNotFirstNode));
                 transferSourceSection(this, newLoop);
                 return newLoop;
             } else {
                 return this;
             }
-        }
-
-        private static boolean hasMaterializationTag(Set<Class<? extends Tag>> materializedTags) {
-            return materializedTags.contains(ControlFlowRootTag.class) || materializedTags.contains(ControlFlowBlockTag.class) ||
-                            materializedTags.contains(ControlFlowBranchTag.class);
         }
 
         private boolean materializationNeeded() {
