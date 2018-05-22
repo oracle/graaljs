@@ -825,7 +825,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     if (!fn.isStrict() && !varName.equals(Environment.ARGUMENTS_NAME) && fn.getBody().getExistingSymbol(varName) == null) {
                         if (!isVarAlreadyDeclaredLexically(lc, varName, options, true)) {
                             assert !lc.getCurrentBlock().isFunctionBody() && !lc.getCurrentBlock().isParameterBlock();
-                            fn.getBodyBlock().putSymbol(lc, new Symbol(varName, Symbol.IS_VAR | Symbol.IS_VAR_DECLARED_HERE));
+                            fn.getVarDeclarationBlock().putSymbol(lc, new Symbol(varName, Symbol.IS_VAR | Symbol.IS_VAR_DECLARED_HERE));
                         }
                     }
                 }
@@ -833,7 +833,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             private void enterVarNodeDefault(String varName) {
                 Block currentBlock = lc.getCurrentBlock();
-                Block bodyBlock = lc.getCurrentFunction().getBodyBlock();
+                Block bodyBlock = lc.getCurrentFunction().getVarDeclarationBlock();
                 if (currentBlock.isParameterBlock()) {
                     // for duplicate checks record its declaration in the body block, too
                     assert currentBlock != bodyBlock;

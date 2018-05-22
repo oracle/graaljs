@@ -469,14 +469,18 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     }
 
     /**
-     * Get the function body
+     * Get the function body, i.e., the top-most block of the function.
      * @return the function body
      */
     public Block getBody() {
         return body;
     }
 
-    public Block getBodyBlock() {
+    /**
+     * Get the {@code var} declaration block, i.e., the actual function body, which is either
+     * {@link #getBody()} or the next block after skipping the parameter initialization block.
+     */
+    public Block getVarDeclarationBlock() {
         if (body.isParameterBlock()) {
             return ((BlockStatement) body.getLastStatement()).getBlock();
         }
