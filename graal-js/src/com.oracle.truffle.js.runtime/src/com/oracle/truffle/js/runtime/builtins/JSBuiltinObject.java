@@ -382,7 +382,7 @@ public abstract class JSBuiltinObject extends JSClass {
             d.setWritable(JSProperty.isWritable(x));
         } else if (JSProperty.isAccessor(x)) {
             Accessor acc = (Accessor) x.get(thisObj, false);
-            d = PropertyDescriptor.createAccessor(acc.getSetter(), acc.getGetter());
+            d = PropertyDescriptor.createAccessor(acc.getGetter(), acc.getSetter());
         } else {
             d = PropertyDescriptor.createEmpty();
         }

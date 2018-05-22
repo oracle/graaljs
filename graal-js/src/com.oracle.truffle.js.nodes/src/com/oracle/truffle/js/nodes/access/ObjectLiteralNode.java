@@ -54,6 +54,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -102,8 +103,17 @@ public class ObjectLiteralNode extends JavaScriptNode {
             this.makeMethodNode = PropertySetNode.createSetHidden(JSFunction.HOME_OBJECT_ID, context);
         }
 
+        private MakeMethodNode(JSContext context, JavaScriptNode functionNode, HiddenKey key) {
+            this.functionNode = functionNode;
+            this.makeMethodNode = PropertySetNode.createSetHidden(key, context);
+        }
+
         public static JavaScriptNode create(JSContext context, JavaScriptNode functionNode) {
             return new MakeMethodNode(context, functionNode);
+        }
+
+        public static JavaScriptNode createWithKey(JSContext context, JavaScriptNode functionNode, HiddenKey key) {
+            return new MakeMethodNode(context, functionNode, key);
         }
 
         @Override
@@ -133,11 +143,12 @@ public class ObjectLiteralNode extends JavaScriptNode {
         public static final ObjectLiteralMemberNode[] EMPTY = {};
 
         protected final boolean isStatic;
-        protected final boolean enumerable;
+        protected final byte attributes;
 
-        public ObjectLiteralMemberNode(boolean isStatic, boolean enumerable) {
+        public ObjectLiteralMemberNode(boolean isStatic, int attributes) {
+            assert attributes == (attributes & JSAttributes.ATTRIBUTES_MASK);
             this.isStatic = isStatic;
-            this.enumerable = enumerable;
+            this.attributes = (byte) attributes;
         }
 
         public abstract void executeVoid(VirtualFrame frame, DynamicObject obj, JSContext context);
@@ -165,12 +176,13 @@ public class ObjectLiteralNode extends JavaScriptNode {
     }
 
     private abstract static class CachingObjectLiteralMemberNode extends ObjectLiteralMemberNode {
-        protected final String name;
+        protected final Object name;
         @CompilationFinal protected CacheEntry cache;
         protected static final CacheEntry GENERIC = new CacheEntry(null, null, null, null, null);
 
-        CachingObjectLiteralMemberNode(String name, boolean isStatic, boolean enumerable) {
-            super(isStatic, enumerable);
+        CachingObjectLiteralMemberNode(Object name, boolean isStatic, int attributes) {
+            super(isStatic, attributes);
+            assert JSRuntime.isPropertyKey(name);
             this.name = name;
         }
 
@@ -243,8 +255,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
     private static class ObjectLiteralDataMemberNode extends CachingObjectLiteralMemberNode {
         @Child protected JavaScriptNode valueNode;
 
-        ObjectLiteralDataMemberNode(String name, boolean isStatic, boolean enumerable, JavaScriptNode valueNode) {
-            super(name, isStatic, enumerable);
+        ObjectLiteralDataMemberNode(Object name, boolean isStatic, int attributes, JavaScriptNode valueNode) {
+            super(name, isStatic, attributes);
             this.valueNode = valueNode;
         }
 
@@ -279,7 +291,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         private void executeGeneric(DynamicObject obj, Object value, JSContext context) {
-            PropertyDescriptor propDesc = PropertyDescriptor.createData(value, enumerable, true, true);
+            PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
             JSRuntime.definePropertyOrThrow(obj, name, propDesc, context);
         }
 
@@ -292,7 +304,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
             }
             Shape oldShape = obj.getShape();
             Property property = oldShape.getProperty(name);
-            int attributes = enumerable ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable();
             Shape newShape;
             Property newProperty;
             if (property != null) {
@@ -314,7 +325,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @Override
         protected ObjectLiteralMemberNode copyUninitialized() {
-            return new ObjectLiteralDataMemberNode(name, isStatic, enumerable, JavaScriptNode.cloneUninitialized(valueNode));
+            return new ObjectLiteralDataMemberNode(name, isStatic, attributes, JavaScriptNode.cloneUninitialized(valueNode));
         }
     }
 
@@ -322,8 +333,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Child protected JavaScriptNode getterNode;
         @Child protected JavaScriptNode setterNode;
 
-        ObjectLiteralAccessorMemberNode(String name, boolean isStatic, boolean enumerable, JavaScriptNode getter, JavaScriptNode setter) {
-            super(name, isStatic, enumerable);
+        ObjectLiteralAccessorMemberNode(Object name, boolean isStatic, int attributes, JavaScriptNode getter, JavaScriptNode setter) {
+            super(name, isStatic, attributes);
             this.getterNode = getter;
             this.setterNode = setter;
         }
@@ -368,9 +379,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         private void executeGeneric(DynamicObject obj, Object getterV, Object setterV, JSContext context) {
-            PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) setterV, (DynamicObject) getterV);
-            propDesc.setConfigurable(true);
-            propDesc.setEnumerable(enumerable);
+            PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getterV, (DynamicObject) setterV, attributes);
             JSRuntime.definePropertyOrThrow(obj, name, propDesc, context);
         }
 
@@ -383,7 +392,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
             }
             Shape oldShape = obj.getShape();
             Property property = oldShape.getProperty(name);
-            int attributes = enumerable ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable();
             Accessor value = new Accessor((DynamicObject) getterV, (DynamicObject) setterV);
             Property newProperty;
             Shape newShape;
@@ -405,7 +413,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @Override
         protected ObjectLiteralMemberNode copyUninitialized() {
-            return new ObjectLiteralAccessorMemberNode(name, isStatic, enumerable, JavaScriptNode.cloneUninitialized(getterNode), JavaScriptNode.cloneUninitialized(setterNode));
+            return new ObjectLiteralAccessorMemberNode(name, isStatic, attributes, JavaScriptNode.cloneUninitialized(getterNode), JavaScriptNode.cloneUninitialized(setterNode));
         }
     }
 
@@ -414,8 +422,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Child private JavaScriptNode valueNode;
         @Child private SetFunctionNameNode setFunctionName;
 
-        ComputedObjectLiteralDataMemberNode(JavaScriptNode key, boolean isStatic, boolean enumerable, JavaScriptNode valueNode) {
-            super(isStatic, enumerable);
+        ComputedObjectLiteralDataMemberNode(JavaScriptNode key, boolean isStatic, int attributes, JavaScriptNode valueNode) {
+            super(isStatic, attributes);
             this.propertyKey = JSToPropertyKeyWrapperNode.create(key);
             this.valueNode = valueNode;
             this.setFunctionName = isAnonymousFunctionDefinition(valueNode) ? SetFunctionNameNode.create() : null;
@@ -429,7 +437,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
                 setFunctionName.execute(value, key);
             }
 
-            PropertyDescriptor propDesc = PropertyDescriptor.createData(value, enumerable, true, true);
+            PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
             JSRuntime.definePropertyOrThrow(obj, key, propDesc, context);
         }
 
@@ -451,8 +459,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
         private final boolean isGetterAnonymousFunction;
         private final boolean isSetterAnonymousFunction;
 
-        ComputedObjectLiteralAccessorMemberNode(JavaScriptNode key, boolean isStatic, boolean enumerable, JavaScriptNode getter, JavaScriptNode setter) {
-            super(isStatic, enumerable);
+        ComputedObjectLiteralAccessorMemberNode(JavaScriptNode key, boolean isStatic, int attributes, JavaScriptNode getter, JavaScriptNode setter) {
+            super(isStatic, attributes);
             this.propertyKey = JSToPropertyKeyWrapperNode.create(key);
             this.getterNode = getter;
             this.setterNode = setter;
@@ -480,9 +488,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             }
 
             assert getterV != null || setterV != null;
-            PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) setterV, (DynamicObject) getterV);
-            propDesc.setConfigurable(true);
-            propDesc.setEnumerable(enumerable);
+            PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getterV, (DynamicObject) setterV, attributes);
             JSRuntime.definePropertyOrThrow(obj, key, propDesc, context);
         }
 
@@ -504,8 +510,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
     private static class ObjectLiteralProtoMemberNode extends ObjectLiteralMemberNode {
         @Child protected JavaScriptNode valueNode;
 
-        ObjectLiteralProtoMemberNode(boolean isStatic, boolean enumerable, JavaScriptNode valueNode) {
-            super(isStatic, enumerable);
+        ObjectLiteralProtoMemberNode(boolean isStatic, JavaScriptNode valueNode) {
+            super(isStatic, 0);
             this.valueNode = valueNode;
         }
 
@@ -522,7 +528,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @Override
         protected ObjectLiteralMemberNode copyUninitialized() {
-            return new ObjectLiteralProtoMemberNode(isStatic, enumerable, JavaScriptNode.cloneUninitialized(valueNode));
+            return new ObjectLiteralProtoMemberNode(isStatic, JavaScriptNode.cloneUninitialized(valueNode));
         }
     }
 
@@ -530,8 +536,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Child private JavaScriptNode valueNode;
         @Child private JSToObjectNode toObjectNode;
 
-        ObjectLiteralSpreadMemberNode(boolean isStatic, boolean enumerable, JavaScriptNode valueNode) {
-            super(isStatic, enumerable);
+        ObjectLiteralSpreadMemberNode(boolean isStatic, int attributes, JavaScriptNode valueNode) {
+            super(isStatic, attributes);
             this.valueNode = valueNode;
         }
 
@@ -563,16 +569,17 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @Override
         protected ObjectLiteralMemberNode copyUninitialized() {
-            return new ObjectLiteralSpreadMemberNode(isStatic, enumerable, JavaScriptNode.cloneUninitialized(valueNode));
+            return new ObjectLiteralSpreadMemberNode(isStatic, attributes, JavaScriptNode.cloneUninitialized(valueNode));
         }
     }
 
     private static class DictionaryObjectDataMemberNode extends ObjectLiteralMemberNode {
-        private final String name;
+        private final Object name;
         @Child private JavaScriptNode valueNode;
 
-        DictionaryObjectDataMemberNode(String name, boolean isStatic, boolean enumerable, JavaScriptNode valueNode) {
-            super(isStatic, enumerable);
+        DictionaryObjectDataMemberNode(Object name, boolean isStatic, int attributes, JavaScriptNode valueNode) {
+            super(isStatic, attributes);
+            assert JSRuntime.isPropertyKey(name);
             this.name = name;
             this.valueNode = valueNode;
         }
@@ -580,39 +587,51 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Override
         public final void executeVoid(VirtualFrame frame, DynamicObject obj, JSContext context) {
             Object value = executeWithObject(valueNode, frame, obj);
-            PropertyDescriptor propDesc = PropertyDescriptor.createData(value, enumerable, true, true);
+            PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
             JSObject.defineOwnProperty(obj, name, propDesc, true);
         }
 
         @Override
         protected ObjectLiteralMemberNode copyUninitialized() {
-            return new DictionaryObjectDataMemberNode(name, isStatic, enumerable, JavaScriptNode.cloneUninitialized(valueNode));
+            return new DictionaryObjectDataMemberNode(name, isStatic, attributes, JavaScriptNode.cloneUninitialized(valueNode));
         }
     }
 
     public static ObjectLiteralMemberNode newDataMember(String name, boolean isStatic, boolean enumerable, JavaScriptNode valueNode) {
-        return new ObjectLiteralDataMemberNode(name, isStatic, enumerable, valueNode);
+        return new ObjectLiteralDataMemberNode(name, isStatic, enumerable ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable(), valueNode);
     }
 
     public static ObjectLiteralMemberNode newAccessorMember(String name, boolean isStatic, boolean enumerable, JavaScriptNode getterNode, JavaScriptNode setterNode) {
-        return new ObjectLiteralAccessorMemberNode(name, isStatic, enumerable, getterNode, setterNode);
+        return new ObjectLiteralAccessorMemberNode(name, isStatic, JSAttributes.fromConfigurableEnumerable(true, enumerable), getterNode, setterNode);
     }
 
     public static ObjectLiteralMemberNode newComputedDataMember(JavaScriptNode name, boolean isStatic, boolean enumerable, JavaScriptNode valueNode) {
-        return new ComputedObjectLiteralDataMemberNode(name, isStatic, enumerable, valueNode);
+        return new ComputedObjectLiteralDataMemberNode(name, isStatic, enumerable ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable(), valueNode);
     }
 
     public static ObjectLiteralMemberNode newComputedAccessorMember(JavaScriptNode name, boolean isStatic, boolean enumerable, JavaScriptNode getter, JavaScriptNode setter) {
-        return new ComputedObjectLiteralAccessorMemberNode(name, isStatic, enumerable, getter, setter);
+        return new ComputedObjectLiteralAccessorMemberNode(name, isStatic, JSAttributes.fromConfigurableEnumerable(true, enumerable), getter, setter);
     }
 
-    public static ObjectLiteralMemberNode newProtoMember(String name, boolean isStatic, boolean enumerable, JavaScriptNode valueNode) {
+    public static ObjectLiteralMemberNode newDataMember(Object name, boolean isStatic, int attributes, JavaScriptNode valueNode) {
+        return new ObjectLiteralDataMemberNode(name, isStatic, attributes, valueNode);
+    }
+
+    public static ObjectLiteralMemberNode newAccessorMember(String name, boolean isStatic, int attributes, JavaScriptNode getterNode, JavaScriptNode setterNode) {
+        return new ObjectLiteralAccessorMemberNode(name, isStatic, attributes, getterNode, setterNode);
+    }
+
+    public static ObjectLiteralMemberNode newComputedDataMember(JavaScriptNode name, boolean isStatic, int attributes, JavaScriptNode valueNode) {
+        return new ComputedObjectLiteralDataMemberNode(name, isStatic, attributes, valueNode);
+    }
+
+    public static ObjectLiteralMemberNode newProtoMember(String name, boolean isStatic, JavaScriptNode valueNode) {
         assert JSObject.PROTO.equals(name);
-        return new ObjectLiteralProtoMemberNode(isStatic, enumerable, valueNode);
+        return new ObjectLiteralProtoMemberNode(isStatic, valueNode);
     }
 
-    public static ObjectLiteralMemberNode newSpreadObjectMember(boolean isStatic, boolean enumerable, JavaScriptNode valueNode) {
-        return new ObjectLiteralSpreadMemberNode(isStatic, enumerable, valueNode);
+    public static ObjectLiteralMemberNode newSpreadObjectMember(boolean isStatic, JavaScriptNode valueNode) {
+        return new ObjectLiteralSpreadMemberNode(isStatic, JSAttributes.getDefault(), valueNode);
     }
 
     @Children private final ObjectLiteralMemberNode[] members;
@@ -649,7 +668,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         ObjectLiteralMemberNode[] newMembers = new ObjectLiteralMemberNode[members.length];
         for (int i = 0; i < members.length; i++) {
             ObjectLiteralDataMemberNode member = (ObjectLiteralDataMemberNode) members[i];
-            newMembers[i] = new DictionaryObjectDataMemberNode(member.name, member.isStatic, member.enumerable, member.valueNode);
+            newMembers[i] = new DictionaryObjectDataMemberNode(member.name, member.isStatic, member.attributes, member.valueNode);
         }
         return new ObjectLiteralNode(newMembers, CreateObjectNode.createDictionary(context));
     }

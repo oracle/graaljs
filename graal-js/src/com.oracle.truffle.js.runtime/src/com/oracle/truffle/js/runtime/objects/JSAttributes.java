@@ -125,6 +125,18 @@ public final class JSAttributes {
         return (!configurable ? NOT_CONFIGURABLE : 0) | (!enumerable ? NOT_ENUMERABLE : 0);
     }
 
+    public static boolean isConfigurable(int flags) {
+        return (flags & NOT_CONFIGURABLE) == 0;
+    }
+
+    public static boolean isEnumerable(int flags) {
+        return (flags & NOT_ENUMERABLE) == 0;
+    }
+
+    public static boolean isWritable(int flags) {
+        return (flags & NOT_WRITABLE) == 0;
+    }
+
     private static final int NOT_CONFIGURABLE_ENUMERABLE_WRITABLE = NOT_CONFIGURABLE;
     private static final int NOT_CONFIGURABLE_ENUMERABLE_NOT_WRITABLE = NOT_CONFIGURABLE | NOT_WRITABLE;
     private static final int NOT_CONFIGURABLE_NOT_ENUMERABLE_WRITABLE = NOT_CONFIGURABLE | NOT_ENUMERABLE;

@@ -84,6 +84,15 @@ public final class PropertyDescriptor {
         return desc;
     }
 
+    public static PropertyDescriptor createData(Object value, int attributes) {
+        PropertyDescriptor desc = new PropertyDescriptor();
+        desc.setValue(value);
+        desc.setEnumerable(JSAttributes.isEnumerable(attributes));
+        desc.setWritable(JSAttributes.isWritable(attributes));
+        desc.setConfigurable(JSAttributes.isConfigurable(attributes));
+        return desc;
+    }
+
     public static PropertyDescriptor createData(Object value) {
         PropertyDescriptor desc = new PropertyDescriptor();
         desc.setValue(value);
@@ -97,7 +106,7 @@ public final class PropertyDescriptor {
         return desc;
     }
 
-    public static PropertyDescriptor createAccessor(DynamicObject setter, DynamicObject getter) {
+    public static PropertyDescriptor createAccessor(DynamicObject getter, DynamicObject setter) {
         PropertyDescriptor desc = new PropertyDescriptor();
         if (setter != null) {
             desc.setSet(setter);
@@ -108,12 +117,16 @@ public final class PropertyDescriptor {
         return desc;
     }
 
-    public static PropertyDescriptor createAccessor(DynamicObject setter, DynamicObject getter, boolean isEnumerable, boolean isWritable, boolean isConfigurable) {
-        PropertyDescriptor desc = new PropertyDescriptor();
-        desc.setSet(setter);
-        desc.setGet(getter);
+    public static PropertyDescriptor createAccessor(DynamicObject getter, DynamicObject setter, int attributes) {
+        PropertyDescriptor desc = createAccessor(getter, setter);
+        desc.setEnumerable(JSAttributes.isEnumerable(attributes));
+        desc.setConfigurable(JSAttributes.isConfigurable(attributes));
+        return desc;
+    }
+
+    public static PropertyDescriptor createAccessor(DynamicObject getter, DynamicObject setter, boolean isEnumerable, boolean isConfigurable) {
+        PropertyDescriptor desc = createAccessor(getter, setter);
         desc.setEnumerable(isEnumerable);
-        desc.setWritable(isWritable);
         desc.setConfigurable(isConfigurable);
         return desc;
     }
