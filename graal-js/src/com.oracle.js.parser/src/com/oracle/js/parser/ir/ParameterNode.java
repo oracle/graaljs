@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,59 +25,60 @@
 
 package com.oracle.js.parser.ir;
 
-import java.util.Collections;
-import java.util.List;
-
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
 /**
- * IR for CoverParenthesizedExpressionAndArrowParameterList, used only during parsing.
+ * IR representation of a positional parameter value. Used for desugaring parameter initialization.
  */
-public class ExpressionList extends Expression {
-    private final List<? extends Expression> expressions;
+public final class ParameterNode extends Expression {
+    private final int index;
+    private final boolean rest;
 
-    /**
-     * Constructor.
-     *
-     * @param token token
-     * @param finish finish
-     * @param expressions expression
-     */
-    public ExpressionList(final long token, final int finish, final List<? extends Expression> expressions) {
+    public ParameterNode(final long token, final int finish, final int index, final boolean rest) {
         super(token, finish);
-        this.expressions = expressions;
+        this.index = index;
+        this.rest = rest;
     }
 
-    /**
-     * Get the list of expressions.
-     */
-    public List<? extends Expression> getExpressions() {
-        return Collections.unmodifiableList(expressions);
+    public ParameterNode(final long token, final int finish, final int index) {
+        this(token, finish, index, false);
     }
 
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
-        throw new UnsupportedOperationException();
+        if (visitor.enterParameterNode(this)) {
+            return visitor.leaveParameterNode(this);
+        }
+
+        return this;
     }
 
     @Override
     public <R> R accept(TranslatorNodeVisitor<? extends LexicalContext, R> visitor) {
-        throw new UnsupportedOperationException();
+        return visitor.enterParameterNode(this);
     }
 
     @Override
-    public void toString(StringBuilder sb, boolean printType) {
-        sb.append("(");
-        boolean first = true;
-        for (Expression expression : expressions) {
-            if (first) {
-                first = false;
-            } else {
-                sb.append(", ");
-            }
-            expression.toString(sb, printType);
+    public void toString(final StringBuilder sb, final boolean printType) {
+        if (!isRestParameter()) {
+            sb.append("arguments[").append(index).append("]");
+        } else {
+            sb.append("arguments.slice(").append(index).append(")");
         }
-        sb.append(")");
+    }
+
+    /**
+     * Formal parameter index.
+     */
+    public int getIndex() {
+        return index;
+    }
+
+    /**
+     * If true, this is a rest parameter.
+     */
+    public boolean isRestParameter() {
+        return rest;
     }
 }

@@ -24,12 +24,19 @@
  */
 package com.oracle.js.parser;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
+import com.oracle.js.parser.ir.Block;
+import com.oracle.js.parser.ir.Expression;
+import com.oracle.js.parser.ir.ExpressionStatement;
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.IdentNode;
 import com.oracle.js.parser.ir.Module;
+import com.oracle.js.parser.ir.ParameterNode;
+import com.oracle.js.parser.ir.VarNode;
 
 /**
  * ParserContextNode that represents a function that is currently being parsed
@@ -48,13 +55,13 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     /** Line number for function declaration */
     private final int line;
 
-    /**
-     * Function node kind, see FunctionNode.Kind
-     */
+    /** Function node kind, see FunctionNode.Kind */
     private final FunctionNode.Kind kind;
 
-    /** List of parameter identifiers for function */
+    /** List of parameter identifiers (for simple and rest parameters). */
     private List<IdentNode> parameters;
+    /** Optional parameter initialization block (replaces parameter list). */
+    private ParserContextBlockNode parameterBlock;
 
     /** Token for function start */
     private final long token;
@@ -65,9 +72,12 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     /** Opaque node for parser end state, see {@link Parser} */
     private Object endParserState;
 
+    private int length;
+    private int parameterCount;
     private HashSet<String> parameterBoundNames;
     private IdentNode duplicateParameterBinding;
     private boolean simpleParameterList = true;
+    private boolean containsDefaultParameter;
 
     private Module module;
 
@@ -81,7 +91,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * @param parameters The parameters of the function
      */
     ParserContextFunctionNode(final long token, final IdentNode ident, final String name, final Namespace namespace, final int line, final FunctionNode.Kind kind,
-                    final List<IdentNode> parameters) {
+                    final List<IdentNode> parameters, final int length) {
         this.ident = ident;
         this.namespace = namespace;
         this.line = line;
@@ -89,6 +99,9 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         this.name = name;
         this.parameters = parameters;
         this.token = token;
+        this.length = length;
+        this.parameterCount = parameters == null ? 0 : parameters.size();
+        assert calculateLength(parameters) == length;
     }
 
     /**
@@ -166,6 +179,9 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * @return The parameters of the function
      */
     public List<IdentNode> getParameters() {
+        if (parameters == null) {
+            return Collections.emptyList();
+        }
         return parameters;
     }
 
@@ -229,7 +245,53 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         return getFlag(FunctionNode.IS_SUBCLASS_CONSTRUCTOR) != 0;
     }
 
-    boolean addParameterBinding(IdentNode bindingIdentifier) {
+    public int getLength() {
+        return length;
+    }
+
+    public int getParameterCount() {
+        return parameterCount;
+    }
+
+    /**
+     * Add simple or rest parameter.
+     */
+    public void addParameter(IdentNode param) {
+        addParameterBinding(param);
+        if (parameterBlock != null) {
+            addParameterInit(param, getParameterCount());
+        } else {
+            if (parameters == null) {
+                parameters = new ArrayList<>();
+            }
+            parameters.add(param);
+        }
+        recordParameter(false, param.isRestParameter(), false);
+    }
+
+    /**
+     * Update number of parameters, length, and simple parameter list flag.
+     */
+    private void recordParameter(boolean isDefault, boolean isRest, boolean isPattern) {
+        if (!isDefault && !isRest) {
+            if (!containsDefaultParameter) {
+                length++;
+            }
+        } else {
+            containsDefaultParameter = true;
+        }
+        if ((isDefault || isRest || isPattern) && simpleParameterList) {
+            recordNonSimpleParameterList();
+        }
+        parameterCount++;
+    }
+
+    private void recordNonSimpleParameterList() {
+        this.simpleParameterList = false;
+        setFlag(FunctionNode.HAS_NON_SIMPLE_PARAMETER_LIST);
+    }
+
+    private boolean addParameterBinding(IdentNode bindingIdentifier) {
         if (Parser.isArguments(bindingIdentifier)) {
             setFlag(FunctionNode.DEFINES_ARGUMENTS);
         }
@@ -253,10 +315,6 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         return simpleParameterList;
     }
 
-    public void setSimpleParameterList(boolean simpleParameterList) {
-        this.simpleParameterList = simpleParameterList;
-    }
-
     public Module getModule() {
         return module;
     }
@@ -267,5 +325,72 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public boolean isAsync() {
         return getFlag(FunctionNode.IS_ASYNC) != 0;
+    }
+
+    public ParserContextBlockNode getParameterBlock() {
+        return parameterBlock;
+    }
+
+    public void addDefaultParameter(VarNode varNode) {
+        ensureParameterBlock();
+        parameterBlock.appendStatement(varNode);
+        addParameterBinding(varNode.getName());
+        recordParameter(true, false, false);
+    }
+
+    public void addParameterBindingDeclaration(VarNode varNode) {
+        ensureParameterBlock();
+        parameterBlock.appendStatement(varNode);
+        addParameterBinding(varNode.getName());
+    }
+
+    public void addParameterInitialization(int lineNumber, Expression assignment, boolean isDefault) {
+        ensureParameterBlock();
+        parameterBlock.appendStatement(new ExpressionStatement(lineNumber, assignment.getToken(), assignment.getFinish(), assignment));
+        recordParameter(isDefault, false, true);
+    }
+
+    private void ensureParameterBlock() {
+        if (parameterBlock == null) {
+            initParameterBlock();
+        }
+    }
+
+    private void initParameterBlock() {
+        parameterBlock = new ParserContextBlockNode(token);
+        parameterBlock.setFlag(Block.IS_PARAMETER_BLOCK);
+
+        if (parameters != null) {
+            for (int i = 0; i < parameters.size(); i++) {
+                IdentNode paramIdent = parameters.get(i);
+                addParameterInit(paramIdent, i);
+            }
+        }
+        parameters = Collections.emptyList();
+    }
+
+    private void addParameterInit(IdentNode param, int index) {
+        long paramToken = param.getToken();
+        int paramFinish = param.getFinish();
+        ParameterNode paramValue;
+        if (param.isRestParameter()) {
+            paramValue = new ParameterNode(paramToken, paramFinish, index, true);
+        } else {
+            paramValue = new ParameterNode(paramToken, paramFinish, index);
+        }
+        parameterBlock.appendStatement(new VarNode(line, Token.recast(paramToken, TokenType.LET), paramFinish, param, paramValue, VarNode.IS_LET));
+    }
+
+    private static int calculateLength(final List<IdentNode> parameters) {
+        int length = 0;
+        if (parameters != null) {
+            for (IdentNode param : parameters) {
+                if (param.isRestParameter()) {
+                    break;
+                }
+                length++;
+            }
+        }
+        return length;
     }
 }

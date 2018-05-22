@@ -60,6 +60,7 @@ import com.oracle.js.parser.ir.NameSpaceImportNode;
 import com.oracle.js.parser.ir.NamedImportsNode;
 import com.oracle.js.parser.ir.Node;
 import com.oracle.js.parser.ir.ObjectNode;
+import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyNode;
 import com.oracle.js.parser.ir.ReturnNode;
 import com.oracle.js.parser.ir.RuntimeNode;
@@ -912,5 +913,25 @@ public abstract class NodeVisitor<T extends LexicalContext> {
      */
     public Node leaveBlockExpression(BlockExpression blockExpression) {
         return leaveDefault(blockExpression);
+    }
+
+    /**
+     * Callback for entering a ParameterNode
+     *
+     * @param  paramNode the node
+     * @return true if traversal should continue and node children be traversed, false otherwise
+     */
+    public boolean enterParameterNode(final ParameterNode paramNode) {
+        return enterDefault(paramNode);
+    }
+
+    /**
+     * Callback for leaving a ParameterNode
+     *
+     * @param  paramNode the node
+     * @return processed node, which will replace the original one, or the original node
+     */
+    public Node leaveParameterNode(final ParameterNode paramNode) {
+        return leaveDefault(paramNode);
     }
 }

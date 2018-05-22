@@ -72,6 +72,7 @@ import com.oracle.js.parser.ir.LexicalContext;
 import com.oracle.js.parser.ir.LexicalContextNode;
 import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.ObjectNode;
+import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyNode;
 import com.oracle.js.parser.ir.RuntimeNode;
 import com.oracle.js.parser.ir.Statement;
@@ -306,7 +307,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             // function needs parent frame analysis has already been done
             boolean needsParentFrame = functionNode.usesAncestorScope();
 
-            functionData = factory.createFunctionData(context, getFunctionLength(functionNode), functionName, isConstructor, isDerivedConstructor, isStrict, isBuiltin,
+            functionData = factory.createFunctionData(context, functionNode.getLength(), functionName, isConstructor, isDerivedConstructor, isStrict, isBuiltin,
                             needsParentFrame, isGeneratorFunction, isAsyncFunction, isClassConstructor, strictFunctionProperties, needsNewTarget);
 
             Environment parentEnv = environment;
@@ -323,8 +324,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 currentFunction.setInternalFunctionName(!functionName.isEmpty() ? functionName : functionNode.getIdent().getName());
                 currentFunction.setNamedFunctionExpression(functionNode.isNamedFunctionExpression());
 
-                int formalParameterCount = declareParameters(functionNode);
-                if (formalParameterCount > JSTruffleOptions.MaxFunctionArgumentsLength) {
+                declareParameters(functionNode);
+                if (functionNode.getNumOfParams() > JSTruffleOptions.MaxFunctionArgumentsLength) {
                     throw Errors.createSyntaxError("function has too many arguments");
                 }
 
@@ -354,7 +355,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 needsParentFrame = currentFunction.needsParentFrame();
                 currentFunction.freeze();
 
-                functionData = factory.createFunctionData(context, formalParameterCount, functionName, isConstructor, isDerivedConstructor, isStrict, isBuiltin,
+                functionData = factory.createFunctionData(context, functionNode.getLength(), functionName, isConstructor, isDerivedConstructor, isStrict, isBuiltin,
                                 needsParentFrame, isGeneratorFunction, isAsyncFunction, isClassConstructor, strictFunctionProperties, needsNewTarget);
 
                 functionRoot = createFunctionRoot(functionNode, functionData, currentFunction, body);
@@ -378,29 +379,15 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     JavaScriptNode translateFunctionBody(FunctionNode functionNode, boolean isArrowFunction, boolean isGeneratorFunction, boolean isAsyncFunction, boolean isDerivedConstructor,
                     boolean needsNewTarget, FunctionEnvironment currentFunction, List<JavaScriptNode> declarations) {
-        JavaScriptNode parameterBlock = null;
-        if (functionNode.getParameterBlock() != null) {
-            parameterBlock = transform(functionNode.getParameterBlock());
-        }
-
         JavaScriptNode body = transform(functionNode.getBody());
 
-        body = handleFunctionReturn(functionNode, body);
+        if (!isGeneratorFunction) {
+            // finishGeneratorBody has already taken care of this for (async) generator functions
+            body = handleFunctionReturn(functionNode, body);
 
-        if (isGeneratorFunction || isAsyncFunction) {
-            if (isGeneratorFunction && isAsyncFunction) {
-                body = handleAsyncGeneratorBody(body);
-            } else if (isGeneratorFunction) {
-                body = handleGeneratorBody(body);
-            } else if (isAsyncFunction) {
-                body = handleAsyncFunctionBody(body, parameterBlock);
-                parameterBlock = null;
+            if (isAsyncFunction) {
+                body = handleAsyncFunctionBody(body);
             }
-        }
-
-        // parameter initialization must precede (i.e. wrap) the (async) generator function body
-        if (parameterBlock != null) {
-            body = factory.createExprBlock(parameterBlock, body);
         }
 
         if (!declarations.isEmpty()) {
@@ -440,8 +427,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             currentFunction.setNeedsParentFrame(needsParentFrame);
 
-            int formalParameterCount = declareParameters(functionNode);
-            if (formalParameterCount > JSTruffleOptions.MaxFunctionArgumentsLength) {
+            declareParameters(functionNode);
+            if (functionNode.getNumOfParams() > JSTruffleOptions.MaxFunctionArgumentsLength) {
                 throw Errors.createSyntaxError("function has too many arguments");
             }
             functionEnvInit(functionNode);
@@ -486,13 +473,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      *
      * @return instrumented function body
      */
-    private JavaScriptNode handleAsyncFunctionBody(JavaScriptNode body, JavaScriptNode parameterInit) {
+    private JavaScriptNode handleAsyncFunctionBody(JavaScriptNode body) {
+        assert currentFunction().isAsyncFunction() && !currentFunction().isGeneratorFunction();
         VarRef asyncContextVar = environment.findAsyncContextVar();
         VarRef asyncResultVar = environment.findAsyncResultVar();
         JSWriteFrameSlotNode writeResultNode = (JSWriteFrameSlotNode) asyncResultVar.createWriteNode(null);
         JSWriteFrameSlotNode writeContextNode = (JSWriteFrameSlotNode) asyncContextVar.createWriteNode(null);
         JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
-        return factory.createAsyncFunctionBody(context, parameterInit, instrumentedBody, writeContextNode, writeResultNode);
+        return factory.createAsyncFunctionBody(context, instrumentedBody, writeContextNode, writeResultNode);
     }
 
     /**
@@ -500,7 +488,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      *
      * @return instrumented function body
      */
+    private JavaScriptNode finishGeneratorBody(JavaScriptNode bodyBlock) {
+        JavaScriptNode body = handleFunctionReturn(lc.getCurrentFunction(), bodyBlock);
+        // Note: parameter initialization must precede (i.e. wrap) the (async) generator body
+        if (currentFunction().isAsyncGeneratorFunction()) {
+            return handleAsyncGeneratorBody(body);
+        } else {
+            return handleGeneratorBody(body);
+        }
+    }
+
     private JavaScriptNode handleGeneratorBody(JavaScriptNode body) {
+        assert currentFunction().isGeneratorFunction() && !currentFunction().isAsyncGeneratorFunction();
         VarRef yieldVar = environment.findYieldValueVar();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
         JSReadFrameSlotNode readYieldResultNode = JSTruffleOptions.YieldResultInFrame ? (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getYieldResultSlot()).createReadNode() : null;
@@ -508,12 +507,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return factory.createGeneratorBody(context, instrumentedBody, writeYieldValueNode, readYieldResultNode);
     }
 
-    /**
-     * Generator function parse-time AST modifications.
-     *
-     * @return instrumented function body
-     */
     private JavaScriptNode handleAsyncGeneratorBody(JavaScriptNode body) {
+        assert currentFunction().isAsyncGeneratorFunction();
         JSWriteFrameSlotNode writeAsyncContextNode = (JSWriteFrameSlotNode) environment.findAsyncContextVar().createWriteNode(null);
         VarRef yieldVar = environment.findAsyncResultVar();
         JSWriteFrameSlotNode writeYieldValueNode = (JSWriteFrameSlotNode) yieldVar.createWriteNode(null);
@@ -676,41 +671,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return new EnvironmentCloseable(functionEnv);
     }
 
-    private int declareParameters(FunctionNode functionNode) {
+    private void declareParameters(FunctionNode functionNode) {
         FunctionEnvironment currentFunction = currentFunction();
+        currentFunction.setSimpleParameterList(functionNode.hasSimpleParameterList());
         List<IdentNode> parameters = functionNode.getParameters();
-        int length = parameters.size();
         for (int i = 0; i < parameters.size(); i++) {
             IdentNode parameter = parameters.get(i);
+            // must be simple or rest parameter
             currentFunction.declareParameter(parameter.getName());
-
-            if (parameter.isDefaultParameter() || parameter.isRestParameter()) {
-                // default/rest parameter not included in formal parameter count
-                length = Math.min(i, length);
-                currentFunction.setSimpleParameterList(false);
-            }
             if (parameter.isRestParameter()) {
-                currentFunction.setRestParameter(true);
                 assert i == parameters.size() - 1;
-            }
-            if (parameter.isDestructuredParameter()) {
-                currentFunction.setSimpleParameterList(false);
+                currentFunction.setRestParameter(true);
             }
         }
-        return length;
-    }
-
-    private static int getFunctionLength(FunctionNode functionNode) {
-        List<IdentNode> parameters = functionNode.getParameters();
-        int length = parameters.size();
-        for (int i = 0; i < parameters.size(); i++) {
-            IdentNode parameter = parameters.get(i);
-            if (parameter.isDefaultParameter() || parameter.isRestParameter()) {
-                // default/rest parameter not included in formal parameter count
-                length = Math.min(i, length);
-            }
-        }
-        return length;
     }
 
     private JavaScriptNode prepareDeclarations(List<JavaScriptNode> declarations, JavaScriptNode body) {
@@ -853,7 +826,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     if (!fn.isStrict() && !varName.equals(Environment.ARGUMENTS_NAME) && fn.getBody().getExistingSymbol(varName) == null) {
                         if (!isVarAlreadyDeclaredLexically(lc, varName, options, true)) {
                             assert !lc.getCurrentBlock().isFunctionBody() && !lc.getCurrentBlock().isParameterBlock();
-                            fn.getBody().putSymbol(lc, new Symbol(varName, Symbol.IS_VAR | Symbol.IS_VAR_DECLARED_HERE));
+                            fn.getVarDeclarationBlock().putSymbol(lc, new Symbol(varName, Symbol.IS_VAR | Symbol.IS_VAR_DECLARED_HERE));
                         }
                     }
                 }
@@ -861,11 +834,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             private void enterVarNodeDefault(String varName) {
                 Block currentBlock = lc.getCurrentBlock();
-                Block bodyBlock = lc.getCurrentFunction().getBody();
+                Block bodyBlock = lc.getCurrentFunction().getVarDeclarationBlock();
                 if (currentBlock.isParameterBlock()) {
-                    // declare parameter-introduced binding here, in the parameter init block
-                    currentBlock.putSymbol(lc, new Symbol(varName, Symbol.IS_VAR | Symbol.IS_VAR_DECLARED_HERE));
-
                     // for duplicate checks record its declaration in the body block, too
                     assert currentBlock != bodyBlock;
                     bodyBlock.putSymbol(lc, new Symbol(varName, Symbol.IS_VAR));
@@ -875,8 +845,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         currentBlock.putSymbol(lc, new Symbol(varName, Symbol.IS_VAR));
                     }
 
-                    Block parameterBlock = lc.getCurrentFunction().getParameterBlock();
-                    if (parameterBlock == null || parameterBlock.getExistingSymbol(varName) == null) {
+                    Block parameterBlock = lc.getCurrentFunction().getBody();
+                    if (!parameterBlock.isParameterBlock() || parameterBlock.getExistingSymbol(varName) == null) {
                         // declare in var declaration scope if not a parameter
                         bodyBlock.putSymbol(lc, new Symbol(varName, Symbol.IS_VAR | Symbol.IS_VAR_DECLARED_HERE));
                     } else {
@@ -901,10 +871,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     IdentNode parameter = parameters.get(i);
                     Symbol symbol = new Symbol(parameter.getName(), Symbol.IS_PARAM);
                     functionNode.getBody().putSymbol(lc, symbol);
-                    if (functionNode.getParameterBlock() != null) {
-                        // for redeclaration checks
-                        functionNode.getParameterBlock().putSymbol(lc, new Symbol(parameter.getName(), Symbol.IS_PARAM));
-                    }
                 }
             }
         };
@@ -1197,7 +1163,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 alreadyDeclared = true;
             } else {
                 Block parentBlock = lexcon.getParentBlock();
-                if (parentBlock != null && parentBlock.isCatchBlock()) {
+                if (parentBlock != null && (parentBlock.isCatchBlock() || parentBlock.isParameterBlock())) {
                     if (parentBlock.getExistingSymbol(varName) != null) {
                         alreadyDeclared = true;
                     }
@@ -1306,15 +1272,21 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterBlock(Block block) {
+        JavaScriptNode result;
         try (EnvironmentCloseable blockEnv = enterBlockEnvironment(block)) {
             List<Statement> blockStatements = block.getStatements();
             List<JavaScriptNode> scopeInit = createTemporalDeadZoneInit(block);
-            JavaScriptNode blockNode = transformStatements(blockStatements, block.isTerminal(), scopeInit, block.isExpressionBlock());
-            if (currentFunction().isCallerContextEval()) {
+            JavaScriptNode blockNode = transformStatements(blockStatements, block.isTerminal(), scopeInit, block.isExpressionBlock() || block.isParameterBlock());
+            if (block.isFunctionBody() && currentFunction().isCallerContextEval()) {
                 blockNode = prependDynamicScopeBindingInit(block, blockNode);
             }
-            return result(blockEnv.wrapBlockScope(blockNode));
+            result = blockEnv.wrapBlockScope(blockNode);
         }
+        // Parameter initialization must precede (i.e. wrap) the (async) generator function body
+        if (block.isFunctionBody() && currentFunction().isGeneratorFunction()) {
+            result = finishGeneratorBody(result);
+        }
+        return result(result);
     }
 
     /**
@@ -1421,7 +1393,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
              * the function has parameter expressions, then the function body gets a separate scope
              * and we populate the env with parameter vars (cf. FunctionDeclarationInstantiation).
              */
-            if (block.isParameterBlock() || (block.isFunctionBody() && lc.getCurrentFunction().getParameterBlock() == null)) {
+            if (block.isParameterBlock() || (block.isFunctionBody() && block == lc.getCurrentFunction().getBody())) {
                 assert environment instanceof FunctionEnvironment;
                 boolean onlyBlockScoped = currentFunction().isCallerContextEval();
                 environment.addFrameSlotsFromSymbols(block.getSymbols(), onlyBlockScoped);
@@ -3054,6 +3026,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     @Override
     public JavaScriptNode enterBlockExpression(BlockExpression blockExpression) {
         return result(transform(blockExpression.getBlock()));
+    }
+
+    @Override
+    public JavaScriptNode enterParameterNode(ParameterNode paramNode) {
+        final FunctionEnvironment currentFunction = currentFunction();
+        final JavaScriptNode valueNode;
+        if (paramNode.isRestParameter()) {
+            valueNode = factory.createAccessRestArgument(context, currentFunction.getLeadingArgumentCount() + paramNode.getIndex(), currentFunction.getTrailingArgumentCount());
+        } else {
+            valueNode = factory.createAccessArgument(currentFunction.getLeadingArgumentCount() + paramNode.getIndex());
+        }
+        return result(ensureHasHiddenSourceSection(valueNode));
     }
 
     // ---

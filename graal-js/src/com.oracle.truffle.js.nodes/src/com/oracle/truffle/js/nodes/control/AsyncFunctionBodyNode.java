@@ -117,28 +117,24 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     }
 
     private final JSContext context;
-    @Child private JavaScriptNode parameterInit;
     @Child private JavaScriptNode functionBody;
     @Child private JSWriteFrameSlotNode writeAsyncContext;
     @Child private JSWriteFrameSlotNode writeAsyncResult;
     @Child private NewPromiseCapabilityNode newPromiseCapability;
-    @Child private JSFunctionCallNode callRejectNode;
-    @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
     @CompilationFinal private CallTarget resumptionTarget;
     @Child private DirectCallNode asyncCallNode;
 
-    public AsyncFunctionBodyNode(JSContext context, JavaScriptNode parameterInit, JavaScriptNode body, JSWriteFrameSlotNode asyncContext, JSWriteFrameSlotNode asyncResult) {
+    public AsyncFunctionBodyNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncContext, JSWriteFrameSlotNode asyncResult) {
         this.context = context;
         this.functionBody = body;
-        this.parameterInit = parameterInit;
         this.writeAsyncContext = asyncContext;
         this.writeAsyncResult = asyncResult;
         this.newPromiseCapability = NewPromiseCapabilityNode.create(context);
     }
 
-    public static JavaScriptNode create(JSContext context, JavaScriptNode parameterInit, JavaScriptNode body, JSWriteFrameSlotNode asyncVar, JSWriteFrameSlotNode asyncResult) {
-        return new AsyncFunctionBodyNode(context, parameterInit, body, asyncVar, asyncResult);
+    public static JavaScriptNode create(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncVar, JSWriteFrameSlotNode asyncResult) {
+        return new AsyncFunctionBodyNode(context, body, asyncVar, asyncResult);
     }
 
     private JSContext getContext() {
@@ -174,19 +170,6 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         PromiseCapabilityRecord promiseCapability = newPromiseCapability.executeDefault();
 
-        if (parameterInit != null) {
-            try {
-                parameterInit.execute(frame);
-            } catch (Throwable ex) {
-                if (shouldCatch(ex)) {
-                    promiseCapabilityReject(callRejectNode, promiseCapability, getErrorObjectNode.execute(ex));
-                    return promiseCapability.getPromise();
-                } else {
-                    throw ex;
-                }
-            }
-        }
-
         ensureAsyncCallTargetInitialized();
         asyncFunctionStart(frame, promiseCapability);
 
@@ -201,23 +184,13 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
         promiseCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), result));
     }
 
-    private boolean shouldCatch(Throwable exception) {
-        if (getErrorObjectNode == null || callRejectNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
-            callRejectNode = insert(JSFunctionCallNode.createCall());
-        }
-        return TryCatchNode.shouldCatch(exception);
-    }
-
     @Override
     protected JavaScriptNode copyUninitialized() {
         if (resumptionTarget == null) {
-            return create(getContext(), cloneUninitialized(parameterInit), cloneUninitialized(functionBody), cloneUninitialized(writeAsyncContext), cloneUninitialized(writeAsyncResult));
+            return create(getContext(), cloneUninitialized(functionBody), cloneUninitialized(writeAsyncContext), cloneUninitialized(writeAsyncResult));
         } else {
             AsyncFunctionRootNode asyncFunctionRoot = (AsyncFunctionRootNode) ((RootCallTarget) resumptionTarget).getRootNode();
-            return create(getContext(), cloneUninitialized(parameterInit), cloneUninitialized(asyncFunctionRoot.functionBody), cloneUninitialized(writeAsyncContext),
-                            cloneUninitialized(asyncFunctionRoot.writeAsyncResult));
+            return create(getContext(), cloneUninitialized(asyncFunctionRoot.functionBody), cloneUninitialized(writeAsyncContext), cloneUninitialized(asyncFunctionRoot.writeAsyncResult));
         }
     }
 

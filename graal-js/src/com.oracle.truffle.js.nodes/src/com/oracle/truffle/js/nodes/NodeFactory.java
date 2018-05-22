@@ -782,8 +782,8 @@ public class NodeFactory {
         return AsyncGeneratorYieldNode.createYieldStar(context, expression, asyncContextNode, asyncResultNode, returnNode, readTemp, writeTemp);
     }
 
-    public JavaScriptNode createAsyncFunctionBody(JSContext context, JavaScriptNode parameterInit, JavaScriptNode body, JSWriteFrameSlotNode asyncContext, JSWriteFrameSlotNode asyncResult) {
-        return AsyncFunctionBodyNode.create(context, parameterInit, body, asyncContext, asyncResult);
+    public JavaScriptNode createAsyncFunctionBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncContext, JSWriteFrameSlotNode asyncResult) {
+        return AsyncFunctionBodyNode.create(context, body, asyncContext, asyncResult);
     }
 
     public JavaScriptNode createGeneratorBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValue, JSReadFrameSlotNode readYieldResult) {

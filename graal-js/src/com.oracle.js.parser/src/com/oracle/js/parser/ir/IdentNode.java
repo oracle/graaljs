@@ -38,16 +38,13 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     private static final int PROPERTY_NAME     = 1 << 0;
     private static final int INITIALIZED_HERE  = 1 << 1;
     private static final int FUNCTION          = 1 << 2;
+    private static final int NEW_TARGET        = 1 << 3;
     private static final int IS_DECLARED_HERE  = 1 << 4;
     private static final int THIS              = 1 << 5;
     private static final int SUPER             = 1 << 6;
     private static final int DIRECT_SUPER      = 1 << 7;
     private static final int REST_PARAMETER    = 1 << 8;
-    private static final int DEFAULT_PARAMETER = 1 << 9;
-    private static final int DESTRUCTURED_PARAMETER = 1 << 10;
-    private static final int CATCH_PARAMETER   = 1 << 11;
-    private static final int NEW_TARGET        = 1 << 12;
-    private static final int IS_DEAD           = 1 << 13;
+    private static final int CATCH_PARAMETER   = 1 << 9;
 
     /** Identifier. */
     private final String name;
@@ -170,15 +167,6 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     }
 
     /**
-     * Is this a LET or CONST identifier used before its declaration?
-     *
-     * @return true if identifier is dead
-     */
-    public boolean isDead() {
-        return (flags & IS_DEAD) != 0;
-    }
-
-    /**
      * Is this IdentNode declared here?
      *
      * @return true if identifier is declared here
@@ -244,22 +232,6 @@ public final class IdentNode extends Expression implements PropertyKey, Function
 
     public IdentNode setIsRestParameter() {
         return new IdentNode(this, name, flags | REST_PARAMETER);
-    }
-
-    public boolean isDefaultParameter() {
-        return (flags & DEFAULT_PARAMETER) != 0;
-    }
-
-    public IdentNode setIsDefaultParameter() {
-        return new IdentNode(this, name, flags | DEFAULT_PARAMETER);
-    }
-
-    public boolean isDestructuredParameter() {
-        return (flags & DESTRUCTURED_PARAMETER) != 0;
-    }
-
-    public IdentNode setIsDestructuredParameter() {
-        return new IdentNode(this, name, flags | DESTRUCTURED_PARAMETER);
     }
 
     public boolean isCatchParameter() {
