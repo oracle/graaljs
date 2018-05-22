@@ -63,6 +63,17 @@ protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 private:
     jobject Call(jobject recv, jobjectArray arguments);
+    jobject Call0(jobject recv);
+    jobject Call1(jobject recv, jobject arg0);
+    jobject Call2(jobject recv, jobject arg0, jobject arg1);
+    jobject Call3(jobject recv, jobject arg0, jobject arg1, jobject arg2);
+    jobject Call4(jobject recv, jobject arg0, jobject arg1, jobject arg2, jobject arg3);
+    jobject Call5(jobject recv, jobject arg0, jobject arg1, jobject arg2, jobject arg3, jobject arg4);
+    jobject Call6(jobject recv, jobject arg0, jobject arg1, jobject arg2, jobject arg3, jobject arg4, jobject arg5);
+    jobject Call7(jobject recv, jobject arg0, jobject arg1, jobject arg2, jobject arg3, jobject arg4, jobject arg5, jobject arg6);
+    jobject Call8(jobject recv, jobject arg0, jobject arg1, jobject arg2, jobject arg3, jobject arg4, jobject arg5, jobject arg6, jobject arg7);
+    jobject Call9(jobject recv, jobject arg0, jobject arg1, jobject arg2, jobject arg3, jobject arg4, jobject arg5, jobject arg6, jobject arg7, jobject arg8);
+    jobject CallResult(jobject java_object);
     jobjectArray CreateJavaObjectArray(int argc, v8::Local<v8::Value> argv[]) const;
 };
 

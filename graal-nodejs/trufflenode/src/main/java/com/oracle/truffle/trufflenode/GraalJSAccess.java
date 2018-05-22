@@ -1036,6 +1036,46 @@ public final class GraalJSAccess {
         return JSRuntime.call(function, receiver, arguments);
     }
 
+    public Object functionCall0(Object function, Object receiver) {
+        return functionCall(function, receiver, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+    }
+
+    public Object functionCall1(Object function, Object receiver, Object arg0) {
+        return functionCall(function, receiver, new Object[]{arg0});
+    }
+
+    public Object functionCall2(Object function, Object receiver, Object arg0, Object arg1) {
+        return functionCall(function, receiver, new Object[]{arg0, arg1});
+    }
+
+    public Object functionCall3(Object function, Object receiver, Object arg0, Object arg1, Object arg2) {
+        return functionCall(function, receiver, new Object[]{arg0, arg1, arg2});
+    }
+
+    public Object functionCall4(Object function, Object receiver, Object arg0, Object arg1, Object arg2, Object arg3) {
+        return functionCall(function, receiver, new Object[]{arg0, arg1, arg2, arg3});
+    }
+
+    public Object functionCall5(Object function, Object receiver, Object arg0, Object arg1, Object arg2, Object arg3, Object arg4) {
+        return functionCall(function, receiver, new Object[]{arg0, arg1, arg2, arg3, arg4});
+    }
+
+    public Object functionCall6(Object function, Object receiver, Object arg0, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5) {
+        return functionCall(function, receiver, new Object[]{arg0, arg1, arg2, arg3, arg4, arg5});
+    }
+
+    public Object functionCall7(Object function, Object receiver, Object arg0, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
+        return functionCall(function, receiver, new Object[]{arg0, arg1, arg2, arg3, arg4, arg5, arg6});
+    }
+
+    public Object functionCall8(Object function, Object receiver, Object arg0, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6, Object arg7) {
+        return functionCall(function, receiver, new Object[]{arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7});
+    }
+
+    public Object functionCall9(Object function, Object receiver, Object arg0, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6, Object arg7, Object arg8) {
+        return functionCall(function, receiver, new Object[]{arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8});
+    }
+
     private static SourceSection functionGetSourceSection(Object function) {
         if (JSFunction.isJSFunction(function)) {
             CallTarget callTarget = JSFunction.getCallTarget((DynamicObject) function);
