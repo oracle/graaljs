@@ -1033,7 +1033,12 @@ public final class GraalJSAccess {
     }
 
     public Object functionCall(Object function, Object receiver, Object[] arguments) {
-        return JSRuntime.call(function, receiver, arguments);
+        Object value = JSRuntime.call(function, receiver, arguments);
+        Object flatten = valueFlatten(value);
+        resetSharedBuffer();
+        sharedBuffer.position(4);
+        sharedBuffer.putInt(0, valueType(flatten, true));
+        return flatten;
     }
 
     public Object functionCall0(Object function, Object receiver) {

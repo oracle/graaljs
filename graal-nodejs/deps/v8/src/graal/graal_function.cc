@@ -173,7 +173,9 @@ v8::Local<v8::Value> GraalFunction::Call(v8::Local<v8::Value> recv, int argc, v8
     if (java_object == NULL) {
         return v8::Local<v8::Value>();
     } else {
-        GraalValue* graal_value = GraalValue::FromJavaObject(Isolate(), java_object);
+        Isolate()->ResetSharedBuffer();
+        int32_t value_t = Isolate()->ReadInt32FromSharedBuffer();
+        GraalValue* graal_value = GraalValue::FromJavaObject(Isolate(), java_object, value_t, true);
         return reinterpret_cast<v8::Object*> (graal_value);
     }
 }
