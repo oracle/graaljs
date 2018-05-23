@@ -163,7 +163,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private static final int MAX_TOSTRING_DEPTH = 10;
 
     private final Map<JSContextOptions, Queue<JSContext>> contextPools = new ConcurrentHashMap<>();
-    private volatile Boolean useContextPool;
 
     public static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
@@ -395,14 +394,10 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected JSRealm createContext(Env env) {
-        if (useContextPool == null) {
-            useContextPool = JSContextOptions.CODE_SHARING.getValue(env.getOptions()).equals("pool");
-        }
-
         JSContext languageContext = null;
         TruffleContext parent = env.getContext().getParent();
         if (parent == null) {
-            if (useContextPool() && !contextPools.isEmpty()) {
+            if (useContextPool(env) && !contextPools.isEmpty()) {
                 JSContextOptions options = new JSContextOptions(new GraalJSParserOptions());
                 options.setEnv(env);
                 languageContext = pollContextPool(options);
@@ -485,7 +480,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected void disposeContext(JSRealm realm) {
-        if (useContextPool() && !realm.isChildRealm()) {
+        if (useContextPool(realm.getEnv()) && !realm.isChildRealm()) {
             JSContext context = realm.getContext();
             Queue<JSContext> contextPool = getContextPool(context.getContextOptions());
             assert !contextPool.contains(context);
@@ -502,8 +497,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         return contextPool == null ? null : contextPool.poll();
     }
 
-    private boolean useContextPool() {
-        return useContextPool;
+    private static boolean useContextPool(Env env) {
+        return JSContextOptions.CODE_SHARING.getValue(env.getOptions()).equals("pool");
     }
 
     @Override
