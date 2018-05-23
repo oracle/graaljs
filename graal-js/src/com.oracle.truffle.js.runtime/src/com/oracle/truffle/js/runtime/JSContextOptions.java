@@ -57,77 +57,77 @@ public final class JSContextOptions {
     @CompilationFinal private Env env;
 
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
-    private static final String ECMASCRIPT_VERSION_HELP = "ECMAScript Version.";
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSTruffleOptions.MaxECMAScriptVersion);
+    private static final String ECMASCRIPT_VERSION_HELP = helpWithDefault("ECMAScript Version.", ECMASCRIPT_VERSION);
     @CompilationFinal private int ecmascriptVersion;
 
     public static final String ANNEX_B_NAME = JS_OPTION_PREFIX + "annex-b";
-    private static final String ANNEX_B_HELP = "Enable ECMAScript Annex B features.";
     public static final OptionKey<Boolean> ANNEX_B = new OptionKey<>(JSTruffleOptions.AnnexB);
+    private static final String ANNEX_B_HELP = helpWithDefault("Enable ECMAScript Annex B features.", ANNEX_B);
     @CompilationFinal private boolean annexB;
 
     public static final String INTL_402_NAME = JS_OPTION_PREFIX + "intl-402";
-    private static final String INTL_402_HELP = "Enable ECMAScript Internationalization API";
     public static final OptionKey<Boolean> INTL_402 = new OptionKey<>(false);
+    private static final String INTL_402_HELP = helpWithDefault("Enable ECMAScript Internationalization API", INTL_402);
     @CompilationFinal private boolean intl402;
 
     public static final String REGEXP_STATIC_RESULT_NAME = JS_OPTION_PREFIX + "regexp-static-result";
-    private static final String REGEXP_STATIC_RESULT_HELP = "provide last RegExp match in RegExp global var, e.g. RegExp.$1";
     private static final OptionKey<Boolean> REGEXP_STATIC_RESULT = new OptionKey<>(true);
+    private static final String REGEXP_STATIC_RESULT_HELP = helpWithDefault("provide last RegExp match in RegExp global var, e.g. RegExp.$1", REGEXP_STATIC_RESULT);
     @CompilationFinal private boolean regexpStaticResult;
 
     public static final String ARRAY_SORT_INHERITED_NAME = JS_OPTION_PREFIX + "array-sort-inherited";
-    private static final String ARRAY_SORT_INHERITED_HELP = "implementation-defined behavior in Array.protoype.sort: sort inherited keys?";
     private static final OptionKey<Boolean> ARRAY_SORT_INHERITED = new OptionKey<>(true);
+    private static final String ARRAY_SORT_INHERITED_HELP = helpWithDefault("implementation-defined behavior in Array.protoype.sort: sort inherited keys?", ARRAY_SORT_INHERITED);
     @CompilationFinal private boolean arraySortInherited;
 
     public static final String SHARED_ARRAY_BUFFER_NAME = JS_OPTION_PREFIX + "shared-array-buffer";
-    private static final String SHARED_ARRAY_BUFFER_HELP = "ES2017 SharedArrayBuffer";
     private static final OptionKey<Boolean> SHARED_ARRAY_BUFFER = new OptionKey<>(false);
+    private static final String SHARED_ARRAY_BUFFER_HELP = helpWithDefault("ES2017 SharedArrayBuffer", SHARED_ARRAY_BUFFER);
     @CompilationFinal private boolean sharedArrayBuffer;
 
     public static final String ATOMICS_NAME = JS_OPTION_PREFIX + "atomics";
-    private static final String ATOMICS_HELP = "ES2017 Atomics";
     private static final OptionKey<Boolean> ATOMICS = new OptionKey<>(true);
+    private static final String ATOMICS_HELP = helpWithDefault("ES2017 Atomics", ATOMICS);
     @CompilationFinal private boolean atomics;
 
     public static final String V8_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "v8-compatibility-mode";
-    private static final String V8_COMPATIBILITY_MODE_HELP = "provide compatibility with Google V8 engine";
     private static final OptionKey<Boolean> V8_COMPATIBILITY_MODE = new OptionKey<>(false);
+    private static final String V8_COMPATIBILITY_MODE_HELP = helpWithDefault("provide compatibility with Google V8 engine", V8_COMPATIBILITY_MODE);
     @CompilationFinal private boolean v8CompatibilityMode;
 
     public static final String V8_REALM_BUILTIN_NAME = JS_OPTION_PREFIX + "v8-realm-builtin";
-    private static final String V8_REALM_BUILTIN_HELP = "Provide Realm builtin compatible with V8's d8 shell.";
     private static final OptionKey<Boolean> V8_REALM_BUILTIN = new OptionKey<>(false);
+    private static final String V8_REALM_BUILTIN_HELP = helpWithDefault("Provide Realm builtin compatible with V8's d8 shell.", V8_REALM_BUILTIN);
     @CompilationFinal private boolean v8RealmBuiltin;
 
     public static final String DEBUG_BUILTIN_NAME = JS_OPTION_PREFIX + "debug-builtin";
-    private static final String DEBUG_BUILTIN_HELP = "provide a non-API Debug builtin. Behaviour will likely change. Don't depend on this in production code.";
     private static final OptionKey<Boolean> DEBUG_BUILTIN = new OptionKey<>(false);
+    private static final String DEBUG_BUILTIN_HELP = helpWithDefault("provide a non-API Debug builtin. Behaviour will likely change. Don't depend on this in production code.", DEBUG_BUILTIN);
     @CompilationFinal private boolean debug;
 
     public static final String DIRECT_BYTE_BUFFER_NAME = JS_OPTION_PREFIX + "direct-byte-buffer";
-    private static final String DIRECT_BYTE_BUFFER_HELP = "Use direct (off-heap) byte buffer for typed arrays.";
     private static final OptionKey<Boolean> DIRECT_BYTE_BUFFER = new OptionKey<>(JSTruffleOptions.DirectByteBuffer);
+    private static final String DIRECT_BYTE_BUFFER_HELP = helpWithDefault("Use direct (off-heap) byte buffer for typed arrays.", DIRECT_BYTE_BUFFER);
     @CompilationFinal private boolean directByteBuffer;
 
     public static final String PARSE_ONLY_NAME = JS_OPTION_PREFIX + "parse-only";
-    private static final String PARSE_ONLY_HELP = "Only parse source code, do not run it.";
     private static final OptionKey<Boolean> PARSE_ONLY = new OptionKey<>(false);
+    private static final String PARSE_ONLY_HELP = helpWithDefault("Only parse source code, do not run it.", PARSE_ONLY);
     @CompilationFinal private boolean parseOnly;
 
     public static final String TIME_ZONE_NAME = JS_OPTION_PREFIX + "timezone";
-    private static final String TIME_ZONE_HELP = "Set custom timezone.";
     public static final OptionKey<String> TIME_ZONE = new OptionKey<>("");
+    private static final String TIME_ZONE_HELP = helpWithDefault("Set custom timezone.", TIME_ZONE);
 
     public static final String PRECISE_TIME_NAME = JS_OPTION_PREFIX + "precise-time";
-    private static final String PRECISE_TIME_HELP = "High-resolution timestamps via performance.now()";
     private static final OptionKey<Boolean> PRECISE_TIME = new OptionKey<>(false);
+    private static final String PRECISE_TIME_HELP = helpWithDefault("High-resolution timestamps via performance.now()", PRECISE_TIME);
     @CompilationFinal private boolean preciseTime;
 
     public static final String CODE_SHARING_NAME = JS_OPTION_PREFIX + "code-sharing";
-    private static final String CODE_SHARING_HELP = "Code sharing between Contexts of an Engine: 'pool' enables code reuse via a pool of closed contexts.";
     public static final OptionKey<String> CODE_SHARING = new OptionKey<>("pool");
+    private static final String CODE_SHARING_HELP = helpWithDefault("Code sharing between Contexts of an Engine: 'pool' enables code reuse via a pool of closed contexts.", CODE_SHARING);
 
     private static final OptionKey<?>[] PREINIT_CONTEXT_OPTION_KEYS = {
                     ECMASCRIPT_VERSION,
@@ -208,6 +208,10 @@ public final class JSContextOptions {
 
     private static int readIntegerFromSystemProperty(OptionKey<Integer> key, String name) {
         return Integer.getInteger("polyglot." + name, key.getDefaultValue());
+    }
+
+    public static String helpWithDefault(String helpMessage, OptionKey<? extends Object> key) {
+        return helpMessage + " (default:" + key.getDefaultValue() + ")";
     }
 
     public static void describeOptions(List<OptionDescriptor> options) {

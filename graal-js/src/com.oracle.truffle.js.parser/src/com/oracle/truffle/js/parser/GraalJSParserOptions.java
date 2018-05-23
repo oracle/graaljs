@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.parser;
 
 import static com.oracle.truffle.js.runtime.JSTruffleOptions.JS_OPTION_PREFIX;
+import static com.oracle.truffle.js.runtime.JSContextOptions.helpWithDefault;
 
 import java.util.List;
 
@@ -56,28 +57,28 @@ import com.oracle.truffle.js.runtime.ParserOptions;
 @SuppressWarnings("hiding")
 public final class GraalJSParserOptions implements ParserOptions {
     public static final String SYNTAX_EXTENSIONS_NAME = JS_OPTION_PREFIX + "syntax-extensions";
-    private static final String SYNTAX_EXTENSIONS_HELP = "enable Nashorn syntax extensions";
     private static final OptionKey<Boolean> SYNTAX_EXTENSIONS = new OptionKey<>(true);
+    private static final String SYNTAX_EXTENSIONS_HELP = helpWithDefault("enable Nashorn syntax extensions", SYNTAX_EXTENSIONS);
 
     public static final String SCRIPTING_NAME = JS_OPTION_PREFIX + "scripting";
-    private static final String SCRIPTING_HELP = "enable scripting features (Nashorn compatibility option)";
     private static final OptionKey<Boolean> SCRIPTING = new OptionKey<>(false);
+    private static final String SCRIPTING_HELP = helpWithDefault("enable scripting features (Nashorn compatibility option)", SCRIPTING);
 
     public static final String SHEBANG_NAME = JS_OPTION_PREFIX + "shebang";
-    private static final String SHEBANG_HELP = "support files starting with #!";
     private static final OptionKey<Boolean> SHEBANG = new OptionKey<>(true);
+    private static final String SHEBANG_HELP = helpWithDefault("support files starting with #!", SHEBANG);
 
     public static final String STRICT_NAME = JS_OPTION_PREFIX + "strict";
-    private static final String STRICT_HELP = "run in strict mode";
     private static final OptionKey<Boolean> STRICT = new OptionKey<>(false);
+    private static final String STRICT_HELP = helpWithDefault("run in strict mode", STRICT);
 
     public static final String CONST_AS_VAR_NAME = JS_OPTION_PREFIX + "const-as-var";
-    private static final String CONST_AS_VAR_HELP = "parse const declarations as a var";
     private static final OptionKey<Boolean> CONST_AS_VAR = new OptionKey<>(false);
+    private static final String CONST_AS_VAR_HELP = helpWithDefault("parse const declarations as a var", CONST_AS_VAR);
 
     public static final String FUNCTION_STATEMENT_ERROR_NAME = JS_OPTION_PREFIX + "function-statement-error";
-    private static final String FUNCTION_STATEMENT_ERROR_HELP = "Treat hoistable function statements in blocks as an error (in ES5 mode)";
     private static final OptionKey<Boolean> FUNCTION_STATEMENT_ERROR = new OptionKey<>(false);
+    private static final String FUNCTION_STATEMENT_ERROR_HELP = helpWithDefault("Treat hoistable function statements in blocks as an error (in ES5 mode)", FUNCTION_STATEMENT_ERROR);
 
     private final boolean strict;
     // Note: disregarding the value of the scripting option, scripting mode might be forced by
