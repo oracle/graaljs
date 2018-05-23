@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime;
 import static com.oracle.truffle.js.runtime.JSTruffleOptions.JS_OPTION_PREFIX;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -296,4 +297,79 @@ public final class JSContextOptions {
     public boolean isV8RealmBuiltin() {
         return v8RealmBuiltin;
     }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 53 * hash + Objects.hashCode(this.parserOptions);
+        hash = 53 * hash + this.ecmascriptVersion;
+        hash = 53 * hash + (this.annexB ? 1 : 0);
+        hash = 53 * hash + (this.intl402 ? 1 : 0);
+        hash = 53 * hash + (this.regexpStaticResult ? 1 : 0);
+        hash = 53 * hash + (this.arraySortInherited ? 1 : 0);
+        hash = 53 * hash + (this.sharedArrayBuffer ? 1 : 0);
+        hash = 53 * hash + (this.atomics ? 1 : 0);
+        hash = 53 * hash + (this.v8CompatibilityMode ? 1 : 0);
+        hash = 53 * hash + (this.v8RealmBuiltin ? 1 : 0);
+        hash = 53 * hash + (this.debug ? 1 : 0);
+        hash = 53 * hash + (this.directByteBuffer ? 1 : 0);
+        hash = 53 * hash + (this.parseOnly ? 1 : 0);
+        hash = 53 * hash + (this.preciseTime ? 1 : 0);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final JSContextOptions other = (JSContextOptions) obj;
+        if (this.ecmascriptVersion != other.ecmascriptVersion) {
+            return false;
+        }
+        if (this.annexB != other.annexB) {
+            return false;
+        }
+        if (this.intl402 != other.intl402) {
+            return false;
+        }
+        if (this.regexpStaticResult != other.regexpStaticResult) {
+            return false;
+        }
+        if (this.arraySortInherited != other.arraySortInherited) {
+            return false;
+        }
+        if (this.sharedArrayBuffer != other.sharedArrayBuffer) {
+            return false;
+        }
+        if (this.atomics != other.atomics) {
+            return false;
+        }
+        if (this.v8CompatibilityMode != other.v8CompatibilityMode) {
+            return false;
+        }
+        if (this.v8RealmBuiltin != other.v8RealmBuiltin) {
+            return false;
+        }
+        if (this.debug != other.debug) {
+            return false;
+        }
+        if (this.directByteBuffer != other.directByteBuffer) {
+            return false;
+        }
+        if (this.parseOnly != other.parseOnly) {
+            return false;
+        }
+        if (this.preciseTime != other.preciseTime) {
+            return false;
+        }
+        return Objects.equals(this.parserOptions, other.parserOptions);
+    }
+
 }
