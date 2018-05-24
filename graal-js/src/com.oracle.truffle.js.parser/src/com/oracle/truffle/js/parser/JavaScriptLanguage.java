@@ -122,6 +122,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -527,7 +528,9 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     func = JSFunction.getBoundTargetFunction(func);
                 }
                 description = JSObject.safeToString(func);
+                type = "function";
             } else if (JSArray.isJSArray(obj)) {
+                subtype = "array";
                 description = JSArray.CLASS_NAME + "[" + JSArray.arrayGetLength(obj) + "]";
             } else if (JSDate.isJSDate(obj)) {
                 subtype = "date";
@@ -540,6 +543,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 type = "undefined";
                 description = "undefined";
             } else if (value == Null.instance) {
+                subtype = "null";
                 description = "null";
             } else if (JSUserObject.isJSUserObject(obj)) {
                 description = className;
@@ -570,15 +574,16 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
         // avoid allocation profiling
         DynamicObject metaObject = realm.getInitialUserObjectShape().newInstance();
-        JSObjectUtil.putDataProperty(context, metaObject, "type", type);
+        int attrs = JSAttributes.getDefault();
+        JSObjectUtil.putDataProperty(context, metaObject, "type", type, attrs);
         if (subtype != null) {
-            JSObjectUtil.putDataProperty(context, metaObject, "subtype", subtype);
+            JSObjectUtil.putDataProperty(context, metaObject, "subtype", subtype, attrs);
         }
         if (className != null) {
-            JSObjectUtil.putDataProperty(context, metaObject, "className", className);
+            JSObjectUtil.putDataProperty(context, metaObject, "className", className, attrs);
         }
         if (description != null) {
-            JSObjectUtil.putDataProperty(context, metaObject, "description", description);
+            JSObjectUtil.putDataProperty(context, metaObject, "description", description, attrs);
         }
         metaObject.define(META_OBJECT_KEY, true);
         return metaObject;
