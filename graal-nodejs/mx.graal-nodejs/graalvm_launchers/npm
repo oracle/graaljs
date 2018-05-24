@@ -16,7 +16,7 @@ parent_bin_dir="$( dirname "$bin_dir" )"
 VM_ARGS=()
 PROGRAM_ARGS=()
 
-NODE_DIR="--nodedir=${parent_bin_dir}/languages/js"
+NODE_DIR="--nodedir=${parent_bin_dir}"
 
 for opt in "${@:1}"; do
     case "${opt}" in
