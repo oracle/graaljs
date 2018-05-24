@@ -1437,7 +1437,7 @@ public class JSContext implements ShapeContext {
         this.isRealmInitialized = initialized;
     }
 
-    JSContextOptions getContextOptions() {
+    public JSContextOptions getContextOptions() {
         return contextOptions;
     }
 

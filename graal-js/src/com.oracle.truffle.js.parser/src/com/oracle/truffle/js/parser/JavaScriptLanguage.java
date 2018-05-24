@@ -116,7 +116,6 @@ import com.oracle.truffle.js.runtime.JSInteropRuntime;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
-import com.oracle.truffle.js.runtime.ParserOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -163,8 +162,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private static final HiddenKey META_OBJECT_KEY = new HiddenKey("meta object");
     private static final int MAX_TOSTRING_DEPTH = 10;
 
-    private final Map<ParserOptions, Queue<JSContext>> contextPools = new ConcurrentHashMap<>();
-    private volatile Boolean useContextPool;
+    private final Map<JSContextOptions, Queue<JSContext>> contextPools = new ConcurrentHashMap<>();
 
     public static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
@@ -396,15 +394,13 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected JSRealm createContext(Env env) {
-        if (useContextPool == null) {
-            useContextPool = JSContextOptions.CODE_SHARING.getValue(env.getOptions()).equals("pool");
-        }
-
         JSContext languageContext = null;
         TruffleContext parent = env.getContext().getParent();
         if (parent == null) {
-            if (useContextPool() && !contextPools.isEmpty()) {
-                languageContext = pollContextPool(GraalJSParserOptions.fromOptions(env.getOptions()));
+            if (useContextPool(env) && !contextPools.isEmpty()) {
+                JSContextOptions options = new JSContextOptions(new GraalJSParserOptions());
+                options.setEnv(env);
+                languageContext = pollContextPool(options);
             }
             if (languageContext == null) {
                 languageContext = newJSContext(env);
@@ -484,25 +480,25 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected void disposeContext(JSRealm realm) {
-        if (useContextPool() && !realm.isChildRealm()) {
+        if (useContextPool(realm.getEnv()) && !realm.isChildRealm()) {
             JSContext context = realm.getContext();
-            Queue<JSContext> contextPool = getContextPool(context.getParserOptions());
+            Queue<JSContext> contextPool = getContextPool(context.getContextOptions());
             assert !contextPool.contains(context);
             contextPool.offer(context);
         }
     }
 
-    private Queue<JSContext> getContextPool(ParserOptions configKey) {
+    private Queue<JSContext> getContextPool(JSContextOptions configKey) {
         return contextPools.computeIfAbsent(configKey, k -> new ConcurrentLinkedQueue<>());
     }
 
-    private JSContext pollContextPool(ParserOptions configKey) {
+    private JSContext pollContextPool(JSContextOptions configKey) {
         Queue<JSContext> contextPool = contextPools.get(configKey);
         return contextPool == null ? null : contextPool.poll();
     }
 
-    private boolean useContextPool() {
-        return useContextPool;
+    private static boolean useContextPool(Env env) {
+        return JSContextOptions.CODE_SHARING.getValue(env.getOptions()).equals("pool");
     }
 
     @Override
