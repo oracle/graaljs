@@ -1068,7 +1068,7 @@ public class JSRealm implements ShapeContext {
         if (context.isOptionSharedArrayBuffer()) {
             putGlobalProperty(global, SHARED_ARRAY_BUFFER_CLASS_NAME, getSharedArrayBufferConstructor().getFunctionObject());
         }
-        if (context.isOptionAtomics() && !JSTruffleOptions.SubstrateVM) {
+        if (context.isOptionAtomics()) {
             putGlobalProperty(global, ATOMICS_CLASS_NAME, createAtomics());
         }
         if (JSTruffleOptions.GraalBuiltin) {
