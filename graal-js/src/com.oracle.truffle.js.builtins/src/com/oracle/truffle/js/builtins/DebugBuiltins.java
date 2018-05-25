@@ -210,7 +210,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             case compileFunction:
                 return DebugCompileFunctionNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case inspect:
-                return DebugInspectNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+                return DebugInspectNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case printObject:
                 return DebugPrintObjectNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case toJavaString:
@@ -414,10 +414,15 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         @TruffleBoundary
         @Specialization
-        protected Object inspect(DynamicObject object, Object level0) {
+        protected Object inspect(@SuppressWarnings("unused") Object thisObj, DynamicObject object, Object level0) {
             int level = JSRuntime.toInt32(level0);
             getContext().getWriter().println(((DynamicObjectImpl) object).debugDump(level));
             return Undefined.instance;
+        }
+
+        @Specialization(guards = "!isDynamicObject(object)")
+        protected Object inspect(Object thisObj, @SuppressWarnings("unused") Object object, @SuppressWarnings("unused") Object level0) {
+            return thisObj;
         }
     }
 
