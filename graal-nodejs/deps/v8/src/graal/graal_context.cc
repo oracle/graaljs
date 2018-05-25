@@ -61,10 +61,14 @@ v8::Local<v8::Object> GraalContext::Global() {
 }
 
 void GraalContext::SetAlignedPointerInEmbedderData(int index, void* value) {
-    JNI_CALL_VOID(Isolate(), GraalAccessMethod::context_set_pointer_in_embedder_data, GetJavaObject(), (jint) index, (jlong) value);
     if (index == kNodeContextEmbedderDataIndex) {
+        if (value != nullptr && SlowGetAlignedPointerFromEmbedderData(index) != nullptr) {
+            fprintf(stderr, "Context::SetAlignedPointerInEmbedderData(%d) called more than once! Its caching can be incorrect!", kNodeContextEmbedderDataIndex);
+            abort();
+        }
         cached_context_embedder_data_ = value;
     }
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::context_set_pointer_in_embedder_data, GetJavaObject(), (jint) index, (jlong) value);
 }
 
 void* GraalContext::SlowGetAlignedPointerFromEmbedderData(int index) {
