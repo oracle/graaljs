@@ -31,7 +31,7 @@ For convenience, add the mx folder to your `PATH` variable.
 Download the `js` JavaScript engine repository.
 
 ```bash
-$ git clone https://github.com/oracle/graaljs.git
+$ git clone https://github.com/graalvm/graaljs.git
 $ cd graaljs/graal-js
 $ mx sforceimports
 $ mx build
@@ -44,7 +44,7 @@ $ mx js
 ```
 
 The `mx sforceimports` step will download all required dependencies.
-This will trigger a clone (or update) of the `graal` (Graal java compiler) repository from `https://github.com/oracle/graal` into a sibling directory of `js`, named `graal`.
+This will trigger a clone (or update) of the `graal` (Graal java compiler) repository from `https://github.com/graalvm/graal` into a sibling directory of `js`, named `graal`.
 Graal.js depends on the `truffle` API provided in the graal repository.
 There is no need to build from this repository, this will be done automatically when you build Graal.js with `mx build`.
 
