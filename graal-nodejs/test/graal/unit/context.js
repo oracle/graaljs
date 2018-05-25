@@ -79,4 +79,8 @@ describe('Context', function () {
             assert.strictEqual(module.Context_UseDefaultSecurityToken(), true);
         });
     });
+    it('should store Environment at index 32', function () {
+        // If this test fails then GraalContext::kNodeContextEmbedderDataIndex should be updated
+        assert.strictEqual(module.Context_IndexOfEnvironment(), 32);
+    });
 });

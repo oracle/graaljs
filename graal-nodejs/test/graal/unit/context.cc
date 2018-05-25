@@ -123,4 +123,23 @@ EXPORT_TO_JS(New) {
     args.GetReturnValue().Set(result);
 }
 
+EXPORT_TO_JS(IndexOfEnvironment) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    int env_index = -1;
+    for (int i = 0; i <= 128; i++) {
+        void* pointer = context->GetAlignedPointerFromEmbedderData(i);
+        // There is not a clean an reliable way to get the actual Environment
+        // pointer (as it is an implementation detail of Node.js).
+        // So, we look for non-null pointer only. It works in the current
+        // implementation and this test serves as a guard for implementation
+        // changes only anyway.
+        if (pointer != nullptr) {
+            env_index = i;
+            break;
+        }
+    }
+    args.GetReturnValue().Set(env_index);
+}
+
 #undef SUITE
