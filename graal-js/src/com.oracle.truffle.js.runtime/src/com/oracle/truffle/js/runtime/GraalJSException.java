@@ -237,12 +237,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                 return STACK_FRAME_SKIP;
             }
             if (JSRuntime.isJSRootNode(callNode.getRootNode())) {
-                String sourceName = sourceSection.getSource().getName();
-                if (sourceName.startsWith(JSRealm.INTERNAL_JS_FILE_NAME_PREFIX)) {
-                    return STACK_FRAME_SKIP;
-                } else {
-                    return STACK_FRAME_JS;
-                }
+                return STACK_FRAME_JS;
             } else {
                 return STACK_FRAME_FOREIGN;
             }
