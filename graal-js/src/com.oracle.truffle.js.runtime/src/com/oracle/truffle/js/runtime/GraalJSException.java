@@ -71,6 +71,8 @@ public abstract class GraalJSException extends RuntimeException implements Truff
     private Object location;
     private int stackTraceLimit;
 
+    private static final String DYNAMIC_FUNCTION_NAME = "anonymous";
+
     protected GraalJSException(String message, Throwable cause, Node node, int stackTraceLimit) {
         super(message, cause);
         this.location = node;
@@ -236,7 +238,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             }
             if (JSRuntime.isJSRootNode(callNode.getRootNode())) {
                 String sourceName = sourceSection.getSource().getName();
-                if (sourceName.startsWith(JSRealm.INTERNAL_JS_FILE_NAME_PREFIX) || sourceName.equals(Evaluator.FUNCTION_SOURCE_NAME)) {
+                if (sourceName.startsWith(JSRealm.INTERNAL_JS_FILE_NAME_PREFIX)) {
                     return STACK_FRAME_SKIP;
                 } else {
                     return STACK_FRAME_JS;
@@ -279,9 +281,9 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                             if (functionObj == realm.getApplyFunctionObject() || functionObj == realm.getCallFunctionObject()) {
                                 return true; // skip Function.apply and Function.call
                             }
-                        }
-                        if (!skippingFrames) {
-                            stackTrace.add(processJSFrame(callNode, thisObj, (DynamicObject) functionObj, inStrictMode));
+                            if (!skippingFrames) {
+                                stackTrace.add(processJSFrame(callNode, thisObj, (DynamicObject) functionObj, inStrictMode));
+                            }
                         }
                     }
                     break;
@@ -319,13 +321,11 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             functionName = rootNode.getName();
         }
         boolean eval = false;
-        if (functionName.startsWith(":")) {
-            if (functionName.equals(JSFunction.PROGRAM_FUNCTION_NAME) && (source.getName().equals(Evaluator.EVAL_SOURCE_NAME) || source.getName().startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX))) {
-                functionName = "eval";
-                eval = true;
-            } else {
-                functionName = "";
-            }
+        if (functionName == null || isInternalFunctionName(functionName)) {
+            functionName = "";
+        } else if (isEvalSource(source, functionName)) {
+            functionName = "eval";
+            eval = true;
         }
         SourceSection targetSourceSection = null;
         if (!JSTruffleOptions.NashornCompatibilityMode) { // for V8
@@ -337,6 +337,16 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         boolean global = isGlobalObject(thisObj, JSFunction.getRealm(functionObj));
 
         return new JSStackTraceElement(fileName, functionName, callNodeSourceSection, thisObj, functionObj, targetSourceSection, inStrictMode, eval, global);
+    }
+
+    private static boolean isEvalSource(Source source, String functionName) {
+        return (functionName.equals(DYNAMIC_FUNCTION_NAME) && source.getName().equals(Evaluator.FUNCTION_SOURCE_NAME)) ||
+                        (functionName.equals(JSFunction.PROGRAM_FUNCTION_NAME) &&
+                                        (source.getName().equals(Evaluator.EVAL_SOURCE_NAME) || source.getName().startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX)));
+    }
+
+    private static boolean isInternalFunctionName(String functionName) {
+        return functionName.length() >= 1 && functionName.charAt(0) == ':';
     }
 
     private static boolean isGlobalObject(Object object, JSRealm realm) {
