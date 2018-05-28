@@ -104,21 +104,23 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
     public abstract static class GeneratorResumeNode extends JSBuiltinNode {
         private final Completion.Type resumeType;
         @Child private PropertyGetNode getGeneratorTarget;
+        @Child private PropertyGetNode getGeneratorContext;
         @Child private InternalCallNode callNode;
 
         public GeneratorResumeNode(JSContext context, JSBuiltin builtin, Completion.Type resumeType) {
             super(context, builtin);
             this.resumeType = resumeType;
             this.getGeneratorTarget = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_TARGET_ID, context);
+            this.getGeneratorContext = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_CONTEXT_ID, context);
             this.callNode = InternalCallNode.create();
         }
 
-        @Specialization(guards = "isJSObject(thisObj)")
-        protected Object resume(DynamicObject thisObj, Object value) {
-            Object generatorTarget = getGeneratorTarget.getValue(thisObj);
+        @Specialization(guards = "isJSObject(generator)")
+        protected Object resume(DynamicObject generator, Object value) {
+            Object generatorTarget = getGeneratorTarget.getValue(generator);
             if (generatorTarget != Undefined.instance) {
-                CallTarget callTarget = (CallTarget) generatorTarget;
-                return callNode.execute(callTarget, new Object[]{thisObj, value, resumeType});
+                Object generatorContext = getGeneratorContext.getValue(generator);
+                return callNode.execute((CallTarget) generatorTarget, new Object[]{generatorContext, generator, value, resumeType});
             } else {
                 throw Errors.createTypeErrorGeneratorObjectExpected();
             }

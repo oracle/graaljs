@@ -76,7 +76,6 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of async generator functions in JavaScript.")
     private static final class AsyncGeneratorRootNode extends JavaScriptRootNode {
-        @Child private PropertyGetNode getGeneratorContext;
         @Child private PropertyGetNode getGeneratorState;
         @Child private PropertySetNode setGeneratorState;
         @Child private JavaScriptNode functionBody;
@@ -89,7 +88,6 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
         AsyncGeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, SourceSection functionSourceSection) {
             super(context.getLanguage(), functionSourceSection, null);
-            this.getGeneratorContext = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_CONTEXT_ID, context);
             this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
             this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
             this.functionBody = functionBody;
@@ -101,10 +99,11 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            DynamicObject generatorObject = (DynamicObject) frame.getArguments()[1];
-            Completion completion = (Completion) frame.getArguments()[2];
+            Object[] arguments = frame.getArguments();
+            VirtualFrame generatorFrame = JSFrameUtil.castMaterializedFrame(arguments[0]);
+            DynamicObject generatorObject = (DynamicObject) arguments[1];
+            Completion completion = (Completion) arguments[2];
 
-            VirtualFrame generatorFrame = JSFrameUtil.castMaterializedFrame(getGeneratorContext.getValue(generatorObject));
             AsyncGeneratorState state = (AsyncGeneratorState) getGeneratorState.getValue(generatorObject);
 
             // State must be Executing when called from AsyncGeneratorResumeNext.
