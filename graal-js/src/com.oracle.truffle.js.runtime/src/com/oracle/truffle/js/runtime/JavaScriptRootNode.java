@@ -75,12 +75,22 @@ public abstract class JavaScriptRootNode extends RootNode {
         return false;
     }
 
+    /**
+     * Is this a regular JS function with standard arguments, to be included in stack traces.
+     */
     public boolean isFunction() {
+        return false;
+    }
+
+    /**
+     * Is this a root node for the resumption of a suspended function.
+     */
+    public boolean isResumption() {
         return false;
     }
 
     @Override
     public boolean isCaptureFramesForTrace() {
-        return isFunction();
+        return isFunction() || isResumption();
     }
 }

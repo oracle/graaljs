@@ -140,6 +140,11 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             }
             return TryCatchNode.shouldCatch(exception);
         }
+
+        @Override
+        public boolean isResumption() {
+            return true;
+        }
     }
 
     @Child private JavaScriptNode createAsyncGeneratorObject;

@@ -148,6 +148,11 @@ public final class GeneratorBodyNode extends JavaScriptNode {
             }
             return (GeneratorState) generatorState;
         }
+
+        @Override
+        public boolean isResumption() {
+            return true;
+        }
     }
 
     @Child private JavaScriptNode createGeneratorObject;

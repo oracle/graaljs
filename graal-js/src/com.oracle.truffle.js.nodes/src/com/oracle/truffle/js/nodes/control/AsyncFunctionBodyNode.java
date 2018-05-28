@@ -114,6 +114,11 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
             }
             return TryCatchNode.shouldCatch(exception);
         }
+
+        @Override
+        public boolean isResumption() {
+            return true;
+        }
     }
 
     private final JSContext context;
