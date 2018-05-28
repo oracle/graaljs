@@ -133,6 +133,9 @@ public final class JoniRegexCompiler extends RegexCompiler {
             option &= ~Option.SINGLELINE;
             option |= Option.NEGATE_SINGLELINE;
         }
+        if (flags.isDotAll()) {
+            option |= Option.MULTILINE;
+        }
         return option;
     }
 }
