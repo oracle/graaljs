@@ -173,8 +173,7 @@ public final class RegExpScanner extends Scanner {
 
         // Throw syntax error unless we parsed the entire JavaScript regexp without syntax errors
         if (scanner.position != string.length()) {
-            final String p = scanner.getStringBuilder().toString();
-            throw new PatternSyntaxException(string, p, p.length() + 1);
+            throw new PatternSyntaxException("cannot parse regular expression", string, scanner.position);
         }
 
         return scanner;
