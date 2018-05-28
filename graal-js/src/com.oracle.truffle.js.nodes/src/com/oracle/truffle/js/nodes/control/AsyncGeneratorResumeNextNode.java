@@ -89,10 +89,10 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
 
     protected AsyncGeneratorResumeNextNode(JSContext context) {
         this.context = context;
-        this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_STATE_ID, context);
-        this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
-        this.getGeneratorTarget = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_TARGET_ID, context);
-        this.getGeneratorContext = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_CONTEXT_ID, context);
+        this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
+        this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
+        this.getGeneratorTarget = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_TARGET_ID, context);
+        this.getGeneratorContext = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_CONTEXT_ID, context);
         this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
         this.callPromiseResolveNode = JSFunctionCallNode.createCall();
         this.asyncGeneratorResolveNode = AsyncGeneratorResolveNode.create(context);
@@ -182,7 +182,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
             @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
             @Child private AsyncGeneratorResolveNode asyncGeneratorResolveNode = AsyncGeneratorResolveNode.create(context);
             @Child private PropertyGetNode getGenerator = PropertyGetNode.createGetHidden(RETURN_PROCESSOR_GENERATOR, context);
-            @Child private PropertySetNode setGeneratorState = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
+            @Child private PropertySetNode setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -208,7 +208,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
             @Child private JavaScriptNode reasonNode = AccessIndexedArgumentNode.create(0);
             @Child private AsyncGeneratorRejectNode asyncGeneratorRejectNode = AsyncGeneratorRejectNode.create(context);
             @Child private PropertyGetNode getGenerator = PropertyGetNode.createGetHidden(RETURN_PROCESSOR_GENERATOR, context);
-            @Child private PropertySetNode setGeneratorState = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
+            @Child private PropertySetNode setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
 
             @Override
             public Object execute(VirtualFrame frame) {

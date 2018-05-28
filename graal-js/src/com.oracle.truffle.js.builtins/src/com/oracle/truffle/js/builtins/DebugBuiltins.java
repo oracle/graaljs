@@ -308,6 +308,8 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                     return JSObject.getClassName(iteratedObj) + " Iterator";
                 } else if (jsObj.containsKey(JSFunction.GENERATOR_STATE_ID)) {
                     return "Generator";
+                } else if (jsObj.containsKey(JSFunction.ASYNC_GENERATOR_STATE_ID)) {
+                    return "Async Generator";
                 } else if (JSProxy.isProxy(jsObj)) {
                     return clazz(JSProxy.getTarget(jsObj));
                 }
