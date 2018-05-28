@@ -513,7 +513,10 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         public String getFunctionName() {
             if (JSFunction.isJSFunction(functionObj)) {
                 String dynamicName = findFunctionName((DynamicObject) functionObj);
-                if (dynamicName != null && !dynamicName.isEmpty()) {
+                // The default name of dynamic functions is "anonymous" as per the spec.
+                // Yet, in V8 stack traces it is "eval" unless overwritten.
+                if (dynamicName != null && !dynamicName.isEmpty() &&
+                                (!isEval() || !dynamicName.equals(DYNAMIC_FUNCTION_NAME) || !JSObject.getJSContext((DynamicObject) functionObj).isOptionV8CompatibilityMode())) {
                     return dynamicName;
                 }
             }
