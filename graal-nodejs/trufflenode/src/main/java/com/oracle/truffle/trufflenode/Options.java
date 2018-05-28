@@ -248,11 +248,14 @@ public final class Options {
             System.out.println();
             System.out.println("Usage: node [options] [ -e script | script.js ] [arguments]\n");
             System.out.println("Basic Options:");
+            printOption("-v, --version",         "print version");
             printOption("-e, --eval script",     "evaluate script");
             printOption("-p, --print",           "evaluate script and print result");
             printOption("-c, --check",           "syntax check script without executing");
             printOption("-i, --interactive",     "always enter the REPL even if stdin does not appear to be a terminal");
             printOption("-r, --require",         "module to preload (option can be repeated)");
+            printOption("--inspect[=port]",      "activate inspector on port (overrides options of Chrome Inspector)");
+            printOption("--inspect-brk[=port]",  "activate inspector on port and break at start of user script (overrides options of Chrome Inspector)");
         }
 
         private static void printOption(String option, String description) {
