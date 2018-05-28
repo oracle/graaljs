@@ -501,7 +501,27 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         }
 
         public String getFunctionName() {
+            if (JSFunction.isJSFunction(functionObj)) {
+                String dynamicName = findFunctionName((DynamicObject) functionObj);
+                if (dynamicName != null && !dynamicName.isEmpty()) {
+                    return dynamicName;
+                }
+            }
             return functionName;
+        }
+
+        private static String findFunctionName(DynamicObject functionObj) {
+            assert JSFunction.isJSFunction(functionObj);
+            PropertyDescriptor desc = JSObject.getOwnProperty(functionObj, JSFunction.NAME);
+            if (desc != null) {
+                if (desc.isDataDescriptor()) {
+                    Object name = desc.getValue();
+                    if (JSRuntime.isString(name)) {
+                        return JSRuntime.javaToString(name);
+                    }
+                }
+            }
+            return null;
         }
 
         // This method is called from nashorn tests via java interop
