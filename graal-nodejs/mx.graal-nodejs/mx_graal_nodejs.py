@@ -493,13 +493,11 @@ def buildSvmImage(args):
     for _lang in ['js', 'nodejs']:
         _svm.fetch_languages(['--language:{}=version={}'.format(_lang, _js_version)])
     _svm.fetch_languages(['--tool:regex'])
-    with _svm.native_image_context() as _native_image:
-        _native_image(['--language:nodejs', '-H:JNIConfigurationResources=svmnodejs.jniconfig'] + args)
+    _svm.native_image_on_jvm(['--language:nodejs', '-H:JNIConfigurationResources=svmnodejs.jniconfig'] + args)
 
 def _prepare_svm_env():
     setLibraryPath()
-    _svm = _import_substratevm()
-    _setEnvVar('NODE_JVM_LIB', join(_svm.svmbuild_dir(), mx.add_lib_suffix('nodejs')))
+    _setEnvVar('NODE_JVM_LIB', join(_suite.dir, mx.add_lib_suffix('nodejs')))
 
 def testsvmnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     _prepare_svm_env()
