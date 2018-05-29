@@ -59,7 +59,8 @@ def _graal_nodejs_post_gate_runner(args, tasks):
         if t:
             tmpdir = tempfile.mkdtemp()
             try:
-                npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir, 'microtime'], cwd=tmpdir)
+                npm(['init', '-y'], cwd=tmpdir)
+                npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir, '--build-from-source', 'microtime'], cwd=tmpdir)
                 node(['-e', 'print(require("microtime").now());'], cwd=tmpdir)
             finally:
                 shutil.rmtree(tmpdir)
