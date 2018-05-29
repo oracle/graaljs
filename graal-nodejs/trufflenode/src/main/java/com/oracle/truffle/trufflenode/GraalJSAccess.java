@@ -2069,8 +2069,8 @@ public final class GraalJSAccess {
     }
 
     public long contextGetPointerInEmbedderData(Object context, int index) {
-        long pointer = (Long) contextGetEmbedderData(context, index);
-        return pointer;
+        Long pointer = (Long) contextGetEmbedderData(context, index);
+        return (pointer == null) ? 0 : pointer;
     }
 
     public void contextSetEmbedderData(Object realm, int index, Object value) {

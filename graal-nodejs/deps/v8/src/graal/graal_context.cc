@@ -42,13 +42,16 @@
 #include "graal_context.h"
 #include "graal_object.h"
 
-GraalContext::GraalContext(GraalIsolate* isolate, jobject java_context) :
-GraalHandleContent(isolate, java_context) {
+// keep in sync with NODE_CONTEXT_EMBEDDER_DATA_INDEX
+const int kNodeContextEmbedderDataIndex = 32;
+
+GraalContext::GraalContext(GraalIsolate* isolate, jobject java_context, void* cached_context_embedder_data) :
+GraalHandleContent(isolate, java_context), cached_context_embedder_data_(cached_context_embedder_data) {
     UseDefaultSecurityToken();
 }
 
 GraalHandleContent* GraalContext::CopyImpl(jobject java_object_copy) {
-    return new GraalContext(Isolate(), java_object_copy);
+    return new GraalContext(Isolate(), java_object_copy, cached_context_embedder_data_);
 }
 
 v8::Local<v8::Object> GraalContext::Global() {
@@ -58,11 +61,26 @@ v8::Local<v8::Object> GraalContext::Global() {
 }
 
 void GraalContext::SetAlignedPointerInEmbedderData(int index, void* value) {
+    if (index == kNodeContextEmbedderDataIndex) {
+        if (value != nullptr && SlowGetAlignedPointerFromEmbedderData(index) != nullptr) {
+            fprintf(stderr, "Context::SetAlignedPointerInEmbedderData(%d) called more than once! Its caching can be incorrect!", kNodeContextEmbedderDataIndex);
+            abort();
+        }
+        cached_context_embedder_data_ = value;
+    }
     JNI_CALL_VOID(Isolate(), GraalAccessMethod::context_set_pointer_in_embedder_data, GetJavaObject(), (jint) index, (jlong) value);
 }
 
 void* GraalContext::SlowGetAlignedPointerFromEmbedderData(int index) {
+    if (index == kNodeContextEmbedderDataIndex) {
+        if (cached_context_embedder_data_ != nullptr) {
+            return cached_context_embedder_data_;
+        }
+    }
     JNI_CALL(jlong, pointer, Isolate(), GraalAccessMethod::context_get_pointer_in_embedder_data, Long, GetJavaObject(), (jint) index);
+    if (index == kNodeContextEmbedderDataIndex) {
+        cached_context_embedder_data_ = (void*)pointer;
+    }
     return (void*) pointer;
 }
 
