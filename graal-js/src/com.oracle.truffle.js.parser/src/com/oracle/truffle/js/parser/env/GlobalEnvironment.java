@@ -43,6 +43,7 @@ package com.oracle.truffle.js.parser.env;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public class GlobalEnvironment extends Environment {
@@ -68,5 +69,10 @@ public class GlobalEnvironment extends Environment {
     @Override
     public FrameDescriptor getBlockFrameDescriptor() {
         return blockFrameDescriptor;
+    }
+
+    @Override
+    public FrameSlot[] getParentSlots() {
+        return ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY;
     }
 }

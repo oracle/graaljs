@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.parser.env;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -57,6 +58,7 @@ import com.oracle.truffle.js.nodes.access.DoWithNode;
 import com.oracle.truffle.js.nodes.access.EvalVariableNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -138,12 +140,11 @@ public abstract class Environment {
     }
 
     protected final JavaScriptNode createLocal(FrameSlot frameSlot, int level, int scopeLevel) {
-        JavaScriptNode local = factory.createLocal(frameSlot, level, scopeLevel, false);
-        return local;
+        return factory.createLocal(frameSlot, level, scopeLevel, getParentSlots(level, scopeLevel), false);
     }
 
     protected final JavaScriptNode createLocal(FrameSlot frameSlot, int level, int scopeLevel, boolean checkTDZ) {
-        return factory.createLocal(frameSlot, level, scopeLevel, checkTDZ);
+        return factory.createLocal(frameSlot, level, scopeLevel, getParentSlots(level, scopeLevel), checkTDZ);
     }
 
     protected final VarRef findInternalSlot(String name) {
@@ -338,7 +339,7 @@ public abstract class Environment {
             FunctionEnvironment currentFunction = current.function();
             JavaScriptNode createArgumentsObjectNode = factory.createArgumentsObjectNode(context, isStrictMode(), currentFunction.getLeadingArgumentCount(),
                             currentFunction.getTrailingArgumentCount());
-            JavaScriptNode writeNode = factory.createWriteFrameSlot(currentFunction.getArgumentsSlot(), frameLevel, scopeLevel, createArgumentsObjectNode);
+            JavaScriptNode writeNode = factory.createWriteFrameSlot(currentFunction.getArgumentsSlot(), frameLevel, scopeLevel, getParentSlots(frameLevel, scopeLevel), createArgumentsObjectNode);
             return factory.createAccessArgumentsArrayDirectly(writeNode, argumentsVarNode, currentFunction.getLeadingArgumentCount(), currentFunction.getTrailingArgumentCount());
         } else {
             return argumentsVarNode;
@@ -364,7 +365,7 @@ public abstract class Environment {
         if (currentFunction.getArgumentsSlot() != null && !currentFunction.isStrictMode() && currentFunction.hasSimpleParameterList() && currentFunction.isParam(slot)) {
             return createWriteParameterFromMappedArguments(current, frameLevel, scopeLevel, slot, rhs);
         }
-        return factory.createWriteFrameSlot(slot, frameLevel, scopeLevel, rhs, checkTDZ);
+        return factory.createWriteFrameSlot(slot, frameLevel, scopeLevel, getParentSlots(frameLevel, scopeLevel), rhs, checkTDZ);
     }
 
     private JavaScriptNode createReadParameterFromMappedArguments(Environment current, int frameLevel, int scopeLevel, FrameSlot slot) {
@@ -419,12 +420,12 @@ public abstract class Environment {
 
             @Override
             public JavaScriptNode createReadNode() {
-                return factory.createLocal(var, 0, getScopeLevel());
+                return factory.createLocal(var, 0, getScopeLevel(), getParentSlots());
             }
 
             @Override
             public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-                return factory.createWriteFrameSlot(var, 0, getScopeLevel(), rhs);
+                return factory.createWriteFrameSlot(var, 0, getScopeLevel(), getParentSlots(), rhs);
             }
         };
     }
@@ -443,6 +444,26 @@ public abstract class Environment {
 
     public int getScopeLevel() {
         return 0;
+    }
+
+    public FrameSlot[] getParentSlots() {
+        throw new UnsupportedOperationException(getClass().getName());
+    }
+
+    public final FrameSlot[] getParentSlots(int frameLevel, int scopeLevel) {
+        if (scopeLevel == 0) {
+            return ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY;
+        }
+        if (frameLevel > 0) {
+            return function().getParent().getParentSlots(frameLevel - 1, scopeLevel);
+        }
+        FrameSlot[] parentSlots = getParentSlots();
+        assert parentSlots.length >= scopeLevel;
+        if (parentSlots.length == scopeLevel) {
+            return parentSlots;
+        } else {
+            return Arrays.copyOf(parentSlots, scopeLevel);
+        }
     }
 
     public void addFrameSlotsFromSymbols(Iterable<com.oracle.js.parser.ir.Symbol> symbols) {
@@ -634,7 +655,7 @@ public abstract class Environment {
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
             assert !current.function().isDirectArgumentsAccess();
-            return factory.createWriteFrameSlot(current.function().getArgumentsSlot(), frameLevel, scopeLevel, rhs);
+            return factory.createWriteFrameSlot(current.function().getArgumentsSlot(), frameLevel, scopeLevel, getParentSlots(frameLevel, scopeLevel), rhs);
         }
     }
 

@@ -76,11 +76,11 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements Writ
 
     public abstract Object executeWithFrame(Frame frame, Object value);
 
-    public static JSWriteFrameSlotNode create(FrameSlot frameSlot, int frameLevel, int scopeLevel, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
+    public static JSWriteFrameSlotNode create(FrameSlot frameSlot, int frameLevel, int scopeLevel, FrameSlot[] parentSlots, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
         if (frameLevel == 0 && scopeLevel == 0 && !hasTemporalDeadZone) {
             return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, rhs);
         }
-        return create(frameSlot, ScopeFrameNode.create(frameLevel, scopeLevel), rhs, hasTemporalDeadZone);
+        return create(frameSlot, ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots), rhs, hasTemporalDeadZone);
     }
 
     public static JSWriteFrameSlotNode create(FrameSlot frameSlot, ScopeFrameNode levelFrameNode, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
@@ -235,6 +235,6 @@ abstract class JSWriteCurrentFrameSlotNode extends JSWriteFrameSlotNode {
 
     @Override
     public ScopeFrameNode getLevelFrameNode() {
-        return ScopeFrameNode.create(0, 0);
+        return ScopeFrameNode.create(0);
     }
 }

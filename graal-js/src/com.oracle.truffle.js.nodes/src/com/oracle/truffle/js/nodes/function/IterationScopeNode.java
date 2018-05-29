@@ -84,7 +84,8 @@ public abstract class IterationScopeNode extends JavaScriptNode {
         @Override
         public void executeCopy(VirtualFrame nextFrame, VirtualFrame frame) {
             // no need to copy effectively final parent frame slot
-            assert FrameUtil.getObjectSafe(nextFrame, ScopeFrameNode.PARENT_SCOPE_SLOT) == FrameUtil.getObjectSafe(frame, ScopeFrameNode.PARENT_SCOPE_SLOT);
+            assert FrameUtil.getObjectSafe(nextFrame, nextFrame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER)) == FrameUtil.getObjectSafe(frame,
+                            frame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER));
             copySlots(nextFrame, frame);
         }
 

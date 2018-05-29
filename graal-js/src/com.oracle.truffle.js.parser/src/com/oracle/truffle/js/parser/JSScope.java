@@ -338,7 +338,7 @@ public abstract class JSScope {
             if (parent == null) {
                 return null;
             }
-            Frame parentFrame = (Frame) FrameUtil.getObjectSafe(mFrame, ScopeFrameNode.PARENT_SCOPE_SLOT);
+            Frame parentFrame = (Frame) FrameUtil.getObjectSafe(mFrame, mFrame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER));
             return JSScope.createScope(parent, parentFrame.materialize());
         }
     }

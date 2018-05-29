@@ -111,6 +111,7 @@ import com.oracle.truffle.js.nodes.access.LazyReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
@@ -653,7 +654,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         if (currentFunction().hasReturn()) {
             if (JSTruffleOptions.ReturnValueInFrame) {
-                return factory.createFrameReturnTarget(body, factory.createLocal(currentFunction().getReturnSlot(), 0, 0));
+                return factory.createFrameReturnTarget(body, factory.createLocal(currentFunction().getReturnSlot(), 0, 0, ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY));
             } else {
                 return factory.createReturnTarget(body);
             }
@@ -732,7 +733,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 } else {
                     valueNode = ensureHasHiddenSourceSection(factory.createAccessArgument(argIndex));
                 }
-                parameterAssignment[i] = ensureHasHiddenSourceSection(factory.createWriteFrameSlot(parameterSlots[i], 0, 0, valueNode));
+                parameterAssignment[i] = ensureHasHiddenSourceSection(factory.createWriteFrameSlot(parameterSlots[i], 0, 0, ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY, valueNode));
             }
             parameterAssignment[i] = body;
             return factory.createExprBlock(parameterAssignment);
@@ -1310,7 +1311,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (symbol.isVarRedeclaredHere()) {
                 // redeclaration of parameter binding; initial value is copied from outer scope.
                 assert block.isFunctionBody();
-                JavaScriptNode outerVar = factory.createLocal(environment.getParent().findLocalVar(symbol.getName()).getFrameSlot(), 0, 1);
+                assert environment.getScopeLevel() == 1;
+                JavaScriptNode outerVar = factory.createLocal(environment.getParent().findLocalVar(symbol.getName()).getFrameSlot(), 0, 1, environment.getParentSlots());
                 blockWithInit.add(findScopeVar(symbol.getName(), true).createWriteNode(outerVar));
             }
         }

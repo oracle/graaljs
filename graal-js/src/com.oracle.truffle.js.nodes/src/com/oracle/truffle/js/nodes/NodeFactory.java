@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
@@ -433,14 +434,14 @@ public class NodeFactory {
     }
 
     public IterationScopeNode createIterationScope(FrameDescriptor frameDescriptor) {
-        assert frameDescriptor.getSize() > 0 && frameDescriptor.getSlots().get(0) == ScopeFrameNode.PARENT_SCOPE_SLOT;
+        assert frameDescriptor.getSize() > 0 && frameDescriptor.getSlots().get(0).getIdentifier() == ScopeFrameNode.PARENT_SCOPE_IDENTIFIER;
         List<? extends FrameSlot> slots = frameDescriptor.getSlots();
         JSReadFrameSlotNode[] reads = new JSReadFrameSlotNode[slots.size()];
         JSWriteFrameSlotNode[] writes = new JSWriteFrameSlotNode[slots.size()];
         for (int i = 0; i < slots.size(); i++) {
             FrameSlot slot = slots.get(i);
-            reads[i] = JSReadFrameSlotNode.create(slot, 0, 0, false);
-            writes[i] = JSWriteFrameSlotNode.create(slot, 0, 0, null, false);
+            reads[i] = JSReadFrameSlotNode.create(slot, 0, 0, ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY, false);
+            writes[i] = JSWriteFrameSlotNode.create(slot, 0, 0, ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY, null, false);
         }
         return IterationScopeNode.create(frameDescriptor, reads, writes);
     }
@@ -489,20 +490,20 @@ public class NodeFactory {
         return DebuggerNode.create();
     }
 
-    public JavaScriptNode createLocal(FrameSlot frameSlot, int frameLevel, int scopeLevel) {
-        return createLocal(frameSlot, frameLevel, scopeLevel, false);
+    public JavaScriptNode createLocal(FrameSlot frameSlot, int frameLevel, int scopeLevel, FrameSlot[] parentSlots) {
+        return createLocal(frameSlot, frameLevel, scopeLevel, parentSlots, false);
     }
 
-    public JavaScriptNode createLocal(FrameSlot frameSlot, int frameLevel, int scopeLevel, boolean hasTemporalDeadZone) {
-        return JSReadFrameSlotNode.create(frameSlot, frameLevel, scopeLevel, hasTemporalDeadZone);
+    public JavaScriptNode createLocal(FrameSlot frameSlot, int frameLevel, int scopeLevel, FrameSlot[] parentSlots, boolean hasTemporalDeadZone) {
+        return JSReadFrameSlotNode.create(frameSlot, frameLevel, scopeLevel, parentSlots, hasTemporalDeadZone);
     }
 
-    public JSWriteFrameSlotNode createWriteFrameSlot(FrameSlot frameSlot, int frameLevel, int scopeLevel, JavaScriptNode rhs) {
-        return JSWriteFrameSlotNode.create(frameSlot, frameLevel, scopeLevel, rhs, false);
+    public JSWriteFrameSlotNode createWriteFrameSlot(FrameSlot frameSlot, int frameLevel, int scopeLevel, FrameSlot[] parentSlots, JavaScriptNode rhs) {
+        return JSWriteFrameSlotNode.create(frameSlot, frameLevel, scopeLevel, parentSlots, rhs, false);
     }
 
-    public JSWriteFrameSlotNode createWriteFrameSlot(FrameSlot frameSlot, int frameLevel, int scopeLevel, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
-        return JSWriteFrameSlotNode.create(frameSlot, frameLevel, scopeLevel, rhs, hasTemporalDeadZone);
+    public JSWriteFrameSlotNode createWriteFrameSlot(FrameSlot frameSlot, int frameLevel, int scopeLevel, FrameSlot[] parentSlots, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
+        return JSWriteFrameSlotNode.create(frameSlot, frameLevel, scopeLevel, parentSlots, rhs, hasTemporalDeadZone);
     }
 
     public JavaScriptNode createReadGlobal(FrameSlot frameSlot, boolean hasTemporalDeadZone, JSContext context) {
@@ -934,7 +935,9 @@ public class NodeFactory {
     }
 
     public FrameDescriptor createBlockFrameDescriptor() {
-        return ScopeFrameNode.SCOPE_FRAME_DESCRIPTOR.shallowCopy();
+        FrameDescriptor desc = new FrameDescriptor(Undefined.instance);
+        desc.addFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER, FrameSlotKind.Object);
+        return desc;
     }
 
     public DeclareGlobalNode createDeclareGlobalVariable(String varName, boolean configurable) {
