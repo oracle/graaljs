@@ -70,9 +70,8 @@ def _graal_nodejs_post_gate_runner(args, tasks):
             commonArgs = ['-ea']
             unitTestDir = join(mx.project('com.oracle.truffle.trufflenode.jniboundaryprofiler').dir, 'tests')
             mx.run(['rm', '-rf', 'node_modules', 'build'], cwd=unitTestDir)
-            #deactivated after failing (GR-9925)
-            #npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
-            #node(['-profile-native-boundary', '-Dtruffle.js.NashornJavaInterop=true', 'test.js'] + commonArgs, cwd=unitTestDir)
+            npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
+            node(['-profile-native-boundary', '-Dtruffle.js.NashornJavaInterop=true', 'test.js'] + commonArgs, cwd=unitTestDir)
 
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 
