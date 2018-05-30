@@ -1059,7 +1059,7 @@ public final class JSFunction extends JSBuiltinObject {
                                     return Null.instance; // do not go beyond a strict builtin
                                 }
                             }
-                            if (!PROGRAM_FUNCTION_NAME.equals(JSFunction.getName(function))) {
+                            if (!PROGRAM_FUNCTION_NAME.equals(rootNode.getName())) {
                                 return function;
                             }
                         } else if (function == thiz) {

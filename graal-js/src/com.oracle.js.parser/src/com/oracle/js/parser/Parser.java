@@ -589,6 +589,7 @@ loop:
         }
         if (parentFunction == null) {
             flags |= FunctionNode.IS_PROGRAM;
+            flags |= FunctionNode.IS_ANONYMOUS;
         }
 
         final ParserContextFunctionNode functionNode = new ParserContextFunctionNode(functionToken, ident, name, namespace, functionLine, kind, parameters, functionLength);
