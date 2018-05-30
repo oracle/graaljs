@@ -53,6 +53,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 public class SetBreakPointNode extends JavaScriptRootNode {
@@ -66,7 +67,11 @@ public class SetBreakPointNode extends JavaScriptRootNode {
     @Override
     public Object execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        Object arg0 = JSArguments.getUserArgument(args, 0);
+        int numArgs = JSArguments.getUserArgumentCount(args);
+        Object arg0 = Undefined.instance;
+        if (numArgs >= 1) {
+            arg0 = JSArguments.getUserArgument(args, 0);
+        }
         if (JSFunction.isJSFunction(arg0)) {
             CallTarget callTarget = JSFunction.getFunctionData((DynamicObject) arg0).getCallTarget();
             if (callTarget instanceof RootCallTarget) {
@@ -75,8 +80,7 @@ public class SetBreakPointNode extends JavaScriptRootNode {
                 int lineNo = sourceSection.getStartLine();
                 int columnNo = sourceSection.getStartColumn();
                 int userLine = 0;
-                int numArgs = JSArguments.getUserArgumentCount(args);
-                if (numArgs >= 1) {
+                if (numArgs >= 2) {
                     Object arg1 = JSArguments.getUserArgument(args, 1);
                     if (arg1 instanceof Number) {
                         userLine = ((Number) arg1).intValue();
@@ -91,7 +95,7 @@ public class SetBreakPointNode extends JavaScriptRootNode {
                         columnNo += 9;
                     }
                 }
-                if (numArgs >= 2) {
+                if (numArgs >= 3) {
                     Object arg2 = JSArguments.getUserArgument(args, 2);
                     if (arg2 instanceof Number) {
                         columnNo += ((Number) arg2).intValue();
@@ -100,7 +104,7 @@ public class SetBreakPointNode extends JavaScriptRootNode {
                 // JSArguments.getUserArgument(args, 3) is condition
                 // We do not support conditional breakpoints here (yet?)
                 boolean oneShot = false;
-                if (numArgs >= 4) {
+                if (numArgs >= 5) {
                     Object arg4 = JSArguments.getUserArgument(args, 4);
                     oneShot = JSRuntime.toBoolean(arg4);
                 }
