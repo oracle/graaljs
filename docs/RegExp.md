@@ -8,7 +8,7 @@ The two engines both adopt different strategies when it comes to implementing re
 TRegex translates a regular expression into a finite state automaton, which can determine whether a match is found on a single pass over the input string: whenever several alternative ways to match the remaining input are admissible, TRegex considers all of them simultaneously.
 JOni, on the other hand, implements a backtracking approach to regular expressions: whenever there are several possible ways to match the remaining input, JOni first tries to match each alternative on its own, switching to the next one when one fails to produce a correct match.
 
-The downside of backtracking approaches is that certain regular expressions can take up to an exponential amount of time searching for a match (see [https://swtch.com/%7Ersc/regexp/regexp1.html]).
+The downside of backtracking approaches is that certain regular expressions can take up to an exponential amount of time searching for a match (see https://swtch.com/~rsc/regexp/regexp1.html).
 This problem can be eliminated by the use of automaton-based methods, which can match input strings in linear time.
 However, this comes with two caveats: more time has to be spent in "compiling" the regular expression, i.e. translating it to a finite state automaton, and extensions of [formal regular expressions](https://en.wikipedia.org/wiki/Regular_expression#Formal_language_theory) are not always compatible with this strategy (one such common example are backreferences).
 
@@ -29,7 +29,7 @@ Therefore, Graal.js adopts the following strategy when compiling a regular expre
          Since the port of JOni used in Graal.js is older than TRegex, it lacks support for ECMAScript RegExp features newer than ECMAScript 5.
 
   3) The regular expression is not supported by Graal.js.
-     If you run into this scenario, please file an issue! :-)
+     If you run into this scenario, please [file an issue](https://github.com/graalvm/graaljs/issues/new)! :-)
      
      This likely means that the regular expression is using at the same time a feature which is not supported by TRegex as well as some other feature which is not supported by JOni.
 
@@ -38,18 +38,21 @@ For reference, the current status of feature support in both engines is listed b
 Feature                                                                                      | TRegex | JOni
 -------------------------------------------------------------------------------------------- | ------ | ----
 Backreferences                                                                               | ❌     | ✓
-Negative lookahead<sup>[1](#fn1)</sup>                                                       | ❌     | ✓
+Negative lookaround<sup>[1](#fn1)</sup>                                                      | ❌     | ✓
 Unicode mode (`'u'` flag)                                                                    | ✓      | ❌
-[dotAll (`'s'` flag)](https://github.com/tc39/proposal-regexp-dotall-flag)                   | ✓      | ❌
 [Unicode property escapes](https://github.com/tc39/proposal-regexp-unicode-property-escapes) | ✓      | ❌
-[Named capture groups](https://github.com/tc39/proposal-regexp-named-groups)                 | ❌     | ❌
-Limited lookbehind (only literals)                                                           | ✓      | ❌
-[Full lookbehind](https://github.com/tc39/proposal-regexp-lookbehind)                        | ❌     | ❌
+[Named capture groups](https://github.com/tc39/proposal-regexp-named-groups)                 | ✓     | ❌
+[Full lookbehind](https://github.com/tc39/proposal-regexp-lookbehind)<sup>[2](#f2)</sup>     | ❌     | ❌
 
 <sub>
-<a name="fn1">1</a>: Positive lookahead is supported in both engines.
+<a name="fn1">1</a>: Positive lookaround is supported in both engines.
+<br/>
+<a name="fn2">2</a>: TRegex and JOni only support a subset of the lookbehind assertions that can match at most a bounded number of characters.
 </sub>
 
-We are currently working on implementing named capture groups, negative lookahead, and more support of lookbehind in TRegex. On the other hand, full support of backreferences is out of scope for a finite state automaton engine like TRegex.
+<br/>
+<br/>
+
+We are currently working on implementing negative lookahead and more support for lookbehind in TRegex. On the other hand, full support of backreferences is out of scope for a finite state automaton engine like TRegex.
 
 Graal.js uses [Nashorn](http://openjdk.java.net/projects/nashorn/)'s port of the JOni engine, which is based on ECMAScript 5 and misses support for most features of ECMAScript 6 and beyond.

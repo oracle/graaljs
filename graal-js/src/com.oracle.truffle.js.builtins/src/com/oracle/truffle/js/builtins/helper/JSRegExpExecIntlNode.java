@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.regex.UnsupportedRegexException;
 
 /**
  * Implements ES6 21.2.5.2.1 Runtime Semantics: RegExpExec ( R, S ).
@@ -264,11 +265,19 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
          * matching.
          */
         private TruffleObject executeIgnoreLastIndex(DynamicObject regExp, String input, long fromIndex) {
-            TruffleObject result = compiledRegexAccessor.exec(JSRegExp.getCompiledRegex(regExp), input, fromIndex);
+            TruffleObject result = executeCompiledRegex(JSRegExp.getCompiledRegex(regExp), input, fromIndex);
             if (regexResultAccessor.isMatch(result)) {
                 context.setRegexResult(result);
             }
             return result;
+        }
+
+        private TruffleObject executeCompiledRegex(TruffleObject compiledRegex, String input, long fromIndex) {
+            try {
+                return compiledRegexAccessor.exec(compiledRegex, input, fromIndex);
+            } catch (UnsupportedRegexException e) {
+                throw Errors.createError(e.getMessage());
+            }
         }
 
         // converts RegexResult into DynamicObject

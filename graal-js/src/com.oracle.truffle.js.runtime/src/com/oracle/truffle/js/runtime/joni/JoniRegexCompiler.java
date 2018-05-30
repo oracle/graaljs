@@ -50,12 +50,12 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.nashorn.regexp.RegExpScanner;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Option;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Regex;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Syntax;
-import com.oracle.truffle.regex.nashorn.regexp.joni.exception.JOniException;
+import com.oracle.truffle.regex.nashorn.regexp.joni.exception.SyntaxException;
 
 import java.util.regex.PatternSyntaxException;
 
@@ -102,36 +102,53 @@ public final class JoniRegexCompiler extends RegexCompiler {
 
     @CompilerDirectives.TruffleBoundary
     @Override
-    public TruffleObject compile(RegexSource source) throws RegexSyntaxException {
-        Regex implementation = createJoniRegex(source.getPattern(), source.getFlags());
-        CallTarget callTarget;
-        boolean group = PatternAnalyzer.containsGroup(source.getPattern());
-        if (source.getFlags().isSticky()) {
-            callTarget = group ? matchGroupCallTarget() : matchSimpleCallTarget();
-        } else {
-            callTarget = group ? searchGroupCallTarget() : searchSimpleCallTarget();
+    public TruffleObject compile(RegexSource source) throws UnsupportedRegexException {
+        try {
+            Regex implementation = createJoniRegex(source.getPattern(), source.getFlags());
+            CallTarget callTarget;
+            boolean group = PatternAnalyzer.containsGroup(source.getPattern());
+            if (source.getFlags().isSticky()) {
+                callTarget = group ? matchGroupCallTarget() : matchSimpleCallTarget();
+            } else {
+                callTarget = group ? searchGroupCallTarget() : searchSimpleCallTarget();
+            }
+            return new CompiledRegexObject(new JoniCompiledRegex(implementation, callTarget));
+        } catch (UnsupportedRegexException e) {
+            e.setReason("Joni: " + e.getReason());
+            e.setRegex(source);
+            throw e;
         }
-        return new CompiledRegexObject(new JoniCompiledRegex(implementation, callTarget));
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static Regex createJoniRegex(String pattern, RegexFlags flags) throws RegexSyntaxException {
+    private static Regex createJoniRegex(String pattern, RegexFlags flags) throws UnsupportedRegexException {
         try {
             char[] chars = RegExpScanner.scan(pattern).getJavaPattern().toCharArray();
             return new Regex(chars, 0, chars.length, getOptions(flags), Syntax.JAVASCRIPT);
-        } catch (JOniException | PatternSyntaxException e) {
-            throw new RegexSyntaxException(pattern, flags, e.getMessage(), e);
+        } catch (PatternSyntaxException | SyntaxException e) {
+            // We get a PatternSyntaxException if the preprocessor in RegExpScanner believes
+            // the pattern is malformed (this either means a bug in the preprocessor or an
+            // unsupported feature encountered by the preprocessor). Joni's SyntaxExceptions signal
+            // syntax errors in the pattern (since we are using a preprocessor, these would
+            // either mean a bug in the preprocessor or an unsupported feature encountered by Joni).
+            throw new UnsupportedRegexException(e.getMessage(), e);
         }
     }
 
-    private static int getOptions(RegexFlags flags) {
+    private static int getOptions(RegexFlags flags) throws UnsupportedRegexException {
         int option = Option.SINGLELINE;
+        if (flags.isUnicode()) {
+            throw new UnsupportedRegexException("unicode mode not supported");
+        }
         if (flags.isIgnoreCase()) {
             option |= Option.IGNORECASE;
         }
         if (flags.isMultiline()) {
             option &= ~Option.SINGLELINE;
             option |= Option.NEGATE_SINGLELINE;
+        }
+        if (flags.isDotAll()) {
+            option |= Option.MULTILINE;
         }
         return option;
     }
