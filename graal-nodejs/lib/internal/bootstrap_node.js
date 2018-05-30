@@ -20,6 +20,15 @@
 
     setupProcessObject();
 
+    // graal-node.js patch start
+    if (process._breakFirstLine) {
+      process.binding('inspector').callAndPauseOnStart = function(fn, self, ...args) {
+        const Debug = NativeModule.require('vm').runInDebugContext('Debug');
+        Debug.setBreakPoint(fn, 0, 0, undefined, true);
+        return fn.apply(self, args);
+      }
+    }
+
     if (typeof Packages !== 'undefined') {
       Packages[Symbol.toStringTag] = 'Packages'; // breaking isRhino check of acorn package
 
@@ -31,6 +40,7 @@
     if (typeof Debug === 'undefined') {
         Object.defineProperty(global, 'Debug', { configurable: true, writable: true });
     }
+    // graal-node.js patch end
 
     // do this good and early, since it handles errors.
     setupProcessFatal();

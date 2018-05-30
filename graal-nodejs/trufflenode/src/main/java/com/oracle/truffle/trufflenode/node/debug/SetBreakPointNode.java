@@ -50,6 +50,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -96,7 +97,14 @@ public class SetBreakPointNode extends JavaScriptRootNode {
                         columnNo += ((Number) arg2).intValue();
                     }
                 }
-                addBreakPoint(source, lineNo, columnNo);
+                // JSArguments.getUserArgument(args, 3) is condition
+                // We do not support conditional breakpoints here (yet?)
+                boolean oneShot = false;
+                if (numArgs >= 4) {
+                    Object arg4 = JSArguments.getUserArgument(args, 4);
+                    oneShot = JSRuntime.toBoolean(arg4);
+                }
+                addBreakPoint(source, lineNo, columnNo, oneShot);
                 return 0;
             }
         }
@@ -105,8 +113,12 @@ public class SetBreakPointNode extends JavaScriptRootNode {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private void addBreakPoint(Source source, int lineNo, int columnNo) {
-        Breakpoint breakpoint = Breakpoint.newBuilder(source).lineIs(lineNo).columnIs(columnNo).build();
+    private void addBreakPoint(Source source, int lineNo, int columnNo, boolean oneShot) {
+        Breakpoint.Builder builder = Breakpoint.newBuilder(source).lineIs(lineNo).columnIs(columnNo);
+        if (oneShot) {
+            builder.oneShot();
+        }
+        Breakpoint breakpoint = builder.build();
         Debugger debugger = graalJSAccess.lookupInstrument("debugger", Debugger.class);
         debugger.install(breakpoint);
     }
