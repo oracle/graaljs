@@ -155,6 +155,7 @@ class GraalNodeJsArchiveProject(mx.ArchivableProject):
 class PreparsedCoreModulesProject(mx.ArchivableProject):
     def __init__(self, suite, name, deps, workingSets, theLicense, **args):
         super(PreparsedCoreModulesProject, self).__init__(suite, name, deps, workingSets, theLicense)
+        self.subDir = args.pop('subDir')
         assert 'prefix' in args
         assert 'outputDir' in args
 
