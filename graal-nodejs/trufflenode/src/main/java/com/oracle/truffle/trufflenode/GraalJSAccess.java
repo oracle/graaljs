@@ -250,30 +250,30 @@ public final class GraalJSAccess {
 
     private final List<Reference<FunctionTemplate>> functionTemplates = new ArrayList<>();
 
-    private boolean exposeGC;
+    private final boolean exposeGC;
 
     // static accessors to JSRegExp properties (usually via nodes)
     private static final TRegexUtil.TRegexCompiledRegexAccessor STATIC_COMPILED_REGEX_ACCESSOR = TRegexUtil.TRegexCompiledRegexAccessor.create();
     private static final TRegexUtil.TRegexFlagsAccessor STATIC_FLAGS_ACCESSOR = TRegexUtil.TRegexFlagsAccessor.create();
 
     private GraalJSAccess(String[] args, long loopAddress) throws Exception {
-        Options options = null;
-        Context.Builder contextBuilder = null;
         try {
-            options = Options.parseArguments(prepareArguments(args));
-            contextBuilder = options.getContextBuilder();
+            Options options = Options.parseArguments(prepareArguments(args));
+            Context.Builder contextBuilder = options.getContextBuilder();
+
+            contextBuilder.option(JSContextOptions.DIRECT_BYTE_BUFFER_NAME, "true");
+            contextBuilder.option(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
+            contextBuilder.option(JSContextOptions.INTL_402_NAME, "true");
+            contextBuilder.option(GraalJSParserOptions.SYNTAX_EXTENSIONS_NAME, "false");
+
+            exposeGC = options.isGCExposed();
+            evaluator = contextBuilder.build();
         } catch (IllegalArgumentException iaex) {
-            System.err.println(iaex.getMessage());
+            System.err.printf("ERROR: %s", iaex.getMessage());
             System.exit(1);
+            throw iaex; // avoids compiler complaints that final fields are not initialized
         }
 
-        contextBuilder.option(JSContextOptions.DIRECT_BYTE_BUFFER_NAME, "true");
-        contextBuilder.option(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
-        contextBuilder.option(JSContextOptions.INTL_402_NAME, "true");
-        contextBuilder.option(GraalJSParserOptions.SYNTAX_EXTENSIONS_NAME, "false");
-
-        exposeGC = options.isGCExposed();
-        evaluator = contextBuilder.build();
         JSRealm mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
         mainJSContext = mainJSRealm.getContext();
         assert mainJSContext != null : "JSContext initialized";
