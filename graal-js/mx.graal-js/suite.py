@@ -245,6 +245,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "regex:TREGEX",
       ],
       "findbugs" : "false",
 #     checkstyle and findbugs turned off to keep the source aligned
