@@ -88,7 +88,7 @@ public class SetBreakPointNode extends JavaScriptRootNode {
                     }
                 }
                 if (userLine > 0) {
-                    columnNo = 0; // ignore the section column
+                    columnNo = 1; // ignore the section column
                 } else {
                     // skip "function"
                     if (startsWith(sourceSection, "function")) {
