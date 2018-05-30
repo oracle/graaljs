@@ -41,7 +41,6 @@ Backreferences                                                                  
 Negative lookaround<sup>[1](#fn1)</sup>                                                      | ❌     | ✓
 Unicode mode (`'u'` flag)                                                                    | ✓      | ❌
 [Unicode property escapes](https://github.com/tc39/proposal-regexp-unicode-property-escapes) | ✓      | ❌
-[Named capture groups](https://github.com/tc39/proposal-regexp-named-groups)                 | ✓     | ❌
 [Full lookbehind](https://github.com/tc39/proposal-regexp-lookbehind)<sup>[2](#f2)</sup>     | ❌     | ❌
 
 <sub>
