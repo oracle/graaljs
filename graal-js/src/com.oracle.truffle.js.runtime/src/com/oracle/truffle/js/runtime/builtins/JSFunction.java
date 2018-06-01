@@ -181,7 +181,10 @@ public final class JSFunction extends JSBuiltinObject {
     public static final HiddenKey GENERATOR_CONTEXT_ID = new HiddenKey("GeneratorContext");
     public static final HiddenKey GENERATOR_TARGET_ID = new HiddenKey("GeneratorTarget");
 
+    public static final HiddenKey ASYNC_GENERATOR_STATE_ID = new HiddenKey("AsyncGeneratorState");
+    public static final HiddenKey ASYNC_GENERATOR_CONTEXT_ID = new HiddenKey("AsyncGeneratorContext");
     public static final HiddenKey ASYNC_GENERATOR_QUEUE_ID = new HiddenKey("AsyncGeneratorQueue");
+    public static final HiddenKey ASYNC_GENERATOR_TARGET_ID = new HiddenKey("AsyncGeneratorTarget");
 
     /** Marker property to ensure generator function shapes are distinct from normal functions. */
     private static final Property GENERATOR_FUNCTION_MARKER_PROPERTY;
@@ -1059,7 +1062,7 @@ public final class JSFunction extends JSBuiltinObject {
                                     return Null.instance; // do not go beyond a strict builtin
                                 }
                             }
-                            if (!PROGRAM_FUNCTION_NAME.equals(JSFunction.getName(function))) {
+                            if (!PROGRAM_FUNCTION_NAME.equals(rootNode.getName())) {
                                 return function;
                             }
                         } else if (function == thiz) {

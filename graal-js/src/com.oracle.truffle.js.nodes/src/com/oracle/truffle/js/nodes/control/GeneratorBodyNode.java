@@ -73,7 +73,6 @@ public final class GeneratorBodyNode extends JavaScriptNode {
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of generator functions in JavaScript.")
     private static class GeneratorRootNode extends JavaScriptRootNode {
         @Child private CreateIterResultObjectNode createIterResultObject;
-        @Child private PropertyGetNode getGeneratorContext;
         @Child private PropertyGetNode getGeneratorState;
         @Child private PropertySetNode setGeneratorState;
         @Child private JavaScriptNode functionBody;
@@ -83,7 +82,6 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         GeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, SourceSection functionSourceSection) {
             super(context.getLanguage(), functionSourceSection, null);
             this.createIterResultObject = CreateIterResultObjectNode.create(context);
-            this.getGeneratorContext = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_CONTEXT_ID, context);
             this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_STATE_ID, context);
             this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
             this.functionBody = functionBody;
@@ -93,11 +91,11 @@ public final class GeneratorBodyNode extends JavaScriptNode {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            DynamicObject generatorObject = (DynamicObject) frame.getArguments()[0];
-            Object value = frame.getArguments()[1];
-            Completion.Type completionType = (Completion.Type) frame.getArguments()[2];
-
-            VirtualFrame generatorFrame = JSFrameUtil.castMaterializedFrame(getGeneratorContext.getValue(generatorObject));
+            Object[] arguments = frame.getArguments();
+            VirtualFrame generatorFrame = JSFrameUtil.castMaterializedFrame(arguments[0]);
+            DynamicObject generatorObject = (DynamicObject) arguments[1];
+            Object value = arguments[2];
+            Completion.Type completionType = (Completion.Type) arguments[3];
             GeneratorState generatorState = generatorValidate(generatorObject);
 
             if (completionType == Completion.Type.Normal) {
@@ -149,6 +147,11 @@ public final class GeneratorBodyNode extends JavaScriptNode {
                 throw Errors.createTypeError("generator is already executing");
             }
             return (GeneratorState) generatorState;
+        }
+
+        @Override
+        public boolean isResumption() {
+            return true;
         }
     }
 

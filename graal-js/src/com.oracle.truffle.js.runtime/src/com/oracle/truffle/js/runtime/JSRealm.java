@@ -119,7 +119,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public class JSRealm implements ShapeContext {
 
-    public static final String INTERNAL_JS_FILE_NAME_PREFIX = "internal:";
     public static final String POLYGLOT_CLASS_NAME = "Polyglot";
     // used for non-public properties of Polyglot
     public static final String POLYGLOT_INTERNAL_CLASS_NAME = "PolyglotInternal";
