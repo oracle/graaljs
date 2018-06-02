@@ -44,10 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode.UninitializedDefinePropertyNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode.UninitializedPropertySetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -58,10 +55,12 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
     private final JSContext context;
     protected final Object key;
+    @Child protected IsObjectNode isObject;
 
     protected CreateDataPropertyNode(JSContext context, Object key) {
         this.context = context;
         this.key = key;
+        this.isObject = IsObjectNode.create();
     }
 
     public static CreateDataPropertyNode create(JSContext context, Object key) {
@@ -70,14 +69,13 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
 
     public abstract void executeVoid(Object object, Object value);
 
-    @Specialization(guards = {"oldShape.check(object)", "oldShape.getProperty(key) == null"}, assumptions = {"oldShape.getValidAssumption()"}, limit = "PropertyCacheLimit")
-    protected static void doCached(DynamicObject object, Object value, //
-                    @SuppressWarnings("unused") @Cached("object.getShape()") Shape oldShape, //
-                    @Cached("makeDefinePropertyCache(object)") PropertySetNode propertyCache) {
+    @Specialization(guards = {"PropertyCacheLimit > 0", "isObject.executeBoolean(object)"})
+    protected static void doCached(Object object, Object value,
+                    @Cached("makeDefinePropertyCache()") PropertySetNode propertyCache) {
         propertyCache.setValue(object, value);
     }
 
-    @Specialization(guards = "isJSObject(object)", replaces = {"doCached"})
+    @Specialization(guards = {"PropertyCacheLimit == 0", "isJSObject(object)"})
     protected final void doUncached(DynamicObject object, Object value) {
         JSRuntime.createDataProperty(object, key, value);
     }
@@ -87,12 +85,7 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorNotAnObject(object, this);
     }
 
-    protected final PropertySetNode makeDefinePropertyCache(DynamicObject object) {
-        Shape shape = object.getShape();
-        if (shape.getProperty(key) == null) {
-            return new UninitializedDefinePropertyNode(key, shape, context, JSAttributes.getDefault());
-        } else {
-            return new UninitializedPropertySetNode(key, false, context, true, true, JSAttributes.getDefault());
-        }
+    protected final PropertySetNode makeDefinePropertyCache() {
+        return PropertySetNode.createImpl(key, false, context, true, true, JSAttributes.getDefault());
     }
 }
