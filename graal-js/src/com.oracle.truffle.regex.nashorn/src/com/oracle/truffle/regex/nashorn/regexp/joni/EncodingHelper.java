@@ -64,6 +64,7 @@ import java.util.function.ObjIntConsumer;
 
 import com.oracle.truffle.regex.nashorn.regexp.joni.encoding.CharacterType;
 import com.oracle.truffle.regex.nashorn.regexp.joni.encoding.IntHolder;
+import com.oracle.truffle.regex.util.Constants;
 
 public final class EncodingHelper {
 
@@ -369,21 +370,7 @@ public final class EncodingHelper {
             case CharacterType.PUNCT:
                 return (1 << Character.getType(code) & CharacterType.PUNCT_MASK) != 0;
             case CharacterType.SPACE:
-                // ECMA 7.2 and 7.3
-                switch (code) {
-                    case 0x09:
-                    case 0x0a:
-                    case 0x0b:
-                    case 0x0c:
-                    case 0x0d:
-                        return true;
-                    case 0x180e:
-                        // Java 8: Category "Zs" (Space_Separator), Java 9: Category "Cf" (Format)
-                        return true;
-                    default:
-                        // true if Unicode separator or BOM
-                        return (1 << Character.getType(code) & CharacterType.SPACE_MASK) != 0 || code == 0xfeff;
-                }
+                return Constants.WHITE_SPACE.contains(code);
             case CharacterType.UPPER:
                 return Character.isUpperCase(code);
             case CharacterType.XDIGIT:
