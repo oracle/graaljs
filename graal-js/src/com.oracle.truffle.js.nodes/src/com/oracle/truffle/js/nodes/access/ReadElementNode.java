@@ -690,9 +690,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         private Object getCachedProperty(DynamicObject targetObject, Object index) {
             if (getPropertyCachedNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getPropertyCachedNode = insert(CachedGetPropertyNode.create(context, index));
+                getPropertyCachedNode = insert(CachedGetPropertyNode.create(context));
             }
-            return getPropertyCachedNode.getCachedProperty(targetObject, index);
+            return getPropertyCachedNode.execute(targetObject, index);
         }
     }
 
