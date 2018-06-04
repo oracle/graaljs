@@ -837,7 +837,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
 
         @TruffleBoundary
         private void setValueUncheckedIntl(Object thisObj) {
-            throw Errors.createTypeErrorCannotSetPropertyOf(getKey(), thisObj);
+            throw Errors.createTypeErrorCannotSetProperty(getKey(), thisObj, this);
         }
     }
 

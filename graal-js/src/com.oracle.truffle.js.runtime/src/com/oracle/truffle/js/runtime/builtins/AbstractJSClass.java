@@ -45,8 +45,6 @@ import java.util.Collections;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSException;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -54,20 +52,15 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 public abstract class AbstractJSClass extends JSClass {
 
     @TruffleBoundary
-    private static JSException cannotDoPropertyOf(String doWhat, Object index, Object thisObj) {
-        return Errors.createTypeErrorFormat("Cannot %s property \"%s\" of %s", doWhat, index, JSRuntime.safeToString(thisObj));
-    }
-
-    @TruffleBoundary
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, Object name) {
-        throw cannotDoPropertyOf("get", name, thisObj);
+        throw Errors.createTypeErrorCannotGetProperty(name, thisObj, false, null);
     }
 
     @TruffleBoundary
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, long index) {
-        throw cannotDoPropertyOf("get", index, thisObj);
+        throw Errors.createTypeErrorCannotGetProperty(String.valueOf(index), thisObj, false, null);
     }
 
     @Override
@@ -108,13 +101,13 @@ public abstract class AbstractJSClass extends JSClass {
     @TruffleBoundary
     @Override
     public boolean setOwn(DynamicObject thisObj, Object index, Object value, Object receiver, boolean isStrict) {
-        throw cannotDoPropertyOf("set", index, thisObj);
+        throw Errors.createTypeErrorCannotSetProperty(index, thisObj, null);
     }
 
     @TruffleBoundary
     @Override
     public boolean setOwn(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
-        throw cannotDoPropertyOf("set", index, thisObj);
+        throw Errors.createTypeErrorCannotSetProperty(String.valueOf(index), thisObj, null);
     }
 
     @Override
@@ -130,13 +123,13 @@ public abstract class AbstractJSClass extends JSClass {
     @TruffleBoundary
     @Override
     public boolean delete(DynamicObject thisObj, Object index, boolean isStrict) {
-        throw cannotDoPropertyOf("delete", index, thisObj);
+        throw Errors.createTypeErrorCannotDeletePropertyOf(index, thisObj);
     }
 
     @TruffleBoundary
     @Override
     public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
-        throw cannotDoPropertyOf("delete", index, thisObj);
+        throw Errors.createTypeErrorCannotDeletePropertyOf(String.valueOf(index), thisObj);
     }
 
     @Override

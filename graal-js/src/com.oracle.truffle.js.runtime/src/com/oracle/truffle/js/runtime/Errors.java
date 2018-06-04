@@ -289,13 +289,15 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotSetPropertyOf(Object key, Object object) {
+    public static JSException createTypeErrorCannotSetProperty(Object key, Object object, Node originatingNode) {
         assert JSRuntime.isPropertyKey(key);
+        String errorMessage;
         if (JSTruffleOptions.NashornCompatibilityMode) {
-            return Errors.createTypeErrorFormat("Cannot set property \"%s\" of %s", key, JSRuntime.safeToString(object));
+            errorMessage = "Cannot set property \"" + key + "\" of " + JSRuntime.safeToString(object);
         } else {
-            return Errors.createTypeErrorCannotRedefineProperty(key);
+            errorMessage = "Cannot set property '" + key + "' of " + JSRuntime.safeToString(object);
         }
+        return createTypeError(errorMessage, originatingNode);
     }
 
     @TruffleBoundary
@@ -323,7 +325,7 @@ public final class Errors {
                 }
             }
         } else {
-            errorMessage = "Cannot read property \'" + key + "\' of " + JSRuntime.safeToString(object);
+            errorMessage = "Cannot read property '" + key + "' of " + JSRuntime.safeToString(object);
         }
         return createTypeError(errorMessage, originatingNode);
     }
