@@ -650,7 +650,8 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     }
 
                     if (state.boundFormatFunction == null) {
-                        DynamicObject formatFn = createFormatFunction(realm, context);
+                        JSFunctionData formatFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.DateTimeFormatFormat, c -> createFormatFunctionData(c));
+                        DynamicObject formatFn = JSFunction.create(realm, formatFunctionData);
                         DynamicObject boundFn = JSFunction.boundFunctionCreate(context, realm, formatFn, numberFormatObj, new Object[]{}, JSObject.getPrototype(formatFn), true);
                         state.boundFormatFunction = boundFn;
                     }
@@ -668,8 +669,8 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         }
     }
 
-    private static DynamicObject createFormatFunction(JSRealm realm, JSContext context) {
-        DynamicObject result = JSFunction.create(realm, JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+    private static JSFunctionData createFormatFunctionData(JSContext context) {
+        return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
@@ -677,8 +678,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                 Object n = JSArguments.getUserArgumentCount(arguments) > 0 ? JSArguments.getUserArgument(arguments, 0) : Undefined.instance;
                 return format(thisObj, n);
             }
-        }), 1, "format"));
-        return result;
+        }), 1, "format");
     }
 
     private static DynamicObject createFormatFunctionGetter(JSRealm realm, JSContext context) {

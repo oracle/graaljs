@@ -951,7 +951,6 @@ public class JSRealm implements ShapeContext {
         CallTarget throwTypeErrorCallTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
 
             @Override
-            @TruffleBoundary
             public Object execute(VirtualFrame frame) {
                 throw Errors.createTypeError("[[ThrowTypeError]] defined by ECMAScript");
             }
