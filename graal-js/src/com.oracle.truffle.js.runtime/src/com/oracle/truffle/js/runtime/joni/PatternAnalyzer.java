@@ -58,7 +58,9 @@ public final class PatternAnalyzer {
                 charClass = true;
             } else if (!charClass && ch == '(') {
                 if (!pattern.regionMatches(i + 1, "?", 0, 1)) {
-                    return true;
+                    return true; // unnamed capture group
+                } else if (pattern.regionMatches(i + 2, "<", 0, 1) && !pattern.regionMatches(i + 3, "=", 0, 1) && !pattern.regionMatches(i + 3, "!", 0, 1)) {
+                    return true; // named capture group
                 }
             }
         }

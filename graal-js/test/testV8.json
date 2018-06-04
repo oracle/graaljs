@@ -646,7 +646,7 @@
   }, {
     "filePath" : "mjsunit/harmony/regexp-named-captures.js",
     "status" : "FAIL",
-    "comment" : "Fails because of: missing negative lookbehind support in TRegex's parser, missing named capture groups in Joni and because some of the tests towards the end are outdated w.r.t. the spec (starting with line 374)."
+    "comment" : "Fails because Joni matches lookbehind left-to-right and so the rightmost match of a capture group in a lookbehind wins. In ECMAScript, lookbehind is to be matched right-to-left and the leftmost match of a capture group in a lookbehind should be kept. Furthermore, this test file contains some tests which are outdated w.r.t. the spec (starting with line 374)."
   }, {
     "filePath" : "mjsunit/harmony/regexp-property-disabled.js",
     "status" : "SKIP",

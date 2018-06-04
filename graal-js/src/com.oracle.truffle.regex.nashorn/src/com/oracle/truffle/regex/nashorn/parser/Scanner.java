@@ -75,9 +75,6 @@ public class Scanner {
     /** Scan limit. */
     protected final int limit;
 
-    /** Current line number. */
-    protected int line;
-
     /** Current character in stream */
     protected char ch0;
     /** 1 character lookahead */
@@ -91,15 +88,13 @@ public class Scanner {
      * Constructor
      *
      * @param content content to scan
-     * @param line    start line number
      * @param start   position index in content where to start
      * @param length  length of input
      */
-    protected Scanner(final char[] content, final int line, final int start, final int length) {
+    protected Scanner(final char[] content, final int start, final int length) {
         this.content  = content;
         this.position = start;
         this.limit    = start + length;
-        this.line     = line;
 
         reset(position);
     }
@@ -112,73 +107,7 @@ public class Scanner {
      * @param content content to scan
      */
     protected Scanner(final String content) {
-        this(content.toCharArray(), 0, 0, content.length());
-    }
-
-    /**
-     * Copy constructor
-     *
-     * @param scanner  scanner
-     * @param state    state, the state is a tuple {position, limit, line} only visible internally
-     */
-    Scanner(final Scanner scanner, final State state) {
-        content  = scanner.content;
-        position = state.position;
-        limit    = state.limit;
-        line     = state.line;
-
-        reset(position);
-   }
-
-    /**
-     * Information needed to restore previous state.
-     */
-    static class State {
-        /** Position in content. */
-        public final int position;
-
-        /** Scan limit. */
-        public int limit;
-
-        /** Current line number. */
-        public final int line;
-
-        State(final int position, final int limit, final int line) {
-            this.position = position;
-            this.limit    = limit;
-            this.line     = line;
-        }
-
-        /**
-         * Change the limit for a new scanner.
-         * @param limit New limit.
-         */
-        void setLimit(final int limit) {
-            this.limit = limit;
-        }
-
-        boolean isEmpty() {
-            return position == limit;
-        }
-    }
-
-    /**
-     * Save the state of the scan.
-     * @return Captured state.
-     */
-    State saveState() {
-        return new State(position, limit, line);
-    }
-
-    /**
-     * Restore the state of the scan.
-     * @param state Captured state.
-     */
-    void restoreState(final State state) {
-        position = state.position;
-        line     = state.line;
-
-        reset(position);
+        this(content.toCharArray(), 0, content.length());
     }
 
     /**
@@ -225,5 +154,9 @@ public class Scanner {
         } else if (n != 0) {
             reset(position + n);
         }
+    }
+
+    protected String getContents() {
+        return new String(content);
     }
 }

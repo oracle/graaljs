@@ -16,10 +16,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "annexB/built-ins/RegExp/named-groups/non-unicode-malformed.js",
-    "status" : "FAIL",
-    "comment" : "Uses negative lookbehind, which is missing from TRegex's parser."
-  }, {
     "filePath" : "annexB/language/comments/multi-line-html-close.js",
     "status" : "FAIL"
   }, {
@@ -676,27 +672,15 @@
   }, {
     "filePath" : "built-ins/RegExp/named-groups/lookbehind.js",
     "status" : "FAIL",
-    "comment" : "Uses lookbehind, which is not yet implemented."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/non-unicode-malformed.js",
-    "status" : "FAIL",
-    "comment" : "Uses named backreferences. Backreferences are missing from TRegex and named capture groups are missing from Joni."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/non-unicode-match.js",
-    "status" : "FAIL",
-    "comment" : "Uses named backreferences. Backreferences are missing from TRegex and named capture groups are missing from Joni."
-  }, {
-    "filePath" : "built-ins/RegExp/named-groups/non-unicode-references.js",
-    "status" : "FAIL",
-    "comment" : "Uses named backreferences. Backreferences are missing from TRegex and named capture groups are missing from Joni."
+    "comment" : "Fails because Joni matches lookbehind left-to-right and so the rightmost match of a capture group in a lookbehind wins. In ECMAScript, lookbehind is to be matched right-to-left and the leftmost match of a capture group in a lookbehind should be kept."
   }, {
     "filePath" : "built-ins/RegExp/named-groups/unicode-match.js",
     "status" : "FAIL",
-    "comment" : "Uses named backreferences. Backreferences are missing from TRegex and named capture groups are missing from Joni."
+    "comment" : "Some regular expressions (lines 22-25 and 38-41) use both backreferences (TRegex bails out) and the Unicode flag (Joni bails out)."
   }, {
     "filePath" : "built-ins/RegExp/named-groups/unicode-references.js",
     "status" : "FAIL",
-    "comment" : "Uses named backreferences. Backreferences are missing from TRegex and named capture groups are missing from Joni."
+    "comment" : "The regular expressions use both backreferences (TRegex bails out) and the Unicode flag (Joni bails out)."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Alphabetic.js",
     "status" : "SKIP",
