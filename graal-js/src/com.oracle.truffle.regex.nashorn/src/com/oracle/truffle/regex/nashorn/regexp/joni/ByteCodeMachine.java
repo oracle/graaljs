@@ -693,7 +693,7 @@ class ByteCodeMachine extends StackMachine {
                 opFail();
             }
             return;
-        } else if (isNewLineAt(sprev, end) && s != end) {
+        } else if (isNewLineAt(sprev, end)) {
             return;
         }
         opFail();
