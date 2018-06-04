@@ -200,6 +200,7 @@ public class JSContext implements ShapeContext {
         AsyncGeneratorReturnRejected,
         AsyncFromSyncIteratorValueUnwrap,
         DateTimeFormatFormat,
+        NumberFormatFormat,
         ProxyRevokerFunction,
         PromiseResolveFunction,
         PromiseRejectFunction,
