@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -69,10 +70,10 @@ public abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"isPropertyKey(cachedKey)", "!isArrayIndex(cachedKey)", "propertyKeyEquals(cachedKey, key)"}, limit = "MAX_DEPTH")
+    @Specialization(guards = {"cachedKey != null", "!isArrayIndex(cachedKey)", "propertyKeyEquals(cachedKey, key)"}, limit = "MAX_DEPTH")
     Object doCachedKey(DynamicObject target, Object key,
-                    @Cached("key") Object cachedKey,
-                    @Cached("create(key, context)") PropertyGetNode propertyNode) {
+                    @Cached("cachedPropertyKey(key)") Object cachedKey,
+                    @Cached("create(cachedKey, context)") PropertyGetNode propertyNode) {
         return propertyNode.getValue(target);
     }
 
@@ -101,6 +102,17 @@ public abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         } else {
             assert JSRuntime.isPropertyKey(arrayIndex);
             return JSObject.get(target, arrayIndex, jsclassProfile);
+        }
+    }
+
+    public static Object cachedPropertyKey(Object key) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (JSRuntime.isPropertyKey(key)) {
+            return key;
+        } else if (JSRuntime.isLazyString(key)) {
+            return key.toString();
+        } else {
+            return null;
         }
     }
 }

@@ -52,7 +52,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
-@ImportStatic({JSRuntime.class})
+@ImportStatic({JSRuntime.class, CachedGetPropertyNode.class})
 public abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     static final int MAX_DEPTH = 1;
 
@@ -71,10 +71,10 @@ public abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"isPropertyKey(cachedKey)", "!isArrayIndex(cachedKey)", "propertyKeyEquals(cachedKey, key)"}, limit = "MAX_DEPTH")
+    @Specialization(guards = {"cachedKey != null", "!isArrayIndex(cachedKey)", "propertyKeyEquals(cachedKey, key)"}, limit = "MAX_DEPTH")
     void doCachedKey(DynamicObject target, Object key, Object value,
-                    @Cached("key") Object cachedKey,
-                    @Cached("createSet(key)") PropertySetNode propertyNode) {
+                    @Cached("cachedPropertyKey(key)") Object cachedKey,
+                    @Cached("createSet(cachedKey)") PropertySetNode propertyNode) {
         propertyNode.setValue(target, value);
     }
 
