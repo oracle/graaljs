@@ -87,7 +87,6 @@ import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
@@ -197,7 +196,7 @@ public abstract class JSNewNode extends JavaScriptNode {
             }
         }
         Object[] args = getAbstractFunctionArguments(frame);
-        Object[] trapArgs = new Object[]{target, JSArray.createConstantObjectArray(JSShape.getJSContext(proxy.getShape()), args), proxy};
+        Object[] trapArgs = new Object[]{target, JSArray.createConstantObjectArray(context, args), proxy};
         Object result = JSFunction.call(trap, handler, trapArgs);
         if (!JSRuntime.isObject(result)) {
             throw Errors.createTypeErrorNotAnObject(result, this);
