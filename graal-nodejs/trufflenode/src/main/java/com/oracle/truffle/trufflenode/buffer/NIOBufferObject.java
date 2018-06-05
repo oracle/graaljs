@@ -67,6 +67,7 @@ public final class NIOBufferObject extends JSBuiltinObject {
     private NIOBufferObject() {
     }
 
+    @TruffleBoundary
     private static DynamicObject create(JSContext context) {
         DynamicObject obj = context.getEmptyShape().newInstance();
         ((JSBuiltinLookup) context.getFunctionLookup()).defineBuiltins(NIO_BUFFER_BUILTINS);
@@ -87,7 +88,6 @@ public final class NIOBufferObject extends JSBuiltinObject {
         // This JS function will be executed at node.js bootstrap time to register
         // the "default" Buffer API functions.
         JavaScriptRootNode wrapperNode = new JavaScriptRootNode() {
-            @TruffleBoundary
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();
