@@ -153,6 +153,34 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
     }
 
     @Test
+    public void readMulti() {
+        String src = "function Bar() {};" +
+                        "var bar = new Bar();" +
+                        "bar.a = {x:function(){}};" +
+                        "for(var i = 0; i < 10; i++) {" +
+                        "    bar.a.x(bar);" +
+                        "}";
+        evalWithTag(src, ReadPropertyExpressionTag.class);
+
+        assertPropertyRead("Bar");
+        assertPropertyRead("bar");
+        assertPropertyRead("i");
+        assertNestedPropertyRead("a", "bar");
+        assertPropertyRead("x");
+
+        for (int i = 0; i < 9; i++) {
+            assertPropertyRead("bar");
+            assertPropertyRead("i");
+            assertPropertyRead("i");
+            assertNestedPropertyRead("a", "bar");
+            assertPropertyRead("x");
+        }
+        assertPropertyRead("bar");
+        assertPropertyRead("i");
+        assertPropertyRead("i");
+    }
+
+    @Test
     public void readMissingSourceSection() {
         String src = "function bar(){};" +
                         "function foo(){" +

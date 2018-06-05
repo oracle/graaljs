@@ -155,6 +155,7 @@ public abstract class FineGrainedAccessTest {
             RETURN,
             ENTER,
             RETURN_EXCEPTIONAL,
+            UNEXPECTED_STATE,
         }
 
         protected final Kind kind;
@@ -323,8 +324,13 @@ public abstract class FineGrainedAccessTest {
                         stack.pop();
                         int expectedEvents = inputEvents.pop();
                         if (!c.hasTag(ControlFlowRootTag.class)) {
-                            // Iterations may register more events than expected
-                            assertTrue(expectedEvents == values.length);
+                            /*
+                             * Iterations may detect more input events than expected, other event
+                             * types should not.
+                             */
+                            if (expectedEvents != values.length) {
+                                events.add(new Event(c, Event.Kind.UNEXPECTED_STATE, (JavaScriptNode) c.getInstrumentedNode(), expectedEvents + " != " + values.length));
+                            }
                         }
                     }
 
