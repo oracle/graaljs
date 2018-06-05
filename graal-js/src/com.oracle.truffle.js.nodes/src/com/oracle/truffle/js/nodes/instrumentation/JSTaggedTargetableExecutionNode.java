@@ -111,6 +111,7 @@ public final class JSTaggedTargetableExecutionNode extends JSTargetableNode {
                 if (n instanceof JavaScriptNode) {
                     ((JavaScriptNode) n).removeSourceSection();
                 }
+                NodeUtil.forEachChild(n, this);
                 return true;
             }
         });
