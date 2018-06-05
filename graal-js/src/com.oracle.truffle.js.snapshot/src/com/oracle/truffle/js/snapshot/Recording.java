@@ -635,7 +635,7 @@ public class Recording {
             this.frameDescriptor = frameDescriptor;
             this.identifier = identifier;
             this.flags = flags;
-            this.findOrAdd = frameSlot == ScopeFrameNode.PARENT_SCOPE_SLOT;
+            this.findOrAdd = frameSlot.getIdentifier() == ScopeFrameNode.PARENT_SCOPE_IDENTIFIER;
         }
 
         @Override

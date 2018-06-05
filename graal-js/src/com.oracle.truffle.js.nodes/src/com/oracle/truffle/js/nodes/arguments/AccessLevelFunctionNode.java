@@ -57,7 +57,7 @@ public final class AccessLevelFunctionNode extends JavaScriptNode implements Rep
     }
 
     public static JavaScriptNode create(int frameLevel) {
-        return new AccessLevelFunctionNode(ScopeFrameNode.create(frameLevel, 0));
+        return new AccessLevelFunctionNode(ScopeFrameNode.create(frameLevel));
     }
 
     @Override

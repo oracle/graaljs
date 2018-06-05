@@ -52,6 +52,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -437,6 +438,11 @@ public class FunctionEnvironment extends Environment {
             return this;
         }
         return getParentFunction(getArrowFunctionLevel());
+    }
+
+    @Override
+    public FrameSlot[] getParentSlots() {
+        return ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY;
     }
 
     public boolean isGlobal() {

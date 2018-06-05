@@ -102,10 +102,6 @@ public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
         return true;
     }
 
-    public static TemporalDeadZoneCheckNode create(FrameSlot frameSlot, int frameLevel, int scopeLevel, JavaScriptNode rhs) {
-        return create(frameSlot, ScopeFrameNode.create(frameLevel, scopeLevel), rhs);
-    }
-
     public static TemporalDeadZoneCheckNode create(FrameSlot frameSlot, ScopeFrameNode levelFrameNode, JavaScriptNode rhs) {
         return new TemporalDeadZoneCheckNode(frameSlot, levelFrameNode, rhs);
     }

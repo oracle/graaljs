@@ -72,11 +72,11 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
         }
     }
 
-    public static JSReadFrameSlotNode create(FrameSlot slot, int frameLevel, int scopeLevel, boolean hasTemporalDeadZone) {
+    public static JSReadFrameSlotNode create(FrameSlot slot, int frameLevel, int scopeLevel, FrameSlot[] parentSlots, boolean hasTemporalDeadZone) {
         if (frameLevel == 0 && scopeLevel == 0 && !hasTemporalDeadZone) {
             return JSReadCurrentFrameSlotNodeGen.create(slot);
         }
-        return create(slot, ScopeFrameNode.create(frameLevel, scopeLevel), hasTemporalDeadZone);
+        return create(slot, ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots), hasTemporalDeadZone);
     }
 
     @Override
@@ -91,10 +91,6 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
     @Override
     public Object getNodeObject() {
         return JSTags.createNodeObjectDescriptor("name", getIdentifier());
-    }
-
-    public static JSReadFrameSlotNode create(FrameSlot slot, int frameLevel, int scopeLevel, FrameSlot parentSlot, boolean hasTemporalDeadZone) {
-        return create(slot, ScopeFrameNode.create(frameLevel, scopeLevel, parentSlot), hasTemporalDeadZone);
     }
 
     @Override
@@ -204,7 +200,7 @@ abstract class JSReadCurrentFrameSlotNode extends JSReadFrameSlotNode {
 
     @Override
     public ScopeFrameNode getLevelFrameNode() {
-        return ScopeFrameNode.create(0, 0);
+        return ScopeFrameNode.create(0);
     }
 
     @Override

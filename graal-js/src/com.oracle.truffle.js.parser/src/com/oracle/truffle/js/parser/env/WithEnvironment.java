@@ -85,4 +85,9 @@ public class WithEnvironment extends Environment {
     public boolean isDynamicScopeContext() {
         return true;
     }
+
+    @Override
+    public FrameSlot[] getParentSlots() {
+        return getParent().getParentSlots();
+    }
 }

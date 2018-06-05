@@ -40,23 +40,29 @@
  */
 package com.oracle.truffle.js.parser.env;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.js.nodes.*;
-import com.oracle.truffle.js.nodes.access.*;
-import com.oracle.truffle.js.runtime.*;
+import java.util.Objects;
+
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.js.nodes.NodeFactory;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+import com.oracle.truffle.js.runtime.JSContext;
 
 public class BlockEnvironment extends Environment {
     private final FunctionEnvironment functionEnvironment;
     private final FrameDescriptor blockFrameDescriptor;
     private final FrameSlot parentSlot;
     private final int scopeLevel;
+    private final FrameSlot[] parentSlots;
 
     public BlockEnvironment(Environment parent, NodeFactory factory, JSContext context) {
         super(parent, factory, context);
         this.functionEnvironment = parent.function();
         this.blockFrameDescriptor = factory.createBlockFrameDescriptor();
-        this.parentSlot = ScopeFrameNode.PARENT_SCOPE_SLOT;
+        this.parentSlot = Objects.requireNonNull(blockFrameDescriptor.findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER));
         this.scopeLevel = parent.getScopeLevel() + 1;
+        this.parentSlots = prepend(parent.getParentSlots(), parentSlot);
+        assert parentSlots.length == scopeLevel;
     }
 
     @Override
@@ -82,5 +88,17 @@ public class BlockEnvironment extends Environment {
     @Override
     public int getScopeLevel() {
         return scopeLevel;
+    }
+
+    @Override
+    public FrameSlot[] getParentSlots() {
+        return parentSlots;
+    }
+
+    private static FrameSlot[] prepend(FrameSlot[] srcArray, FrameSlot newSlot) {
+        FrameSlot[] newArray = new FrameSlot[srcArray.length + 1];
+        newArray[0] = newSlot;
+        System.arraycopy(srcArray, 0, newArray, 1, srcArray.length);
+        return newArray;
     }
 }
