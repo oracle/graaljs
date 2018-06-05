@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -122,14 +121,8 @@ public class TryFinallyNode extends StatementNode implements ResumableNode {
         }
     }
 
-    @TruffleBoundary
-    private static void rethrow(Throwable throwable) {
-        if (throwable instanceof RuntimeException) {
-            throw (RuntimeException) throwable;
-        } else if (throwable instanceof Error) {
-            throw (Error) throwable;
-        } else {
-            throw new RuntimeException(throwable);
-        }
+    @SuppressWarnings({"unchecked"})
+    private static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
+        throw (E) ex;
     }
 }

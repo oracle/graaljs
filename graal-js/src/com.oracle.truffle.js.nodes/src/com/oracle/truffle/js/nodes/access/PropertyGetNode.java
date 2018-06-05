@@ -123,6 +123,9 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode
  * @see GlobalPropertyNode
  */
 public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode> {
+    public static PropertyGetNode create(Object key, JSContext context) {
+        return create(key, false, context);
+    }
 
     public static PropertyGetNode create(Object key, boolean isGlobal, JSContext context) {
         final boolean getOwnProperty = false;

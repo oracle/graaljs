@@ -573,9 +573,9 @@ public class WriteElementNode extends JSTargetableNode {
         private void setCachedProperty(DynamicObject targetObject, Object index, Object value) {
             if (setPropertyCachedNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                setPropertyCachedNode = insert(CachedSetPropertyNode.create(context, index, isStrict));
+                setPropertyCachedNode = insert(CachedSetPropertyNode.create(context, isStrict));
             }
-            setPropertyCachedNode.setCachedProperty(targetObject, index, value);
+            setPropertyCachedNode.execute(targetObject, index, value);
         }
 
         @Override

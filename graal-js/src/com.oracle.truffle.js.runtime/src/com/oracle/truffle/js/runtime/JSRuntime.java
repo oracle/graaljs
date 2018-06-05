@@ -1174,7 +1174,7 @@ public final class JSRuntime {
     // avoiding a virtual call for equals(), not fail on SVM.
     // No TruffleBoundary, we want this to partially evaluate.
     public static boolean propertyKeyEquals(Object a, Object b) {
-        assert isPropertyKey(a) || a instanceof HiddenKey;
+        assert isPropertyKey(a);
         if (a instanceof String) {
             if (b instanceof String) {
                 return ((String) a).equals(b);
@@ -1186,8 +1186,7 @@ public final class JSRuntime {
         } else if (a instanceof Symbol) {
             return ((Symbol) a).equals(b);
         } else {
-            assert a instanceof HiddenKey;
-            return ((HiddenKey) a).equals(b);
+            throw Errors.shouldNotReachHere();
         }
     }
 

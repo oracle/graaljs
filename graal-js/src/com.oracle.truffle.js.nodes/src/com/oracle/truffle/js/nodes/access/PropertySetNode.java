@@ -112,7 +112,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         return createImpl(key, isGlobal, context, isStrict, setOwnProperty, JSAttributes.getDefault());
     }
 
-    private static PropertySetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean isStrict, boolean setOwnProperty, int attributeFlags) {
+    public static PropertySetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean isStrict, boolean setOwnProperty, int attributeFlags) {
         if (JSTruffleOptions.PropertyCacheLimit > 0) {
             return new UninitializedPropertySetNode(key, isGlobal, context, isStrict, setOwnProperty, attributeFlags);
         } else {
@@ -837,7 +837,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
 
         @TruffleBoundary
         private void setValueUncheckedIntl(Object thisObj) {
-            throw Errors.createTypeErrorCannotSetPropertyOf(getKey(), thisObj);
+            throw Errors.createTypeErrorCannotSetProperty(getKey(), thisObj, this);
         }
     }
 

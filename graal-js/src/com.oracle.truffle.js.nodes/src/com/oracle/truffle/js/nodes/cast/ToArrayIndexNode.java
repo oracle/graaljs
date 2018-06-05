@@ -64,6 +64,10 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object operand);
 
+    public final boolean isArrayIndex(Object operand) {
+        return execute(operand) instanceof Long;
+    }
+
     protected ToArrayIndexNode(boolean convertToString) {
         this.convertToString = convertToString;
     }
