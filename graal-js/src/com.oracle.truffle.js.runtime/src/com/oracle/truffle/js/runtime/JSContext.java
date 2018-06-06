@@ -506,6 +506,11 @@ public class JSContext implements ShapeContext {
      */
     public final void promiseEnqueueJob(DynamicObject newTarget) {
         invalidatePromiseQueueNotUsedAssumption();
+        promiseJobQueueAdd(newTarget);
+    }
+
+    @TruffleBoundary
+    private void promiseJobQueueAdd(DynamicObject newTarget) {
         promiseJobsQueue.push(newTarget);
     }
 
