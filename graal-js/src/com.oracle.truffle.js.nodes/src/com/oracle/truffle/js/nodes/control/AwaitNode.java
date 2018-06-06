@@ -198,7 +198,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AwaitFulfilledRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "Await Fulfilled");
+        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
     }
 
     private DynamicObject createAwaitRejectedFunction(CallTarget resumeTarget, MaterializedFrame asyncContext, Object generator) {
@@ -229,7 +229,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AwaitRejectedRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "Await Rejected");
+        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
     }
 
     @Override

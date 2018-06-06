@@ -194,7 +194,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncGeneratorReturnFulfilledRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "AsyncGeneratorResumeNext Return Processor Fulfilled");
+        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
     }
 
     private DynamicObject createAsyncGeneratorReturnProcessorRejectedFunction(DynamicObject generator) {
@@ -221,6 +221,6 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncGeneratorReturnRejectedRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "AsyncGeneratorResumeNext Return Processor Rejected");
+        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
     }
 }

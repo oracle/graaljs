@@ -210,7 +210,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 }
             }
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncFromSyncIteratorValueUnwrapRootNode());
-            return JSFunctionData.createCallOnly(context, callTarget, 1, "Async-from-Sync Iterator Value Unwrap Function");
+            return JSFunctionData.createCallOnly(context, callTarget, 1, "");
         }
     }
 
