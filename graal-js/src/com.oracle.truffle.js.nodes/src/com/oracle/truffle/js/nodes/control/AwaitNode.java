@@ -83,6 +83,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     @Child private PropertySetNode setAsyncGenerator;
     protected final JSContext context;
     private final ConditionProfile asyncTypeProf = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile resumptionTypeProf = ConditionProfile.createBinaryProfile();
 
     static final HiddenKey ASYNC_CONTEXT = new HiddenKey("AsyncContext");
     static final HiddenKey ASYNC_TARGET = new HiddenKey("AsyncTarget");
@@ -156,7 +157,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     protected Object resumeAwait(VirtualFrame frame) {
         // We have been restored at this point. The frame contains the resumption state.
         Completion result = (Completion) readAsyncResultNode.execute(frame);
-        if (result.isNormal()) {
+        if (resumptionTypeProf.profile(result.isNormal())) {
             return result.getValue();
         } else {
             assert result.isThrow();
