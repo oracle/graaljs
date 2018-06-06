@@ -42,9 +42,11 @@ package com.oracle.truffle.js.nodes.control;
 
 import java.util.ArrayDeque;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
@@ -68,6 +70,7 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode callPromiseRejectNode;
     @Child private NewPromiseCapabilityNode newPromiseCapability;
     @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
+    private final ConditionProfile notExecutingProf = ConditionProfile.createBinaryProfile();
     private final JSContext context;
 
     protected AsyncGeneratorEnqueueNode(JSContext context) {
@@ -75,7 +78,6 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
         this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
         this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
         this.hasAsyncGeneratorInternalSlots = HasHiddenKeyCacheNode.create(JSFunction.ASYNC_GENERATOR_QUEUE_ID);
-        this.callPromiseRejectNode = JSFunctionCallNode.createCall();
         this.newPromiseCapability = NewPromiseCapabilityNode.create(context);
         this.asyncGeneratorResumeNextNode = AsyncGeneratorResumeNextNode.create(context);
     }
@@ -88,16 +90,14 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
     public Object execute(VirtualFrame frame, Object generator, Completion completion) {
         PromiseCapabilityRecord promiseCapability = newPromiseCapability();
         if (!JSGuards.isJSObject(generator) || !hasAsyncGeneratorInternalSlots.executeHasHiddenKey(generator)) {
-            Object badGeneratorError = Errors.createTypeErrorAsyncGeneratorObjectExpected().getErrorObjectEager(context);
-            Object reject = promiseCapability.getReject();
-            callPromiseRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, reject, badGeneratorError));
-            return promiseCapability.getPromise();
+            enterErrorBranch();
+            return badGeneratorError(promiseCapability);
         }
         ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getAsyncGeneratorQueueNode.getValue(generator);
         AsyncGeneratorRequest request = AsyncGeneratorRequest.create(completion, promiseCapability);
         queueAdd(queue, request);
         AsyncGeneratorState state = (AsyncGeneratorState) getGeneratorState.getValue(generator);
-        if (state != AsyncGeneratorState.Executing) {
+        if (notExecutingProf.profile(state != AsyncGeneratorState.Executing)) {
             asyncGeneratorResumeNextNode.execute(frame, (DynamicObject) generator);
         }
         return promiseCapability.getPromise();
@@ -110,5 +110,19 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
     @TruffleBoundary
     private static void queueAdd(ArrayDeque<AsyncGeneratorRequest> queue, AsyncGeneratorRequest request) {
         queue.addLast(request);
+    }
+
+    private void enterErrorBranch() {
+        if (callPromiseRejectNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            callPromiseRejectNode = insert(JSFunctionCallNode.createCall());
+        }
+    }
+
+    private Object badGeneratorError(PromiseCapabilityRecord promiseCapability) {
+        Object badGeneratorError = Errors.createTypeErrorAsyncGeneratorObjectExpected().getErrorObjectEager(context);
+        Object reject = promiseCapability.getReject();
+        callPromiseRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, reject, badGeneratorError));
+        return promiseCapability.getPromise();
     }
 }
