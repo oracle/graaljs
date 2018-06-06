@@ -53,13 +53,14 @@ import com.oracle.truffle.js.runtime.util.Pair;
 public class PromiseResolveThenableNode extends JavaScriptBaseNode {
     private final JSContext context;
     @Child private CreateResolvingFunctionNode createResolvingFunctions;
-    @Child private JSFunctionCallNode callNode;
+    @Child private JSFunctionCallNode callResolveNode;
+    @Child private JSFunctionCallNode callRejectNode;
     @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
     protected PromiseResolveThenableNode(JSContext context) {
         this.context = context;
         this.createResolvingFunctions = CreateResolvingFunctionNode.create(context);
-        this.callNode = JSFunctionCallNode.createCall();
+        this.callResolveNode = JSFunctionCallNode.createCall();
     }
 
     public static PromiseResolveThenableNode create(JSContext context) {
@@ -71,10 +72,10 @@ public class PromiseResolveThenableNode extends JavaScriptBaseNode {
         DynamicObject resolve = resolvingFunctions.getFirst();
         DynamicObject reject = resolvingFunctions.getSecond();
         try {
-            return callNode.executeCall(JSArguments.create(thenable, then, resolve, reject));
+            return callResolveNode.executeCall(JSArguments.create(thenable, then, resolve, reject));
         } catch (Throwable ex) {
             if (shouldCatch(ex)) {
-                return callNode.executeCall(JSArguments.create(Undefined.instance, reject, getErrorObjectNode.execute(ex)));
+                return callReject().executeCall(JSArguments.create(Undefined.instance, reject, getErrorObjectNode.execute(ex)));
             } else {
                 throw ex;
             }
@@ -87,5 +88,13 @@ public class PromiseResolveThenableNode extends JavaScriptBaseNode {
             getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
         }
         return TryCatchNode.shouldCatch(exception);
+    }
+
+    private JSFunctionCallNode callReject() {
+        if (callRejectNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            callRejectNode = insert(JSFunctionCallNode.createCall());
+        }
+        return callRejectNode;
     }
 }
