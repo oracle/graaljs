@@ -106,7 +106,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
     }
 
     private static JSFunctionData createPromiseResolveFunctionImpl(JSContext context) {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+        class PromiseResolveRootNode extends JavaScriptRootNode {
             @Child private JavaScriptNode resolutionNode = AccessIndexedArgumentNode.create(0);
             @Child private PropertyGetNode getPromise = PropertyGetNode.createGetHidden(PROMISE_KEY, context);
             @Child private PropertyGetNode getAlreadyResolved = PropertyGetNode.createGetHidden(ALREADY_RESOLVED_KEY, context);
@@ -181,12 +181,13 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 setThen.setValue(function, then);
                 return function;
             }
-        });
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseResolveRootNode());
         return JSFunctionData.createCallOnly(context, callTarget, 1, "");
     }
 
     private static JSFunctionData createPromiseResolveThenableJobImpl(JSContext context) {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+        class PromiseResolveThenableJob extends JavaScriptRootNode {
             @Child private PropertyGetNode getPromiseToResolve = PropertyGetNode.createGetHidden(PROMISE_KEY, context);
             @Child private PropertyGetNode getThenable = PropertyGetNode.createGetHidden(THENABLE_KEY, context);
             @Child private PropertyGetNode getThen = PropertyGetNode.createGetHidden(THEN_KEY, context);
@@ -200,7 +201,8 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 Object then = getThen.getValue(functionObject);
                 return promiseResolveThenable.execute(promiseToResolve, thenable, then);
             }
-        });
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseResolveThenableJob());
         return JSFunctionData.createCallOnly(context, callTarget, 0, "");
     }
 
@@ -213,7 +215,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
     }
 
     private static JSFunctionData createPromiseRejectFunctionImpl(JSContext context) {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+        class PromiseRejectRootNode extends JavaScriptRootNode {
             @Child private JavaScriptNode reasonNode = AccessIndexedArgumentNode.create(0);
             @Child private PropertyGetNode getPromise = PropertyGetNode.createGetHidden(PROMISE_KEY, context);
             @Child private PropertyGetNode getAlreadyResolved = PropertyGetNode.createGetHidden(ALREADY_RESOLVED_KEY, context);
@@ -232,7 +234,8 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 Object reason = reasonNode.execute(frame);
                 return rejectPromise.execute(promise, reason);
             }
-        });
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseRejectRootNode());
         return JSFunctionData.createCallOnly(context, callTarget, 1, "");
     }
 }

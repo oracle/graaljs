@@ -178,7 +178,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
     }
 
     private static JSFunctionData createAsyncGeneratorReturnProcessorFulfilledImpl(JSContext context) {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+        class AsyncGeneratorReturnFulfilledRootNode extends JavaScriptRootNode {
             @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
             @Child private AsyncGeneratorResolveNode asyncGeneratorResolveNode = AsyncGeneratorResolveNode.create(context);
             @Child private PropertyGetNode getGenerator = PropertyGetNode.createGetHidden(RETURN_PROCESSOR_GENERATOR, context);
@@ -192,7 +192,8 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
                 Object value = valueNode.execute(frame);
                 return asyncGeneratorResolveNode.execute(frame, generatorObject, value, true);
             }
-        });
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncGeneratorReturnFulfilledRootNode());
         return JSFunctionData.createCallOnly(context, callTarget, 1, "AsyncGeneratorResumeNext Return Processor Fulfilled");
     }
 
@@ -204,7 +205,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
     }
 
     private static JSFunctionData createAsyncGeneratorReturnProcessorRejectedImpl(JSContext context) {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+        class AsyncGeneratorReturnRejectedRootNode extends JavaScriptRootNode {
             @Child private JavaScriptNode reasonNode = AccessIndexedArgumentNode.create(0);
             @Child private AsyncGeneratorRejectNode asyncGeneratorRejectNode = AsyncGeneratorRejectNode.create(context);
             @Child private PropertyGetNode getGenerator = PropertyGetNode.createGetHidden(RETURN_PROCESSOR_GENERATOR, context);
@@ -218,7 +219,8 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
                 Object reason = reasonNode.execute(frame);
                 return asyncGeneratorRejectNode.execute(frame, generatorObject, reason);
             }
-        });
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncGeneratorReturnRejectedRootNode());
         return JSFunctionData.createCallOnly(context, callTarget, 1, "AsyncGeneratorResumeNext Return Processor Rejected");
     }
 }

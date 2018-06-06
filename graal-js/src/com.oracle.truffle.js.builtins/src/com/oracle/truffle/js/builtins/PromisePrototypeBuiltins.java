@@ -230,7 +230,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         private static JSFunctionData createPromiseFinallyFunction(JSContext context, boolean thenFinally) {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+            class PromiseFinallyRootNode extends JavaScriptRootNode {
                 @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
                 @Child private PropertyGetNode getConstructor = PropertyGetNode.createGetHidden(JSPromise.PROMISE_FINALLY_CONSTRUCTOR, context);
                 @Child private PropertyGetNode getOnFinally = PropertyGetNode.createGetHidden(JSPromise.PROMISE_ON_FINALLY, context);
@@ -265,7 +265,8 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                     setValue.setValue(function, value);
                     return function;
                 }
-            });
+            }
+            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseFinallyRootNode());
             return JSFunctionData.createCallOnly(context, callTarget, 1, "");
         }
 

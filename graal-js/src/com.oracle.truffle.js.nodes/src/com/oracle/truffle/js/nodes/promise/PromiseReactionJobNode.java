@@ -90,7 +90,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
     }
 
     private static JSFunctionData createPromiseReactionJobImpl(JSContext context) {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+        class PromiseReactionJob extends JavaScriptRootNode {
             @Child private PropertyGetNode getReaction = PropertyGetNode.createGetHidden(REACTION_KEY, context);
             @Child private PropertyGetNode getArgument = PropertyGetNode.createGetHidden(ARGUMENT_KEY, context);
             @Child private JSFunctionCallNode callResolveNode;
@@ -172,7 +172,8 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                 }
                 return callHandlerNode;
             }
-        });
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseReactionJob());
         return JSFunctionData.createCallOnly(context, callTarget, 0, "");
     }
 }
