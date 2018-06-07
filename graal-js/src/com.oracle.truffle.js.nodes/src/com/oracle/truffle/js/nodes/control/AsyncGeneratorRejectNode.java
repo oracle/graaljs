@@ -86,7 +86,7 @@ public class AsyncGeneratorRejectNode extends JavaScriptBaseNode {
     void performReject(VirtualFrame frame, DynamicObject generator, Object exception) {
         ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getAsyncGeneratorQueueNode.getValue(generator);
         assert !queue.isEmpty();
-        AsyncGeneratorRequest next = queue.removeFirst();
+        AsyncGeneratorRequest next = queue.pollFirst();
         PromiseCapabilityRecord promiseCapability = next.getPromiseCapability();
         Object reject = promiseCapability.getReject();
         callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, reject, exception));

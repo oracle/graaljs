@@ -86,7 +86,7 @@ public class AsyncGeneratorResolveNode extends JavaScriptBaseNode {
     void performResolve(VirtualFrame frame, DynamicObject generator, Object value, boolean done) {
         ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getAsyncGeneratorQueueNode.getValue(generator);
         assert !queue.isEmpty();
-        AsyncGeneratorRequest next = queue.removeFirst();
+        AsyncGeneratorRequest next = queue.pollFirst();
         PromiseCapabilityRecord promiseCapability = next.getPromiseCapability();
         DynamicObject iteratorResult = createIterResultObjectNode.execute(frame, value, done);
         Object resolve = promiseCapability.getResolve();
