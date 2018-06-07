@@ -434,6 +434,12 @@ final class ArrayCompiler extends Compiler {
         }
     }
 
+    private static long calculateSmallRangeExpandedLength(QuantifierNode qn, int tlen, int modTLen) {
+        int n = qn.upper - qn.lower;
+        boolean needsJumps = qn.targetEmptyInfo == TargetInfo.IS_EMPTY;
+        return (long)qn.lower * tlen + (long)n * (OPSize.PUSH + modTLen + (needsJumps ? 2 * OPSize.JUMP : 0));
+    }
+
     private int compileNonCECLengthQuantifierNode(final QuantifierNode qn) {
         final boolean infinite = isRepeatInfinite(qn.upper);
         final int emptyInfo = qn.targetEmptyInfo;
@@ -456,8 +462,8 @@ final class ArrayCompiler extends Compiler {
         }
 
         int len;
-        if (infinite && (qn.lower <= 1 || tlen * (long)qn.lower <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
-            if (qn.lower == 1 && tlen > QUANTIFIER_EXPAND_LIMIT_SIZE) {
+        if (infinite && ((qn.lower == 1 && emptyInfo == TargetInfo.ISNOT_EMPTY) || tlen * (long)qn.lower <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
+            if (qn.lower == 1 && emptyInfo == TargetInfo.ISNOT_EMPTY && tlen > QUANTIFIER_EXPAND_LIMIT_SIZE) {
                 len = OPSize.JUMP;
             } else {
                 len = tlen * qn.lower;
@@ -521,8 +527,12 @@ final class ArrayCompiler extends Compiler {
         } else {
             modTLen = tlen;
         }
-        if (infinite && (qn.lower <= 1 || tlen * (long)qn.lower <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
-            if (qn.lower == 1 && tlen > QUANTIFIER_EXPAND_LIMIT_SIZE) {
+        if (infinite && ((qn.lower == 1 && emptyInfo == TargetInfo.ISNOT_EMPTY) || tlen * (long)qn.lower <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
+            // If emptyInfo == TargetInfo.ISNOT_EMPTY, then we know that the target of this
+            // quantifier can never be empty and we can therefore use the optimization below which
+            // skips over the first PUSH in the loop in order to enforce the lower bound qn.lower
+            // equal to 1.
+            if (qn.lower == 1 && emptyInfo == TargetInfo.ISNOT_EMPTY && tlen > QUANTIFIER_EXPAND_LIMIT_SIZE) {
                 if (qn.greedy) {
                     if (qn.headExact != null) {
                         addOpcodeRelAddr(OPCode.JUMP, OPSize.PUSH_OR_JUMP_EXACT1);
@@ -591,12 +601,6 @@ final class ArrayCompiler extends Compiler {
         } else {
             compileRangeRepeatNode(qn, modTLen, emptyInfo);
         }
-    }
-
-    private long calculateSmallRangeExpandedLength(QuantifierNode qn, int tlen, int modTLen) {
-        int n = qn.upper - qn.lower;
-        boolean needsJumps = qn.targetEmptyInfo == TargetInfo.IS_EMPTY;
-        return (long)qn.lower * tlen + (long)n * (OPSize.PUSH + modTLen + (needsJumps ? 2 * OPSize.JUMP : 0));
     }
 
     private int compileLengthOptionNode(final EncloseNode node) {
