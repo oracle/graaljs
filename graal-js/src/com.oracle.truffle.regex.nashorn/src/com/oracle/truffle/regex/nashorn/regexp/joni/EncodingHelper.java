@@ -104,7 +104,7 @@ public final class EncodingHelper {
 
     public static boolean isWord(final int code) {
         // letter, digit, or '_'
-        return (1 << Character.getType(code) & CharacterType.WORD_MASK) != 0;
+        return ('a' <= code && code <= 'z') || ('A' <= code && code <= 'Z') || ('0' <= code && code <= '9') || code == '_';
     }
 
     public static boolean isNewLine(final int code) {
@@ -376,7 +376,7 @@ public final class EncodingHelper {
             case CharacterType.XDIGIT:
                 return EncodingHelper.isXDigit(code);
             case CharacterType.WORD:
-                return (1 << Character.getType(code) & CharacterType.WORD_MASK) != 0;
+                return EncodingHelper.isWord(code);
             case CharacterType.ALNUM:
                 return (1 << Character.getType(code) & CharacterType.ALNUM_MASK) != 0;
             case CharacterType.ASCII:
