@@ -83,6 +83,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         @Child private JSReadFrameSlotNode readYieldResult;
         @Child private AsyncGeneratorResolveNode asyncGeneratorResolveNode;
         @Child private AsyncGeneratorRejectNode asyncGeneratorRejectNode;
+        @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
         private final JSContext context;
 
@@ -95,6 +96,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             this.readYieldResult = readYieldResultNode;
             this.context = context;
             this.asyncGeneratorResolveNode = AsyncGeneratorResolveNode.create(context);
+            this.asyncGeneratorResumeNextNode = AsyncGeneratorResumeNextNode.create(context);
         }
 
         @Override
@@ -114,21 +116,26 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             try {
                 Object result = functionBody.execute(generatorFrame);
                 setGeneratorState.setValue(generatorObject, state = AsyncGeneratorState.Completed);
-                asyncGeneratorResolveNode.execute(frame, generatorObject, result, true);
+                asyncGeneratorResolveNode.performResolve(frame, generatorObject, result, true);
             } catch (YieldException e) {
                 if (e.isYield()) {
                     setGeneratorState.setValue(generatorObject, state = AsyncGeneratorState.SuspendedYield);
-                    asyncGeneratorResolveNode.execute(frame, generatorObject, e.getResult(), false);
+                    asyncGeneratorResolveNode.performResolve(frame, generatorObject, e.getResult(), false);
+                } else {
+                    assert e.isAwait();
+                    return Undefined.instance;
                 }
             } catch (Throwable e) {
                 if (shouldCatch(e)) {
                     setGeneratorState.setValue(generatorObject, state = AsyncGeneratorState.Completed);
                     Object reason = getErrorObjectNode.execute(e);
-                    asyncGeneratorRejectNode.execute(generatorFrame, generatorObject, reason);
+                    asyncGeneratorRejectNode.performReject(generatorFrame, generatorObject, reason);
                 } else {
                     throw e;
                 }
             }
+            // AsyncGeneratorResolve/AsyncGeneratorReject => AsyncGeneratorResumeNext
+            asyncGeneratorResumeNextNode.execute(generatorFrame, generatorObject);
             return Undefined.instance;
         }
 
