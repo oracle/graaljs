@@ -89,6 +89,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionLookup;
+import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
@@ -119,6 +120,7 @@ public class JSContext implements ShapeContext {
 
     private final Shape emptyShape;
     private final Shape emptyShapePrototypeInObject;
+    private final Shape globalScopeShape;
 
     private final PrintWriterWrapper writer;
     private OutputStream writerStream;
@@ -282,6 +284,7 @@ public class JSContext implements ShapeContext {
 
         this.emptyShape = createEmptyShape();
         this.emptyShapePrototypeInObject = createEmptyShapePrototypeInObject();
+        this.globalScopeShape = createGlobalScopeShape();
 
         this.noSuchPropertyUnusedAssumption = JSTruffleOptions.NashornExtensions ? Truffle.getRuntime().createAssumption("noSuchPropertyUnusedAssumption") : null;
         this.noSuchMethodUnusedAssumption = JSTruffleOptions.NashornExtensions ? Truffle.getRuntime().createAssumption("noSuchMethodUnusedAssumption") : null;
@@ -466,6 +469,10 @@ public class JSContext implements ShapeContext {
         return JSShape.makeEmptyRoot(JSObject.LAYOUT, JSUserObject.INSTANCE, this, prototypeProperty);
     }
 
+    private Shape createGlobalScopeShape() {
+        return JSShape.makeEmptyRoot(JSObject.LAYOUT, JSGlobalObject.INSTANCE, this);
+    }
+
     public void setLocalTimeZoneId(ZoneId zoneId) {
         localTimeZoneHolder = new LocalTimeZoneHolder(zoneId);
     }
@@ -612,6 +619,10 @@ public class JSContext implements ShapeContext {
     @Override
     public final Shape getEmptyShapePrototypeInObject() {
         return emptyShapePrototypeInObject;
+    }
+
+    public final Shape getGlobalScopeShape() {
+        return globalScopeShape;
     }
 
     @Override

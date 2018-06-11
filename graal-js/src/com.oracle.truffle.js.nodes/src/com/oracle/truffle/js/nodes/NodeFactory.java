@@ -70,6 +70,8 @@ import com.oracle.truffle.js.nodes.access.GetTemplateObjectNode;
 import com.oracle.truffle.js.nodes.access.GlobalDeclarationInstantiationNode;
 import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
+import com.oracle.truffle.js.nodes.access.GlobalScopeNode;
+import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteUnaryNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextUnaryNode;
@@ -506,12 +508,23 @@ public class NodeFactory {
         return JSWriteFrameSlotNode.create(frameSlot, frameLevel, scopeLevel, parentSlots, rhs, hasTemporalDeadZone);
     }
 
-    public JavaScriptNode createReadGlobal(FrameSlot frameSlot, boolean hasTemporalDeadZone, JSContext context) {
-        return JSReadFrameSlotNode.create(frameSlot, ScopeFrameNode.createGlobalScope(context), hasTemporalDeadZone);
+    public JavaScriptNode createReadLexicalGlobal(String name, boolean hasTemporalDeadZone, JSContext context) {
+        return GlobalPropertyNode.createLexicalGlobal(context, name, hasTemporalDeadZone);
     }
 
-    public JavaScriptNode createWriteGlobal(FrameSlot frameSlot, JavaScriptNode rhs, boolean hasTemporalDeadZone, JSContext context) {
-        return JSWriteFrameSlotNode.create(frameSlot, ScopeFrameNode.createGlobalScope(context), rhs, hasTemporalDeadZone);
+    public JavaScriptNode createGlobalScope(JSContext context) {
+        return GlobalScopeNode.create(context);
+    }
+
+    public JavaScriptNode createGlobalScopeTDZCheck(JSContext context, String name, boolean checkTDZ) {
+        if (!checkTDZ) {
+            return createGlobalScope(context);
+        }
+        return GlobalScopeNode.createWithTDZCheck(context, name);
+    }
+
+    public JavaScriptNode createGlobalVarWrapper(JSContext context, String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
+        return new GlobalScopeVarWrapperNode(context, varName, defaultDelegate, dynamicScope, scopeAccessNode);
     }
 
     public JavaScriptNode createThrow(JavaScriptNode expression) {
@@ -948,8 +961,8 @@ public class NodeFactory {
         return new DeclareGlobalFunctionNode(varName, configurable, valueNode);
     }
 
-    public DeclareGlobalNode createDeclareGlobalLexicalVariable(String varName) {
-        return new DeclareGlobalLexicalVariableNode(varName);
+    public DeclareGlobalNode createDeclareGlobalLexicalVariable(String varName, boolean isConst) {
+        return new DeclareGlobalLexicalVariableNode(varName, isConst);
     }
 
     public JavaScriptNode createGlobalDeclarationInstantiation(JSContext context, List<DeclareGlobalNode> declarations) {

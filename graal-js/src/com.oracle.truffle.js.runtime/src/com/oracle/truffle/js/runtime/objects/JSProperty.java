@@ -67,6 +67,8 @@ public class JSProperty {
     /** Is this property a proxy property? */
     public static final int PROXY = 1 << 4;
 
+    public static final int CONST = 1 << 5;
+
     @TruffleBoundary
     public String toString(Property property) {
         return "\"" + property.getKey() + "\"" + getAttributeString(property) + ":" + property.getLocation();
@@ -223,6 +225,10 @@ public class JSProperty {
 
     public static boolean isData(Property property) {
         return (property.getFlags() & ACCESSOR) == 0;
+    }
+
+    public static boolean isConst(Property property) {
+        return (property.getFlags() & CONST) != 0;
     }
 
     public static PropertyProxy getConstantProxy(Property proxyProperty) {

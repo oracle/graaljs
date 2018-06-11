@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.parser.env;
 
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
@@ -48,12 +50,14 @@ import com.oracle.truffle.js.runtime.JSContext;
 
 public class GlobalEnvironment extends Environment {
     private final FunctionEnvironment functionEnvironment;
-    private final FrameDescriptor blockFrameDescriptor;
+    private final EconomicMap<String, Boolean> lexicalDeclarations;
+    private final EconomicMap<String, Boolean> varDeclarations;
 
     public GlobalEnvironment(Environment parent, NodeFactory factory, JSContext context) {
         super(parent, factory, context);
         this.functionEnvironment = parent.function();
-        this.blockFrameDescriptor = context.getRealm().getGlobalScope().getFrameDescriptor();
+        this.lexicalDeclarations = EconomicMap.create();
+        this.varDeclarations = EconomicMap.create();
     }
 
     @Override
@@ -63,16 +67,50 @@ public class GlobalEnvironment extends Environment {
 
     @Override
     public FrameSlot findBlockFrameSlot(String name) {
-        return blockFrameDescriptor.findFrameSlot(name);
+        return null;
     }
 
     @Override
     public FrameDescriptor getBlockFrameDescriptor() {
-        return blockFrameDescriptor;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public FrameSlot[] getParentSlots() {
         return ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY;
+    }
+
+    public boolean addLexicalDeclaration(String name, boolean isConst) {
+        return lexicalDeclarations.put(name, isConst) == null;
+    }
+
+    public boolean hasLexicalDeclaration(String name) {
+        return lexicalDeclarations.containsKey(name);
+    }
+
+    public boolean hasConstDeclaration(String name) {
+        return lexicalDeclarations.get(name, Boolean.FALSE);
+    }
+
+    public boolean addVarDeclaration(String name) {
+        return varDeclarations.put(name, Boolean.FALSE) == null;
+    }
+
+    public boolean hasVarDeclaration(String name) {
+        return varDeclarations.containsKey(name);
+    }
+
+    /**
+     * Returns true for always-defined immutable value properties of the global object.
+     */
+    public static boolean isGlobalObjectConstant(String name) {
+        switch (name) {
+            case "undefined":
+            case "NaN":
+            case "Infinity":
+                return true;
+            default:
+                return false;
+        }
     }
 }

@@ -134,7 +134,7 @@ public abstract class JSScope {
     }
 
     public static Iterable<Scope> createGlobalScopes(JSRealm realm) {
-        Scope globalLexicalScope = Scope.newBuilder("global", createVariablesMapObject(realm.getGlobalScope().getFrameDescriptor(), realm.getGlobalScope(), null)).build();
+        Scope globalLexicalScope = Scope.newBuilder("global", realm.getGlobalScope()).build();
         Scope globalVarScope = Scope.newBuilder("global", realm.getGlobalObject()).build();
         return Arrays.asList(globalLexicalScope, globalVarScope);
     }

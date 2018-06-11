@@ -52,7 +52,6 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 
 public abstract class ScopeFrameNode extends JavaScriptBaseNode {
@@ -77,10 +76,6 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
             return new EnclosingFunctionFrameNode(frameLevel);
         }
         return new EnclosingFunctionScopeFrameNode(frameLevel, scopeLevel, parentSlots);
-    }
-
-    public static ScopeFrameNode createGlobalScope(JSContext context) {
-        return new GlobalScopeFrameNode(context);
     }
 
     public static boolean isBlockScopeFrame(Frame frame) {
@@ -169,19 +164,6 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
                 retFrame = JSArguments.getEnclosingFrame(retFrame.getArguments());
             }
             return retFrame;
-        }
-    }
-
-    private static final class GlobalScopeFrameNode extends ScopeFrameNode {
-        private final JSContext context;
-
-        GlobalScopeFrameNode(JSContext context) {
-            this.context = context;
-        }
-
-        @Override
-        public Frame executeFrame(Frame frame) {
-            return context.getRealm().getGlobalScope();
         }
     }
 }

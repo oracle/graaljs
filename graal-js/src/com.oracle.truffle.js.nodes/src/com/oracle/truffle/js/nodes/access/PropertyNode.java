@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public class PropertyNode extends JSTargetableNode implements ReadNode {
@@ -61,29 +62,39 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ReadPropertyExpressionTag.class) {
+        if (tag == ReadVariableExpressionTag.class && isScopeAccess()) {
+            return true;
+        } else if (tag == ReadPropertyExpressionTag.class && !isScopeAccess()) {
             return true;
         } else {
             return super.hasTag(tag);
         }
     }
 
+    private boolean isScopeAccess() {
+        return target instanceof GlobalScopeNode;
+    }
+
     @Override
     public Object getNodeObject() {
+        if (isScopeAccess()) {
+            return JSTags.createNodeObjectDescriptor("name", getPropertyKey());
+        }
         return JSTags.createNodeObjectDescriptor("key", getPropertyKey());
     }
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (!target.hasSourceSection()) {
-            JavaScriptNode clonedTarget = cloneUninitialized(target);
-            transferSourceSection(this, clonedTarget);
-            PropertyNode propertyNode = PropertyNode.createProperty(cache.getContext(), clonedTarget, cache.getKey());
-            transferSourceSection(this, propertyNode);
-            return propertyNode;
-        } else {
-            return this;
+        if (materializedTags.contains(ReadPropertyExpressionTag.class) && !isScopeAccess()) {
+            if (!target.hasSourceSection()) {
+                JavaScriptNode clonedTarget = cloneUninitialized(target);
+                transferSourceSection(this, clonedTarget);
+                PropertyNode propertyNode = PropertyNode.createProperty(cache.getContext(), clonedTarget, cache.getKey());
+                transferSourceSection(this, propertyNode);
+                return propertyNode;
+            }
         }
+        return this;
     }
 
     protected PropertyNode(JSContext context, JavaScriptNode target, Object propertyKey) {
