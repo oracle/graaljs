@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.AwaitNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -61,6 +62,7 @@ public class AsyncIteratorNextNode extends AwaitNode {
     private final JSContext context;
     @Child private PropertyGetNode getNextNode;
     @Child private JSFunctionCallNode methodCallNode;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected AsyncIteratorNextNode(JSContext context, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
         super(context, iterator, asyncContextNode, asyncResultNode);
@@ -91,6 +93,7 @@ public class AsyncIteratorNextNode extends AwaitNode {
             setState(frame, 0);
             Object result = resumeAwait(frame);
             if (!JSObject.isJSObject(result)) {
+                errorBranch.enter();
                 throw Errors.createTypeErrorIterResultNotAnObject(result, this);
             }
             return result;

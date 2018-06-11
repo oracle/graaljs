@@ -167,7 +167,7 @@ public class PerformPromiseAllNode extends PerformPromiseAllOrRaceNode {
     }
 
     private static JSFunctionData createResolveElementFunctionImpl(JSContext context) {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+        class PromiseAllResolveElementRootNode extends JavaScriptRootNode {
             @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
             @Child private PropertyGetNode getArgs = PropertyGetNode.createGetHidden(RESOLVE_ELEMENT_ARGS_KEY, context);
             @Child private JSFunctionCallNode callResolve = JSFunctionCallNode.createCall();
@@ -189,7 +189,8 @@ public class PerformPromiseAllNode extends PerformPromiseAllOrRaceNode {
                 }
                 return Undefined.instance;
             }
-        });
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseAllResolveElementRootNode());
         return JSFunctionData.createCallOnly(context, callTarget, 1, "");
     }
 }

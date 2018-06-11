@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
@@ -62,6 +63,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
     @Child private JSFunctionCallNode methodCallNode;
     @Child private JavaScriptNode iteratorNode;
     @Child private JavaScriptNode doneNode;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected AsyncIteratorCloseWrapperNode(JSContext context, JavaScriptNode loopNode, JavaScriptNode iteratorNode, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode,
                     JavaScriptNode doneNode) {
@@ -127,6 +129,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
             setState(frame, 0);
             Object innerResult = resumeAwait(frame);
             if (!JSObject.isJSObject(innerResult)) {
+                errorBranch.enter();
                 throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
             }
             return innerResult;

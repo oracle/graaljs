@@ -114,7 +114,7 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
     }
 
     private static JSFunctionData createGetCapabilitiesExecutorImpl(JSContext context) {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+        class GetCapabilitiesExecutorNode extends JavaScriptRootNode {
             @Child private JavaScriptNode resolveNode = AccessIndexedArgumentNode.create(0);
             @Child private JavaScriptNode rejectNode = AccessIndexedArgumentNode.create(1);
             @Child private PropertyGetNode getPromiseCapability = PropertyGetNode.createGetHidden(PROMISE_CAPABILITY_KEY, context);
@@ -134,7 +134,8 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
                 capability.setReject(reject);
                 return Undefined.instance;
             }
-        });
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new GetCapabilitiesExecutorNode());
         return JSFunctionData.createCallOnly(context, callTarget, 2, "");
     }
 }

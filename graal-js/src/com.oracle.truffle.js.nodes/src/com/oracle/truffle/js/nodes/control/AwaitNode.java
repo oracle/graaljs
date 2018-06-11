@@ -83,6 +83,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     @Child private PropertySetNode setAsyncGenerator;
     protected final JSContext context;
     private final ConditionProfile asyncTypeProf = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile resumptionTypeProf = ConditionProfile.createBinaryProfile();
 
     static final HiddenKey ASYNC_CONTEXT = new HiddenKey("AsyncContext");
     static final HiddenKey ASYNC_TARGET = new HiddenKey("AsyncTarget");
@@ -156,7 +157,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     protected Object resumeAwait(VirtualFrame frame) {
         // We have been restored at this point. The frame contains the resumption state.
         Completion result = (Completion) readAsyncResultNode.execute(frame);
-        if (result.isNormal()) {
+        if (resumptionTypeProf.profile(result.isNormal())) {
             return result.getValue();
         } else {
             assert result.isThrow();
@@ -179,7 +180,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     }
 
     private static JSFunctionData createAwaitFulfilledImpl(JSContext context) {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+        class AwaitFulfilledRootNode extends JavaScriptRootNode {
             @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
             @Child private PropertyGetNode getAsyncTarget = PropertyGetNode.createGetHidden(ASYNC_TARGET, context);
             @Child private PropertyGetNode getAsyncContext = PropertyGetNode.createGetHidden(ASYNC_CONTEXT, context);
@@ -195,8 +196,9 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
                 Object value = valueNode.execute(frame);
                 return awaitResumeNode.execute(asyncTarget, asyncContext, generator, value);
             }
-        });
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "Await Fulfilled");
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AwaitFulfilledRootNode());
+        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
     }
 
     private DynamicObject createAwaitRejectedFunction(CallTarget resumeTarget, MaterializedFrame asyncContext, Object generator) {
@@ -209,7 +211,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     }
 
     private static JSFunctionData createAwaitRejectedImpl(JSContext context) {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+        class AwaitRejectedRootNode extends JavaScriptRootNode {
             @Child private JavaScriptNode reasonNode = AccessIndexedArgumentNode.create(0);
             @Child private PropertyGetNode getAsyncTarget = PropertyGetNode.createGetHidden(ASYNC_TARGET, context);
             @Child private PropertyGetNode getAsyncContext = PropertyGetNode.createGetHidden(ASYNC_CONTEXT, context);
@@ -225,8 +227,9 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
                 Object reason = reasonNode.execute(frame);
                 return awaitResumeNode.execute(asyncTarget, asyncContext, generator, reason);
             }
-        });
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "Await Rejected");
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AwaitRejectedRootNode());
+        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
     }
 
     @Override

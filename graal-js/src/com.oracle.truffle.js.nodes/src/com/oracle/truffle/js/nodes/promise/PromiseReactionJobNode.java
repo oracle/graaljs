@@ -46,6 +46,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -89,11 +90,14 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
     }
 
     private static JSFunctionData createPromiseReactionJobImpl(JSContext context) {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+        class PromiseReactionJob extends JavaScriptRootNode {
             @Child private PropertyGetNode getReaction = PropertyGetNode.createGetHidden(REACTION_KEY, context);
             @Child private PropertyGetNode getArgument = PropertyGetNode.createGetHidden(ARGUMENT_KEY, context);
-            @Child private JSFunctionCallNode callNode = JSFunctionCallNode.createCall();
+            @Child private JSFunctionCallNode callResolveNode;
+            @Child private JSFunctionCallNode callRejectNode;
+            @Child private JSFunctionCallNode callHandlerNode;
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+            private final ConditionProfile handlerProf = ConditionProfile.createBinaryProfile();
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -109,18 +113,18 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                 Object resolve = promiseCapability.getResolve();
                 Object reject = promiseCapability.getReject();
                 Object status;
-                if (handler == Undefined.instance) {
+                if (handlerProf.profile(handler == Undefined.instance)) {
                     if (reaction.isFulfill()) {
-                        status = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, resolve, argument));
+                        status = callResolve().executeCall(JSArguments.createOneArg(Undefined.instance, resolve, argument));
                     } else {
                         assert reaction.isReject();
-                        status = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, reject, argument));
+                        status = callReject().executeCall(JSArguments.createOneArg(Undefined.instance, reject, argument));
                     }
                 } else {
                     Object handlerResult;
                     Object resolutionFn;
                     try {
-                        handlerResult = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, handler, argument));
+                        handlerResult = callHandler().executeCall(JSArguments.createOneArg(Undefined.instance, handler, argument));
                         resolutionFn = resolve;
                     } catch (Throwable ex) {
                         if (shouldCatch(ex)) {
@@ -130,7 +134,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                             throw ex;
                         }
                     }
-                    status = callNode.executeCall(JSArguments.createOneArg(Undefined.instance, resolutionFn, handlerResult));
+                    status = callResolve().executeCall(JSArguments.createOneArg(Undefined.instance, resolutionFn, handlerResult));
                 }
 
                 context.notifyPromiseHook(PromiseHook.TYPE_AFTER, promiseCapability.getPromise());
@@ -144,7 +148,32 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                 }
                 return TryCatchNode.shouldCatch(exception);
             }
-        });
+
+            private JSFunctionCallNode callResolve() {
+                if (callResolveNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    callResolveNode = insert(JSFunctionCallNode.createCall());
+                }
+                return callResolveNode;
+            }
+
+            private JSFunctionCallNode callReject() {
+                if (callRejectNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    callRejectNode = insert(JSFunctionCallNode.createCall());
+                }
+                return callRejectNode;
+            }
+
+            private JSFunctionCallNode callHandler() {
+                if (callHandlerNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    callHandlerNode = insert(JSFunctionCallNode.createCall());
+                }
+                return callHandlerNode;
+            }
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseReactionJob());
         return JSFunctionData.createCallOnly(context, callTarget, 0, "");
     }
 }

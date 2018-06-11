@@ -83,6 +83,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         @Child private JSReadFrameSlotNode readYieldResult;
         @Child private AsyncGeneratorResolveNode asyncGeneratorResolveNode;
         @Child private AsyncGeneratorRejectNode asyncGeneratorRejectNode;
+        @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
         private final JSContext context;
 
@@ -95,6 +96,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             this.readYieldResult = readYieldResultNode;
             this.context = context;
             this.asyncGeneratorResolveNode = AsyncGeneratorResolveNode.create(context);
+            this.asyncGeneratorResumeNextNode = AsyncGeneratorResumeNextNode.createTailCall(context);
         }
 
         @Override
@@ -104,32 +106,44 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             DynamicObject generatorObject = (DynamicObject) arguments[1];
             Completion completion = (Completion) arguments[2];
 
-            AsyncGeneratorState state = (AsyncGeneratorState) getGeneratorState.getValue(generatorObject);
+            for (;;) {
+                AsyncGeneratorState state = (AsyncGeneratorState) getGeneratorState.getValue(generatorObject);
 
-            // State must be Executing when called from AsyncGeneratorResumeNext.
-            // State can be Executing or SuspendedYield when resuming from Await.
-            assert state == AsyncGeneratorState.Executing || state == AsyncGeneratorState.SuspendedYield : state;
-            writeYieldValue.executeWrite(generatorFrame, completion);
+                // State must be Executing when called from AsyncGeneratorResumeNext.
+                // State can be Executing or SuspendedYield when resuming from Await.
+                assert state == AsyncGeneratorState.Executing || state == AsyncGeneratorState.SuspendedYield : state;
+                writeYieldValue.executeWrite(generatorFrame, completion);
 
-            try {
-                Object result = functionBody.execute(generatorFrame);
-                setGeneratorState.setValue(generatorObject, state = AsyncGeneratorState.Completed);
-                asyncGeneratorResolveNode.execute(frame, generatorObject, result, true);
-            } catch (YieldException e) {
-                if (e.isYield()) {
-                    setGeneratorState.setValue(generatorObject, state = AsyncGeneratorState.SuspendedYield);
-                    asyncGeneratorResolveNode.execute(frame, generatorObject, e.getResult(), false);
-                }
-            } catch (Throwable e) {
-                if (shouldCatch(e)) {
+                try {
+                    Object result = functionBody.execute(generatorFrame);
                     setGeneratorState.setValue(generatorObject, state = AsyncGeneratorState.Completed);
-                    Object reason = getErrorObjectNode.execute(e);
-                    asyncGeneratorRejectNode.execute(generatorFrame, generatorObject, reason);
+                    asyncGeneratorResolveNode.performResolve(frame, generatorObject, result, true);
+                } catch (YieldException e) {
+                    if (e.isYield()) {
+                        setGeneratorState.setValue(generatorObject, state = AsyncGeneratorState.SuspendedYield);
+                        asyncGeneratorResolveNode.performResolve(frame, generatorObject, e.getResult(), false);
+                    } else {
+                        assert e.isAwait();
+                        return Undefined.instance;
+                    }
+                } catch (Throwable e) {
+                    if (shouldCatch(e)) {
+                        setGeneratorState.setValue(generatorObject, state = AsyncGeneratorState.Completed);
+                        Object reason = getErrorObjectNode.execute(e);
+                        asyncGeneratorRejectNode.performReject(generatorFrame, generatorObject, reason);
+                    } else {
+                        throw e;
+                    }
+                }
+                // AsyncGeneratorResolve/AsyncGeneratorReject => AsyncGeneratorResumeNext
+                Object nextCompletion = asyncGeneratorResumeNextNode.execute(generatorFrame, generatorObject);
+                if (nextCompletion instanceof Completion) {
+                    completion = (Completion) nextCompletion;
+                    continue; // tail call from AsyncGeneratorResumeNext
                 } else {
-                    throw e;
+                    return Undefined.instance;
                 }
             }
-            return Undefined.instance;
         }
 
         private boolean shouldCatch(Throwable exception) {

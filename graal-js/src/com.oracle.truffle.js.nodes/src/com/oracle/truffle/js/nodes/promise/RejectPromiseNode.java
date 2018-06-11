@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -57,6 +58,7 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
     @Child private PropertySetNode setPromiseState;
     @Child private PropertyGetNode getPromiseIsHandled;
     @Child private TriggerPromiseReactionsNode triggerPromiseReactions;
+    private final ConditionProfile unhandledProf = ConditionProfile.createBinaryProfile();
 
     protected RejectPromiseNode(JSContext context) {
         this.context = context;
@@ -80,7 +82,7 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
         setPromiseFulfillReactions.setValue(promise, Undefined.instance);
         setPromiseRejectReactions.setValue(promise, Undefined.instance);
         setPromiseState.setValueInt(promise, JSPromise.REJECTED);
-        if (getPromiseIsHandled.getValue(promise) != Boolean.TRUE) {
+        if (unhandledProf.profile(getPromiseIsHandled.getValue(promise) != Boolean.TRUE)) {
             context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_REJECT);
         }
         return triggerPromiseReactions.execute(reactions, reason);

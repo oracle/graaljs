@@ -53,7 +53,6 @@ import com.oracle.truffle.js.builtins.AsyncFromSyncIteratorPrototypeBuiltinsFact
 import com.oracle.truffle.js.builtins.AsyncFromSyncIteratorPrototypeBuiltinsFactory.AsyncFromSyncThrowNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
-import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNodeGen;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextNode;
@@ -192,24 +191,26 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         private static JSFunctionData createIteratorValueUnwrapImpl(JSContext context) {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+            class AsyncFromSyncIteratorValueUnwrapRootNode extends JavaScriptRootNode {
                 @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
                 @Child private PropertyGetNode isDoneNode = PropertyGetNode.createGetHidden(DONE, context);
-                @Child private CreateIterResultObjectNode iterResult = CreateIterResultObjectNodeGen.create(context);
+                @Child private CreateIterResultObjectNode createIterResult = CreateIterResultObjectNode.create(context);
 
                 @Override
                 public Object execute(VirtualFrame frame) {
                     DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                    Object value = valueNode.execute(frame);
                     boolean done;
                     try {
                         done = isDoneNode.getValueBoolean(functionObject);
                     } catch (UnexpectedResultException e) {
                         throw Errors.shouldNotReachHere();
                     }
-                    return iterResult.execute(frame, valueNode.execute(frame), done);
+                    return createIterResult.execute(frame, value, done);
                 }
-            });
-            return JSFunctionData.createCallOnly(context, callTarget, 1, "Async-from-Sync Iterator Value Unwrap Function");
+            }
+            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncFromSyncIteratorValueUnwrapRootNode());
+            return JSFunctionData.createCallOnly(context, callTarget, 1, "");
         }
     }
 
@@ -318,7 +319,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         public AsyncFromSyncReturn(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.getReturn = GetMethodNode.create(context, null, "return");
-            this.createIterResult = CreateIterResultObjectNodeGen.create(getContext());
+            this.createIterResult = CreateIterResultObjectNode.create(getContext());
         }
 
         @Override

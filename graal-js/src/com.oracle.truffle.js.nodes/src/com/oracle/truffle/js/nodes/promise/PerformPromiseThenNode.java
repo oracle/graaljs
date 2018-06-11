@@ -70,6 +70,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
     @Child private PromiseReactionJobNode promiseReactionJob;
     private final ConditionProfile pendingProf = ConditionProfile.createBinaryProfile();
     private final ConditionProfile fulfilledProf = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile unhandledProf = ConditionProfile.createBinaryProfile();
 
     protected PerformPromiseThenNode(JSContext context) {
         this.context = context;
@@ -105,7 +106,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
         } else {
             assert promiseState == JSPromise.REJECTED;
             Object reason = getPromiseResult.getValue(promise);
-            if (!getPromiseIsHandled(promise)) {
+            if (unhandledProf.profile(!getPromiseIsHandled(promise))) {
                 context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_HANDLE);
             }
             DynamicObject job = promiseReactionJob.execute(rejectReaction, reason);
