@@ -372,7 +372,7 @@ final class ArrayCompiler extends Compiler {
         regex.repeatRangeHi[id] = isRepeatInfinite(upper) ? 0x7fffffff : upper;
     }
 
-    private void compileRangeRepeatNode(final QuantifierNode qn, final int targetLen, final int emptyInfo) {
+    private void compileRangeRepeatNode(final QuantifierNode qn, final int targetLen) {
         final int numRepeat = regex.numRepeat;
         addOpcode(qn.greedy ? OPCode.REPEAT : OPCode.REPEAT_NG);
         addMemNum(numRepeat); /* OP_REPEAT ID */
@@ -381,7 +381,7 @@ final class ArrayCompiler extends Compiler {
 
         entryRepeatRange(numRepeat, qn.lower, qn.upper);
 
-        compileTreeEmptyCheckWithMemoryClear(qn.target, emptyInfo);
+        compileTreeWithMemoryClear(qn.target);
 
         if (qn.isInRepeat()) {
             addOpcode(qn.greedy ? OPCode.REPEAT_INC_SG : OPCode.REPEAT_INC_NG_SG);
@@ -489,7 +489,7 @@ final class ArrayCompiler extends Compiler {
         } else if (!qn.greedy && qn.upper == 1 && qn.lower == 0) { /* '??' */
             len = OPSize.PUSH + OPSize.JUMP + tlen;
         } else {
-            len = OPSize.REPEAT_INC + modTLen + OPSize.OPCODE + OPSize.RELADDR + OPSize.MEMNUM;
+            len = OPSize.REPEAT + tlen + OPSize.REPEAT_INC;
         }
         return len;
     }
@@ -599,7 +599,7 @@ final class ArrayCompiler extends Compiler {
             addOpcodeRelAddr(OPCode.JUMP, tlen);
             compileTreeWithMemoryClear(qn.target);
         } else {
-            compileRangeRepeatNode(qn, modTLen, emptyInfo);
+            compileRangeRepeatNode(qn, tlen);
         }
     }
 
