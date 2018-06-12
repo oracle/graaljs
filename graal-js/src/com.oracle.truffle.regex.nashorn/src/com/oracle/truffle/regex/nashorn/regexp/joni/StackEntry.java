@@ -80,20 +80,6 @@ final class StackEntry {
     int getStatePStr() {
         return E2;
     }
-    /* previous char position of pstr */
-    void setStatePStrPrev(final int pstrPrev) {
-        E3 = pstrPrev;
-    }
-    int getStatePStrPrev() {
-        return E3;
-    }
-
-    void setStateCheck(final int check) {
-        E4 = check;
-    }
-    int getStateCheck() {
-        return E4;
-    }
 
     // second union member
     /* for OP_REPEAT_INC, OP_REPEAT_INC_NG */

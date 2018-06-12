@@ -147,12 +147,11 @@ abstract class StackMachine extends Matcher implements StackType {
         stk++;
     }
 
-    private void push(final int type, final int pat, final int s, final int prev) {
+    private void push(final int type, final int pat, final int s) {
         final StackEntry e = ensure1();
         e.type = type;
         e.setStatePCode(pat);
         e.setStatePStr(s);
-        e.setStatePStrPrev(prev);
         stk++;
     }
 
@@ -163,24 +162,24 @@ abstract class StackMachine extends Matcher implements StackType {
         stk++;
     }
 
-    protected final void pushAlt(final int pat, final int s, final int prev) {
-        push(ALT, pat, s, prev);
+    protected final void pushAlt(final int pat, final int s) {
+        push(ALT, pat, s);
     }
 
-    protected final void pushPos(final int s, final int prev) {
-        push(POS, -1 /*NULL_UCHARP*/, s, prev);
+    protected final void pushPos(final int s) {
+        push(POS, -1 /*NULL_UCHARP*/, s);
     }
 
-    protected final void pushPosNot(final int pat, final int s, final int prev) {
-        push(POS_NOT, pat, s, prev);
+    protected final void pushPosNot(final int pat, final int s) {
+        push(POS_NOT, pat, s);
     }
 
     protected final void pushStopBT() {
         pushType(STOP_BT);
     }
 
-    protected final void pushLookBehindNot(final int pat, final int s, final int sprev) {
-        push(LOOK_BEHIND_NOT, pat, s, sprev);
+    protected final void pushLookBehindNot(final int pat, final int s) {
+        push(LOOK_BEHIND_NOT, pat, s);
     }
 
     protected final void pushRepeat(final int id, final int pat, final int s) {
