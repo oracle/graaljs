@@ -693,7 +693,7 @@ class ByteCodeMachine extends StackMachine {
                 opFail();
             }
             return;
-        } else if (isNewLineAt(sprev, end) && s != end) {
+        } else if (isNewLineAt(sprev, end)) {
             return;
         }
         opFail();
@@ -1094,7 +1094,7 @@ class ByteCodeMachine extends StackMachine {
 
         // ensure1();
         repeatStk[mem] = stk;
-        pushRepeat(mem, ip);
+        pushRepeat(mem, ip, s);
 
         if (regex.repeatRangeLo[mem] == 0) { // lower
             pushAlt(ip + addr, s, sprev);
@@ -1107,7 +1107,7 @@ class ByteCodeMachine extends StackMachine {
 
         // ensure1();
         repeatStk[mem] = stk;
-        pushRepeat(mem, ip);
+        pushRepeat(mem, ip, s);
 
         if (regex.repeatRangeLo[mem] == 0) {
             pushAlt(ip, s, sprev);
@@ -1115,10 +1115,25 @@ class ByteCodeMachine extends StackMachine {
         }
     }
 
+    /**
+     * Checks whether the last iteration of the REPEAT described by the {@link StackEntry} {@code e}
+     * passes the null check or not.
+     */
+    private boolean nullCheckRepeat(StackEntry e) {
+        return e.getRepeatPStr() != s || e.getRepeatCount() < regex.repeatRangeLo[e.getRepeatNum()];
+    }
+
     private void repeatInc(final int mem, final int si) {
         final StackEntry e = stack[si];
 
+        if (!nullCheckRepeat(e)) {
+            opFail();
+            return;
+        }
+
+        int slast = e.getRepeatPStr();
         e.increaseRepeatCount();
+        e.setRepeatPStr(s);
 
         if (e.getRepeatCount() >= regex.repeatRangeHi[mem]) {
             /* end of repeat. Nothing to do. */
@@ -1128,7 +1143,7 @@ class ByteCodeMachine extends StackMachine {
         } else {
             ip = e.getRepeatPCode();
         }
-        pushRepeatInc(si);
+        pushRepeatInc(si, slast);
     }
 
     private void opRepeatInc() {
@@ -1146,19 +1161,26 @@ class ByteCodeMachine extends StackMachine {
     private void repeatIncNG(final int mem, final int si) {
         final StackEntry e = stack[si];
 
+        if (!nullCheckRepeat(e)) {
+            opFail();
+            return;
+        }
+
+        int slast = e.getRepeatPStr();
         e.increaseRepeatCount();
+        e.setRepeatPStr(s);
 
         if (e.getRepeatCount() < regex.repeatRangeHi[mem]) {
             if (e.getRepeatCount() >= regex.repeatRangeLo[mem]) {
                 final int pcode = e.getRepeatPCode();
-                pushRepeatInc(si);
+                pushRepeatInc(si, slast);
                 pushAlt(pcode, s, sprev);
             } else {
                 ip = e.getRepeatPCode();
-                pushRepeatInc(si);
+                pushRepeatInc(si, slast);
             }
         } else if (e.getRepeatCount() == regex.repeatRangeHi[mem]) {
-            pushRepeatInc(si);
+            pushRepeatInc(si, slast);
         }
     }
 

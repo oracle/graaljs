@@ -163,26 +163,18 @@ class Parser extends Lexer {
             switch (token.type) {
 
             case CHAR:
-                if (token.getC() > 0xff) {
-                    arg.inType = CCVALTYPE.CODE_POINT;
-                } else {
-                    arg.inType = CCVALTYPE.SB; // sb_char:
-                }
                 arg.v = token.getC();
-                arg.vIsRaw = false;
-                parseCharClassValEntry2(cc, arg); // goto val_entry2
+                parseCharClassValEntry(cc, arg); // goto val_entry2
                 break;
 
             case RAW_BYTE:
                 arg.v = token.getC();
                 arg.inType = CCVALTYPE.SB; // raw_single:
-                arg.vIsRaw = true;
                 parseCharClassValEntry2(cc, arg); // goto val_entry2
                 break;
 
             case CODE_POINT:
                 arg.v = token.getCode();
-                arg.vIsRaw = true;
                 parseCharClassValEntry(cc, arg); // val_entry:, val_entry2
                 break;
 
@@ -206,7 +198,6 @@ class Parser extends Lexer {
                     arg.state = CCSTATE.RANGE;
                 } else if (arg.state == CCSTATE.START) {
                     arg.v = token.getC(); /* [-xa] is allowed */
-                    arg.vIsRaw = false;
                     fetchTokenInCC();
                     fetched = true;
                     if (token.type == TokenType.CC_RANGE || andStart) {
@@ -234,7 +225,6 @@ class Parser extends Lexer {
                         env.ccEscWarn("-");
                         arg.inType = CCVALTYPE.SB;
                         arg.v = '-';
-                        arg.vIsRaw = false;
                         parseCharClassValEntry2(cc, arg); // goto val_entry2 /* [0-9-a] is allowed as [0-9\-a] */
                         break;
                     }
@@ -250,7 +240,6 @@ class Parser extends Lexer {
             case CC_AND:     /* && */
                 if (arg.state == CCSTATE.VALUE) {
                     arg.v = 0; // ??? safe v ?
-                    arg.vIsRaw = false;
                     cc.nextStateValue(arg, env);
                 }
                 /* initialize local variables */
@@ -283,7 +272,6 @@ class Parser extends Lexer {
 
         if (arg.state == CCSTATE.VALUE) {
             arg.v = 0; // ??? safe v ?
-            arg.vIsRaw = false;
             cc.nextStateValue(arg, env);
         }
 
@@ -313,13 +301,11 @@ class Parser extends Lexer {
     private void parseCharClassSbChar(final CClassNode cc, final CCStateArg arg) {
         arg.inType = CCVALTYPE.SB;
         arg.v = token.getC();
-        arg.vIsRaw = false;
         parseCharClassValEntry2(cc, arg); // goto val_entry2
     }
 
     private void parseCharClassRangeEndVal(final CClassNode cc, final CCStateArg arg) {
         arg.v = '-';
-        arg.vIsRaw = false;
         parseCharClassValEntry(cc, arg); // goto val_entry
     }
 

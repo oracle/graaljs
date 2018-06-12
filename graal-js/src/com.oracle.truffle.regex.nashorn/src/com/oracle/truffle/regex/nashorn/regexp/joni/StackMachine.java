@@ -183,19 +183,21 @@ abstract class StackMachine extends Matcher implements StackType {
         push(LOOK_BEHIND_NOT, pat, s, sprev);
     }
 
-    protected final void pushRepeat(final int id, final int pat) {
+    protected final void pushRepeat(final int id, final int pat, final int s) {
         final StackEntry e = ensure1();
         e.type = REPEAT;
         e.setRepeatNum(id);
         e.setRepeatPCode(pat);
         e.setRepeatCount(0);
+        e.setRepeatPStr(s);
         stk++;
     }
 
-    protected final void pushRepeatInc(final int sindex) {
+    protected final void pushRepeatInc(final int sindex, final int slast) {
         final StackEntry e = ensure1();
         e.type = REPEAT_INC;
-        e.setSi(sindex);
+        e.setRepeatIncSi(sindex);
+        e.setRepeatIncPStr(slast);
         stk++;
     }
 
@@ -290,7 +292,9 @@ abstract class StackMachine extends Matcher implements StackType {
             } else if (e.type == REPEAT_INC) {
                 //int si = stack[stk + IREPEAT_INC_SI];
                 //stack[si + IREPEAT_COUNT]--;
-                stack[e.getSi()].decreaseRepeatCount();
+                int si = e.getRepeatIncSi();
+                stack[si].decreaseRepeatCount();
+                stack[si].setRepeatPStr(e.getRepeatIncPStr());
             } else if (e.type == MEM_END) {
                 repeatStk[memStartStk + e.getMemNum()] = e.getMemStart();
                 repeatStk[memEndStk + e.getMemNum()] = e.getMemEnd();
@@ -311,7 +315,9 @@ abstract class StackMachine extends Matcher implements StackType {
             } else if (e.type == REPEAT_INC) {
                 //int si = stack[stk + IREPEAT_INC_SI];
                 //stack[si + IREPEAT_COUNT]--;
-                stack[e.getSi()].decreaseRepeatCount();
+                int si = e.getRepeatIncSi();
+                stack[si].decreaseRepeatCount();
+                stack[si].setRepeatPStr(e.getRepeatIncPStr());
             } else if (e.type == MEM_END){
                 repeatStk[memStartStk + e.getMemNum()] = e.getMemStart();
                 repeatStk[memEndStk + e.getMemNum()] = e.getMemStart();
@@ -332,7 +338,9 @@ abstract class StackMachine extends Matcher implements StackType {
             } else if (e.type == REPEAT_INC) {
                 //int si = stack[stk + IREPEAT_INC_SI];
                 //stack[si + IREPEAT_COUNT]--;
-                stack[e.getSi()].decreaseRepeatCount();
+                int si = e.getRepeatIncSi();
+                stack[si].decreaseRepeatCount();
+                stack[si].setRepeatPStr(e.getRepeatIncPStr());
             } else if (e.type == MEM_END) {
                 repeatStk[memStartStk + e.getMemNum()] = e.getMemStart();
                 repeatStk[memEndStk + e.getMemNum()] = e.getMemEnd();

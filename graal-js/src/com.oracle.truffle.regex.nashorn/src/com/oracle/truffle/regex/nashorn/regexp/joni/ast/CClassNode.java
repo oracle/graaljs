@@ -493,8 +493,6 @@ public final class CClassNode extends Node {
         static final int VS_UNSET = -1;
         public int v;
         public int vs = VS_UNSET;
-        public boolean vsIsRaw;
-        public boolean vIsRaw;
         public CCVALTYPE inType;
         public CCVALTYPE type;
         public CCSTATE state;
@@ -521,6 +519,7 @@ public final class CClassNode extends Node {
             }
         }
         arg.state = CCSTATE.VALUE;
+        arg.vs = CCStateArg.VS_UNSET;
         arg.type = CCVALTYPE.CLASS;
     }
 
@@ -571,7 +570,14 @@ public final class CClassNode extends Node {
                     if (Option.isUnicode(env.reg.getOptions())) {
                         throw new SyntaxException(ErrorMessages.ERR_CHAR_CLASS_VALUE_AT_START_OF_RANGE);
                     } else {
-                        bs.set(arg.v);
+                        if (arg.inType == CCVALTYPE.SB) {
+                            if (arg.v > 0xff) {
+                                throw new ValueException(ErrorMessages.ERR_INVALID_CODE_POINT_VALUE);
+                            }
+                            bs.set(arg.v);
+                        } else { // arg.inType == CCVALTYPE.CODE_POINT
+                            addCodeRange(env, arg.v, arg.v);
+                        }
                         bs.set('-');
                     }
                 } else {
@@ -593,7 +599,6 @@ public final class CClassNode extends Node {
 
         } // switch
 
-        arg.vsIsRaw = arg.vIsRaw;
         arg.vs = arg.v;
         arg.type = arg.inType;
     }

@@ -372,7 +372,7 @@ final class ArrayCompiler extends Compiler {
         regex.repeatRangeHi[id] = isRepeatInfinite(upper) ? 0x7fffffff : upper;
     }
 
-    private void compileRangeRepeatNode(final QuantifierNode qn, final int targetLen, final int emptyInfo) {
+    private void compileRangeRepeatNode(final QuantifierNode qn, final int targetLen) {
         final int numRepeat = regex.numRepeat;
         addOpcode(qn.greedy ? OPCode.REPEAT : OPCode.REPEAT_NG);
         addMemNum(numRepeat); /* OP_REPEAT ID */
@@ -381,7 +381,7 @@ final class ArrayCompiler extends Compiler {
 
         entryRepeatRange(numRepeat, qn.lower, qn.upper);
 
-        compileTreeEmptyCheckWithMemoryClear(qn.target, emptyInfo);
+        compileTreeWithMemoryClear(qn.target);
 
         if (qn.isInRepeat()) {
             addOpcode(qn.greedy ? OPCode.REPEAT_INC_SG : OPCode.REPEAT_INC_NG_SG);
@@ -434,6 +434,12 @@ final class ArrayCompiler extends Compiler {
         }
     }
 
+    private static long calculateSmallRangeExpandedLength(QuantifierNode qn, int tlen, int modTLen) {
+        int n = qn.upper - qn.lower;
+        boolean needsJumps = qn.targetEmptyInfo == TargetInfo.IS_EMPTY;
+        return (long)qn.lower * tlen + (long)n * (OPSize.PUSH + modTLen + (needsJumps ? 2 * OPSize.JUMP : 0));
+    }
+
     private int compileNonCECLengthQuantifierNode(final QuantifierNode qn) {
         final boolean infinite = isRepeatInfinite(qn.upper);
         final int emptyInfo = qn.targetEmptyInfo;
@@ -456,8 +462,8 @@ final class ArrayCompiler extends Compiler {
         }
 
         int len;
-        if (infinite && (qn.lower <= 1 || tlen * (long)qn.lower <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
-            if (qn.lower == 1 && tlen > QUANTIFIER_EXPAND_LIMIT_SIZE) {
+        if (infinite && ((qn.lower == 1 && emptyInfo == TargetInfo.ISNOT_EMPTY) || tlen * (long)qn.lower <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
+            if (qn.lower == 1 && emptyInfo == TargetInfo.ISNOT_EMPTY && tlen > QUANTIFIER_EXPAND_LIMIT_SIZE) {
                 len = OPSize.JUMP;
             } else {
                 len = tlen * qn.lower;
@@ -478,14 +484,12 @@ final class ArrayCompiler extends Compiler {
         } else if (qn.upper == 0 && qn.isRefered) { /* /(?<n>..){0}/ */
             len = OPSize.JUMP + tlen;
         } else if (!infinite && qn.greedy &&
-                  (qn.upper == 1 || (tlen + OPSize.PUSH) * qn.upper <= QUANTIFIER_EXPAND_LIMIT_SIZE )) {
-            len = tlen * qn.lower;
-            boolean enclose = (qn.target.getType() == NodeType.ENCLOSE);
-            len += (OPSize.PUSH + (enclose ? modTLen : tlen)) * (qn.upper - qn.lower);
+                  (qn.upper == 1 || calculateSmallRangeExpandedLength(qn, tlen, modTLen) <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
+            len = (int)calculateSmallRangeExpandedLength(qn, tlen, modTLen);
         } else if (!qn.greedy && qn.upper == 1 && qn.lower == 0) { /* '??' */
             len = OPSize.PUSH + OPSize.JUMP + tlen;
         } else {
-            len = OPSize.REPEAT_INC + modTLen + OPSize.OPCODE + OPSize.RELADDR + OPSize.MEMNUM;
+            len = OPSize.REPEAT + tlen + OPSize.REPEAT_INC;
         }
         return len;
     }
@@ -523,8 +527,12 @@ final class ArrayCompiler extends Compiler {
         } else {
             modTLen = tlen;
         }
-        if (infinite && (qn.lower <= 1 || tlen * (long)qn.lower <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
-            if (qn.lower == 1 && tlen > QUANTIFIER_EXPAND_LIMIT_SIZE) {
+        if (infinite && ((qn.lower == 1 && emptyInfo == TargetInfo.ISNOT_EMPTY) || tlen * (long)qn.lower <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
+            // If emptyInfo == TargetInfo.ISNOT_EMPTY, then we know that the target of this
+            // quantifier can never be empty and we can therefore use the optimization below which
+            // skips over the first PUSH in the loop in order to enforce the lower bound qn.lower
+            // equal to 1.
+            if (qn.lower == 1 && emptyInfo == TargetInfo.ISNOT_EMPTY && tlen > QUANTIFIER_EXPAND_LIMIT_SIZE) {
                 if (qn.greedy) {
                     if (qn.headExact != null) {
                         addOpcodeRelAddr(OPCode.JUMP, OPSize.PUSH_OR_JUMP_EXACT1);
@@ -567,17 +575,23 @@ final class ArrayCompiler extends Compiler {
             addOpcodeRelAddr(OPCode.JUMP, tlen);
             compileTreeWithMemoryClear(qn.target);
         } else if (!infinite && qn.greedy &&
-                  (qn.upper == 1 || (tlen + OPSize.PUSH) * (long)qn.upper <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
+                  (qn.upper == 1 || calculateSmallRangeExpandedLength(qn, tlen, modTLen) <= QUANTIFIER_EXPAND_LIMIT_SIZE)) {
             final int n = qn.upper - qn.lower;
             compileTreeNTimesWithMemoryClear(qn.target, qn.lower);
 
-            boolean enclose = (qn.target.getType() == NodeType.ENCLOSE);
+            // The emptiness check included when emptyInfo == TargetInfo.IS_EMPTY needs to be
+            // followed by a jump or a similar control instruction. In case the check is failed
+            // (the contents were empty), the following jump is ignored.
+            boolean needsJumps = emptyInfo == TargetInfo.IS_EMPTY;
             for (int i=0; i<n; i++) {
-                addOpcodeRelAddr(OPCode.PUSH, (n - i) * (enclose ? modTLen : tlen) + (n - i - 1) * OPSize.PUSH);
-                if (enclose) {
-                    compileTreeEmptyCheckWithMemoryClear(qn.target, emptyInfo);
-                } else {
-                    compileTreeWithMemoryClear(qn.target);
+                addOpcodeRelAddr(OPCode.PUSH, (n - i) * (OPSize.PUSH + modTLen + (needsJumps ? 2 * OPSize.JUMP : 0)) - OPSize.PUSH);
+                compileTreeEmptyCheckWithMemoryClear(qn.target, emptyInfo);
+                if (needsJumps) {
+                    // If we pass the emptiness check, skip the next jump.
+                    addOpcodeRelAddr(OPCode.JUMP, OPSize.JUMP);
+                    // If we fail the emptiness check, jump to the end of this expression (i.e. do
+                    // not match any more iterations of this range).
+                    addOpcodeRelAddr(OPCode.JUMP, (n - i - 1) * (OPSize.PUSH + modTLen + 2 * OPSize.JUMP));
                 }
             }
         } else if (!qn.greedy && qn.upper == 1 && qn.lower == 0) { /* '??' */
@@ -585,7 +599,7 @@ final class ArrayCompiler extends Compiler {
             addOpcodeRelAddr(OPCode.JUMP, tlen);
             compileTreeWithMemoryClear(qn.target);
         } else {
-            compileRangeRepeatNode(qn, modTLen, emptyInfo);
+            compileRangeRepeatNode(qn, tlen);
         }
     }
 
