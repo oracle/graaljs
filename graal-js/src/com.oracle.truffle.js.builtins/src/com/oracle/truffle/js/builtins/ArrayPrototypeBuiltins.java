@@ -936,12 +936,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 endPos = JSRuntime.getOffset(toIntegerSpecial.executeLong(args[1]), len, offsetProfile2);
             }
 
-            long size = endPos - startPos;
-            Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisArrayObj, size <= 0 ? 0 : size);
-            if (sizeIsZero.profile(size <= 0)) {
-                return resultArray;
+            long size = startPos <= endPos ? endPos - startPos : 0;
+            TruffleObject resultArray = (TruffleObject) getArraySpeciesConstructorNode().createEmptyContainer(thisArrayObj, size);
+            if (sizeIsZero.profile(size > 0)) {
+                forEachIndexCall(thisArrayObj, null, startPos, startPos, endPos, resultArray);
             }
-            return forEachIndexCall(thisArrayObj, null, startPos, startPos, endPos, resultArray);
+            if (!isTypedArrayImplementation) {
+                setLength(resultArray, size);
+            }
+            return resultArray;
         }
 
         @Override
@@ -1639,6 +1642,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 branchDelete.enter();
                 spliceRead(thisObj, actualStart, actualDeleteCount, aObj, len);
             }
+            setLength(aObj, actualDeleteCount);
 
             boolean isJSArray = JSArray.isJSArray(thisObj);
             if (isJSArray) {
@@ -1794,7 +1798,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    public abstract static class ArrayForEachIndexCallOperation extends BasicArrayOperation {
+    public abstract static class ArrayForEachIndexCallOperation extends JSArrayOperation {
         public ArrayForEachIndexCallOperation(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
         }

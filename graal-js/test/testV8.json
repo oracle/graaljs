@@ -129,9 +129,6 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
-    "filePath" : "mjsunit/es6/array-species.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/block-conflicts-sloppy.js",
     "status" : "FAIL"
   }, {
