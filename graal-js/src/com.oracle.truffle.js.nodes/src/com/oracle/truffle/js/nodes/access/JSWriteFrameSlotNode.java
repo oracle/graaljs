@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -69,6 +72,16 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements Writ
     @Override
     public Object getNodeObject() {
         return JSTags.createNodeObjectDescriptor("name", getIdentifier());
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(WriteVariableExpressionTag.class)) {
+            if (!getRhs().hasSourceSection() && this.hasSourceSection()) {
+                transferSourceSectionNoTags(this, getRhs());
+            }
+        }
+        return this;
     }
 
     @Override

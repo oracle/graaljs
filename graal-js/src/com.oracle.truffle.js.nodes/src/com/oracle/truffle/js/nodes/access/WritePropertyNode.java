@@ -103,6 +103,7 @@ public class WritePropertyNode extends JSTargetableNode implements WriteNode {
                 JavaScriptNode clonedRhs = (JavaScriptNode) rhsNode.materializeInstrumentableNodes(materializedTags);
                 WritePropertyNode cloneUninitialized = WritePropertyNode.create(clonedTarget, cache.getKey(), clonedRhs, cache.isGlobal(), cache.getContext(), cache.isStrict());
                 transferSourceSection(this, cloneUninitialized);
+                transferSourceSection(this, clonedRhs);
                 transferSourceSectionNoTags(this, cloneUninitialized.targetNode);
                 return cloneUninitialized;
             }

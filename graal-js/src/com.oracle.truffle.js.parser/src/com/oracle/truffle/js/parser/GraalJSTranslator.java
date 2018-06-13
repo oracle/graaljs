@@ -1819,7 +1819,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode desugarForHeadAssignment(ForNode forNode, JavaScriptNode next) {
         if (forNode.getInit() instanceof IdentNode) {
-            return findScopeVarCheckTDZ(((IdentNode) forNode.getInit()).getName(), true).createWriteNode(next);
+            return ensureHasSourceSection(findScopeVarCheckTDZ(((IdentNode) forNode.getInit()).getName(), true).createWriteNode(next), forNode);
         } else {
             // transform destructuring assignment
             return transformAssignment(forNode.getInit(), next, null, false, false, true);
