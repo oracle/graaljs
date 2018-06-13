@@ -1815,11 +1815,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode desugarForHeadAssignment(ForNode forNode, JavaScriptNode next) {
-        if (forNode.getInit() instanceof IdentNode) {
-            return ensureHasSourceSection(findScopeVarCheckTDZ(((IdentNode) forNode.getInit()).getName(), true).createWriteNode(next), forNode);
+        boolean lexicalBindingInit = forNode.hasPerIterationScope();
+        if (forNode.getInit() instanceof IdentNode && lexicalBindingInit) {
+            return ensureHasSourceSection(findScopeVarCheckTDZ(((IdentNode) forNode.getInit()).getName(), lexicalBindingInit).createWriteNode(next), forNode);
         } else {
             // transform destructuring assignment
-            return transformAssignment(forNode.getInit(), next, null, false, false, true);
+            return ensureHasSourceSection(transformAssignment(forNode.getInit(), next, null, false, false, lexicalBindingInit), forNode);
         }
     }
 
@@ -2561,7 +2562,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             // e.g.: lhs *= rhs => lhs = lhs * rhs
             // If lhs is a side-effecting getter that deletes lhs, we must not throw
             // ReferenceError at the lhs assignment since the lhs reference is already resolved.
-            return scopeVar.withRequired(false).createWriteNode(ensureHasSourceSection(rhs, identNode));
+            return scopeVar.withRequired(false).createWriteNode(rhs);
         } else {
             // if scopeVar is const, the assignment will never succeed and is only there to perform
             // the temporal dead zone check and throw a ReferenceError instead of a TypeError
