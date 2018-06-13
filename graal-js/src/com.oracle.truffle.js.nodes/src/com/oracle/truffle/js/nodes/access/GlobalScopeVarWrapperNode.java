@@ -117,4 +117,10 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
         transferSourceSectionNoTags(this, defaultDelegate);
         return super.materializeInstrumentableNodes(materializedTags);
     }
+
+    public void setMethod() {
+        if (defaultDelegate instanceof GlobalPropertyNode) {
+            ((GlobalPropertyNode) defaultDelegate).setMethod();
+        }
+    }
 }

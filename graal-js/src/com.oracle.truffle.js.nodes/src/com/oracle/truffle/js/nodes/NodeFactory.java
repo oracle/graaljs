@@ -556,6 +556,8 @@ public class NodeFactory {
             JavaScriptNode function = expression;
             if (function instanceof GlobalPropertyNode) {
                 ((GlobalPropertyNode) function).setMethod();
+            } else if (function instanceof GlobalScopeVarWrapperNode) {
+                ((GlobalScopeVarWrapperNode) function).setMethod();
             }
             return JSFunctionCallNode.create(function, target, JSFunctionArgumentsNode.create(arguments), false, false);
         }
