@@ -287,13 +287,15 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
                     if (state.boundCompareFunction == null) {
                         JSFunctionData compareFunctionData;
+                        DynamicObject compareFn;
                         if (state.sensitivity.equals("case")) {
                             compareFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.CollatorCaseSensitiveCompare,
                                             c -> createCaseSensitiveCompareFunctionData(c));
+                            compareFn = JSFunction.create(realm, compareFunctionData);
                         } else {
                             compareFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.CollatorCompare, c -> createCompareFunctionData(c));
+                            compareFn = JSFunction.create(realm, compareFunctionData);
                         }
-                        DynamicObject compareFn = JSFunction.create(realm, compareFunctionData);
                         DynamicObject boundFn = JSFunction.boundFunctionCreate(context, realm, compareFn, collatorObj, new Object[]{}, JSObject.getPrototype(compareFn), true);
                         state.boundCompareFunction = boundFn;
                     }
