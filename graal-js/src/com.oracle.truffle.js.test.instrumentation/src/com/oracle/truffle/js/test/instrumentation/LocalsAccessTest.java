@@ -45,6 +45,7 @@ import org.junit.Test;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -150,6 +151,62 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
                 enter(ReadVariableExpressionTag.class).exit();
             }).exit();
             write.input(42);
+        }).exit();
+    }
+
+    @Test
+    public void readConst() {
+        evalAllTags("(function() { const a = 42; return a; })();");
+
+        enter(WriteVariableExpressionTag.class, (e, write) -> {
+            enter(FunctionCallExpressionTag.class, (e1, call) -> {
+                // fetch the target for the call (which is undefined)
+                enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+                call.input(assertUndefinedInput);
+                // get the function from the literal
+                enter(LiteralExpressionTag.class).exit((e2) -> {
+                    assertAttribute(e2, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+                });
+                call.input(assertJSFunctionInput);
+                // write 42
+                enter(WriteVariableExpressionTag.class, (e2, var) -> {
+                    enter(LiteralExpressionTag.class).exit();
+                    var.input(42);
+                }).exit();
+                // return statement
+                enter(ReadVariableExpressionTag.class).exit();
+            }).exit();
+            write.input(42);
+        }).exit();
+    }
+
+    @Test
+    public void forOfConst() {
+        evalWithTag("for(const a of [41,42]) {};", WriteVariableExpressionTag.class);
+
+        enter(WriteVariableExpressionTag.class, (e, w) -> {
+            w.input(Undefined.instance);
+        }).exit();
+
+        enter(WriteVariableExpressionTag.class, (e, w) -> {
+            w.input(41);
+        }).exit();
+        enter(WriteVariableExpressionTag.class, (e, w) -> {
+            w.input(42);
+        }).exit();
+    }
+
+    @Test
+    public void forOfVar() {
+        evalWithTag("for(var a of [41,42]) {};", WritePropertyExpressionTag.class);
+
+        enter(WritePropertyExpressionTag.class, (e, w) -> {
+            w.input(assertGlobalObjectInput);
+            w.input(41);
+        }).exit();
+        enter(WritePropertyExpressionTag.class, (e, w) -> {
+            w.input(assertGlobalObjectInput);
+            w.input(42);
         }).exit();
     }
 
