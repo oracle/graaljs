@@ -57,20 +57,19 @@ import com.oracle.truffle.js.runtime.JSContext;
 public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements ReadNode, WriteNode {
 
     private final String varName;
-    @Child private JavaScriptNode defaultDelegate;
     @Child private JavaScriptNode dynamicScopeNode;
-    @Child private HasPropertyCacheNode hasPropertyNode;
+    @Child private JavaScriptNode defaultDelegate;
     @Child private JSTargetableNode scopeAccessNode;
+    @Child private GlobalScopeLookupNode scopeHasBinding;
     private final JSContext context;
 
     public GlobalScopeVarWrapperNode(JSContext context, String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
         this.varName = varName;
-        this.defaultDelegate = Objects.requireNonNull(defaultDelegate);
         this.dynamicScopeNode = dynamicScope;
-
-        this.hasPropertyNode = HasPropertyCacheNode.create(varName, context);
+        this.defaultDelegate = Objects.requireNonNull(defaultDelegate);
         this.scopeAccessNode = scopeAccessNode;
         this.context = context;
+        this.scopeHasBinding = GlobalScopeLookupNode.create(context, varName, isWrite());
     }
 
     public String getPropertyName() {
@@ -84,7 +83,7 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
     @Override
     public Object execute(VirtualFrame frame) {
         Object dynamicScope = dynamicScopeNode.execute(frame);
-        if (hasPropertyNode.hasProperty(dynamicScope)) {
+        if (scopeHasBinding.execute(dynamicScope)) {
             if (isWrite()) {
                 Object value = ((WriteNode) defaultDelegate).getRhs().execute(frame);
                 ((WritePropertyNode) scopeAccessNode).executeWithValue(dynamicScope, value);

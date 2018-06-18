@@ -334,8 +334,7 @@ public abstract class Environment {
                     assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
                     scopeAccessNode = factory.createProperty(context, null, name);
                 }
-                // Protect against a potential dynamic TDZ (introduced by a later-loaded script).
-                JavaScriptNode globalScope = factory.createGlobalScopeTDZCheck(context, name, true);
+                JavaScriptNode globalScope = factory.createGlobalScope(context);
                 return factory.createGlobalVarWrapper(context, name, delegateNode, globalScope, scopeAccessNode);
             }
         });
