@@ -44,7 +44,10 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
 @NodeInfo(shortName = "/")
 public abstract class JSDivideNode extends JSBinaryNode {
@@ -95,12 +98,25 @@ public abstract class JSDivideNode extends JSBinaryNode {
         return a / b;
     }
 
+    @Specialization(guards = "isBigIntZero(b)")
+    protected BigInt doBigIntZeroDivision(@SuppressWarnings("unused") BigInt a, @SuppressWarnings("unused") BigInt b) {
+        throw Errors.createRangeError("Division by zero");
+    }
+
+    @Specialization(guards = "!isBigIntZero(b)")
+    protected BigInt doBigInt(BigInt a, BigInt b) {
+        return a.divide(b);
+    }
+
     @Specialization(replaces = "doDouble")
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSDivideNode nestedDivideNode,
-                    @Cached("create()") JSToNumberNode toNumber1Node,
-                    @Cached("create()") JSToNumberNode toNumber2Node) {
-        return nestedDivideNode.execute(toNumber1Node.execute(a), toNumber2Node.execute(b));
+                    @Cached("create()") JSToNumericNode toNumeric1Node,
+                    @Cached("create()") JSToNumericNode toNumeric2Node) {
+        Object numericA = toNumeric1Node.execute(a);
+        Object numericB = toNumeric2Node.execute(b);
+        JSRuntime.ensureBothSameNumericType(numericA, numericB);
+        return nestedDivideNode.execute(numericA, numericB);
     }
 
     @Override

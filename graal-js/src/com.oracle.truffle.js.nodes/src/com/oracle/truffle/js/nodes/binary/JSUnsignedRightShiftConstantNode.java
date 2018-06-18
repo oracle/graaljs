@@ -51,10 +51,13 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node.JSToUInt32WrapperNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
 /**
@@ -72,6 +75,8 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
         this.shiftValue = shiftValue;
         this.rightValue = rightValue;
     }
+
+    public abstract Number executeNumber(Object a);
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         assert right instanceof JSConstantIntegerNode;
@@ -121,19 +126,26 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
     }
 
     @Specialization
-    protected int doDouble(double a,
+    protected Number doDouble(double a,
                     @Cached("create()") JSToUInt32Node toUInt32Node) {
-        return (int) (toUInt32Node.executeLong(a) >>> shiftValue);
-    }
-
-    @Specialization(guards = "!isHandled(lval)")
-    protected Object doGeneric(Object lval,
-                    @Cached("create()") JSToUInt32Node toUInt32Node) {
-        long lnum = toUInt32Node.executeLong(lval);
+        long lnum = toUInt32Node.executeLong(a);
         if (lnum >= Integer.MAX_VALUE || lnum <= Integer.MIN_VALUE) {
             return (double) (lnum >>> shiftValue);
         }
         return (int) (lnum >>> shiftValue);
+    }
+
+    @Specialization
+    protected void doBigInt(@SuppressWarnings("unused") BigInt a) {
+        throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+    }
+
+    @Specialization(guards = "!isHandled(lval)")
+    protected Object doGeneric(Object lval,
+                    @Cached("create()") JSToNumericNode leftToNumeric,
+                    @Cached("makeCopy()") JSUnsignedRightShiftConstantNode innerShiftNode) {
+        Object leftOperand = leftToNumeric.executeObject(lval);
+        return innerShiftNode.executeNumber(leftOperand);
     }
 
     protected static boolean isHandled(Object lval) {
@@ -143,6 +155,10 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
         return clazz == Number.class;
+    }
+
+    protected JSUnsignedRightShiftConstantNode makeCopy() {
+        return (JSUnsignedRightShiftConstantNode) copyUninitialized();
     }
 
     @Override

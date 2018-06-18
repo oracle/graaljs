@@ -38,56 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.unary;
+package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSRuntime;
 
-public abstract class IsIdenticalIntegerNode extends JSUnaryNode {
+/**
+ * Numeric to Number values conversion. i.e. BigInt internal value is converted to a double value
+ * using this node. Currently utilized in Number constructor, as a legal mean to get Numbers back
+ * from BigInts.
+ */
+public abstract class JSNumericToNumberNode extends JavaScriptBaseNode {
 
-    private final int integer;
+    public abstract Object executeObject(Object value);
 
-    protected IsIdenticalIntegerNode(JavaScriptNode operand, int integer) {
-        super(operand);
-        this.integer = integer;
+    public static JSNumericToNumberNode create() {
+        return JSNumericToNumberNodeGen.create();
     }
 
     @Specialization
-    protected boolean doInt(int a) {
-        return a == integer;
+    protected static Number doBigInt(BigInt value) {
+        return value.doubleValue();
     }
 
-    @Specialization
-    protected boolean doDouble(double a) {
-        return a == integer;
-    }
-
-    @Specialization
-    protected boolean doBigInt(@SuppressWarnings("unused") BigInt a) {
-        return false;
-    }
-
-    // long etc could come via Interop
-    @Specialization(guards = "isJavaNumber(a)")
-    protected boolean doJavaNumber(Object a) {
-        double doubleValue = JSRuntime.toDouble(a);
-        return doubleValue == integer;
-    }
-
-    @Fallback
-    protected boolean doOther(@SuppressWarnings("unused") Object other) {
-        return false;
-    }
-
-    public static IsIdenticalIntegerNode create(int integer, JavaScriptNode operand) {
-        return IsIdenticalIntegerNodeGen.create(operand, integer);
-    }
-
-    @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(integer, cloneUninitialized(getOperand()));
+    @Specialization(guards = "!isBigInt(value)")
+    protected static Object doOther(Object value) {
+        return value;
     }
 }

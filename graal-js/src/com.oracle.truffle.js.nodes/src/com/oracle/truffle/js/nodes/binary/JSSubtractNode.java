@@ -47,7 +47,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNumericUnitNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
 @NodeInfo(shortName = "-")
 public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable {
@@ -59,11 +62,14 @@ public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable
         this.truncate = truncate;
     }
 
-    public static JSSubtractNode create(JavaScriptNode left, JavaScriptNode right, boolean truncate) {
+    public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right, boolean truncate) {
+        if (right instanceof JSConstantNumericUnitNode) {
+            return JSAddSubNumericUnitNodeGen.create(left, false, truncate);
+        }
         return JSSubtractNodeGen.create(truncate, left, right);
     }
 
-    public static JSSubtractNode create(JavaScriptNode left, JavaScriptNode right) {
+    public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         return create(left, right, false);
     }
 
@@ -83,15 +89,26 @@ public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable
         return a - b;
     }
 
-    @Specialization(replaces = {"doDouble"})
-    protected Object doGeneric(Object a, Object b,
-                    @Cached("create()") JSToNumberNode toNumberA,
-                    @Cached("create()") JSToNumberNode toNumberB,
-                    @Cached("copyRecursive()") JSSubtractNode subtract) {
-        return subtract.execute(toNumberA.execute(a), toNumberB.execute(b));
+    @Specialization()
+    protected BigInt doBigInt(BigInt a, BigInt b) {
+        return a.subtract(b);
     }
 
-    public final JSSubtractNode copyRecursive() {
+    @Specialization(replaces = {"doDouble", "doBigInt"})
+    protected Object doGeneric(Object a, Object b,
+                    @Cached("create()") JSToNumericNode toNumericA,
+                    @Cached("create()") JSToNumericNode toNumericB,
+                    @Cached("copyRecursive()") JavaScriptNode subtract) {
+
+        Object castA = toNumericA.execute(a);
+        Object castB = toNumericB.execute(b);
+
+        JSRuntime.ensureBothSameNumericType(castA, castB);
+
+        return ((JSSubtractNode) subtract).execute(castA, castB);
+    }
+
+    public final JavaScriptNode copyRecursive() {
         return create(null, null, truncate);
     }
 

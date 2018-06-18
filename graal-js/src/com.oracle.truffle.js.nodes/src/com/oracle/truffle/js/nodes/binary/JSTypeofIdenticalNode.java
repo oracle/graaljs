@@ -53,11 +53,13 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantStringNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -86,6 +88,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
 
     public enum Type {
         Number,
+        BigInt,
         String,
         Boolean,
         Object,
@@ -114,6 +117,8 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         switch (string) {
             case JSNumber.TYPE_NAME:
                 return Type.Number;
+            case JSBigInt.TYPE_NAME:
+                return Type.BigInt;
             case JSString.TYPE_NAME:
                 return Type.String;
             case JSBoolean.TYPE_NAME:
@@ -161,13 +166,18 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     }
 
     @Specialization
+    protected final boolean doBigInt(@SuppressWarnings("unused") BigInt value) {
+        return (type == Type.BigInt);
+    }
+
+    @Specialization
     protected final boolean doLazyString(@SuppressWarnings("unused") JSLazyString value) {
         return (type == Type.String);
     }
 
     @Specialization(guards = {"isJSType(value)"})
     protected final boolean doJSType(DynamicObject value) {
-        if (type == Type.Number || type == Type.String || type == Type.Boolean || type == Type.Symbol || type == Type.False) {
+        if (type == Type.Number || type == Type.BigInt || type == Type.String || type == Type.Boolean || type == Type.Symbol || type == Type.False) {
             return false;
         } else if (type == Type.Object) {
             if (JSProxy.isProxy(value)) {
@@ -217,6 +227,8 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     protected boolean doUncached(Object value) {
         if (type == Type.Number) {
             return JSTruffleOptions.NashornJavaInterop ? value instanceof Number : JSRuntime.isNumber(value);
+        } else if (type == Type.BigInt) {
+            return JSRuntime.isBigInt(value);
         } else if (type == Type.String) {
             return JSRuntime.isString(value);
         } else if (type == Type.Boolean) {

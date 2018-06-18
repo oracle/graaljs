@@ -64,6 +64,8 @@ public interface ShapeContext {
 
     DynamicObjectFactory getNumberFactory();
 
+    DynamicObjectFactory getBigIntFactory();
+
     DynamicObjectFactory getSymbolFactory();
 
     DynamicObjectFactory getArrayBufferViewFactory(TypedArrayFactory factory);

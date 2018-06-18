@@ -53,6 +53,7 @@ import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -127,6 +128,11 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
 
     @Specialization
     protected Symbol doSymbol(Symbol value) {
+        return value;
+    }
+
+    @Specialization
+    protected BigInt doBigInt(BigInt value) {
         return value;
     }
 

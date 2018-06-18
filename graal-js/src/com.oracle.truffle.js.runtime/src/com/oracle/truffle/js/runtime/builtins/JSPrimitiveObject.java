@@ -53,7 +53,7 @@ public abstract class JSPrimitiveObject extends JSBuiltinObject {
     @TruffleBoundary
     @Override
     public final Object getHelper(DynamicObject store, Object thisObj, Object key) {
-        assert this == JSNumber.INSTANCE || this == JSString.INSTANCE || this == JSBoolean.INSTANCE;
+        assert this == JSNumber.INSTANCE || this == JSString.INSTANCE || this == JSBoolean.INSTANCE || this == JSBigInt.INSTANCE;
 
         Object propertyValue = super.getHelper(store, thisObj, key);
 

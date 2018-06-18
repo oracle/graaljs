@@ -53,8 +53,11 @@ import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
 /**
@@ -105,7 +108,7 @@ public abstract class JSRightShiftConstantNode extends JSUnaryNode {
         }
     }
 
-    public abstract int executeInt(int a);
+    public abstract int executeInt(Object a);
 
     @Specialization
     protected int doInteger(int a) {
@@ -117,15 +120,32 @@ public abstract class JSRightShiftConstantNode extends JSUnaryNode {
         return a.intValue() >> shiftValue;
     }
 
-    @Specialization(replaces = "doInteger")
+    @Specialization
+    protected int doDouble(double a,
+                    @Cached("create()") JSToInt32Node leftInt32Node) {
+        return leftInt32Node.executeInt(a) >> shiftValue;
+    }
+
+    @Specialization
+    protected void doBigInt(@SuppressWarnings("unused") BigInt a) {
+        throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+    }
+
+    @Specialization(replaces = {"doInteger", "doLargeInteger", "doDouble", "doBigInt"})
     protected int doGeneric(Object a,
-                    @Cached("create()") JSToInt32Node leftInt32) {
-        return leftInt32.executeInt(a) >> shiftValue;
+                    @Cached("create()") JSToNumericNode leftToNumeric,
+                    @Cached("makeCopy()") JSRightShiftConstantNode innerShiftNode) {
+        Object leftOperand = leftToNumeric.executeObject(a);
+        return innerShiftNode.executeInt(leftOperand);
     }
 
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
         return clazz == int.class;
+    }
+
+    protected JSRightShiftConstantNode makeCopy() {
+        return (JSRightShiftConstantNode) copyUninitialized();
     }
 
     @Override

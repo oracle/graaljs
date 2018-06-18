@@ -40,71 +40,83 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
-import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
-import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
-import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
-@NodeInfo(shortName = "&")
-public abstract class JSBitwiseAndNode extends JSBinaryNode {
+public abstract class JSAddSubNumericUnitNode extends JSUnaryNode implements Truncatable {
 
-    protected JSBitwiseAndNode(JavaScriptNode left, JavaScriptNode right) {
-        super(left, right);
+    private final boolean isAddition;
+    @CompilationFinal boolean truncate;
+
+    protected JSAddSubNumericUnitNode(JavaScriptNode operand, boolean isAddition, boolean truncate) {
+        super(operand);
+        this.isAddition = isAddition;
+        this.truncate = truncate;
     }
 
-    public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
-        Truncatable.truncate(left);
-        if (JSTruffleOptions.UseSuperOperations && right instanceof JSConstantIntegerNode) {
-            int rightValue = ((JSConstantIntegerNode) right).executeInt(null);
-            return JSBitwiseAndConstantNode.create(left, rightValue);
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == UnaryExpressionTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
         }
-        Truncatable.truncate(right);
-        return JSBitwiseAndNodeGen.create(left, right);
     }
 
-    public abstract Object executeObject(Object a, Object b);
+    @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor("operator", isAddition ? "++" : "--");
+    }
+
+    @Specialization(rewriteOn = ArithmeticException.class)
+    protected int doInt(int a) {
+        if (truncate) {
+            return isAddition ? a + 1 : a - 1;
+        } else {
+            return isAddition ? Math.addExact(a, 1) : Math.subtractExact(a, 1);
+        }
+    }
+
+    @Specialization(replaces = "doInt")
+    protected double doDouble(double a) {
+        return isAddition ? a + 1 : a - 1;
+    }
 
     @Specialization
-    protected int doInteger(int a, int b) {
-        return a & b;
+    protected BigInt doBigInt(BigInt a) {
+        return isAddition ? a.add(BigInt.ONE) : a.subtract(BigInt.ONE);
     }
 
-    @Specialization
-    protected int doDouble(double a, double b,
-                    @Cached("create()") JSToInt32Node leftInt32,
-                    @Cached("create()") JSToInt32Node rightInt32) {
-        return doInteger(leftInt32.executeInt(a), rightInt32.executeInt(b));
+    // long etc could come via Interop
+    @Specialization(guards = "isJavaNumber(a)")
+    protected double doJavaNumber(Object a) {
+        double doubleValue = JSRuntime.toDouble(a);
+        return isAddition ? doubleValue + 1 : doubleValue - 1;
     }
 
-    @Specialization
-    protected BigInt doBigInt(BigInt a, BigInt b) {
-        return a.and(b);
+    @Override
+    public void setTruncate() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (truncate == false) {
+            truncate = true;
+        }
     }
 
-    @Specialization(replaces = {"doInteger", "doDouble", "doBigInt"})
-    protected Object doGeneric(Object a, Object b,
-                    @Cached("create()") JSToNumericNode leftNumeric,
-                    @Cached("create()") JSToNumericNode rightNumeric,
-                    @Cached("createBlind()") JSBitwiseAndNode and) {
-        Object left = leftNumeric.execute(a);
-        Object right = rightNumeric.execute(b);
-        JSRuntime.ensureBothSameNumericType(left, right);
-        return and.executeObject(left, right);
+    public static JSAddSubNumericUnitNode create(boolean isAddition, boolean truncate, JavaScriptNode operand) {
+        return JSAddSubNumericUnitNodeGen.create(operand, isAddition, truncate);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSBitwiseAndNodeGen.create(cloneUninitialized(getLeft()), cloneUninitialized(getRight()));
-    }
-
-    public static final JSBitwiseAndNode createBlind() {
-        return (JSBitwiseAndNode) create(null, null);
+        return create(isAddition, truncate, cloneUninitialized(getOperand()));
     }
 }

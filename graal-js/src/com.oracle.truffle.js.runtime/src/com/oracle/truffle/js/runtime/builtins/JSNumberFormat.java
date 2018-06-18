@@ -50,6 +50,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -526,7 +527,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     @TruffleBoundary
     public static String format(DynamicObject numberFormatObj, Object n) {
         NumberFormat numberFormat = getNumberFormatProperty(numberFormatObj);
-        Number x = JSRuntime.toNumber(n);
+        Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
         return x.doubleValue() == -0 ? numberFormat.format(0) : numberFormat.format(x);
     }
 
@@ -545,11 +546,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
         ensureIsNumberFormat(numberFormatObj);
         NumberFormat numberFormat = getNumberFormatProperty(numberFormatObj);
-        Number x = JSRuntime.toNumber(n);
-
-        if (x instanceof LargeInteger) {
-            x = ((LargeInteger) x).doubleValue();
-        }
+        Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
 
         List<Object> resultParts = new LinkedList<>();
         AttributedCharacterIterator fit = numberFormat.formatToCharacterIterator(x);
@@ -578,6 +575,18 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             }
         }
         return JSArray.createConstant(context, resultParts.toArray());
+    }
+
+    private static Number toInternalNumberRepresentation(Object o) {
+        if (o instanceof LargeInteger) {
+            return ((LargeInteger) o).doubleValue();
+        } else if (o instanceof Number) {
+            return (Number) o;
+        } else if (o instanceof BigInt) {
+            return ((BigInt) o).bigIntegerValue();
+        } else {
+            throw Errors.shouldNotReachHere();
+        }
     }
 
     private static Object makePart(JSContext context, String type, String value) {

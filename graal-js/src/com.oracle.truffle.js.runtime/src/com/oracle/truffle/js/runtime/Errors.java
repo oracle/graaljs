@@ -103,6 +103,21 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorCanNotMixBigIntWithOtherTypes() {
+        return createTypeError("Cannot mix BigInt and other types, use explicit conversions.");
+    }
+
+    @TruffleBoundary
+    public static JSException createErrorCanNotConvertToBigInt(JSErrorType type, Object x) {
+        return JSException.create(type, String.format("Cannot convert %s to a BigInt.", JSRuntime.safeToString(x)));
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorCanNotConvertBigIntToNumber() {
+        return createTypeError("Cannot convert a BigInt value to a number.");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorNotAFunction(Object functionObj) {
         return createTypeErrorNotAFunction(functionObj, null);
     }
@@ -378,6 +393,11 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createRangeErrorTooManyArguments() {
         return Errors.createRangeError("Maximum call stack size exceeded");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorBigIntMaxSizeExceeded() {
+        return Errors.createRangeError("Maximum BigInt size exceeded");
     }
 
     @TruffleBoundary

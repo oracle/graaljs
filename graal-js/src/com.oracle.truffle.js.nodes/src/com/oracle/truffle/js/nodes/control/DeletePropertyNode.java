@@ -72,6 +72,7 @@ import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -204,6 +205,12 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @SuppressWarnings("unused")
     @Specialization
     protected static boolean doLargeInteger(LargeInteger target, Object property) {
+        return true;
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization
+    protected static boolean doBigInt(BigInt target, Object property) {
         return true;
     }
 

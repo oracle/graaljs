@@ -46,6 +46,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringOrNumberNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -107,12 +108,43 @@ public abstract class JSLessOrEqualNode extends JSCompareNode {
         return doDouble(a, stringToDouble(b));
     }
 
+    @Specialization
+    protected boolean doBigInt(BigInt a, BigInt b) {
+        return a.compareTo(b) <= 0;
+    }
+
+    @Specialization
+    protected boolean doBigIntAndInt(BigInt a, int b) {
+        return a.compareTo(BigInt.valueOf(b)) <= 0;
+    }
+
+    @Specialization
+    protected boolean doBigIntAndNumber(BigInt a, double b) {
+        if (Double.isNaN(b)) {
+            return false;
+        }
+        return a.compareValueTo(b) <= 0;
+    }
+
+    @Specialization
+    protected boolean doIntAndBigInt(int a, BigInt b) {
+        return b.compareTo(BigInt.valueOf(a)) >= 0;
+    }
+
+    @Specialization
+    protected boolean doNumberAndBigInt(double a, BigInt b) {
+        if (Double.isNaN(a)) {
+            return false;
+        }
+        return b.compareValueTo(a) >= 0;
+    }
+
     @Specialization(guards = {"isJavaNumber(a)", "isJavaNumber(b)"})
     protected boolean doJavaNumber(Object a, Object b) {
         return doDouble(JSRuntime.doubleValue((Number) a), JSRuntime.doubleValue((Number) b));
     }
 
-    @Specialization(replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString", "doJavaNumber"})
+    @Specialization(replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString", "doBigInt", "doBigIntAndNumber", "doNumberAndBigInt", "doJavaNumber"})
     protected boolean doGeneric(Object a, Object b,
                     @Cached("create()") JSToStringOrNumberNode toStringOrNumber1,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive1,

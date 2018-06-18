@@ -38,56 +38,56 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.unary;
+package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
-public abstract class IsIdenticalIntegerNode extends JSUnaryNode {
+public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
 
-    private final int integer;
+    public abstract Object execute(Object value);
 
-    protected IsIdenticalIntegerNode(JavaScriptNode operand, int integer) {
-        super(operand);
-        this.integer = integer;
+    public final BigInt executeBigInt(Object value) {
+        return (BigInt) execute(value);
+    }
+
+    public static JSNumberToBigIntNode create() {
+        return JSNumberToBigIntNodeGen.create();
     }
 
     @Specialization
-    protected boolean doInt(int a) {
-        return a == integer;
+    protected BigInt doInteger(int value) {
+        return BigInt.valueOf(value);
     }
 
     @Specialization
-    protected boolean doDouble(double a) {
-        return a == integer;
+    protected BigInt doDouble(double value,
+                    @Cached("createBinaryProfile()") ConditionProfile isNotInteger) {
+
+        if (isNotInteger.profile(!isInteger(value))) {
+            throw Errors.createRangeError("BigInt out of range");
+        }
+        return BigInt.valueOf((long) value);
     }
 
-    @Specialization
-    protected boolean doBigInt(@SuppressWarnings("unused") BigInt a) {
-        return false;
+    @Specialization(guards = "isJSNull(value)")
+    protected static BigInt doNull(@SuppressWarnings("unused") Object value) {
+        return BigInt.ZERO;
     }
 
-    // long etc could come via Interop
-    @Specialization(guards = "isJavaNumber(a)")
-    protected boolean doJavaNumber(Object a) {
-        double doubleValue = JSRuntime.toDouble(a);
-        return doubleValue == integer;
-    }
-
-    @Fallback
-    protected boolean doOther(@SuppressWarnings("unused") Object other) {
-        return false;
-    }
-
-    public static IsIdenticalIntegerNode create(int integer, JavaScriptNode operand) {
-        return IsIdenticalIntegerNodeGen.create(operand, integer);
-    }
-
-    @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(integer, cloneUninitialized(getOperand()));
+    public static boolean isInteger(double d) {
+        if (Double.isInfinite(d) || Double.isNaN(d)) {
+            return false;
+        }
+        long l = (long) d;
+        if (l != d) {
+            return false;
+        }
+        return JSRuntime.MIN_SAFE_INTEGER <= l && l <= JSRuntime.MAX_SAFE_INTEGER;
     }
 }

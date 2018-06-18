@@ -56,6 +56,7 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNullNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.unary.JSIsNullOrUndefinedNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -112,6 +113,11 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
+    protected static boolean doBigInt(BigInt a, BigInt b) {
+        return a.compareTo(b) == 0;
+    }
+
+    @Specialization
     protected boolean doDoubleString(double a, String b) {
         return doDouble(a, stringToDouble(b));
     }
@@ -162,6 +168,27 @@ public abstract class JSEqualNode extends JSCompareNode {
         return doDoubleBoolean(stringToDouble(a), b);
     }
 
+    @Specialization
+    protected boolean doStringBigInt(String a, BigInt b) {
+        BigInt aBigInt = JSRuntime.stringToBigInt(a);
+        return (aBigInt != null) ? aBigInt.compareTo(b) == 0 : false;
+    }
+
+    @Specialization
+    protected boolean doBigIntString(BigInt a, String b) {
+        return doStringBigInt(b, a);
+    }
+
+    @Specialization
+    protected boolean doBooleanBigInt(boolean a, BigInt b) {
+        return doBigInt(a ? BigInt.ONE : BigInt.ZERO, b);
+    }
+
+    @Specialization
+    protected boolean doBigIntBoolean(BigInt a, boolean b) {
+        return doBooleanBigInt(b, a);
+    }
+
     @SuppressWarnings("unused")
     @Specialization(guards = {"isNullOrUndefined(a)", "isNullOrUndefined(b)"})
     protected static boolean doBothNullOrUndefined(Object a, Object b) {
@@ -192,6 +219,29 @@ public abstract class JSEqualNode extends JSCompareNode {
             return false;
         }
         return getEqualNode().executeBoolean(a, getToPrimitiveNode().execute(b));
+    }
+
+    @Specialization
+    protected boolean doBigIntAndInt(BigInt a, int b) {
+        return a.compareTo(BigInt.valueOf(b)) == 0;
+    }
+
+    @Specialization
+    protected boolean doBigIntAndNumber(BigInt a, double b) {
+        if (Double.isNaN(b)) {
+            return false;
+        }
+        return a.compareValueTo(b) == 0;
+    }
+
+    @Specialization
+    protected boolean doIntAndBigInt(int a, BigInt b) {
+        return b.compareTo(BigInt.valueOf(a)) == 0;
+    }
+
+    @Specialization
+    protected boolean doNumberAndBigInt(double a, BigInt b) {
+        return doBigIntAndNumber(b, a);
     }
 
     // null-or-undefined check on one element suffices

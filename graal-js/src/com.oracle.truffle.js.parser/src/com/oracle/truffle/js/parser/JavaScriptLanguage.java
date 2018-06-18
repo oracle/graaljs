@@ -107,6 +107,7 @@ import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.foreign.InteropBoundFunctionForeign;
 import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -309,6 +310,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             return value.toString();
         } else if (value instanceof JSLazyString) {
             return value.toString();
+        } else if (value instanceof BigInt) {
+            return value.toString() + "n";
         } else if (value instanceof TruffleObject) {
             TruffleObject truffleObject = (TruffleObject) value;
             Env env = realm.getEnv();

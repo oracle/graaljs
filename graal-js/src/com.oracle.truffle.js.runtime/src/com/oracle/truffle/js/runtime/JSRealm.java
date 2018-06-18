@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
@@ -174,6 +175,8 @@ public class JSRealm implements ShapeContext {
     private final DynamicObjectFactory booleanFactory;
     private final JSConstructor numberConstructor;
     private final DynamicObjectFactory numberFactory;
+    private final JSConstructor bigIntConstructor;
+    private final DynamicObjectFactory bigIntFactory;
     private final JSConstructor stringConstructor;
     private final DynamicObjectFactory stringFactory;
     private final JSConstructor regExpConstructor;
@@ -359,6 +362,8 @@ public class JSRealm implements ShapeContext {
         this.booleanFactory = JSBoolean.makeInitialShape(context, booleanConstructor.getPrototype()).createFactory();
         this.numberConstructor = JSNumber.createConstructor(this);
         this.numberFactory = JSNumber.makeInitialShape(context, numberConstructor.getPrototype()).createFactory();
+        this.bigIntConstructor = JSBigInt.createConstructor(this);
+        this.bigIntFactory = JSBigInt.makeInitialShape(context, bigIntConstructor.getPrototype()).createFactory();
         this.stringConstructor = JSString.createConstructor(this);
         this.stringFactory = JSString.makeInitialShape(context, stringConstructor.getPrototype()).createFactory();
         this.regExpConstructor = JSRegExp.createConstructor(this);
@@ -654,6 +659,10 @@ public class JSRealm implements ShapeContext {
 
     public final JSConstructor getNumberConstructor() {
         return numberConstructor;
+    }
+
+    public final JSConstructor getBigIntConstructor() {
+        return bigIntConstructor;
     }
 
     public final JSConstructor getStringConstructor() {
@@ -980,6 +989,7 @@ public class JSRealm implements ShapeContext {
         putGlobalProperty(global, JSString.CLASS_NAME, getStringConstructor().getFunctionObject());
         putGlobalProperty(global, JSDate.CLASS_NAME, getDateConstructor().getFunctionObject());
         putGlobalProperty(global, JSNumber.CLASS_NAME, getNumberConstructor().getFunctionObject());
+        putGlobalProperty(global, JSBigInt.CLASS_NAME, getBigIntConstructor().getFunctionObject());
         putGlobalProperty(global, JSBoolean.CLASS_NAME, getBooleanConstructor().getFunctionObject());
         putGlobalProperty(global, JSRegExp.CLASS_NAME, getRegExpConstructor().getFunctionObject());
         putGlobalProperty(global, JSMath.CLASS_NAME, mathObject);
@@ -1284,6 +1294,11 @@ public class JSRealm implements ShapeContext {
     @Override
     public final DynamicObjectFactory getNumberFactory() {
         return numberFactory;
+    }
+
+    @Override
+    public final DynamicObjectFactory getBigIntFactory() {
+        return bigIntFactory;
     }
 
     @Override

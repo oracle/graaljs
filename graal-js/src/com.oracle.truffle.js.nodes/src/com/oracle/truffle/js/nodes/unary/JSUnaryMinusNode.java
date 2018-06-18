@@ -47,9 +47,10 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 @NodeInfo(shortName = "-")
@@ -106,10 +107,15 @@ public abstract class JSUnaryMinusNode extends JSUnaryNode {
     }
 
     @Specialization
+    protected static BigInt doBigInt(BigInt a) {
+        return a.negate();
+    }
+
+    @Specialization
     protected static Object doGeneric(Object a,
-                    @Cached("create()") JSToNumberNode toNumberNode,
+                    @Cached("create()") JSToNumericNode toNumericNode,
                     @Cached("create()") JSUnaryMinusNode recursiveUnaryMinus) {
-        Object value = toNumberNode.execute(a);
+        Object value = toNumericNode.execute(a);
         return recursiveUnaryMinus.execute(value);
     }
 

@@ -48,6 +48,7 @@ import javax.script.Bindings;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -56,6 +57,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -130,7 +132,7 @@ public final class JSGuards {
     }
 
     public static boolean isForeignObject(TruffleObject value) {
-        return !JSObject.isJSObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof LargeInteger);
+        return !JSObject.isJSObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof LargeInteger) && !(value instanceof BigInt);
     }
 
     public static boolean isUndefined(Object value) {
@@ -183,6 +185,14 @@ public final class JSGuards {
 
     public static boolean isJSNumber(Object value) {
         return JSNumber.isJSNumber(value);
+    }
+
+    public static boolean isJSBigInt(DynamicObject value) {
+        return JSBigInt.isJSBigInt(value);
+    }
+
+    public static boolean isJSBigInt(Object value) {
+        return JSBigInt.isJSBigInt(value);
     }
 
     public static boolean isJSBoolean(DynamicObject value) {
@@ -427,6 +437,18 @@ public final class JSGuards {
 
     public static boolean isJavaArray(Object value) {
         return value != null && value.getClass().isArray();
+    }
+
+    public static boolean isBigInt(Object target) {
+        return target instanceof BigInt;
+    }
+
+    public static boolean isBigIntZero(BigInt a) {
+        return BigInt.ZERO.equals(a);
+    }
+
+    public static boolean isBigIntNegativeVal(BigInt a) {
+        return a != null && a.signum() == -1;
     }
 
     public static boolean isDoubleInInt32Range(double value) {

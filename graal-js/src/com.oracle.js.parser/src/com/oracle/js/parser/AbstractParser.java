@@ -31,6 +31,8 @@ import static com.oracle.js.parser.TokenType.EOF;
 import static com.oracle.js.parser.TokenType.EOL;
 import static com.oracle.js.parser.TokenType.IDENT;
 
+import java.math.BigInteger;
+
 import java.util.function.Function;
 
 import com.oracle.js.parser.Lexer.LexerToken;
@@ -537,6 +539,8 @@ public abstract class AbstractParser {
 
         if (value == null) {
             node = LiteralNode.newInstance(literalToken, finish);
+        } else if (value instanceof BigInteger) {
+            node = LiteralNode.newInstance(literalToken, finish, (BigInteger) value);
         } else if (value instanceof Number) {
             node = LiteralNode.newInstance(literalToken, finish, (Number) value, getNumberToStringConverter());
         } else if (value instanceof String) {

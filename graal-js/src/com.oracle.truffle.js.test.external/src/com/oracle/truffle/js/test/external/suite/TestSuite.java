@@ -287,7 +287,8 @@ public abstract class TestSuite {
         }
         if (testFiles.isEmpty()) {
             System.err.println("Cannot find test files. Suite location: " + config.getSuiteTestsLoc() + "; ends-with filter: " + config.getEndsWithFilter() + "; contains filter: " +
-                            config.getContainsFilter());
+                            config.getContainsFilter() + "; regex filter: " +
+                            config.getRegexFilter());
         }
     }
 
@@ -311,8 +312,9 @@ public abstract class TestSuite {
             } else if (JS_FILE_PATTERN.matcher(file.getName()).matches() && isTestExecutable(file.getName())) {
                 Path relativePath = Paths.get(config.getSuiteTestsLoc()).relativize(file.toPath());
                 if ((config.getContainsFilter() == null || relativePath.toString().contains(config.getContainsFilter())) &&
+                                (config.getRegexFilter() == null || relativePath.toString().matches(config.getRegexFilter())) &&
                                 (config.getEndsWithFilter() == null || relativePath.endsWith(config.getEndsWithFilter()))) {
-                    if (config.getContainsFilter() != null) {
+                    if ((config.getContainsFilter() != null) || config.getRegexFilter() != null) {
                         log("adding test file: " + relativePath);
                     }
                     list.add(createTestFile(file));
@@ -980,6 +982,7 @@ public abstract class TestSuite {
             System.out.println(" resume                 run previously failed tests first");
             System.out.println(" regression             writes " + config.getSuiteName() + ".txt and " + config.getSuiteName() + ".html result files");
             System.out.println(" filter=X               executes only tests that have X in their filename");
+            System.out.println(" regex=X                executes only tests that have their filename matching given regex");
             System.out.println(" single=X               executes only tests that match filename X");
             System.out.println(" printscript            print sourcecode of all executed scripts (use in combination with \"filter\")");
             System.out.println(" verbose                print all tests");
@@ -1029,6 +1032,9 @@ public abstract class TestSuite {
         } else if (lowercaseArg.startsWith("filter=")) {
             String filter = arg.substring("filter=".length());
             config.setContainsFilter(filter);
+        } else if (lowercaseArg.startsWith("regex=")) {
+            String filter = arg.substring("regex=".length());
+            config.setRegexFilter(filter);
         } else if (lowercaseArg.startsWith("single=")) {
             String filter = arg.substring("single=".length());
             config.setEndsWithFilter(filter);

@@ -54,11 +54,13 @@ import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantDoubleNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNumericUnitNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantStringNode;
 import com.oracle.truffle.js.nodes.cast.JSDoubleToStringNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -96,6 +98,9 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
                 Object leftValue = ((JSConstantNode) left).execute(null);
                 return JSAddConstantLeftNumberNodeGen.create((Number) leftValue, right, truncate);
             }
+        }
+        if (right instanceof JSConstantNumericUnitNode) {
+            return JSAddSubNumericUnitNodeGen.create(left, true, truncate);
         }
         return JSAddNodeGen.create(truncate, left, right);
     }
@@ -172,6 +177,11 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
     }
 
     @Specialization
+    protected BigInt doBigInt(BigInt left, BigInt right) {
+        return left.add(right);
+    }
+
+    @Specialization
     protected CharSequence doString(CharSequence a, CharSequence b) {
         return getConcatStringsNode().executeCharSequence(a, b);
     }
@@ -197,12 +207,12 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
     }
 
     @Specialization(replaces = {"doInt", "doIntOverflow", "doIntTruncate", "doLargeInteger", "doIntLargeInteger", "doLargeIntegerInt", "doLargeIntegerTruncate", "doIntLargeIntegerTruncate",
-                    "doLargeIntegerIntTruncate", "doDouble", "doString", "doStringInt", "doIntString", "doStringNumber", "doNumberString"})
+                    "doLargeIntegerIntTruncate", "doDouble", "doBigInt", "doString", "doStringInt", "doIntString", "doStringNumber", "doNumberString"})
     protected Object doPrimitiveConversion(Object a, Object b,
                     @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveA,
                     @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveB,
-                    @Cached("create()") JSToNumberNode toNumberA,
-                    @Cached("create()") JSToNumberNode toNumberB,
+                    @Cached("create()") JSToNumericNode toNumericA,
+                    @Cached("create()") JSToNumericNode toNumericB,
                     @Cached("create()") JSToStringNode toStringA,
                     @Cached("create()") JSToStringNode toStringB,
                     @Cached("createBinaryProfile()") ConditionProfile profileA,
@@ -221,8 +231,9 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
             castA = toStringA.executeString(primitiveA);
             castB = primitiveB;
         } else {
-            castA = toNumberA.execute(primitiveA);
-            castB = toNumberB.execute(primitiveB);
+            castA = toNumericA.execute(primitiveA);
+            castB = toNumericB.execute(primitiveB);
+            JSRuntime.ensureBothSameNumericType(castA, castB);
         }
         return add.execute(castA, castB);
     }

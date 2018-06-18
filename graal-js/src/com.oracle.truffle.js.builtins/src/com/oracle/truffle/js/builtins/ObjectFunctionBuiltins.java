@@ -82,6 +82,7 @@ import com.oracle.truffle.js.nodes.access.ToPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -571,6 +572,11 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected DynamicObject keys(LargeInteger largeInteger) {
             return keysDynamicObject(toOrAsObject(largeInteger));
+        }
+
+        @Specialization
+        protected DynamicObject keys(BigInt bigInt) {
+            return keysDynamicObject(toOrAsObject(bigInt));
         }
 
         @Specialization(guards = "!isTruffleObject(thisObj)")

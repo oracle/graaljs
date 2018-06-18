@@ -48,8 +48,12 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 @NodeInfo(shortName = "<<")
@@ -77,7 +81,7 @@ public abstract class JSLeftShiftNode extends JSBinaryIntegerShiftNode {
         }
     }
 
-    public abstract int executeInt(int a, Object b);
+    public abstract Object executeObject(Object a, Object b);
 
     @Specialization
     protected int doInteger(int a, int b) {
@@ -89,21 +93,46 @@ public abstract class JSLeftShiftNode extends JSBinaryIntegerShiftNode {
         return a << (int) ((long) b);
     }
 
-    @Specialization(replaces = {"doInteger", "doIntegerDouble"})
-    protected int doGeneric(Object a, Object b,
+    @Specialization
+    protected Object doDouble(double a, double b,
                     @Cached("create()") JSLeftShiftNode leftShift,
                     @Cached("create()") JSToInt32Node leftInt32,
                     @Cached("create()") JSToUInt32Node rightUInt32) {
-        return leftShift.executeInt(leftInt32.executeInt(a), rightUInt32.execute(b));
+
+        return leftShift.executeObject(leftInt32.executeInt(a), rightUInt32.execute(b));
+    }
+
+    @Specialization
+    protected BigInt doBigInt(BigInt a, BigInt b) {
+        if (b.compareTo(BigInt.MAX_INT) < 0) {
+            if (b.compareTo(BigInt.MIN_INT) > 0) {
+                try {
+                    return a.shiftLeft(b.intValue());
+                } catch (ArithmeticException ae) {
+                    throw Errors.createRangeErrorBigIntMaxSizeExceeded();
+                }
+            } else {
+                return a.signum() < 0 ? BigInt.NEGATIVE_ONE : BigInt.ZERO;
+            }
+        } else {
+            throw Errors.createRangeErrorBigIntMaxSizeExceeded();
+        }
+    }
+
+    @Specialization(replaces = {"doInteger", "doIntegerDouble", "doDouble", "doBigInt"})
+    protected Object doGeneric(Object a, Object b,
+                    @Cached("create()") JSLeftShiftNode leftShift,
+                    @Cached("create()") JSToNumericNode leftToNumeric,
+                    @Cached("create()") JSToNumericNode rightToNumeric) {
+        Object operandA = leftToNumeric.execute(a);
+        Object operandB = rightToNumeric.execute(b);
+        JSRuntime.ensureBothSameNumericType(operandA, operandB);
+
+        return leftShift.executeObject(operandA, operandB);
     }
 
     public static JSLeftShiftNode create() {
         return JSLeftShiftNodeGen.create(null, null);
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == int.class;
     }
 
     @Override

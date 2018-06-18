@@ -48,30 +48,39 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
 @NodeInfo(shortName = "^")
 public abstract class JSBitwiseXorConstantNode extends JSUnaryNode {
 
-    protected final int rightValue;
+    protected final boolean isInt;
+    protected final int rightIntValue;
+    protected final BigInt rightBigIntValue;
 
-    protected JSBitwiseXorConstantNode(JavaScriptNode left, int rightValue) {
+    protected JSBitwiseXorConstantNode(JavaScriptNode left, Object rightValue) {
         super(left);
-        this.rightValue = rightValue;
+        if (rightValue instanceof BigInt) {
+            this.isInt = false;
+            this.rightIntValue = 0;
+            this.rightBigIntValue = (BigInt) rightValue;
+        } else {
+            this.isInt = true;
+            this.rightIntValue = (int) rightValue;
+            this.rightBigIntValue = null;
+        }
     }
 
-    public static JavaScriptNode create(JavaScriptNode left, int rightValue) {
+    public static JavaScriptNode create(JavaScriptNode left, Object rightValue) {
         return JSBitwiseXorConstantNodeGen.create(left, rightValue);
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == int.class;
     }
 
     @Override
@@ -87,7 +96,7 @@ public abstract class JSBitwiseXorConstantNode extends JSUnaryNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(BinaryExpressionTag.class)) {
             // need to call the generated factory directly to avoid constant optimizations
-            JSConstantNode constantNode = JSConstantIntegerNode.create(rightValue);
+            JSConstantNode constantNode = JSConstantNode.create(isInt ? rightIntValue : rightBigIntValue);
             JavaScriptNode node = JSBitwiseXorNodeGen.create(getOperand(), constantNode);
             transferSourceSectionNoTags(this, constantNode);
             transferSourceSection(this, node);
@@ -97,28 +106,72 @@ public abstract class JSBitwiseXorConstantNode extends JSUnaryNode {
         }
     }
 
-    public abstract int executeInt(Object a);
+    public abstract Object executeObject(Object a);
 
-    @Specialization
+    @Specialization(guards = "isInt")
     protected int doInteger(int a) {
-        return a ^ rightValue;
+        return a ^ rightIntValue;
     }
 
-    @Specialization(replaces = "doInteger")
-    protected int doGeneric(Object a,
-                    @Cached("create()") JSToInt32Node leftInt32) {
+    @Specialization(guards = "isInt")
+    protected int doDouble(double a, @Cached("create()") JSToInt32Node leftInt32) {
         return doInteger(leftInt32.executeInt(a));
+    }
+
+    @Specialization(guards = "!isInt")
+    protected void doIntegerThrows(@SuppressWarnings("unused") int a) {
+        throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+    }
+
+    @Specialization(guards = "!isInt")
+    protected void doDoubleThrows(@SuppressWarnings("unused") double a) {
+        throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+    }
+
+    @Specialization(guards = "isInt")
+    protected void doBigIntThrows(@SuppressWarnings("unused") BigInt a) {
+        throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+    }
+
+    @Specialization(guards = "!isInt")
+    protected BigInt doBigInt(BigInt a) {
+        return a.xor(rightBigIntValue);
+    }
+
+    @Specialization(replaces = {"doInteger", "doDouble", "doBigIntThrows"}, guards = "isInt")
+    protected Object doGeneric(Object a,
+                    @Cached("create()") JSToNumericNode toNumeric,
+                    @Cached("createBinaryProfile()") ConditionProfile profileIsBigInt,
+                    @Cached("copyUninitialized()") JavaScriptNode innerXorNode) {
+        Object numericA = toNumeric.execute(a);
+        if (profileIsBigInt.profile(JSRuntime.isBigInt(numericA))) {
+            throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+        } else {
+            return ((JSBitwiseXorConstantNode) innerXorNode).executeObject(numericA);
+        }
+    }
+
+    @Specialization(replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"}, guards = "!isInt")
+    protected BigInt doGenericBigIntCase(Object a,
+                    @Cached("create()") JSToNumericNode toNumeric,
+                    @Cached("createBinaryProfile()") ConditionProfile profileIsBigInt) {
+        Object numericA = toNumeric.execute(a);
+        if (profileIsBigInt.profile(JSRuntime.isBigInt(numericA))) {
+            return doBigInt((BigInt) numericA);
+        } else {
+            throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+        }
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSBitwiseXorConstantNodeGen.create(cloneUninitialized(getOperand()), rightValue);
+        return JSBitwiseXorConstantNodeGen.create(cloneUninitialized(getOperand()), isInt ? rightIntValue : rightBigIntValue);
     }
 
     @Override
     public String expressionToString() {
         if (getOperand() != null) {
-            return "(" + Objects.toString(getOperand().expressionToString(), INTERMEDIATE_VALUE) + " ^ " + rightValue + ")";
+            return "(" + Objects.toString(getOperand().expressionToString(), INTERMEDIATE_VALUE) + " ^ " + (isInt ? rightIntValue : rightBigIntValue) + ")";
         }
         return null;
     }

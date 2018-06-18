@@ -38,56 +38,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.unary;
+package com.oracle.truffle.js.runtime;
 
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.api.interop.MessageResolution;
 
-public abstract class IsIdenticalIntegerNode extends JSUnaryNode {
-
-    private final int integer;
-
-    protected IsIdenticalIntegerNode(JavaScriptNode operand, int integer) {
-        super(operand);
-        this.integer = integer;
-    }
-
-    @Specialization
-    protected boolean doInt(int a) {
-        return a == integer;
-    }
-
-    @Specialization
-    protected boolean doDouble(double a) {
-        return a == integer;
-    }
-
-    @Specialization
-    protected boolean doBigInt(@SuppressWarnings("unused") BigInt a) {
-        return false;
-    }
-
-    // long etc could come via Interop
-    @Specialization(guards = "isJavaNumber(a)")
-    protected boolean doJavaNumber(Object a) {
-        double doubleValue = JSRuntime.toDouble(a);
-        return doubleValue == integer;
-    }
-
-    @Fallback
-    protected boolean doOther(@SuppressWarnings("unused") Object other) {
-        return false;
-    }
-
-    public static IsIdenticalIntegerNode create(int integer, JavaScriptNode operand) {
-        return IsIdenticalIntegerNodeGen.create(operand, integer);
-    }
-
-    @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(integer, cloneUninitialized(getOperand()));
-    }
+@MessageResolution(receiverType = BigInt.class)
+public class BigIntMessageResolution {
 }
