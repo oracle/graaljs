@@ -55,6 +55,7 @@ import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -205,7 +206,11 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         if (JSRuntime.isObject(value)) {
             DynamicObject valueObj = (DynamicObject) value;
             value = jsonStrPrepareObject(JSRuntime.toPropertyKey(key), value, valueObj);
+        } else if (JSRuntime.isBigInt(value)) {
+            DynamicObject valueObj = JSBigInt.create(this.context, (BigInt) value);
+            value = jsonStrPrepareObject(JSRuntime.toPropertyKey(key), value, valueObj);
         }
+
         if (data.getReplacerFnObj() != null) {
             value = JSRuntime.call(data.getReplacerFnObj(), holder, new Object[]{JSRuntime.toPropertyKey(key), value});
         }

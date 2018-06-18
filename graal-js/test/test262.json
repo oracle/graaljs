@@ -398,14 +398,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "built-ins/JSON/stringify/bigint-order.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/JSON/stringify/bigint-tojson.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
     "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
     "status" : "SKIP",
     "comment" : "Unimplemented RegExp proposal (GR-6965)."
