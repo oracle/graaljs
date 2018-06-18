@@ -2,7 +2,7 @@
 
 The RegExp objects defined by the ECMAScript specification allow a developer to use regular expressions to search for patterns within strings.
 In order to implement the methods of these objects, Graal.js needs an efficient way to execute the semantics of regular expressions, i.e. a fast way to match regular expressions against strings.
-In its current form, Graal.js employs two such regular expression engines: TRegex, a new in-house engine, and [JOni](https://github.com/jruby/joni), an adopted port of an existing engine.
+In its current form, Graal.js employs two such regular expression engines: [TRegex](https://github.com/oracle/graal/tree/master/regex), a new in-house engine, and [JOni](https://github.com/jruby/joni), an adopted port of an existing engine.
 
 The two engines both adopt different strategies when it comes to implementing regular expressions.
 TRegex translates a regular expression into a finite state automaton, which can determine whether a match is found on a single pass over the input string: whenever several alternative ways to match the remaining input are admissible, TRegex considers all of them simultaneously.
@@ -26,7 +26,7 @@ Therefore, Graal.js adopts the following strategy when compiling a regular expre
      If JOni is unable to handle the expression for any of the reasons below, proceed to 3).
 
       a) If the regular expression uses a feature which is not supported by JOni, compilation by JOni is abandoned.
-         Since the port of JOni used in Graal.js is older than TRegex, it lacks support for ECMAScript RegExp features newer than ECMAScript 5.
+         Since the port of JOni used in Graal.js is older than TRegex, it lacks support for some ECMAScript RegExp features newer than ECMAScript 5.
 
   3) The regular expression is not supported by Graal.js.
      If you run into this scenario, please [file an issue](https://github.com/graalvm/graaljs/issues/new)! :-)
