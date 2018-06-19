@@ -47,9 +47,6 @@
     "filePath" : "basic/es6/let-eval.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "basic/es6/let-load.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "basic/es6/let-redeclare-extra.js",
     "status" : "FAIL"
   }, {
@@ -57,9 +54,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "basic/es6/let_const_reuse.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "basic/es6/lexical-toplevel-redeclare.js",
     "status" : "FAIL"
   }, {
     "filePath" : "basic/es6/map.js",
