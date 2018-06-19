@@ -1,12 +1,11 @@
 # Graal JavaScript language compatibility
 
 Graal JavaScript is a JavaScript (ECMAScript) language execution runtime.
-This documents explains the public API it provides to user applications written in JavaScript.
+This document explains the public API it provides to user applications written in JavaScript.
 
 * [ECMAScript language compliance](#ecmascript-language-compliance)
 * [Compatibility extensions](#compatibility-extensions)
 * [Graal JavaScript extensions](#graal-javascript-extensions)
-* [Nashorn extensions](#nashorn-extensions)
 
 ## ECMAScript language compliance
 
@@ -18,7 +17,7 @@ For informations on the flags, see the *--help* message of the executable.
 Graal JavaScript provides the following function objects in the global scope as specified by ECMAScript, representing the JavaScript core library:
 Array, ArrayBuffer, Boolean, DataView, Date, Error, Function, JSON, Map, Math, Number, Object, Promise, Proxy, Reflect, RegExp, Set, String, Symbol, TypedArray, WeakMap, WeakSet
 
-Some additional objects are available under flags:
+Some additional objects are available under flags (run `js --help` for the list of available flags):
 Atomics, Intl, SharedArrayBuffer, SIMD
 
 Several of these function objects and some of their members are only available when a certain version of the spec is selected for execution.
@@ -45,17 +44,17 @@ Functionality of a few other built-ins is then also updated according to the spe
 
 Graal JavaScript strives to support all regular expression features of ECMAScript.
 It employs two regular expression engines:
-* TRegex, an advanced tree-based automata with high peak performance.
-* [JOni](https://github.com/jruby/joni), an adopted port of Nashorn's regular expression engine (a bytecode compiler).
+* [TRegex](https://github.com/oracle/graal/tree/master/regex), an advanced engine producing tree-based automata with high peak performance.
+* [Joni](https://github.com/jruby/joni), an adopted port of Nashorn's regular expression engine (a bytecode compiler).
 
 While both engines support most regular expressions, they lack support for some of the advaced features of the newest ECMAScript specifications.
-TRegex is the default engine, and JOni will be used in case a feature is not supported in TRegex.
+TRegex is the default engine, and Joni will be used in case a feature is not supported in TRegex.
 In the rare case several features are mixed in one regular expression so no single engine can execute the expression, Graal JavaScript has to throw a JavaString Error.
 We are working on improving both engines to limit the number of unsupported regular expressions.
 
 The current status of feature support in both engines is listed below (features not listed are supported by both engines):
 
-Feature                                                                                      | TRegex | JOni
+Feature                                                                                      | TRegex | Joni
 -------------------------------------------------------------------------------------------- | ------ | ----
 Backreferences                                                                               | ❌     | ✓
 Negative lookaround<sup>[1](#fn1)</sup>                                                      | ❌     | ✓
@@ -66,26 +65,39 @@ Unicode mode (`'u'` flag)                                                       
 <sub>
 <a name="fn1">1</a>: Positive lookaround is supported in both engines.
 <br/>
-<a name="fn2">2</a>: TRegex and JOni only support a subset of the lookbehind assertions that can match at most a bounded number of characters.
+<a name="fn2">2</a>: TRegex and Joni only support a subset of the lookbehind assertions that can match at most a bounded number of characters.
 </sub>
 
 <br/>
 <br/>
 
 We are currently working on implementing negative lookahead and more support for lookbehind in TRegex. On the other hand, full support of backreferences is out of scope for a finite state automaton engine like TRegex.
-Graal.js uses [Nashorn](http://openjdk.java.net/projects/nashorn/)'s port of the JOni engine, which is based on ECMAScript 5 and misses support for most features of ECMAScript 6 and beyond.
+Graal JavaScript uses [Nashorn](http://openjdk.java.net/projects/nashorn/)'s port of the Joni engine, which is based on ECMAScript 5 and misses support for most features of ECMAScript 6 and beyond.
 For more details on the implementation of the engines, see [RegExpImplementation.md](../contributor/RegExpImplementation.md).
 
 ## Compatibility extensions
 
-The following objects and methods are available in Graal JavaScript for compatibility with other JavaScript execution engines such as Rhino.
+The following objects and methods are available in Graal JavaScript for compatibility with other JavaScript execution engines.
 Note that the behaviour of such methods might not strictly match the semantics of those methods in all existing engines.
+
+### Language features
+
+#### Conditional catch clauses
+Graal JavaScript supports conditional catch clauses:
+
+  try {
+    myMethod(); // can throw
+  } catch (e if e instanceof TypeError) {
+    print("TypeError caught");
+  } catch (e) {
+    print("another Error caught");
+  }
 
 ### Global methods
 
 #### `exit(status)` or `quit(status)`
 
-Exists the engine and returns the specified status code.
+Exits the engine and returns the specified status code.
 
 #### `load(source, args)`
 
@@ -147,13 +159,13 @@ In recent ECMAScript versions, getters and setters are natively supported by the
 
 #### `Object.prototype.__lookupGetter__(prop)`
 
-Reads the `prop` property of `this`, that is expected to be a getter function.
+Returns the getter function for property `prop` of the object as set by `__defineGetter__`.
 This functionality is deprecated in most JavaScript engines.
 In recent ECMAScript versions, getters and setters are natively supported by the language.
 
 #### `Object.prototype.__lookupSetter__(prop)`
 
-Reads the `prop` property of `this`, that is expected to be a setter function.
+Returns the setter function for property `prop` of the object as set by `__defineSetter__`.
 This functionality is deprecated in most JavaScript engines.
 In recent ECMAScript versions, getters and setters are natively supported by the language.
 
@@ -185,7 +197,7 @@ Provides the version of the GraalVM, if the current engine is executed on a Graa
 
 Provides whether Graal JavaScript is executed on a Graal-enabled runtime.
 If `true`, hot code is compiled by the Graal compiler, resulting in high peak performance.
-If `false`, Graal JavaScript will not be compiled by the Graal compiler, typically resulting in lower performance.
+If `false`, Graal JavaScript will not be optimized by the Graal compiler, typically resulting in lower performance.
 
 ### Java
 
@@ -283,38 +295,6 @@ requires starting the engine with the `debug` flag.
 
 `Debug` is a Graal JavaScript specific function object that provides functionality for debugging JavaScript code and the Graal JavaScript compiler.
 This API might change without notice, do not use for production purposes!
-
-## Nashorn extensions
-
-These function objects and functions are available to provide a compatibility layer with OpenJDK's Nashorn JavaScript engine.
-A flag needs to be provided on startup for those to be available, see *--help*.
-
-### Java
-
-In Nashorn compatibility mode, additional methods are available on the `Java` object: 
-
-- extend
-- super
-- isJavaMethod
-- isJavaFunction
-- isScriptFunction
-- isScriptObject
-- synchronized
-- asJSONCompatible
-
-See reference and examples at [Nashorn extensions](https://wiki.openjdk.java.net/display/Nashorn/Nashorn+extensions).
-
-### JavaImporter
-
-`JavaImporter` can be used to import packages explicitly, without polluting the global scope.
-See reference at [Nashorn extensions](https://wiki.openjdk.java.net/display/Nashorn/Nashorn+extensions). 
-
-### JSAdapter
-
-`JSAdapter` is Nashorn's variant of a Proxy object.
-See reference at [Nashorn extensions](https://wiki.openjdk.java.net/display/Nashorn/Nashorn+extensions).
-
-As Graal JavaScript supports ECMAScript's *Proxy* type, it is strongly suggested to use *Proxy* in user applications instead of JSAdapter.
 
 ### Global functions
 
