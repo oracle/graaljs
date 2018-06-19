@@ -78,7 +78,6 @@ import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -106,6 +105,7 @@ import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.foreign.InteropBoundFunctionForeign;
 import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign;
+import com.oracle.truffle.js.parser.foreign.JSMetaObject;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Evaluator;
@@ -123,10 +123,8 @@ import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
@@ -161,7 +159,6 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 @TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, mimeType = {
                 JavaScriptLanguage.APPLICATION_MIME_TYPE, JavaScriptLanguage.TEXT_MIME_TYPE})
 public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
-    private static final HiddenKey META_OBJECT_KEY = new HiddenKey("meta object");
     private static final int MAX_TOSTRING_DEPTH = 10;
 
     private final Map<JSContextOptions, Queue<JSContext>> contextPools = new ConcurrentHashMap<>();
@@ -176,7 +173,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     public boolean isObjectOfLanguage(Object o) {
-        return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof JSLazyString || o instanceof InteropBoundFunction;
+        return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof JSLazyString || o instanceof InteropBoundFunction || o instanceof JSMetaObject;
     }
 
     @TruffleBoundary
@@ -297,22 +294,19 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
         if (value == null) {
             return "null";
-        } else if (JSObject.isJSObject(value)) {
-            DynamicObject object = (DynamicObject) value;
-            if (object.containsKey(META_OBJECT_KEY)) {
-                Object type = JSObject.get(object, "className");
-                if (type == Undefined.instance) {
-                    type = JSObject.get(object, "type");
-                }
-                return type.toString();
+        } else if (value instanceof JSMetaObject) {
+            String type = ((JSMetaObject) value).getClassName();
+            if (type == null) {
+                type = ((JSMetaObject) value).getType();
             }
+            return type;
         } else if (value instanceof Symbol) {
             return value.toString();
         } else if (value instanceof JSLazyString) {
             return value.toString();
         } else if (value instanceof BigInt) {
             return value.toString() + "n";
-        } else if (value instanceof TruffleObject) {
+        } else if (value instanceof TruffleObject && !JSObject.isJSObject(value)) {
             TruffleObject truffleObject = (TruffleObject) value;
             Env env = realm.getEnv();
             try {
@@ -517,9 +511,10 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         String subtype = null;
         String className = null;
         String description;
-        JSContext context = realm.getContext();
 
-        if (JSObject.isJSObject(value)) {
+        if (value instanceof JSMetaObject) {
+            return "metaobject";
+        } else if (JSObject.isJSObject(value)) {
             DynamicObject obj = (DynamicObject) value;
             type = "object";
             description = JSObject.safeToString(obj);
@@ -575,21 +570,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             }
         }
 
-        // avoid allocation profiling
-        DynamicObject metaObject = realm.getInitialUserObjectShape().newInstance();
-        int attrs = JSAttributes.getDefault();
-        JSObjectUtil.putDataProperty(context, metaObject, "type", type, attrs);
-        if (subtype != null) {
-            JSObjectUtil.putDataProperty(context, metaObject, "subtype", subtype, attrs);
-        }
-        if (className != null) {
-            JSObjectUtil.putDataProperty(context, metaObject, "className", className, attrs);
-        }
-        if (description != null) {
-            JSObjectUtil.putDataProperty(context, metaObject, "description", description, attrs);
-        }
-        metaObject.define(META_OBJECT_KEY, true);
-        return metaObject;
+        return new JSMetaObject(type, subtype, className, description, realm.getEnv());
     }
 
     @Override
