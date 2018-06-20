@@ -68,14 +68,17 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
     public static final boolean RegisterAsNashornScriptEngineFactory = Boolean.getBoolean("graaljs.RegisterGraalJSAsNashorn");
 
     static {
-        ScriptEngineFactory nashornFactory = getNashornEngineFactory();
-        if (nashornFactory != null) {
-            if (RegisterAsNashornScriptEngineFactory) {
-                names.addAll(nashornFactory.getNames());
-                mimeTypes.addAll(nashornFactory.getMimeTypes());
-                extensions.addAll(nashornFactory.getExtensions());
+        boolean java8 = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+        if (java8) {
+            ScriptEngineFactory nashornFactory = getNashornEngineFactory();
+            if (nashornFactory != null) {
+                if (RegisterAsNashornScriptEngineFactory) {
+                    names.addAll(nashornFactory.getNames());
+                    mimeTypes.addAll(nashornFactory.getMimeTypes());
+                    extensions.addAll(nashornFactory.getExtensions());
+                }
+                clearEngineFactory(nashornFactory);
             }
-            clearEngineFactory(nashornFactory);
         }
     }
 
