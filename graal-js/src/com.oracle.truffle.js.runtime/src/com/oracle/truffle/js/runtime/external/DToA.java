@@ -70,7 +70,6 @@ import java.math.*;
 import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 
 //@formatter:off
-//Checkstyle: stop
 public class DToA {
 
     private static char basedigit(int digit) {
@@ -651,7 +650,6 @@ public class DToA {
         }
         leftright = true;
         ilim = ilim1 = 0;
-        // Checkstyle: stop
         switch (mode) {
             case 0:
             case 1:
@@ -661,7 +659,7 @@ public class DToA {
                 break;
             case 2:
                 leftright = false;
-                /* no break */
+                /* fall through */
             case 4:
                 if (ndigits <= 0) {
                     ndigits = 1;
@@ -670,7 +668,7 @@ public class DToA {
                 break;
             case 3:
                 leftright = false;
-                /* no break */
+                /* fall through */
             case 5:
                 i = ndigits + k + 1;
                 ilim = i;
@@ -679,7 +677,6 @@ public class DToA {
                     i = 1;
                 }
         }
-        // Checkstyle: resume
         /* ilim is the maximum number of significant digits we want, based on k and ndigits. */
         /*
          * ilim1 is the maximum number of significant digits we want, based on k and ndigits, when
@@ -1201,7 +1198,6 @@ public class DToA {
                                  */
             int p;
 
-            // Checkstyle: stop
             switch (mode) {
                 case DTOSTR_STANDARD:
                     if (decPt < -5 || decPt > 21) {
@@ -1222,7 +1218,7 @@ public class DToA {
                 case DTOSTR_EXPONENTIAL:
                     // JS_ASSERT(precision > 0);
                     minNDigits = precision;
-                    /* Fall through */
+                    /* fall through */
                 case DTOSTR_STANDARD_EXPONENTIAL:
                     exponentialNotation = true;
                     break;
@@ -1235,7 +1231,6 @@ public class DToA {
                     }
                     break;
             }
-            // Checkstyle: resume
 
             /* If the number has fewer than minNDigits, pad it with zeros at the end */
             if (nDigits < minNDigits) {

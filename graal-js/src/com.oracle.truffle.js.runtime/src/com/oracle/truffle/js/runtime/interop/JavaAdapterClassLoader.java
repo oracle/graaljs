@@ -131,7 +131,7 @@ public final class JavaAdapterClassLoader {
 
             private void printCode(byte[] bytecode) {
                 final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                try (final PrintWriter pw = new PrintWriter(baos)) {
+                try (PrintWriter pw = new PrintWriter(baos)) {
                     new ClassReader(bytecode).accept(new TraceClassVisitor(pw), 0);
                 }
                 System.out.println(new String(baos.toByteArray()));

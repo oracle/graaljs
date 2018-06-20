@@ -53,7 +53,6 @@ import java.util.Locale;
 import com.oracle.truffle.js.runtime.JSRealm;
 
 // @formatter:off
-// Checkstyle: stop
 /**
  * JavaScript date parser. This class first tries to parse a date string
  * according to the extended ISO 8601 format specified in ES5 15.9.1.15.
@@ -66,21 +65,21 @@ import com.oracle.truffle.js.runtime.JSRealm;
 public class DateParser {
 
     /** Constant for index position of parsed year value. */
-    public final static int YEAR        = 0;
+    public static final int YEAR        = 0;
     /** Constant for index position of parsed month value. */
-    public final static int MONTH       = 1;
+    public static final int MONTH       = 1;
     /** Constant for index position of parsed day value. */
-    public final static int DAY         = 2;
+    public static final int DAY         = 2;
     /** Constant for index position of parsed hour value. */
-    public final static int HOUR        = 3;
+    public static final int HOUR        = 3;
     /** Constant for index position of parsed minute value. */
-    public final static int MINUTE      = 4;
+    public static final int MINUTE      = 4;
     /** Constant for index position of parsed second value. */
-    public final static int SECOND      = 5;
+    public static final int SECOND      = 5;
     /** Constant for index position of parsed millisecond value. */
-    public final static int MILLISECOND = 6;
+    public static final int MILLISECOND = 6;
     /** Constant for index position of parsed time zone offset value. */
-    public final static int TIMEZONE    = 7;
+    public static final int TIMEZONE    = 7;
 
     private enum Token {
         UNKNOWN, NUMBER, SEPARATOR, PARENTHESIS, NAME, SIGN, END
@@ -99,7 +98,7 @@ public class DateParser {
     private boolean namedMonth = false;
     private final JSRealm realm;
 
-    private final static HashMap<String,Name> names = new HashMap<>();
+    private static final HashMap<String, Name> names = new HashMap<>();
 
     static {
         addName("monday", Name.DAY_OF_WEEK, 0);
@@ -423,7 +422,7 @@ public class DateParser {
                     return Token.UNKNOWN; // number longer than 9 digits
                 }
                 return Token.NUMBER;
-            case SPACE_SEPARATOR :
+            case SPACE_SEPARATOR:
             case OTHER_PUNCTUATION:
                 tokenLength = 1;
                 pos++;
@@ -748,11 +747,11 @@ public class DateParser {
         final int value;
         final int type;
 
-        final static int DAY_OF_WEEK    = -1;
-        final static int MONTH_NAME     = 0;
-        final static int AM_PM          = 1;
-        final static int TIMEZONE_ID    = 2;
-        final static int TIME_SEPARATOR = 3;
+        static final int DAY_OF_WEEK    = -1;
+        static final int MONTH_NAME     = 0;
+        static final int AM_PM          = 1;
+        static final int TIMEZONE_ID    = 2;
+        static final int TIME_SEPARATOR = 3;
 
         Name(final String name, final int type, final int value) {
             assert name != null;

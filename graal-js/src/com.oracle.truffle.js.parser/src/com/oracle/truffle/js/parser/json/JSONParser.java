@@ -64,7 +64,6 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 // @formatter:off
-// Checkstyle: stop
 /**
  * Parses JSON text and returns the corresponding IR node. This is derived from
  * the objectLiteral production of the main parser.
@@ -73,8 +72,8 @@ import com.oracle.truffle.js.runtime.objects.Null;
  */
 public class JSONParser {
 
-    final private String source;
-    final private JSContext context;
+    private final String source;
+    private final JSContext context;
     final int length;
     int pos = 0;
 
@@ -118,11 +117,11 @@ public class JSONParser {
                     product.append("\\b");
                 } else if (ch == '\f') {
                     product.append("\\f");
-                } else if (ch == '\n'){
+                } else if (ch == '\n') {
                     product.append("\\n");
-                } else if (ch == '\r'){
+                } else if (ch == '\r') {
                     product.append("\\r");
-                } else if (ch == '\t'){
+                } else if (ch == '\t') {
                     product.append("\\t");
                 } else {
                     product.append(Lexer.unicodeEscape(ch));

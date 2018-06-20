@@ -72,7 +72,7 @@ public interface Evaluator {
 
     Integer[] parseDate(JSRealm realm, String date);
 
-    String parseToJSON(JSContext context, final String code, final String name, final boolean includeLoc);
+    String parseToJSON(JSContext context, String code, String name, boolean includeLoc);
 
     /**
      * Returns the NodeFactory used by this parser instance to create AST nodes.

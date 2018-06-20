@@ -106,13 +106,13 @@ public class HeapDumpAnalyzer {
         List<File> dumps = new LinkedList<>();
 
         // Checkstyle: stop
-        // - ignore all through
         // - control variable 'i' is modified
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
                 case "-h":
                 case "--help":
                     printUsageAndExit(0);
+                    break;
                 case "-c":
                 case "--class":
                     if (++i < args.length) {

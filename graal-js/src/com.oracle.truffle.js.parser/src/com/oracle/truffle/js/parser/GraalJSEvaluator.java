@@ -321,7 +321,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     private Collection<String> getExportedNames(JSModuleRecord moduleRecord, Set<JSModuleRecord> exportStarSet) {
         if (exportStarSet.contains(moduleRecord)) {
-            // Assert: We’ve reached the starting point of an import * circularity.
+            // Assert: We've reached the starting point of an import * circularity.
             return Collections.emptySortedSet();
         }
         exportStarSet.add(moduleRecord);

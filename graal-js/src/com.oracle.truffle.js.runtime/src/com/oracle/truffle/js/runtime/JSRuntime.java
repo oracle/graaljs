@@ -942,11 +942,11 @@ public final class JSRuntime {
                 sb.append(", ");
             }
             if (isArray) {
-                // merge holes to "undefined × #" entries
+                // merge holes to "undefined (times) (count)" entries
                 if (JSRuntime.isArrayIndex(key)) {
                     long index = JSRuntime.parseArrayIndexRaw(key.toString());
                     if ((index < length) && (index != (prevArrayIndex + 1))) {
-                        sb.append("undefined × ");
+                        sb.append("undefined \u00d7 ");
                         sb.append((index - prevArrayIndex - 1));
                         sb.append(", ");
                         propertyCount++;
@@ -990,7 +990,7 @@ public final class JSRuntime {
             }
         }
         if (isArray && propertyCount < JSTruffleOptions.MaxConsolePrintProperties) {
-            // fill "undefined × #" entries at end of array (no other props)
+            // fill "undefined (times) (count)" entries at the end of the array
             if (fillUndefinedArrayRest(sb, length, prevArrayIndex, propertyCount > 0)) {
                 propertyCount++;
             }
@@ -1067,7 +1067,7 @@ public final class JSRuntime {
             if (prependComma) {
                 sb.append(", ");
             }
-            sb.append("undefined × ");
+            sb.append("undefined \u00d7 ");
             sb.append((arrayLen - prevArrayIndex - 1));
             return true;
         }
