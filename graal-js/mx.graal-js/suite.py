@@ -125,6 +125,7 @@ suite = {
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8",
+      "checkstyleVersion" : "8.8",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -172,7 +173,7 @@ suite = {
         "truffle:TRUFFLE_API",
       ],
       "javaCompliance" : "1.8",
-      "annotationProcessors" : [],
+      "checkstyleVersion" : "8.8",
       "workingSets" : "Truffle,JavaScript",
     },
 
