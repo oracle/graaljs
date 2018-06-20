@@ -448,7 +448,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         realm.setArguments(realm.getEnv().getApplicationArguments());
 
         if (((GraalJSParserOptions) realm.getContext().getParserOptions()).isScripting()) {
-            realm.addScriptingOptionsObject();
+            realm.addScriptingObjects();
         }
     }
 
@@ -477,7 +477,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         realm.setArguments(newEnv.getApplicationArguments());
 
         if (((GraalJSParserOptions) context.getParserOptions()).isScripting()) {
-            realm.addScriptingOptionsObject();
+            realm.addScriptingObjects();
         }
         return true;
     }

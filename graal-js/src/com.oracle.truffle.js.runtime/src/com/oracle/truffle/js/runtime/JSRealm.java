@@ -1414,16 +1414,17 @@ public class JSRealm implements ShapeContext {
     }
 
     /**
-     * Adds an {@code $OPTIONS} property to the global object that exposes several options to the
-     * script, in case scripting mode is enabled. (for Nashorn compatibility).
+     * Adds several objects to the global object, in case scripting mode is enabled (for Nashorn
+     * compatibility). This includes an {@code $OPTIONS} property that exposes several options to
+     * the script, an {@code $ARG} array with arguments to the script, and an {@code $ENV} object
+     * with environment variables.
      */
-    public void addScriptingOptionsObject() {
+    public void addScriptingObjects() {
         CompilerAsserts.neverPartOfCompilation();
         if (!JSTruffleOptions.NashornExtensions) {
             return;
         }
         String optionsObjName = "$OPTIONS";
-        boolean scripting = true; // $OPTIONS only created in scripting mode
         String timezone = context.getLocalTimeZoneId().getId();
         DynamicObject globalObj = getGlobalObject();
 
@@ -1431,13 +1432,29 @@ public class JSRealm implements ShapeContext {
             DynamicObject optionsObj = JSUserObject.create(context);
             DynamicObject timezoneObj = JSUserObject.create(context);
 
-            JSObjectUtil.putDataProperty(context, timezoneObj, "ID", timezone, JSAttributes.notConfigurableNotEnumerableNotWritable());
+            JSObjectUtil.putDataProperty(context, timezoneObj, "ID", timezone, JSAttributes.configurableEnumerableWritable());
 
-            JSObjectUtil.putDataProperty(context, optionsObj, "_timezone", timezoneObj, JSAttributes.notConfigurableNotEnumerableNotWritable());
-            JSObjectUtil.putDataProperty(context, optionsObj, "_scripting", scripting, JSAttributes.notConfigurableNotEnumerableNotWritable());
-            JSObjectUtil.putDataProperty(context, optionsObj, "_compile_only", false, JSAttributes.notConfigurableNotEnumerableNotWritable());
+            JSObjectUtil.putDataProperty(context, optionsObj, "_timezone", timezoneObj, JSAttributes.configurableEnumerableWritable());
+            JSObjectUtil.putDataProperty(context, optionsObj, "_scripting", true, JSAttributes.configurableEnumerableWritable());
+            JSObjectUtil.putDataProperty(context, optionsObj, "_compile_only", false, JSAttributes.configurableEnumerableWritable());
 
-            JSObjectUtil.putDataProperty(context, globalObj, optionsObjName, optionsObj, JSAttributes.notConfigurableNotEnumerableNotWritable());
+            JSObjectUtil.putDataProperty(context, globalObj, optionsObjName, optionsObj, JSAttributes.configurableNotEnumerableWritable());
+        }
+
+        String argName = "$ARG";
+        if (!JSObject.hasOwnProperty(globalObj, argName)) {
+            DynamicObject argObj = JSArray.createConstant(context, getEnv().getApplicationArguments());
+            JSObjectUtil.putDataProperty(context, globalObj, argName, argObj, JSAttributes.configurableNotEnumerableWritable());
+        }
+
+        String envName = "$ENV";
+        if (!JSObject.hasOwnProperty(globalObj, envName)) {
+            DynamicObject envObj = JSUserObject.create(context);
+            Map<String, String> sysenv = System.getenv();
+            for (Map.Entry<String, String> entry : sysenv.entrySet()) {
+                JSObjectUtil.putDataProperty(context, envObj, entry.getKey(), entry.getValue(), JSAttributes.configurableEnumerableWritable());
+            }
+            JSObjectUtil.putDataProperty(context, globalObj, envName, envObj, JSAttributes.configurableNotEnumerableWritable());
         }
     }
 
