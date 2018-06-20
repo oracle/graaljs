@@ -39,6 +39,18 @@ I only provides one canonical way of accessing a String length: by reading the `
 Nashorn allows to both access `length` as a property and a function.
 Existing function calls `length()` need to be rewritten to a property access.
 
+### Using JavaBeans
+
+Graal JavaScript does not treat accessor and mutator methods in JavaBeans as equivalent JavaScript properties. So that e.g. the last line of the following example:
+
+    var Date = Java.type("java.util.Date")
+    var date = new Date()
+    date.year + 1900
+
+needs to be rewritten as:
+
+    date.getYear() + 1900
+
 ### `ScriptObjectMirror` to represent JavaScript objects in Java
 Graal JavaScript does not provide objects of the class `ScriptObjectMirror`.
 Instead, JavaScript objects are exposed to Java code as instances of `com.oracle.truffle.api.interop.java.TruffleMap`.
