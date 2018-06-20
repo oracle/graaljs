@@ -1,48 +1,24 @@
-# Graal.js API
+# Graal JavaScript language compatibility
 
-Graal.js is a JavaScript (ECMAScript) language execution runtime.
-This documents explains the public API it provides to  user applications written in JavaScript.
+Graal JavaScript is a JavaScript (ECMAScript) language execution runtime.
+This document explains the public API it provides to user applications written in JavaScript.
 
 * [ECMAScript language compliance](#ecmascript-language-compliance)
 * [Compatibility extensions](#compatibility-extensions)
-* [Graal.js extensions](#graal.js-extensions)
-* [Nashorn extensions](#nashorn-extensions)
+* [Graal JavaScript extensions](#graal-javascript-extensions)
 
 ## ECMAScript language compliance
 
-Graal.js implements JavaScript as prescribed in the ECMAScript (ECMA-262) specification.
-By default, Graal.js is compatible with the 2017 edition of ECMAScript (sometimes referred to as "version 8" or "ES8"), see [http://www.ecma-international.org/ecma-262/8.0/](http://www.ecma-international.org/ecma-262/8.0/).
+Graal JavaScript implements JavaScript as prescribed in the ECMAScript (ECMA-262) specification.
+By default, Graal JavaScript is compatible with the 2017 edition of ECMAScript (sometimes referred to as "version 8" or "ES8"), see [http://www.ecma-international.org/ecma-262/8.0/](http://www.ecma-international.org/ecma-262/8.0/).
 Older versions, as well as some features of the most recent version, can be enabled with special flags on startup.
 For informations on the flags, see the *--help* message of the executable.
 
-Graal.js provides the following function objects in the global scope as specified by ECMAScript:
+Graal JavaScript provides the following function objects in the global scope as specified by ECMAScript, representing the JavaScript core library:
+Array, ArrayBuffer, Boolean, DataView, Date, Error, Function, JSON, Map, Math, Number, Object, Promise, Proxy, Reflect, RegExp, Set, String, Symbol, TypedArray, WeakMap, WeakSet
 
-- Array
-- ArrayBuffer
-- Atomics (flag required)
-- Boolean
-- DataView
-- Date
-- Error
-- Function
-- Intl (flag required)
-- JSON
-- Map
-- Math
-- Number
-- Object
-- Promise
-- Proxy
-- Reflect
-- RegExp
-- Set
-- SharedArrayBuffer (flag required)
-- SIMD (flag required)
-- String
-- Symbol
-- TypedArray
-- WeakMap
-- WeakSet
+Some additional objects are available under flags (run `js --help` for the list of available flags):
+Atomics, Intl, SharedArrayBuffer, SIMD
 
 Several of these function objects and some of their members are only available when a certain version of the spec is selected for execution.
 For a list of methods provided, inspect the ECMAScript specification.
@@ -64,16 +40,64 @@ Once you activate Internationalization API, you can use the following built-ins:
 
 Functionality of a few other built-ins is then also updated according to the specification linked above.
 
+### Regular Expressions
+
+Graal JavaScript strives to support all regular expression features of ECMAScript.
+It employs two regular expression engines:
+* [TRegex](https://github.com/oracle/graal/tree/master/regex), an advanced engine producing tree-based automata with high peak performance.
+* [Joni](https://github.com/jruby/joni), an adopted port of Nashorn's regular expression engine (a bytecode compiler).
+
+While both engines support most regular expressions, they lack support for some of the advaced features of the newest ECMAScript specifications.
+TRegex is the default engine, and Joni will be used in case a feature is not supported in TRegex.
+In the rare case several features are mixed in one regular expression so no single engine can execute the expression, Graal JavaScript has to throw a JavaString Error.
+We are working on improving both engines to limit the number of unsupported regular expressions.
+
+The current status of feature support in both engines is listed below (features not listed are supported by both engines):
+
+Feature                                                                                      | TRegex | Joni
+-------------------------------------------------------------------------------------------- | ------ | ----
+Backreferences                                                                               | ❌     | ✓
+Negative lookaround<sup>[1](#fn1)</sup>                                                      | ❌     | ✓
+Unicode mode (`'u'` flag)                                                                    | ✓      | ❌
+[Unicode property escapes](https://github.com/tc39/proposal-regexp-unicode-property-escapes) | ✓      | ❌
+[Full lookbehind](https://github.com/tc39/proposal-regexp-lookbehind)<sup>[2](#f2)</sup>     | ❌     | ❌
+
+<sub>
+<a name="fn1">1</a>: Positive lookaround is supported in both engines.
+<br/>
+<a name="fn2">2</a>: TRegex and Joni only support a subset of the lookbehind assertions that can match at most a bounded number of characters.
+</sub>
+
+<br/>
+<br/>
+
+We are currently working on implementing negative lookahead and more support for lookbehind in TRegex. On the other hand, full support of backreferences is out of scope for a finite state automaton engine like TRegex.
+Graal JavaScript uses [Nashorn](http://openjdk.java.net/projects/nashorn/)'s port of the Joni engine, which is based on ECMAScript 5 and misses support for most features of ECMAScript 6 and beyond.
+For more details on the implementation of the engines, see [RegExpImplementation.md](../contributor/RegExpImplementation.md).
+
 ## Compatibility extensions
 
-The following objects and methods are available in Graal.js for compatibility with other JavaScript execution engines such as Rhino.
+The following objects and methods are available in Graal JavaScript for compatibility with other JavaScript execution engines.
 Note that the behaviour of such methods might not strictly match the semantics of those methods in all existing engines.
+
+### Language features
+
+#### Conditional catch clauses
+Graal JavaScript supports conditional catch clauses:
+
+  try {
+    myMethod(); // can throw
+  } catch (e if e instanceof TypeError) {
+    print("TypeError caught");
+  } catch (e) {
+    print("another Error caught");
+  }
 
 ### Global methods
 
 #### `exit(status)` or `quit(status)`
 
-Exists the engine and returns the specified status code.
+Exits the engine and returns the specified status code.
 
 #### `load(source, args)`
 
@@ -93,7 +117,7 @@ The value of `arguments` is provided to the loaded code upon execution.
 Prints the arguments on the console.
 Provides a best-effort human readable output.
 
-Note that `console.log` behaves differently when Graal.js executed in Node.js mode (i.e., the `node` executable is started instead of `js`).
+Note that `console.log` behaves differently when Graal JavaScript is executed in Node.js mode (i.e., the `node` executable is started instead of `js`).
 While normally, `console.log` is just an alias for `print`, on Node.js Node's own implementation is executed.
 
 #### `read(file)` or `readFully(file)`
@@ -135,23 +159,23 @@ In recent ECMAScript versions, getters and setters are natively supported by the
 
 #### `Object.prototype.__lookupGetter__(prop)`
 
-Reads the `prop` property of `this`, that is expected to be a getter function.
+Returns the getter function for property `prop` of the object as set by `__defineGetter__`.
 This functionality is deprecated in most JavaScript engines.
 In recent ECMAScript versions, getters and setters are natively supported by the language.
 
 #### `Object.prototype.__lookupSetter__(prop)`
 
-Reads the `prop` property of `this`, that is expected to be a setter function.
+Returns the setter function for property `prop` of the object as set by `__defineSetter__`.
 This functionality is deprecated in most JavaScript engines.
 In recent ECMAScript versions, getters and setters are natively supported by the language.
 
-## Graal.js extensions
+## Graal JavaScript extensions
 
 ### Graal
 
 The `Graal` object is provided as property of the global object.
 It provides Graal-specific information.
-The existence of the property can be used to identify whether the Graal.js engine is the current language engine.
+The existence of the property can be used to identify whether the Graal JavaScript engine is the current language engine.
 
     if (Graal) {
         print(Graal.versionJS);
@@ -159,11 +183,11 @@ The existence of the property can be used to identify whether the Graal.js engin
         print(Graal.isGraalRuntime);
     }
 
-The Graal object is available in Graal.js by default, unless deactivated by an option (`truffle.js.GraalBuiltin=false`).
+The Graal object is available in Graal JavaScript by default, unless deactivated by an option (`truffle.js.GraalBuiltin=false`).
 
 #### `Graal.versionJS`
 
-Provides the version number of Graal.js.
+Provides the version number of Graal JavaScript.
 
 #### `Graal.versionGraalVM`
 
@@ -171,9 +195,9 @@ Provides the version of the GraalVM, if the current engine is executed on a Graa
 
 #### `Graal.isGraalRuntime`
 
-Provides whether Graal.js is executed on a Graal-enabled runtime.
+Provides whether Graal JavaScript is executed on a Graal-enabled runtime.
 If `true`, hot code is compiled by the Graal compiler, resulting in high peak performance.
-If `false`, Graal.js will not be compiled by the Graal compiler, typically resulting in lower performance.
+If `false`, Graal JavaScript will not be optimized by the Graal compiler, typically resulting in lower performance.
 
 ### Java
 
@@ -269,41 +293,8 @@ Exceptions thrown by the evaluated program are only thrown once the resulting fu
 
 requires starting the engine with the `debug` flag.
 
-`Debug` is a Graal.js specific function object that provides functionality for debugging JavaScript code and the Graal.js compiler.
+`Debug` is a Graal JavaScript specific function object that provides functionality for debugging JavaScript code and the Graal JavaScript compiler.
 This API might change without notice, do not use for production purposes!
-
-## Nashorn extensions
-
-These function objects and functions are available to provide a compatibility layer with OpenJDK's Nashorn JavaScript engine.
-A flag needs to be provided on startup for those to be available, see *--help*.
-
-### Java
-
-In Nashorn compatibility mode, additional methods are available on the `Java` object: 
-
-- extend
-- super
-- isJavaMethod
-- isJavaFunction
-- isScriptFunction
-- isScriptObject
-- synchronized
-- asJSONCompatible
-
-See reference and examples at [Nashorn extensions](https://wiki.openjdk.java.net/display/Nashorn/Nashorn+extensions).
-
-### JavaImporter
-
-`JavaImporter` can be used to import packages explicitly, without polluting the global scope.
-See reference at [Nashorn extensions](https://wiki.openjdk.java.net/display/Nashorn/Nashorn+extensions). 
-
-### JSAdapter
-
-`JSAdapter` is Nashorn's variant of a Proxy object.
-See reference at [Nashorn extensions](https://wiki.openjdk.java.net/display/Nashorn/Nashorn+extensions).
-
-As Graal.js supports ECMAScript's *Proxy* type.
-It is strongly suggested to use *Proxy* in user applications.
 
 ### Global functions
 
