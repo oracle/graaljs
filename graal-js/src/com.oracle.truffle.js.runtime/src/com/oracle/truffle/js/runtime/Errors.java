@@ -276,6 +276,14 @@ public final class Errors {
         return Errors.createTypeError("Cannot add new property " + keyToString(key) + " to non-extensible " + JSObject.defaultToString(thisObj));
     }
 
+    @TruffleBoundary
+    public static JSException createTypeErrorConstReassignment(Object key, Object thisObj, Node originatingNode) {
+        if (JSObject.isJSObject(thisObj) && JSObject.getJSContext((DynamicObject) thisObj).isOptionV8CompatibilityMode()) {
+            throw Errors.createTypeError("Assignment to constant variable.", originatingNode);
+        }
+        throw Errors.createTypeError("Assignment to constant \"" + key + "\"", originatingNode);
+    }
+
     private static String keyToString(Object key) {
         assert JSRuntime.isPropertyKey(key);
         return key instanceof String ? "\"" + key + "\"" : key.toString();

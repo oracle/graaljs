@@ -204,6 +204,19 @@ public abstract class Environment {
                     wrapFrameLevel = frameLevel;
                 }
                 // with environments don't introduce any variables, skip lookup
+            } else if (current instanceof GlobalEnvironment) {
+                // We can distinguish 3 cases:
+                // 1. HasLexicalDeclaration: statically resolved to lexical declaration (with TDZ).
+                // 2. HasVarDeclaration: statically resolved to global object property.
+                // Note: 1. and 2. mutually exclude each other (early SyntaxError).
+                // 3. Undeclared global (external lexical declaration or global object property).
+                // .. Dynamically resolved using lexical global scope and global object lookups.
+                GlobalEnvironment globalEnv = (GlobalEnvironment) current;
+                if (globalEnv.hasLexicalDeclaration(name) && !GlobalEnvironment.isGlobalObjectConstant(name)) {
+                    return wrapIn(wrapClosure, wrapFrameLevel, new GlobalLexVarRef(name, globalEnv.hasConstDeclaration(name)));
+                } else if (!globalEnv.hasVarDeclaration(name) && !GlobalEnvironment.isGlobalObjectConstant(name)) {
+                    wrapClosure = makeGlobalWrapClosure(wrapClosure, name);
+                }
             } else {
                 FrameSlot slot = current.findBlockFrameSlot(name);
                 if (slot != null) {
@@ -305,6 +318,28 @@ public abstract class Environment {
         });
     }
 
+    private WrapClosure makeGlobalWrapClosure(WrapClosure wrapClosure, String name) {
+        WrapClosure inner = maybeMakeDefaultWrapClosure(wrapClosure);
+        return inner.compose(new WrapClosure() {
+            @Override
+            public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
+                JSTargetableNode scopeAccessNode;
+                if (access == WrapAccess.Delete) {
+                    scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode(), context);
+                } else if (access == WrapAccess.Write) {
+                    assert delegateNode instanceof WriteNode : delegateNode;
+                    scopeAccessNode = factory.createWriteProperty(null, name, null, context, true);
+                } else {
+                    assert access == WrapAccess.Read;
+                    assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
+                    scopeAccessNode = factory.createProperty(context, null, name);
+                }
+                JavaScriptNode globalScope = factory.createGlobalScope(context);
+                return factory.createGlobalVarWrapper(context, name, delegateNode, globalScope, scopeAccessNode);
+            }
+        });
+    }
+
     private static WrapClosure maybeMakeDefaultWrapClosure(WrapClosure wrapClosure) {
         WrapClosure inner = wrapClosure;
         if (inner == null) {
@@ -347,9 +382,6 @@ public abstract class Environment {
     }
 
     private JavaScriptNode createReadLocalVarNodeFromSlot(Environment current, int frameLevel, FrameSlot slot, int scopeLevel, boolean checkTDZ) {
-        if (current instanceof GlobalEnvironment) {
-            return factory.createReadGlobal(slot, checkTDZ, context);
-        }
         FunctionEnvironment currentFunction = current.function();
         if (currentFunction.getArgumentsSlot() != null && !currentFunction.isStrictMode() && currentFunction.hasSimpleParameterList() && currentFunction.isParam(slot)) {
             return createReadParameterFromMappedArguments(current, frameLevel, scopeLevel, slot);
@@ -358,9 +390,6 @@ public abstract class Environment {
     }
 
     private JavaScriptNode createWriteLocalVarNodeFromSlot(Environment current, int frameLevel, FrameSlot slot, int scopeLevel, boolean checkTDZ, JavaScriptNode rhs) {
-        if (current instanceof GlobalEnvironment) {
-            return factory.createWriteGlobal(slot, rhs, checkTDZ, context);
-        }
         FunctionEnvironment currentFunction = current.function();
         if (currentFunction.getArgumentsSlot() != null && !currentFunction.isStrictMode() && currentFunction.hasSimpleParameterList() && currentFunction.isParam(slot)) {
             return createWriteParameterFromMappedArguments(current, frameLevel, scopeLevel, slot, rhs);
@@ -522,7 +551,13 @@ public abstract class Environment {
 
         public abstract boolean isGlobal();
 
-        public abstract FrameSlot getFrameSlot();
+        public boolean isConst() {
+            return false;
+        }
+
+        public FrameSlot getFrameSlot() {
+            return null;
+        }
 
         public String getName() {
             return name;
@@ -590,6 +625,11 @@ public abstract class Environment {
         @Override
         public FrameSlot getFrameSlot() {
             return frameSlot;
+        }
+
+        @Override
+        public boolean isConst() {
+            return JSFrameUtil.isConst(frameSlot);
         }
 
         @Override
@@ -716,6 +756,82 @@ public abstract class Environment {
         public VarRef withRequired(@SuppressWarnings("hiding") boolean required) {
             if (this.required != required) {
                 return new GlobalVarRef(name, required);
+            }
+            return this;
+        }
+    }
+
+    public class GlobalLexVarRef extends VarRef {
+        private final boolean isConst;
+        private final boolean required;
+        private final boolean checkTDZ;
+
+        public GlobalLexVarRef(String name, boolean isConst) {
+            this(name, isConst, true, false);
+        }
+
+        private GlobalLexVarRef(String name, boolean isConst, boolean required, boolean checkTDZ) {
+            super(name);
+            assert !name.equals(Null.NAME) && !name.equals(Undefined.NAME);
+            this.isConst = isConst;
+            this.required = required;
+            this.checkTDZ = checkTDZ;
+        }
+
+        @Override
+        public JavaScriptNode createReadNode() {
+            if (!required) {
+                JavaScriptNode globalScope = factory.createGlobalScopeTDZCheck(context, name, checkTDZ);
+                return factory.createReadProperty(context, globalScope, name);
+            }
+            return factory.createReadLexicalGlobal(name, checkTDZ, context);
+        }
+
+        @Override
+        public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
+            JavaScriptNode globalScope = factory.createGlobalScopeTDZCheck(context, name, checkTDZ);
+            return factory.createWriteProperty(globalScope, name, rhs, required, context, true);
+        }
+
+        @Override
+        public boolean isFunctionLocal() {
+            return function().isGlobal();
+        }
+
+        @Override
+        public FrameSlot getFrameSlot() {
+            return null;
+        }
+
+        @Override
+        public boolean isGlobal() {
+            return true;
+        }
+
+        @Override
+        public boolean isConst() {
+            return isConst;
+        }
+
+        @Override
+        public JavaScriptNode createDeleteNode() {
+            JavaScriptNode element = factory.createConstantString(name);
+            JavaScriptNode object = factory.createGlobalScope(context);
+            return factory.createDeleteProperty(object, element, isStrictMode(), context);
+        }
+
+        @Override
+        public VarRef withRequired(@SuppressWarnings("hiding") boolean required) {
+            if (this.required != required) {
+                return new GlobalLexVarRef(name, isConst, required, checkTDZ);
+            }
+            return this;
+        }
+
+        @Override
+        public VarRef withTDZCheck() {
+            if (!this.checkTDZ) {
+                return new GlobalLexVarRef(name, isConst, required, true);
             }
             return this;
         }

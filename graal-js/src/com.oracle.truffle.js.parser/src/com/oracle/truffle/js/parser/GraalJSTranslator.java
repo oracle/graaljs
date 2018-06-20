@@ -1146,7 +1146,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 }
             } else if (!configurable) {
                 assert symbol.isBlockScoped();
-                declarations.add(factory.createDeclareGlobalLexicalVariable(symbol.getName()));
+                declarations.add(factory.createDeclareGlobalLexicalVariable(symbol.getName(), symbol.isConst()));
             }
         }
         final List<JavaScriptNode> nodes = new ArrayList<>(2);
@@ -1294,7 +1294,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      * Initialize block-scoped symbols with a <i>dead</i> marker value.
      */
     private List<JavaScriptNode> createTemporalDeadZoneInit(Block block) {
-        if (!block.hasBlockScopedOrRedeclaredSymbols()) {
+        if (!block.hasBlockScopedOrRedeclaredSymbols() || environment instanceof GlobalEnvironment) {
             return Collections.emptyList();
         }
 
@@ -1411,24 +1411,20 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     /**
-     * Set up slots for lexical declarations in the global environment. If an existing lexical
-     * declaration is found, do nothing; an error will be reported at run time.
+     * Set up slots for lexical declarations in the global environment.
      *
      * @see #collectGlobalVars(FunctionNode, boolean)
      */
     private static void setupGlobalEnvironment(GlobalEnvironment globalEnv, Block block) {
-        FrameDescriptor frameDescriptor = globalEnv.getBlockFrameDescriptor();
-        boolean duplicateFound = false;
-        if (frameDescriptor.getSize() > 0) {
-            for (com.oracle.js.parser.ir.Symbol symbol : block.getSymbols()) {
-                if (symbol.isBlockScoped() && frameDescriptor.findFrameSlot(symbol.getName()) != null) {
-                    duplicateFound = true;
-                    break;
-                }
+        for (com.oracle.js.parser.ir.Symbol symbol : block.getSymbols()) {
+            if (symbol.isImportBinding()) {
+                continue; // no frame slot required
             }
-        }
-        if (!duplicateFound) {
-            globalEnv.addFrameSlotsFromSymbols(block.getSymbols(), true);
+            if (symbol.isBlockScoped()) {
+                globalEnv.addLexicalDeclaration(symbol.getName(), symbol.isConst());
+            } else if (symbol.isGlobal() && symbol.isVarDeclaredHere()) {
+                globalEnv.addVarDeclaration(symbol.getName());
+            }
         }
     }
 
@@ -1600,7 +1596,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     @Override
     public JavaScriptNode enterVarNode(VarNode varNode) {
         String varName = varNode.getName().getName();
-        assert currentFunction().isGlobal() && !varNode.isBlockScoped() || !findScopeVar(varName, true).isGlobal() || currentFunction().isCallerContextEval() : varNode;
+        assert currentFunction().isGlobal() && (!varNode.isBlockScoped() || lc.getCurrentBlock().isFunctionBody()) || !findScopeVar(varName, true).isGlobal() ||
+                        currentFunction().isCallerContextEval() : varNode;
 
         Symbol symbol = null;
         if (varNode.isBlockScoped()) {
@@ -1818,11 +1815,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode desugarForHeadAssignment(ForNode forNode, JavaScriptNode next) {
-        if (forNode.getInit() instanceof IdentNode) {
-            return ensureHasSourceSection(findScopeVarCheckTDZ(((IdentNode) forNode.getInit()).getName(), true).createWriteNode(next), forNode);
+        boolean lexicalBindingInit = forNode.hasPerIterationScope();
+        if (forNode.getInit() instanceof IdentNode && lexicalBindingInit) {
+            return ensureHasSourceSection(findScopeVarCheckTDZ(((IdentNode) forNode.getInit()).getName(), lexicalBindingInit).createWriteNode(next), forNode);
         } else {
             // transform destructuring assignment
-            return transformAssignment(forNode.getInit(), next, null, false, false, true);
+            return ensureHasSourceSection(transformAssignment(forNode.getInit(), next, null, false, false, lexicalBindingInit), forNode);
         }
     }
 
@@ -1998,9 +1996,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         if (JSTruffleOptions.LocalVarIncDecNode && isLocalVariableOperand(operand)) {
             FrameSlot frameSlot = ((FrameSlotNode) operand).getFrameSlot();
-            if (isImmutableBinding(frameSlot)) {
+            if (JSFrameUtil.isConst(frameSlot)) {
                 // we know this is going to throw. do the read and throw TypeError.
-                return checkMutableBinding(operand, frameSlot);
+                return checkMutableBinding(operand, frameSlot.getIdentifier());
             }
             return result(createUnaryIncDecLocalNode(unaryNode, operand));
         } else {
@@ -2564,16 +2562,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             // e.g.: lhs *= rhs => lhs = lhs * rhs
             // If lhs is a side-effecting getter that deletes lhs, we must not throw
             // ReferenceError at the lhs assignment since the lhs reference is already resolved.
-            return scopeVar.withRequired(false).createWriteNode(ensureHasSourceSection(rhs, identNode));
+            return scopeVar.withRequired(false).createWriteNode(rhs);
         } else {
             // if scopeVar is const, the assignment will never succeed and is only there to perform
             // the temporal dead zone check and throw a ReferenceError instead of a TypeError
-            if (!initializationAssignment) {
-                if (JSTruffleOptions.V8LegacyConst && isImmutableBinding(scopeVar.getFrameSlot()) && !environment.isStrictMode()) {
+            if (!initializationAssignment && scopeVar.isConst()) {
+                if (JSTruffleOptions.V8LegacyConst && !environment.isStrictMode()) {
                     // Note that there is no TDZ check for const in this mode either.
                     return rhs;
                 }
-                rhs = checkMutableBinding(rhs, scopeVar.getFrameSlot());
+                rhs = checkMutableBinding(rhs, scopeVar.getName());
             }
             return scopeVar.createWriteNode(rhs);
         }
@@ -2582,25 +2580,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     /**
      * If this is an attempt to change the value of an immutable binding, throw a runtime TypeError.
      */
-    private JavaScriptNode checkMutableBinding(JavaScriptNode rhsNode, FrameSlot frameSlot) {
-        if (isImmutableBinding(frameSlot)) {
-            if (JSTruffleOptions.V8LegacyConst && !environment.isStrictMode()) {
-                return rhsNode;
-            }
-            // evaluate rhs and throw TypeError
-            String message = context.isOptionV8CompatibilityMode() ? "Assignment to constant variable." : "Assignment to constant \"" + frameSlot.getIdentifier() + "\"";
-            JavaScriptNode throwTypeError = factory.createThrowError(JSErrorType.TypeError, message);
-            return isPotentiallySideEffecting(rhsNode) ? createBlock(rhsNode, throwTypeError) : throwTypeError;
+    private JavaScriptNode checkMutableBinding(JavaScriptNode rhsNode, Object identifier) {
+        if (JSTruffleOptions.V8LegacyConst && !environment.isStrictMode()) {
+            return rhsNode;
         }
-        return rhsNode;
-    }
-
-    private static boolean isImmutableBinding(FrameSlot frameSlot) {
-        return frameSlot != null && isConst(frameSlot);
-    }
-
-    private static boolean isConst(FrameSlot frameSlot) {
-        return (JSFrameUtil.getFlags(frameSlot) & Symbol.IS_CONST) != 0;
+        // evaluate rhs and throw TypeError
+        String message = context.isOptionV8CompatibilityMode() ? "Assignment to constant variable." : "Assignment to constant \"" + identifier + "\"";
+        JavaScriptNode throwTypeError = factory.createThrowError(JSErrorType.TypeError, message);
+        return isPotentiallySideEffecting(rhsNode) ? createBlock(rhsNode, throwTypeError) : throwTypeError;
     }
 
     @Override

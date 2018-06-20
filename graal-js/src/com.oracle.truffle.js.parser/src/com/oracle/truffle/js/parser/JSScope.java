@@ -72,6 +72,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
@@ -86,6 +87,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.objects.Dead;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class JSScope {
@@ -134,7 +136,7 @@ public abstract class JSScope {
     }
 
     public static Iterable<Scope> createGlobalScopes(JSRealm realm) {
-        Scope globalLexicalScope = Scope.newBuilder("global", createVariablesMapObject(realm.getGlobalScope().getFrameDescriptor(), realm.getGlobalScope(), null)).build();
+        Scope globalLexicalScope = Scope.newBuilder("global", new DynamicScopeWrapper(realm.getGlobalScope())).build();
         Scope globalVarScope = Scope.newBuilder("global", realm.getGlobalObject()).build();
         return Arrays.asList(globalLexicalScope, globalVarScope);
     }
@@ -544,6 +546,10 @@ public abstract class JSScope {
             this.names.addAll(names);
         }
 
+        private VariableNamesObject(List<String> names) {
+            this.names = names;
+        }
+
         @Override
         public ForeignAccess getForeignAccess() {
             return VariableNamesMessageResolutionForeign.ACCESS;
@@ -583,6 +589,90 @@ public abstract class JSScope {
                     } catch (IndexOutOfBoundsException ioob) {
                         throw UnknownIdentifierException.raise(Integer.toString(index));
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * Wraps a dynamic scope object, filters out dead variables, and prevents const assignment.
+     */
+    @MessageResolution(receiverType = DynamicScopeWrapper.class)
+    static final class DynamicScopeWrapper implements TruffleObject {
+        final DynamicObject scope;
+
+        private DynamicScopeWrapper(DynamicObject scope) {
+            this.scope = scope;
+        }
+
+        static boolean isInstance(TruffleObject obj) {
+            return obj instanceof DynamicScopeWrapper;
+        }
+
+        static boolean isConst(DynamicScopeWrapper wrapper, String name) {
+            return JSProperty.isConst(wrapper.scope.getShape().getProperty(name));
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return DynamicScopeWrapperForeign.ACCESS;
+        }
+
+        @Resolve(message = "KEYS")
+        abstract static class KeysNode extends Node {
+            @TruffleBoundary
+            public Object access(DynamicScopeWrapper wrapper) {
+                List<String> keys = new ArrayList<>();
+                for (Object key : wrapper.scope.getShape().getKeys()) {
+                    if (key instanceof String) {
+                        Object value = wrapper.scope.get(key);
+                        if (value != null && value != Dead.instance()) {
+                            keys.add((String) key);
+                        }
+                    }
+                }
+                return new VariableNamesObject(keys);
+            }
+        }
+
+        @Resolve(message = "KEY_INFO")
+        abstract static class KeyInfoNode extends Node {
+            @TruffleBoundary
+            public Object access(DynamicScopeWrapper wrapper, String name) {
+                Object value = wrapper.scope.get(name);
+                if (value == null || value == Dead.instance()) {
+                    return KeyInfo.NONE;
+                }
+                return KeyInfo.READABLE | (!isConst(wrapper, name) ? KeyInfo.MODIFIABLE : 0);
+            }
+
+        }
+
+        @Resolve(message = "READ")
+        abstract static class ReadNode extends Node {
+            @TruffleBoundary
+            public Object access(DynamicScopeWrapper wrapper, String name) {
+                Object value = wrapper.scope.get(name);
+                if (value == null || value == Dead.instance()) {
+                    throw UnknownIdentifierException.raise(name);
+                } else {
+                    return getInteropValue(value);
+                }
+            }
+        }
+
+        @Resolve(message = "WRITE")
+        abstract static class WriteNode extends Node {
+            @TruffleBoundary
+            public Object access(DynamicScopeWrapper wrapper, String name, Object value) {
+                Object curValue = wrapper.scope.get(name);
+                if (curValue == null || curValue == Dead.instance()) {
+                    throw UnknownIdentifierException.raise(name);
+                } else if (!isConst(wrapper, name)) {
+                    wrapper.scope.set(name, value);
+                    return curValue;
+                } else {
+                    throw UnsupportedMessageException.raise(Message.WRITE);
                 }
             }
         }

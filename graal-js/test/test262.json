@@ -6732,23 +6732,7 @@
     "filePath" : "language/statements/for-in/scope-head-lex-open.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/statements/for-of/dstr-array-elem-put-const.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-of/dstr-array-rest-put-const.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-of/dstr-obj-id-put-const.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-of/dstr-obj-prop-put-const.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/statements/for-of/dstr-obj-rest-number.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/for-of/dstr-obj-rest-put-const.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {

@@ -52,6 +52,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public class WritePropertyNode extends JSTargetableNode implements WriteNode {
@@ -81,24 +82,33 @@ public class WritePropertyNode extends JSTargetableNode implements WriteNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == WritePropertyExpressionTag.class) {
+        if (tag == WriteVariableExpressionTag.class && isScopeAccess()) {
+            return true;
+        } else if (tag == WritePropertyExpressionTag.class && !isScopeAccess()) {
             return true;
         } else {
             return super.hasTag(tag);
         }
     }
 
+    private boolean isScopeAccess() {
+        return targetNode instanceof GlobalScopeNode;
+    }
+
     @Override
     public Object getNodeObject() {
+        if (isScopeAccess()) {
+            return JSTags.createNodeObjectDescriptor("name", getKey());
+        }
         return JSTags.createNodeObjectDescriptor("key", getKey());
     }
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(WritePropertyExpressionTag.class)) {
+        if (materializedTags.contains(WritePropertyExpressionTag.class) && !isScopeAccess()) {
             // if we have no source section, we must assign one to be discoverable at
             // instrumentation time.
-            if (targetNode.getSourceSection() == null) {
+            if (!targetNode.hasSourceSection()) {
                 JavaScriptNode clonedTarget = (JavaScriptNode) targetNode.materializeInstrumentableNodes(materializedTags);
                 JavaScriptNode clonedRhs = (JavaScriptNode) rhsNode.materializeInstrumentableNodes(materializedTags);
                 WritePropertyNode cloneUninitialized = WritePropertyNode.create(clonedTarget, cache.getKey(), clonedRhs, cache.isGlobal(), cache.getContext(), cache.isStrict());

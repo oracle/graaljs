@@ -41,15 +41,31 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.Dead;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 
 public class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode {
-    public DeclareGlobalLexicalVariableNode(String varName) {
+    private final boolean isConst;
+
+    public DeclareGlobalLexicalVariableNode(String varName, boolean isConst) {
         super(varName);
+        this.isConst = isConst;
     }
 
     @Override
     public void executeVoid(VirtualFrame frame, JSContext context) {
+        DynamicObject globalScope = context.getRealm().getGlobalScope();
+        assert !JSObject.hasOwnProperty(globalScope, varName); // checked in advance
+        assert JSObject.isExtensible(globalScope);
+        // Note: const variables are writable so as to not interfere with initialization (for now).
+        // As a consequence, dynamically resolved const variable assignments need explicit guards.
+        int attributes = isConst ? (JSAttributes.notConfigurableEnumerableWritable() | JSProperty.CONST) : JSAttributes.notConfigurableEnumerableWritable();
+        JSObjectUtil.putDeclaredDataProperty(context, globalScope, varName, Dead.instance(), attributes);
     }
 
     @Override
@@ -59,6 +75,6 @@ public class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode {
 
     @Override
     protected DeclareGlobalNode copyUninitialized() {
-        return new DeclareGlobalLexicalVariableNode(varName);
+        return new DeclareGlobalLexicalVariableNode(varName, isConst);
     }
 }

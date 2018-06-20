@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
@@ -60,11 +61,12 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
     private final String propertyName;
     private final JSContext context;
     @Child private PropertyGetNode cache;
-    @Child private GlobalObjectNode globalObjectNode;
+    @Child private JavaScriptNode globalObjectNode;
 
-    protected GlobalPropertyNode(JSContext context, String propertyName) {
+    protected GlobalPropertyNode(JSContext context, String propertyName, JavaScriptNode globalObjectNode) {
         this.propertyName = propertyName;
         this.context = context;
+        this.globalObjectNode = globalObjectNode;
     }
 
     public static JSTargetableNode createPropertyNode(JSContext ctx, String propertyName) {
@@ -77,26 +79,40 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
                 return new GlobalConstantNode(ctx, propertyName, new GlobalConstantNode.DirNameNode());
             }
         }
-        return new GlobalPropertyNode(ctx, propertyName);
+        return new GlobalPropertyNode(ctx, propertyName, null);
+    }
+
+    public static JSTargetableNode createLexicalGlobal(JSContext ctx, String propertyName, boolean checkTDZ) {
+        JavaScriptNode globalScope = checkTDZ ? GlobalScopeNode.createWithTDZCheck(ctx, propertyName) : GlobalScopeNode.create(ctx);
+        return new GlobalPropertyNode(ctx, propertyName, globalScope);
     }
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ReadPropertyExpressionTag.class) {
+        if (tag == ReadVariableExpressionTag.class && isScopeAccess()) {
+            return true;
+        } else if (tag == ReadPropertyExpressionTag.class && !isScopeAccess()) {
             return true;
         } else {
             return super.hasTag(tag);
         }
     }
 
+    private boolean isScopeAccess() {
+        return globalObjectNode instanceof GlobalScopeNode;
+    }
+
     @Override
     public Object getNodeObject() {
+        if (isScopeAccess()) {
+            return JSTags.createNodeObjectDescriptor("name", getPropertyKey());
+        }
         return JSTags.createNodeObjectDescriptor("key", getPropertyKey());
     }
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ReadPropertyExpressionTag.class)) {
+        if (materializedTags.contains(ReadPropertyExpressionTag.class) && !isScopeAccess()) {
             GlobalObjectNode globalObject = GlobalObjectNode.create(context);
             PropertyNode propertyNode = PropertyNode.createProperty(context, globalObject, getPropertyKey());
             transferSourceSection(this, propertyNode);
@@ -118,6 +134,9 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public final Object evaluateTarget(VirtualFrame frame) {
+        if (globalObjectNode != null) {
+            return globalObjectNode.execute(frame);
+        }
         return GlobalObjectNode.getGlobalObject(context);
     }
 
@@ -161,7 +180,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
         return cache;
     }
 
-    private GlobalObjectNode getGlobalObjectNode() {
+    private JavaScriptNode getGlobalObjectNode() {
         if (globalObjectNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.globalObjectNode = insert(GlobalObjectNode.create(context));
@@ -171,7 +190,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        GlobalPropertyNode copy = new GlobalPropertyNode(context, propertyName);
+        GlobalPropertyNode copy = new GlobalPropertyNode(context, propertyName, cloneUninitialized(globalObjectNode));
         if (this.cache != null && this.cache.isMethod()) {
             copy.getCache().setMethod();
         }

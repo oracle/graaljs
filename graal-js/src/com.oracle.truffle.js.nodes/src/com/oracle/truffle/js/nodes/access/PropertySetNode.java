@@ -1172,8 +1172,8 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         }
     }
 
-    private LinkedPropertySetNode createCachedDataPropertyNodeJSObject(DynamicObject thisObj, int depth, JSContext context, Object value, AbstractShapeCheckNode shapeCheck,
-                    Property dataProperty) {
+    private LinkedPropertySetNode createCachedDataPropertyNodeJSObject(DynamicObject thisObj, int depth, JSContext context, Object value, AbstractShapeCheckNode shapeCheck, Property dataProperty) {
+        assert !JSProperty.isConst(dataProperty) || (depth == 0 && isGlobal() && dataProperty.getLocation().isDeclared()) : "const assignment";
         if (!JSProperty.isWritable(dataProperty)) {
             return new ReadOnlyPropertySetNode(key, shapeCheck, isStrict());
         } else if (depth > 0) {
@@ -1248,7 +1248,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
 
     private static LinkedPropertySetNode createResolvedDefinePropertyNode(Object key, ReceiverCheckNode receiverCheck, Shape newShape, JSContext context, int attributeFlags) {
         Property prop = newShape.getProperty(key);
-        assert (prop.getFlags() & JSAttributes.ATTRIBUTES_MASK) == attributeFlags;
+        assert (prop.getFlags() & (JSAttributes.ATTRIBUTES_MASK | JSProperty.CONST)) == attributeFlags;
 
         if (prop.getLocation() instanceof IntLocation) {
             return new DefineIntPropertyNode(key, receiverCheck, newShape, context, prop);

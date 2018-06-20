@@ -44,9 +44,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -55,7 +52,7 @@ import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
-import com.oracle.truffle.js.runtime.objects.Dead;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -81,8 +78,9 @@ public class GlobalDeclarationInstantiationNode extends StatementNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        MaterializedFrame globalScope = context.getRealm().getGlobalScope();
-        DynamicObject globalObject = context.getRealm().getGlobalObject();
+        JSRealm realm = context.getRealm();
+        DynamicObject globalScope = realm.getGlobalScope();
+        DynamicObject globalObject = realm.getGlobalObject();
 
         // verify that declarations are definable
         for (DeclareGlobalNode declaration : globalDeclarations) {
@@ -109,9 +107,9 @@ public class GlobalDeclarationInstantiationNode extends StatementNode {
     }
 
     @TruffleBoundary
-    private static boolean hasLexicalDeclaration(MaterializedFrame globalScopeFrame, String varName) {
-        FrameSlot slot = globalScopeFrame.getFrameDescriptor().findFrameSlot(varName);
-        return slot != null && (!globalScopeFrame.isObject(slot) || FrameUtil.getObjectSafe(globalScopeFrame, slot) != Dead.instance());
+    private static boolean hasLexicalDeclaration(DynamicObject globalScope, String varName) {
+        PropertyDescriptor desc = JSObject.getOwnProperty(globalScope, varName);
+        return desc != null;
     }
 
     @TruffleBoundary
