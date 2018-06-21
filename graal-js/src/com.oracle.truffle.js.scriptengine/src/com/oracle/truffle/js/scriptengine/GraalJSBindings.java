@@ -57,12 +57,26 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
 
     private final Context context;
     private final Map<String, Object> global;
-    private final Value deleteProperty;
+    private Value deleteProperty;
+    private Value clear;
 
     GraalJSBindings(Context context) {
         this.context = context;
         this.global = GraalJSScriptEngine.evalInternal(context, "this").as(STRING_MAP);
-        this.deleteProperty = GraalJSScriptEngine.evalInternal(context, "(function(obj, prop) {delete obj[prop]})");
+    }
+
+    private Value deletePropertyFunction() {
+        if (this.deleteProperty == null) {
+            this.deleteProperty = GraalJSScriptEngine.evalInternal(context, "(function(obj, prop) {delete obj[prop]})");
+        }
+        return this.deleteProperty;
+    }
+
+    private Value clearFunction() {
+        if (this.clear == null) {
+            this.clear = GraalJSScriptEngine.evalInternal(context, "(function(obj) {for (var prop in obj) {delete obj[prop]}})");
+        }
+        return this.clear;
     }
 
     @Override
@@ -72,9 +86,7 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
 
     @Override
     public void clear() {
-        for (String key : global.keySet()) {
-            remove(key);
-        }
+        clearFunction().execute(global);
     }
 
     @Override
@@ -85,7 +97,7 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
     @Override
     public Object remove(Object key) {
         Object prev = get(key);
-        deleteProperty.execute(global, key);
+        deletePropertyFunction().execute(global, key);
         return prev;
     }
 
