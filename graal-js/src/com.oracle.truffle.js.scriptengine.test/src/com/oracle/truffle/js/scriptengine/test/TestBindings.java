@@ -40,11 +40,18 @@
  */
 package com.oracle.truffle.js.scriptengine.test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
-import javax.script.*;
+import javax.script.Bindings;
+import javax.script.ScriptContext;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
+import javax.script.SimpleBindings;
 
-import org.junit.*;
+import org.junit.Test;
 
 public class TestBindings {
     private static final String argsName = "arguments";
@@ -146,27 +153,35 @@ public class TestBindings {
     public void setBindings3() throws ScriptException {
         ScriptEngine engine = getEngine();
         engine.put(varName, null);
-        System.out.println(engine.eval(varName));
+        assertNull(engine.get(varName));
+        assertNull(engine.eval(varName));
         assertEquals(true, engine.eval(varName + " === null;"));
     }
 
     @Test
     public void engineGetDeclared() throws ScriptException {
         ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        int sizeBefore = bindings.size();
         engine.eval("var " + varName + " = '" + defaultVarValue + "';");
         assertEquals(defaultVarValue, engine.get(varName));
-        assertEquals(1, engine.getBindings(ScriptContext.ENGINE_SCOPE).size());
+        int sizeAfter = bindings.size();
+        assertEquals(1, sizeAfter - sizeBefore);
     }
 
     @Test
     public void clearBindings1() {
         ScriptEngine engine = getEngine();
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        int sizeBeforePut = bindings.size();
         bindings.put(varName, defaultVarValue);
-        assertEquals(1, bindings.size());
+        int sizeAfterPut = bindings.size();
+        assertEquals(1, sizeAfterPut - sizeBeforePut);
         assertEquals(defaultVarValue, bindings.get(varName));
+        int sizeBeforeClear = bindings.size();
         bindings.clear();
-        assertEquals(0, bindings.size());
+        int sizeAfterClear = bindings.size();
+        assertEquals("One binding cleared", 1, sizeBeforeClear - sizeAfterClear);
         assertEquals(null, bindings.get(varName));
     }
 
@@ -174,12 +189,17 @@ public class TestBindings {
     public void clearBindings2() throws ScriptException {
         ScriptEngine engine = getEngine();
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        int sizeBeforePut = bindings.size();
         bindings.put(varName, defaultVarValue);
+        int sizeAfterPut = bindings.size();
+        assertEquals(1, sizeAfterPut - sizeBeforePut);
         engine.eval("var " + varName + " = '" + updatedVarValue + "';");
-        assertEquals(1, bindings.size());
+        assertEquals(sizeAfterPut, bindings.size());
         assertEquals(updatedVarValue, bindings.get(varName));
+        int sizeBeforeClear = bindings.size();
         bindings.clear();
-        assertEquals(0, bindings.size());
+        int sizeAfterClear = bindings.size();
+        assertEquals("One binding cleared", 1, sizeBeforeClear - sizeAfterClear);
         assertEquals(null, bindings.get(varName));
     }
 
@@ -188,8 +208,10 @@ public class TestBindings {
         ScriptEngine engine = getEngine();
         engine.eval("var " + varName + " = '" + defaultVarValue + "';");
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        int sizeBeforeClear = bindings.size();
         bindings.clear();
-        assertEquals(1, bindings.size());
+        int sizeAfterClear = bindings.size();
+        assertEquals("No bindings cleared", sizeBeforeClear, sizeAfterClear);
         assertEquals(defaultVarValue, bindings.get(varName));
     }
 
@@ -222,6 +244,5 @@ public class TestBindings {
         engine.setBindings(bindings, ScriptContext.ENGINE_SCOPE);
         assertEquals(defaultArgs[0], engine.eval(argsName + "[0];"));
         assertEquals(defaultArgs[1], engine.eval(argsName + "[1];"));
-        assertEquals(true, engine.eval("(function() { for (var idx in this) { if (idx == '" + argsName + "') { return false; } }; return true; })();"));
     }
 }
