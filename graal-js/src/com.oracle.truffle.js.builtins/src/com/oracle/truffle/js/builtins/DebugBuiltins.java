@@ -52,6 +52,7 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -78,6 +79,7 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugInspectNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugIsHolesArrayNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugJSStackNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugLoadModuleNodeGen;
+import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugNeverPartOfCompilationNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugObjectSizeHistogramNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugObjectSizeNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugPrintObjectNodeGen;
@@ -160,6 +162,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         systemGC(0),
         systemProperty(1),
         systemProperties(0),
+        neverPartOfCompilation(0),
 
         objectSize(1) {
             @Override
@@ -238,6 +241,8 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 return DebugSystemPropertyNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case systemProperties:
                 return DebugSystemPropertiesNodeGen.create(context, builtin, args().createArgumentNodes(context));
+            case neverPartOfCompilation:
+                return DebugNeverPartOfCompilationNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case typedArrayDetachBuffer:
                 return DebugTypedArrayDetachBufferNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
 
@@ -865,6 +870,33 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @Override
         protected JavaScriptNode copyUninitialized() {
             return DebugToLengthNodeGen.create(getContext(), getBuiltin(), cloneUninitialized(getArguments()));
+        }
+    }
+
+    public abstract static class DebugNeverPartOfCompilationNode extends JSBuiltinNode implements JSBuiltinNode.Inlineable, JSBuiltinNode.Inlined {
+        private static final String MESSAGE = "Debug.neverPartOfCompilation";
+
+        public DebugNeverPartOfCompilationNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected static Object neverPartOfCompilation() {
+            if (!CompilerDirectives.inCompilationRoot()) {
+                CompilerAsserts.neverPartOfCompilation(MESSAGE);
+            }
+            return Undefined.instance;
+        }
+
+        @Override
+        public Object callInlined(Object[] arguments) {
+            CompilerAsserts.neverPartOfCompilation(MESSAGE);
+            return Undefined.instance;
+        }
+
+        @Override
+        public Inlined createInlined() {
+            return DebugNeverPartOfCompilationNodeGen.create(getContext(), getBuiltin(), getArguments());
         }
     }
 }
