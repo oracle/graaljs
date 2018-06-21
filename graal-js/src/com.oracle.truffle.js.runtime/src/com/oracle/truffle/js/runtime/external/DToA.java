@@ -69,31 +69,22 @@ import java.math.*;
 
 import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 
-//@formatter:off
-//Checkstyle: stop
 public class DToA {
 
     private static char basedigit(int digit) {
         return (char) ((digit >= 10) ? 'a' - 10 + digit : '0' + digit);
     }
 
-    public static final int DTOSTR_STANDARD = 0; /* Either fixed or exponential format; round-trip */
-    public static final int DTOSTR_STANDARD_EXPONENTIAL = 1; /*
-                                                              * Always exponential format;
-                                                              * round-trip
-                                                              */
-    public static final int DTOSTR_FIXED = 2; /*
-                                               * Round to <precision> digits after the decimal
-                                               * point; exponential if number is large
-                                               */
-    public static final int DTOSTR_EXPONENTIAL = 3; /*
-                                                     * Always exponential format; <precision>
-                                                     * significant digits
-                                                     */
-    public static final int DTOSTR_PRECISION = 4; /*
-                                                   * Either fixed or exponential format; <precision>
-                                                   * significant digits
-                                                   */
+    /* Either fixed or exponential format; round-trip */
+    public static final int DTOSTR_STANDARD = 0;
+    /* Always exponential format; round-trip */
+    public static final int DTOSTR_STANDARD_EXPONENTIAL = 1;
+    /* Round to <precision> digits after the decimal point; exponential if number is large */
+    public static final int DTOSTR_FIXED = 2;
+    /* Always exponential format; <precision> significant digits */
+    public static final int DTOSTR_EXPONENTIAL = 3;
+    /* Either fixed or exponential format; <precision> significant digits */
+    public static final int DTOSTR_PRECISION = 4;
 
     private static final int Frac_mask = 0xfffff;
     private static final int Exp_shift = 20;
@@ -346,7 +337,7 @@ public class DToA {
             }
             s2 += Bias + P;
             /* 1/2^s2 = (nextDouble(d) - d)/2 */
-            BigInteger mlo = BigInteger.valueOf(1);
+            BigInteger mlo = BigInteger.ONE;
             BigInteger mhi = mlo;
             if ((word1 == 0) && ((word0 & Bndry_mask) == 0) && ((word0 & (Exp_mask & Exp_mask << 1)) != 0)) {
                 /*
@@ -359,11 +350,16 @@ public class DToA {
             }
 
             b = b.shiftLeft(e[0] + s2);
-            BigInteger s = BigInteger.valueOf(1);
+            BigInteger s = BigInteger.ONE;
             s = s.shiftLeft(s2);
             /*
-             * At this point we have the following: s = 2^s2; 1 > df = b/2^s2 > 0; (d -
-             * prevDouble(d))/2 = mlo/2^s2; (nextDouble(d) - d)/2 = mhi/2^s2.
+             * @formatter:off
+             * At this point we have the following:
+             * s = 2^s2;
+             * 1 > df = b/2^s2 > 0;
+             * (d - prevDouble(d))/2 = mlo/2^s2;
+             * (nextDouble(d) - d)/2 = mhi/2^s2.
+             * @formatter:on
              */
             BigInteger bigBase = BigInteger.valueOf(base);
 
@@ -399,10 +395,11 @@ public class DToA {
                          */
                         b = b.shiftLeft(1);
                         j1 = b.compareTo(s);
-                        if (j1 > 0) { /*
-                                       * The even test (|| (j1 == 0 && (digit & 1))) is not here
-                                       * because it messes up odd base output such as 3.5 in base 3.
-                                       */
+                        if (j1 > 0) {
+                            /*
+                             * The even test (|| (j1 == 0 && (digit & 1))) is not here because it
+                             * messes up odd base output such as 3.5 in base 3.
+                             */
                             digit++;
                         }
                     }
@@ -419,28 +416,36 @@ public class DToA {
 
     }
 
-    /*
-     * dtoa for IEEE arithmetic (dmg): convert double to ASCII string.
+    /* dtoa for IEEE arithmetic (dmg): convert double to ASCII string.
+     * @formatter:off
+     * Inspired by "How to Print Floating-Point Numbers Accurately" by
+     * Guy L. Steele, Jr. and Jon L. White [Proc. ACM SIGPLAN '90, pp. 92-101].
      *
-     * Inspired by "How to Print Floating-Point Numbers Accurately" by Guy L. Steele, Jr. and Jon L.
-     * White [Proc. ACM SIGPLAN '90, pp. 92-101].
-     *
-     * Modifications: 1. Rather than iterating, we use a simple numeric overestimate to determine k
-     * = floor(log10(d)). We scale relevant quantities using O(log2(k)) rather than O(k)
-     * multiplications. 2. For some modes > 2 (corresponding to ecvt and fcvt), we don't try to
-     * generate digits strictly left to right. Instead, we compute with fewer bits and propagate the
-     * carry if necessary when rounding the final digit up. This is often faster. 3. Under the
-     * assumption that input will be rounded nearest, mode 0 renders 1e23 as 1e23 rather than
-     * 9.999999999999999e22. That is, we allow equality in stopping tests when the round-nearest
-     * rule will give the same floating-point value as would satisfaction of the stopping test with
-     * strict inequality. 4. We remove common factors of powers of 2 from relevant quantities. 5.
-     * When converting floating-point integers less than 1e16, we use floating-point arithmetic
-     * rather than resorting to multiple-precision integers. 6. When asked to produce fewer than 15
-     * digits, we first try to get by with floating-point arithmetic; we resort to
-     * multiple-precision integer arithmetic only if we cannot guarantee that the floating-point
-     * calculation has given the correctly rounded result. For k requested digits and "uniformly"
-     * distributed input, the probability is something like 10^(k-15) that we must resort to the
-     * Long calculation.
+     * Modifications:
+     *  1. Rather than iterating, we use a simple numeric overestimate
+     *     to determine k = floor(log10(d)). We scale relevant quantities
+     *     using O(log2(k)) rather than O(k) multiplications.
+     *  2. For some modes > 2 (corresponding to ecvt and fcvt), we don't
+     *     try to generate digits strictly left to right. Instead, we
+     *     compute with fewer bits and propagate the carry if necessary
+     *     when rounding the final digit up. This is often faster.
+     *  3. Under the assumption that input will be rounded nearest,
+     *     mode 0 renders 1e23 as 1e23 rather than 9.999999999999999e22.
+     *     That is, we allow equality in stopping tests when the
+     *     round-nearest rule will give the same floating-point value
+     *     as would satisfaction of the stopping test with strict inequality.
+     *  4. We remove common factors of powers of 2 from relevant quantities.
+     *  5. When converting floating-point integers less than 1e16,
+     *     we use floating-point arithmetic rather than resorting
+     *     to multiple-precision integers.
+     *  6. When asked to produce fewer than 15 digits, we first try
+     *     to get by with floating-point arithmetic; we resort to
+     *     multiple-precision integer arithmetic only if we cannot
+     *     guarantee that the floating-point calculation has given
+     *     the correctly rounded result. For k requested digits and
+     *     "uniformly" distributed input, the probability is something
+     *     like 10^(k-15) that we must resort to the Long calculation.
+     * @formatter:on
      */
 
     static int word0(double d) {
@@ -499,16 +504,21 @@ public class DToA {
          * suppressed from the returned string. If not null, *rve is set to point to the end of the
          * return value. If d is +-Infinity or NaN, then *decpt is set to 9999.
          *
-         * mode: 0 ==> shortest string that yields d when read in and rounded to nearest. 1 ==> like
-         * 0, but with Steele & White stopping rule; e.g. with IEEE P754 arithmetic , mode 0 gives
-         * 1e23 whereas mode 1 gives 9.999999999999999e22. 2 ==> max(1,ndigits) significant digits.
-         * This gives a return value similar to that of ecvt, except that trailing zeros are
-         * suppressed. 3 ==> through ndigits past the decimal point. This gives a return value
-         * similar to that from fcvt, except that trailing zeros are suppressed, and ndigits can be
-         * negative. 4-9 should give the same return values as 2-3, i.e., 4 <= mode <= 9 ==> same
-         * return as mode 2 + (mode & 1). These modes are mainly for debugging; often they run
-         * slower but sometimes faster than modes 2-3. 4,5,8,9 ==> left-to-right digit generation.
+         * @formatter:off
+         * mode:
+         * 0 ==> shortest string that yields d when read in and rounded to nearest.
+         * 1 ==> like 0, but with Steele & White stopping rule;e.g. with IEEE P754 arithmetic,
+         * mode 0 gives 1e23 whereas mode 1 gives 9.999999999999999e22.
+         * 2 ==> max(1,ndigits) significant digits. This gives a return value similar to that of
+         * ecvt, except that trailing zeros are suppressed.
+         * 3 ==> through ndigits past the decimal point. This gives a return value similar to that
+         * from fcvt, except that trailing zeros are suppressed, and ndigits can be negative.
+         * 4-9 should give the same return values as 2-3, i.e.,
+         * 4 <= mode <= 9 ==> same return as mode 2 + (mode & 1). These modes are mainly for
+         * debugging; often they run slower but sometimes faster than modes 2-3.
+         * 4,5,8,9 ==> left-to-right digit generation.
          * 6-9 ==> don't try fast floating-point estimate (if applicable).
+         * @formatter:on
          *
          * Values of mode other than 0-9 are treated as mode 0.
          *
@@ -581,8 +591,7 @@ public class DToA {
              *
              * This suggests computing an approximation k to log10(d) by
              *
-             * k = (i - Bias)*0.301029995663981 + ( (d2-1.5)*0.289529654602168 + 0.176091259055681
-             * );
+             * k = (i - Bias)*0.301029995663981 + ((d2-1.5)*0.289529654602168 + 0.176091259055681);
              *
              * We want k to be too large rather than too small. The error in the first-order Taylor
              * series approximation is in our favor, so we just round up the constant enough to
@@ -651,7 +660,6 @@ public class DToA {
         }
         leftright = true;
         ilim = ilim1 = 0;
-        // Checkstyle: stop
         switch (mode) {
             case 0:
             case 1:
@@ -661,7 +669,7 @@ public class DToA {
                 break;
             case 2:
                 leftright = false;
-                /* no break */
+                /* fall through */
             case 4:
                 if (ndigits <= 0) {
                     ndigits = 1;
@@ -670,7 +678,7 @@ public class DToA {
                 break;
             case 3:
                 leftright = false;
-                /* no break */
+                /* fall through */
             case 5:
                 i = ndigits + k + 1;
                 ilim = i;
@@ -679,7 +687,6 @@ public class DToA {
                     i = 1;
                 }
         }
-        // Checkstyle: resume
         /* ilim is the maximum number of significant digits we want, based on k and ndigits. */
         /*
          * ilim1 is the maximum number of significant digits we want, based on k and ndigits, when
@@ -884,8 +891,9 @@ public class DToA {
             if (mode < 2) {
                 i = (denorm) ? be[0] + (Bias + (P - 1) - 1 + 1) : 1 + P - bbits[0];
                 /*
-                 * i is 1 plus the number of trailing zero bits in d's significand. Thus, (2^m2 *
-                 * 5^m5) / (2^(s2+i) * 5^s5) = (1/2 lsb of d)/10^k.
+                 * i is 1 plus the number of trailing zero bits in d's significand. Thus,
+                 *
+                 * (2^m2 * 5^m5) / (2^(s2+i) * 5^s5) = (1/2 lsb of d)/10^k.
                  */
             } else {
                 j = ilim - 1;
@@ -904,7 +912,7 @@ public class DToA {
             }
             b2 += i;
             s2 += i;
-            mhi = BigInteger.valueOf(1);
+            mhi = BigInteger.ONE;
             /*
              * (mhi * 2^m2 * 5^m5) / (2^s2 * 5^s5) = one-half of last printed (when mode >= 2) or
              * input (when mode < 2) significant digit, divided by 10^k.
@@ -941,7 +949,7 @@ public class DToA {
          * one-half of last printed or input significant digit, divided by 10^k.
          */
 
-        sS = BigInteger.valueOf(1);
+        sS = BigInteger.ONE;
         if (s5 > 0) {
             sS = pow5mult(sS, s5);
         }
@@ -1009,9 +1017,9 @@ public class DToA {
         if (kCheck) {
             if (b.compareTo(sS) < 0) {
                 k--;
-                b = b.multiply(BigInteger.valueOf(10)); /* we botched the k estimate */
+                b = b.multiply(BigInteger.TEN); /* we botched the k estimate */
                 if (leftright) {
-                    mhi = mhi.multiply(BigInteger.valueOf(10));
+                    mhi = mhi.multiply(BigInteger.TEN);
                 }
                 ilim = ilim1;
             }
@@ -1028,9 +1036,6 @@ public class DToA {
                 /*
                  * Always emit at least one digit. If the number appears to be zero using the
                  * current mode, then emit one '0' digit and set decpt to 1.
-                 */
-                /*
-                 * no_digits: k = -1 - ndigits; goto ret;
                  */
                 buf.setLength(0);
                 buf.append('0'); /* copy "0" to buffer */
@@ -1055,7 +1060,9 @@ public class DToA {
                 mhi = mhi.shiftLeft(Log2P);
             }
             /* mlo/S = maximum acceptable error, divided by 10^k, if the output is less than d. */
-            /* mhi/S = maximum acceptable error, divided by 10^k, if the output is greater than d. */
+            /*
+             * mhi/S = maximum acceptable error, divided by 10^k, if the output is greater than d.
+             */
 
             for (i = 1;; i++) {
                 BigInteger[] divResult = b.divideAndRemainder(sS);
@@ -1120,12 +1127,12 @@ public class DToA {
                 if (i == ilim) {
                     break;
                 }
-                b = b.multiply(BigInteger.valueOf(10));
+                b = b.multiply(BigInteger.TEN);
                 if (mlo == mhi) {
-                    mlo = mhi = mhi.multiply(BigInteger.valueOf(10));
+                    mlo = mhi = mhi.multiply(BigInteger.TEN);
                 } else {
-                    mlo = mlo.multiply(BigInteger.valueOf(10));
-                    mhi = mhi.multiply(BigInteger.valueOf(10));
+                    mlo = mlo.multiply(BigInteger.TEN);
+                    mhi = mhi.multiply(BigInteger.TEN);
                 }
             }
         } else {
@@ -1137,7 +1144,7 @@ public class DToA {
                 if (i >= ilim) {
                     break;
                 }
-                b = b.multiply(BigInteger.valueOf(10));
+                b = b.multiply(BigInteger.TEN);
             }
         }
 
@@ -1166,11 +1173,13 @@ public class DToA {
     }
 
     /* Mapping of JSDToStrMode -> JS_dtoa mode */
-    private static final int[] dtoaModes = {0, /* DTOSTR_STANDARD */
-    0, /* DTOSTR_STANDARD_EXPONENTIAL, */
-    3, /* DTOSTR_FIXED, */
-    2, /* DTOSTR_EXPONENTIAL, */
-    2}; /* DTOSTR_PRECISION */
+    private static final int[] dtoaModes = {
+                    0, /* DTOSTR_STANDARD */
+                    0, /* DTOSTR_STANDARD_EXPONENTIAL, */
+                    3, /* DTOSTR_FIXED, */
+                    2, /* DTOSTR_EXPONENTIAL, */
+                    2, /* DTOSTR_PRECISION */
+    };
 
     @SuppressWarnings("fallthrough")
     public static void jsDtostr(StringBuilder buffer, int modeParam, int precision, double d) {
@@ -1179,15 +1188,15 @@ public class DToA {
         int nDigits; /* Number of significand digits returned by JS_dtoa */
         int mode = modeParam;
 
-        // JS_ASSERT(bufferSize >= (size_t)(mode <= DTOSTR_STANDARD_EXPONENTIAL ?
-        // DTOSTR_STANDARD_BUFFER_SIZE :
-        // DTOSTR_VARIABLE_BUFFER_SIZE(precision)));
+        // JS_ASSERT(bufferSize >= (size_t)(mode <= DTOSTR_STANDARD_EXPONENTIAL
+        // ? DTOSTR_STANDARD_BUFFER_SIZE : DTOSTR_VARIABLE_BUFFER_SIZE(precision)));
 
         if (mode == DTOSTR_FIXED && (d >= 1e21 || d <= -1e21)) {
-            mode = DTOSTR_STANDARD; /*
-                                     * Change mode here rather than below because the buffer may not
-                                     * be large enough to hold a large integer.
-                                     */
+            /*
+             * Change mode here rather than below because the buffer may not be large enough to hold
+             * a large integer.
+             */
+            mode = DTOSTR_STANDARD;
         }
         decPt = jsDtoa(d, dtoaModes[mode], mode >= DTOSTR_FIXED, precision, sign, buffer);
         nDigits = buffer.length();
@@ -1195,13 +1204,10 @@ public class DToA {
         /* If Infinity, -Infinity, or NaN, return the string regardless of the mode. */
         if (decPt != 9999) {
             boolean exponentialNotation = false;
-            int minNDigits = 0; /*
-                                 * Minimum number of significand digits required by mode and
-                                 * precision
-                                 */
+            /* Minimum number of significand digits required by mode and precision */
+            int minNDigits = 0;
             int p;
 
-            // Checkstyle: stop
             switch (mode) {
                 case DTOSTR_STANDARD:
                     if (decPt < -5 || decPt > 21) {
@@ -1222,7 +1228,7 @@ public class DToA {
                 case DTOSTR_EXPONENTIAL:
                     // JS_ASSERT(precision > 0);
                     minNDigits = precision;
-                    /* Fall through */
+                    /* fall through */
                 case DTOSTR_STANDARD_EXPONENTIAL:
                     exponentialNotation = true;
                     break;
@@ -1235,7 +1241,6 @@ public class DToA {
                     }
                     break;
             }
-            // Checkstyle: resume
 
             /* If the number has fewer than minNDigits, pad it with zeros at the end */
             if (nDigits < minNDigits) {
@@ -1258,6 +1263,7 @@ public class DToA {
                 buffer.append(decPt - 1);
             } else if (decPt != nDigits) {
                 /* Some kind of a fraction in fixed notation */
+                // JS_ASSERT(decPt <= nDigits);
                 if (decPt > 0) {
                     /* dd...dd . dd...dd */
                     buffer.insert(decPt, '.');

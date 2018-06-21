@@ -1162,7 +1162,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         private static String readImpl(File file) throws IOException {
             final StringBuilder sb = new StringBuilder();
             final char[] arr = new char[BUFFER_SIZE];
-            try (final BufferedReader reader = Files.newBufferedReader(file.toPath())) {
+            try (BufferedReader reader = Files.newBufferedReader(file.toPath())) {
                 int numChars;
                 while ((numChars = reader.read(arr, 0, arr.length)) > 0) {
                     sb.append(arr, 0, numChars);

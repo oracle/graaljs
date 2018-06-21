@@ -63,35 +63,34 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 
-// @formatter:off
-// Checkstyle: stop
 /**
- * Parses JSON text and returns the corresponding IR node. This is derived from
- * the objectLiteral production of the main parser.
+ * Parses JSON text and returns the corresponding JS object representation.
+ *
+ * Derived from the ObjectLiteral production of the main parser.
  *
  * See: 15.12.1.2 The JSON Syntactic Grammar
  */
 public class JSONParser {
 
-    final private String source;
-    final private JSContext context;
-    final int length;
-    int pos = 0;
+    private final String source;
+    private final JSContext context;
+    private final int length;
+    private int pos = 0;
 
     private static final int EOF = -1;
 
-    private static final String TRUE  = "true";
+    private static final String TRUE = "true";
     private static final String FALSE = "false";
-    private static final String NULL  = "null";
+    private static final String NULL = "null";
 
-    private static final int STATE_EMPTY          = 0;
+    private static final int STATE_EMPTY = 0;
     private static final int STATE_ELEMENT_PARSED = 1;
-    private static final int STATE_COMMA_PARSED   = 2;
+    private static final int STATE_COMMA_PARSED = 2;
 
     /**
      * Constructor.
      *
-     * @param source  the source
+     * @param source the source
      * @param context the global object
      */
     public JSONParser(final String source, final JSContext context) {
@@ -101,9 +100,8 @@ public class JSONParser {
     }
 
     /**
-     * Implementation of the Quote(value) operation as defined in the ECMAscript
-     * spec. It wraps a String value in double quotes and escapes characters
-     * within.
+     * Implementation of the Quote(value) operation as defined in the ECMAscript spec. It wraps a
+     * String value in double quotes and escapes characters within.
      *
      * @param value string to quote
      *
@@ -118,11 +116,11 @@ public class JSONParser {
                     product.append("\\b");
                 } else if (ch == '\f') {
                     product.append("\\f");
-                } else if (ch == '\n'){
+                } else if (ch == '\n') {
                     product.append("\\n");
-                } else if (ch == '\r'){
+                } else if (ch == '\r') {
                     product.append("\\r");
-                } else if (ch == '\t'){
+                } else if (ch == '\t') {
                     product.append("\\t");
                 } else {
                     product.append(Lexer.unicodeEscape(ch));
@@ -163,26 +161,26 @@ public class JSONParser {
             throw expectedError(pos, "json literal", "eof");
         }
         switch (c) {
-        case '{':
-            return parseObject();
-        case '[':
-            return parseArray();
-        case '"':
-            return parseString();
-        case 'f':
-            return parseKeyword(FALSE, Boolean.FALSE);
-        case 't':
-            return parseKeyword(TRUE, Boolean.TRUE);
-        case 'n':
-            return parseKeyword(NULL, Null.instance);
-        default:
-            if (isDigit(c) || c == '-') {
-                return parseNumber();
-            } else if (c == '.') {
-                throw numberError(pos);
-            } else {
-                throw expectedError(pos, "json literal", toString(c));
-            }
+            case '{':
+                return parseObject();
+            case '[':
+                return parseArray();
+            case '"':
+                return parseString();
+            case 'f':
+                return parseKeyword(FALSE, Boolean.FALSE);
+            case 't':
+                return parseKeyword(TRUE, Boolean.TRUE);
+            case 'n':
+                return parseKeyword(NULL, Null.instance);
+            default:
+                if (isDigit(c) || c == '-') {
+                    return parseNumber();
+                } else if (c == '.') {
+                    throw numberError(pos);
+                } else {
+                    throw expectedError(pos, "json literal", toString(c));
+                }
         }
     }
 
@@ -199,31 +197,31 @@ public class JSONParser {
             final int c = peek();
 
             switch (c) {
-            case '"':
-                if (state == STATE_ELEMENT_PARSED) {
+                case '"':
+                    if (state == STATE_ELEMENT_PARSED) {
+                        throw expectedError(pos, ", or }", toString(c));
+                    }
+                    final String id = parseString();
+                    expectColon();
+                    final Object value = parseLiteral();
+                    addObjectProperty(jsobject, id, value);
+                    state = STATE_ELEMENT_PARSED;
+                    break;
+                case ',':
+                    if (state != STATE_ELEMENT_PARSED) {
+                        throw trailingCommaError(pos, toString(c));
+                    }
+                    state = STATE_COMMA_PARSED;
+                    pos++;
+                    break;
+                case '}':
+                    if (state == STATE_COMMA_PARSED) {
+                        throw trailingCommaError(pos, toString(c));
+                    }
+                    pos++;
+                    return jsobject;
+                default:
                     throw expectedError(pos, ", or }", toString(c));
-                }
-                final String id = parseString();
-                expectColon();
-                final Object value = parseLiteral();
-                addObjectProperty(jsobject, id, value);
-                state = STATE_ELEMENT_PARSED;
-                break;
-            case ',':
-                if (state != STATE_ELEMENT_PARSED) {
-                    throw trailingCommaError(pos, toString(c));
-                }
-                state = STATE_COMMA_PARSED;
-                pos++;
-                break;
-            case '}':
-                if (state == STATE_COMMA_PARSED) {
-                    throw trailingCommaError(pos, toString(c));
-                }
-                pos++;
-                return jsobject;
-            default:
-                throw expectedError(pos, ", or }", toString(c));
             }
         }
         throw expectedError(pos, ", or }", "eof");
@@ -255,28 +253,28 @@ public class JSONParser {
             final int c = peek();
 
             switch (c) {
-            case ',':
-                if (state != STATE_ELEMENT_PARSED) {
-                    throw trailingCommaError(pos, toString(c));
-                }
-                state = STATE_COMMA_PARSED;
-                pos++;
-                break;
-            case ']':
-                if (state == STATE_COMMA_PARSED) {
-                    throw trailingCommaError(pos, toString(c));
-                }
-                pos++;
-                return jsarray;
-            default:
-                if (state == STATE_ELEMENT_PARSED) {
-                    throw expectedError(pos, ", or ]", toString(c));
-                }
-                final long index = arrayData.length(jsarray);
-                arrayData = arrayData.setElement(jsarray, index, parseLiteral(), true);
-                arraySetArrayType(jsarray, arrayData);
-                state = STATE_ELEMENT_PARSED;
-                break;
+                case ',':
+                    if (state != STATE_ELEMENT_PARSED) {
+                        throw trailingCommaError(pos, toString(c));
+                    }
+                    state = STATE_COMMA_PARSED;
+                    pos++;
+                    break;
+                case ']':
+                    if (state == STATE_COMMA_PARSED) {
+                        throw trailingCommaError(pos, toString(c));
+                    }
+                    pos++;
+                    return jsarray;
+                default:
+                    if (state == STATE_ELEMENT_PARSED) {
+                        throw expectedError(pos, ", or ]", toString(c));
+                    }
+                    final long index = arrayData.length(jsarray);
+                    arrayData = arrayData.setElement(jsarray, index, parseLiteral(), true);
+                    arraySetArrayType(jsarray, arrayData);
+                    state = STATE_ELEMENT_PARSED;
+                    break;
             }
         }
 
@@ -317,26 +315,26 @@ public class JSONParser {
     private char parseEscapeSequence() {
         final int c = next();
         switch (c) {
-        case '"':
-            return '"';
-        case '\\':
-            return '\\';
-        case '/':
-            return '/';
-        case 'b':
-            return '\b';
-        case 'f':
-            return '\f';
-        case 'n':
-            return '\n';
-        case 'r':
-            return '\r';
-        case 't':
-            return '\t';
-        case 'u':
-            return parseUnicodeEscape();
-        default:
-            throw error(lexerMessage("invalid.escape.char"), pos - 1, length);
+            case '"':
+                return '"';
+            case '\\':
+                return '\\';
+            case '/':
+                return '/';
+            case 'b':
+                return '\b';
+            case 'f':
+                return '\f';
+            case 'n':
+                return '\n';
+            case 'r':
+                return '\r';
+            case 't':
+                return '\t';
+            case 'u':
+                return parseUnicodeEscape();
+            default:
+                throw error(lexerMessage("invalid.escape.char"), pos - 1, length);
         }
     }
 
@@ -441,14 +439,14 @@ public class JSONParser {
     private void skipWhiteSpace() {
         while (pos < length) {
             switch (peek()) {
-            case '\t':
-            case '\r':
-            case '\n':
-            case ' ':
-                pos++;
-                break;
-            default:
-                return;
+                case '\t':
+                case '\r':
+                case '\n':
+                case ' ':
+                    pos++;
+                    break;
+                default:
+                    return;
             }
         }
     }
@@ -459,11 +457,11 @@ public class JSONParser {
 
     @SuppressWarnings("hiding")
     ParserException error(final String message, final int start, final int length) throws ParserException {
-        final long token     = Token.toDesc(STRING, start, length);
-        final int  pos       = Token.descPosition(token);
-        final Source src     = Source.sourceFor("<json>", source);
-        final int  lineNum   = src.getLine(pos);
-        final int  columnNum = src.getColumn(pos);
+        final long token = Token.toDesc(STRING, start, length);
+        final int pos = Token.descPosition(token);
+        final Source src = Source.sourceFor("<json>", source);
+        final int lineNum = src.getLine(pos);
+        final int columnNum = src.getColumn(pos);
         final String formatted = ErrorManager.format(message, src, lineNum, columnNum, token);
         return new ParserException(JSErrorType.SyntaxError, formatted, src, lineNum, columnNum, token);
     }
@@ -478,8 +476,8 @@ public class JSONParser {
 
     private ParserException expectedError(final int start, final String expected, final String found) {
         return context.isOptionV8CompatibilityMode()
-                ? expectedErrorV8(start, found)
-                : error(parserMessage("expected", expected, found), start);
+                        ? expectedErrorV8(start, found)
+                        : error(parserMessage("expected", expected, found), start);
     }
 
     private static ParserException expectedErrorV8(final int start, final String found) {
@@ -511,7 +509,7 @@ public class JSONParser {
 
     private ParserException trailingCommaError(int start, String found) {
         return JSTruffleOptions.NashornCompatibilityMode
-                ? error(parserMessage("trailing.comma.in.json"), start)
-                : expectedErrorV8(start, found);
+                        ? error(parserMessage("trailing.comma.in.json"), start)
+                        : expectedErrorV8(start, found);
     }
 }
