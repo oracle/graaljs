@@ -291,7 +291,7 @@ public final class JSContextOptions {
     }
 
     public boolean isNashornCompatibilityMode() {
-        return nashornCompatibilityMode || JSTruffleOptions.TestNashornMode;
+        return nashornCompatibilityMode;
     }
 
     public boolean isDebugBuiltin() {
