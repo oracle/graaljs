@@ -97,7 +97,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSTest262;
-import com.oracle.truffle.js.runtime.builtins.JSTestNashorn;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
@@ -1009,6 +1008,9 @@ public class JSRealm implements ShapeContext {
         JSObjectUtil.putDataProperty(context, global, Undefined.NAME, Undefined.instance);
 
         JSObjectUtil.putFunctionsFromContainer(this, global, JSGlobalObject.CLASS_NAME);
+        if (context.isOptionNashornCompatibilityMode()) {
+            JSObjectUtil.putFunctionsFromContainer(this, global, JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS);
+        }
         this.evalFunctionObject = JSObject.get(global, JSGlobalObject.EVAL_NAME);
         this.applyFunctionObject = JSObject.get(getFunctionPrototype(), "apply");
         this.callFunctionObject = JSObject.get(getFunctionPrototype(), "call");
@@ -1048,9 +1050,6 @@ public class JSRealm implements ShapeContext {
         }
         if (JSTruffleOptions.TestV8Mode) {
             putGlobalProperty(global, JSTestV8.CLASS_NAME, JSTestV8.create(this));
-        }
-        if (JSTruffleOptions.TestNashornMode) {
-            putGlobalProperty(global, JSTestNashorn.CLASS_NAME, JSTestNashorn.create(this));
         }
         if (context.getEcmaScriptVersion() >= 6) {
             Object parseInt = JSObject.get(global, "parseInt");

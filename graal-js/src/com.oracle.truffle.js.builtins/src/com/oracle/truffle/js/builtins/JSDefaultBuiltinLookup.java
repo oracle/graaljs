@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.js.builtins.GlobalBuiltins.GlobalNashornExtensionsBuiltins;
 import com.oracle.truffle.js.builtins.PolyglotBuiltins.PolyglotInternalBuiltins;
 import com.oracle.truffle.js.builtins.math.MathBuiltins;
 import com.oracle.truffle.js.builtins.simd.SIMDBoolFunctionBuiltins;
@@ -107,6 +108,7 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         defineBuiltins(new JSONBuiltins());
 
         defineBuiltins(JSGlobalObject.CLASS_NAME, new GlobalBuiltins());
+        defineBuiltins(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, new GlobalNashornExtensionsBuiltins());
 
         defineBuiltins(JSConstructor.BUILTINS, new ConstructorBuiltins());
 
@@ -152,9 +154,6 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         }
         if (JSTruffleOptions.TestV8Mode) {
             defineBuiltins(new TestV8Builtins());
-        }
-        if (JSTruffleOptions.TestNashornMode) {
-            defineBuiltins(new TestNashornBuiltins());
         }
         if (JSTruffleOptions.TruffleInterop) {
             defineBuiltins(new PolyglotBuiltins());

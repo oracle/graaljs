@@ -1179,6 +1179,10 @@ public class JSContext implements ShapeContext {
         return contextOptions.isV8CompatibilityMode();
     }
 
+    public boolean isOptionNashornCompatibilityMode() {
+        return contextOptions.isNashornCompatibilityMode();
+    }
+
     public boolean isOptionDebugBuiltin() {
         return contextOptions.isDebugBuiltin();
     }

@@ -12,6 +12,9 @@ This is the case for Nashorn-specific extensions that Graal JavaScript does not 
 
     $ js --js.nashorn-compat=true
 
+Functionality only available under this flag includes:
+* `load("nashorn:parser.js")`
+
 ### Launcher name `js`
 When shipped with GraalVM, Graal JavaScript comes with a binary launcher named `js`.
 Note that, depending on the build setup, GraalVM might still ship Nashorn and its `jjs` launcher.
