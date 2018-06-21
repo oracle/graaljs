@@ -59,15 +59,13 @@ public abstract class AbstractFunctionArgumentsNode extends JavaScriptBaseNode {
     }
 
     public static AbstractFunctionArgumentsNode materializeArgumentsNode(AbstractFunctionArgumentsNode argumentsNode, SourceSection originalSourceSection) {
-        AbstractFunctionArgumentsNode materializedArgumentsNode;
         if (argumentsNode instanceof JSFunctionOneConstantArgumentNode) {
             JSConstantNode constantNode = JSConstantNode.create(((JSFunctionOneConstantArgumentNode) argumentsNode).getValue());
             constantNode.setSourceSection(originalSourceSection);
-            materializedArgumentsNode = JSFunctionOneArgumentNode.create(constantNode, false);
+            return JSFunctionOneArgumentNode.create(constantNode, false);
         } else {
-            materializedArgumentsNode = argumentsNode;
+            return argumentsNode;
         }
-        return materializedArgumentsNode;
     }
 
 }

@@ -61,6 +61,11 @@ public final class SpreadArgumentNode extends JavaScriptNode {
         this.iteratorStepNode = IteratorStepSpecialNode.create(context, null, JSConstantNode.create(null), false);
     }
 
+    @Override
+    public boolean isInstrumentable() {
+        return false;
+    }
+
     public static SpreadArgumentNode create(JSContext context, JavaScriptNode arg) {
         return new SpreadArgumentNode(context, arg);
     }

@@ -384,4 +384,54 @@ public class CallAccessTest extends FineGrainedAccessTest {
         }
     }
 
+    @Test
+    public void restArgs() {
+        evalWithTag("function foo(...args) {" +
+                        "  return bar(...args);" +
+                        "};" +
+                        "function bar() {" +
+                        "  return arguments[0];" +
+                        "};" +
+                        "foo(42);", FunctionCallExpressionTag.class);
+
+        enter(FunctionCallExpressionTag.class, (e, fooCall) -> {
+            fooCall.input(assertJSObjectInput);
+            fooCall.input(assertJSFunctionInput);
+            fooCall.input(42);
+            enter(FunctionCallExpressionTag.class, (e2, barCall) -> {
+                barCall.input(assertJSObjectInput);
+                barCall.input(assertJSFunctionInput);
+                barCall.input(assertJSArrayInput);
+            }).exit();
+        }).exit(assertReturnValue(42));
+    }
+
+    @Test
+    public void restArgsMulti() {
+        evalWithTag("function foo(x, y, ...args) {" +
+                        "  return bar(x, y, ...args);" +
+                        "};" +
+                        "function bar() {" +
+                        "  return arguments[4];" +
+                        "};" +
+                        "foo('a', 'b', 40, 41, 42);", FunctionCallExpressionTag.class);
+
+        enter(FunctionCallExpressionTag.class, (e, fooCall) -> {
+            fooCall.input(assertJSObjectInput);
+            fooCall.input(assertJSFunctionInput);
+            fooCall.input("a");
+            fooCall.input("b");
+            fooCall.input(40);
+            fooCall.input(41);
+            fooCall.input(42);
+            enter(FunctionCallExpressionTag.class, (e2, barCall) -> {
+                barCall.input(assertJSObjectInput);
+                barCall.input(assertJSFunctionInput);
+                barCall.input("a");
+                barCall.input("b");
+                barCall.input(assertJSArrayInput);
+            }).exit(assertReturnValue(42));
+        }).exit(assertReturnValue(42));
+    }
+
 }
