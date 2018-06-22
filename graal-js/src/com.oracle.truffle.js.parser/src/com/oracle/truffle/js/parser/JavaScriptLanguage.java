@@ -337,6 +337,13 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 return "Object";
             }
         }
+        if (value instanceof Double && ((Double) value) == 0d) {
+            if (Double.doubleToLongBits((Double) value) != 0) {
+                return "-0";
+            } else {
+                return "0";
+            }
+        }
         return JSRuntime.safeToString(value);
     }
 
@@ -566,7 +573,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             if (value instanceof Symbol) {
                 description = "Symbol(" + ((Symbol) value).getName() + ")";
             } else {
-                description = JSRuntime.toString(value);
+                description = toString(realm, value);
             }
         }
 

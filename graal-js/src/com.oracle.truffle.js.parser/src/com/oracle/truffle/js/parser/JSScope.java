@@ -43,7 +43,6 @@ package com.oracle.truffle.js.parser;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -179,7 +178,7 @@ public abstract class JSScope {
 
     protected static Object createVariablesMapObject(FrameDescriptor frameDesc, MaterializedFrame frame, Object[] args) {
         assert frame == null || frame.getFrameDescriptor() == frameDesc;
-        Map<String, Variable> slotMap = new HashMap<>();
+        Map<String, Variable> slotMap = new LinkedHashMap<>();
         for (FrameSlot slot : frameDesc.getSlots()) {
             if (slot.getIdentifier().equals(THIS_SLOT_ID)) {
                 slotMap.put(THIS_NAME, new FrameSlotVariable(slot));
