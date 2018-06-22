@@ -92,15 +92,20 @@ public final class JSContextOptions {
     private static final String ATOMICS_HELP = helpWithDefault("ES2017 Atomics", ATOMICS);
     @CompilationFinal private boolean atomics;
 
-    public static final String V8_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "v8-compatibility-mode";
+    public static final String V8_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "v8-compat";
     private static final OptionKey<Boolean> V8_COMPATIBILITY_MODE = new OptionKey<>(false);
-    private static final String V8_COMPATIBILITY_MODE_HELP = helpWithDefault("provide compatibility with Google V8 engine", V8_COMPATIBILITY_MODE);
+    private static final String V8_COMPATIBILITY_MODE_HELP = helpWithDefault("provide compatibility with the Google V8 engine", V8_COMPATIBILITY_MODE);
     @CompilationFinal private boolean v8CompatibilityMode;
 
     public static final String V8_REALM_BUILTIN_NAME = JS_OPTION_PREFIX + "v8-realm-builtin";
     private static final OptionKey<Boolean> V8_REALM_BUILTIN = new OptionKey<>(false);
     private static final String V8_REALM_BUILTIN_HELP = helpWithDefault("Provide Realm builtin compatible with V8's d8 shell.", V8_REALM_BUILTIN);
     @CompilationFinal private boolean v8RealmBuiltin;
+
+    public static final String NASHORN_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "nashorn-compat";
+    private static final OptionKey<Boolean> NASHORN_COMPATIBILITY_MODE = new OptionKey<>(false);
+    private static final String NASHORN_COMPATIBILITY_MODE_HELP = helpWithDefault("provide compatibility with the OpenJDK Nashorn engine", NASHORN_COMPATIBILITY_MODE);
+    @CompilationFinal private boolean nashornCompatibilityMode;
 
     public static final String DEBUG_BUILTIN_NAME = JS_OPTION_PREFIX + "debug-builtin";
     private static final OptionKey<Boolean> DEBUG_BUILTIN = new OptionKey<>(false);
@@ -139,6 +144,7 @@ public final class JSContextOptions {
                     ATOMICS,
                     V8_COMPATIBILITY_MODE,
                     V8_REALM_BUILTIN,
+                    NASHORN_COMPATIBILITY_MODE,
                     DEBUG_BUILTIN,
                     PARSE_ONLY,
                     TIME_ZONE,
@@ -177,6 +183,7 @@ public final class JSContextOptions {
         this.atomics = readBooleanOption(ATOMICS, ATOMICS_NAME);
         this.v8CompatibilityMode = readBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME);
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME);
+        this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME);
         this.directByteBuffer = readBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME);
         this.parseOnly = readBooleanOption(PARSE_ONLY, PARSE_ONLY_NAME);
         this.debug = readBooleanOption(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME);
@@ -225,6 +232,7 @@ public final class JSContextOptions {
         options.add(OptionDescriptor.newBuilder(ATOMICS, ATOMICS_NAME).category(OptionCategory.USER).help(ATOMICS_HELP).build());
         options.add(OptionDescriptor.newBuilder(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME).category(OptionCategory.USER).help(V8_COMPATIBILITY_MODE_HELP).build());
         options.add(OptionDescriptor.newBuilder(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME).category(OptionCategory.DEBUG).help(V8_REALM_BUILTIN_HELP).build());
+        options.add(OptionDescriptor.newBuilder(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME).category(OptionCategory.USER).help(NASHORN_COMPATIBILITY_MODE_HELP).build());
         options.add(OptionDescriptor.newBuilder(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME).category(OptionCategory.DEBUG).help(DEBUG_BUILTIN_HELP).build());
         options.add(OptionDescriptor.newBuilder(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME).category(OptionCategory.USER).help(DIRECT_BYTE_BUFFER_HELP).build());
         options.add(OptionDescriptor.newBuilder(PARSE_ONLY, PARSE_ONLY_NAME).category(OptionCategory.USER).help(PARSE_ONLY_HELP).build());
@@ -280,6 +288,10 @@ public final class JSContextOptions {
 
     public boolean isV8CompatibilityMode() {
         return v8CompatibilityMode;
+    }
+
+    public boolean isNashornCompatibilityMode() {
+        return nashornCompatibilityMode;
     }
 
     public boolean isDebugBuiltin() {

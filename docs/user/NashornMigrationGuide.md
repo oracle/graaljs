@@ -5,6 +5,16 @@ See the [JavaInterop.md](JavaInterop.md) for an overview of supported Java inter
 Both Nashorn and Graal JavaScript support a similar set of syntax and semantics for Java interoperability.
 The most important differences relevant for migration are listed here.
 
+### Nashorn compatibility mode flag
+Graal JavaScript provides a Nashorn compatibility mode.
+Some of the functionality necessary for Nashorn compatibility is only available when this flag is set.
+This is the case for Nashorn-specific extensions that Graal JavaScript does not want to expose by default.
+
+    $ js --js.nashorn-compat=true
+
+Functionality only available under this flag includes:
+* `load("nashorn:parser.js")`
+
 ### Launcher name `js`
 When shipped with GraalVM, Graal JavaScript comes with a binary launcher named `js`.
 Note that, depending on the build setup, GraalVM might still ship Nashorn and its `jjs` launcher.

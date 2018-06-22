@@ -171,7 +171,6 @@ public class JSTruffleOptions {
     // Test engine options. Used to expose internal behavior only in these test setups.
     public static final boolean Test262Mode = booleanOption("Test262Mode", false, OPTION_SETUP);
     public static final boolean TestV8Mode = booleanOption("TestV8Mode", false, OPTION_SETUP);
-    public static final boolean TestNashornMode = booleanOption("TestNashornMode", false, OPTION_SETUP);
 
     public static final boolean ValidateRegExpLiterals = booleanOption("ValidateRegExpLiterals", !TestV8Mode, OPTION_LANGUAGE_FEATURE);
 

@@ -21,7 +21,7 @@
  *    }
  */
 function parse(code, name, location) {
-    var jsonStr = TestNashorn.parseToJSON(code, name, location);
+    var jsonStr = parseToJSON(code, name, location);
     return JSON.parse(jsonStr,
         function (prop, value) {
             if (typeof value === "string" && prop === "value") {
@@ -29,7 +29,7 @@ function parse(code, name, location) {
                 // do not start with '/'. If regexp, then eval it to make RegExp object
                 return value.startsWith('/') ? eval(value) : value.substring(1);
             } else {
-                // anythin else is returned "as is""
+                // anything else is returned "as is""
                 return value;
             }
         });

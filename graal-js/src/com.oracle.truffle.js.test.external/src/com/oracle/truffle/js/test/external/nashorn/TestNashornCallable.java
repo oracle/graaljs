@@ -101,6 +101,7 @@ public class TestNashornCallable extends TestCallable {
         contextBuilder.option(GraalJSParserOptions.CONST_AS_VAR_NAME, Boolean.toString(constAsVar));
         contextBuilder.option(GraalJSParserOptions.FUNCTION_STATEMENT_ERROR_NAME, Boolean.toString(functionStatementError));
         contextBuilder.option(JSContextOptions.PARSE_ONLY_NAME, Boolean.toString(parseOnly));
+        contextBuilder.option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME, "true");
         if (!arguments.isEmpty()) {
             contextBuilder.arguments(JavaScriptLanguage.ID, arguments.toArray(new String[0]));
         }

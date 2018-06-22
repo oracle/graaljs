@@ -72,6 +72,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalNashornExtensionParseToJSONNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalDecodeURINodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalEncodeURINodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalExitNodeGen;
@@ -120,6 +121,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSURLDecoder;
 import com.oracle.truffle.js.runtime.builtins.JSURLEncoder;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -228,6 +230,54 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return JSGlobalReadBufferNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
+    }
+
+    public static final class GlobalNashornExtensionsBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalNashornExtensionsBuiltins.GlobalNashornExtensions> {
+        protected GlobalNashornExtensionsBuiltins() {
+            super(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, GlobalNashornExtensions.class);
+        }
+
+        public enum GlobalNashornExtensions implements BuiltinEnum<GlobalNashornExtensions> {
+            parseToJSON(3);
+
+            private final int length;
+
+            GlobalNashornExtensions(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalNashornExtensions builtinEnum) {
+            switch (builtinEnum) {
+                case parseToJSON:
+                    return GlobalNashornExtensionParseToJSONNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
+            }
+            return null;
+        }
+    }
+
+    /**
+     * For load("nashorn:parser.js") compatibility.
+     */
+    public abstract static class GlobalNashornExtensionParseToJSONNode extends JSBuiltinNode {
+        public GlobalNashornExtensionParseToJSONNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @TruffleBoundary
+        @Specialization
+        protected String parseToJSON(Object code0, Object name0, Object location0) {
+            String code = JSRuntime.toString(code0);
+            String name = name0 == Undefined.instance ? "<unknown>" : JSRuntime.toString(name0);
+            boolean location = JSRuntime.toBoolean(location0);
+            return getContext().getEvaluator().parseToJSON(getContext(), code, name, location);
+        }
     }
 
     private abstract static class JSGlobalOperation extends JSBuiltinNode {
@@ -978,12 +1028,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return null;
         }
 
-        private static Source sourceFromResourceURL(String resource) {
+        private Source sourceFromResourceURL(String resource) {
             assert !JSTruffleOptions.SubstrateVM;
             InputStream stream = null;
             if (resource.startsWith(LOAD_CLASSPATH)) {
                 stream = ClassLoader.getSystemResourceAsStream(resource.substring(LOAD_CLASSPATH.length()));
-            } else if (resource.startsWith(LOAD_NASHORN) && (resource.equals(NASHORN_PARSER_JS) || resource.equals(NASHORN_MOZILLA_COMPAT_JS))) {
+            } else if (getContext().isOptionNashornCompatibilityMode() && resource.startsWith(LOAD_NASHORN) && (resource.equals(NASHORN_PARSER_JS) || resource.equals(NASHORN_MOZILLA_COMPAT_JS))) {
                 stream = JSContext.class.getResourceAsStream(RESOURCES_PATH + resource.substring(LOAD_NASHORN.length()));
             } else if (resource.startsWith(LOAD_FX)) {
                 stream = ClassLoader.getSystemResourceAsStream(NASHORN_BASE_PATH + FX_RESOURCES_PATH + resource.substring(LOAD_FX.length()));
