@@ -43,6 +43,8 @@ package com.oracle.truffle.js.parser.foreign;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -91,6 +93,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -370,9 +373,20 @@ public class JSForeignAccessFactory {
     @Resolve(message = "KEYS")
     abstract static class KeysNode extends Node {
 
-        @TruffleBoundary // due to toArray()
+        @TruffleBoundary
         public Object access(DynamicObject target, @SuppressWarnings("unused") boolean internal) {
-            Object[] keys = JSObject.enumerableOwnNames(target).toArray();
+            EconomicSet<Object> keySet = EconomicSet.create();
+            for (DynamicObject proto = target; proto != Null.instance; proto = JSObject.getPrototype(proto)) {
+                for (Object key : JSObject.ownPropertyKeys(proto)) {
+                    if (key instanceof String) {
+                        keySet.add(key);
+                    }
+                }
+                if (JSProxy.isProxy(proto)) {
+                    break;
+                }
+            }
+            Object[] keys = keySet.toArray(new Object[keySet.size()]);
             JSContext context = JSObject.getJSContext(target);
             return JSArray.createConstant(context, keys);
         }
@@ -389,7 +403,17 @@ public class JSForeignAccessFactory {
         @Child protected JSForeignToJSTypeNode cast = JSForeignToJSTypeNode.create();
 
         public Object access(DynamicObject target, Object key) {
-            PropertyDescriptor desc = JSObject.getOwnProperty(target, toKey.execute(cast.executeWithTarget(key)));
+            Object propertyKey = toKey.execute(cast.executeWithTarget(key));
+            PropertyDescriptor desc = null;
+            for (DynamicObject proto = target; proto != Null.instance; proto = JSObject.getPrototype(proto)) {
+                desc = JSObject.getOwnProperty(proto, propertyKey);
+                if (desc != null) {
+                    break;
+                }
+                if (JSProxy.isProxy(proto)) {
+                    break;
+                }
+            }
             if (desc == null) {
                 if (JSObject.isExtensible(target)) {
                     return KeyInfo.INSERTABLE;
@@ -400,7 +424,7 @@ public class JSForeignAccessFactory {
             boolean readable = true;
             boolean writable = desc.getIfHasWritable(true);
             boolean invocable = desc.isDataDescriptor() & JSRuntime.isCallable(desc.getValue());
-            boolean removable = desc.getIfHasConfigurable(false);
+            boolean removable = desc.getConfigurable();
             return (readable ? KeyInfo.READABLE : 0) | (writable ? KeyInfo.MODIFIABLE : 0) | (invocable ? KeyInfo.INVOCABLE : 0) | (removable ? KeyInfo.REMOVABLE : 0);
         }
 

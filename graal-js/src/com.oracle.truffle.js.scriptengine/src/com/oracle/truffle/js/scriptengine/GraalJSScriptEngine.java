@@ -104,11 +104,6 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         Context.Builder builder = this.contextConfig;
         builder.in(in).out(out).err(err);
         Context ctx = builder.build();
-        Value global = evalInternal(ctx, "this");
-        evalInternal(ctx, "Object.defineProperty(this,'arguments',{enumerable:false,iterable:false})");
-        evalInternal(ctx, "Object.defineProperty(this,'__engine',{enumerable:false,iterable:false})");
-        global.putMember("arguments", evalInternal(ctx, "new Array(0)"));
-        global.putMember("__engine", this);
         ctx.getPolyglotBindings().putMember(OUT_SYMBOL, out);
         ctx.getPolyglotBindings().putMember(ERR_SYMBOL, err);
         ctx.getPolyglotBindings().putMember(IN_SYMBOL, in);
