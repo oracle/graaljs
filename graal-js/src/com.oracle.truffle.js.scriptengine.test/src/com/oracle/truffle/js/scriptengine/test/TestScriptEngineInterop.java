@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.scriptengine.test;
 
+import java.util.concurrent.Callable;
+
 import javax.script.ScriptContext;
 import javax.script.ScriptException;
 import javax.script.SimpleScriptContext;
@@ -80,6 +82,51 @@ public class TestScriptEngineInterop {
         GraalJSScriptEngine engine = GraalJSScriptEngine.create();
         SimpleScriptContext context = new SimpleScriptContext();
         Assert.assertNotNull(engine.getPolyglotContext(context));
+    }
+
+    interface TestInterface {
+
+    }
+
+    @Test
+    public void testClose() {
+        GraalJSScriptEngine engine = GraalJSScriptEngine.create();
+        engine.close();
+
+        expectIllegalState(() -> engine.eval(""));
+        expectIllegalState(() -> engine.compile(""));
+        expectIllegalState(() -> engine.get(""));
+        expectIllegalState(() -> {
+            engine.put("", "");
+            return null;
+        });
+        expectIllegalState(() -> {
+            engine.invokeFunction("");
+            return null;
+        });
+        expectIllegalState(() -> {
+            engine.invokeMethod("", "");
+            return null;
+        });
+        expectIllegalState(() -> {
+            engine.getInterface(TestInterface.class);
+            return null;
+        });
+
+        expectIllegalState(() -> {
+            engine.getInterface("", TestInterface.class);
+            return null;
+        });
+    }
+
+    private static void expectIllegalState(Callable<?> r) {
+        try {
+            r.call();
+            Assert.fail("expected illegal state");
+        } catch (IllegalStateException e) {
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
     }
 
 }
