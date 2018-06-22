@@ -65,6 +65,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -1175,7 +1176,12 @@ public class Recording {
     }
 
     private Inst dumpFrameSlot(FrameSlot arg) {
-        return getOrPut(arg, (v) -> new FrameSlotInst(v, dumpFrameDescriptor(v.getFrameDescriptor()).asVar(), dumpConst(v.getIdentifier(), Object.class).asVar(), JSFrameUtil.getFlags(v)));
+        return getOrPut(arg, (v) -> new FrameSlotInst(v, dumpFrameDescriptor(getFrameDescriptor(v)).asVar(), dumpConst(v.getIdentifier(), Object.class).asVar(), JSFrameUtil.getFlags(v)));
+    }
+
+    private FrameDescriptor getFrameDescriptor(FrameSlot slot) {
+        return frameDescriptorSet.stream().filter(desc -> desc.findFrameSlot(slot.getIdentifier()) == slot).findFirst().orElseThrow(
+                        () -> new NoSuchElementException("FrameDescriptor not found for slot: " + slot));
     }
 
     private Inst dumpFrameDescriptor(FrameDescriptor arg) {
@@ -1280,6 +1286,8 @@ public class Recording {
                 }
                 return nameChanged;
             });
+        } else if (result instanceof FrameDescriptor) {
+            frameDescriptorSet.add((FrameDescriptor) result);
         }
 
         if (!FIXUP_SOURCE_SECTIONS) {

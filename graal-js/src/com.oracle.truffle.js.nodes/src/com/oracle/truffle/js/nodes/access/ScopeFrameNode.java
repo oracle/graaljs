@@ -108,7 +108,6 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
         public Frame executeFrame(Frame frame) {
             Frame retFrame = frame;
             for (int i = 0; i < scopeLevel; i++) {
-                assert retFrame.getFrameDescriptor() == parentSlots[i].getFrameDescriptor();
                 retFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(retFrame, parentSlots[i]));
             }
             return retFrame;
@@ -134,7 +133,6 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
                 retFrame = JSFrameUtil.castMaterializedFrame(JSArguments.getEnclosingFrame(retFrame.getArguments()));
             }
             for (int i = 0; i < scopeLevel; i++) {
-                assert retFrame.getFrameDescriptor() == parentSlots[i].getFrameDescriptor();
                 retFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(retFrame, parentSlots[i]));
             }
             return retFrame;
