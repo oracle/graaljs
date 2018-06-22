@@ -578,7 +578,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             if (value instanceof Symbol) {
                 description = "Symbol(" + ((Symbol) value).getName() + ")";
             } else {
-                description = JSRuntime.toString(value);
+                description = toString(realm, value);
             }
         }
 
