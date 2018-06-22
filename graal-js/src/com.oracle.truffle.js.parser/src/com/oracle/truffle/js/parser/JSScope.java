@@ -241,14 +241,12 @@ public abstract class JSScope {
 
         @Override
         public Object get(Frame frame, Object[] args) {
-            assert frame.getFrameDescriptor() == slot.getFrameDescriptor();
             assert !isUnsetFrameSlot(frame, slot);
             return frame.getValue(slot);
         }
 
         @Override
         public void set(Frame frame, Object[] args, Object value) {
-            assert frame.getFrameDescriptor() == slot.getFrameDescriptor();
             if (frame.isInt(slot) && value instanceof Integer) {
                 frame.setInt(slot, (int) value);
             } else if (frame.isDouble(slot) && value instanceof Double) {
