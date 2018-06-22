@@ -51,6 +51,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.LargeInteger;
 
 @NodeInfo(shortName = "^")
 public abstract class JSBitwiseXorNode extends JSBinaryNode {
@@ -77,6 +78,16 @@ public abstract class JSBitwiseXorNode extends JSBinaryNode {
     }
 
     @Specialization
+    protected int doLargeIntegerInt(LargeInteger a, int b) {
+        return doInteger(a.intValue(), b);
+    }
+
+    @Specialization
+    protected int doIntLargeInteger(int a, LargeInteger b) {
+        return doInteger(a, b.intValue());
+    }
+
+    @Specialization
     protected int doDouble(double a, double b,
                     @Cached("create()") JSToInt32Node leftInt32,
                     @Cached("create()") JSToInt32Node rightInt32) {
@@ -88,7 +99,7 @@ public abstract class JSBitwiseXorNode extends JSBinaryNode {
         return a.xor(b);
     }
 
-    @Specialization(replaces = {"doInteger", "doDouble", "doBigInt"})
+    @Specialization(replaces = {"doInteger", "doIntLargeInteger", "doLargeIntegerInt", "doDouble", "doBigInt"})
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSToNumericNode leftNumeric,
                     @Cached("create()") JSToNumericNode rightNumeric,
