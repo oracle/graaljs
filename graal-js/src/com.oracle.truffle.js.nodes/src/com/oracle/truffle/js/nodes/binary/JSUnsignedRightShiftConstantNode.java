@@ -126,13 +126,10 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
     }
 
     @Specialization
-    protected Number doDouble(double a,
+    protected int doDouble(double a,
                     @Cached("create()") JSToUInt32Node toUInt32Node) {
-        long lnum = toUInt32Node.executeLong(a);
-        if (lnum >= Integer.MAX_VALUE || lnum <= Integer.MIN_VALUE) {
-            return (double) (lnum >>> shiftValue);
-        }
-        return (int) (lnum >>> shiftValue);
+        assert shiftValue > 0;
+        return (int) (toUInt32Node.executeLong(a) >>> shiftValue);
     }
 
     @Specialization
@@ -154,7 +151,7 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
 
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == Number.class;
+        return clazz == int.class;
     }
 
     protected JSUnsignedRightShiftConstantNode makeCopy() {
