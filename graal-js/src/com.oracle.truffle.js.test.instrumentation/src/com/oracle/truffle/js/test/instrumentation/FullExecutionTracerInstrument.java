@@ -61,6 +61,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
@@ -88,7 +89,7 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
         this.environment = env;
         env.registerService(this);
         // What source sections are we interested in?
-        SourceSectionFilter sourceSectionFilter = SourceSectionFilter.newBuilder().tagIs(FineGrainedAccessTest.allJSSpecificTags).build();
+        SourceSectionFilter sourceSectionFilter = SourceSectionFilter.newBuilder().tagIs(JSTags.ALL).build();
         // What generates the input events to track?
         SourceSectionFilter inputGeneratingObjects = SourceSectionFilter.newBuilder().tagIs(
                         StandardTags.ExpressionTag.class,
