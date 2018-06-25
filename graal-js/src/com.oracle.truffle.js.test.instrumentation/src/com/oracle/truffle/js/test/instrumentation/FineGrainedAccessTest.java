@@ -442,10 +442,25 @@ public abstract class FineGrainedAccessTest {
         assertTrue(JSFunction.isJSFunction(e.val));
     };
 
+    protected static Consumer<Event> assertJSFunctionInput(String expectedFunctionName) {
+        return (e) -> {
+            assertTrue(JSFunction.isJSFunction(e.val));
+            assertTrue(JSFunction.getName((DynamicObject) e.val).equals(expectedFunctionName));
+        };
+    }
+
     protected static final Consumer<Event> assertJSFunctionReturn = (e) -> {
         assertTrue(e.val instanceof Object[]);
         Object[] vals = (Object[]) e.val;
         assertTrue(JSFunction.isJSFunction(vals[0]));
+    };
+
+    protected static final Consumer<Event> assertJSObjectReturn = (e) -> {
+        assertTrue(e.val instanceof Object[]);
+        Object[] vals = (Object[]) e.val;
+        assertTrue(JSObject.isJSObject(vals[0]));
+        assertTrue(vals[0] != Undefined.instance);
+        assertFalse(JSFunction.isJSFunction(vals[0]));
     };
 
     protected void assertGlobalVarDeclaration(String name, Object value) {
