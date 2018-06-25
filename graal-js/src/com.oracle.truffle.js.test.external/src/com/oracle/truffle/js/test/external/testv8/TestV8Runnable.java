@@ -67,7 +67,6 @@ public class TestV8Runnable extends TestRunnable {
         Map<String, String> options = new HashMap<>();
         options.put(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
         options.put(JSContextOptions.V8_REALM_BUILTIN_NAME, "true");
-        options.put(JSContextOptions.SHARED_ARRAY_BUFFER_NAME, "true");
         commonOptions = Collections.unmodifiableMap(options);
     }
 

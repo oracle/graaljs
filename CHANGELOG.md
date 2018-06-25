@@ -3,14 +3,20 @@
 This changelog summarizes major changes between GraalVM versions of the Graal JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
-## Version 1.0
+## Version 1.0.0 RC4
+* Enable SharedArrayBuffers by default.
 
-* LICENSE set to The Universal Permissive License (UPL), Version 1.0.
-* Updated Node.js to 8.11.1.
+## Version 1.0.0 RC3
+* Added support for BigInt arithmetic expressions.
+* Provide a flag for a Nashorn compatibility mode (--js.nashorn-compat).
+* Rename flag for V8 compatibility mode (to --js.v8-compat).
+
+## Version 1.0.0 RC2
 * Enabled code sharing between Contexts with the same Engine.
-* Added support for BigInt arithmetic expressions
-* Provide a flag for a Nashorn compatibility mode (--js.nashorn-compat)
-* Rename flag for V8 compatibility mode (to --js.v8-compat)
+* Updated Node.js to 8.11.1.
+
+## Version 1.0.0 RC
+* LICENSE set to The Universal Permissive License (UPL), Version 1.0.
 
 ## Version 0.33
 
