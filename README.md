@@ -1,25 +1,33 @@
+[![Join the chat at https://gitter.im/graalvm/graal-core](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/graalvm/graal-core?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 A high performance implementation of the JavaScript programming language.
 Built on the GraalVM by Oracle Labs.
 
-## Getting Started
-See the documentation at [graalvm.org](http://www.graalvm.org/docs/getting-started/) how to install and use Graal JavaScript.
-
-## Goals
 The goals of Graal JavaScript are:
 
-* Execute idiomatic JavaScript code with best possible performance
-* Provide full compatibility with the latest ECMAScript specification
-* Provide compatibility with Node.js applications, including native packages
-* Provide compatibility with Nashorn or Rhino based applications
-* Add fast and low-overhead interoperability with languages natively supported on the JVM, e.g., Java, Scala, or Kotlin
-* Add fast and low-overhead interoperability with other GraalVM languages like Ruby, Python, or R
-* Provide tooling support, for e.g. debuggers and monitoring tools
+* Execute JavaScript code with best possible performance
+* Full compatibility with the latest ECMAScript specification
+* Support Node.js applications, including native packages
+* Allow simple upgrading from Nashorn or Rhino based applications
+* [Fast interoperability](https://www.graalvm.org/docs/reference-manual/polyglot/) with Java, Scala, or Kotlin, or with other GraalVM languages like Ruby, Python, or R
+* Be embeddable in systems like [Oracle RDBMS](https://oracle.github.io/oracle-db-mle/) or MySQL
+
+
+## Getting Started
+See the documentation on the [GraalVM website](https://www.graalvm.org/docs/getting-started/) how to install and use Graal JavaScript.
+
+```
+$ $GRAALVM/bin/js
+> print("Hello JavaScript");
+Hello JavaScript
+>
+```
 
 ## Documentation
 
 Extensive documentation is available in [`docs`](docs), for [`users`](docs/user) and [`contributors`](docs/contributor) of the engine.
 
-For instance, a guide how to build Graal JavaScript from source code can be found in [`BUILDING-GRAAL.JS.md`](docs/BUILDING-GRAAL.JS.md).
+For instance, a guide how to build Graal JavaScript from source code can be found in [`Building.md`](docs/Building.md).
 
 ## Current Status
 
@@ -34,11 +42,11 @@ Note that you will need to re-compile from source with Graal JavaScript if you w
 
 ## Graal JavaScript Reference Manual
 
-A reference manual for Graal JavaScript is available at [graalvm.org](http://www.graalvm.org/docs/reference-manual/languages/js/).
+A reference manual for Graal JavaScript is available on the [GraalVM website](https://www.graalvm.org/docs/reference-manual/languages/js/).
 
 ## Stay connected with the community
 
-See [graalvm.org/community](http://www.graalvm.org/community/) on how to stay connected with the development community.
+See [graalvm.org/community](https://www.graalvm.org/community/) on how to stay connected with the development community.
 The discussion on [gitter](https://gitter.im/graalvm/graal-core) is a good way to get in touch with us.
 
 ## Authors
@@ -61,6 +69,6 @@ and others.
 
 Graal JavaScript is available under the following license:
 
-* The Universal Permissive License (UPL), Version 1.0; https://opensource.org/licenses/UPL
+* [The Universal Permissive License (UPL), Version 1.0](https://opensource.org/licenses/UPL)
 
 
