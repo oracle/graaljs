@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.js.builtins.GlobalBuiltins.GlobalNashornExtensionsBuiltins;
+import com.oracle.truffle.js.builtins.JavaBuiltins.JavaNashornCompatBuiltins;
 import com.oracle.truffle.js.builtins.PolyglotBuiltins.PolyglotInternalBuiltins;
 import com.oracle.truffle.js.builtins.math.MathBuiltins;
 import com.oracle.truffle.js.builtins.simd.SIMDBoolFunctionBuiltins;
@@ -206,5 +207,6 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
     private void defineJavaInterop() {
         defineBuiltins(new JavaBuiltins());
         defineBuiltins(new JavaInteropWorkerPrototypeBuiltins());
+        defineBuiltins(new JavaNashornCompatBuiltins());
     }
 }

@@ -143,9 +143,11 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         super_(1),
         isJavaMethod(1),
         isJavaFunction(1),
+        asJSONCompatible(1),
+
+        // (old) Nashorn Java Interop and --nashorn-compat
         isScriptFunction(1),
-        isScriptObject(1),
-        asJSONCompatible(1);
+        isScriptObject(1);
 
         private final int length;
 
@@ -197,6 +199,39 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 return JavaAsJSONCompatibleNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
+    }
+
+    public static final class JavaNashornCompatBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaNashornCompatBuiltins.JavaNashornCompat> {
+        protected JavaNashornCompatBuiltins() {
+            super(JSJava.CLASS_NAME_NASHORN_COMPAT, JavaNashornCompat.class);
+        }
+
+        public enum JavaNashornCompat implements BuiltinEnum<JavaNashornCompat> {
+            isScriptFunction(1),
+            isScriptObject(1);
+
+            private final int length;
+
+            JavaNashornCompat(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, JavaNashornCompat builtinEnum) {
+            switch (builtinEnum) {
+                case isScriptFunction:
+                    return JavaIsScriptFunctionNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case isScriptObject:
+                    return JavaIsScriptObjectNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            }
+            return null;
+        }
     }
 
     abstract static class JavaTypeNode extends JSBuiltinNode {

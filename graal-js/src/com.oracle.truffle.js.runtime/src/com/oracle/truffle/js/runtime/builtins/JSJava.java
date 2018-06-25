@@ -53,6 +53,8 @@ public final class JSJava {
 
     private static final String JAVA_WORKER_PROPERTY_NAME = "Worker";
 
+    public static final String CLASS_NAME_NASHORN_COMPAT = "JavaNashornCompat";
+
     private JSJava() {
     }
 
