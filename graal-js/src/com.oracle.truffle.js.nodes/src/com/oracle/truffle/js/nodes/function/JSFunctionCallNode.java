@@ -283,13 +283,15 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         private Object evaluateReceiver(VirtualFrame frame, Object target) {
-            Object receiver;
-            if (!(targetNode instanceof SuperPropertyReferenceNode)) {
-                receiver = target;
-            } else {
-                receiver = ((SuperPropertyReferenceNode) targetNode).evaluateTarget(frame);
+            if (targetNode instanceof SuperPropertyReferenceNode) {
+                return ((SuperPropertyReferenceNode) targetNode).evaluateTarget(frame);
+            } else if (targetNode instanceof WrapperNode) {
+                WrapperNode wrapper = (WrapperNode) targetNode;
+                if (wrapper.getDelegateNode() instanceof SuperPropertyReferenceNode) {
+                    return ((SuperPropertyReferenceNode) wrapper.getDelegateNode()).evaluateTarget(frame);
+                }
             }
-            return receiver;
+            return target;
         }
 
         @Override
@@ -358,13 +360,16 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         private Object evaluateReceiver(VirtualFrame frame, Object target) {
-            Object receiver;
-            if (!(getTarget() instanceof SuperPropertyReferenceNode)) {
-                receiver = target;
-            } else {
-                receiver = ((SuperPropertyReferenceNode) getTarget()).evaluateTarget(frame);
+            Node targetNode = getTarget();
+            if (targetNode instanceof SuperPropertyReferenceNode) {
+                return ((SuperPropertyReferenceNode) targetNode).evaluateTarget(frame);
+            } else if (targetNode instanceof WrapperNode) {
+                WrapperNode wrapper = (WrapperNode) targetNode;
+                if (wrapper.getDelegateNode() instanceof SuperPropertyReferenceNode) {
+                    return ((SuperPropertyReferenceNode) wrapper.getDelegateNode()).evaluateTarget(frame);
+                }
             }
-            return receiver;
+            return target;
         }
 
         public JSTargetableNode getFunctionTargetNode() {
