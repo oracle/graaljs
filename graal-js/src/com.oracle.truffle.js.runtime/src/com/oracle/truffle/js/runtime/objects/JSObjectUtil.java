@@ -99,6 +99,14 @@ public final class JSObjectUtil {
         defineDataProperty(context, thisObj, key, value, flags);
     }
 
+    public static void putOrSetDataProperty(JSContext context, DynamicObject thisObj, Object key, Object value, int flags) {
+        if (!JSObject.hasOwnProperty(thisObj, key)) {
+            JSObjectUtil.putDataProperty(context, thisObj, key, value, flags);
+        } else {
+            JSObject.set(thisObj, key, value);
+        }
+    }
+
     public static Property makeDataProperty(Object key, Location location, int flags) {
         assert JSRuntime.isPropertyKey(key);
         return Property.create(key, location, flags);

@@ -1419,38 +1419,28 @@ public class JSRealm implements ShapeContext {
         if (!JSTruffleOptions.NashornExtensions) {
             return;
         }
-        String optionsObjName = "$OPTIONS";
-        String timezone = context.getLocalTimeZoneId().getId();
         DynamicObject globalObj = getGlobalObject();
 
-        if (!JSObject.hasOwnProperty(globalObj, optionsObjName)) {
-            DynamicObject optionsObj = JSUserObject.create(context);
-            DynamicObject timezoneObj = JSUserObject.create(context);
+        String timezone = context.getLocalTimeZoneId().getId();
+        DynamicObject timezoneObj = JSUserObject.create(context);
+        JSObjectUtil.putDataProperty(context, timezoneObj, "ID", timezone, JSAttributes.configurableEnumerableWritable());
 
-            JSObjectUtil.putDataProperty(context, timezoneObj, "ID", timezone, JSAttributes.configurableEnumerableWritable());
+        DynamicObject optionsObj = JSUserObject.create(context);
+        JSObjectUtil.putDataProperty(context, optionsObj, "_timezone", timezoneObj, JSAttributes.configurableEnumerableWritable());
+        JSObjectUtil.putDataProperty(context, optionsObj, "_scripting", true, JSAttributes.configurableEnumerableWritable());
+        JSObjectUtil.putDataProperty(context, optionsObj, "_compile_only", false, JSAttributes.configurableEnumerableWritable());
 
-            JSObjectUtil.putDataProperty(context, optionsObj, "_timezone", timezoneObj, JSAttributes.configurableEnumerableWritable());
-            JSObjectUtil.putDataProperty(context, optionsObj, "_scripting", true, JSAttributes.configurableEnumerableWritable());
-            JSObjectUtil.putDataProperty(context, optionsObj, "_compile_only", false, JSAttributes.configurableEnumerableWritable());
+        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$OPTIONS", optionsObj, JSAttributes.configurableNotEnumerableWritable());
 
-            JSObjectUtil.putDataProperty(context, globalObj, optionsObjName, optionsObj, JSAttributes.configurableNotEnumerableWritable());
+        DynamicObject argObj = JSArray.createConstant(context, getEnv().getApplicationArguments());
+        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ARG", argObj, JSAttributes.configurableNotEnumerableWritable());
+
+        DynamicObject envObj = JSUserObject.create(context);
+        Map<String, String> sysenv = System.getenv();
+        for (Map.Entry<String, String> entry : sysenv.entrySet()) {
+            JSObjectUtil.putDataProperty(context, envObj, entry.getKey(), entry.getValue(), JSAttributes.configurableEnumerableWritable());
         }
-
-        String argName = "$ARG";
-        if (!JSObject.hasOwnProperty(globalObj, argName)) {
-            DynamicObject argObj = JSArray.createConstant(context, getEnv().getApplicationArguments());
-            JSObjectUtil.putDataProperty(context, globalObj, argName, argObj, JSAttributes.configurableNotEnumerableWritable());
-        }
-
-        String envName = "$ENV";
-        if (!JSObject.hasOwnProperty(globalObj, envName)) {
-            DynamicObject envObj = JSUserObject.create(context);
-            Map<String, String> sysenv = System.getenv();
-            for (Map.Entry<String, String> entry : sysenv.entrySet()) {
-                JSObjectUtil.putDataProperty(context, envObj, entry.getKey(), entry.getValue(), JSAttributes.configurableEnumerableWritable());
-            }
-            JSObjectUtil.putDataProperty(context, globalObj, envName, envObj, JSAttributes.configurableNotEnumerableWritable());
-        }
+        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ENV", envObj, JSAttributes.configurableNotEnumerableWritable());
     }
 
     public void setRealmBuiltinObject(DynamicObject realmBuiltinObject) {
@@ -1474,7 +1464,7 @@ public class JSRealm implements ShapeContext {
     }
 
     public void setArguments(Object[] arguments) {
-        JSObjectUtil.putDataProperty(context, getGlobalObject(), ARGUMENTS_NAME, JSArray.createConstant(context, arguments),
+        JSObjectUtil.putOrSetDataProperty(context, getGlobalObject(), ARGUMENTS_NAME, JSArray.createConstant(context, arguments),
                         context.isOptionV8CompatibilityMode() ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable());
     }
 
