@@ -48,6 +48,26 @@ import com.oracle.truffle.api.instrumentation.Tag;
  */
 public class JSTags {
 
+    public static final Class<?>[] ALL = new Class[]{
+                    ObjectAllocationExpressionTag.class,
+                    BinaryExpressionTag.class,
+                    UnaryExpressionTag.class,
+                    ControlFlowRootTag.class,
+                    WriteVariableExpressionTag.class,
+                    ReadElementExpressionTag.class,
+                    WriteElementExpressionTag.class,
+                    ReadPropertyExpressionTag.class,
+                    WritePropertyExpressionTag.class,
+                    ReadVariableExpressionTag.class,
+                    LiteralExpressionTag.class,
+                    FunctionCallExpressionTag.class,
+                    BuiltinRootTag.class,
+                    EvalCallTag.class,
+                    ControlFlowRootTag.class,
+                    ControlFlowBlockTag.class,
+                    ControlFlowBranchTag.class,
+    };
+
     // ##### ECMA218 12.x - JavaScript Expressions
 
     /**

@@ -434,4 +434,36 @@ public class CallAccessTest extends FineGrainedAccessTest {
         }).exit(assertReturnValue(42));
     }
 
+    @Test
+    public void supeCallTest() {
+        evalWithTag("class Base {" +
+                        "  constructor() {" +
+                        "    this.someObj = {};" +
+                        "  };" +
+                        "  def() {" +
+                        "    return this.someObj;" +
+                        "  };" +
+                        "};" +
+                        "class Bar extends Base {" +
+                        "  use() {" +
+                        "    return super.def();" +
+                        "  };" +
+                        "};" +
+                        "var bar = new Bar();" +
+                        "bar.use();", FunctionCallExpressionTag.class);
+
+        enter(FunctionCallExpressionTag.class, (e, newCall) -> {
+            newCall.input(assertJSFunctionInput("Bar"));
+        }).exit(assertJSObjectReturn);
+
+        enter(FunctionCallExpressionTag.class, (e2, useCall) -> {
+            useCall.input(assertJSObjectInput);
+            useCall.input(assertJSFunctionInput("use"));
+            enter(FunctionCallExpressionTag.class, (e3, defCall) -> {
+                defCall.input(assertJSObjectInput);
+                defCall.input(assertJSFunctionInput("def"));
+            }).exit(assertJSObjectReturn);
+        }).exit(assertJSObjectReturn);
+    }
+
 }

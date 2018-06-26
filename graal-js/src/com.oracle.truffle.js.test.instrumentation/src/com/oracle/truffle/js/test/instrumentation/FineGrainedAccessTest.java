@@ -71,22 +71,10 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag.Type;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -102,26 +90,6 @@ public abstract class FineGrainedAccessTest {
     protected static final String TYPE = "type";
     protected static final String OPERATOR = "operator";
 
-    public static final Class<?>[] allJSSpecificTags = new Class[]{
-                    ObjectAllocationExpressionTag.class,
-                    BinaryExpressionTag.class,
-                    UnaryExpressionTag.class,
-                    ControlFlowRootTag.class,
-                    WriteVariableExpressionTag.class,
-                    ReadElementExpressionTag.class,
-                    WriteElementExpressionTag.class,
-                    ReadPropertyExpressionTag.class,
-                    WritePropertyExpressionTag.class,
-                    ReadVariableExpressionTag.class,
-                    LiteralExpressionTag.class,
-                    FunctionCallExpressionTag.class,
-                    BuiltinRootTag.class,
-                    EvalCallTag.class,
-                    ControlFlowRootTag.class,
-                    ControlFlowBlockTag.class,
-                    ControlFlowBranchTag.class,
-    };
-
     @SuppressWarnings("unchecked")
     public static final String getTagNames(JavaScriptNode node) {
         String tags = "";
@@ -132,7 +100,7 @@ public abstract class FineGrainedAccessTest {
         if (node.hasTag(StandardTags.RootTag.class)) {
             tags += "ROOT ";
         }
-        for (Class<?> c : allJSSpecificTags) {
+        for (Class<?> c : JSTags.ALL) {
             if (node.hasTag((Class<? extends Tag>) c)) {
                 tags += c.getSimpleName() + " ";
             }
@@ -366,7 +334,7 @@ public abstract class FineGrainedAccessTest {
     }
 
     protected void evalAllTags(String src) {
-        evalWithTags(src, allJSSpecificTags);
+        evalWithTags(src, JSTags.ALL);
     }
 
     protected void evalWithTags(String src, Class<?>[] filterTags) {
@@ -474,10 +442,25 @@ public abstract class FineGrainedAccessTest {
         assertTrue(JSFunction.isJSFunction(e.val));
     };
 
+    protected static Consumer<Event> assertJSFunctionInput(String expectedFunctionName) {
+        return (e) -> {
+            assertTrue(JSFunction.isJSFunction(e.val));
+            assertTrue(JSFunction.getName((DynamicObject) e.val).equals(expectedFunctionName));
+        };
+    }
+
     protected static final Consumer<Event> assertJSFunctionReturn = (e) -> {
         assertTrue(e.val instanceof Object[]);
         Object[] vals = (Object[]) e.val;
         assertTrue(JSFunction.isJSFunction(vals[0]));
+    };
+
+    protected static final Consumer<Event> assertJSObjectReturn = (e) -> {
+        assertTrue(e.val instanceof Object[]);
+        Object[] vals = (Object[]) e.val;
+        assertTrue(JSObject.isJSObject(vals[0]));
+        assertTrue(vals[0] != Undefined.instance);
+        assertFalse(JSFunction.isJSFunction(vals[0]));
     };
 
     protected void assertGlobalVarDeclaration(String name, Object value) {

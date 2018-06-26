@@ -178,8 +178,8 @@ public class ScopeInstrumentTest {
                 vars = (TruffleObject) dynamicScope.getVariables();
                 varCount = getSize(getKeys(vars));
                 assertEquals("Line = " + line + ", num vars:", numVars, varCount);
-                assertTrue("Var a: ", contains(vars, "a"));
-                assertTrue("Var b: ", contains(vars, "b"));
+                assertTrue("Var a: ", hasKey(vars, "a"));
+                assertTrue("Var b: ", hasKey(vars, "b"));
                 if (setVars >= 1) {
                     assertEquals("Var a: ", 10, read(vars, "a"));
                 }
@@ -191,8 +191,8 @@ public class ScopeInstrumentTest {
                 vars = (TruffleObject) lexicalScope.getVariables();
                 varCount = getSize(getKeys(vars));
                 assertEquals("Line = " + line + ", num vars:", numVars, varCount);
-                assertTrue("Var a: ", contains(vars, "a"));
-                assertTrue("Var b: ", contains(vars, "b"));
+                assertTrue("Var a: ", hasKey(vars, "a"));
+                assertTrue("Var b: ", hasKey(vars, "b"));
                 if (setVars >= 1) {
                     assertTrue(isNull(read(vars, "a")));
                 }
@@ -229,8 +229,8 @@ public class ScopeInstrumentTest {
             TruffleObject keys = getKeys(variables);
             assertNotNull(keys);
             assertTrue("number of keys >= 1", getSize(keys) >= 1);
-            String functionName = (String) read(keys, 0);
-            assertEquals("testFunction", functionName);
+            String functionName = "testFunction";
+            assertTrue(hasValue(keys, "testFunction"));
             TruffleObject function = (TruffleObject) read(variables, functionName);
             assertTrue(ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), function));
         }
@@ -244,7 +244,18 @@ public class ScopeInstrumentTest {
             return size.intValue();
         }
 
-        private static boolean contains(TruffleObject object, String key) {
+        private static boolean hasValue(TruffleObject object, String key) throws UnsupportedMessageException, UnknownIdentifierException {
+            int size = getSize(object);
+            for (int i = 0; i < size; i++) {
+                Object read = read(object, i);
+                if (read instanceof String && key.equals(read)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static boolean hasKey(TruffleObject object, String key) {
             int keyInfo = ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), object, key);
             return KeyInfo.isReadable(keyInfo);
         }
