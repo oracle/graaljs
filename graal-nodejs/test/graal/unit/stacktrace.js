@@ -41,18 +41,21 @@
 
 var assert = require('assert');
 var module = require('./_unit');
+var thrower = function () {
+    throw new Error();
+};
 
 describe('StackTrace', function () {
     describe('GetFrameCount', function () {
         it('should return a number', function () {
-            var frameCount = module.StackTrace_GetFrameCount();
+            var frameCount = module.StackTrace_GetFrameCount(thrower);
             assert.strictEqual(typeof frameCount, "number");
             assert.strictEqual(frameCount > 0, true);
         });
     });
     describe('GetFrame', function () {
         it('can access method', function () {
-            assert.strictEqual(module.StackTrace_CanGetFrame(), true);
+            assert.strictEqual(module.StackTrace_CanGetFrame(thrower), true);
         });
     });
 });
@@ -60,28 +63,30 @@ describe('StackTrace', function () {
 describe('StackFrame', function () {
     describe('GetLineNumber', function () {
         it('should return a number', function () {
-            var column = module.StackTrace_FrameGetLineNumber();
+            var column = module.StackTrace_FrameGetLineNumber(thrower);
             assert.strictEqual(typeof column, "number");
             assert.strictEqual(column > 0, true);
         });
     });
     describe('GetColumn', function () {
         it('should return a number', function () {
-            var column = module.StackTrace_FrameGetColumn();
+            var column = module.StackTrace_FrameGetColumn(thrower);
             assert.strictEqual(typeof column, "number");
             assert.strictEqual(column > 0, true);
         });
     });
     describe('GetFunctionName', function () {
-        it('should return a string', function thisNameReturned() {
-            var name = module.StackTrace_FrameGetFunctionName();
+        it('should return a string', function () {
+            var name = module.StackTrace_FrameGetFunctionName(function thisNameReturned() {
+                throw new Error();
+            });
             assert.strictEqual(typeof name, "string");
             assert.strictEqual(name, "thisNameReturned");
         });
     });
     describe('GetScriptName', function () {
         it('should return a string', function () {
-            var name = module.StackTrace_FrameGetScriptName();
+            var name = module.StackTrace_FrameGetScriptName(thrower);
             assert.strictEqual(typeof name, "string");
             assert.strictEqual(name.length > 0, true);
             assert.strictEqual(name.indexOf("stacktrace.js") >= 0, true);
@@ -89,7 +94,7 @@ describe('StackFrame', function () {
     });
     describe('IsEval', function () {
         it('should not be inside eval', function () {
-            var isEval = module.StackTrace_FrameIsEval();
+            var isEval = module.StackTrace_FrameIsEval(thrower);
             assert.strictEqual(isEval, false);
         });
         it.skip('should be inside eval', function () { //never returns true for any frame, on Node.js

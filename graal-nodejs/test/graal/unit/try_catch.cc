@@ -73,9 +73,7 @@ EXPORT_TO_JS(HasCaughtNoException) {
 EXPORT_TO_JS(HasCaughtNativeException) {
     Isolate* isolate = args.GetIsolate();
     TryCatch tryCatch;
-    // undefined.key triggers a reference error
-    Local<Value> undefined = Undefined(isolate);
-    Local<Object>::Cast(undefined)->Get(String::NewFromUtf8(isolate, "key"));
+    isolate->ThrowException(args[0]);
     bool result = tryCatch.HasCaught();
     args.GetReturnValue().Set(result);
 }
