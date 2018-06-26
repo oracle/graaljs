@@ -42,6 +42,7 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 
@@ -105,6 +106,56 @@ public class ResumableNodesTest extends FineGrainedAccessTest {
         assertVariableRead("index", 1);
         assertVariableRead("local", 1);
         assertVariableInc("index", 1);
+    }
+
+    @Test
+    public void generatorYieldInCall() {
+        String src = "function dummy(arg) {" +
+                        "  return {};" +
+                        "};" +
+                        "function crash() {" +
+                        "  return 'Crash';" +
+                        "};" +
+                        "function* myGen() {" +
+                        "  const c = crash();" +
+                        "  const boom = dummy(" +
+                        "    yield c" +
+                        "  );" +
+                        "};" +
+                        "a = myGen();" +
+                        "a.next();" +
+                        "a.next();" +
+                        "a.next();";
+
+        evalWithTags(src, new Class[]{FunctionCallExpressionTag.class});
+
+        enter(FunctionCallExpressionTag.class, (e, call) -> {
+            call.input(assertUndefinedInput);
+            call.input(assertJSFunctionInput("myGen"));
+        }).exit();
+        // 1st next() calls 'crash()' and yields
+        enter(FunctionCallExpressionTag.class, (e, call) -> {
+            call.input(assertJSObjectInput);
+            call.input(assertJSFunctionInput("next"));
+            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                call2.input(assertJSObjectInput);
+                call2.input(assertJSFunctionInput("crash"));
+            }).exit();
+        }).exit();
+        // 2nd next() resumes and calls 'dummy()' -- but does not call cash
+        enter(FunctionCallExpressionTag.class, (e, call) -> {
+            call.input(assertJSObjectInput);
+            call.input(assertJSFunctionInput("next"));
+            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                call2.input(assertJSObjectInput);
+                call2.input(assertJSFunctionInput("dummy"));
+            }).exit();
+        }).exit();
+        // 3rd next() does no calls
+        enter(FunctionCallExpressionTag.class, (e, call) -> {
+            call.input(assertJSObjectInput);
+            call.input(assertJSFunctionInput("next"));
+        }).exit();
     }
 
     protected void assertVariableInc(String name, int value) {

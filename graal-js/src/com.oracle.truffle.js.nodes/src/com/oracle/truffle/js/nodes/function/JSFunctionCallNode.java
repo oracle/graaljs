@@ -258,6 +258,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Override
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (materializedTags.contains(FunctionCallExpressionTag.class)) {
+                if (this.hasSourceSection() && !functionNode.hasSourceSection()) {
+                    transferSourceSectionNoTags(this, functionNode);
+                }
                 if (targetNode != null) {
                     // if we have a target, no de-sugaring needed
                     return this;
