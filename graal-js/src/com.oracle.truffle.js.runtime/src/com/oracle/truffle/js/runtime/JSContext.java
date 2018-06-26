@@ -582,7 +582,6 @@ public class JSContext implements ShapeContext {
     }
 
     public void setInteropRuntime(JSInteropRuntime interopRuntime) {
-        assert this.interopRuntime == null;
         this.interopRuntime = interopRuntime;
     }
 
