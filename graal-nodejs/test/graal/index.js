@@ -57,24 +57,36 @@ var isGraalJS = function () {
     return typeof (print) === 'function';
 };
 
-// Add skipOnGraal verb to the default bdd UI
+// Add skipOnGraal, skipOnNode verbs to the default bdd UI
 var bddUI = Mocha.interfaces['bdd'];
 Mocha.interfaces['graal'] = function (suite) {
     bddUI(suite);
     suite.on('pre-require', function (context) {
-        context.it.skipOnGraal = function (title, fn) {
-            if (isGraalJS()) {
-                context.it.skip(title, fn);
-            } else {
-                return context.it(title, fn);
-            }
-        };
-        context.describe.skipOnGraal = function (title, fn) {
-            if (isGraalJS()) {
+        var describeSkip = function(shouldSkip, title, fn) {
+            if (shouldSkip()) {
                 context.describe.skip(title, fn);
             } else {
                 return context.describe(title, fn);
             }
+        };
+        var itSkip = function(shouldSkip, title, fn) {
+            if (shouldSkip()) {
+                context.it.skip(title, fn);
+            } else {
+                return context.it(title, fn);
+            }            
+        };
+        context.it.skipOnGraal = function (title, fn) {
+            return itSkip(isGraalJS, title, fn);
+        };
+        context.describe.skipOnGraal = function (title, fn) {
+            return describeSkip(isGraalJS, title, fn);
+        };
+        context.it.skipOnNode = function (title, fn) {
+            return itSkip(() => !isGraalJS(), title, fn);
+        };
+        context.describe.skipOnNode = function (title, fn) {
+            return describeSkip(() => !isGraalJS(), title, fn);
         };
     });
 };
