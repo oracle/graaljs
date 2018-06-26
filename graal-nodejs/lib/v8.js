@@ -211,10 +211,13 @@ module.exports = exports = {
   getHeapStatistics,
   getHeapSpaceStatistics,
   setFlagsFromString,
-  Serializer,
-  Deserializer,
-  DefaultSerializer,
-  DefaultDeserializer,
-  deserialize,
-  serialize
+// Do not export serialization stuff until it is supported by graal-node.js properly.
+// This helps potential clients of this API that use feature checks to fallback
+// to other APIs (like JSON.stringify/parse).
+//  Serializer,
+//  Deserializer,
+//  DefaultSerializer,
+//  DefaultDeserializer,
+//  deserialize,
+//  serialize
 };
