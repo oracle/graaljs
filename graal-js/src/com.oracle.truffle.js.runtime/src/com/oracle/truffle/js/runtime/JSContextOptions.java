@@ -83,7 +83,7 @@ public final class JSContextOptions {
     @CompilationFinal private boolean arraySortInherited;
 
     public static final String SHARED_ARRAY_BUFFER_NAME = JS_OPTION_PREFIX + "shared-array-buffer";
-    private static final OptionKey<Boolean> SHARED_ARRAY_BUFFER = new OptionKey<>(false);
+    private static final OptionKey<Boolean> SHARED_ARRAY_BUFFER = new OptionKey<>(true);
     private static final String SHARED_ARRAY_BUFFER_HELP = helpWithDefault("ES2017 SharedArrayBuffer", SHARED_ARRAY_BUFFER);
     @CompilationFinal private boolean sharedArrayBuffer;
 

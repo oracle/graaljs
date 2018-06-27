@@ -15,10 +15,10 @@ Older versions, as well as some features of the most recent version, can be enab
 For informations on the flags, see the *--help* message of the executable.
 
 Graal JavaScript provides the following function objects in the global scope as specified by ECMAScript, representing the JavaScript core library:
-Array, ArrayBuffer, Boolean, DataView, Date, Error, Function, JSON, Map, Math, Number, Object, Promise, Proxy, Reflect, RegExp, Set, String, Symbol, TypedArray, WeakMap, WeakSet
+Array, ArrayBuffer, Boolean, DataView, Date, Error, Function, JSON, Map, Math, Number, Object, Promise, Proxy, Reflect, RegExp, Set, SharedArrayBuffer, String, Symbol, TypedArray, WeakMap, WeakSet
 
 Some additional objects are available under flags (run `js --help` for the list of available flags):
-Atomics, Intl, SharedArrayBuffer, SIMD
+Atomics, Intl, SIMD
 
 Several of these function objects and some of their members are only available when a certain version of the spec is selected for execution.
 For a list of methods provided, inspect the ECMAScript specification.

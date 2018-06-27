@@ -86,7 +86,6 @@ public class Test262Runnable extends TestRunnable {
     private static final Map<String, String> commonOptions;
     static {
         Map<String, String> options = new HashMap<>();
-        options.put(JSContextOptions.SHARED_ARRAY_BUFFER_NAME, "true");
         options.put(JSContextOptions.INTL_402_NAME, "true");
         commonOptions = Collections.unmodifiableMap(options);
     }
