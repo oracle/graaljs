@@ -40,10 +40,16 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.StringTokenizer;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -1411,8 +1417,12 @@ public class JSRealm implements ShapeContext {
     /**
      * Adds several objects to the global object, in case scripting mode is enabled (for Nashorn
      * compatibility). This includes an {@code $OPTIONS} property that exposes several options to
-     * the script, an {@code $ARG} array with arguments to the script, and an {@code $ENV} object
-     * with environment variables.
+     * the script, an {@code $ARG} array with arguments to the script, an {@code $ENV} object with
+     * environment variables, and an {@code $EXEC} function to execute external code.
+     *
+     * @see <a href=
+     *      "https://docs.oracle.com/javase/8/docs/technotes/guides/scripting/nashorn/shell.html">Nashorn
+     *      and Shell Scripting</a>
      */
     public void addScriptingObjects() {
         CompilerAsserts.neverPartOfCompilation();
@@ -1421,6 +1431,7 @@ public class JSRealm implements ShapeContext {
         }
         DynamicObject globalObj = getGlobalObject();
 
+        // $OPTIONS
         String timezone = context.getLocalTimeZoneId().getId();
         DynamicObject timezoneObj = JSUserObject.create(context);
         JSObjectUtil.putDataProperty(context, timezoneObj, "ID", timezone, JSAttributes.configurableEnumerableWritable());
@@ -1432,15 +1443,120 @@ public class JSRealm implements ShapeContext {
 
         JSObjectUtil.putOrSetDataProperty(context, globalObj, "$OPTIONS", optionsObj, JSAttributes.configurableNotEnumerableWritable());
 
+        // $ARG
         DynamicObject argObj = JSArray.createConstant(context, getEnv().getApplicationArguments());
         JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ARG", argObj, JSAttributes.configurableNotEnumerableWritable());
 
+        // $ENV
         DynamicObject envObj = JSUserObject.create(context);
         Map<String, String> sysenv = System.getenv();
         for (Map.Entry<String, String> entry : sysenv.entrySet()) {
             JSObjectUtil.putDataProperty(context, envObj, entry.getKey(), entry.getValue(), JSAttributes.configurableEnumerableWritable());
         }
         JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ENV", envObj, JSAttributes.configurableNotEnumerableWritable());
+
+        // $EXEC
+        JSFunctionData execFunctionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object[] args = frame.getArguments();
+                int len = JSArguments.getUserArgumentCount(args);
+                String cmd = len > 0 ? JSRuntime.toString(JSArguments.getUserArgument(args, 0)) : "";
+                String input = len > 1 ? JSRuntime.toString(JSArguments.getUserArgument(args, 1)) : null;
+                return execIntl(cmd, input);
+            }
+
+            @TruffleBoundary
+            private Object execIntl(String cmd, String input) {
+                try {
+                    StringTokenizer tok = new StringTokenizer(cmd);
+                    String[] cmds = new String[tok.countTokens()];
+                    for (int i = 0; tok.hasMoreTokens(); i++) {
+                        cmds[i] = tok.nextToken();
+                    }
+
+                    ProcessBuilder builder = new ProcessBuilder(cmds);
+
+                    Object env = JSObject.get(globalObj, "$ENV");
+                    if (env instanceof DynamicObject) {
+                        DynamicObject dynEnvObj = (DynamicObject) env;
+                        Object pwd = JSObject.get(dynEnvObj, "PWD");
+                        if (pwd != Undefined.instance) {
+                            builder.directory(new File(JSRuntime.toString(pwd)));
+                        }
+
+                        Map<String, String> environment = builder.environment();
+                        environment.clear();
+                        for (String key : JSObject.enumerableOwnNames(dynEnvObj)) {
+                            environment.put(key, JSRuntime.toString(JSObject.get(dynEnvObj, key)));
+                        }
+                    }
+
+                    Process process = builder.start();
+                    IOException[] exception = new IOException[2];
+                    StringBuilder outBuffer = new StringBuilder();
+                    StringBuilder errBuffer = new StringBuilder();
+
+                    Thread outThread = captureThread(exception, 0, outBuffer, process.getInputStream(), "$EXEC output");
+                    Thread errThread = captureThread(exception, 1, errBuffer, process.getErrorStream(), "$EXEC error");
+
+                    outThread.start();
+                    errThread.start();
+
+                    try (OutputStreamWriter outputStream = new OutputStreamWriter(process.getOutputStream())) {
+                        if (input != null) {
+                            outputStream.write(input, 0, input.length());
+                        }
+                    } catch (IOException ex) {
+                    }
+
+                    int exitCode = process.waitFor();
+                    outThread.join();
+                    errThread.join();
+
+                    String outStr = outBuffer.toString();
+
+                    JSObject.set(globalObj, "$OUT", outStr);
+                    JSObject.set(globalObj, "$ERR", errBuffer.toString());
+                    JSObject.set(globalObj, "$EXIT", exitCode);
+
+                    for (int i = 0; i < exception.length; i++) {
+                        if (exception[i] != null) {
+                            throw new RuntimeException(exception[i]);
+                        }
+                    }
+                    return outStr;
+                } catch (IOException e) {
+                    throw Errors.createTypeError(e.getMessage());
+                } catch (InterruptedException e) {
+                    throw Errors.createTypeError(e.getMessage());
+                }
+            }
+
+            private Thread captureThread(IOException[] exception, int exceptionIdx, StringBuilder outBuffer, InputStream stream, String name) {
+                Thread thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        char buffer[] = new char[1024];
+                        try (InputStreamReader inputStream = new InputStreamReader(stream)) {
+                            for (int length; (length = inputStream.read(buffer, 0, buffer.length)) != -1;) {
+                                outBuffer.append(buffer, 0, length);
+                            }
+                        } catch (IOException ex) {
+                            exception[exceptionIdx] = ex;
+                        }
+                    }
+                }, name);
+                return thread;
+            }
+        }), 0, "$EXEC");
+        DynamicObject execFunc = JSFunction.create(this, execFunctionData);
+        JSObjectUtil.putDataProperty(context, globalObj, "$EXEC", execFunc, JSAttributes.getDefaultNotEnumerable());
+
+        // $OUT, $ERR, $EXIT
+        JSObjectUtil.putDataProperty(context, globalObj, "$EXIT", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, globalObj, "$OUT", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, globalObj, "$ERR", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
     }
 
     public void setRealmBuiltinObject(DynamicObject realmBuiltinObject) {

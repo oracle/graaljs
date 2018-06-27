@@ -5,6 +5,7 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 1.0.0 RC4
 * Enable SharedArrayBuffers by default.
+* Provide $EXEC for Nashorn compatibility in scripting mode.
 
 ## Version 1.0.0 RC3
 * Added support for BigInt arithmetic expressions.
