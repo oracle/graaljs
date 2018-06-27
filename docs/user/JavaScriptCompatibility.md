@@ -169,6 +169,16 @@ Returns the setter function for property `prop` of the object as set by `__defin
 This functionality is deprecated in most JavaScript engines.
 In recent ECMAScript versions, getters and setters are natively supported by the language.
 
+### Nashorn scripting mode
+Graal JavaScript provides a scripting mode compatible to the one provided by the Nashorn engine.
+It is enabled with the `js.scripting` option:
+
+```
+$ js --js.scripting=true
+```
+
+In scripting mode, several properties and functions are added to the global object, including `$ARG`, `$ENV`, and `$EXEC`.
+
 ## Graal JavaScript extensions
 
 ### Graal

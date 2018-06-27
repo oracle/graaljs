@@ -1419,10 +1419,6 @@ public class JSRealm implements ShapeContext {
      * compatibility). This includes an {@code $OPTIONS} property that exposes several options to
      * the script, an {@code $ARG} array with arguments to the script, an {@code $ENV} object with
      * environment variables, and an {@code $EXEC} function to execute external code.
-     *
-     * @see <a href=
-     *      "https://docs.oracle.com/javase/8/docs/technotes/guides/scripting/nashorn/shell.html">Nashorn
-     *      and Shell Scripting</a>
      */
     public void addScriptingObjects() {
         CompilerAsserts.neverPartOfCompilation();
@@ -1551,12 +1547,12 @@ public class JSRealm implements ShapeContext {
             }
         }), 0, "$EXEC");
         DynamicObject execFunc = JSFunction.create(this, execFunctionData);
-        JSObjectUtil.putDataProperty(context, globalObj, "$EXEC", execFunc, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$EXEC", execFunc, JSAttributes.getDefaultNotEnumerable());
 
         // $OUT, $ERR, $EXIT
-        JSObjectUtil.putDataProperty(context, globalObj, "$EXIT", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(context, globalObj, "$OUT", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(context, globalObj, "$ERR", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$EXIT", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$OUT", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ERR", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
     }
 
     public void setRealmBuiltinObject(DynamicObject realmBuiltinObject) {
