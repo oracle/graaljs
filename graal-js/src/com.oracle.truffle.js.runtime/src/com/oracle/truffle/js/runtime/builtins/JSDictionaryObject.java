@@ -41,10 +41,10 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -80,7 +80,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
 
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        HASHMAP_PROPERTY = JSObjectUtil.makeHiddenProperty(HASHMAP_PROPERTY_NAME, allocator.locationForType(LinkedHashMap.class));
+        HASHMAP_PROPERTY = JSObjectUtil.makeHiddenProperty(HASHMAP_PROPERTY_NAME, allocator.locationForType(EconomicMap.class));
     }
 
     private JSDictionaryObject() {
@@ -137,7 +137,9 @@ public final class JSDictionaryObject extends JSBuiltinObject {
     public List<Object> ownPropertyKeys(DynamicObject thisObj) {
         assert isJSDictionaryObject(thisObj);
         List<Object> keys = super.ownPropertyKeysList(thisObj);
-        getHashMap(thisObj).forEach((key, desc) -> keys.add(key));
+        for (Object key : getHashMap(thisObj).getKeys()) {
+            keys.add(key);
+        }
         Collections.sort(keys, JSRuntime::comparePropertyKeys);
         return keys;
     }
@@ -145,7 +147,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
     @TruffleBoundary
     @Override
     public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
-        HashMap<Object, PropertyDescriptor> hashMap = getHashMap(thisObj);
+        EconomicMap<Object, PropertyDescriptor> hashMap = getHashMap(thisObj);
         PropertyDescriptor desc = hashMap.get(key);
         if (desc != null) {
             if (!desc.getConfigurable()) {
@@ -154,7 +156,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
                 }
                 return false;
             }
-            hashMap.remove(key);
+            hashMap.removeKey(key);
             return true;
         }
         return super.delete(thisObj, key, isStrict);
@@ -177,7 +179,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
     @TruffleBoundary
     @Override
     public boolean setOwn(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
-        HashMap<Object, PropertyDescriptor> hashMap = getHashMap(thisObj);
+        EconomicMap<Object, PropertyDescriptor> hashMap = getHashMap(thisObj);
         PropertyDescriptor property = hashMap.get(key);
         if (property != null) {
             setValue(key, property, thisObj, receiver, value, isStrict);
@@ -233,10 +235,10 @@ public final class JSDictionaryObject extends JSBuiltinObject {
     }
 
     @SuppressWarnings("unchecked")
-    static HashMap<Object, PropertyDescriptor> getHashMap(DynamicObject obj) {
+    static EconomicMap<Object, PropertyDescriptor> getHashMap(DynamicObject obj) {
         assert JSDictionaryObject.isJSDictionaryObject(obj);
         Property hashMapProperty = obj.getShape().getProperty(HASHMAP_PROPERTY_NAME);
-        return (HashMap<Object, PropertyDescriptor>) hashMapProperty.get(obj, false);
+        return (EconomicMap<Object, PropertyDescriptor>) hashMapProperty.get(obj, false);
     }
 
     public static void makeDictionaryObject(DynamicObject obj, String reason) {
@@ -264,7 +266,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
         }
 
         List<Property> properties = currentShape.getPropertyListInternal(true);
-        HashMap<Object, PropertyDescriptor> hashMap = new LinkedHashMap<>();
+        EconomicMap<Object, PropertyDescriptor> hashMap = EconomicMap.create();
         for (Property p : properties) {
             if (p.equals(prototypeProperty)) {
                 continue; // has already been added
@@ -288,7 +290,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
         hashMapProperty.setSafe(obj, hashMap, null);
 
         // invalidate property assumptions (rewrite assumption check nodes for final properties)
-        for (Object key : hashMap.keySet()) {
+        for (Object key : hashMap.getKeys()) {
             JSShape.invalidatePropertyAssumption(currentShape, key);
         }
 
@@ -314,7 +316,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
             System.out.printf("transitioning from dictionary object to ordinary object: %s\n", reason);
         }
 
-        HashMap<Object, PropertyDescriptor> hashMap = getHashMap(obj);
+        EconomicMap<Object, PropertyDescriptor> hashMap = getHashMap(obj);
         Shape oldShape = obj.getShape();
         Property prototypeProperty = JSShape.getPrototypeProperty(oldShape);
         Shape newShape = JSShape.makeUniqueRoot(oldShape.getLayout(), JSUserObject.INSTANCE, JSShape.getJSContext(oldShape), prototypeProperty);
@@ -329,9 +331,10 @@ public final class JSDictionaryObject extends JSBuiltinObject {
         }
         obj.setShapeAndGrow(oldShape, newShape);
 
-        for (Map.Entry<Object, PropertyDescriptor> entry : hashMap.entrySet()) {
-            Object key = entry.getKey();
-            PropertyDescriptor desc = entry.getValue();
+        MapCursor<Object, PropertyDescriptor> cursor = hashMap.getEntries();
+        while (cursor.advance()) {
+            Object key = cursor.getKey();
+            PropertyDescriptor desc = cursor.getValue();
             if (desc.isDataDescriptor()) {
                 JSObjectUtil.defineDataProperty(obj, key, desc.getValue(), desc.getFlags());
             } else {
@@ -359,7 +362,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
     public static DynamicObject create(JSContext context) {
         Shape shape = context.getRealm().getDictionaryShapeObjectPrototype();
         DynamicObject object = JSObject.create(context, shape);
-        HASHMAP_PROPERTY.setSafe(object, new LinkedHashMap<>(), shape);
+        HASHMAP_PROPERTY.setSafe(object, EconomicMap.create(), shape);
         return object;
     }
 }
