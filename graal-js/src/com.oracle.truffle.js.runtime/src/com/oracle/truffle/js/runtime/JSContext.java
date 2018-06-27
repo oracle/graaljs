@@ -1472,4 +1472,8 @@ public class JSContext implements ShapeContext {
     public Map<Source, Object> getCodeCache() {
         return codeCache;
     }
+
+    public int getStackTraceLimit() {
+        return contextOptions.getStackTraceLimit();
+    }
 }
