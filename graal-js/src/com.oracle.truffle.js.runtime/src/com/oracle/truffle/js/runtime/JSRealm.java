@@ -40,16 +40,10 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.StringTokenizer;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -1015,7 +1009,7 @@ public class JSRealm implements ShapeContext {
 
         JSObjectUtil.putFunctionsFromContainer(this, global, JSGlobalObject.CLASS_NAME);
         if (context.isOptionNashornCompatibilityMode()) {
-            JSObjectUtil.putFunctionsFromContainer(this, global, JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS);
+            initGlobalNashornExtensions(global);
         }
         this.evalFunctionObject = JSObject.get(global, JSGlobalObject.EVAL_NAME);
         this.applyFunctionObject = JSObject.get(getFunctionPrototype(), "apply");
@@ -1092,6 +1086,17 @@ public class JSRealm implements ShapeContext {
         }
 
         arrayProtoValuesIterator = (DynamicObject) getArrayConstructor().getPrototype().get(Symbol.SYMBOL_ITERATOR, Undefined.instance);
+    }
+
+    private void initGlobalNashornExtensions(DynamicObject global) {
+        assert getContext().isOptionNashornCompatibilityMode();
+        DynamicObject parseToJSON = lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "parseToJSON");
+        JSObjectUtil.putOrSetDataProperty(getContext(), global, "parseToJSON", parseToJSON, JSAttributes.getDefaultNotEnumerable());
+    }
+
+    private void initGlobalScriptingExtensions(DynamicObject global) {
+        DynamicObject exec = lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exec");
+        JSObjectUtil.putOrSetDataProperty(getContext(), global, "$EXEC", exec, JSAttributes.getDefaultNotEnumerable());
     }
 
     private void putGraalObject(DynamicObject global) {
@@ -1452,102 +1457,7 @@ public class JSRealm implements ShapeContext {
         JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ENV", envObj, JSAttributes.configurableNotEnumerableWritable());
 
         // $EXEC
-        JSFunctionData execFunctionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object[] args = frame.getArguments();
-                int len = JSArguments.getUserArgumentCount(args);
-                String cmd = len > 0 ? JSRuntime.toString(JSArguments.getUserArgument(args, 0)) : "";
-                String input = len > 1 ? JSRuntime.toString(JSArguments.getUserArgument(args, 1)) : null;
-                return execIntl(cmd, input);
-            }
-
-            @TruffleBoundary
-            private Object execIntl(String cmd, String input) {
-                try {
-                    StringTokenizer tok = new StringTokenizer(cmd);
-                    String[] cmds = new String[tok.countTokens()];
-                    for (int i = 0; tok.hasMoreTokens(); i++) {
-                        cmds[i] = tok.nextToken();
-                    }
-
-                    ProcessBuilder builder = new ProcessBuilder(cmds);
-
-                    Object env = JSObject.get(globalObj, "$ENV");
-                    if (env instanceof DynamicObject) {
-                        DynamicObject dynEnvObj = (DynamicObject) env;
-                        Object pwd = JSObject.get(dynEnvObj, "PWD");
-                        if (pwd != Undefined.instance) {
-                            builder.directory(new File(JSRuntime.toString(pwd)));
-                        }
-
-                        Map<String, String> environment = builder.environment();
-                        environment.clear();
-                        for (String key : JSObject.enumerableOwnNames(dynEnvObj)) {
-                            environment.put(key, JSRuntime.toString(JSObject.get(dynEnvObj, key)));
-                        }
-                    }
-
-                    Process process = builder.start();
-                    IOException[] exception = new IOException[2];
-                    StringBuilder outBuffer = new StringBuilder();
-                    StringBuilder errBuffer = new StringBuilder();
-
-                    Thread outThread = captureThread(exception, 0, outBuffer, process.getInputStream(), "$EXEC output");
-                    Thread errThread = captureThread(exception, 1, errBuffer, process.getErrorStream(), "$EXEC error");
-
-                    outThread.start();
-                    errThread.start();
-
-                    try (OutputStreamWriter outputStream = new OutputStreamWriter(process.getOutputStream())) {
-                        if (input != null) {
-                            outputStream.write(input, 0, input.length());
-                        }
-                    } catch (IOException ex) {
-                    }
-
-                    int exitCode = process.waitFor();
-                    outThread.join();
-                    errThread.join();
-
-                    String outStr = outBuffer.toString();
-
-                    JSObject.set(globalObj, "$OUT", outStr);
-                    JSObject.set(globalObj, "$ERR", errBuffer.toString());
-                    JSObject.set(globalObj, "$EXIT", exitCode);
-
-                    for (int i = 0; i < exception.length; i++) {
-                        if (exception[i] != null) {
-                            throw new RuntimeException(exception[i]);
-                        }
-                    }
-                    return outStr;
-                } catch (IOException e) {
-                    throw Errors.createTypeError(e.getMessage());
-                } catch (InterruptedException e) {
-                    throw Errors.createTypeError(e.getMessage());
-                }
-            }
-
-            private Thread captureThread(IOException[] exception, int exceptionIdx, StringBuilder outBuffer, InputStream stream, String name) {
-                Thread thread = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        char buffer[] = new char[1024];
-                        try (InputStreamReader inputStream = new InputStreamReader(stream)) {
-                            for (int length; (length = inputStream.read(buffer, 0, buffer.length)) != -1;) {
-                                outBuffer.append(buffer, 0, length);
-                            }
-                        } catch (IOException ex) {
-                            exception[exceptionIdx] = ex;
-                        }
-                    }
-                }, name);
-                return thread;
-            }
-        }), 0, "$EXEC");
-        DynamicObject execFunc = JSFunction.create(this, execFunctionData);
-        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$EXEC", execFunc, JSAttributes.getDefaultNotEnumerable());
+        initGlobalScriptingExtensions(globalObj);
 
         // $OUT, $ERR, $EXIT
         JSObjectUtil.putOrSetDataProperty(context, globalObj, "$EXIT", Undefined.instance, JSAttributes.getDefaultNotEnumerable());

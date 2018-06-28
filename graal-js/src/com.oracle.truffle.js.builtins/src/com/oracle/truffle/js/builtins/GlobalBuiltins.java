@@ -45,6 +45,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -53,6 +54,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.EnumSet;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -73,6 +75,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalNashornExtensionParseToJSONNodeGen;
+import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalScriptingEXECNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalDecodeURINodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalEncodeURINodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalExitNodeGen;
@@ -237,7 +240,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             super(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, GlobalNashornExtensions.class);
         }
 
+        // attention: those are manually added in JSRealm.initGlobalNashornExtensions or
+        // JSRealm.initGlobalScriptingExtensions.
         public enum GlobalNashornExtensions implements BuiltinEnum<GlobalNashornExtensions> {
+            exec(1), // $EXEC
             parseToJSON(3);
 
             private final int length;
@@ -257,6 +263,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             switch (builtinEnum) {
                 case parseToJSON:
                     return GlobalNashornExtensionParseToJSONNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
+                case exec:
+                    return GlobalScriptingEXECNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             }
             return null;
         }
@@ -277,6 +285,108 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             String name = name0 == Undefined.instance ? "<unknown>" : JSRuntime.toString(name0);
             boolean location = JSRuntime.toBoolean(location0);
             return getContext().getEvaluator().parseToJSON(getContext(), code, name, location);
+        }
+    }
+
+    /**
+     * Implements $EXEC() in Nashorn scripting mode.
+     */
+    public abstract static class GlobalScriptingEXECNode extends JSBuiltinNode {
+        public GlobalScriptingEXECNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object exec(Object cmd, Object input) {
+            String cmdStr = JSRuntime.toString(cmd);
+            String inputStr = input != Undefined.instance ? JSRuntime.toString(input) : null;
+            return execIntl(cmdStr, inputStr);
+        }
+
+        @TruffleBoundary
+        private Object execIntl(String cmd, String input) {
+            try {
+                DynamicObject globalObj = getContext().getRealm().getGlobalObject();
+
+                StringTokenizer tok = new StringTokenizer(cmd);
+                String[] cmds = new String[tok.countTokens()];
+                for (int i = 0; tok.hasMoreTokens(); i++) {
+                    cmds[i] = tok.nextToken();
+                }
+
+                ProcessBuilder builder = new ProcessBuilder(cmds);
+
+                Object env = JSObject.get(globalObj, "$ENV");
+                if (env instanceof DynamicObject) {
+                    DynamicObject dynEnvObj = (DynamicObject) env;
+                    Object pwd = JSObject.get(dynEnvObj, "PWD");
+                    if (pwd != Undefined.instance) {
+                        builder.directory(new File(JSRuntime.toString(pwd)));
+                    }
+
+                    Map<String, String> environment = builder.environment();
+                    environment.clear();
+                    for (String key : JSObject.enumerableOwnNames(dynEnvObj)) {
+                        environment.put(key, JSRuntime.toString(JSObject.get(dynEnvObj, key)));
+                    }
+                }
+
+                Process process = builder.start();
+                IOException[] exception = new IOException[2];
+                StringBuilder outBuffer = new StringBuilder();
+                StringBuilder errBuffer = new StringBuilder();
+
+                Thread outThread = captureThread(exception, 0, outBuffer, process.getInputStream(), "$EXEC output");
+                Thread errThread = captureThread(exception, 1, errBuffer, process.getErrorStream(), "$EXEC error");
+
+                outThread.start();
+                errThread.start();
+
+                try (OutputStreamWriter outputStream = new OutputStreamWriter(process.getOutputStream())) {
+                    if (input != null) {
+                        outputStream.write(input, 0, input.length());
+                    }
+                } catch (IOException ex) {
+                }
+
+                int exitCode = process.waitFor();
+                outThread.join();
+                errThread.join();
+
+                String outStr = outBuffer.toString();
+
+                JSObject.set(globalObj, "$OUT", outStr);
+                JSObject.set(globalObj, "$ERR", errBuffer.toString());
+                JSObject.set(globalObj, "$EXIT", exitCode);
+
+                for (int i = 0; i < exception.length; i++) {
+                    if (exception[i] != null) {
+                        throw Errors.createTypeError(exception[i].getMessage());
+                    }
+                }
+                return outStr;
+            } catch (IOException e) {
+                throw Errors.createTypeError(e.getMessage());
+            } catch (InterruptedException e) {
+                throw Errors.createTypeError(e.getMessage());
+            }
+        }
+
+        private static Thread captureThread(IOException[] exception, int exceptionIdx, StringBuilder outBuffer, InputStream stream, String name) {
+            Thread thread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    char[] buffer = new char[1024];
+                    try (InputStreamReader inputStream = new InputStreamReader(stream)) {
+                        for (int length; (length = inputStream.read(buffer, 0, buffer.length)) != -1;) {
+                            outBuffer.append(buffer, 0, length);
+                        }
+                    } catch (IOException ex) {
+                        exception[exceptionIdx] = ex;
+                    }
+                }
+            }, name);
+            return thread;
         }
     }
 
