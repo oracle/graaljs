@@ -268,7 +268,6 @@ public class JSContext implements ShapeContext {
     private final JSContextOptions contextOptions;
 
     private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
-    private final Map<Source, Object> codeCache = new ConcurrentHashMap<>();
 
     protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
         this.functionLookup = lookup;
@@ -1467,9 +1466,5 @@ public class JSContext implements ShapeContext {
 
     public JSContextOptions getContextOptions() {
         return contextOptions;
-    }
-
-    public Map<Source, Object> getCodeCache() {
-        return codeCache;
     }
 }

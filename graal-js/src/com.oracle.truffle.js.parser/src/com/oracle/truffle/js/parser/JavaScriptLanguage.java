@@ -189,11 +189,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 return createEmptyScript(context).getCallTarget();
             }
 
-            Object cached = context.getCodeCache().get(source);
-            if (cached != null) {
-                return (CallTarget) cached;
-            }
-
             final ScriptNode program = parseInContext(source, context);
 
             RootNode rootNode = new RootNode(this) {
@@ -218,9 +213,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     return true;
                 }
             };
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-            context.getCodeCache().putIfAbsent(source, callTarget);
-            return callTarget;
+            return Truffle.getRuntime().createCallTarget(rootNode);
         } else {
             RootNode rootNode = parseWithArgumentNames(source, argumentNames);
             return Truffle.getRuntime().createCallTarget(rootNode);
