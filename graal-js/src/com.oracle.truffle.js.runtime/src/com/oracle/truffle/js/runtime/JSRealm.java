@@ -1009,7 +1009,7 @@ public class JSRealm implements ShapeContext {
 
         JSObjectUtil.putFunctionsFromContainer(this, global, JSGlobalObject.CLASS_NAME);
         if (context.isOptionNashornCompatibilityMode()) {
-            JSObjectUtil.putFunctionsFromContainer(this, global, JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS);
+            initGlobalNashornExtensions(global);
         }
         this.evalFunctionObject = JSObject.get(global, JSGlobalObject.EVAL_NAME);
         this.applyFunctionObject = JSObject.get(getFunctionPrototype(), "apply");
@@ -1086,6 +1086,17 @@ public class JSRealm implements ShapeContext {
         }
 
         arrayProtoValuesIterator = (DynamicObject) getArrayConstructor().getPrototype().get(Symbol.SYMBOL_ITERATOR, Undefined.instance);
+    }
+
+    private void initGlobalNashornExtensions(DynamicObject global) {
+        assert getContext().isOptionNashornCompatibilityMode();
+        DynamicObject parseToJSON = lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "parseToJSON");
+        JSObjectUtil.putOrSetDataProperty(getContext(), global, "parseToJSON", parseToJSON, JSAttributes.getDefaultNotEnumerable());
+    }
+
+    private void initGlobalScriptingExtensions(DynamicObject global) {
+        DynamicObject exec = lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exec");
+        JSObjectUtil.putOrSetDataProperty(getContext(), global, "$EXEC", exec, JSAttributes.getDefaultNotEnumerable());
     }
 
     private void putGraalObject(DynamicObject global) {
@@ -1411,8 +1422,8 @@ public class JSRealm implements ShapeContext {
     /**
      * Adds several objects to the global object, in case scripting mode is enabled (for Nashorn
      * compatibility). This includes an {@code $OPTIONS} property that exposes several options to
-     * the script, an {@code $ARG} array with arguments to the script, and an {@code $ENV} object
-     * with environment variables.
+     * the script, an {@code $ARG} array with arguments to the script, an {@code $ENV} object with
+     * environment variables, and an {@code $EXEC} function to execute external code.
      */
     public void addScriptingObjects() {
         CompilerAsserts.neverPartOfCompilation();
@@ -1421,6 +1432,7 @@ public class JSRealm implements ShapeContext {
         }
         DynamicObject globalObj = getGlobalObject();
 
+        // $OPTIONS
         String timezone = context.getLocalTimeZoneId().getId();
         DynamicObject timezoneObj = JSUserObject.create(context);
         JSObjectUtil.putDataProperty(context, timezoneObj, "ID", timezone, JSAttributes.configurableEnumerableWritable());
@@ -1432,15 +1444,25 @@ public class JSRealm implements ShapeContext {
 
         JSObjectUtil.putOrSetDataProperty(context, globalObj, "$OPTIONS", optionsObj, JSAttributes.configurableNotEnumerableWritable());
 
+        // $ARG
         DynamicObject argObj = JSArray.createConstant(context, getEnv().getApplicationArguments());
         JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ARG", argObj, JSAttributes.configurableNotEnumerableWritable());
 
+        // $ENV
         DynamicObject envObj = JSUserObject.create(context);
         Map<String, String> sysenv = System.getenv();
         for (Map.Entry<String, String> entry : sysenv.entrySet()) {
             JSObjectUtil.putDataProperty(context, envObj, entry.getKey(), entry.getValue(), JSAttributes.configurableEnumerableWritable());
         }
         JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ENV", envObj, JSAttributes.configurableNotEnumerableWritable());
+
+        // $EXEC
+        initGlobalScriptingExtensions(globalObj);
+
+        // $OUT, $ERR, $EXIT
+        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$EXIT", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$OUT", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ERR", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
     }
 
     public void setRealmBuiltinObject(DynamicObject realmBuiltinObject) {
