@@ -124,7 +124,7 @@ suite = {
         "mx:ASM_DEBUG_ALL",
         "ICU4J",
       ],
-      "exports" : [],
+      "exports" : ["com.oracle.truffle.js.runtime.java.adapter"],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8",
       "checkstyleVersion" : "8.8",
