@@ -102,6 +102,7 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
+import com.oracle.truffle.js.runtime.interop.JavaAccess;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.interop.JavaGetter;
 import com.oracle.truffle.js.runtime.interop.JavaImporter;
@@ -893,12 +894,12 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
     public static class JavaClassPropertyGetNode extends LinkedPropertyGetNode {
         protected final boolean isMethod;
-        protected final boolean isClassFilterPresent;
+        protected final boolean allowReflection;
 
-        public JavaClassPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean isMethod, boolean isClassFilterPresent) {
+        public JavaClassPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean isMethod, boolean allowReflection) {
             super(key, receiverCheck);
             this.isMethod = isMethod;
-            this.isClassFilterPresent = isClassFilterPresent;
+            this.allowReflection = allowReflection;
         }
 
         @Override
@@ -907,7 +908,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
 
         protected final Object getMember(JavaClass type) {
-            JavaMember member = type.getMember((String) key, JavaClass.STATIC, getJavaMemberTypes(isMethod), isClassFilterPresent);
+            JavaMember member = type.getMember((String) key, JavaClass.STATIC, getJavaMemberTypes(isMethod), allowReflection);
             if (member == null) {
                 return JSRuntime.nullToUndefined(type.getInnerClass((String) key));
             }
@@ -922,8 +923,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final JavaClass javaClass;
         private final Object cachedMember;
 
-        public CachedJavaClassPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean isMethod, boolean isClassFilterPresent, JavaClass javaClass) {
-            super(key, receiverCheck, isMethod, isClassFilterPresent);
+        public CachedJavaClassPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean isMethod, boolean allowReflection, JavaClass javaClass) {
+            super(key, receiverCheck, isMethod, allowReflection);
             this.javaClass = javaClass;
             this.cachedMember = getMember(javaClass);
         }
@@ -934,7 +935,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 return cachedMember;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                JavaClassPropertyGetNode newNode = new JavaClassPropertyGetNode(key, receiverCheck, isMethod, isClassFilterPresent);
+                JavaClassPropertyGetNode newNode = new JavaClassPropertyGetNode(key, receiverCheck, isMethod, allowReflection);
                 newNode.next = this.next;
                 return this.replace(newNode).getValueUnchecked(thisObj, receiver, floatingCondition);
             }
@@ -942,11 +943,11 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     }
 
     public static class JavaSuperMethodPropertyGetNode extends LinkedPropertyGetNode {
-        protected final boolean classFilterPresent;
+        protected final boolean allowReflection;
 
-        public JavaSuperMethodPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean classFilterPresent) {
+        public JavaSuperMethodPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean allowReflection) {
             super(key, receiverCheck);
-            this.classFilterPresent = classFilterPresent;
+            this.allowReflection = allowReflection;
         }
 
         @Override
@@ -956,7 +957,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
         @TruffleBoundary
         protected final Object getSuperMethod(Class<? extends Object> adapterClass) {
-            return JSRuntime.nullToUndefined(JavaClass.forClass(adapterClass).getSuperMethod((String) key, classFilterPresent));
+            return JSRuntime.nullToUndefined(JavaClass.forClass(adapterClass).getSuperMethod((String) key, allowReflection));
         }
     }
 
@@ -964,8 +965,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final Class<? extends Object> expectedClass;
         private final Object cachedMember;
 
-        public CachedJavaSuperMethodPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean classFilterPresent, JavaSuperAdapter javaSuperAdapter) {
-            super(key, receiverCheck, classFilterPresent);
+        public CachedJavaSuperMethodPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean allowReflection, JavaSuperAdapter javaSuperAdapter) {
+            super(key, receiverCheck, allowReflection);
             this.expectedClass = javaSuperAdapter.getAdapter().getClass();
             this.cachedMember = getSuperMethod(expectedClass);
         }
@@ -976,7 +977,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 return cachedMember;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                JavaSuperMethodPropertyGetNode newNode = new JavaSuperMethodPropertyGetNode(key, receiverCheck, classFilterPresent);
+                JavaSuperMethodPropertyGetNode newNode = new JavaSuperMethodPropertyGetNode(key, receiverCheck, allowReflection);
                 newNode.next = this.next;
                 return this.replace(newNode).getValueUnchecked(thisObj, receiver, floatingCondition);
             }
@@ -1807,9 +1808,9 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 return null;
             }
         } else if (thisObj instanceof JavaClass) {
-            return new CachedJavaClassPropertyGetNode(key, new InstanceofCheckNode(JavaClass.class, context), isMethod(), JSJavaWrapper.isClassFilterPresent(context), (JavaClass) thisObj);
+            return new CachedJavaClassPropertyGetNode(key, new InstanceofCheckNode(JavaClass.class, context), isMethod(), JavaAccess.isReflectionAllowed(context), (JavaClass) thisObj);
         } else if (thisObj instanceof JavaSuperAdapter) {
-            return new CachedJavaSuperMethodPropertyGetNode(key, new JavaSuperAdapterCheckNode((JavaSuperAdapter) thisObj), JSJavaWrapper.isClassFilterPresent(context), (JavaSuperAdapter) thisObj);
+            return new CachedJavaSuperMethodPropertyGetNode(key, new JavaSuperAdapterCheckNode((JavaSuperAdapter) thisObj), JavaAccess.isReflectionAllowed(context), (JavaSuperAdapter) thisObj);
         } else {
             JavaMember member = getInstanceMember(thisObj, context);
             if (member != null) {
@@ -1898,7 +1899,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             return null;
         }
         JavaClass javaClass = JavaClass.forClass(thisObj.getClass());
-        return javaClass.getMember((String) key, JavaClass.INSTANCE, getJavaMemberTypes(isMethod()), JSJavaWrapper.isClassFilterPresent(context));
+        return javaClass.getMember((String) key, JavaClass.INSTANCE, getJavaMemberTypes(isMethod()), JavaAccess.isReflectionAllowed(context));
     }
 
     /**

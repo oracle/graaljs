@@ -91,6 +91,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.interop.Converters;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
+import com.oracle.truffle.js.runtime.interop.JavaAccess;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.interop.JavaMember;
 import com.oracle.truffle.js.runtime.interop.JavaSetter;
@@ -791,17 +792,17 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
     }
 
     public static final class JavaStaticFieldPropertySetNode extends LinkedPropertySetNode {
-        private final boolean isClassFilterPresent;
+        private final boolean allowReflection;
 
-        public JavaStaticFieldPropertySetNode(Object key, ReceiverCheckNode receiverCheck, boolean isClassFilterPresent) {
+        public JavaStaticFieldPropertySetNode(Object key, ReceiverCheckNode receiverCheck, boolean allowReflection) {
             super(key, receiverCheck);
-            this.isClassFilterPresent = isClassFilterPresent;
+            this.allowReflection = allowReflection;
         }
 
         @Override
         public void setValueUnchecked(Object thisObj, Object value, Object receiver, boolean condition) {
             JavaClass type = (JavaClass) thisObj;
-            JavaMember member = type.getMember((String) key, JavaClass.STATIC, JavaClass.SETTER, isClassFilterPresent);
+            JavaMember member = type.getMember((String) key, JavaClass.STATIC, JavaClass.SETTER, allowReflection);
             if (member instanceof JavaSetter) {
                 ((JavaSetter) member).setValue(null, value);
             }
@@ -1347,7 +1348,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         if (!(JSObject.isDynamicObject(thisObj))) {
             if (hasSettableField(thisObj, context)) {
                 if (thisObj instanceof JavaClass) {
-                    return new JavaStaticFieldPropertySetNode(key, new InstanceofCheckNode(thisObj.getClass(), context), JSJavaWrapper.isClassFilterPresent(context));
+                    return new JavaStaticFieldPropertySetNode(key, new InstanceofCheckNode(thisObj.getClass(), context), JavaAccess.isReflectionAllowed(context));
                 } else {
                     return new JavaSetterPropertySetNode(key, new InstanceofCheckNode(thisObj.getClass(), context), getSetter(thisObj, context));
                 }
@@ -1378,7 +1379,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
     }
 
     private JavaSetter getStaticSetter(JavaClass thisObj, JSContext context) {
-        JavaMember member = thisObj.getMember((String) key, JavaClass.STATIC, JavaClass.SETTER, JSJavaWrapper.isClassFilterPresent(context));
+        JavaMember member = thisObj.getMember((String) key, JavaClass.STATIC, JavaClass.SETTER, JavaAccess.isReflectionAllowed(context));
         assert member == null || member instanceof JavaSetter;
         return (member != null) ? (JavaSetter) member : null;
     }
@@ -1386,7 +1387,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
     private JavaSetter getSetter(Object thisObj, JSContext context) {
         assert !(thisObj instanceof JavaClass);
         JavaClass javaClass = JavaClass.forClass(thisObj.getClass());
-        JavaMember member = javaClass.getMember((String) key, JavaClass.INSTANCE, JavaClass.SETTER, JSJavaWrapper.isClassFilterPresent(context));
+        JavaMember member = javaClass.getMember((String) key, JavaClass.INSTANCE, JavaClass.SETTER, JavaAccess.isReflectionAllowed(context));
         return (JavaSetter) member;
     }
 

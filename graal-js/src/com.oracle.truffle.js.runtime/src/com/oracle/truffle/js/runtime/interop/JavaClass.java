@@ -241,7 +241,7 @@ public final class JavaClass {
     }
 
     @TruffleBoundary
-    public JavaMember getMember(String name, boolean staticModifier, Class<? extends JavaMember>[] memberTypes, boolean classFilterPresent) {
+    public JavaMember getMember(String name, boolean staticModifier, Class<? extends JavaMember>[] memberTypes, boolean allowReflection) {
         for (Class<? extends JavaMember> memberType : memberTypes) {
             final Map<String, ? extends JavaMember> members;
             if (memberType == JavaMethod.class) {
@@ -253,7 +253,7 @@ public final class JavaClass {
             } else {
                 throw new IllegalArgumentException();
             }
-            JavaAccess.checkReflectionAccess(type, staticModifier == STATIC, classFilterPresent);
+            JavaAccess.checkReflectionAccess(type, staticModifier == STATIC, allowReflection);
             JavaMember member = members.get(name);
             if (member != null) {
                 assert memberType.isInstance(member) && (staticModifier == member.isStatic());
@@ -479,8 +479,8 @@ public final class JavaClass {
         return abstractMethodCount == 1;
     }
 
-    public JavaMethod getSuperMethod(String propertyName, boolean classFilterPresent) {
-        JavaMethod method = (JavaMethod) getMember(JavaAdapterBytecodeGenerator.SUPER_PREFIX + propertyName, JavaClass.INSTANCE, JavaClass.METHOD, classFilterPresent);
+    public JavaMethod getSuperMethod(String propertyName, boolean allowReflection) {
+        JavaMethod method = (JavaMethod) getMember(JavaAdapterBytecodeGenerator.SUPER_PREFIX + propertyName, JavaClass.INSTANCE, JavaClass.METHOD, allowReflection);
         return method != null ? JavaMethod.toSuperMethod(method) : null;
     }
 }

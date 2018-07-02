@@ -115,7 +115,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSJava;
 import com.oracle.truffle.js.runtime.interop.Converters;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.interop.JavaAccess;
 import com.oracle.truffle.js.runtime.interop.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
@@ -384,25 +383,12 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 types[i] = ((JavaClass) arguments[i]).getType();
             }
 
-            checkAccess(types);
+            JavaAccess.checkAccess(types, getContext());
 
             if (types.length == 1) {
                 return JavaClass.forClass(types[0]).extend(classOverrides);
             }
             return JavaAdapterFactory.getAdapterClassFor(types, classOverrides);
-        }
-
-        private void checkAccess(final Class<?>[] types) {
-            final SecurityManager sm = System.getSecurityManager();
-            if (sm != null) {
-                boolean classFilterPresent = JSJavaWrapper.isClassFilterPresent(getContext());
-                for (final Class<?> type : types) {
-                    // check for restricted package access
-                    JavaAccess.checkPackageAccess(type);
-                    // check for classes, interfaces in reflection
-                    JavaAccess.checkReflectionAccess(type, true, classFilterPresent);
-                }
-            }
         }
     }
 
