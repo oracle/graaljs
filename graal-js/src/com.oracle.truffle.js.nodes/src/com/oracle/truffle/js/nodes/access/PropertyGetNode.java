@@ -49,11 +49,14 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -1135,6 +1138,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         @Child private Node foreignGet;
         @Child private Node hasSizeProperty;
         @Child private Node getSize;
+        @Child private Node foreignGetterInvoke;
         @Child private JSForeignToJSTypeNode toJSType;
         private final boolean isLength;
         private final boolean isMethod;
@@ -1164,8 +1168,31 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 Object foreignResult = ForeignAccess.sendRead(foreignGet, thisObj, key);
                 return toJSType.executeWithTarget(foreignResult);
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                if (getContext().isOptionNashornCompatibilityMode()) {
+                    return tryInvokeGetter(thisObj);
+                }
                 return Undefined.instance;
             }
+        }
+
+        // in nashorn-compat mode, `javaObj.xyz` can mean `javaObj.getXyz()`.
+        private Object tryInvokeGetter(TruffleObject thisObj) {
+            assert getContext().isOptionNashornCompatibilityMode();
+            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            if (env.isHostObject(thisObj)) {
+                if (foreignGetterInvoke == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    foreignGetterInvoke = insert(Message.createInvoke(0).createNode());
+                }
+                try {
+                    String getterKey = getAccessorKey("get");
+                    Object result = ForeignAccess.sendInvoke(foreignGetterInvoke, thisObj, getterKey, new Object[]{});
+                    return result;
+                } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                    return Undefined.instance;
+                }
+            }
+            return Undefined.instance;
         }
 
         private Object getSize(TruffleObject thisObj) {

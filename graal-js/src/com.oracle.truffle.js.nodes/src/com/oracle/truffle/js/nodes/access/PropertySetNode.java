@@ -47,6 +47,8 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -1016,6 +1018,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
 
         @Child private Node foreignSet;
         @Child private ExportValueNode export;
+        @Child private Node foreignSetterInvoke;
 
         public ForeignPropertySetNode(Object key, JSContext context) {
             super(key, new ForeignLanguageCheckNode());
@@ -1029,6 +1032,9 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
                 ForeignAccess.sendWrite(foreignSet, (TruffleObject) thisObj, key, value);
             } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
                 // do nothing
+                if (getContext().isOptionNashornCompatibilityMode()) {
+                    tryInvokeSetter((TruffleObject) thisObj, value);
+                }
             }
         }
 
@@ -1038,6 +1044,9 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
                 ForeignAccess.sendWrite(foreignSet, (TruffleObject) thisObj, key, value);
             } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
                 // do nothing
+                if (getContext().isOptionNashornCompatibilityMode()) {
+                    tryInvokeSetter((TruffleObject) thisObj, value);
+                }
             }
         }
 
@@ -1048,6 +1057,29 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
                 ForeignAccess.sendWrite(foreignSet, (TruffleObject) thisObj, key, boundValue);
             } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
                 // do nothing
+                if (getContext().isOptionNashornCompatibilityMode()) {
+                    tryInvokeSetter((TruffleObject) thisObj, value);
+                }
+            }
+        }
+
+        // in nashorn-compat mode, `javaObj.xyz = a` can mean `javaObj.setXyz(a)`.
+        private void tryInvokeSetter(TruffleObject thisObj, Object value) {
+            assert getContext().isOptionNashornCompatibilityMode();
+            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            if (env.isHostObject(thisObj) && JSRuntime.isString(getKey())) {
+                if (foreignSetterInvoke == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    foreignSetterInvoke = insert(Message.createInvoke(1).createNode());
+                }
+                try {
+                    String setterKey = getAccessorKey("set");
+                    if (setterKey != null) {
+                        ForeignAccess.sendInvoke(foreignSetterInvoke, thisObj, setterKey, new Object[]{value});
+                    }
+                } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                    // silently ignore
+                }
             }
         }
     }
