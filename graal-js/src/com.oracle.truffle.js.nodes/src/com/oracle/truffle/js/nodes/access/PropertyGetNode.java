@@ -1706,7 +1706,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     private LinkedPropertyGetNode createCachedPropertyNodeNotJSObject(Property property, Object thisObj, int depth, JSContext context) {
         final ReceiverCheckNode receiverCheck;
         if (depth == 0) {
-            if (JSTruffleOptions.NashornJavaInterop && JSTruffleOptions.NashornCompatibilityMode && isMethod() && JSRuntime.isJSPrimitive(thisObj)) {
+            if (isMethod() && thisObj instanceof String && ((JSTruffleOptions.NashornJavaInterop && JSTruffleOptions.NashornCompatibilityMode) || context.isOptionNashornCompatibilityMode())) {
                 // This hack ensures we get the Java method instead of the JavaScript property
                 // for length in s.length() where s is a java.lang.String. Required by Nashorn.
                 // We do this only for depth 0, because JavaScript prototype functions in turn
