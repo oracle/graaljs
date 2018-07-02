@@ -452,10 +452,11 @@ public class JSRealm implements ShapeContext {
             this.pluralRulesFactory = null;
         }
 
+        boolean nashornJavaInterop = isJavaInteropAvailable() && (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop);
         this.jsAdapterConstructor = JSTruffleOptions.NashornExtensions ? JSAdapter.createConstructor(this) : null;
         this.jsAdapterFactory = JSTruffleOptions.NashornExtensions ? JSAdapter.makeInitialShape(context, jsAdapterConstructor.getPrototype()).createFactory() : null;
-        this.javaImporterConstructor = JSTruffleOptions.NashornJavaInterop ? JavaImporter.createConstructor(this) : null;
-        this.javaImportFactory = JSTruffleOptions.NashornJavaInterop ? JavaImporter.makeInitialShape(context, javaImporterConstructor.getPrototype()).createFactory() : null;
+        this.javaImporterConstructor = nashornJavaInterop ? JavaImporter.createConstructor(this) : null;
+        this.javaImportFactory = nashornJavaInterop ? JavaImporter.makeInitialShape(context, javaImporterConstructor.getPrototype()).createFactory() : null;
         this.initialJavaPackageFactory = isJavaInteropAvailable() ? JavaPackage.createInitialShape(this).createFactory() : null;
 
         this.iteratorPrototype = es6 ? createIteratorPrototype() : null;
@@ -1178,8 +1179,7 @@ public class JSRealm implements ShapeContext {
                 putGlobalProperty(global, "com", JavaPackage.create(this, "com"));
                 putGlobalProperty(global, "org", JavaPackage.create(this, "org"));
                 putGlobalProperty(global, "edu", JavaPackage.create(this, "edu"));
-            }
-            if (JSTruffleOptions.NashornJavaInterop) {
+
                 putGlobalProperty(global, JavaImporter.CLASS_NAME, getJavaImporterConstructor().getFunctionObject());
             }
         }

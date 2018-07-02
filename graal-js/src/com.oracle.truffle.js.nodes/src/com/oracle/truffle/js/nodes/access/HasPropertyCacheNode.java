@@ -440,15 +440,13 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
         }
         if (JavaPackage.isJavaPackage(thisObj)) {
             return new PresentHasPropertyCacheNode(key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
+        } else if (JavaImporter.isJavaImporter(thisObj)) {
+            return new UnspecializedHasPropertyCacheNode(key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
         }
         if (!JSTruffleOptions.NashornJavaInterop) {
             return null;
         } else if (JSObject.isDynamicObject(thisObj)) {
             assert !JSJavaWrapper.isJSJavaWrapper(thisObj);
-            DynamicObject thisJSObj = (DynamicObject) thisObj;
-            if (JavaImporter.isJavaImporter(thisJSObj)) {
-                return new UnspecializedHasPropertyCacheNode(key, new JSClassCheckNode(JSObject.getJSClass(thisJSObj)));
-            }
             return null;
         } else if (thisObj instanceof JavaClass) {
             return new CachedJavaClassHasPropertyCacheNode(key, new InstanceofCheckNode(JavaClass.class, context), isMethod(), JavaAccess.isReflectionAllowed(context), (JavaClass) thisObj);

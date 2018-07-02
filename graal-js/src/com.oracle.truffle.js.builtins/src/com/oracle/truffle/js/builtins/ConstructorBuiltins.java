@@ -266,7 +266,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         JavaImporter(1) {
             @Override
             public boolean isEnabled() {
-                return JSTruffleOptions.NashornJavaInterop;
+                return !JSTruffleOptions.SubstrateVM;
             }
         },
         JavaInteropWorker(1) {
@@ -499,18 +499,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             default:
                 if (!JSTruffleOptions.SubstrateVM) {
                     switch (builtinEnum) {
+                        case JavaImporter:
+                            return ConstructJavaImporterNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
                         case JavaInteropWorker:
                             if (construct) {
                                 return ConstructJavaInteropWorkerNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
                             } else {
                                 return createCallRequiresNew(context, builtin);
                             }
-                    }
-                }
-                if (JSTruffleOptions.NashornJavaInterop) {
-                    switch (builtinEnum) {
-                        case JavaImporter:
-                            return ConstructJavaImporterNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
                     }
                 }
         }

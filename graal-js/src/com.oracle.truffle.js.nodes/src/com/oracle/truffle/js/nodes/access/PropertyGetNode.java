@@ -1804,9 +1804,16 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         if (JSTruffleOptions.SubstrateVM) {
             return null;
         }
+        return createJavaPropertyNodeMaybe0(thisObj, depth, context);
+    }
+
+    /* In a separate method for Substrate VM support. */
+    private LinkedPropertyGetNode createJavaPropertyNodeMaybe0(Object thisObj, int depth, JSContext context) {
         if (JSObject.isDynamicObject(thisObj)) {
             if (JavaPackage.isJavaPackage(thisObj)) {
                 return new CachedJavaPackagePropertyGetNode(context, key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)), (DynamicObject) thisObj);
+            } else if (JavaImporter.isJavaImporter(thisObj)) {
+                return new UnspecializedPropertyGetNode(key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
             }
         }
         if (!JSTruffleOptions.NashornJavaInterop) {
@@ -1815,18 +1822,9 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             }
             return null;
         }
-        return createJavaPropertyNodeMaybe0(thisObj, context);
-    }
-
-    /* In a separate method for Substrate VM support. */
-    private LinkedPropertyGetNode createJavaPropertyNodeMaybe0(Object thisObj, JSContext context) {
         if (JSObject.isDynamicObject(thisObj)) {
             if (JSJavaWrapper.isJSJavaWrapper(thisObj)) {
                 return new JSJavaWrapperPropertyGetNode(key, isGlobal(), isMethod(), isOwnProperty(), context);
-            } else if (JavaPackage.isJavaPackage(thisObj)) {
-                return new CachedJavaPackagePropertyGetNode(context, key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)), (DynamicObject) thisObj);
-            } else if (JavaImporter.isJavaImporter(thisObj)) {
-                return new UnspecializedPropertyGetNode(key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
             } else {
                 return null;
             }
