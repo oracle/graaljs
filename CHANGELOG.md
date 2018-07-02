@@ -7,6 +7,7 @@ The main focus is on user-observable behavior of the engine.
 * Added stack trace limit option (--js.stack-trace-limit).
 * Enable SharedArrayBuffers by default.
 * Provide $EXEC for Nashorn compatibility in scripting mode.
+* Provide Java.isScriptFunction, Java.isScriptObject, and Java.isJavaFunction in Nashorn compatibility mode.
 
 ## Version 1.0.0 RC3
 * Added support for BigInt arithmetic expressions.

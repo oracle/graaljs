@@ -142,10 +142,12 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         extend(-1),
         super_(1),
         isJavaMethod(1),
+        asJSONCompatible(1),
+
+        // (old) Nashorn Java Interop and --nashorn-compat
         isJavaFunction(1),
         isScriptFunction(1),
-        isScriptObject(1),
-        asJSONCompatible(1);
+        isScriptObject(1);
 
         private final int length;
 
@@ -197,6 +199,42 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 return JavaAsJSONCompatibleNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
+    }
+
+    public static final class JavaNashornCompatBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaNashornCompatBuiltins.JavaNashornCompat> {
+        protected JavaNashornCompatBuiltins() {
+            super(JSJava.CLASS_NAME_NASHORN_COMPAT, JavaNashornCompat.class);
+        }
+
+        public enum JavaNashornCompat implements BuiltinEnum<JavaNashornCompat> {
+            isJavaFunction(1),
+            isScriptFunction(1),
+            isScriptObject(1);
+
+            private final int length;
+
+            JavaNashornCompat(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, JavaNashornCompat builtinEnum) {
+            switch (builtinEnum) {
+                case isJavaFunction:
+                    return JavaIsJavaFunctionNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case isScriptFunction:
+                    return JavaIsScriptFunctionNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case isScriptObject:
+                    return JavaIsScriptObjectNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            }
+            return null;
+        }
     }
 
     abstract static class JavaTypeNode extends JSBuiltinNode {
@@ -743,7 +781,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @Specialization
         protected final boolean isJavaObject(Object obj) {
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
-            return env.isHostObject(obj) || (JSTruffleOptions.NashornJavaInterop && !(obj instanceof TruffleObject) && !JSRuntime.isJSPrimitive(obj));
+            return env.isHostObject(obj) || env.isHostFunction(obj) || (JSTruffleOptions.NashornJavaInterop && !(obj instanceof TruffleObject) && !JSRuntime.isJSPrimitive(obj));
         }
     }
 
@@ -764,8 +802,12 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @Specialization
-        protected static boolean isJavaFunction(Object obj,
+        protected boolean isJavaFunction(Object obj,
                         @Cached("create()") TypeOfNode typeofNode) {
+            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            if (getContext().isOptionNashornCompatibilityMode()) {
+                return env.isHostFunction(obj);
+            }
             return typeofNode.executeString(obj).equals("function") && !JSFunction.isJSFunction(obj);
         }
     }
