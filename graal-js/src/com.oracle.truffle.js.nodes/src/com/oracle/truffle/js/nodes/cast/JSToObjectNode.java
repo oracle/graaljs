@@ -199,6 +199,9 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     @Specialization(guards = {"isForeignObject(obj)"})
     protected TruffleObject doForeignTruffleObject(TruffleObject obj) {
         if (allowForeign) {
+            if (isFromWith() && context.getRealm().getEnv().isHostObject(obj)) {
+                throwWithError();
+            }
             return obj;
         } else {
             throw Errors.createTypeError("Foreign TruffleObject not supported", this);
