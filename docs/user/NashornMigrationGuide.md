@@ -15,6 +15,7 @@ $ js --js.nashorn-compat=true
 
 Functionality only available under this flag includes:
 * `load("nashorn:parser.js")`
+* `Java.isJavaFunction`, `Java.isScriptObject`, `Java.isScriptFunction`
 
 ## Intentional design differences
 Graal JavaScript differs from Nashorn in some aspects that were intentional design decisions.
@@ -126,7 +127,7 @@ The `JavaImporter` feature is currently not supported by Graal JavaScript.
 
 ### Java.* methods
 Several methods provided by Nashorn on the `Java` global object are currently not supported by Graal JavaScript.
-This applies to `Java.extend`, `Java.super`, `Java.isJavaMethod`, `Java.isJavaFunction`, `Java.isScriptFunction`, `Java.isScriptObject`, and `Java.asJSONCompatible`.
+This applies to `Java.extend`, `Java.super`, `Java.isJavaMethod`, and `Java.asJSONCompatible`.
 We are evaluating their use in real-world applications and might add them in the future, by default or behind a flag.
 
 ## Additional aspects to consider

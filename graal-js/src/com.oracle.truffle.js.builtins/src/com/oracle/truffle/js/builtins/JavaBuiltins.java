@@ -781,7 +781,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @Specialization
         protected final boolean isJavaObject(Object obj) {
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
-            return env.isHostObject(obj) || (JSTruffleOptions.NashornJavaInterop && !(obj instanceof TruffleObject) && !JSRuntime.isJSPrimitive(obj));
+            return env.isHostObject(obj) || env.isHostFunction(obj) || (JSTruffleOptions.NashornJavaInterop && !(obj instanceof TruffleObject) && !JSRuntime.isJSPrimitive(obj));
         }
     }
 

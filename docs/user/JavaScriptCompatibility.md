@@ -211,7 +211,14 @@ If `false`, Graal JavaScript will not be optimized by the Graal compiler, typica
 
 ### Java
 
-The `Java` object is only available when the engine is started in JVM mode. 
+The `Java` object is only available when the engine is started in JVM mode (`--jvm` flag).
+
+Note that some functions require a Nashorn compatibility mode flag to be set.
+On the GraalVM, this flag can be set with:
+
+```
+$ js --jvm --js.nashorn-compat=true
+```
 
 #### `Java.type(className)`
 
@@ -251,6 +258,27 @@ It returns `false` for all other arguments.
 
 The `typeName` method returns the Java `Class` name of `obj`.
 `obj` is expected to represent a Java `Class` instance, i.e., `isType(obj)` should return true; otherwise, `undefined` is returned.
+
+#### `Java.isJavaFunction(fn)`
+
+The `isJavaFunction` method returns whether `fn` is an object of the Java language that represents a Java function.
+It returns `false` for all other typies, including native JavaScript function, and functions of other polyglot languages.
+
+This function requires the Nashorn compatibility mode flag.
+
+#### `Java.isScriptObject(obj)`
+
+The `isScriptObject` method returns whether `obj` is an object of the JavaScript language.
+It returns `false` for all other types, including objects of Java and other polyglot languages.
+
+This function requires the Nashorn compatibility mode flag.
+
+#### `Java.isScriptFunction(fn)`
+
+The `isScriptFunction` method returns whether `fn` is a JavaScript function.
+It returns `false` for all other types, including Java function, and functions of other polyglot languages.
+
+This function requires the Nashorn compatibility mode flag.
 
 ### Polyglot
 
