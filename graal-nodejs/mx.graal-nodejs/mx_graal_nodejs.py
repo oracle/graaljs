@@ -28,6 +28,8 @@
 
 import mx, mx_gate, mx_subst, mx_sdk, mx_graal_js, os, shutil, tarfile, tempfile
 
+import mx_graal_nodejs_benchmark # pylint: disable=unused-import
+
 from mx import BinarySuite, VC
 from mx_gate import Task
 from argparse import ArgumentParser
