@@ -875,7 +875,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
 
     protected abstract T createUndefinedPropertyNode(Object thisObject, Object store, int depth, JSContext context, Object value);
 
-    protected abstract T createJavaPropertyNodeMaybe(Object thisObj, JSContext context);
+    protected abstract T createJavaPropertyNodeMaybe(Object thisObj, int depth, JSContext context);
 
     protected abstract T createTruffleObjectPropertyNode(TruffleObject thisObj, JSContext context);
 

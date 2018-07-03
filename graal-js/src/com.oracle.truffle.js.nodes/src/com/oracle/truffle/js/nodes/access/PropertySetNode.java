@@ -1300,7 +1300,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
 
     @Override
     protected LinkedPropertySetNode createUndefinedPropertyNode(Object thisObj, Object store, int depth, JSContext context, Object value) {
-        LinkedPropertySetNode specialized = createJavaPropertyNodeMaybe(thisObj, context);
+        LinkedPropertySetNode specialized = createJavaPropertyNodeMaybe(thisObj, depth, context);
         if (specialized != null) {
             return specialized;
         }
@@ -1336,7 +1336,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
     }
 
     @Override
-    protected LinkedPropertySetNode createJavaPropertyNodeMaybe(Object thisObj, JSContext context) {
+    protected LinkedPropertySetNode createJavaPropertyNodeMaybe(Object thisObj, int depth, JSContext context) {
         if (!JSTruffleOptions.NashornJavaInterop) {
             return null;
         }

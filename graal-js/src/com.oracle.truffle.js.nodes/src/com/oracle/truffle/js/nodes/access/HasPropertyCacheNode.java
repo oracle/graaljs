@@ -410,7 +410,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
 
     @Override
     protected LinkedHasPropertyCacheNode createUndefinedPropertyNode(Object thisObj, Object store, int depth, JSContext context, Object value) {
-        LinkedHasPropertyCacheNode specialized = createJavaPropertyNodeMaybe(thisObj, context);
+        LinkedHasPropertyCacheNode specialized = createJavaPropertyNodeMaybe(thisObj, depth, context);
         if (specialized != null) {
             return specialized;
         }
@@ -434,7 +434,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
     }
 
     @Override
-    protected LinkedHasPropertyCacheNode createJavaPropertyNodeMaybe(Object thisObj, JSContext context) {
+    protected LinkedHasPropertyCacheNode createJavaPropertyNodeMaybe(Object thisObj, int depth, JSContext context) {
         if (JSTruffleOptions.SubstrateVM) {
             return null;
         }

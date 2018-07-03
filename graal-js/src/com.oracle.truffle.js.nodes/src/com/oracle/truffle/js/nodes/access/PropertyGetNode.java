@@ -984,6 +984,26 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
     }
 
+    public static class JavaStringMethodGetNode extends LinkedPropertyGetNode {
+        @Child private Node readNode;
+
+        public JavaStringMethodGetNode(Object key, ReceiverCheckNode receiverCheck) {
+            super(key, receiverCheck);
+            this.readNode = Message.READ.createNode();
+        }
+
+        @Override
+        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+            String thisStr = (String) thisObj;
+            Object boxedString = getContext().getRealm().getEnv().asBoxedGuestValue(thisStr);
+            try {
+                return ForeignAccess.sendRead(readNode, (TruffleObject) boxedString, key);
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                return Undefined.instance;
+            }
+        }
+    }
+
     public static final class JSProxyDispatcherPropertyGetNode extends LinkedPropertyGetNode {
 
         private final boolean propagateFloatingCondition;
@@ -1691,7 +1711,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 // for length in s.length() where s is a java.lang.String. Required by Nashorn.
                 // We do this only for depth 0, because JavaScript prototype functions in turn
                 // are preferred over Java methods with the same name.
-                LinkedPropertyGetNode javaPropertyNode = createJavaPropertyNodeMaybe(thisObj, context);
+                LinkedPropertyGetNode javaPropertyNode = createJavaPropertyNodeMaybe(thisObj, depth, context);
                 if (javaPropertyNode != null) {
                     return javaPropertyNode;
                 }
@@ -1780,7 +1800,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     }
 
     @Override
-    protected LinkedPropertyGetNode createJavaPropertyNodeMaybe(Object thisObj, JSContext context) {
+    protected LinkedPropertyGetNode createJavaPropertyNodeMaybe(Object thisObj, int depth, JSContext context) {
         if (JSTruffleOptions.SubstrateVM) {
             return null;
         }
@@ -1790,6 +1810,9 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             }
         }
         if (!JSTruffleOptions.NashornJavaInterop) {
+            if (thisObj instanceof String && isMethod()) {
+                return new JavaStringMethodGetNode(key, createPrimitiveReceiverCheck(thisObj, depth, context));
+            }
             return null;
         }
         return createJavaPropertyNodeMaybe0(thisObj, context);
@@ -1831,7 +1854,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
     @Override
     protected LinkedPropertyGetNode createUndefinedPropertyNode(Object thisObj, Object store, int depth, JSContext context, Object value) {
-        LinkedPropertyGetNode javaPropertyNode = createJavaPropertyNodeMaybe(thisObj, context);
+        LinkedPropertyGetNode javaPropertyNode = createJavaPropertyNodeMaybe(thisObj, depth, context);
         if (javaPropertyNode != null) {
             return javaPropertyNode;
         }
