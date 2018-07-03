@@ -432,7 +432,7 @@ public final class JavaClass {
         if (cachedExt != null && classOverrides == null) {
             return cachedExt;
         } else {
-            JavaClass extended = JavaAdapterFactory.getAdapterClassFor(getType(), classOverrides, classLoader);
+            JavaClass extended = JavaClass.forClass(JavaAdapterFactory.getAdapterClassFor(getType(), classOverrides, classLoader));
             if (classOverrides == null) {
                 cachedExt = extended;
             }

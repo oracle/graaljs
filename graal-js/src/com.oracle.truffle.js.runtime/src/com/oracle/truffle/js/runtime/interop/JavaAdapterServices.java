@@ -43,7 +43,9 @@ package com.oracle.truffle.js.runtime.interop;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.util.Arrays;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleContext;
@@ -52,7 +54,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.interop.Converters.Converter;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -63,17 +64,16 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * @see JSFunction#call(DynamicObject, Object, Object[])
  */
 public final class JavaAdapterServices {
-    private static final MethodHandle JSFUNCTION_CALL_METHOD_HANDLE;
-    private static final MethodHandle CONVERTER_CONVERT_METHOD_HANDLE;
-    private static final MethodHandle JAVA_TO_JS_CONVERTER_METHOD_HANDLE;
-    private static final ThreadLocal<DynamicObject> classOverrides = new ThreadLocal<>();
+    private static final MethodHandle VALUE_EXECUTE_METHOD_HANDLE;
+    private static final MethodHandle VALUE_EXECUTE_VOID_METHOD_HANDLE;
+    private static final MethodHandle VALUE_AS_METHOD_HANDLE;
+    private static final ThreadLocal<Value> classOverrides = new ThreadLocal<>();
 
     static {
         try {
-            JSFUNCTION_CALL_METHOD_HANDLE = MethodHandles.publicLookup().findStatic(JavaAdapterServices.class, "callFunction",
-                            MethodType.methodType(Object.class, DynamicObject.class, Object.class, Object[].class));
-            CONVERTER_CONVERT_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Converter.class, "convert", MethodType.methodType(Object.class, Object.class));
-            JAVA_TO_JS_CONVERTER_METHOD_HANDLE = CONVERTER_CONVERT_METHOD_HANDLE.bindTo(Converters.JAVA_TO_JS_CONVERTER);
+            VALUE_EXECUTE_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "execute", MethodType.methodType(Value.class, Object[].class));
+            VALUE_EXECUTE_VOID_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "executeVoid", MethodType.methodType(void.class, Object[].class));
+            VALUE_AS_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "as", MethodType.methodType(Object.class, Class.class));
         } catch (NoSuchMethodException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
@@ -89,13 +89,13 @@ public final class JavaAdapterServices {
      *
      * @return the thread-local JS object used to define methods for the class being initialized.
      */
-    public static DynamicObject getClassOverrides() {
-        final DynamicObject overrides = classOverrides.get();
+    public static Value getClassOverrides() {
+        final Value overrides = classOverrides.get();
         assert overrides != null;
         return overrides;
     }
 
-    public static void setClassOverrides(DynamicObject overrides) {
+    public static void setClassOverrides(Value overrides) {
         classOverrides.set(overrides);
     }
 
@@ -131,18 +131,35 @@ public final class JavaAdapterServices {
         }
     }
 
+    @TruffleBoundary
+    public static Value getFunction(final Value obj, final String name) {
+        // Since every JS Object has a toString, we only override "String toString()" it if it's
+        // explicitly specified
+        if (JSRuntime.TO_STRING.equals(name)) {
+            // && !JSObject.hasOwnProperty(obj, JSRuntime.TO_STRING)
+            return null;
+        }
+
+        final Value fnObj = obj.getMember(name);
+        if (fnObj.canExecute()) {
+            return fnObj;
+        } else if (fnObj.isNull()) {
+            return null;
+        } else {
+            throw Errors.createTypeErrorNotAFunction(fnObj);
+        }
+    }
+
     /**
-     * @see JavaAdapterBytecodeGenerator#emitIsJSFunction
+     * @see JavaAdapterBytecodeGenerator#emitIsFunction
      */
-    public static boolean isJSFunction(final Object obj) {
-        return JSObject.isDynamicObject(obj) && JSFunction.isJSFunction((DynamicObject) obj);
+    public static boolean isFunction(final Object obj) {
+        return obj instanceof Value && ((Value) obj).canExecute();
     }
 
     /**
      * Entry point for JS function calls by generated Java adapter classes. Enters the function's
      * {@link TruffleContext} for the duration of the call.
-     *
-     * @see #JSFUNCTION_CALL_METHOD_HANDLE
      */
     public static Object callFunction(DynamicObject functionObject, Object thisObject, Object[] argumentValues) {
         JSRealm functionRealm = JSFunction.getRealm(functionObject);
@@ -157,27 +174,52 @@ public final class JavaAdapterServices {
 
     @TruffleBoundary
     public static MethodHandle getHandle(final MethodType type) {
-        MethodHandle call = JSFUNCTION_CALL_METHOD_HANDLE;
+        MethodHandle call;
+        if (type.returnType() == void.class) {
+            call = VALUE_EXECUTE_VOID_METHOD_HANDLE;
+        } else {
+            call = VALUE_EXECUTE_METHOD_HANDLE;
+        }
         // TODO this has to be adapted to work with varargs methods as well
         call = call.asCollector(Object[].class, type.parameterCount());
 
-        MethodHandle[] filters = new MethodHandle[type.parameterCount()];
-        Arrays.fill(filters, JAVA_TO_JS_CONVERTER_METHOD_HANDLE);
-        call = MethodHandles.filterArguments(call, 2, filters);
-
         if (type.returnType() != void.class) {
-            call = MethodHandles.filterReturnValue(call,
-                            CONVERTER_CONVERT_METHOD_HANDLE.bindTo(Converters.LazySerialConverterAdapter.fromFactories(type.returnType(), Converters.FORCING_CONVERTER_FACTORIES)));
+            call = MethodHandles.filterReturnValue(call, createReturnValueConverter(type.returnType()));
         }
 
-        // insert [function object, this object]
-        call = call.asType(type.insertParameterTypes(0, DynamicObject.class, Object.class));
+        // insert [function object]
+        call = call.asType(type.insertParameterTypes(0, Value.class));
         return call;
     }
 
-    public static void sameThreadCheck(long expectedThreadId) {
-        if (Thread.currentThread().getId() != expectedThreadId) {
-            throw new Error("attempted to execute javascript function in a different thread");
-        }
+    public static Value asValue(Object obj) {
+        return Context.getCurrent().asValue(obj);
+    }
+
+    /**
+     * Creates and returns a new {@link UnsupportedOperationException}. Makes generated bytecode
+     * smaller by doing {@code INVOKESTATIC} to this method rather than the {@code NEW}, {@code DUP}
+     * ({@code DUP_X1}, {@code SWAP}), {@code INVOKESPECIAL <init>} sequence.
+     *
+     * @return a newly created {@link UnsupportedOperationException}.
+     */
+    public static UnsupportedOperationException unsupported(String methodName) {
+        return new UnsupportedOperationException(methodName);
+    }
+
+    /**
+     * Returns a new {@link RuntimeException} wrapping the passed throwable if necessary. Makes
+     * generated bytecode smaller by doing an {@code INVOKESTATIC} to this method rather than the
+     * {@code NEW}, {@code DUP_X1}, {@code SWAP}, {@code INVOKESPECIAL <init>} sequence.
+     *
+     * @param t the original throwable to wrap
+     * @return a newly created runtime exception wrapping the passed throwable.
+     */
+    public static RuntimeException wrapThrowable(final Throwable t) {
+        return new RuntimeException(t);
+    }
+
+    private static MethodHandle createReturnValueConverter(Class<?> returnType) {
+        return MethodHandles.insertArguments(VALUE_AS_METHOD_HANDLE, 1, returnType);
     }
 }

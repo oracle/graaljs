@@ -48,6 +48,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.polyglot.Context;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
@@ -60,12 +62,12 @@ public final class JavaAdapterFactory {
     private static final Class<?> INTERNAL_CLASS = JavaAdapterServices.class;
 
     @TruffleBoundary
-    public static JavaClass getAdapterClassFor(Class<?>[] types, DynamicObject classOverrides) {
+    public static Class<?> getAdapterClassFor(Class<?>[] types, DynamicObject classOverrides) {
         return getAdapterClassFor(types, classOverrides, null);
     }
 
     @TruffleBoundary
-    public static JavaClass getAdapterClassFor(Class<?>[] types, DynamicObject classOverrides, ClassLoader classLoader) {
+    public static Class<?> getAdapterClassFor(Class<?>[] types, DynamicObject classOverrides, ClassLoader classLoader) {
         assert types.length > 0;
         assert classOverrides == null || JSRuntime.isObject(classOverrides);
 
@@ -104,7 +106,11 @@ public final class JavaAdapterFactory {
     }
 
     @TruffleBoundary
-    public static JavaClass getAdapterClassFor(Class<?> type, DynamicObject classOverrides, ClassLoader classLoader) {
+    public static Class<?> getAdapterClassFor(Class<?> type) {
+        return getAdapterClassFor(type, null, null);
+    }
+
+    static Class<?> getAdapterClassFor(Class<?> type, DynamicObject classOverrides, ClassLoader classLoader) {
         boolean isInterface = Modifier.isInterface(type.getModifiers());
         Class<?> superClass = !isInterface ? type : Object.class;
         List<Class<?>> interfaces = !isInterface ? Collections.<Class<?>> emptyList() : Collections.<Class<?>> singletonList(type);
@@ -113,16 +119,18 @@ public final class JavaAdapterFactory {
         return getAdapterClassForCommon(superClass, interfaces, classOverrides, commonLoader);
     }
 
-    private static JavaClass getAdapterClassForCommon(Class<?> superClass, List<Class<?>> interfaces, DynamicObject classOverrides, ClassLoader commonLoader) {
+    private static Class<?> getAdapterClassForCommon(Class<?> superClass, List<Class<?>> interfaces, DynamicObject classOverrides, ClassLoader commonLoader) {
         boolean classOverride = classOverrides != null && JSRuntime.isObject(classOverrides);
         JavaAdapterBytecodeGenerator bytecodeGenerator = new JavaAdapterBytecodeGenerator(superClass, interfaces, commonLoader, classOverride);
         JavaAdapterClassLoader generatedClassLoader = bytecodeGenerator.createAdapterClassLoader();
 
-        JavaAdapterServices.setClassOverrides(classOverrides);
-        Class<?> generatedClass = generatedClassLoader.generateClass(commonLoader);
-        JavaAdapterServices.setClassOverrides(null);
-
-        return JavaClass.forClass(generatedClass);
+        JavaAdapterServices.setClassOverrides(Context.getCurrent().asValue(classOverrides));
+        try {
+            Class<?> generatedClass = generatedClassLoader.generateClass(commonLoader);
+            return generatedClass;
+        } finally {
+            JavaAdapterServices.setClassOverrides(null);
+        }
     }
 
     @TruffleBoundary

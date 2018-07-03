@@ -137,9 +137,10 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         typeName(1),
         synchronized_(2),
 
-        // Nashorn Java Interop only
-        extend(-1),
+        // Nashorn compatibility
+        extend(1),
         super_(1),
+        // Nashorn Java Interop only
         isJavaMethod(1),
         asJSONCompatible(1),
 
@@ -161,7 +162,10 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Override
         public boolean isEnabled() {
-            return JSTruffleOptions.NashornJavaInterop || EnumSet.of(type, from, to, isJavaObject, isType, typeName, synchronized_).contains(this);
+            if (JSTruffleOptions.NashornJavaInterop) {
+                return true;
+            }
+            return EnumSet.of(type, from, to, isJavaObject, isType, typeName, synchronized_, extend, super_).contains(this);
         }
     }
 
@@ -350,13 +354,13 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             super(context, builtin);
         }
 
-        private final BranchProfile needErrorBranches = BranchProfile.create();
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         @Specialization
-        @TruffleBoundary
-        protected JavaClass extend(Object... arguments) {
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        protected Object extend(Object... arguments) {
             if (arguments.length == 0) {
-                needErrorBranches.enter();
+                errorBranch.enter();
                 throw Errors.createTypeError("Java.extend needs at least one argument.");
             }
 
@@ -366,7 +370,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 classOverrides = (DynamicObject) arguments[arguments.length - 1];
                 typesLength = arguments.length - 1;
                 if (typesLength == 0) {
-                    needErrorBranches.enter();
+                    errorBranch.enter();
                     throw Errors.createTypeError("Java.extend needs at least one type argument.");
                 }
             } else {
@@ -374,21 +378,37 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 typesLength = arguments.length;
             }
 
+            final TruffleLanguage.Env env = getContext().getRealm().getEnv();
             final Class<?>[] types = new Class<?>[typesLength];
             for (int i = 0; i < typesLength; i++) {
-                if (!(arguments[i] instanceof JavaClass)) {
-                    needErrorBranches.enter();
+                if (!isType(arguments[i], env)) {
+                    errorBranch.enter();
                     throw Errors.createTypeError("Java.extend needs Java types as its arguments.");
                 }
-                types[i] = ((JavaClass) arguments[i]).getType();
+                types[i] = toHostClass(arguments[i], env);
             }
 
             JavaAccess.checkAccess(types, getContext());
 
-            if (types.length == 1) {
-                return JavaClass.forClass(types[0]).extend(classOverrides);
+            Class<?> result;
+            if (types.length == 1 && classOverrides == null) {
+                result = JavaAdapterFactory.getAdapterClassFor(types[0]);
+            } else {
+                result = JavaAdapterFactory.getAdapterClassFor(types, classOverrides);
             }
-            return JavaAdapterFactory.getAdapterClassFor(types, classOverrides);
+            return env.asGuestValue(result);
+        }
+
+        protected static boolean isType(Object obj, TruffleLanguage.Env env) {
+            return (env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>) || (JSTruffleOptions.NashornJavaInterop && obj instanceof JavaClass);
+        }
+
+        protected static Class<?> toHostClass(Object type, TruffleLanguage.Env env) {
+            assert isType(type, env);
+            if (JSTruffleOptions.NashornJavaInterop && type instanceof JavaClass) {
+                return ((JavaClass) type).getType();
+            }
+            return (Class<?>) env.asHostObject(type);
         }
     }
 
