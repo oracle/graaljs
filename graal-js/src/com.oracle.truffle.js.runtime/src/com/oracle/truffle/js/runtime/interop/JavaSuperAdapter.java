@@ -40,20 +40,105 @@
  */
 package com.oracle.truffle.js.runtime.interop;
 
-import java.util.*;
+import java.util.Objects;
 
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import org.graalvm.collections.Pair;
 
-public final class JavaSuperAdapter {
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+
+@MessageResolution(receiverType = JavaSuperAdapter.class)
+public final class JavaSuperAdapter implements TruffleObject {
     private final Object adapter;
 
     JavaSuperAdapter(Object adapter) {
-        assert JSTruffleOptions.NashornJavaInterop;
         this.adapter = Objects.requireNonNull(adapter);
         assert !(adapter instanceof JavaSuperAdapter);
     }
 
     public Object getAdapter() {
         return adapter;
+    }
+
+    static boolean isInstance(TruffleObject object) {
+        return object instanceof JavaSuperAdapter;
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return JavaSuperAdapterForeign.ACCESS;
+    }
+
+    @Resolve(message = "READ")
+    abstract static class ReadNode extends Node {
+        @Child private Node readNode = Message.READ.createNode();
+        @CompilationFinal private Pair<String, String> cachedNameToSuper;
+
+        Object access(JavaSuperAdapter superAdapter, String name) {
+            String superMethodName;
+            if (cachedNameToSuper == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                cachedNameToSuper = Pair.create(name, JavaAdapterFactory.getSuperMethodName(name));
+            }
+            String cachedName = cachedNameToSuper.getLeft();
+            if (cachedName != null) {
+                if (cachedName.equals(name)) {
+                    superMethodName = cachedNameToSuper.getRight();
+                } else {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    cachedNameToSuper = Pair.empty();
+                    superMethodName = JavaAdapterFactory.getSuperMethodName(name);
+                }
+            } else {
+                superMethodName = JavaAdapterFactory.getSuperMethodName(name);
+            }
+            try {
+                return ForeignAccess.sendRead(readNode, (TruffleObject) superAdapter.getAdapter(), superMethodName);
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                throw e.raise();
+            }
+        }
+    }
+
+    @Resolve(message = "INVOKE")
+    abstract static class InvokeNode extends Node {
+        @Child private Node invokeNode = JSInteropUtil.INVOKE.createNode();
+        @CompilationFinal private Pair<String, String> cachedNameToSuper;
+
+        Object access(JavaSuperAdapter superAdapter, String name, Object[] args) {
+            String superMethodName;
+            if (cachedNameToSuper == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                cachedNameToSuper = Pair.create(name, JavaAdapterFactory.getSuperMethodName(name));
+            }
+            String cachedName = cachedNameToSuper.getLeft();
+            if (cachedName != null) {
+                if (cachedName.equals(name)) {
+                    superMethodName = cachedNameToSuper.getRight();
+                } else {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    cachedNameToSuper = Pair.empty();
+                    superMethodName = JavaAdapterFactory.getSuperMethodName(name);
+                }
+            } else {
+                superMethodName = JavaAdapterFactory.getSuperMethodName(name);
+            }
+            try {
+                return ForeignAccess.sendInvoke(invokeNode, (TruffleObject) superAdapter.getAdapter(), superMethodName, args);
+            } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                throw e.raise();
+            }
+        }
     }
 }

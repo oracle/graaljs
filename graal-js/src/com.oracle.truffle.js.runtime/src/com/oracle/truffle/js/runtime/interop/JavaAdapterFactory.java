@@ -146,6 +146,12 @@ public final class JavaAdapterFactory {
         return new JavaSuperAdapter(adapter);
     }
 
+    @TruffleBoundary
+    static String getSuperMethodName(String methodName) {
+        assert !methodName.startsWith(JavaAdapterBytecodeGenerator.SUPER_PREFIX);
+        return JavaAdapterBytecodeGenerator.SUPER_PREFIX + methodName;
+    }
+
     private static boolean classLoaderCanSee(ClassLoader loader, Class<?> clazz) {
         if (clazz.getClassLoader() == loader) {
             return true;
