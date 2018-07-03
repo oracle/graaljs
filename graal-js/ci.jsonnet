@@ -49,8 +49,8 @@ local common = import '../common.jsonnet';
     // jdk 8 - sparc
     graalJs + common.jdk8 + common.gate + common.sparc + gateGraalTip    + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk8-solaris-sparcv9'},
 
-    // jdk 9 - linux
-    graalJs + common.jdk9 + common.gate + common.linux + gateGraalImport + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'js-gate-style-fullbuild-graal-import-jdk9-linux-amd64'},
-    graalJs + common.jdk9 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'default'}}         + {name: 'js-gate-default-graal-tip-jdk9-linux-amd64'},
+    // jdk 11 - linux
+    graalJs + common.jdk11 + common.gate + common.linux + gateGraalImport + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'js-gate-style-fullbuild-graal-import-jdk11-linux-amd64'},
+    graalJs + common.jdk11 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'default'}}         + {name: 'js-gate-default-graal-tip-jdk11-linux-amd64'},
   ],
 }
