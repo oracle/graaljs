@@ -326,7 +326,9 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
         @Override
         public void flush() throws IOException {
-            writer.flush();
+            if (writer != null) {
+                writer.flush();
+            }
         }
 
         void setWriter(Writer writer) {
