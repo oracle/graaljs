@@ -79,22 +79,6 @@ myJavaString.length;
 Nashorn allows to both access `length` as a property and a function.
 Existing function calls `length()` should be expressed as property access.
 
-### Using JavaBeans
-
-Graal JavaScript does not treat accessor and mutator methods in JavaBeans as equivalent JavaScript properties. So that e.g. the last line of the following example:
-
-```
-var Date = Java.type("java.util.Date")
-var date = new Date()
-date.year + 1900
-```
-
-should be expressed as:
-
-```
-date.getYear() + 1900
-```
-
 ### Multithreading
 Graal JavaScript supports multithreading by creating several `Context` objects from Java code.
 Multiple JavaScript engines can be created from a Java application, and can be safely executed in parallel on multiple threads.

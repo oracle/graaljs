@@ -8,6 +8,7 @@ The main focus is on user-observable behavior of the engine.
 * Enable SharedArrayBuffers by default.
 * Provide $EXEC for Nashorn compatibility in scripting mode.
 * Provide Java.isScriptFunction, Java.isScriptObject, and Java.isJavaFunction in Nashorn compatibility mode.
+* Provide support to access getters and setters like a field, in Nashorn compatibility mode.
 
 ## Version 1.0.0 RC3
 * Added support for BigInt arithmetic expressions.
