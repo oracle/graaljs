@@ -86,6 +86,7 @@ Multiple JavaScript engines can be created from a Java application, and can be s
 ```
 Context polyglot = Context.create();
 Value array = polyglot.eval("js", "[1,2,42,4]");
+
 ```
 
 Graal JavaScript does not allow the creation of threads from JavaScript applications with access to the current `Context`.
@@ -113,6 +114,26 @@ The `JavaImporter` feature is currently not supported by Graal JavaScript.
 Several methods provided by Nashorn on the `Java` global object are currently not supported by Graal JavaScript.
 This applies to `Java.extend`, `Java.super`, `Java.isJavaMethod`, and `Java.asJSONCompatible`.
 We are evaluating their use in real-world applications and might add them in the future, by default or behind a flag.
+
+### Accessors
+In Nashorn compatibility mode, Graal JavaScript allows to access getters and setters just by the name as properties, while omitting `get`, `set`, or `is`.
+
+```
+var Date = Java.type('java.util.Date');
+var date = new Date();
+
+var myYear = date.year; // calls date.getYear()
+date.year = myYear+1;   // calls date.setYear(myYear + 1);
+```
+
+Graal JavaScript defines an ordering in which it searches for the field or getters.
+It will always first try to read or write the field with the name as provided in the property.
+If the field cannot be read or written, it will try to call a getter or setter:
+* In case of a read operation, Graal JavaScript will first try to call a getter with the name `get` and the property name in camel case. If that is not available, a getter with the name `is` and the property name in camel case is called. In the second case, the value is returned even if it is not of type boolean.
+* In case of a write operation, Graal JavaScript will try to call a setter with the name `set` and the property name in camel case, providing the value as argument to that function.
+
+Nashorn can expose random behavior when both `getFieldName` and `isFieldName` are available.
+Nashorn also gives precedence to getters, even when a public field of the exact name is available.
 
 ## Additional aspects to consider
 
