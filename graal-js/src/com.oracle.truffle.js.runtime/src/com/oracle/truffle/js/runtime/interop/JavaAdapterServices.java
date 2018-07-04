@@ -48,15 +48,10 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Provides static utility services to generated Java adapter classes.
@@ -100,53 +95,43 @@ public final class JavaAdapterServices {
     }
 
     /**
-     * Given a JS script object, retrieves a function from it by name, binds it to the script object
-     * as its "this", and adapts its parameter types, return types, and arity to the specified type
-     * and arity. This method is public mainly for implementation reasons, so the adapter classes
-     * can invoke it from their constructors that take a Object in its first argument to obtain the
-     * method handles for their method implementations.
+     * Given a JS object, retrieves a function from it by name, bound to the object.
      *
-     * @param obj the script obj
+     * This method is public mainly for implementation reasons, so the adapter classes can invoke it
+     * from their constructors that take a {@link Value} as last argument to obtain the functions
+     * for their method implementations.
+     *
+     * @param obj the script object
      * @param name the name of the property that contains the function
-     * @return the appropriately adapted method handle for invoking the script function, or null if
-     *         the value of the property is either null or undefined, or "toString" was requested as
-     *         the name, but the object doesn't directly define it but just inherits it through
-     *         prototype.
+     * @return a {@link Value} representing a member function (bound to the object if need be), or
+     *         null if the value of the property is either null or undefined, or "toString" was
+     *         requested as the name and the object doesn't directly define it but just inherits it.
      */
-    @TruffleBoundary
-    public static DynamicObject getFunction(final DynamicObject obj, final String name) {
-        // Since every JS Object has a toString, we only override "String toString()" it if it's
-        // explicitly specified
-        if (JSRuntime.TO_STRING.equals(name) && !JSObject.hasOwnProperty(obj, JSRuntime.TO_STRING)) {
-            return null;
-        }
-
-        final Object fnObj = JSObject.get(obj, name);
-        if (JSFunction.isJSFunction(fnObj)) {
-            return (DynamicObject) fnObj;
-        } else if (fnObj == Null.instance || fnObj == Undefined.instance) {
-            return null;
-        } else {
-            throw Errors.createTypeErrorNotAFunction(fnObj);
-        }
-    }
-
     @TruffleBoundary
     public static Value getFunction(final Value obj, final String name) {
         // Since every JS Object has a toString, we only override "String toString()" it if it's
         // explicitly specified
-        if (JSRuntime.TO_STRING.equals(name)) {
-            // && !JSObject.hasOwnProperty(obj, JSRuntime.TO_STRING)
+        if (JSRuntime.TO_STRING.equals(name) && !hasOwnProperty(obj, JSRuntime.TO_STRING)) {
             return null;
         }
 
         final Value fnObj = obj.getMember(name);
         if (fnObj.canExecute()) {
             return fnObj;
-        } else if (fnObj.isNull()) {
+        } else if (fnObj.isNull()) { // null or undefined
             return null;
         } else {
             throw Errors.createTypeErrorNotAFunction(fnObj);
+        }
+    }
+
+    private static boolean hasOwnProperty(final Value obj, final String name) {
+        Value bindings = Context.getCurrent().getBindings("js");
+        try {
+            return bindings.getMember("Object").getMember("prototype").getMember("hasOwnProperty").getMember("call").execute(obj, name).asBoolean();
+        } catch (Exception e) {
+            // probably due to monkey patching, ignore
+            return false;
         }
     }
 
@@ -158,20 +143,8 @@ public final class JavaAdapterServices {
     }
 
     /**
-     * Entry point for JS function calls by generated Java adapter classes. Enters the function's
-     * {@link TruffleContext} for the duration of the call.
+     * Obtains a method handle executing a {@link Value}, adapted for the given {@link MethodType}.
      */
-    public static Object callFunction(DynamicObject functionObject, Object thisObject, Object[] argumentValues) {
-        JSRealm functionRealm = JSFunction.getRealm(functionObject);
-        TruffleContext truffleContext = functionRealm.getTruffleContext();
-        Object prev = truffleContext.enter();
-        try {
-            return JSFunction.call(functionObject, thisObject, argumentValues);
-        } finally {
-            truffleContext.leave(prev);
-        }
-    }
-
     @TruffleBoundary
     public static MethodHandle getHandle(final MethodType type) {
         MethodHandle call;
