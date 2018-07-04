@@ -1184,15 +1184,27 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     foreignGetterInvoke = insert(Message.createInvoke(0).createNode());
                 }
-                try {
-                    String getterKey = getAccessorKey("get");
-                    Object result = ForeignAccess.sendInvoke(foreignGetterInvoke, thisObj, getterKey, new Object[]{});
+                Object result = tryGetResult(thisObj, "get");
+                if (result != null) {
                     return result;
-                } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
-                    return Undefined.instance;
+                }
+                result = tryGetResult(thisObj, "is");
+                if (result != null) {
+                    return result;
                 }
             }
             return Undefined.instance;
+        }
+
+        private Object tryGetResult(TruffleObject thisObj, String prefix) {
+            try {
+                String getterKey = getAccessorKey(prefix);
+                return ForeignAccess.sendInvoke(foreignGetterInvoke, thisObj, getterKey, new Object[]{});
+            } catch (UnknownIdentifierException e) {
+                return null;
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                return Undefined.instance;
+            }
         }
 
         private Object getSize(TruffleObject thisObj) {
