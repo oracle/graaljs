@@ -203,8 +203,8 @@ Object.defineProperty(String.prototype, "quote", {
 Object.defineProperty(this, "importClass", {
     configurable: true, enumerable: false, writable: true,
     value: function() {
-        for (var arg in arguments) {
-            var clazz = arguments[arg];
+        for (var i = 0; i < arguments.length; i++) {
+            var clazz = arguments[i];
             if (Java.isType(clazz)) {
                 var className = Java.typeName(clazz);
                 var simpleName = className.substring(className.lastIndexOf('.') + 1);
