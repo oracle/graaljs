@@ -58,19 +58,16 @@ public class EvalTest extends FineGrainedAccessTest {
     public void eval() {
         evalAllTags("eval('var a = 42;')");
 
-        enter(WriteVariableExpressionTag.class, (v, var) -> {
-            enter(EvalCallTag.class, (e, eval) -> {
-                enter(ReadPropertyExpressionTag.class, assertPropertyReadName("eval")).input(assertGlobalObjectInput).exit();
-                eval.input(assertJSFunctionInput);
-                enter(LiteralExpressionTag.class, assertLiteralType(LiteralExpressionTag.Type.StringLiteral)).exit();
-                eval.input("var a = 42;");
-                enter(WritePropertyExpressionTag.class, (e1, prop) -> {
-                    prop.input(assertJSObjectInput);
-                    enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
-                    prop.input(42);
-                }).exit();
+        enter(EvalCallTag.class, (e, eval) -> {
+            enter(ReadPropertyExpressionTag.class, assertPropertyReadName("eval")).input(assertGlobalObjectInput).exit();
+            eval.input(assertJSFunctionInput);
+            enter(LiteralExpressionTag.class, assertLiteralType(LiteralExpressionTag.Type.StringLiteral)).exit();
+            eval.input("var a = 42;");
+            enter(WritePropertyExpressionTag.class, (e1, prop) -> {
+                prop.input(assertJSObjectInput);
+                enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+                prop.input(42);
             }).exit();
-            var.input(Undefined.instance);
         }).exit();
     }
 

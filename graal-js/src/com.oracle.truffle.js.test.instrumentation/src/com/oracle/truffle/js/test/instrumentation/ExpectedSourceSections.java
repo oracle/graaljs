@@ -53,7 +53,6 @@ public class ExpectedSourceSections extends OnReturnAccessTest {
                         "20",
                         "21 > 20",
                         "true",
-                        "21 > 20 ? true : false;",
                         "21 > 20 ? true : false;"
         });
     }

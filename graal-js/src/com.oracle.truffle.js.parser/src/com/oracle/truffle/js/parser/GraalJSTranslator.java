@@ -1704,6 +1704,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode wrapGetCompletionValue(JavaScriptNode target) {
         if (currentFunction().returnsLastStatementResult()) {
             VarRef returnVar = environment.findTempVar(currentFunction().getReturnSlot());
+            if (target instanceof JSWriteFrameSlotNode) {
+                // writes to internal nodes should not have a source section.
+                target.removeSourceSection();
+            }
             return factory.createExprBlock(target, returnVar.createReadNode());
         }
         return target;
