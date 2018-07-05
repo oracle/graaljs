@@ -187,12 +187,13 @@ public abstract class TypeOfNode extends JSUnaryNode {
                     @Cached("createIsExecutable()") Node isExecutable,
                     @Cached("createIsBoxed()") Node isBoxedNode,
                     @Cached("createUnbox()") Node unboxNode,
+                    @Cached("createIsInstantiable()") Node isInstantiable,
                     @Cached("create()") TypeOfNode recTypeOf,
                     @Cached("create()") JSForeignToJSTypeNode foreignConvertNode) {
         if (ForeignAccess.sendIsBoxed(isBoxedNode, operand)) {
             Object obj = foreignConvertNode.executeWithTarget(JSInteropNodeUtil.unbox(operand, unboxNode));
             return recTypeOf.executeString(obj);
-        } else if (ForeignAccess.sendIsExecutable(isExecutable, operand)) {
+        } else if (ForeignAccess.sendIsExecutable(isExecutable, operand) || ForeignAccess.sendIsInstantiable(isInstantiable, operand)) {
             return JSFunction.TYPE_NAME;
         } else {
             return JSUserObject.TYPE_NAME;
