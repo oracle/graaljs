@@ -141,10 +141,10 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         extend(1),
         super_(1),
         // Nashorn Java Interop only
-        isJavaMethod(1),
         asJSONCompatible(1),
 
         // (old) Nashorn Java Interop and --nashorn-compat
+        isJavaMethod(1),
         isJavaFunction(1),
         isScriptFunction(1),
         isScriptObject(1);
@@ -210,6 +210,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         public enum JavaNashornCompat implements BuiltinEnum<JavaNashornCompat> {
+            isJavaMethod(1),
             isJavaFunction(1),
             isScriptFunction(1),
             isScriptObject(1);
@@ -229,6 +230,8 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @Override
         protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, JavaNashornCompat builtinEnum) {
             switch (builtinEnum) {
+                case isJavaMethod:
+                    return JavaIsJavaMethodNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case isJavaFunction:
                     return JavaIsJavaFunctionNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case isScriptFunction:
@@ -797,7 +800,11 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @Specialization
-        protected static boolean isJavaMethod(Object obj) {
+        protected boolean isJavaMethod(Object obj) {
+            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            if (getContext().isOptionNashornCompatibilityMode()) {
+                return env.isHostFunction(obj);
+            }
             return obj instanceof JavaMethod;
         }
     }
@@ -812,7 +819,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                         @Cached("create()") TypeOfNode typeofNode) {
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
             if (getContext().isOptionNashornCompatibilityMode()) {
-                return env.isHostFunction(obj);
+                return env.isHostFunction(obj) || (env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>);
             }
             return typeofNode.executeString(obj).equals("function") && !JSFunction.isJSFunction(obj);
         }
