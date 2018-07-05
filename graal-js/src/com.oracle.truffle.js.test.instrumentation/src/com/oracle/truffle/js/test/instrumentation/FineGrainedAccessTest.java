@@ -115,7 +115,7 @@ public abstract class FineGrainedAccessTest {
     protected Instrumenter instrumenter;
     protected TestingExecutionInstrument instrument;
     private ExecutionEventNodeFactory factory;
-    private EventBinding<ExecutionEventNodeFactory> binding;
+    protected EventBinding<ExecutionEventNodeFactory> binding;
 
     protected static class Event {
         enum Kind {

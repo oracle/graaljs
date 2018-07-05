@@ -121,7 +121,7 @@ public final class IfNode extends StatementNode implements ResumableNode {
 
     private static boolean hasMaterializationTag(Set<Class<? extends Tag>> materializedTags) {
         return materializedTags.contains(ControlFlowRootTag.class) || materializedTags.contains(ControlFlowBranchTag.class) ||
-                        materializedTags.contains(ControlFlowBlockTag.class) || materializedTags.contains(StatementTag.class) || materializedTags.contains(ExpressionTag.class);
+                        materializedTags.contains(ControlFlowBlockTag.class);
     }
 
     private IfNode(JavaScriptNode condition, JavaScriptNode thenPart, JavaScriptNode elsePart) {
