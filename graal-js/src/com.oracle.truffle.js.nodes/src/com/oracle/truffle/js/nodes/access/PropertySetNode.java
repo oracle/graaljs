@@ -1031,41 +1031,53 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
 
         @Override
         public void setValueUncheckedInt(Object thisObj, int value, Object receiver, boolean condition) {
+            TruffleObject truffleObject = (TruffleObject) thisObj;
             try {
-                ForeignAccess.sendWrite(foreignSet, (TruffleObject) thisObj, key, value);
+                ForeignAccess.sendWrite(foreignSet, truffleObject, key, value);
             } catch (UnknownIdentifierException e) {
                 if (context.isOptionNashornCompatibilityMode()) {
-                    tryInvokeSetter((TruffleObject) thisObj, value);
+                    tryInvokeSetter(truffleObject, value);
                 }
-            } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                 // do nothing
+            } catch (UnsupportedMessageException e) {
+                // do nothing
+            } catch (UnsupportedTypeException e) {
+                throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
             }
         }
 
         @Override
         public void setValueUncheckedDouble(Object thisObj, double value, Object receiver, boolean condition) {
+            TruffleObject truffleObject = (TruffleObject) thisObj;
             try {
-                ForeignAccess.sendWrite(foreignSet, (TruffleObject) thisObj, key, value);
+                ForeignAccess.sendWrite(foreignSet, truffleObject, key, value);
             } catch (UnknownIdentifierException e) {
                 if (context.isOptionNashornCompatibilityMode()) {
-                    tryInvokeSetter((TruffleObject) thisObj, value);
+                    tryInvokeSetter(truffleObject, value);
                 }
-            } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                 // do nothing
+            } catch (UnsupportedMessageException e) {
+                // do nothing
+            } catch (UnsupportedTypeException e) {
+                throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
             }
         }
 
         @Override
         public void setValueUnchecked(Object thisObj, Object value, Object receiver, boolean condition) {
+            TruffleObject truffleObject = (TruffleObject) thisObj;
             Object boundValue = export.executeWithTarget(value, Undefined.instance);
             try {
-                ForeignAccess.sendWrite(foreignSet, (TruffleObject) thisObj, key, boundValue);
+                ForeignAccess.sendWrite(foreignSet, truffleObject, key, boundValue);
             } catch (UnknownIdentifierException e) {
                 if (context.isOptionNashornCompatibilityMode()) {
                     tryInvokeSetter((TruffleObject) thisObj, boundValue);
                 }
-            } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                 // do nothing
+            } catch (UnsupportedMessageException e) {
+                // do nothing
+            } catch (UnsupportedTypeException e) {
+                throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
             }
         }
 
