@@ -452,9 +452,10 @@ public class JSRealm implements ShapeContext {
             this.pluralRulesFactory = null;
         }
 
+        boolean nashornCompat = context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
         boolean nashornJavaInterop = isJavaInteropAvailable() && (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop);
-        this.jsAdapterConstructor = JSTruffleOptions.NashornExtensions ? JSAdapter.createConstructor(this) : null;
-        this.jsAdapterFactory = JSTruffleOptions.NashornExtensions ? JSAdapter.makeInitialShape(context, jsAdapterConstructor.getPrototype()).createFactory() : null;
+        this.jsAdapterConstructor = nashornCompat ? JSAdapter.createConstructor(this) : null;
+        this.jsAdapterFactory = nashornCompat ? JSAdapter.makeInitialShape(context, jsAdapterConstructor.getPrototype()).createFactory() : null;
         this.javaImporterConstructor = nashornJavaInterop ? JavaImporter.createConstructor(this) : null;
         this.javaImportFactory = nashornJavaInterop ? JavaImporter.makeInitialShape(context, javaImporterConstructor.getPrototype()).createFactory() : null;
         this.initialJavaPackageFactory = isJavaInteropAvailable() ? JavaPackage.createInitialShape(this).createFactory() : null;
@@ -791,10 +792,6 @@ public class JSRealm implements ShapeContext {
         return realmBuiltinObject;
     }
 
-    public final JSConstructor getJSAdapterConstructor() {
-        return jsAdapterConstructor;
-    }
-
     public final JSConstructor getProxyConstructor() {
         return proxyConstructor;
     }
@@ -1009,9 +1006,7 @@ public class JSRealm implements ShapeContext {
         JSObjectUtil.putDataProperty(context, global, Undefined.NAME, Undefined.instance);
 
         JSObjectUtil.putFunctionsFromContainer(this, global, JSGlobalObject.CLASS_NAME);
-        if (context.isOptionNashornCompatibilityMode()) {
-            initGlobalNashornExtensions(global);
-        }
+
         this.evalFunctionObject = JSObject.get(global, JSGlobalObject.EVAL_NAME);
         this.applyFunctionObject = JSObject.get(getFunctionPrototype(), "apply");
         this.callFunctionObject = JSObject.get(getFunctionPrototype(), "call");
@@ -1034,8 +1029,8 @@ public class JSRealm implements ShapeContext {
             putGlobalProperty(global, JSSIMD.SIMD_OBJECT_NAME, simdObject);
         }
 
-        if (JSTruffleOptions.NashornExtensions) {
-            putGlobalProperty(global, JSAdapter.CLASS_NAME, getJSAdapterConstructor().getFunctionObject());
+        if (context.isOptionNashornCompatibilityMode()) {
+            initGlobalNashornExtensions(global);
         }
         if (JSTruffleOptions.TruffleInterop) {
             setupPolyglot(global);
@@ -1091,6 +1086,7 @@ public class JSRealm implements ShapeContext {
 
     private void initGlobalNashornExtensions(DynamicObject global) {
         assert getContext().isOptionNashornCompatibilityMode();
+        putGlobalProperty(global, JSAdapter.CLASS_NAME, jsAdapterConstructor.getFunctionObject());
         DynamicObject parseToJSON = lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "parseToJSON");
         JSObjectUtil.putOrSetDataProperty(getContext(), global, "parseToJSON", parseToJSON, JSAttributes.getDefaultNotEnumerable());
     }

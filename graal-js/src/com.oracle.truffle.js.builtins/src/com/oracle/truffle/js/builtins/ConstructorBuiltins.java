@@ -257,12 +257,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Symbol(0),
 
         // non-standard (Nashorn) extensions
-        JSAdapter(1) {
-            @Override
-            public boolean isEnabled() {
-                return JSTruffleOptions.NashornExtensions;
-            }
-        },
+        JSAdapter(1),
         JavaImporter(1) {
             @Override
             public boolean isEnabled() {

@@ -13,6 +13,7 @@ The main focus is on user-observable behavior of the engine.
 * Provide Java.extend, Java.super, and `new Interface|AbstractClass(fn|obj)` in Nashorn compatibility mode.
 * Provide `java.lang.String` methods on string values, in Nashorn compatibility mode.
 * Provide `JavaImporter` class in Nashorn compatibility mode.
+* Provide `JSAdapter` class only in Nashorn compatibility mode.
 
 ## Version 1.0.0 RC3
 * Added support for BigInt arithmetic expressions.
