@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Objects;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -75,6 +76,11 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
 
     public String getPropertyName() {
         return varName;
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        return false;
     }
 
     @Override

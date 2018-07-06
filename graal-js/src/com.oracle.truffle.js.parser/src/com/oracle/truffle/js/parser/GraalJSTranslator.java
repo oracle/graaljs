@@ -213,6 +213,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private static JavaScriptNode tagWithHaltTag(JavaScriptNode resultNode) {
         resultNode.addStatementTag();
+        if (resultNode instanceof GlobalScopeVarWrapperNode) {
+            ((GlobalScopeVarWrapperNode) resultNode).getDelegateNode().addStatementTag();
+        }
         return resultNode;
     }
 
@@ -1486,10 +1489,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         String varName = identNode.getName();
         VarRef varRef = findScopeVarCheckTDZ(varName, false);
         JavaScriptNode resultNode = result(varRef.createReadNode());
-        if (varRef instanceof WrappedVarRef) {
-            if (resultNode instanceof GlobalScopeVarWrapperNode) {
-                ensureHasSourceSection(((GlobalScopeVarWrapperNode) resultNode).getDelegateNode(), identNode);
-            }
+        if (resultNode instanceof GlobalScopeVarWrapperNode) {
+            ensureHasSourceSection(((GlobalScopeVarWrapperNode) resultNode).getDelegateNode(), identNode);
         }
         return resultNode;
     }
