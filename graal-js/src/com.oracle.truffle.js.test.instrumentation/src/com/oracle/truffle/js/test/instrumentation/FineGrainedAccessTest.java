@@ -112,8 +112,8 @@ public abstract class FineGrainedAccessTest {
     private boolean collecting;
     private ArrayList<Event> events;
     private Stack<JavaScriptNode> stack;
-    private Instrumenter instrumenter;
-    private TestingExecutionInstrument instrument;
+    protected Instrumenter instrumenter;
+    protected TestingExecutionInstrument instrument;
     private ExecutionEventNodeFactory factory;
     private EventBinding<ExecutionEventNodeFactory> binding;
 
