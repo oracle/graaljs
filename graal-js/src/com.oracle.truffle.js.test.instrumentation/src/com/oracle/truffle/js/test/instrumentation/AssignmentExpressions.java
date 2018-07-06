@@ -111,7 +111,7 @@ public class AssignmentExpressions extends FineGrainedAccessTest {
         enter(WriteElementExpressionTag.class, (e, write) -> {
             write.input(assertJSArrayInput);
             enter(LiteralExpressionTag.class).exit(assertReturnValue(0));
-            write.input(0);
+            write.input(0L);
             enter(BinaryExpressionTag.class, (e1, bin) -> {
                 assertAttribute(e1, "operator", "+");
 
