@@ -41,10 +41,19 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.*;
-import com.oracle.truffle.js.runtime.*;
-import com.oracle.truffle.js.runtime.interop.*;
-import com.oracle.truffle.js.runtime.objects.*;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.interop.JavaClass;
+import com.oracle.truffle.js.runtime.interop.JavaGetter;
+import com.oracle.truffle.js.runtime.interop.JavaMember;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 public abstract class JSPrimitiveObject extends JSBuiltinObject {
     protected JSPrimitiveObject() {
@@ -57,32 +66,48 @@ public abstract class JSPrimitiveObject extends JSBuiltinObject {
 
         Object propertyValue = super.getHelper(store, thisObj, key);
 
-        if (JSTruffleOptions.NashornJavaInterop && !(JSObject.isDynamicObject(thisObj))) {
-            if (propertyValue == null && key instanceof String) {
-                return getJavaProperty(thisObj, (String) key);
+        if (key instanceof String && allowJavaMembersFor(thisObj)) {
+            JSContext context = JSObject.getJSContext(store);
+            if (context.isOptionNashornCompatibilityMode()) {
+                if (propertyValue == null) {
+                    return getJavaProperty(thisObj, (String) key, context);
+                }
             }
         }
 
         return propertyValue;
     }
 
-    private static Object getJavaProperty(Object thisObj, String name) {
-        JavaClass type = JavaClass.forClass(thisObj.getClass());
-        JavaMember member = type.getMember(name, JavaClass.INSTANCE, JavaClass.GETTER_METHOD, false);
-        if (member instanceof JavaGetter) {
-            return ((JavaGetter) member).getValue(thisObj);
+    private static Object getJavaProperty(Object thisObj, String name, JSContext context) {
+        if (JSTruffleOptions.NashornJavaInterop) {
+            JavaClass type = JavaClass.forClass(thisObj.getClass());
+            JavaMember member = type.getMember(name, JavaClass.INSTANCE, JavaClass.GETTER_METHOD, false);
+            if (member instanceof JavaGetter) {
+                return ((JavaGetter) member).getValue(thisObj);
+            }
+            return member;
+        } else {
+            String thisStr = (String) thisObj;
+            Object boxedString = context.getRealm().getEnv().asBoxedGuestValue(thisStr);
+            try {
+                return ForeignAccess.sendRead(JSInteropUtil.createRead(), (TruffleObject) boxedString, name);
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                return Undefined.instance;
+            }
         }
-        return member;
     }
 
     @TruffleBoundary
     @Override
     public Object getMethodHelper(DynamicObject store, Object thisObj, Object name) {
-        if (JSTruffleOptions.NashornJavaInterop && !(JSObject.isDynamicObject(thisObj)) && name instanceof String) {
-            if (hasOwnProperty(store, name)) {
-                Object method = getJavaMethod(thisObj, (String) name);
-                if (method != null) {
-                    return method;
+        if (name instanceof String && allowJavaMembersFor(thisObj)) {
+            JSContext context = JSObject.getJSContext(store);
+            if (context.isOptionNashornCompatibilityMode()) {
+                if (hasOwnProperty(store, name)) {
+                    Object method = getJavaMethod(thisObj, (String) name, context);
+                    if (method != null) {
+                        return method;
+                    }
                 }
             }
         }
@@ -90,9 +115,23 @@ public abstract class JSPrimitiveObject extends JSBuiltinObject {
         return super.getMethodHelper(store, thisObj, name);
     }
 
-    private static Object getJavaMethod(Object thisObj, String name) {
-        JavaClass type = JavaClass.forClass(thisObj.getClass());
-        JavaMember member = type.getMember(name, JavaClass.INSTANCE, JavaClass.METHOD, false);
-        return member;
+    private static Object getJavaMethod(Object thisObj, String name, JSContext context) {
+        if (JSTruffleOptions.NashornJavaInterop) {
+            JavaClass type = JavaClass.forClass(thisObj.getClass());
+            JavaMember member = type.getMember(name, JavaClass.INSTANCE, JavaClass.METHOD, false);
+            return member;
+        } else {
+            String thisStr = (String) thisObj;
+            Object boxedString = context.getRealm().getEnv().asBoxedGuestValue(thisStr);
+            try {
+                return ForeignAccess.sendRead(JSInteropUtil.createRead(), (TruffleObject) boxedString, name);
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                return null;
+            }
+        }
+    }
+
+    private static boolean allowJavaMembersFor(Object thisObj) {
+        return thisObj instanceof String;
     }
 }
