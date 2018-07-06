@@ -1020,9 +1020,11 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         @Child private Node foreignSet;
         @Child private ExportValueNode export;
         @Child private Node foreignSetterInvoke;
+        private final JSContext context;
 
         public ForeignPropertySetNode(Object key, JSContext context) {
             super(key, new ForeignLanguageCheckNode());
+            this.context = context;
             this.foreignSet = Message.WRITE.createNode();
             this.export = ExportValueNode.create(context);
         }
@@ -1031,11 +1033,12 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         public void setValueUncheckedInt(Object thisObj, int value, Object receiver, boolean condition) {
             try {
                 ForeignAccess.sendWrite(foreignSet, (TruffleObject) thisObj, key, value);
-            } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
-                // do nothing
-                if (getContext().isOptionNashornCompatibilityMode()) {
+            } catch (UnknownIdentifierException e) {
+                if (context.isOptionNashornCompatibilityMode()) {
                     tryInvokeSetter((TruffleObject) thisObj, value);
                 }
+            } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                // do nothing
             }
         }
 
@@ -1043,31 +1046,33 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         public void setValueUncheckedDouble(Object thisObj, double value, Object receiver, boolean condition) {
             try {
                 ForeignAccess.sendWrite(foreignSet, (TruffleObject) thisObj, key, value);
-            } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
-                // do nothing
-                if (getContext().isOptionNashornCompatibilityMode()) {
+            } catch (UnknownIdentifierException e) {
+                if (context.isOptionNashornCompatibilityMode()) {
                     tryInvokeSetter((TruffleObject) thisObj, value);
                 }
+            } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                // do nothing
             }
         }
 
         @Override
         public void setValueUnchecked(Object thisObj, Object value, Object receiver, boolean condition) {
+            Object boundValue = export.executeWithTarget(value, Undefined.instance);
             try {
-                Object boundValue = export.executeWithTarget(value, Undefined.instance);
                 ForeignAccess.sendWrite(foreignSet, (TruffleObject) thisObj, key, boundValue);
-            } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
-                // do nothing
-                if (getContext().isOptionNashornCompatibilityMode()) {
-                    tryInvokeSetter((TruffleObject) thisObj, value);
+            } catch (UnknownIdentifierException e) {
+                if (context.isOptionNashornCompatibilityMode()) {
+                    tryInvokeSetter((TruffleObject) thisObj, boundValue);
                 }
+            } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                // do nothing
             }
         }
 
         // in nashorn-compat mode, `javaObj.xyz = a` can mean `javaObj.setXyz(a)`.
         private void tryInvokeSetter(TruffleObject thisObj, Object value) {
-            assert getContext().isOptionNashornCompatibilityMode();
-            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            assert context.isOptionNashornCompatibilityMode();
+            TruffleLanguage.Env env = context.getRealm().getEnv();
             if (env.isHostObject(thisObj) && JSRuntime.isString(getKey())) {
                 if (foreignSetterInvoke == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();

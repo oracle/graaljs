@@ -1164,9 +1164,11 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final boolean isLength;
         private final boolean isMethod;
         private final boolean isGlobal;
+        private final JSContext context;
 
-        public ForeignPropertyGetNode(Object key, boolean isMethod, boolean isGlobal) {
+        public ForeignPropertyGetNode(Object key, boolean isMethod, boolean isGlobal, JSContext context) {
             super(key, new ForeignLanguageCheckNode());
+            this.context = context;
             this.toJSType = JSForeignToJSTypeNodeGen.create();
             this.isLength = key.equals(JSAbstractArray.LENGTH);
             this.isMethod = isMethod;
@@ -1185,21 +1187,25 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.foreignGet = insert(Message.READ.createNode());
             }
+            Object foreignResult;
             try {
-                Object foreignResult = ForeignAccess.sendRead(foreignGet, thisObj, key);
-                return toJSType.executeWithTarget(foreignResult);
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                if (getContext().isOptionNashornCompatibilityMode()) {
-                    return tryInvokeGetter(thisObj);
+                foreignResult = ForeignAccess.sendRead(foreignGet, thisObj, key);
+            } catch (UnknownIdentifierException e) {
+                if (context.isOptionNashornCompatibilityMode()) {
+                    foreignResult = tryInvokeGetter(thisObj);
+                } else {
+                    return Undefined.instance;
                 }
+            } catch (UnsupportedMessageException e) {
                 return Undefined.instance;
             }
+            return toJSType.executeWithTarget(foreignResult);
         }
 
         // in nashorn-compat mode, `javaObj.xyz` can mean `javaObj.getXyz()`.
         private Object tryInvokeGetter(TruffleObject thisObj) {
-            assert getContext().isOptionNashornCompatibilityMode();
-            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            assert context.isOptionNashornCompatibilityMode();
+            TruffleLanguage.Env env = context.getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
                 if (foreignGetterInvoke == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1290,7 +1296,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                     // a TruffleObject from another language
                     if (foreignGetNode == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        foreignGetNode = insert(new ForeignPropertyGetNode(key, isMethod(), isGlobal()));
+                        foreignGetNode = insert(new ForeignPropertyGetNode(key, isMethod(), isGlobal(), context));
                     }
                     return foreignGetNode.getValue(thisObj, receiver);
                 } else {
@@ -1957,7 +1963,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
     @Override
     protected PropertyGetNode createTruffleObjectPropertyNode(TruffleObject thisObject, JSContext context) {
-        return new ForeignPropertyGetNode(key, isMethod(), isGlobal());
+        return new ForeignPropertyGetNode(key, isMethod(), isGlobal(), context);
     }
 
     protected static Class<? extends JavaMember>[] getJavaMemberTypes(boolean isMethod) {
