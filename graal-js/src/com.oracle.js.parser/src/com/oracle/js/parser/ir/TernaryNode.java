@@ -115,6 +115,11 @@ public final class TernaryNode extends Expression {
         }
     }
 
+    @Override
+    public int getStart() {
+        return test.getStart();
+    }
+
     /**
      * Get the test expression for this ternary expression, i.e. "x" in x ? y : z
      * @return the test expression
