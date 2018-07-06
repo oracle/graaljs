@@ -342,12 +342,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        protected final DynamicObject checkCallbackIsFunction(Object callback) {
+        protected final boolean isCallable(Object callback) {
             if (isCallableNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 isCallableNode = IsCallableNode.create();
             }
-            if (!isCallableNode.executeBoolean(callback)) {
+            return isCallableNode.executeBoolean(callback);
+        }
+
+        protected final DynamicObject checkCallbackIsFunction(Object callback) {
+            if (!isCallable(callback)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorNotAFunction(callback, this);
             }
@@ -1137,7 +1141,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return joinPropertyNode.executeWithTarget(target);
         }
 
-        private Object callJoin(Object target, DynamicObject function) {
+        private Object callJoin(Object target, Object function) {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callNode = insert(JSFunctionCallNode.createCall());
@@ -1152,11 +1156,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSObject.defaultToString((DynamicObject) thisObj);
             }
             TruffleObject arrayObj = toObject(thisObj);
-            Object join = getJoinProperty(arrayObj);
-            if (JSFunction.isJSFunction(join)) {
-                return callJoin(arrayObj, (DynamicObject) join);
-            } else if (JSObject.isJSObject(arrayObj)) {
-                return JSObject.defaultToString((DynamicObject) arrayObj);
+            if (JSObject.isJSObject(arrayObj)) {
+                Object join = getJoinProperty(arrayObj);
+                if (isCallable(join)) {
+                    return callJoin(arrayObj, join);
+                } else {
+                    return JSObject.defaultToString((DynamicObject) arrayObj);
+                }
             } else {
                 return "[object Foreign]";
             }
