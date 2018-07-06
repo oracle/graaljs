@@ -125,7 +125,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
     }
 
     public abstract static class JSIsArrayNode extends JSBuiltinNode {
-        @Child private com.oracle.truffle.js.nodes.unary.JSIsArrayNode isArrayNode = com.oracle.truffle.js.nodes.unary.JSIsArrayNode.createIsArray();
+        @Child private com.oracle.truffle.js.nodes.unary.JSIsArrayNode isArrayNode = com.oracle.truffle.js.nodes.unary.JSIsArrayNode.createIsArrayLike();
 
         public JSIsArrayNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
