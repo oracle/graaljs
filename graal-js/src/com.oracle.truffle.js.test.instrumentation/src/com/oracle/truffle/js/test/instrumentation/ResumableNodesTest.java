@@ -44,7 +44,9 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class ResumableNodesTest extends FineGrainedAccessTest {
 
@@ -156,6 +158,26 @@ public class ResumableNodesTest extends FineGrainedAccessTest {
             call.input(assertJSObjectInput);
             call.input(assertJSFunctionInput("next"));
         }).exit();
+    }
+
+    @Test
+    public void generatorYieldWritesElement() {
+        String src = "var ret = [];" +
+                        "function *next() {" +
+                        "  ret[0] = yield 1;" +
+                        "  yield next;" +
+                        "};" +
+                        "for(const val of next()) {" +
+                        "  val;" +
+                        "}";
+
+        evalWithTags(src, new Class[]{WriteElementExpressionTag.class});
+
+        enter(WriteElementExpressionTag.class, (e, w) -> {
+            w.input(assertJSArrayInput);
+            w.input(0);
+            w.input(Undefined.instance);
+        }).exit(assertReturnValue(Undefined.instance));
     }
 
     protected void assertVariableInc(String name, int value) {
