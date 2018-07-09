@@ -452,10 +452,12 @@ public class JSRealm implements ShapeContext {
             this.pluralRulesFactory = null;
         }
 
-        this.jsAdapterConstructor = JSTruffleOptions.NashornExtensions ? JSAdapter.createConstructor(this) : null;
-        this.jsAdapterFactory = JSTruffleOptions.NashornExtensions ? JSAdapter.makeInitialShape(context, jsAdapterConstructor.getPrototype()).createFactory() : null;
-        this.javaImporterConstructor = JSTruffleOptions.NashornJavaInterop ? JavaImporter.createConstructor(this) : null;
-        this.javaImportFactory = JSTruffleOptions.NashornJavaInterop ? JavaImporter.makeInitialShape(context, javaImporterConstructor.getPrototype()).createFactory() : null;
+        boolean nashornCompat = context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
+        boolean nashornJavaInterop = isJavaInteropAvailable() && (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop);
+        this.jsAdapterConstructor = nashornCompat ? JSAdapter.createConstructor(this) : null;
+        this.jsAdapterFactory = nashornCompat ? JSAdapter.makeInitialShape(context, jsAdapterConstructor.getPrototype()).createFactory() : null;
+        this.javaImporterConstructor = nashornJavaInterop ? JavaImporter.createConstructor(this) : null;
+        this.javaImportFactory = nashornJavaInterop ? JavaImporter.makeInitialShape(context, javaImporterConstructor.getPrototype()).createFactory() : null;
         this.initialJavaPackageFactory = isJavaInteropAvailable() ? JavaPackage.createInitialShape(this).createFactory() : null;
 
         this.iteratorPrototype = es6 ? createIteratorPrototype() : null;
@@ -790,10 +792,6 @@ public class JSRealm implements ShapeContext {
         return realmBuiltinObject;
     }
 
-    public final JSConstructor getJSAdapterConstructor() {
-        return jsAdapterConstructor;
-    }
-
     public final JSConstructor getProxyConstructor() {
         return proxyConstructor;
     }
@@ -1008,9 +1006,7 @@ public class JSRealm implements ShapeContext {
         JSObjectUtil.putDataProperty(context, global, Undefined.NAME, Undefined.instance);
 
         JSObjectUtil.putFunctionsFromContainer(this, global, JSGlobalObject.CLASS_NAME);
-        if (context.isOptionNashornCompatibilityMode()) {
-            initGlobalNashornExtensions(global);
-        }
+
         this.evalFunctionObject = JSObject.get(global, JSGlobalObject.EVAL_NAME);
         this.applyFunctionObject = JSObject.get(getFunctionPrototype(), "apply");
         this.callFunctionObject = JSObject.get(getFunctionPrototype(), "call");
@@ -1033,8 +1029,8 @@ public class JSRealm implements ShapeContext {
             putGlobalProperty(global, JSSIMD.SIMD_OBJECT_NAME, simdObject);
         }
 
-        if (JSTruffleOptions.NashornExtensions) {
-            putGlobalProperty(global, JSAdapter.CLASS_NAME, getJSAdapterConstructor().getFunctionObject());
+        if (context.isOptionNashornCompatibilityMode()) {
+            initGlobalNashornExtensions(global);
         }
         if (JSTruffleOptions.TruffleInterop) {
             setupPolyglot(global);
@@ -1090,6 +1086,7 @@ public class JSRealm implements ShapeContext {
 
     private void initGlobalNashornExtensions(DynamicObject global) {
         assert getContext().isOptionNashornCompatibilityMode();
+        putGlobalProperty(global, JSAdapter.CLASS_NAME, jsAdapterConstructor.getFunctionObject());
         DynamicObject parseToJSON = lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "parseToJSON");
         JSObjectUtil.putOrSetDataProperty(getContext(), global, "parseToJSON", parseToJSON, JSAttributes.getDefaultNotEnumerable());
     }
@@ -1165,19 +1162,20 @@ public class JSRealm implements ShapeContext {
         DynamicObject java = JSJava.create(this);
         JSObjectUtil.putFunctionsFromContainer(this, java, JSJava.CLASS_NAME);
         putGlobalProperty(global, JSJava.CLASS_NAME, java);
-        if (context.isOptionNashornCompatibilityMode() && !JSTruffleOptions.NashornCompatibilityMode) {
+        if (context.isOptionNashornCompatibilityMode() && !JSTruffleOptions.NashornJavaInterop) {
             JSObjectUtil.putFunctionsFromContainer(this, java, JSJava.CLASS_NAME_NASHORN_COMPAT);
         }
 
         if (getEnv() != null && getEnv().isHostLookupAllowed()) {
             putGlobalProperty(global, "Packages", JavaPackage.create(this, ""));
-            if (JSTruffleOptions.NashornJavaInterop) {
+            if (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop) {
                 putGlobalProperty(global, "java", JavaPackage.create(this, "java"));
                 putGlobalProperty(global, "javafx", JavaPackage.create(this, "javafx"));
                 putGlobalProperty(global, "javax", JavaPackage.create(this, "javax"));
                 putGlobalProperty(global, "com", JavaPackage.create(this, "com"));
                 putGlobalProperty(global, "org", JavaPackage.create(this, "org"));
                 putGlobalProperty(global, "edu", JavaPackage.create(this, "edu"));
+
                 putGlobalProperty(global, JavaImporter.CLASS_NAME, getJavaImporterConstructor().getFunctionObject());
             }
         }

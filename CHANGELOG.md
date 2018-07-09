@@ -7,8 +7,13 @@ The main focus is on user-observable behavior of the engine.
 * Added stack trace limit option (--js.stack-trace-limit).
 * Enable SharedArrayBuffers by default.
 * Provide $EXEC for Nashorn compatibility in scripting mode.
-* Provide Java.isScriptFunction, Java.isScriptObject, and Java.isJavaFunction in Nashorn compatibility mode.
+* Provide Java.isScriptFunction, Java.isScriptObject, Java.isJavaMethod, and Java.isJavaFunction in Nashorn compatibility mode.
 * Provide support to access getters and setters like a field, in Nashorn compatibility mode.
+* Provide top-level package globals in Nashorn compatibility mode: `java`, `javafx`, `javax`, `com`, `org`, `edu`.
+* Provide Java.extend, Java.super, and `new Interface|AbstractClass(fn|obj)` in Nashorn compatibility mode.
+* Provide `java.lang.String` methods on string values, in Nashorn compatibility mode.
+* Provide `JavaImporter` class in Nashorn compatibility mode.
+* Provide `JSAdapter` class only in Nashorn compatibility mode.
 
 ## Version 1.0.0 RC3
 * Added support for BigInt arithmetic expressions.

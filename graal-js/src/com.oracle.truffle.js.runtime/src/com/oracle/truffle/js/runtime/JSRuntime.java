@@ -235,10 +235,11 @@ public final class JSRuntime {
             return JavaMethod.TYPE_NAME;
         } else if (value instanceof TruffleObject) {
             assert !(value instanceof Symbol);
-            if (JSInteropNodeUtil.isBoxed((TruffleObject) value)) {
-                return typeof(JSInteropNodeUtil.unbox((TruffleObject) value));
+            TruffleObject object = (TruffleObject) value;
+            if (JSInteropNodeUtil.isBoxed(object)) {
+                return typeof(JSInteropNodeUtil.unbox(object));
             }
-            if (ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), (TruffleObject) value)) {
+            if (ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), object) || ForeignAccess.sendIsInstantiable(Message.IS_INSTANTIABLE.createNode(), object)) {
                 return JSFunction.TYPE_NAME;
             } else {
                 return JSUserObject.TYPE_NAME;

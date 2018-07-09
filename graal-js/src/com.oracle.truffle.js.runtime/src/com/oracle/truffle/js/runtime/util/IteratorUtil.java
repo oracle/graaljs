@@ -283,4 +283,30 @@ public final class IteratorUtil {
             }
         };
     }
+
+    public static Iterator<Integer> rangeIterator(int length) {
+        return new RangeIterator(length);
+    }
+
+    private static final class RangeIterator implements Iterator<Integer> {
+        private final int length;
+        private int index;
+
+        RangeIterator(int length) {
+            this.length = length;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return index < length;
+        }
+
+        @Override
+        public Integer next() {
+            if (index < length) {
+                return index++;
+            }
+            throw new NoSuchElementException();
+        }
+    }
 }

@@ -1499,7 +1499,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
-            if (ForeignAccess.sendIsNull(foreignIsNull, targetClass.cast(target))) {
+            TruffleObject truffleObject = targetClass.cast(target);
+            if (ForeignAccess.sendIsNull(foreignIsNull, truffleObject)) {
                 throw Errors.createTypeErrorCannotGetProperty(index, target, false, this);
             }
             try {
@@ -1507,7 +1508,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 if (converted instanceof Symbol) {
                     return Undefined.instance;
                 }
-                return toJSType(ForeignAccess.sendRead(foreignArrayAccess, targetClass.cast(target), converted));
+                return toJSType(ForeignAccess.sendRead(foreignArrayAccess, truffleObject, converted));
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 return Undefined.instance;
             }

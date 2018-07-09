@@ -49,18 +49,16 @@ import java.security.PrivilegedAction;
 import java.security.ProtectionDomain;
 import java.util.Objects;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JSContext;
 
 /**
  * Java interop access check utility methods, mostly taken from Nashorn.
  */
 public final class JavaAccess {
     private JavaAccess() {
-    }
-
-    static {
-        assert JSTruffleOptions.NashornJavaInterop;
     }
 
     private static final AccessControlContext NO_PERMISSIONS_CONTEXT = createNoPermissionsContext();
@@ -144,9 +142,9 @@ public final class JavaAccess {
         return name.startsWith("java.lang.reflect.") || name.startsWith("java.lang.invoke.") || name.startsWith("java.beans.");
     }
 
-    public static void checkReflectionAccess(final Class<?> clazz, final boolean isStatic, final boolean classFilterPresent) {
-        if (classFilterPresent && isReflectiveCheckNeeded(clazz, isStatic)) {
-            throw Errors.createTypeError("Java reflection not supported when class filter is present");
+    public static void checkReflectionAccess(final Class<?> clazz, final boolean isStatic, final boolean allowReflection) {
+        if (!allowReflection && isReflectiveCheckNeeded(clazz, isStatic)) {
+            throw Errors.createTypeError("Java reflection not allowed");
         }
 
         final SecurityManager sm = System.getSecurityManager();
@@ -215,5 +213,33 @@ public final class JavaAccess {
      */
     public static boolean isAccessibleClass(final Class<?> clazz) {
         return Modifier.isPublic(clazz.getModifiers()) && isAccessiblePackage(clazz);
+    }
+
+    public static boolean isReflectionAllowed(JSContext context) {
+        TruffleLanguage.Env env = context.getRealm().getEnv();
+        if (env != null && env.isHostLookupAllowed()) {
+            try {
+                Object found = env.lookupHostSymbol(Class.class.getName());
+                if (found != null) {
+                    return false;
+                }
+            } catch (Exception ex) {
+            }
+        }
+        return true;
+    }
+
+    @TruffleBoundary
+    public static void checkAccess(Class<?>[] types, JSContext context) {
+        final SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            boolean allowReflection = JavaAccess.isReflectionAllowed(context);
+            for (final Class<?> type : types) {
+                // check for restricted package access
+                JavaAccess.checkPackageAccess(type);
+                // check for classes, interfaces in reflection
+                JavaAccess.checkReflectionAccess(type, true, allowReflection);
+            }
+        }
     }
 }

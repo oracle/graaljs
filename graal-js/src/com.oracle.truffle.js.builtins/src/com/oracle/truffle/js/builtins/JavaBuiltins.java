@@ -115,7 +115,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSJava;
 import com.oracle.truffle.js.runtime.interop.Converters;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.interop.JavaAccess;
 import com.oracle.truffle.js.runtime.interop.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
@@ -138,13 +137,14 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         typeName(1),
         synchronized_(2),
 
-        // Nashorn Java Interop only
-        extend(-1),
+        // Nashorn compatibility
+        extend(1),
         super_(1),
-        isJavaMethod(1),
+        // Nashorn Java Interop only
         asJSONCompatible(1),
 
         // (old) Nashorn Java Interop and --nashorn-compat
+        isJavaMethod(1),
         isJavaFunction(1),
         isScriptFunction(1),
         isScriptObject(1);
@@ -162,7 +162,10 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Override
         public boolean isEnabled() {
-            return JSTruffleOptions.NashornJavaInterop || EnumSet.of(type, from, to, isJavaObject, isType, typeName, synchronized_).contains(this);
+            if (JSTruffleOptions.NashornJavaInterop) {
+                return true;
+            }
+            return EnumSet.of(type, from, to, isJavaObject, isType, typeName, synchronized_, extend, super_).contains(this);
         }
     }
 
@@ -207,6 +210,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         public enum JavaNashornCompat implements BuiltinEnum<JavaNashornCompat> {
+            isJavaMethod(1),
             isJavaFunction(1),
             isScriptFunction(1),
             isScriptObject(1);
@@ -226,6 +230,8 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @Override
         protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, JavaNashornCompat builtinEnum) {
             switch (builtinEnum) {
+                case isJavaMethod:
+                    return JavaIsJavaMethodNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case isJavaFunction:
                     return JavaIsJavaFunctionNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case isScriptFunction:
@@ -351,13 +357,13 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             super(context, builtin);
         }
 
-        private final BranchProfile needErrorBranches = BranchProfile.create();
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         @Specialization
-        @TruffleBoundary
-        protected JavaClass extend(Object... arguments) {
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        protected Object extend(Object... arguments) {
             if (arguments.length == 0) {
-                needErrorBranches.enter();
+                errorBranch.enter();
                 throw Errors.createTypeError("Java.extend needs at least one argument.");
             }
 
@@ -367,7 +373,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 classOverrides = (DynamicObject) arguments[arguments.length - 1];
                 typesLength = arguments.length - 1;
                 if (typesLength == 0) {
-                    needErrorBranches.enter();
+                    errorBranch.enter();
                     throw Errors.createTypeError("Java.extend needs at least one type argument.");
                 }
             } else {
@@ -375,34 +381,37 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 typesLength = arguments.length;
             }
 
+            final TruffleLanguage.Env env = getContext().getRealm().getEnv();
             final Class<?>[] types = new Class<?>[typesLength];
             for (int i = 0; i < typesLength; i++) {
-                if (!(arguments[i] instanceof JavaClass)) {
-                    needErrorBranches.enter();
+                if (!isType(arguments[i], env)) {
+                    errorBranch.enter();
                     throw Errors.createTypeError("Java.extend needs Java types as its arguments.");
                 }
-                types[i] = ((JavaClass) arguments[i]).getType();
+                types[i] = toHostClass(arguments[i], env);
             }
 
-            checkAccess(types);
+            JavaAccess.checkAccess(types, getContext());
 
-            if (types.length == 1) {
-                return JavaClass.forClass(types[0]).extend(classOverrides);
+            Class<?> result;
+            if (types.length == 1 && classOverrides == null) {
+                result = JavaAdapterFactory.getAdapterClassFor(types[0]);
+            } else {
+                result = JavaAdapterFactory.getAdapterClassFor(types, classOverrides);
             }
-            return JavaAdapterFactory.getAdapterClassFor(types, classOverrides);
+            return env.asGuestValue(result);
         }
 
-        private void checkAccess(final Class<?>[] types) {
-            final SecurityManager sm = System.getSecurityManager();
-            if (sm != null) {
-                boolean classFilterPresent = JSJavaWrapper.isClassFilterPresent(getContext());
-                for (final Class<?> type : types) {
-                    // check for restricted package access
-                    JavaAccess.checkPackageAccess(type);
-                    // check for classes, interfaces in reflection
-                    JavaAccess.checkReflectionAccess(type, true, classFilterPresent);
-                }
+        protected static boolean isType(Object obj, TruffleLanguage.Env env) {
+            return (env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>) || (JSTruffleOptions.NashornJavaInterop && obj instanceof JavaClass);
+        }
+
+        protected static Class<?> toHostClass(Object type, TruffleLanguage.Env env) {
+            assert isType(type, env);
+            if (JSTruffleOptions.NashornJavaInterop && type instanceof JavaClass) {
+                return ((JavaClass) type).getType();
             }
+            return (Class<?>) env.asHostObject(type);
         }
     }
 
@@ -791,7 +800,11 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @Specialization
-        protected static boolean isJavaMethod(Object obj) {
+        protected boolean isJavaMethod(Object obj) {
+            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            if (getContext().isOptionNashornCompatibilityMode()) {
+                return env.isHostFunction(obj);
+            }
             return obj instanceof JavaMethod;
         }
     }
@@ -806,7 +819,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                         @Cached("create()") TypeOfNode typeofNode) {
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
             if (getContext().isOptionNashornCompatibilityMode()) {
-                return env.isHostFunction(obj);
+                return env.isHostFunction(obj) || (env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>);
             }
             return typeofNode.executeString(obj).equals("function") && !JSFunction.isJSFunction(obj);
         }

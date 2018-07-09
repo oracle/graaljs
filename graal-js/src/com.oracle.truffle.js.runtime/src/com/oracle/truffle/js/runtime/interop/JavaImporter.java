@@ -76,7 +76,6 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
     }
 
     private JavaImporter() {
-        assert JSTruffleOptions.NashornJavaInterop;
     }
 
     @Override
@@ -95,7 +94,7 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
     }
 
     public static DynamicObject create(JSContext context, DynamicObject[] value) {
-        if (JSTruffleOptions.NashornJavaInterop) {
+        if (!JSTruffleOptions.SubstrateVM) {
             return doCreate(context, value);
         } else {
             /*
@@ -118,7 +117,7 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
     }
 
     public static boolean isJavaImporter(DynamicObject obj) {
-        if (JSTruffleOptions.NashornJavaInterop) {
+        if (!JSTruffleOptions.SubstrateVM) {
             return isJavaImporter0(obj);
         } else {
             return false;
@@ -140,7 +139,7 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
         if (name instanceof String) {
             DynamicObject[] packages = getPackages(store);
             for (DynamicObject pkg : packages) {
-                JavaClass found = JavaPackage.getClass(pkg, (String) name, JavaClass.class);
+                Object found = JavaPackage.getClass(pkg, (String) name, JSTruffleOptions.NashornJavaInterop ? JavaClass.class : Object.class);
                 if (found != null) {
                     return found;
                 }
@@ -150,7 +149,7 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
     }
 
     public static DynamicObject[] getPackages(DynamicObject importer) {
-        if (JSTruffleOptions.NashornJavaInterop) {
+        if (!JSTruffleOptions.SubstrateVM) {
             return getWrapped0(importer);
         } else {
             /*

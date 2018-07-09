@@ -1,5 +1,9 @@
 {
   "testFiles" : [ {
+    "filePath" : "basic/arrays.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
     "filePath" : "basic/assign_builtin_func_props.js",
     "status" : "SKIP",
     "comment" : "failing after a fix in DataView.buffer et al getters"
@@ -11,14 +15,34 @@
     "status" : "SKIP",
     "comment" : "Calling Nashorn code that cannot handle Truffle's JSObject"
   }, {
+    "filePath" : "basic/dataview_getset.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
     "filePath" : "basic/errors.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "basic/errorstack.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/es6.js",
     "status" : "FAIL"
   }, {
     "filePath" : "basic/es6/class.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "basic/es6/computed-property-getter.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
+    "filePath" : "basic/es6/computed-property-method.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
+    "filePath" : "basic/es6/computed-property.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/es6/const-reassign.js",
     "status" : "FAIL"
@@ -33,9 +57,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "basic/es6/generator.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "basic/es6/JDK-8156665.js",
     "status" : "FAIL"
   }, {
     "filePath" : "basic/es6/JDK-8156743.js",
@@ -78,12 +99,36 @@
     "status" : "SKIP",
     "comment" : "Using 'jdk.nashorn.internal.runtime.Source'"
   }, {
+    "filePath" : "basic/java.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
+    "filePath" : "basic/javaarray.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
     "filePath" : "basic/javaarrayconversion.js",
     "status" : "FAIL"
   }, {
     "filePath" : "basic/javaclassoverrides.js",
     "status" : "SKIP",
     "comment" : "multi-threaded test"
+  }, {
+    "filePath" : "basic/javaexceptions.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
+    "filePath" : "basic/javaimporter.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
+    "filePath" : "basic/javainnerclasses.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
+    "filePath" : "basic/javasigcall.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/JDK-8006857.js",
     "status" : "SKIP",
@@ -105,6 +150,10 @@
     "status" : "SKIP",
     "comment" : "Loading the 'nashorn' engine"
   }, {
+    "filePath" : "basic/JDK-8010732.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
     "filePath" : "basic/JDK-8010924.js",
     "status" : "SKIP",
     "comment" : "Loading the 'nashorn' engine"
@@ -116,8 +165,16 @@
     "filePath" : "basic/JDK-8010946.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "basic/JDK-8011362.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
     "filePath" : "basic/JDK-8011555.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8011578.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/JDK-8011893.js",
     "status" : "SKIP",
@@ -125,6 +182,10 @@
   }, {
     "filePath" : "basic/JDK-8011964.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8012164.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/JDK-8013131.js",
     "status" : "SKIP",
@@ -137,6 +198,14 @@
     "filePath" : "basic/JDK-8014785.js",
     "status" : "SKIP",
     "comment" : "Object.bindProperties"
+  }, {
+    "filePath" : "basic/JDK-8014953.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
+    "filePath" : "basic/JDK-8015267.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/JDK-8015345.js",
     "status" : "FAIL"
@@ -177,6 +246,10 @@
     "status" : "SKIP",
     "comment" : "nashorn class not found"
   }, {
+    "filePath" : "basic/JDK-8020325.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
     "filePath" : "basic/JDK-8020508.js",
     "status" : "SKIP",
     "comment" : "Object.bindProperties"
@@ -187,6 +260,10 @@
   }, {
     "filePath" : "basic/JDK-8022731.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8022903.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/JDK-8023551.js",
     "status" : "SKIP",
@@ -220,12 +297,20 @@
     "status" : "SKIP",
     "comment" : "names of anonymous functions are not defined by the standard"
   }, {
+    "filePath" : "basic/JDK-8026125.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
     "filePath" : "basic/JDK-8026161.js",
     "status" : "FAIL"
   }, {
     "filePath" : "basic/JDK-8026167.js",
     "status" : "SKIP",
     "comment" : "Loading the 'js' engine"
+  }, {
+    "filePath" : "basic/JDK-8026248.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/JDK-8026302.js",
     "status" : "SKIP",
@@ -242,6 +327,10 @@
     "filePath" : "basic/JDK-8027753.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "basic/JDK-8028434.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
     "filePath" : "basic/JDK-8029364.js",
     "status" : "FAIL"
   }, {
@@ -251,8 +340,9 @@
     "filePath" : "basic/JDK-8030809.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "basic/JDK-8031359.js",
-    "status" : "FAIL"
+    "filePath" : "basic/JDK-8031715.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/JDK-8032068.js",
     "status" : "FAIL"
@@ -273,6 +363,10 @@
     "filePath" : "basic/JDK-8035312_5.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "basic/JDK-8036743.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
     "filePath" : "basic/JDK-8041998.js",
     "status" : "SKIP",
     "comment" : "non-deterministic failures because of multi-threading"
@@ -282,6 +376,10 @@
   }, {
     "filePath" : "basic/JDK-8043232.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8043930.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/JDK-8044534.js",
     "status" : "SKIP",
@@ -293,6 +391,10 @@
     "filePath" : "basic/JDK-8046026.js",
     "status" : "SKIP",
     "comment" : "non-deterministic failures because of multi-threading"
+  }, {
+    "filePath" : "basic/JDK-8047369.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/JDK-8048071.js",
     "status" : "FAIL"
@@ -336,6 +438,10 @@
     "filePath" : "basic/JDK-8062583.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "basic/JDK-8062624.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
     "filePath" : "basic/JDK-8062799.js",
     "status" : "SKIP",
     "comment" : "type conversion for Interop suspicious"
@@ -353,13 +459,14 @@
     "status" : "SKIP",
     "comment" : "using jdk.nashorn.api.scripting.JSObject"
   }, {
+    "filePath" : "basic/JDK-8067139.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
     "filePath" : "basic/JDK-8068573.js",
     "status" : "FAIL"
   }, {
     "filePath" : "basic/JDK-8068580.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "basic/JDK-8068901.js",
     "status" : "FAIL"
   }, {
     "filePath" : "basic/JDK-8068903.js",
@@ -420,11 +527,12 @@
     "filePath" : "basic/JDK-8114838.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "basic/JDK-8129410.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "basic/JDK-8130853.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8131039.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/JDK-8131929.js",
     "status" : "FAIL"
@@ -453,6 +561,14 @@
     "filePath" : "basic/JDK-8144020.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "basic/JDK-8144131.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
+    "filePath" : "basic/JDK-8146147.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
     "filePath" : "basic/JDK-8150218.js",
     "status" : "FAIL"
   }, {
@@ -465,9 +581,6 @@
     "filePath" : "basic/JDK-8157680.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "basic/JDK-8157819.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "basic/JDK-8158467.js",
     "status" : "FAIL"
   }, {
@@ -477,14 +590,15 @@
     "filePath" : "basic/JDK-8162771.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "basic/JDK-8163945.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "basic/JDK-8164708.js",
     "status" : "FAIL"
   }, {
     "filePath" : "basic/JDK-8169886.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "basic/JDK-8171219.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/JDK-8171849.js",
     "status" : "FAIL"
@@ -512,12 +626,28 @@
     "filePath" : "basic/map.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "basic/NASHORN-108.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
+    "filePath" : "basic/NASHORN-109.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
     "filePath" : "basic/NASHORN-111.js",
     "status" : "SKIP",
     "comment" : "stringify of TypeError prints empty message (V8 disagrees with Nashorn)"
   }, {
     "filePath" : "basic/NASHORN-173.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "basic/NASHORN-296.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
+    "filePath" : "basic/NASHORN-349.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/NASHORN-377-big-endian.js",
     "status" : "PASS"
@@ -551,22 +681,24 @@
     "status" : "SKIP",
     "comment" : "Loading the 'nashorn' engine"
   }, {
+    "filePath" : "basic/number.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
+  }, {
     "filePath" : "basic/optimistic_arithmetic_check_type.js",
     "status" : "SKIP",
     "comment" : "Using 'jdk.nashorn.test.tools.StaticTypeInspector'"
   }, {
-    "filePath" : "basic/optimistic_assignment_check_type.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "basic/optimistic_check_type.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "basic/optimistic_logical_check_type.js",
     "status" : "FAIL"
   }, {
     "filePath" : "basic/samfunc.js",
     "status" : "SKIP",
     "comment" : "multi-threaded test"
+  }, {
+    "filePath" : "basic/tostring.js",
+    "status" : "FAIL",
+    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/undefined.js",
     "status" : "FAIL"

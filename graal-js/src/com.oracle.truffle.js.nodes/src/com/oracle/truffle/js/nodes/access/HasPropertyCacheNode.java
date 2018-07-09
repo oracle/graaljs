@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
+import com.oracle.truffle.js.runtime.interop.JavaAccess;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaMember;
@@ -346,12 +347,12 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
 
     public static class JavaClassHasPropertyCacheNode extends LinkedHasPropertyCacheNode {
         protected final boolean isMethod;
-        protected final boolean isClassFilterPresent;
+        protected final boolean allowReflection;
 
-        public JavaClassHasPropertyCacheNode(Object key, ReceiverCheckNode receiverCheckNode, boolean isMethod, boolean isClassFilterPresent) {
+        public JavaClassHasPropertyCacheNode(Object key, ReceiverCheckNode receiverCheckNode, boolean isMethod, boolean allowReflection) {
             super(key, receiverCheckNode);
             this.isMethod = isMethod;
-            this.isClassFilterPresent = isClassFilterPresent;
+            this.allowReflection = allowReflection;
         }
 
         @Override
@@ -360,7 +361,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
         }
 
         protected final boolean hasMember(JavaClass type) {
-            JavaMember member = type.getMember((String) key, JavaClass.STATIC, getJavaMemberTypes(isMethod), isClassFilterPresent);
+            JavaMember member = type.getMember((String) key, JavaClass.STATIC, getJavaMemberTypes(isMethod), allowReflection);
             if (member != null) {
                 return true;
             }
@@ -372,8 +373,8 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
         private final JavaClass javaClass;
         private final boolean cachedResult;
 
-        public CachedJavaClassHasPropertyCacheNode(Object key, ReceiverCheckNode receiverCheckNode, boolean isMethod, boolean isClassFilterPresent, JavaClass javaClass) {
-            super(key, receiverCheckNode, isMethod, isClassFilterPresent);
+        public CachedJavaClassHasPropertyCacheNode(Object key, ReceiverCheckNode receiverCheckNode, boolean isMethod, boolean allowReflection, JavaClass javaClass) {
+            super(key, receiverCheckNode, isMethod, allowReflection);
             this.javaClass = javaClass;
             this.cachedResult = hasMember(javaClass);
         }
@@ -384,7 +385,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
                 return cachedResult;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                return this.replace(new JavaClassHasPropertyCacheNode(key, receiverCheck, isMethod, isClassFilterPresent)).hasPropertyUnchecked(thisObj, floatingCondition);
+                return this.replace(new JavaClassHasPropertyCacheNode(key, receiverCheck, isMethod, allowReflection)).hasPropertyUnchecked(thisObj, floatingCondition);
             }
         }
     }
@@ -409,7 +410,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
 
     @Override
     protected LinkedHasPropertyCacheNode createUndefinedPropertyNode(Object thisObj, Object store, int depth, JSContext context, Object value) {
-        LinkedHasPropertyCacheNode specialized = createJavaPropertyNodeMaybe(thisObj, context);
+        LinkedHasPropertyCacheNode specialized = createJavaPropertyNodeMaybe(thisObj, depth, context);
         if (specialized != null) {
             return specialized;
         }
@@ -433,20 +434,22 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
     }
 
     @Override
-    protected LinkedHasPropertyCacheNode createJavaPropertyNodeMaybe(Object thisObj, JSContext context) {
+    protected LinkedHasPropertyCacheNode createJavaPropertyNodeMaybe(Object thisObj, int depth, JSContext context) {
+        if (JSTruffleOptions.SubstrateVM) {
+            return null;
+        }
+        if (JavaPackage.isJavaPackage(thisObj)) {
+            return new PresentHasPropertyCacheNode(key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
+        } else if (JavaImporter.isJavaImporter(thisObj)) {
+            return new UnspecializedHasPropertyCacheNode(key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
+        }
         if (!JSTruffleOptions.NashornJavaInterop) {
             return null;
         } else if (JSObject.isDynamicObject(thisObj)) {
             assert !JSJavaWrapper.isJSJavaWrapper(thisObj);
-            DynamicObject thisJSObj = (DynamicObject) thisObj;
-            if (JavaPackage.isJavaPackage(thisJSObj)) {
-                return new PresentHasPropertyCacheNode(key, new JSClassCheckNode(JSObject.getJSClass(thisJSObj)));
-            } else if (JavaImporter.isJavaImporter(thisJSObj)) {
-                return new UnspecializedHasPropertyCacheNode(key, new JSClassCheckNode(JSObject.getJSClass(thisJSObj)));
-            }
             return null;
         } else if (thisObj instanceof JavaClass) {
-            return new CachedJavaClassHasPropertyCacheNode(key, new InstanceofCheckNode(JavaClass.class, context), isMethod(), JSJavaWrapper.isClassFilterPresent(context), (JavaClass) thisObj);
+            return new CachedJavaClassHasPropertyCacheNode(key, new InstanceofCheckNode(JavaClass.class, context), isMethod(), JavaAccess.isReflectionAllowed(context), (JavaClass) thisObj);
         } else {
             JavaMember member = getInstanceMember(thisObj, context);
             if (member != null) {
@@ -465,7 +468,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
             return null;
         }
         JavaClass javaClass = JavaClass.forClass(thisObj.getClass());
-        return javaClass.getMember((String) key, JavaClass.INSTANCE, getJavaMemberTypes(isMethod()), JSJavaWrapper.isClassFilterPresent(context));
+        return javaClass.getMember((String) key, JavaClass.INSTANCE, getJavaMemberTypes(isMethod()), JavaAccess.isReflectionAllowed(context));
     }
 
     /**

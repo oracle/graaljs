@@ -1769,10 +1769,13 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
+            TruffleObject truffleObject = targetClass.cast(target);
             try {
-                ForeignAccess.sendWrite(foreignArrayAccess, targetClass.cast(target), index, value);
-            } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                ForeignAccess.sendWrite(foreignArrayAccess, truffleObject, index, value);
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 // do nothing
+            } catch (UnsupportedTypeException e) {
+                throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
             }
         }
 

@@ -253,7 +253,6 @@ def testnashorn(args, nonZeroIsFatal=True):
     _default_vm_args = [
         '-Dtruffle.js.NashornCompatibilityMode=true',
         '-Dtruffle.js.U180EWhitespace=true',
-        '-Dtruffle.js.NashornJavaInterop=true',
     ]
     _stack_size = '2m' if mx.get_arch() is 'sparcv9' else '1m'
     _run_test_suite(
