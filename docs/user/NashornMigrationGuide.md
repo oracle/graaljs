@@ -14,8 +14,13 @@ $ js --js.nashorn-compat=true
 ```
 
 Functionality only available under this flag includes:
-* `load("nashorn:parser.js")`
-* `Java.isJavaFunction`, `Java.isScriptObject`, `Java.isScriptFunction`
+* `Java.isJavaFunction`, `Java.isJavaMethod`, `Java.isScriptObject`, `Java.isScriptFunction`
+* `new Interface|AbstractClass(fn|obj)`
+* Java package globals: `java`, `javafx`, `javax`, `com`, `org`, `edu`
+* `JavaImporter`
+* `JSAdapter`
+* `java.lang.String` methods on string values
+* `load("nashorn:parser.js")`, `load("nashorn:mozilla_compat.js")`
 
 ## Intentional design differences
 Graal JavaScript differs from Nashorn in some aspects that were intentional design decisions.
@@ -35,24 +40,26 @@ See the [JavaDoc of `Context.Builder.hostClassFilter`](http://www.graalvm.org/sd
 
 ### Fully qualified names
 Graal Javascript requires the use of `Java.type(typename)`.
-It does not support accessing classes just by their fully qualified class name.
+It does not support accessing classes just by their fully qualified class name by default.
 `Java.type` brings more clarity and avoids the accidental use of Java classes in JavaScript code.
 Patterns like this:
 
-```
+```js
 var bd = new java.math.BigDecimal('10');
 ```
 
 should be expressed as:
 
-```
+```js
 var BigDecimal = Java.type('java.math.BigDecimal');
 var bd = new BigDecimal('10');
 ```
 
+The following Java package globals can be enabled using the `js.nashorn-compat` option: `java`, `javafx`, `javax`, `com`, `org`, `edu`.
+
 ### Lossy conversion
 Graal JavaScript does not allow lossy conversions of arguments when calling Java methods.
-This could lead to severe bugs with numeric values that are hard to detect.
+This could lead to bugs with numeric values that are hard to detect.
 
 Graal JavaScript will always select the overloaded method with the narrowest possible argument types that can be converted to without loss.
 If no such overloaded method is available, Graal JavaScript throws a `TypeError` instead of lossy conversion.
@@ -62,15 +69,15 @@ In general, this affects which overloaded method is executed.
 Graal JavaScript does not provide objects of the class `ScriptObjectMirror`.
 Instead, JavaScript objects are exposed to Java code as objects implementing Java's `Map` interface.
 
-Code referencing `ScriptObjectMirror` instances can be rewritten by changing the type to `Map`.
+Code referencing `ScriptObjectMirror` instances can be rewritten by changing the type to either an interface (`Map`, `List`) or the polyglot [Value](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html) class which provides similar capabilities.
 
 ## Incompatibilities being worked on
 The following incompatibilities are present in Graal JavaScript currently.
 Future versions of Graal JavaScript will provide better compatibility to Nashorn in those areas.
 
 ### String `length` property
-Graal JavaScript does not tread the length property of a String specially.
-I only provides one canonical way of accessing a String length: by reading the `length` property.
+Graal JavaScript does not treat the length property of a String specially.
+The canonical way of accessing the String length is reading the `length` property.
 
 ```
 myJavaString.length;
@@ -78,12 +85,13 @@ myJavaString.length;
 
 Nashorn allows to both access `length` as a property and a function.
 Existing function calls `length()` should be expressed as property access.
+Nashorn behavior can be enabled using the `js.nashorn-compat` option.
 
 ### Multithreading
 Graal JavaScript supports multithreading by creating several `Context` objects from Java code.
 Multiple JavaScript engines can be created from a Java application, and can be safely executed in parallel on multiple threads.
 
-```
+```js
 Context polyglot = Context.create();
 Value array = polyglot.eval("js", "[1,2,42,4]");
 
@@ -92,7 +100,7 @@ Value array = polyglot.eval("js", "[1,2,42,4]");
 Graal JavaScript does not allow the creation of threads from JavaScript applications with access to the current `Context`.
 This could lead to unmanagable synchronization problems like data races in a language that is not prepared for multithreading.
 
-```
+```js
 new Thread(function() {
     print('printed from another thread'); // throws Exception due to potential synchronization problems
 }).start();
@@ -103,27 +111,32 @@ The child thread may not access the `Context` of the parent thread or of any oth
 In case of violations, an `IllegalStateException` will be thrown.
 A child thread may create a new `Context` instance, though.
 
-```
+```js
 new Thread(aJavaRunnable).start(); // allowed on Graal JavaScript
 ```
 
 ### JavaImporter
-The `JavaImporter` feature is currently not supported by Graal JavaScript.
+The `JavaImporter` feature is available only in Nashorn compatibility mode (`js.nashorn-compat` option).
+
+### JSAdapter
+Use of the non-standard `JSAdapter` is discouraged and should be replaced with the equivalent standard `Proxy` feature.
+For compatibility, `JSAdapter` is still available under the `js.nashorn-compat` option.
 
 ### Java.* methods
-Several methods provided by Nashorn on the `Java` global object are currently not supported by Graal JavaScript.
-This applies to `Java.extend`, `Java.super`, `Java.isJavaMethod`, and `Java.asJSONCompatible`.
+Several methods provided by Nashorn on the `Java` global object are available only in Nashorn compatibility mode or currently not supported by Graal JavaScript.
+Available with the `js.nashorn-compat` option: `Java.isJavaFunction`, `Java.isJavaMethod`, `Java.isScriptObject`, `Java.isScriptFunction`.
+Currently not supported: `Java.asJSONCompatible`.
 We are evaluating their use in real-world applications and might add them in the future, by default or behind a flag.
 
 ### Accessors
 In Nashorn compatibility mode, Graal JavaScript allows to access getters and setters just by the name as properties, while omitting `get`, `set`, or `is`.
 
-```
+```js
 var Date = Java.type('java.util.Date');
 var date = new Date();
 
 var myYear = date.year; // calls date.getYear()
-date.year = myYear+1;   // calls date.setYear(myYear + 1);
+date.year = myYear + 1; // calls date.setYear(myYear + 1);
 ```
 
 Graal JavaScript defines an ordering in which it searches for the field or getters.
