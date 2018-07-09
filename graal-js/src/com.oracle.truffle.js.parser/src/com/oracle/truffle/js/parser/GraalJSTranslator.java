@@ -104,6 +104,7 @@ import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
 import com.oracle.truffle.js.nodes.access.FrameSlotNode;
 import com.oracle.truffle.js.nodes.access.GetTemplateObjectNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
+import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
@@ -211,6 +212,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private static JavaScriptNode tagWithHaltTag(JavaScriptNode resultNode) {
         resultNode.addStatementTag();
+        if (resultNode instanceof GlobalScopeVarWrapperNode) {
+            ((GlobalScopeVarWrapperNode) resultNode).getDelegateNode().addStatementTag();
+        }
         return resultNode;
     }
 
@@ -1483,7 +1487,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         String varName = identNode.getName();
         VarRef varRef = findScopeVarCheckTDZ(varName, false);
-        return result(varRef.createReadNode());
+        JavaScriptNode resultNode = result(varRef.createReadNode());
+        if (resultNode instanceof GlobalScopeVarWrapperNode) {
+            ensureHasSourceSection(((GlobalScopeVarWrapperNode) resultNode).getDelegateNode(), identNode);
+        }
+        return resultNode;
     }
 
     private JavaScriptNode enterIdentNodeSuper(IdentNode identNode) {
@@ -1628,7 +1636,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode rhs = transform(varNode.getAssignmentSource());
         setAnonymousFunctionName(rhs, varName);
         JavaScriptNode assignment = findScopeVar(varName, false).createWriteNode(rhs);
-
+        ensureHasSourceSection(assignment, varNode);
         if (varNode.isBlockScoped() && varNode.isFunctionDeclaration() && context.isOptionAnnexB()) {
             // B.3.3 Block-Level Function Declarations Web Legacy Compatibility Semantics
             FunctionNode fn = lc.getCurrentFunction();
@@ -2069,7 +2077,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode enterDeleteIdent(Expression rhs) {
         String varName = ((IdentNode) rhs).getName();
         VarRef varRef = findScopeVar(varName, varName.equals(Environment.THIS_NAME));
-        return result(varRef.createDeleteNode());
+        return result(ensureHasSourceSection(varRef.createDeleteNode(), rhs));
     }
 
     private JavaScriptNode enterDeleteIndex(Expression rhs) {
@@ -3051,6 +3059,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode ensureHasSourceSection(JavaScriptNode resultNode, com.oracle.js.parser.ir.Node parseNode) {
         if (resultNode != null && !resultNode.hasSourceSection()) {
             assignSourceSection(resultNode, parseNode);
+            if (resultNode instanceof GlobalScopeVarWrapperNode) {
+                ensureHasSourceSection(((GlobalScopeVarWrapperNode) resultNode).getDelegateNode(), parseNode);
+            }
         }
         return resultNode;
     }
