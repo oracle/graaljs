@@ -48,6 +48,8 @@ import java.security.CodeSource;
 import java.security.Permissions;
 import java.security.ProtectionDomain;
 import java.security.SecureClassLoader;
+import java.util.Collection;
+import java.util.Collections;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.util.TraceClassVisitor;
@@ -61,7 +63,8 @@ import org.objectweb.asm.util.TraceClassVisitor;
  * created by {@link JavaAdapterBytecodeGenerator}.
  */
 public final class JavaAdapterClassLoader {
-    private static final ProtectionDomain GENERATED_PROTECTION_DOMAIN = createGeneratedProtectionDomain();
+    static final ProtectionDomain GENERATED_PROTECTION_DOMAIN = createGeneratedProtectionDomain();
+    static final Collection<String> VISIBLE_INTERNAL_CLASS_NAMES = Collections.singleton(JavaAdapterServices.class.getName());
 
     private final String className;
     private final byte[] classBytes;
@@ -111,7 +114,7 @@ public final class JavaAdapterClassLoader {
                      * loader that prevents package.access. If so, it'd throw SecurityException for
                      * internal classes used by generated adapter classes.
                      */
-                    if (isAccessibleInternalClassName(name)) {
+                    if (VISIBLE_INTERNAL_CLASS_NAMES.contains(name)) {
                         return myLoader != null ? myLoader.loadClass(name) : Class.forName(name, false, myLoader);
                     }
                     throw se;
@@ -137,10 +140,6 @@ public final class JavaAdapterClassLoader {
                 System.out.println(new String(baos.toByteArray()));
             }
         };
-    }
-
-    static boolean isAccessibleInternalClassName(final String name) {
-        return name.startsWith("com.oracle.truffle.js.");
     }
 
     private static ProtectionDomain createGeneratedProtectionDomain() {
