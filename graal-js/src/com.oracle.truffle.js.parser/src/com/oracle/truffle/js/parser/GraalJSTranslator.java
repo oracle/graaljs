@@ -147,7 +147,6 @@ import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.parser.env.BlockEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.env.Environment.VarRef;
-import com.oracle.truffle.js.parser.env.Environment.WrappedVarRef;
 import com.oracle.truffle.js.parser.env.EvalEnvironment;
 import com.oracle.truffle.js.parser.env.FunctionEnvironment;
 import com.oracle.truffle.js.parser.env.FunctionEnvironment.JumpTargetCloseable;
