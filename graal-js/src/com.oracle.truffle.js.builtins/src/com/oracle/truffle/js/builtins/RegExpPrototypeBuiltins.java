@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -57,12 +58,14 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstru
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpCompileNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecES5NodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecNodeGen;
+import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpMatchAllNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpMatchNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpReplaceNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpSearchNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpSplitNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpTestNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpToStringNodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltins.MatchAllIteratorNode;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode.JSRegExpExecBuiltinNode;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
@@ -86,6 +89,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -117,7 +121,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         _split(2, Symbol.SYMBOL_SPLIT),
 
         // Annex B
-        compile(2);
+        compile(2),
+
+        // TBD
+        _matchAll(1, Symbol.SYMBOL_MATCH_ALL);
 
         private final int length;
         private final Object key;
@@ -145,6 +152,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         public int getECMAScriptVersion() {
             if (EnumSet.of(_match, _replace, _search, _split).contains(this)) {
                 return 6;
+            }
+            if (this.equals(_matchAll)) {
+                return JSTruffleOptions.ECMAScript2018;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -178,6 +188,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSRegExpSplitNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case compile:
                 return JSRegExpCompileNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case _matchAll:
+                return JSRegExpMatchAllNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -1090,6 +1102,35 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "!isJSObject(thisObj)")
         protected Object search(Object thisObj, @SuppressWarnings("unused") Object string) {
             throw createNoRegExpError(thisObj);
+        }
+    }
+
+    /**
+     * This implements the RegExp.prototype.[@@matchAll] method.
+     */
+    public abstract static class JSRegExpMatchAllNode extends JSBuiltinNode {
+        @Child private MatchAllIteratorNode matchAllIteratorNode;
+
+        public JSRegExpMatchAllNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSObject(regex)")
+        protected Object matchAll(VirtualFrame frame, DynamicObject regex, Object stringObj) {
+            return getMatchAllIteratorNode().createMatchAllIterator(frame, regex, stringObj);
+        }
+
+        @Specialization(guards = "!isJSObject(thisObj)")
+        protected Object matchAll(Object thisObj, @SuppressWarnings("unused") Object string) {
+            throw createNoRegExpError(thisObj);
+        }
+
+        private MatchAllIteratorNode getMatchAllIteratorNode() {
+            if (matchAllIteratorNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                matchAllIteratorNode = insert(new MatchAllIteratorNode(getContext()));
+            }
+            return matchAllIteratorNode;
         }
     }
 }

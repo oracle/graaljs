@@ -238,6 +238,7 @@ public class JSRealm implements ShapeContext {
     private final DynamicObject setIteratorPrototype;
     private final DynamicObject mapIteratorPrototype;
     private final DynamicObject stringIteratorPrototype;
+    private final DynamicObject regExpStringIteratorPrototype;
 
     @CompilationFinal(dimensions = 1) private final JSConstructor[] simdTypeConstructors;
     @CompilationFinal(dimensions = 1) private final DynamicObjectFactory[] simdTypeFactories;
@@ -465,6 +466,7 @@ public class JSRealm implements ShapeContext {
         this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
         this.mapIteratorPrototype = es6 ? createMapIteratorPrototype() : null;
         this.stringIteratorPrototype = es6 ? createStringIteratorPrototype() : null;
+        this.regExpStringIteratorPrototype = JSTruffleOptions.Stage3 ? createRegExpStringIteratorPrototype() : null;
 
         this.generatorFunctionConstructor = es6 ? JSFunction.createGeneratorFunctionConstructor(this) : null;
         this.initialGeneratorFactory = es6 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(this, generatorFunctionConstructor.getPrototype(), false).createFactory() : null;
@@ -942,6 +944,10 @@ public class JSRealm implements ShapeContext {
         return stringIteratorPrototype;
     }
 
+    public DynamicObject getRegExpStringIteratorPrototype() {
+        return regExpStringIteratorPrototype;
+    }
+
     /**
      * This function is used whenever a function is required that throws a TypeError. It is used by
      * some of the builtins that provide accessor functions that should not be called (e.g., as a
@@ -1138,6 +1144,7 @@ public class JSRealm implements ShapeContext {
         putSymbolProperty(symbolFunction, "iterator", Symbol.SYMBOL_ITERATOR);
         putSymbolProperty(symbolFunction, "asyncIterator", Symbol.SYMBOL_ASYNC_ITERATOR);
         putSymbolProperty(symbolFunction, "match", Symbol.SYMBOL_MATCH);
+        putSymbolProperty(symbolFunction, "matchAll", Symbol.SYMBOL_MATCH_ALL);
         putSymbolProperty(symbolFunction, "replace", Symbol.SYMBOL_REPLACE);
         putSymbolProperty(symbolFunction, "search", Symbol.SYMBOL_SEARCH);
         putSymbolProperty(symbolFunction, "species", Symbol.SYMBOL_SPECIES);
@@ -1247,6 +1254,16 @@ public class JSRealm implements ShapeContext {
         DynamicObject prototype = JSObject.create(context, this.iteratorPrototype, JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, JSString.ITERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSString.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        return prototype;
+    }
+
+    /**
+     * Creates the %RegExpStringIteratorPrototype% object.
+     */
+    private DynamicObject createRegExpStringIteratorPrototype() {
+        DynamicObject prototype = JSObject.create(context, this.iteratorPrototype, JSUserObject.INSTANCE);
+        JSObjectUtil.putFunctionsFromContainer(this, prototype, JSString.REGEXP_ITERATOR_PROTOTYPE_NAME);
+        JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSString.REGEXP_ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
     }
 
