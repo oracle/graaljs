@@ -153,7 +153,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 })
 
 @TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, mimeType = {
-                JavaScriptLanguage.APPLICATION_MIME_TYPE, JavaScriptLanguage.TEXT_MIME_TYPE})
+                JavaScriptLanguage.APPLICATION_MIME_TYPE, JavaScriptLanguage.TEXT_MIME_TYPE}, contextPolicy = TruffleLanguage.ContextPolicy.REUSE)
 public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private static final int MAX_TOSTRING_DEPTH = 10;
 
