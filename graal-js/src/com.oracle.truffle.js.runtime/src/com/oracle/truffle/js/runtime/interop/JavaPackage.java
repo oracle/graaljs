@@ -142,7 +142,7 @@ public final class JavaPackage extends JSBuiltinObject {
     public static Object getJavaClassOrConstructorOrSubPackage(JSContext context, DynamicObject thisObj, String name) {
         if (JSTruffleOptions.NashornJavaInterop && Boundaries.stringEndsWith(name, ")")) {
             // constructor directly? e.g. java.awt["Color(int,int,int)"]
-            int openParen = Boundaries.stringIndexOf(name, '(');
+            int openParen = name.indexOf('(');
             if (openParen != -1) {
                 String className = Boundaries.substring(name, 0, openParen);
                 JavaClass javaClass = getClass(thisObj, className, JavaClass.class);

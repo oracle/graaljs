@@ -707,7 +707,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else {
                 startPos = 0;
             }
-            return Boundaries.stringIndexOf(thisStr, searchStr, startPos);
+            return thisStr.indexOf(searchStr, startPos);
         }
     }
 
@@ -874,7 +874,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             private static Object[] regularSplit(String input, int limit, String separator, JSStringSplitNode parent) {
-                int end = Boundaries.stringIndexOf(input, separator);
+                int end = input.indexOf(separator);
                 if (parent.match.profile(end == -1)) {
                     return new Object[]{input};
                 }
@@ -1042,7 +1042,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else {
                 replaceString = toString3Node.executeString(replParam);
             }
-            int pos = Boundaries.stringIndexOf(string, searchString);
+            int pos = string.indexOf(searchString);
             if (replaceNecessaryProfile.profile(pos < 0)) {
                 return string;
             }
@@ -1087,7 +1087,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private static int nextDollar(StringBuilder sb, int start, String replaceStr) {
-            int pos = Boundaries.stringIndexOf(replaceStr, '$', start);
+            int pos = replaceStr.indexOf('$', start);
             int end = (pos == -1) ? replaceStr.length() : pos;
             Boundaries.builderAppend(sb, replaceStr, start, end);
             return pos;
@@ -1237,7 +1237,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private <T> String replaceFirst(String thisStr, String searchStr, Replacer<T> replacer, T replaceValue) {
-            int start = Boundaries.stringIndexOf(thisStr, searchStr);
+            int start = thisStr.indexOf(searchStr);
             if (match.profile(start < 0)) {
                 return thisStr;
             }
@@ -1382,7 +1382,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             private static int nextDollar(StringBuilder sb, int start, String replaceStr) {
-                int pos = Boundaries.stringIndexOf(replaceStr, '$', start);
+                int pos = replaceStr.indexOf('$', start);
                 int end = (pos == -1) ? replaceStr.length() : pos;
                 Boundaries.builderAppend(sb, replaceStr, start, end);
                 return pos;
@@ -2103,7 +2103,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             String searchStr = toString2Node.executeString(searchString);
             int fromIndex = toInteger(position);
-            return Boundaries.stringIndexOf(thisStr, searchStr, fromIndex) != -1;
+            return thisStr.indexOf(searchStr, fromIndex) != -1;
         }
     }
 

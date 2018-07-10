@@ -162,26 +162,6 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
-    public static int stringIndexOf(String s, String pattern) {
-        return s.indexOf(pattern);
-    }
-
-    @TruffleBoundary
-    public static int stringIndexOf(String s, String pattern, int startPos) {
-        return s.indexOf(pattern, startPos);
-    }
-
-    @TruffleBoundary
-    public static int stringIndexOf(String s, char pattern) {
-        return s.indexOf(pattern);
-    }
-
-    @TruffleBoundary
-    public static int stringIndexOf(String s, char pattern, int startPos) {
-        return s.indexOf(pattern, startPos);
-    }
-
-    @TruffleBoundary
     public static int stringLastIndexOf(String s, String pattern) {
         return s.lastIndexOf(pattern);
     }
