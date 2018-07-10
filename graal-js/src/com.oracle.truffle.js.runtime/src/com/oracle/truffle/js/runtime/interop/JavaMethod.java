@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.interop.Converters.Converter;
 import com.oracle.truffle.js.runtime.interop.Converters.ConverterFactory;
 import com.oracle.truffle.js.runtime.interop.Converters.ObjectArrayConverter;
 import com.oracle.truffle.js.runtime.interop.Converters.VarArgsConverter;
+import com.oracle.truffle.js.runtime.java.adapter.JavaSuperAdapter;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
 import com.oracle.truffle.js.runtime.util.Pair;
 

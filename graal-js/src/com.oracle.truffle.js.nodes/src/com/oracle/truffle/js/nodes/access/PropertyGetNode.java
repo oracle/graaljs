@@ -109,7 +109,7 @@ import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaMember;
 import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
-import com.oracle.truffle.js.runtime.interop.JavaSuperAdapter;
+import com.oracle.truffle.js.runtime.java.adapter.JavaSuperAdapter;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;

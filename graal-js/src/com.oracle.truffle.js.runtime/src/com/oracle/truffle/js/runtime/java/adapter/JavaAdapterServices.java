@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.interop;
+package com.oracle.truffle.js.runtime.java.adapter;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -52,15 +52,11 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
 /**
  * Provides static utility services to generated Java adapter classes.
- *
- * @see JSFunction#call(DynamicObject, Object, Object[])
  */
 public final class JavaAdapterServices {
     private static final MethodHandle VALUE_EXECUTE_METHOD_HANDLE;
