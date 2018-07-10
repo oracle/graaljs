@@ -1113,7 +1113,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         protected static boolean isFallback(Object value) {
-            return !(JSGuards.isString(value) || value instanceof URL || value instanceof File || value instanceof Map || value instanceof TruffleObject || JSGuards.isJSObject(value));
+            return !(JSGuards.isString(value) || value instanceof URL || value instanceof File || value instanceof Map || JSGuards.isForeignObject(value) || JSGuards.isJSObject(value));
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
