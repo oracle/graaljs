@@ -136,10 +136,6 @@ public final class JSContextOptions {
     private static final String PRECISE_TIME_HELP = helpWithDefault("High-resolution timestamps via performance.now()", PRECISE_TIME);
     @CompilationFinal private boolean preciseTime;
 
-    public static final String CODE_SHARING_NAME = JS_OPTION_PREFIX + "code-sharing";
-    public static final OptionKey<String> CODE_SHARING = new OptionKey<>("pool");
-    private static final String CODE_SHARING_HELP = helpWithDefault("Code sharing between Contexts of an Engine: 'pool' enables code reuse via a pool of closed contexts.", CODE_SHARING);
-
     private static final OptionKey<?>[] PREINIT_CONTEXT_OPTION_KEYS = {
                     ECMASCRIPT_VERSION,
                     ANNEX_B,
@@ -246,7 +242,6 @@ public final class JSContextOptions {
         options.add(OptionDescriptor.newBuilder(PARSE_ONLY, PARSE_ONLY_NAME).category(OptionCategory.USER).help(PARSE_ONLY_HELP).build());
         options.add(OptionDescriptor.newBuilder(TIME_ZONE, TIME_ZONE_NAME).category(OptionCategory.USER).help(TIME_ZONE_HELP).build());
         options.add(OptionDescriptor.newBuilder(PRECISE_TIME, PRECISE_TIME_NAME).category(OptionCategory.USER).help(PRECISE_TIME_HELP).build());
-        options.add(OptionDescriptor.newBuilder(CODE_SHARING, CODE_SHARING_NAME).category(OptionCategory.DEBUG).help(CODE_SHARING_HELP).build());
     }
 
     // check for options that are not on their default value.
