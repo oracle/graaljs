@@ -501,7 +501,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             DynamicObject regexpConstructor = getContext().getRealm().getRegExpConstructor().getFunctionObject();
             DynamicObject c = getArraySpeciesConstructorNode().speciesConstructor(rx, regexpConstructor);
             String flags = toString2Node.executeString(getFlagsNode.getValue(rx));
-            boolean unicodeMatching = Boundaries.stringIndexOf(flags, 'u') >= 0;
+            boolean unicodeMatching = flags.indexOf('u') >= 0;
             DynamicObject splitter = (DynamicObject) getArraySpeciesConstructorNode().construct(c, rx, ensureSticky(flags));
             DynamicObject a = JSArray.createEmptyZeroLength(getContext());
             long lim;
@@ -567,7 +567,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
          * Ensure sticky ("y") is part of the flags.
          */
         private static Object ensureSticky(String flags) {
-            return (flags.length() == 0) ? "y" : (Boundaries.stringIndexOf(flags, 'y') >= 0) ? flags : addStickyFlag(flags);
+            return (flags.length() == 0) ? "y" : (flags.indexOf('y') >= 0) ? flags : addStickyFlag(flags);
         }
 
         private long toLength(Object obj) {
@@ -636,6 +636,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final ConditionProfile globalProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile functionalReplaceProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile lazyResultArrayProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile replaceEmptyProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile replaceRawProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile noMatchProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile validPositionProfile = ConditionProfile.createBinaryProfile();
@@ -664,8 +665,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 replaceFunction = (DynamicObject) replaceValue;
             } else {
                 replaceString = getToString2Node().executeString(replaceValue);
-                replaceEmpty = replaceString.length() == 0;
-                replaceRaw = replaceString.length() > 0 && Boundaries.stringIndexOf(replaceString, '$') < 0;
+                replaceEmpty = replaceString.isEmpty();
+                replaceRaw = replaceString.length() > 0 && replaceString.indexOf('$') < 0;
             }
 
             boolean global = toBoolean1Node.executeBoolean(getGlobalNode.getValue(rx));
@@ -678,7 +679,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (functionalReplaceProfile.profile(functionalReplace)) {
                 results = new ArrayList<>();
             }
-            DelimitedStringBuilder accumulatedResult = new DelimitedStringBuilder(s.length() + 16);
+            DelimitedStringBuilder accumulatedResult = new DelimitedStringBuilder(replaceEmptyProfile.profile(replaceEmpty) ? s.length() : s.length() + 16);
             int nextSourcePosition = 0;
             while (true) {
                 DynamicObject result = (DynamicObject) getRegexExecIntlNode().execute(rx, s);
@@ -743,7 +744,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             int position = Math.max(Math.min(toIntegerNode.executeInt(getIndexNode.getValue(result)), s.length()), 0);
             if (validPositionProfile.profile(position >= nextSourcePosition)) {
                 accumulatedResult.append(s, nextSourcePosition, position);
-                if (!replaceEmpty) {
+                if (!replaceEmptyProfile.profile(replaceEmpty)) {
                     if (replaceRawProfile.profile(replaceRaw)) {
                         accumulatedResult.append(replaceString);
                     } else {
@@ -791,7 +792,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private void appendSubstitution(DelimitedStringBuilder accumulatedResult, DynamicObject result, DynamicObject namedCaptures, int matchLength, String str, int position, String replacement) {
-            int dollarPos = Boundaries.stringIndexOf(replacement, '$');
+            int dollarPos = replacement.indexOf('$');
             int tailPos = position + matchLength;
             accumulatedResult.append(replacement, 0, dollarPos);
             int pos = dollarPos;
@@ -802,7 +803,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private static int nextDollar(DelimitedStringBuilder sb, int start, String replacement) {
-            int pos = Boundaries.stringIndexOf(replacement, '$', start);
+            int pos = replacement.indexOf('$', start);
             int end = (pos <= -1) ? replacement.length() : pos;
             sb.append(replacement, start, end);
             return pos;

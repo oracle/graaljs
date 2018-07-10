@@ -56,18 +56,18 @@ public final class DelimitedStringBuilder {
         this.builder = new StringBuilder();
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public DelimitedStringBuilder(int capacity) {
         this.builder = new StringBuilder(Math.max(16, Math.min(capacity, JSTruffleOptions.StringLengthLimit)));
     }
 
     @Override
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public String toString() {
         return builder.toString();
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public void append(String str) {
         if ((builder.length() + str.length()) > JSTruffleOptions.StringLengthLimit) {
             throw Errors.createRangeErrorInvalidStringLength();
@@ -75,7 +75,7 @@ public final class DelimitedStringBuilder {
         builder.append(str);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public void append(char c) {
         if (builder.length() > JSTruffleOptions.StringLengthLimit) {
             throw Errors.createRangeErrorInvalidStringLength();
@@ -83,7 +83,7 @@ public final class DelimitedStringBuilder {
         builder.append(c);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public void append(int intValue) {
         if (builder.length() > JSTruffleOptions.StringLengthLimit) {
             throw Errors.createRangeErrorInvalidStringLength();
@@ -91,7 +91,7 @@ public final class DelimitedStringBuilder {
         builder.append(intValue);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public void append(long longValue) {
         if (builder.length() > JSTruffleOptions.StringLengthLimit) {
             throw Errors.createRangeErrorInvalidStringLength();
@@ -99,7 +99,7 @@ public final class DelimitedStringBuilder {
         builder.append(longValue);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public void append(String charSequence, int start, int end) {
         assert start <= end;
         if (builder.length() + (end - start) > JSTruffleOptions.StringLengthLimit) {
