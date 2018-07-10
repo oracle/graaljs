@@ -1181,7 +1181,16 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization(guards = "!isJSObject(from)")
         protected Object load(Object from, @SuppressWarnings("unused") Object[] args) {
             String name = toString1(from);
-            return runImpl(createRealm(), sourceFromURL(toURL(name)));
+            URL url = toURL(name);
+            if (url == null) {
+                return fail(name);
+            }
+            return runImpl(createRealm(), sourceFromURL(url));
+        }
+
+        @TruffleBoundary
+        private static Object fail(String name) {
+            throw Errors.createTypeError("Cannot load script from " + name);
         }
 
         @TruffleBoundary
