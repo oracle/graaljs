@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -175,7 +176,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
             key = toStringNode.executeString(propertyName);
         }
         int result = ForeignAccess.sendKeyInfo(keyInfoNode, object, key);
-        return result != 0;
+        return KeyInfo.isExisting(result);
     }
 
     @Specialization(guards = "isJSType(object)")
