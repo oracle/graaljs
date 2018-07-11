@@ -49,11 +49,14 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -99,6 +102,7 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
+import com.oracle.truffle.js.runtime.interop.JavaAccess;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.interop.JavaGetter;
 import com.oracle.truffle.js.runtime.interop.JavaImporter;
@@ -890,12 +894,12 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
     public static class JavaClassPropertyGetNode extends LinkedPropertyGetNode {
         protected final boolean isMethod;
-        protected final boolean isClassFilterPresent;
+        protected final boolean allowReflection;
 
-        public JavaClassPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean isMethod, boolean isClassFilterPresent) {
+        public JavaClassPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean isMethod, boolean allowReflection) {
             super(key, receiverCheck);
             this.isMethod = isMethod;
-            this.isClassFilterPresent = isClassFilterPresent;
+            this.allowReflection = allowReflection;
         }
 
         @Override
@@ -904,7 +908,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
 
         protected final Object getMember(JavaClass type) {
-            JavaMember member = type.getMember((String) key, JavaClass.STATIC, getJavaMemberTypes(isMethod), isClassFilterPresent);
+            JavaMember member = type.getMember((String) key, JavaClass.STATIC, getJavaMemberTypes(isMethod), allowReflection);
             if (member == null) {
                 return JSRuntime.nullToUndefined(type.getInnerClass((String) key));
             }
@@ -919,8 +923,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final JavaClass javaClass;
         private final Object cachedMember;
 
-        public CachedJavaClassPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean isMethod, boolean isClassFilterPresent, JavaClass javaClass) {
-            super(key, receiverCheck, isMethod, isClassFilterPresent);
+        public CachedJavaClassPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean isMethod, boolean allowReflection, JavaClass javaClass) {
+            super(key, receiverCheck, isMethod, allowReflection);
             this.javaClass = javaClass;
             this.cachedMember = getMember(javaClass);
         }
@@ -931,7 +935,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 return cachedMember;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                JavaClassPropertyGetNode newNode = new JavaClassPropertyGetNode(key, receiverCheck, isMethod, isClassFilterPresent);
+                JavaClassPropertyGetNode newNode = new JavaClassPropertyGetNode(key, receiverCheck, isMethod, allowReflection);
                 newNode.next = this.next;
                 return this.replace(newNode).getValueUnchecked(thisObj, receiver, floatingCondition);
             }
@@ -939,11 +943,11 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     }
 
     public static class JavaSuperMethodPropertyGetNode extends LinkedPropertyGetNode {
-        protected final boolean classFilterPresent;
+        protected final boolean allowReflection;
 
-        public JavaSuperMethodPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean classFilterPresent) {
+        public JavaSuperMethodPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean allowReflection) {
             super(key, receiverCheck);
-            this.classFilterPresent = classFilterPresent;
+            this.allowReflection = allowReflection;
         }
 
         @Override
@@ -953,7 +957,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
         @TruffleBoundary
         protected final Object getSuperMethod(Class<? extends Object> adapterClass) {
-            return JSRuntime.nullToUndefined(JavaClass.forClass(adapterClass).getSuperMethod((String) key, classFilterPresent));
+            return JSRuntime.nullToUndefined(JavaClass.forClass(adapterClass).getSuperMethod((String) key, allowReflection));
         }
     }
 
@@ -961,8 +965,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final Class<? extends Object> expectedClass;
         private final Object cachedMember;
 
-        public CachedJavaSuperMethodPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean classFilterPresent, JavaSuperAdapter javaSuperAdapter) {
-            super(key, receiverCheck, classFilterPresent);
+        public CachedJavaSuperMethodPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean allowReflection, JavaSuperAdapter javaSuperAdapter) {
+            super(key, receiverCheck, allowReflection);
             this.expectedClass = javaSuperAdapter.getAdapter().getClass();
             this.cachedMember = getSuperMethod(expectedClass);
         }
@@ -973,9 +977,29 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 return cachedMember;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                JavaSuperMethodPropertyGetNode newNode = new JavaSuperMethodPropertyGetNode(key, receiverCheck, classFilterPresent);
+                JavaSuperMethodPropertyGetNode newNode = new JavaSuperMethodPropertyGetNode(key, receiverCheck, allowReflection);
                 newNode.next = this.next;
                 return this.replace(newNode).getValueUnchecked(thisObj, receiver, floatingCondition);
+            }
+        }
+    }
+
+    public static class JavaStringMethodGetNode extends LinkedPropertyGetNode {
+        @Child private Node readNode;
+
+        public JavaStringMethodGetNode(Object key, ReceiverCheckNode receiverCheck) {
+            super(key, receiverCheck);
+            this.readNode = Message.READ.createNode();
+        }
+
+        @Override
+        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+            String thisStr = (String) thisObj;
+            Object boxedString = getContext().getRealm().getEnv().asBoxedGuestValue(thisStr);
+            try {
+                return ForeignAccess.sendRead(readNode, (TruffleObject) boxedString, key);
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                return Undefined.instance;
             }
         }
     }
@@ -1135,13 +1159,16 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         @Child private Node foreignGet;
         @Child private Node hasSizeProperty;
         @Child private Node getSize;
+        @Child private Node foreignGetterInvoke;
         @Child private JSForeignToJSTypeNode toJSType;
         private final boolean isLength;
         private final boolean isMethod;
         private final boolean isGlobal;
+        private final JSContext context;
 
-        public ForeignPropertyGetNode(Object key, boolean isMethod, boolean isGlobal) {
+        public ForeignPropertyGetNode(Object key, boolean isMethod, boolean isGlobal, JSContext context) {
             super(key, new ForeignLanguageCheckNode());
+            this.context = context;
             this.toJSType = JSForeignToJSTypeNodeGen.create();
             this.isLength = key.equals(JSAbstractArray.LENGTH);
             this.isMethod = isMethod;
@@ -1160,10 +1187,49 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.foreignGet = insert(Message.READ.createNode());
             }
+            Object foreignResult;
             try {
-                Object foreignResult = ForeignAccess.sendRead(foreignGet, thisObj, key);
-                return toJSType.executeWithTarget(foreignResult);
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                foreignResult = ForeignAccess.sendRead(foreignGet, thisObj, key);
+            } catch (UnknownIdentifierException e) {
+                if (context.isOptionNashornCompatibilityMode()) {
+                    foreignResult = tryInvokeGetter(thisObj);
+                } else {
+                    return Undefined.instance;
+                }
+            } catch (UnsupportedMessageException e) {
+                return Undefined.instance;
+            }
+            return toJSType.executeWithTarget(foreignResult);
+        }
+
+        // in nashorn-compat mode, `javaObj.xyz` can mean `javaObj.getXyz()`.
+        private Object tryInvokeGetter(TruffleObject thisObj) {
+            assert context.isOptionNashornCompatibilityMode();
+            TruffleLanguage.Env env = context.getRealm().getEnv();
+            if (env.isHostObject(thisObj)) {
+                if (foreignGetterInvoke == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    foreignGetterInvoke = insert(Message.createInvoke(0).createNode());
+                }
+                Object result = tryGetResult(thisObj, "get");
+                if (result != null) {
+                    return result;
+                }
+                result = tryGetResult(thisObj, "is");
+                if (result != null) {
+                    return result;
+                }
+            }
+            return Undefined.instance;
+        }
+
+        private Object tryGetResult(TruffleObject thisObj, String prefix) {
+            try {
+                String getterKey = getAccessorKey(prefix);
+                return ForeignAccess.sendInvoke(foreignGetterInvoke, thisObj, getterKey, new Object[]{});
+            } catch (UnknownIdentifierException e) {
+                return null;
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
                 return Undefined.instance;
             }
         }
@@ -1230,7 +1296,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                     // a TruffleObject from another language
                     if (foreignGetNode == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        foreignGetNode = insert(new ForeignPropertyGetNode(key, isMethod(), isGlobal()));
+                        foreignGetNode = insert(new ForeignPropertyGetNode(key, isMethod(), isGlobal(), context));
                     }
                     return foreignGetNode.getValue(thisObj, receiver);
                 } else {
@@ -1646,12 +1712,12 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     private LinkedPropertyGetNode createCachedPropertyNodeNotJSObject(Property property, Object thisObj, int depth, JSContext context) {
         final ReceiverCheckNode receiverCheck;
         if (depth == 0) {
-            if (JSTruffleOptions.NashornJavaInterop && JSTruffleOptions.NashornCompatibilityMode && isMethod() && JSRuntime.isJSPrimitive(thisObj)) {
+            if (isMethod() && thisObj instanceof String && ((JSTruffleOptions.NashornJavaInterop && JSTruffleOptions.NashornCompatibilityMode) || context.isOptionNashornCompatibilityMode())) {
                 // This hack ensures we get the Java method instead of the JavaScript property
                 // for length in s.length() where s is a java.lang.String. Required by Nashorn.
                 // We do this only for depth 0, because JavaScript prototype functions in turn
                 // are preferred over Java methods with the same name.
-                LinkedPropertyGetNode javaPropertyNode = createJavaPropertyNodeMaybe(thisObj, context);
+                LinkedPropertyGetNode javaPropertyNode = createJavaPropertyNodeMaybe(thisObj, depth, context);
                 if (javaPropertyNode != null) {
                     return javaPropertyNode;
                 }
@@ -1740,37 +1806,38 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     }
 
     @Override
-    protected LinkedPropertyGetNode createJavaPropertyNodeMaybe(Object thisObj, JSContext context) {
+    protected LinkedPropertyGetNode createJavaPropertyNodeMaybe(Object thisObj, int depth, JSContext context) {
         if (JSTruffleOptions.SubstrateVM) {
             return null;
         }
-        if (JSObject.isDynamicObject(thisObj)) {
-            if (JavaPackage.isJavaPackage(thisObj)) {
-                return new CachedJavaPackagePropertyGetNode(context, key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)), (DynamicObject) thisObj);
-            }
-        }
-        if (!JSTruffleOptions.NashornJavaInterop) {
-            return null;
-        }
-        return createJavaPropertyNodeMaybe0(thisObj, context);
+        return createJavaPropertyNodeMaybe0(thisObj, depth, context);
     }
 
     /* In a separate method for Substrate VM support. */
-    private LinkedPropertyGetNode createJavaPropertyNodeMaybe0(Object thisObj, JSContext context) {
+    private LinkedPropertyGetNode createJavaPropertyNodeMaybe0(Object thisObj, int depth, JSContext context) {
         if (JSObject.isDynamicObject(thisObj)) {
-            if (JSJavaWrapper.isJSJavaWrapper(thisObj)) {
-                return new JSJavaWrapperPropertyGetNode(key, isGlobal(), isMethod(), isOwnProperty(), context);
-            } else if (JavaPackage.isJavaPackage(thisObj)) {
+            if (JavaPackage.isJavaPackage(thisObj)) {
                 return new CachedJavaPackagePropertyGetNode(context, key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)), (DynamicObject) thisObj);
             } else if (JavaImporter.isJavaImporter(thisObj)) {
                 return new UnspecializedPropertyGetNode(key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
+            }
+        }
+        if (!JSTruffleOptions.NashornJavaInterop) {
+            if (thisObj instanceof String && isMethod()) {
+                return new JavaStringMethodGetNode(key, createPrimitiveReceiverCheck(thisObj, depth, context));
+            }
+            return null;
+        }
+        if (JSObject.isDynamicObject(thisObj)) {
+            if (JSJavaWrapper.isJSJavaWrapper(thisObj)) {
+                return new JSJavaWrapperPropertyGetNode(key, isGlobal(), isMethod(), isOwnProperty(), context);
             } else {
                 return null;
             }
         } else if (thisObj instanceof JavaClass) {
-            return new CachedJavaClassPropertyGetNode(key, new InstanceofCheckNode(JavaClass.class, context), isMethod(), JSJavaWrapper.isClassFilterPresent(context), (JavaClass) thisObj);
+            return new CachedJavaClassPropertyGetNode(key, new InstanceofCheckNode(JavaClass.class, context), isMethod(), JavaAccess.isReflectionAllowed(context), (JavaClass) thisObj);
         } else if (thisObj instanceof JavaSuperAdapter) {
-            return new CachedJavaSuperMethodPropertyGetNode(key, new JavaSuperAdapterCheckNode((JavaSuperAdapter) thisObj), JSJavaWrapper.isClassFilterPresent(context), (JavaSuperAdapter) thisObj);
+            return new CachedJavaSuperMethodPropertyGetNode(key, new JavaSuperAdapterCheckNode((JavaSuperAdapter) thisObj), JavaAccess.isReflectionAllowed(context), (JavaSuperAdapter) thisObj);
         } else {
             JavaMember member = getInstanceMember(thisObj, context);
             if (member != null) {
@@ -1791,7 +1858,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
     @Override
     protected LinkedPropertyGetNode createUndefinedPropertyNode(Object thisObj, Object store, int depth, JSContext context, Object value) {
-        LinkedPropertyGetNode javaPropertyNode = createJavaPropertyNodeMaybe(thisObj, context);
+        LinkedPropertyGetNode javaPropertyNode = createJavaPropertyNodeMaybe(thisObj, depth, context);
         if (javaPropertyNode != null) {
             return javaPropertyNode;
         }
@@ -1859,7 +1926,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             return null;
         }
         JavaClass javaClass = JavaClass.forClass(thisObj.getClass());
-        return javaClass.getMember((String) key, JavaClass.INSTANCE, getJavaMemberTypes(isMethod()), JSJavaWrapper.isClassFilterPresent(context));
+        return javaClass.getMember((String) key, JavaClass.INSTANCE, getJavaMemberTypes(isMethod()), JavaAccess.isReflectionAllowed(context));
     }
 
     /**
@@ -1896,7 +1963,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
     @Override
     protected PropertyGetNode createTruffleObjectPropertyNode(TruffleObject thisObject, JSContext context) {
-        return new ForeignPropertyGetNode(key, isMethod(), isGlobal());
+        return new ForeignPropertyGetNode(key, isMethod(), isGlobal(), context);
     }
 
     protected static Class<? extends JavaMember>[] getJavaMemberTypes(boolean isMethod) {

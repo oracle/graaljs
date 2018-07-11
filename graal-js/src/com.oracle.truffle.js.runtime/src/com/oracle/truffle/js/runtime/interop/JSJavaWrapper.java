@@ -50,7 +50,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -135,14 +134,14 @@ public final class JSJavaWrapper extends AbstractJSClass {
         return isInstance(obj, LazyState.INSTANCE);
     }
 
-    private static Object getOwnPropertyJavaSuper(String name, Object wrapped, boolean classFilterPresent) {
+    private static Object getOwnPropertyJavaSuper(String name, Object wrapped, boolean allowReflection) {
         JavaClass type = JavaClass.forClass(((JavaSuperAdapter) wrapped).getAdapter().getClass());
-        return JSRuntime.nullToUndefined(type.getSuperMethod(name, classFilterPresent));
+        return JSRuntime.nullToUndefined(type.getSuperMethod(name, allowReflection));
     }
 
-    private static Object getOwnPropertyJavaClass(String name, Object wrapped, boolean isMethod, boolean classFilterPresent) {
+    private static Object getOwnPropertyJavaClass(String name, Object wrapped, boolean isMethod, boolean allowReflection) {
         JavaClass type = (JavaClass) wrapped;
-        Member member = type.getMember(name, JavaClass.STATIC, isMethod ? JavaClass.METHOD_GETTER : JavaClass.GETTER_METHOD, classFilterPresent);
+        Member member = type.getMember(name, JavaClass.STATIC, isMethod ? JavaClass.METHOD_GETTER : JavaClass.GETTER_METHOD, allowReflection);
         if (member == null) {
             return type.getInnerClass(name);
         }
@@ -162,9 +161,9 @@ public final class JSJavaWrapper extends AbstractJSClass {
         return null;
     }
 
-    private static Object getOwnPropertyDefault(String name, Object wrapped, boolean isMethod, boolean classFilterPresent) {
+    private static Object getOwnPropertyDefault(String name, Object wrapped, boolean isMethod, boolean allowReflection) {
         JavaClass type = JavaClass.forClass(wrapped.getClass());
-        Member member = type.getMember(name, JavaClass.INSTANCE, isMethod ? JavaClass.METHOD_GETTER : JavaClass.GETTER_METHOD, classFilterPresent);
+        Member member = type.getMember(name, JavaClass.INSTANCE, isMethod ? JavaClass.METHOD_GETTER : JavaClass.GETTER_METHOD, allowReflection);
         if (member instanceof JavaGetter) {
             return ((JavaGetter) member).getValue(wrapped);
         } else if (member != null) {
@@ -202,13 +201,13 @@ public final class JSJavaWrapper extends AbstractJSClass {
     @TruffleBoundary
     private static Object getOwnPropertyHelper(DynamicObject store, String name, boolean isMethod) {
         Object wrapped = getWrapped(store);
-        boolean classFilterPresent = isClassFilterPresent(store);
+        boolean allowReflection = isReflectionAllowed(store);
         if (wrapped instanceof JavaClass) {
-            return getOwnPropertyJavaClass(name, wrapped, isMethod, classFilterPresent);
+            return getOwnPropertyJavaClass(name, wrapped, isMethod, allowReflection);
         } else if (wrapped instanceof JavaSuperAdapter) {
-            return getOwnPropertyJavaSuper(name, wrapped, classFilterPresent);
+            return getOwnPropertyJavaSuper(name, wrapped, allowReflection);
         } else if (wrapped != null) {
-            return getOwnPropertyDefault(name, wrapped, isMethod, classFilterPresent);
+            return getOwnPropertyDefault(name, wrapped, isMethod, allowReflection);
         }
         throw new UnsupportedOperationException();
     }
@@ -240,7 +239,7 @@ public final class JSJavaWrapper extends AbstractJSClass {
         Object wrapped = getWrapped(thisObj);
         if (wrapped instanceof JavaClass) {
             JavaClass javaClass = (JavaClass) wrapped;
-            final JavaMember member = javaClass.getMember((String) name, JavaClass.STATIC, JavaClass.SETTER, isClassFilterPresent(thisObj));
+            final JavaMember member = javaClass.getMember((String) name, JavaClass.STATIC, JavaClass.SETTER, isReflectionAllowed(thisObj));
             if (member != null) {
                 JavaSetter setter = (JavaSetter) member;
                 setter.setValue(wrapped, value);
@@ -248,7 +247,7 @@ public final class JSJavaWrapper extends AbstractJSClass {
             return true;
         } else {
             JavaClass javaClass = JavaClass.forClass(wrapped.getClass());
-            final JavaMember member = javaClass.getMember((String) name, JavaClass.INSTANCE, JavaClass.SETTER, isClassFilterPresent(thisObj));
+            final JavaMember member = javaClass.getMember((String) name, JavaClass.INSTANCE, JavaClass.SETTER, isReflectionAllowed(thisObj));
             if (member != null) {
                 JavaSetter setter = (JavaSetter) member;
                 setter.setValue(wrapped, value);
@@ -261,23 +260,8 @@ public final class JSJavaWrapper extends AbstractJSClass {
         }
     }
 
-    private static boolean isClassFilterPresent(DynamicObject thisObj) {
-        return isClassFilterPresent(JSObject.getJSContext(thisObj));
-    }
-
-    public static boolean isClassFilterPresent(JSContext context) {
-        assert JSTruffleOptions.NashornJavaInterop;
-        TruffleLanguage.Env env = context.getRealm().getEnv();
-        if (env != null && env.isHostLookupAllowed()) {
-            try {
-                Object found = env.lookupHostSymbol(Class.class.getName());
-                if (found != null) {
-                    return false;
-                }
-            } catch (Exception ex) {
-            }
-        }
-        return true;
+    private static boolean isReflectionAllowed(DynamicObject thisObj) {
+        return JavaAccess.isReflectionAllowed(JSObject.getJSContext(thisObj));
     }
 
     @Override

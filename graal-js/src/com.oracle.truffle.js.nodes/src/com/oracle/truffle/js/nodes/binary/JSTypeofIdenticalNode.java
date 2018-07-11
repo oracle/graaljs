@@ -53,6 +53,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantStringNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
+import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -80,6 +81,8 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
  * It thus combines a TypeOfNode and an IdenticalNode or EqualsNode (both show the same behavior in
  * this case).
  *
+ * @see TypeOfNode
+ * @see JSRuntime#typeof(Object)
  */
 @ImportStatic({JSTypeofIdenticalNode.Type.class, JSInteropUtil.class})
 public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
@@ -206,6 +209,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
                     @Cached("createIsExecutable()") Node isExecutable,
                     @Cached("createIsBoxed()") Node isBoxed,
                     @Cached("createUnbox()") Node unboxNode,
+                    @Cached("createIsInstantiable()") Node isInstantiable,
                     @Cached("create()") JSForeignToJSTypeNode toJSTypeNode) {
         if (type == Type.Undefined || type == Type.Symbol || type == Type.False) {
             return false;
@@ -214,9 +218,9 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
                 Object unboxedValue = toJSTypeNode.executeWithTarget(JSInteropNodeUtil.unbox(value, unboxNode));
                 return doUncached(unboxedValue);
             } else if (type == Type.Function) {
-                return ForeignAccess.sendIsExecutable(isExecutable, value);
+                return ForeignAccess.sendIsExecutable(isExecutable, value) || ForeignAccess.sendIsInstantiable(isInstantiable, value);
             } else if (type == Type.Object) {
-                return !ForeignAccess.sendIsExecutable(isExecutable, value);
+                return !ForeignAccess.sendIsExecutable(isExecutable, value) && !ForeignAccess.sendIsInstantiable(isInstantiable, value);
             } else {
                 return false;
             }

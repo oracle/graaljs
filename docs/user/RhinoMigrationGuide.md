@@ -9,6 +9,7 @@ The most important differences relevant for migration are listed here.
 Graal JavaScript does not put available Java classes in the JavaScript scope.
 You have to explicitly load the classes using `Java.type(typename)`.
 Graal JavaScript supports the `Packages` global object, but loading the classes explicitly is still encouraged.
+The following Java package globals are available in Nashorn compatibility mode (`js.nashorn-compat` option): `java`, `javafx`, `javax`, `com`, `org`, `edu`.
 
 ### Console output of Java classes and Java objects
 Graal JavaScript provides a `print` builtin function.
@@ -25,5 +26,5 @@ In Graal JavaScript, the JavaScript properties take precedence over Java fields 
 For instance, you can query the `length` property (of JavaScript) but you cannot call the `length` function (of Java) on JavaScript strings - `length` behaves like a data property, not like a function.
 
 ### JavaImporter
-The `JavaImporter` is not supported by Graal JavaScript.
+The `JavaImporter` feature is available only in Nashorn compatibility mode (`js.nashorn-compat` option).
 

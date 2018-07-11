@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.lang.reflect.Array;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
@@ -165,28 +167,44 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return JSObject.create(context, context.getEnumerateIteratorFactory(), iterator);
     }
 
-    @Specialization(guards = "isMapJavaObject(iteratedObject)")
-    protected DynamicObject doEnumerateMap(TruffleObject iteratedObject) {
-        TruffleLanguage.Env env = context.getRealm().getEnv();
-        Map<?, ?> map = (Map<?, ?>) env.asHostObject(iteratedObject);
-        Iterator<?> iterator = values ? map.values().iterator() : map.keySet().iterator();
-        return JSObject.create(context, context.getEnumerateIteratorFactory(), iterator);
-    }
-
-    protected final boolean isMapJavaObject(TruffleObject object) {
-        TruffleLanguage.Env env = context.getRealm().getEnv();
-        return env.isHostObject(object) && env.asHostObject(object) instanceof Map;
-    }
-
-    @Specialization(guards = {"isForeignObject(iteratedObject)", "!isMapJavaObject(iteratedObject)"})
+    @Specialization(guards = {"isForeignObject(iteratedObject)"})
     protected DynamicObject doEnumerateTruffleObject(TruffleObject iteratedObject,
                     @Cached("createHasSize()") Node hasSizeNode,
                     @Cached("createGetSize()") Node getSizeNode,
                     @Cached("createRead()") Node readNode,
                     @Cached("createKeys()") Node keysNode,
                     @Cached("create()") JSToLengthNode toLengthNode,
-                    @Cached("create()") JSForeignToJSTypeNode foreignConvertNode) {
+                    @Cached("create()") JSForeignToJSTypeNode foreignConvertNode,
+                    @Cached("createBinaryProfile()") ConditionProfile isHostObject) {
+        TruffleLanguage.Env env = context.getRealm().getEnv();
+        if (isHostObject.profile(env.isHostObject(iteratedObject))) {
+            Object hostObject = env.asHostObject(iteratedObject);
+            Iterator<?> iterator = getHostObjectIterator(hostObject, values, env);
+            if (iterator != null) {
+                return JSObject.create(context, context.getEnumerateIteratorFactory(), iterator);
+            }
+        }
+
         return doEnumerateTruffleObjectIntl(context, iteratedObject, hasSizeNode, getSizeNode, readNode, keysNode, toLengthNode, foreignConvertNode, values);
+    }
+
+    @TruffleBoundary
+    private static Iterator<?> getHostObjectIterator(Object hostObject, boolean values, TruffleLanguage.Env env) {
+        if (hostObject != null) {
+            if (hostObject instanceof Map) {
+                Map<?, ?> map = (Map<?, ?>) hostObject;
+                Iterator<?> iterator = values ? map.values().iterator() : map.keySet().iterator();
+                return IteratorUtil.convertIterator(iterator, env::asGuestValue);
+            } else if (hostObject.getClass().isArray()) {
+                return values ? new ArrayIterator(hostObject) : IteratorUtil.rangeIterator(Array.getLength(hostObject));
+            } else if (!values && hostObject instanceof List<?>) {
+                return IteratorUtil.rangeIterator(((List<?>) hostObject).size());
+            } else if (values && hostObject instanceof Iterable<?>) {
+                Iterator<?> iterator = ((Iterable<?>) hostObject).iterator();
+                return IteratorUtil.convertIterator(iterator, env::asGuestValue);
+            }
+        }
+        return null;
     }
 
     public static DynamicObject doEnumerateTruffleObjectIntl(JSContext context, TruffleObject iteratedObject, Node hasSizeNode, Node getSizeNode, Node readNode, Node keysNode,
@@ -287,5 +305,29 @@ public abstract class EnumerateNode extends JavaScriptNode {
                     @Cached("createToObjectNoCheck(context)") JSToObjectNode toObjectNode,
                     @Cached("copyRecursive()") EnumerateNode enumerateNode) {
         return enumerateNode.execute(toObjectNode.executeTruffleObject(iteratedObject));
+    }
+
+    private static final class ArrayIterator implements Iterator<Object> {
+        private final Object array;
+        private final int length;
+        private int index;
+
+        ArrayIterator(Object array) {
+            this.array = array;
+            this.length = Array.getLength(array);
+        }
+
+        @Override
+        public boolean hasNext() {
+            return index < length;
+        }
+
+        @Override
+        public Object next() {
+            if (hasNext()) {
+                return Array.get(array, index++);
+            }
+            throw new NoSuchElementException();
+        }
     }
 }

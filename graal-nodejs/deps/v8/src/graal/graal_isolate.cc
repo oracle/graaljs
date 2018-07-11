@@ -1162,5 +1162,13 @@ void GraalIsolate::RunMicrotasks() {
         pair.first(pair.second);
     }
     microtasks.clear();
+
+    // Enter "dummy TryCatch" to ensure that TryCatchExists() returns true
+    // for microtasks (i.e., fatal error handler is not invoked when an error occurs).
+    TryCatchEnter();
+
     JNI_CALL_VOID(this, GraalAccessMethod::isolate_run_microtasks);
+
+    // Exit "dummy TryCatch"
+    TryCatchExit();
 }

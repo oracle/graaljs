@@ -1467,4 +1467,8 @@ public class JSContext implements ShapeContext {
     public JSContextOptions getContextOptions() {
         return contextOptions;
     }
+
+    public int getStackTraceLimit() {
+        return contextOptions.getStackTraceLimit();
+    }
 }

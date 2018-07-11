@@ -258,6 +258,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Override
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (materializedTags.contains(FunctionCallExpressionTag.class)) {
+                if (this.hasSourceSection() && !functionNode.hasSourceSection()) {
+                    transferSourceSectionNoTags(this, functionNode);
+                }
                 if (targetNode != null) {
                     // if we have a target, no de-sugaring needed
                     return this;
@@ -283,13 +286,15 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         private Object evaluateReceiver(VirtualFrame frame, Object target) {
-            Object receiver;
-            if (!(targetNode instanceof SuperPropertyReferenceNode)) {
-                receiver = target;
-            } else {
-                receiver = ((SuperPropertyReferenceNode) targetNode).evaluateTarget(frame);
+            if (targetNode instanceof SuperPropertyReferenceNode) {
+                return ((SuperPropertyReferenceNode) targetNode).evaluateTarget(frame);
+            } else if (targetNode instanceof WrapperNode) {
+                WrapperNode wrapper = (WrapperNode) targetNode;
+                if (wrapper.getDelegateNode() instanceof SuperPropertyReferenceNode) {
+                    return ((SuperPropertyReferenceNode) wrapper.getDelegateNode()).evaluateTarget(frame);
+                }
             }
-            return receiver;
+            return target;
         }
 
         @Override
@@ -358,13 +363,16 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         private Object evaluateReceiver(VirtualFrame frame, Object target) {
-            Object receiver;
-            if (!(getTarget() instanceof SuperPropertyReferenceNode)) {
-                receiver = target;
-            } else {
-                receiver = ((SuperPropertyReferenceNode) getTarget()).evaluateTarget(frame);
+            Node targetNode = getTarget();
+            if (targetNode instanceof SuperPropertyReferenceNode) {
+                return ((SuperPropertyReferenceNode) targetNode).evaluateTarget(frame);
+            } else if (targetNode instanceof WrapperNode) {
+                WrapperNode wrapper = (WrapperNode) targetNode;
+                if (wrapper.getDelegateNode() instanceof SuperPropertyReferenceNode) {
+                    return ((SuperPropertyReferenceNode) wrapper.getDelegateNode()).evaluateTarget(frame);
+                }
             }
-            return receiver;
+            return target;
         }
 
         public JSTargetableNode getFunctionTargetNode() {

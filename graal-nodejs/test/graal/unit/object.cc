@@ -89,7 +89,7 @@ EXPORT_TO_JS(GetByIndex) {
 
 EXPORT_TO_JS(SetByName) {
     Local<Object> obj = args[0].As<Object>();
-    Local<String> key = args[1].As<String>();
+    Local<Value> key = args[1];
     Local<Value> value = args[2];
     args.GetReturnValue().Set(obj->Set(key, value));
 }
@@ -113,7 +113,7 @@ EXPORT_TO_JS(ForceSet) {
 // Object::Has
 
 EXPORT_TO_JS(HasByName) {
-    args.GetReturnValue().Set(args[0].As<Object>()->Has(args[1].As<String>()));
+    args.GetReturnValue().Set(args[0].As<Object>()->Has(args[1]));
 }
 
 // Object::HasOwnProperty
@@ -137,7 +137,7 @@ EXPORT_TO_JS(HasRealIndexedProperty) {
 // Object::Delete
 
 EXPORT_TO_JS(DeleteByName) {
-    args.GetReturnValue().Set(args[0].As<Object>()->Delete(args[1].As<String>()));
+    args.GetReturnValue().Set(args[0].As<Object>()->Delete(args[1]));
 }
 
 // Object::InternalFieldCount

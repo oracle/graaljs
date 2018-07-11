@@ -60,12 +60,15 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
 /**
  * Example instrument tracing all execution events in Graal.js.
@@ -88,7 +91,7 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
         this.environment = env;
         env.registerService(this);
         // What source sections are we interested in?
-        SourceSectionFilter sourceSectionFilter = SourceSectionFilter.newBuilder().tagIs(FineGrainedAccessTest.allJSSpecificTags).build();
+        SourceSectionFilter sourceSectionFilter = SourceSectionFilter.newBuilder().tagIs(JSTags.ALL).build();
         // What generates the input events to track?
         SourceSectionFilter inputGeneratingObjects = SourceSectionFilter.newBuilder().tagIs(
                         StandardTags.ExpressionTag.class,
@@ -114,12 +117,18 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
                         System.out.println(p + s);
                     }
 
+                    private String getValueDescription(Object inputValue) {
+                        if (JSFunction.isJSFunction(inputValue)) {
+                            return "JSFunction:'" + JSFunction.getName((DynamicObject) inputValue) + "'";
+                        }
+                        return inputValue != null ? inputValue.toString() : "null";
+                    }
+
                     @Override
                     protected void onInputValue(VirtualFrame frame, EventContext i, int inputIndex, Object inputValue) {
-                        Object val = inputValue != null ? inputValue.toString() : "null";
                         String format = String.format("%-7s|tag: %-20s @ %-20s|val: %-25s|from: %-20s", "IN " + (1 + inputIndex) + "/" + getInputCount(),
                                         FineGrainedAccessTest.getTagNames((JavaScriptNode) c.getInstrumentedNode()),
-                                        c.getInstrumentedNode().getClass().getSimpleName(), val, i.getInstrumentedNode().getClass().getSimpleName());
+                                        c.getInstrumentedNode().getClass().getSimpleName(), getValueDescription(inputValue), i.getInstrumentedNode().getClass().getSimpleName());
                         log(format);
                     }
 

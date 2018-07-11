@@ -78,7 +78,6 @@ import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -169,15 +168,20 @@ public class WriteElementNode extends JSTargetableNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ReadElementExpressionTag.class)) {
-            JavaScriptNode clonedTarget = targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createFor(targetNode, ExpressionTag.class);
-            JavaScriptNode clonedIndex = indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createFor(indexNode, ExpressionTag.class);
-            JavaScriptNode clonedValue = valueNode.hasSourceSection() ? valueNode : JSTaggedExecutionNode.createFor(valueNode, ExpressionTag.class);
+        if (materializationNeeded() && materializedTags.contains(WriteElementExpressionTag.class)) {
+            JavaScriptNode clonedTarget = targetNode.hasSourceSection() ? cloneUninitialized(targetNode) : JSTaggedExecutionNode.createFor(targetNode, this, ExpressionTag.class);
+            JavaScriptNode clonedIndex = indexNode.hasSourceSection() ? cloneUninitialized(indexNode) : JSTaggedExecutionNode.createFor(indexNode, this, ExpressionTag.class);
+            JavaScriptNode clonedValue = valueNode.hasSourceSection() ? cloneUninitialized(valueNode) : JSTaggedExecutionNode.createFor(valueNode, this, ExpressionTag.class);
             JavaScriptNode cloned = WriteElementNode.create(clonedTarget, clonedIndex, clonedValue, getContext(), isStrict(), typeCacheNode.writeOwn);
             transferSourceSection(this, cloned);
             return cloned;
         }
         return this;
+    }
+
+    private boolean materializationNeeded() {
+        // Materialization is needed only if we don't have source sections.
+        return !(targetNode.hasSourceSection() && indexNode.hasSourceSection() && valueNode.hasSourceSection());
     }
 
     @Override
@@ -1765,10 +1769,13 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
+            TruffleObject truffleObject = targetClass.cast(target);
             try {
-                ForeignAccess.sendWrite(foreignArrayAccess, targetClass.cast(target), index, value);
-            } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                ForeignAccess.sendWrite(foreignArrayAccess, truffleObject, index, value);
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 // do nothing
+            } catch (UnsupportedTypeException e) {
+                throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
             }
         }
 

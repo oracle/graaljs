@@ -119,7 +119,7 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
 
         enter(WriteElementExpressionTag.class, (e, b) -> {
             b.input(assertJSArrayInput);
-            b.input(1);
+            b.input(1L);
             b.input(-38);
         }).exit();
     }

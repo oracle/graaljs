@@ -186,7 +186,7 @@ public final class JSError extends JSBuiltinObject {
         JSObjectUtil.putConstructorPrototypeProperty(context, errorConstructor, classPrototype);
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorConstructor, CLASS_NAME);
-            JSObjectUtil.putDataProperty(context, errorConstructor, STACK_TRACE_LIMIT_PROPERTY_NAME, JSTruffleOptions.StackTraceLimit, JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(context, errorConstructor, STACK_TRACE_LIMIT_PROPERTY_NAME, context.getStackTraceLimit(), JSAttributes.getDefault());
         }
 
         return new JSConstructor(errorConstructor, classPrototype);

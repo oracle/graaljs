@@ -47,6 +47,8 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -89,6 +91,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.interop.Converters;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
+import com.oracle.truffle.js.runtime.interop.JavaAccess;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.interop.JavaMember;
 import com.oracle.truffle.js.runtime.interop.JavaSetter;
@@ -789,17 +792,17 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
     }
 
     public static final class JavaStaticFieldPropertySetNode extends LinkedPropertySetNode {
-        private final boolean isClassFilterPresent;
+        private final boolean allowReflection;
 
-        public JavaStaticFieldPropertySetNode(Object key, ReceiverCheckNode receiverCheck, boolean isClassFilterPresent) {
+        public JavaStaticFieldPropertySetNode(Object key, ReceiverCheckNode receiverCheck, boolean allowReflection) {
             super(key, receiverCheck);
-            this.isClassFilterPresent = isClassFilterPresent;
+            this.allowReflection = allowReflection;
         }
 
         @Override
         public void setValueUnchecked(Object thisObj, Object value, Object receiver, boolean condition) {
             JavaClass type = (JavaClass) thisObj;
-            JavaMember member = type.getMember((String) key, JavaClass.STATIC, JavaClass.SETTER, isClassFilterPresent);
+            JavaMember member = type.getMember((String) key, JavaClass.STATIC, JavaClass.SETTER, allowReflection);
             if (member instanceof JavaSetter) {
                 ((JavaSetter) member).setValue(null, value);
             }
@@ -1016,38 +1019,85 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
 
         @Child private Node foreignSet;
         @Child private ExportValueNode export;
+        @Child private Node foreignSetterInvoke;
+        private final JSContext context;
 
         public ForeignPropertySetNode(Object key, JSContext context) {
             super(key, new ForeignLanguageCheckNode());
+            this.context = context;
             this.foreignSet = Message.WRITE.createNode();
             this.export = ExportValueNode.create(context);
         }
 
         @Override
         public void setValueUncheckedInt(Object thisObj, int value, Object receiver, boolean condition) {
+            TruffleObject truffleObject = (TruffleObject) thisObj;
             try {
-                ForeignAccess.sendWrite(foreignSet, (TruffleObject) thisObj, key, value);
-            } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                ForeignAccess.sendWrite(foreignSet, truffleObject, key, value);
+            } catch (UnknownIdentifierException e) {
+                if (context.isOptionNashornCompatibilityMode()) {
+                    tryInvokeSetter(truffleObject, value);
+                }
                 // do nothing
+            } catch (UnsupportedMessageException e) {
+                // do nothing
+            } catch (UnsupportedTypeException e) {
+                throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
             }
         }
 
         @Override
         public void setValueUncheckedDouble(Object thisObj, double value, Object receiver, boolean condition) {
+            TruffleObject truffleObject = (TruffleObject) thisObj;
             try {
-                ForeignAccess.sendWrite(foreignSet, (TruffleObject) thisObj, key, value);
-            } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                ForeignAccess.sendWrite(foreignSet, truffleObject, key, value);
+            } catch (UnknownIdentifierException e) {
+                if (context.isOptionNashornCompatibilityMode()) {
+                    tryInvokeSetter(truffleObject, value);
+                }
                 // do nothing
+            } catch (UnsupportedMessageException e) {
+                // do nothing
+            } catch (UnsupportedTypeException e) {
+                throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
             }
         }
 
         @Override
         public void setValueUnchecked(Object thisObj, Object value, Object receiver, boolean condition) {
+            TruffleObject truffleObject = (TruffleObject) thisObj;
+            Object boundValue = export.executeWithTarget(value, Undefined.instance);
             try {
-                Object boundValue = export.executeWithTarget(value, Undefined.instance);
-                ForeignAccess.sendWrite(foreignSet, (TruffleObject) thisObj, key, boundValue);
-            } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                ForeignAccess.sendWrite(foreignSet, truffleObject, key, boundValue);
+            } catch (UnknownIdentifierException e) {
+                if (context.isOptionNashornCompatibilityMode()) {
+                    tryInvokeSetter((TruffleObject) thisObj, boundValue);
+                }
                 // do nothing
+            } catch (UnsupportedMessageException e) {
+                // do nothing
+            } catch (UnsupportedTypeException e) {
+                throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
+            }
+        }
+
+        // in nashorn-compat mode, `javaObj.xyz = a` can mean `javaObj.setXyz(a)`.
+        private void tryInvokeSetter(TruffleObject thisObj, Object value) {
+            assert context.isOptionNashornCompatibilityMode();
+            TruffleLanguage.Env env = context.getRealm().getEnv();
+            if (env.isHostObject(thisObj) && JSRuntime.isString(getKey())) {
+                if (foreignSetterInvoke == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    foreignSetterInvoke = insert(Message.createInvoke(1).createNode());
+                }
+                try {
+                    String setterKey = getAccessorKey("set");
+                    if (setterKey != null) {
+                        ForeignAccess.sendInvoke(foreignSetterInvoke, thisObj, setterKey, new Object[]{value});
+                    }
+                } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                    // silently ignore
+                }
             }
         }
     }
@@ -1267,7 +1317,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
 
     @Override
     protected LinkedPropertySetNode createUndefinedPropertyNode(Object thisObj, Object store, int depth, JSContext context, Object value) {
-        LinkedPropertySetNode specialized = createJavaPropertyNodeMaybe(thisObj, context);
+        LinkedPropertySetNode specialized = createJavaPropertyNodeMaybe(thisObj, depth, context);
         if (specialized != null) {
             return specialized;
         }
@@ -1303,7 +1353,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
     }
 
     @Override
-    protected LinkedPropertySetNode createJavaPropertyNodeMaybe(Object thisObj, JSContext context) {
+    protected LinkedPropertySetNode createJavaPropertyNodeMaybe(Object thisObj, int depth, JSContext context) {
         if (!JSTruffleOptions.NashornJavaInterop) {
             return null;
         }
@@ -1315,7 +1365,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         if (!(JSObject.isDynamicObject(thisObj))) {
             if (hasSettableField(thisObj, context)) {
                 if (thisObj instanceof JavaClass) {
-                    return new JavaStaticFieldPropertySetNode(key, new InstanceofCheckNode(thisObj.getClass(), context), JSJavaWrapper.isClassFilterPresent(context));
+                    return new JavaStaticFieldPropertySetNode(key, new InstanceofCheckNode(thisObj.getClass(), context), JavaAccess.isReflectionAllowed(context));
                 } else {
                     return new JavaSetterPropertySetNode(key, new InstanceofCheckNode(thisObj.getClass(), context), getSetter(thisObj, context));
                 }
@@ -1346,7 +1396,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
     }
 
     private JavaSetter getStaticSetter(JavaClass thisObj, JSContext context) {
-        JavaMember member = thisObj.getMember((String) key, JavaClass.STATIC, JavaClass.SETTER, JSJavaWrapper.isClassFilterPresent(context));
+        JavaMember member = thisObj.getMember((String) key, JavaClass.STATIC, JavaClass.SETTER, JavaAccess.isReflectionAllowed(context));
         assert member == null || member instanceof JavaSetter;
         return (member != null) ? (JavaSetter) member : null;
     }
@@ -1354,7 +1404,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
     private JavaSetter getSetter(Object thisObj, JSContext context) {
         assert !(thisObj instanceof JavaClass);
         JavaClass javaClass = JavaClass.forClass(thisObj.getClass());
-        JavaMember member = javaClass.getMember((String) key, JavaClass.INSTANCE, JavaClass.SETTER, JSJavaWrapper.isClassFilterPresent(context));
+        JavaMember member = javaClass.getMember((String) key, JavaClass.INSTANCE, JavaClass.SETTER, JavaAccess.isReflectionAllowed(context));
         return (JavaSetter) member;
     }
 

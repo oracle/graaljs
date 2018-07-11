@@ -59,14 +59,21 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
     public static JavaScriptNode createFor(JavaScriptNode originalNode, Class<? extends Tag> expectedTag) {
         JavaScriptNode clone = cloneUninitialized(originalNode);
         JavaScriptNode wrapper = new JSTaggedExecutionNode(clone, expectedTag);
-        wrapper.setSourceSection(originalNode.getSourceSection());
+        transferSourceSectionNoTags(originalNode, wrapper);
         return wrapper;
     }
 
     public static JavaScriptNode createFor(JavaScriptNode originalNode, Class<? extends Tag> expectedTag, NodeObjectDescriptor descriptor) {
         JavaScriptNode clone = cloneUninitialized(originalNode);
         JavaScriptNode wrapper = new JSTaggedExecutionNode(clone, expectedTag, descriptor);
-        wrapper.setSourceSection(originalNode.getSourceSection());
+        transferSourceSectionNoTags(originalNode, wrapper);
+        return wrapper;
+    }
+
+    public static JavaScriptNode createFor(JavaScriptNode originalNode, JavaScriptNode transferSourcesFrom, Class<? extends Tag> expectedTag) {
+        JavaScriptNode clone = cloneUninitialized(originalNode);
+        JavaScriptNode wrapper = new JSTaggedExecutionNode(clone, expectedTag);
+        transferSourceSectionNoTags(transferSourcesFrom, wrapper);
         return wrapper;
     }
 

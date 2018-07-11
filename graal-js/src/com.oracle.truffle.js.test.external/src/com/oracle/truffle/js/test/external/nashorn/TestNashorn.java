@@ -210,10 +210,6 @@ public class TestNashorn extends TestSuite {
     }
 
     public static void main(String[] args) throws Exception {
-        if (!JSTruffleOptions.NashornJavaInterop) {
-            System.err.println("Nashorn testsuite requires NashornJavaInterop.");
-            exit(-1);
-        }
         if (!JSTruffleOptions.NashornCompatibilityMode) {
             System.err.println("Nashorn testsuite requires NashornCompatibilityMode.");
             exit(-2);

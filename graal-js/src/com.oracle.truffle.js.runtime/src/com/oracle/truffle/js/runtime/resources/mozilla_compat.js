@@ -96,31 +96,41 @@ Object.defineProperty(this, "sync", {
 // Object.prototype.toSource
 Object.defineProperty(Object.prototype, "toSource", {
     configurable: true, enumerable: false, writable: true,
-    value: function toSource(state) {
-        if (!state) {
-            state = new (Java.type('java.util.HashSet'))();
-        }
-        if (state.contains(this)) {
-            return "{}";
-        }
-        state.add(this);
-        var str = new (Java.type('java.lang.StringBuilder'))('({');
-        for (i in this) {
-            str.append(i);
-            str.append(':');
-            if (this[i] instanceof Object && typeof(this[i].toSource) == 'function') {
-                str.append(this[i].toSource(state));
-            } else {
-                str.append(String(this[i]));
+    value: (function(){
+        var MySet = typeof Set == 'function' ? Set : (function(){
+              function ES5Set() {
+                  this.elements = [];
+              }
+              Object.defineProperties(ES5Set.prototype, {
+                  has: {value: function has(e) {return this.elements.indexOf(e) >= 0;}, configurable: true, writable: true},
+                  add: {value: function add(e) {return this.elements.push(e);}, configurable: true, writable: true},
+              });
+              return ES5Set;
+        })();
+        return function toSource(state) {
+            if (!state) {
+                state = new MySet();
             }
-            str.append(', ');
+            if (state.has(this)) {
+                return "{}";
+            }
+            state.add(this);
+            var str = '({', sep = '';
+            for (i in this) {
+                str += sep;
+                str += i;
+                str += ':';
+                if (this[i] instanceof Object && typeof(this[i].toSource) == 'function') {
+                    str += this[i].toSource(state);
+                } else {
+                    str += String(this[i]);
+                }
+                sep = ', ';
+            }
+            str += '})';
+            return String(str);
         }
-        // delete last extra command and space
-        str = str.deleteCharAt(str.length() - 1);
-        str = str.deleteCharAt(str.length() - 1);
-        str.append('})');
-        return str.toString();
-    }
+    })()
 });
 
 // Boolean.prototype.toSource
@@ -193,8 +203,8 @@ Object.defineProperty(String.prototype, "quote", {
 Object.defineProperty(this, "importClass", {
     configurable: true, enumerable: false, writable: true,
     value: function() {
-        for (var arg in arguments) {
-            var clazz = arguments[arg];
+        for (var i = 0; i < arguments.length; i++) {
+            var clazz = arguments[i];
             if (Java.isType(clazz)) {
                 var className = Java.typeName(clazz);
                 var simpleName = className.substring(className.lastIndexOf('.') + 1);

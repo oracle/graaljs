@@ -40,11 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
+import java.lang.reflect.Modifier;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -57,6 +59,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -82,6 +85,8 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.interop.JavaAccess;
+import com.oracle.truffle.js.runtime.interop.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
@@ -213,7 +218,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     @Specialization
     public Object doNewJavaObject(VirtualFrame frame, JavaClass target) {
         if (!target.isPublic()) {
-            throwCannotExtendError(target);
+            throwCannotExtendError(target.getType());
         }
         Object[] args = JSArguments.createInitial(target, target, arguments.getCount(frame));
         args = arguments.executeFillObjectArray(frame, args, JSArguments.RUNTIME_ARGUMENT_COUNT);
@@ -221,8 +226,8 @@ public abstract class JSNewNode extends JavaScriptNode {
     }
 
     @TruffleBoundary
-    private static void throwCannotExtendError(JavaClass target) {
-        throw Errors.createTypeError("new cannot be used with non-public java type " + target.getType().getName() + ".");
+    private static void throwCannotExtendError(Class<?> target) {
+        throw Errors.createTypeError("new cannot be used with non-public java type " + target.getTypeName() + ".");
     }
 
     @Specialization(guards = "isJavaConstructor(target)")
@@ -236,7 +241,10 @@ public abstract class JSNewNode extends JavaScriptNode {
     public Object doNewForeignObject(VirtualFrame frame, TruffleObject target,
                     @Cached("createNewCache()") Node newNode,
                     @Cached("create(context)") ExportValueNode convert,
-                    @Cached("create()") JSForeignToJSTypeNode toJSType) {
+                    @Cached("create()") JSForeignToJSTypeNode toJSType,
+                    @Cached("createBinaryProfile()") ConditionProfile isHostClassProf,
+                    @Cached("createBinaryProfile()") ConditionProfile isAbstractProf) {
+        TruffleObject newTarget = target;
         int count = arguments.getCount(frame);
         Object[] args = new Object[count];
         args = arguments.executeFillObjectArray(frame, args, 0);
@@ -244,7 +252,30 @@ public abstract class JSNewNode extends JavaScriptNode {
         for (int i = 0; i < args.length; i++) {
             args[i] = convert.executeWithTarget(args[i], Undefined.instance);
         }
-        return toJSType.executeWithTarget(JSInteropNodeUtil.construct(target, args, newNode, this));
+
+        if (!JSTruffleOptions.SubstrateVM && context.isOptionNashornCompatibilityMode()) {
+            TruffleLanguage.Env env = context.getRealm().getEnv();
+            if (isHostClassProf.profile(count == 1 && env.isHostObject(target) && env.asHostObject(target) instanceof Class<?>)) {
+                Class<?> javaType = (Class<?>) env.asHostObject(target);
+                if (isAbstractProf.profile(Modifier.isAbstract(javaType.getModifiers()) && !javaType.isArray())) {
+                    newTarget = extend(javaType, env);
+                }
+            }
+        }
+
+        return toJSType.executeWithTarget(JSInteropNodeUtil.construct(newTarget, args, newNode, this));
+    }
+
+    @TruffleBoundary
+    private TruffleObject extend(Class<?> type, TruffleLanguage.Env env) {
+        assert !JSTruffleOptions.SubstrateVM;
+        if (!Modifier.isPublic(type.getModifiers())) {
+            throwCannotExtendError(type);
+        }
+        // Equivalent to Java.extend(type)
+        JavaAccess.checkAccess(new Class<?>[]{type}, context);
+        Class<?> adapterClass = JavaAdapterFactory.getAdapterClassFor(type);
+        return (TruffleObject) env.asGuestValue(adapterClass);
     }
 
     protected Node createNewCache() {

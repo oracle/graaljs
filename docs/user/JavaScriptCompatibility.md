@@ -15,10 +15,10 @@ Older versions, as well as some features of the most recent version, can be enab
 For informations on the flags, see the *--help* message of the executable.
 
 Graal JavaScript provides the following function objects in the global scope as specified by ECMAScript, representing the JavaScript core library:
-Array, ArrayBuffer, Boolean, DataView, Date, Error, Function, JSON, Map, Math, Number, Object, Promise, Proxy, Reflect, RegExp, Set, String, Symbol, TypedArray, WeakMap, WeakSet
+Array, ArrayBuffer, Boolean, DataView, Date, Error, Function, JSON, Map, Math, Number, Object, Promise, Proxy, Reflect, RegExp, Set, SharedArrayBuffer, String, Symbol, TypedArray, WeakMap, WeakSet
 
 Some additional objects are available under flags (run `js --help` for the list of available flags):
-Atomics, Intl, SharedArrayBuffer, SIMD
+Atomics, Intl, SIMD
 
 Several of these function objects and some of their members are only available when a certain version of the spec is selected for execution.
 For a list of methods provided, inspect the ECMAScript specification.
@@ -31,7 +31,7 @@ If you run in native mode (default option), you also need to specify path to you
 where `$GRAAL_VM_DIR` refers to your GraalVM installation directory.
 If you run in JVM mode (a jvm flag is used), you do not need to specify where your ICU data are located, although you can do it with `--jvm.Dcom.ibm.icu.impl.ICUBinary.dataPath=$GRAAL_VM_DIR/jre/languages/js/icu4j/icudt`.
 
-Once you activate Internationalization API, you can use the following built-ins:
+Once you activate the Internationalization API, you can use the following built-ins:
 
 - Intl.NumberFormat
 - Intl.DateTimeFormat
@@ -60,7 +60,7 @@ Backreferences                                                                  
 Negative lookaround<sup>[1](#fn1)</sup>                                                      | ❌     | ✓
 Unicode mode (`'u'` flag)                                                                    | ✓      | ❌
 [Unicode property escapes](https://github.com/tc39/proposal-regexp-unicode-property-escapes) | ✓      | ❌
-[Full lookbehind](https://github.com/tc39/proposal-regexp-lookbehind)<sup>[2](#f2)</sup>     | ❌     | ❌
+[Full lookbehind](https://github.com/tc39/proposal-regexp-lookbehind)<sup>[2](#fn2)</sup>    | ❌     | ❌
 
 <sub>
 <a name="fn1">1</a>: Positive lookaround is supported in both engines.
@@ -83,15 +83,17 @@ Note that the behaviour of such methods might not strictly match the semantics o
 ### Language features
 
 #### Conditional catch clauses
-Graal JavaScript supports conditional catch clauses:
+Graal JavaScript supports conditional catch clauses if the `js.syntax-extensions` option is enabled:
 
-  try {
+```js
+try {
     myMethod(); // can throw
-  } catch (e if e instanceof TypeError) {
+} catch (e if e instanceof TypeError) {
     print("TypeError caught");
-  } catch (e) {
+} catch (e) {
     print("another Error caught");
-  }
+}
+```
 
 ### Global methods
 
@@ -99,18 +101,17 @@ Graal JavaScript supports conditional catch clauses:
 
 Exits the engine and returns the specified status code.
 
-#### `load(source, args)`
+#### `load(source)`
 
 Loads (parses and executes) the specified JavaScript source code.
 
 Source can be of type:
 
+* a String: the path of the source file or a URL to execute.
 * `java.lang.URL`: the URL is queried for the source code to execute.
 * `java.io.File`: the File is read for the source code to execute.
-* a JavaScript object: the object is queried for a `name` and a `source` property.
+* a JavaScript object: the object is queried for a `name` and a `script` property, which represent the source name and code, respectively.
 * all other types: the source is converted to a String.
-
-The value of `arguments` is provided to the loaded code upon execution.
 
 #### `print(...arg)` and `console.log(...arg)`
 
@@ -127,7 +128,7 @@ The result is returned as String.
 
 The argument `file` can be of type:
 
-* `java.io.file`: the file is used directly.
+* `java.io.File`: the file is used directly.
 * all other types: `file` is converted to a String and interpreted as file name.
 
 #### `readbuffer(file)`
@@ -169,6 +170,16 @@ Returns the setter function for property `prop` of the object as set by `__defin
 This functionality is deprecated in most JavaScript engines.
 In recent ECMAScript versions, getters and setters are natively supported by the language.
 
+### Nashorn scripting mode
+Graal JavaScript provides a scripting mode compatible to the one provided by the Nashorn engine.
+It is enabled with the `js.scripting` option:
+
+```
+$ js --js.scripting=true
+```
+
+In scripting mode, several properties and functions are added to the global object, including `$ARG`, `$ENV`, and `$EXEC`.
+
 ## Graal JavaScript extensions
 
 ### Graal
@@ -177,11 +188,13 @@ The `Graal` object is provided as property of the global object.
 It provides Graal-specific information.
 The existence of the property can be used to identify whether the Graal JavaScript engine is the current language engine.
 
-    if (Graal) {
-        print(Graal.versionJS);
-        print(Graal.versionGraalVM);
-        print(Graal.isGraalRuntime);
-    }
+```js
+if (typeof Graal != 'undefined') {
+    print(Graal.versionJS);
+    print(Graal.versionGraalVM);
+    print(Graal.isGraalRuntime);
+}
+```
 
 The Graal object is available in Graal JavaScript by default, unless deactivated by an option (`truffle.js.GraalBuiltin=false`).
 
@@ -201,16 +214,25 @@ If `false`, Graal JavaScript will not be optimized by the Graal compiler, typica
 
 ### Java
 
-The `Java` object is only available when the engine is started in JVM mode. 
+The `Java` object is only available when the engine is started in JVM mode (`--jvm` flag).
+
+Note that some functions require a Nashorn compatibility mode flag to be set.
+On the GraalVM, this flag can be set with:
+
+```
+$ js --jvm --js.nashorn-compat=true
+```
 
 #### `Java.type(className)`
 
 The `type` function loads the specified Java class and provides it as an object.
 Fields of this object can be read directly from it, and new instances can be created with the JavaScript ```new``` keyword.
 
-    var BigDec = Java.type('java.math.BigDecimal');
-    var bd = new BigDec("0.1");
-    console.log(bd.add(bd).toString());
+```js
+var BigDec = Java.type('java.math.BigDecimal');
+var bd = new BigDec("0.1");
+console.log(bd.add(bd).toString());
+```
 
 #### `Java.from(javaData)`
 
@@ -222,10 +244,12 @@ In many cases, this is not necessary, you can typically use the Java datastructu
 The `to` function converts the argument to a Java dataype.
 When no `toType` is provided, `Object[]` is assumed.
 
-    var jsArr = ["a","b","c"]
-    var strArrType = Java.type("java.lang.String[]")
-    var javaArr = Java.to(jsArr, strArrType)
-    assertEquals('class [Ljava.lang.String;', String(javaArr.class));
+```js
+var jsArr = ["a", "b", "c"]
+var strArrType = Java.type("java.lang.String[]")
+var javaArr = Java.to(jsArr, strArrType)
+assertEquals('class [Ljava.lang.String;', String(javaArr.getClass()));
+```
 
 #### `Java.isJavaObject(obj)`
 
@@ -242,6 +266,27 @@ It returns `false` for all other arguments.
 The `typeName` method returns the Java `Class` name of `obj`.
 `obj` is expected to represent a Java `Class` instance, i.e., `isType(obj)` should return true; otherwise, `undefined` is returned.
 
+#### `Java.isJavaFunction(fn)`
+
+The `isJavaFunction` method returns whether `fn` is an object of the Java language that represents a Java function.
+It returns `false` for all other typies, including native JavaScript function, and functions of other polyglot languages.
+
+This function requires the Nashorn compatibility mode flag.
+
+#### `Java.isScriptObject(obj)`
+
+The `isScriptObject` method returns whether `obj` is an object of the JavaScript language.
+It returns `false` for all other types, including objects of Java and other polyglot languages.
+
+This function requires the Nashorn compatibility mode flag.
+
+#### `Java.isScriptFunction(fn)`
+
+The `isScriptFunction` method returns whether `fn` is a JavaScript function.
+It returns `false` for all other types, including Java function, and functions of other polyglot languages.
+
+This function requires the Nashorn compatibility mode flag.
+
 ### Polyglot
 
 The functions of the `Polyglot` object allow to interact with values from other polyglot languages.
@@ -250,8 +295,10 @@ The functions of the `Polyglot` object allow to interact with values from other 
 
 Exports the JavaScript `value` under the name `key` (a string) to the polyglot bindings.
 
-    function helloWorld() { print("Hello, JavaScript world"); };
-    Polyglot.export("helloJSWorld", helloWorld);
+```js
+function helloWorld() { print("Hello, JavaScript world"); }
+Polyglot.export("helloJSWorld", helloWorld);
+```
 
 If the polyglot bindings already had a value identified by `key`, it is overwritten with the new value.
 Throws a `TypeError` if `key` is not a string or missing.
@@ -261,8 +308,10 @@ The `value` may be any valid Polyglot value.
 
 Imports the value identified by `key` (a string) from the polyglot bindings and returns it.
 
-    var rubyHelloWorld = Polyglot.import("helloRubyWorld");
-    rubyHelloWorld();
+```js
+var rubyHelloWorld = Polyglot.import("helloRubyWorld");
+rubyHelloWorld();
+```
 
 If no language has exported a value identified by `key`, `null` is returned.
 Throws a `TypeError` if `key` is not a string or missing.
@@ -273,7 +322,9 @@ Parses and evaluates the `sourceCode` with the interpreter identified by `langua
 The value of `sourceCode` is expected to be a String (or convertable to one).
 Returns the evaluation result, depending on the `sourceCode` and/or the semantics of the language evaluated.
 
-    var rArray = Polyglot.eval('R', 'runif(1000)');
+```js
+var rArray = Polyglot.eval('R', 'runif(1000)');
+```
 
 Exceptions can occur when an invalid `languageId` is passed, when the `sourceCode` cannot be evaluated by the language, or when the executed program throws one.
 
@@ -283,15 +334,17 @@ Parses the file `sourceFileName` with the interpreter identified by `languageId`
 The value of `sourceFileName` is expected to be a String (or convertable to one), representing a file reachable by the current path.
 Returns an executable object, typically a function.
 
-    var rFunc = Polyglot.evalFile('R', 'myExample.r');
-    var result = rFunc();
+```js
+var rFunc = Polyglot.evalFile('R', 'myExample.r');
+var result = rFunc();
+```
 
 Exceptions can occur when an invalid `languageId` is passed, when the file identified by `sourceFileName` cannot be found, or when the language throws an exception during parsing (parse time errors, e.g. syntax errors).
 Exceptions thrown by the evaluated program are only thrown once the resulting function is evaluated.
 
 ### Debug
 
-requires starting the engine with the `debug` flag.
+requires starting the engine with the `js.debug-builtin` flag.
 
 `Debug` is a Graal JavaScript specific function object that provides functionality for debugging JavaScript code and the Graal JavaScript compiler.
 This API might change without notice, do not use for production purposes!
@@ -306,12 +359,12 @@ The only difference is, that the error stream is used to print to, instead of th
 #### `loadWithNewGlobal(source, arguments)`
 
 This method behaves similar to `load` function.
-Relevant difference is that the code is evaluated in a new global scope (`Realm`, as defined by ECMAScript).
+Relevant difference is that the code is evaluated in a new global scope (Realm, as defined by ECMAScript).
 
 Source can be of type:
 
 * `java.lang.URL`: the URL is queried for the source code to execute.
-* a JavaScript object: the object is queried for a `name` and a `source` property.
+* a JavaScript object: the object is queried for a `name` and a `script` property.
 * all other types: the source is converted to a String.
 
 The value of `arguments` is provided to the loaded code upon execution.

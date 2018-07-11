@@ -83,7 +83,7 @@ public final class JSContextOptions {
     @CompilationFinal private boolean arraySortInherited;
 
     public static final String SHARED_ARRAY_BUFFER_NAME = JS_OPTION_PREFIX + "shared-array-buffer";
-    private static final OptionKey<Boolean> SHARED_ARRAY_BUFFER = new OptionKey<>(false);
+    private static final OptionKey<Boolean> SHARED_ARRAY_BUFFER = new OptionKey<>(true);
     private static final String SHARED_ARRAY_BUFFER_HELP = helpWithDefault("ES2017 SharedArrayBuffer", SHARED_ARRAY_BUFFER);
     @CompilationFinal private boolean sharedArrayBuffer;
 
@@ -106,6 +106,11 @@ public final class JSContextOptions {
     private static final OptionKey<Boolean> NASHORN_COMPATIBILITY_MODE = new OptionKey<>(false);
     private static final String NASHORN_COMPATIBILITY_MODE_HELP = helpWithDefault("provide compatibility with the OpenJDK Nashorn engine", NASHORN_COMPATIBILITY_MODE);
     @CompilationFinal private boolean nashornCompatibilityMode;
+
+    public static final String STACK_TRACE_LIMIT_NAME = JS_OPTION_PREFIX + "stack-trace-limit";
+    private static final OptionKey<Integer> STACK_TRACE_LIMIT = new OptionKey<>(JSTruffleOptions.StackTraceLimit);
+    private static final String STACK_TRACE_LIMIT_HELP = helpWithDefault("number of stack frames to capture", STACK_TRACE_LIMIT);
+    @CompilationFinal private int stackTraceLimit;
 
     public static final String DEBUG_BUILTIN_NAME = JS_OPTION_PREFIX + "debug-builtin";
     private static final OptionKey<Boolean> DEBUG_BUILTIN = new OptionKey<>(false);
@@ -145,6 +150,7 @@ public final class JSContextOptions {
                     V8_COMPATIBILITY_MODE,
                     V8_REALM_BUILTIN,
                     NASHORN_COMPATIBILITY_MODE,
+                    STACK_TRACE_LIMIT,
                     DEBUG_BUILTIN,
                     PARSE_ONLY,
                     TIME_ZONE,
@@ -184,6 +190,7 @@ public final class JSContextOptions {
         this.v8CompatibilityMode = readBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME);
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME);
         this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME);
+        this.stackTraceLimit = readIntegerOption(STACK_TRACE_LIMIT, STACK_TRACE_LIMIT_NAME);
         this.directByteBuffer = readBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME);
         this.parseOnly = readBooleanOption(PARSE_ONLY, PARSE_ONLY_NAME);
         this.debug = readBooleanOption(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME);
@@ -233,6 +240,7 @@ public final class JSContextOptions {
         options.add(OptionDescriptor.newBuilder(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME).category(OptionCategory.USER).help(V8_COMPATIBILITY_MODE_HELP).build());
         options.add(OptionDescriptor.newBuilder(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME).category(OptionCategory.DEBUG).help(V8_REALM_BUILTIN_HELP).build());
         options.add(OptionDescriptor.newBuilder(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME).category(OptionCategory.USER).help(NASHORN_COMPATIBILITY_MODE_HELP).build());
+        options.add(OptionDescriptor.newBuilder(STACK_TRACE_LIMIT, STACK_TRACE_LIMIT_NAME).category(OptionCategory.USER).help(STACK_TRACE_LIMIT_HELP).build());
         options.add(OptionDescriptor.newBuilder(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME).category(OptionCategory.DEBUG).help(DEBUG_BUILTIN_HELP).build());
         options.add(OptionDescriptor.newBuilder(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME).category(OptionCategory.USER).help(DIRECT_BYTE_BUFFER_HELP).build());
         options.add(OptionDescriptor.newBuilder(PARSE_ONLY, PARSE_ONLY_NAME).category(OptionCategory.USER).help(PARSE_ONLY_HELP).build());
@@ -312,6 +320,10 @@ public final class JSContextOptions {
 
     public boolean isV8RealmBuiltin() {
         return v8RealmBuiltin;
+    }
+
+    public int getStackTraceLimit() {
+        return stackTraceLimit;
     }
 
     @Override

@@ -66,11 +66,13 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
     protected static final int MAX_SHAPE_COUNT = 1;
     protected static final int MAX_JSCLASS_COUNT = 1;
 
+    private final boolean jsType;
     @CompilationFinal private ConditionProfile isArrayProfile;
     @CompilationFinal private ConditionProfile isProxyProfile;
     @Child private Node hasSizeNode;
 
-    protected JSIsArrayNode() {
+    protected JSIsArrayNode(boolean jsType) {
+        this.jsType = jsType;
     }
 
     public abstract boolean execute(Object operand);
@@ -110,6 +112,9 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!isDynamicObject(object)"})
     protected boolean doNotObject(Object object) {
+        if (jsType) {
+            return false;
+        }
         init();
         return JSRuntime.isArray(object, isArrayProfile, isProxyProfile, hasSizeNode);
     }
@@ -129,7 +134,11 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
         }
     }
 
+    public static JSIsArrayNode createIsArrayLike() {
+        return JSIsArrayNodeGen.create(false);
+    }
+
     public static JSIsArrayNode createIsArray() {
-        return JSIsArrayNodeGen.create();
+        return JSIsArrayNodeGen.create(true);
     }
 }

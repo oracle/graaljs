@@ -72,6 +72,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.interop.JavaSuperAdapter;
+import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -874,7 +875,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
 
     protected abstract T createUndefinedPropertyNode(Object thisObject, Object store, int depth, JSContext context, Object value);
 
-    protected abstract T createJavaPropertyNodeMaybe(Object thisObj, JSContext context);
+    protected abstract T createJavaPropertyNodeMaybe(Object thisObj, int depth, JSContext context);
 
     protected abstract T createTruffleObjectPropertyNode(TruffleObject thisObj, JSContext context);
 
@@ -1251,6 +1252,17 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
             return String.format("reached cache limit (property %s, limit %d)", key, JSTruffleOptions.PropertyCacheLimit);
         }
         return "reached cache limit";
+    }
+
+    @TruffleBoundary
+    protected String getAccessorKey(String getset) {
+        assert JSRuntime.isString(getKey());
+        String origKey = getKey() instanceof String ? (String) getKey() : ((JSLazyString) getKey()).toString();
+        if (origKey.length() > 0 && Character.isLetter(origKey.charAt(0))) {
+            String accessorKey = getset + origKey.substring(0, 1).toUpperCase() + origKey.substring(1);
+            return accessorKey;
+        }
+        return null;
     }
 
     private static final DebugCounter polymorphicCount = DebugCounter.create("Polymorphic property cache count");

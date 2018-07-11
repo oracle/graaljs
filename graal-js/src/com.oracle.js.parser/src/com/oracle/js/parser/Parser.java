@@ -67,6 +67,7 @@ import static com.oracle.js.parser.TokenType.RBRACKET;
 import static com.oracle.js.parser.TokenType.RPAREN;
 import static com.oracle.js.parser.TokenType.SEMICOLON;
 import static com.oracle.js.parser.TokenType.SET;
+import static com.oracle.js.parser.TokenType.SPREAD_ARGUMENT;
 import static com.oracle.js.parser.TokenType.SPREAD_ARRAY;
 import static com.oracle.js.parser.TokenType.SPREAD_OBJECT;
 import static com.oracle.js.parser.TokenType.STATIC;
@@ -5201,7 +5202,7 @@ loop:
         if (paramListExpr == null) {
             // empty parameter list, i.e. () =>
             return;
-        } else if (paramListExpr instanceof IdentNode || paramListExpr.isTokenType(ASSIGN) || isDestructuringLhs(paramListExpr)) {
+        } else if (paramListExpr instanceof IdentNode || paramListExpr.isTokenType(ASSIGN) || isDestructuringLhs(paramListExpr) || paramListExpr.isTokenType(SPREAD_ARGUMENT)) {
             convertArrowParameter(paramListExpr, 0, functionLine, function);
         } else if (paramListExpr instanceof BinaryNode && Token.descType(paramListExpr.getToken()) == COMMARIGHT) {
             ArrayList<Expression> params = new ArrayList<>();
@@ -5214,7 +5215,12 @@ loop:
             params.add(car);
 
             for (int i = params.size() - 1, pos = 0; i >= 0; i--, pos++) {
-                convertArrowParameter(params.get(i), pos, functionLine, function);
+                Expression param = params.get(i);
+                if (i != 0 && param.isTokenType(SPREAD_ARGUMENT)) {
+                    throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
+                } else {
+                    convertArrowParameter(param, pos, functionLine, function);
+                }
             }
         } else {
             throw error(AbstractParser.message("expected.arrow.parameter"), paramListExpr.getToken());
@@ -5269,9 +5275,47 @@ loop:
             if (currentFunction != null) {
                 addDestructuringParameter(paramToken, param.getFinish(), paramLine, param, null, currentFunction);
             }
+        } else if (param.isTokenType(SPREAD_ARGUMENT)) {
+            Expression expression = ((UnaryNode) param).getExpression();
+            if (expression instanceof IdentNode && identAtTheEndOfArrowParamList()) {
+                IdentNode rest = ((IdentNode) expression).setIsRestParameter();
+                convertArrowParameter(rest, index, paramLine, currentFunction);
+            } else {
+                throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
+            }
         } else {
             throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
         }
+    }
+
+    // Checks wheter there is IDENT and RPAREN before ARROW. The function
+    // is used to verify that rest parameter is not followed by a trailing comma.
+    private boolean identAtTheEndOfArrowParamList() {
+        int idx = k - 1;
+        assert T(idx) == ARROW;
+        while (true) {
+            idx--;
+            TokenType t = T(idx);
+            if (t == COMMENT) {
+                continue;
+            } else if (t == RPAREN) {
+                break;
+            } else {
+                return false;
+            }
+        }
+        while (true) {
+            idx--;
+            TokenType t = T(idx);
+            if (t == COMMENT) {
+                continue;
+            } else if (t == IDENT) {
+                break;
+            } else {
+                return false;
+            }
+        }
+        return true;
     }
 
     private boolean checkNoLineTerminator() {

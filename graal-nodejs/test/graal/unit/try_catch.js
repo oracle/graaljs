@@ -41,6 +41,7 @@
 
 var assert = require('assert');
 var module = require('./_unit');
+var URL = require('url').URL;
 
 describe('TryCatch', function () {
     describe('HasCaught', function () {
@@ -123,6 +124,29 @@ describe('TryCatch', function () {
         it('should be callable', function () {
             module.TryCatch_HasTerminatedNoException();
             assert.strictEqual(true, true);
+        });
+    });
+    describe('Fatal Error', function () {
+        it('should not be triggered when an error is thrown from a promise job (part 1)', function (done) {
+            new Promise(function(resolve) {
+              setTimeout(() => resolve(), 1000);
+            }).then(function() {
+              try {
+                new URL('[invalid]');
+              } catch (e) {
+                done();
+              }
+            });
+        });
+        it('should not be triggered when an error is thrown from a promise job (part 2)', function (done) {
+            new Promise(function(resolve) {
+              setTimeout(() => resolve(), 1000);
+            }).then(function() {
+                new URL('[invalid]');
+            }).catch(function(e) {
+                assert.strictEqual(e instanceof TypeError, true);
+                done();
+            });
         });
     });
 });

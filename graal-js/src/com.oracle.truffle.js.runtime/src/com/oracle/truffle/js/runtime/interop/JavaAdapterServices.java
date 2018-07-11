@@ -43,19 +43,19 @@ package com.oracle.truffle.js.runtime.interop;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.ToDoubleFunction;
+import java.util.function.ToIntFunction;
+import java.util.function.ToLongFunction;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.interop.Converters.Converter;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Provides static utility services to generated Java adapter classes.
@@ -63,17 +63,16 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * @see JSFunction#call(DynamicObject, Object, Object[])
  */
 public final class JavaAdapterServices {
-    private static final MethodHandle JSFUNCTION_CALL_METHOD_HANDLE;
-    private static final MethodHandle CONVERTER_CONVERT_METHOD_HANDLE;
-    private static final MethodHandle JAVA_TO_JS_CONVERTER_METHOD_HANDLE;
-    private static final ThreadLocal<DynamicObject> classOverrides = new ThreadLocal<>();
+    private static final MethodHandle VALUE_EXECUTE_METHOD_HANDLE;
+    private static final MethodHandle VALUE_EXECUTE_VOID_METHOD_HANDLE;
+    private static final MethodHandle VALUE_AS_METHOD_HANDLE;
+    private static final ThreadLocal<Value> classOverrides = new ThreadLocal<>();
 
     static {
         try {
-            JSFUNCTION_CALL_METHOD_HANDLE = MethodHandles.publicLookup().findStatic(JavaAdapterServices.class, "callFunction",
-                            MethodType.methodType(Object.class, DynamicObject.class, Object.class, Object[].class));
-            CONVERTER_CONVERT_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Converter.class, "convert", MethodType.methodType(Object.class, Object.class));
-            JAVA_TO_JS_CONVERTER_METHOD_HANDLE = CONVERTER_CONVERT_METHOD_HANDLE.bindTo(Converters.JAVA_TO_JS_CONVERTER);
+            VALUE_EXECUTE_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "execute", MethodType.methodType(Value.class, Object[].class));
+            VALUE_EXECUTE_VOID_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "executeVoid", MethodType.methodType(void.class, Object[].class));
+            VALUE_AS_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "as", MethodType.methodType(Object.class, Class.class));
         } catch (NoSuchMethodException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
@@ -89,95 +88,171 @@ public final class JavaAdapterServices {
      *
      * @return the thread-local JS object used to define methods for the class being initialized.
      */
-    public static DynamicObject getClassOverrides() {
-        final DynamicObject overrides = classOverrides.get();
+    public static Value getClassOverrides() {
+        final Value overrides = classOverrides.get();
         assert overrides != null;
         return overrides;
     }
 
-    public static void setClassOverrides(DynamicObject overrides) {
+    public static void setClassOverrides(Value overrides) {
         classOverrides.set(overrides);
     }
 
     /**
-     * Given a JS script object, retrieves a function from it by name, binds it to the script object
-     * as its "this", and adapts its parameter types, return types, and arity to the specified type
-     * and arity. This method is public mainly for implementation reasons, so the adapter classes
-     * can invoke it from their constructors that take a Object in its first argument to obtain the
-     * method handles for their method implementations.
+     * Given a JS object, retrieves a function from it by name, bound to the object.
      *
-     * @param obj the script obj
+     * This method is public mainly for implementation reasons, so the adapter classes can invoke it
+     * from their constructors that take a {@link Value} as last argument to obtain the functions
+     * for their method implementations.
+     *
+     * @param obj the script object
      * @param name the name of the property that contains the function
-     * @return the appropriately adapted method handle for invoking the script function, or null if
-     *         the value of the property is either null or undefined, or "toString" was requested as
-     *         the name, but the object doesn't directly define it but just inherits it through
-     *         prototype.
+     * @return a {@link Value} representing a member function (bound to the object if need be), or
+     *         null if the value of the property is either null or undefined, or "toString" was
+     *         requested as the name and the object doesn't directly define it but just inherits it.
      */
     @TruffleBoundary
-    public static DynamicObject getFunction(final DynamicObject obj, final String name) {
+    public static Value getFunction(final Value obj, final String name) {
         // Since every JS Object has a toString, we only override "String toString()" it if it's
         // explicitly specified
-        if (JSRuntime.TO_STRING.equals(name) && !JSObject.hasOwnProperty(obj, JSRuntime.TO_STRING)) {
+        if (JSRuntime.TO_STRING.equals(name) && !hasOwnProperty(obj, JSRuntime.TO_STRING)) {
             return null;
         }
 
-        final Object fnObj = JSObject.get(obj, name);
-        if (JSFunction.isJSFunction(fnObj)) {
-            return (DynamicObject) fnObj;
-        } else if (fnObj == Null.instance || fnObj == Undefined.instance) {
+        final Value fnObj = obj.getMember(name);
+        if (fnObj.canExecute()) {
+            return fnObj;
+        } else if (fnObj.isNull()) { // null or undefined
             return null;
         } else {
             throw Errors.createTypeErrorNotAFunction(fnObj);
         }
     }
 
-    /**
-     * @see JavaAdapterBytecodeGenerator#emitIsJSFunction
-     */
-    public static boolean isJSFunction(final Object obj) {
-        return JSObject.isDynamicObject(obj) && JSFunction.isJSFunction((DynamicObject) obj);
-    }
-
-    /**
-     * Entry point for JS function calls by generated Java adapter classes. Enters the function's
-     * {@link TruffleContext} for the duration of the call.
-     *
-     * @see #JSFUNCTION_CALL_METHOD_HANDLE
-     */
-    public static Object callFunction(DynamicObject functionObject, Object thisObject, Object[] argumentValues) {
-        JSRealm functionRealm = JSFunction.getRealm(functionObject);
-        TruffleContext truffleContext = functionRealm.getTruffleContext();
-        Object prev = truffleContext.enter();
+    private static boolean hasOwnProperty(final Value obj, final String name) {
+        Value bindings = Context.getCurrent().getBindings("js");
         try {
-            return JSFunction.call(functionObject, thisObject, argumentValues);
-        } finally {
-            truffleContext.leave(prev);
+            return bindings.getMember("Object").getMember("prototype").getMember("hasOwnProperty").getMember("call").execute(obj, name).asBoolean();
+        } catch (Exception e) {
+            // probably due to monkey patching, ignore
+            return false;
         }
     }
 
+    /**
+     * @see JavaAdapterBytecodeGenerator#emitIsFunction
+     */
+    public static boolean isFunction(final Object obj) {
+        return obj instanceof Value && ((Value) obj).canExecute();
+    }
+
+    /**
+     * Obtains a method handle executing a {@link Value}, adapted for the given {@link MethodType}.
+     */
     @TruffleBoundary
     public static MethodHandle getHandle(final MethodType type) {
-        MethodHandle call = JSFUNCTION_CALL_METHOD_HANDLE;
+        MethodHandle call;
+        if (type.returnType() == void.class) {
+            call = VALUE_EXECUTE_VOID_METHOD_HANDLE;
+        } else {
+            call = VALUE_EXECUTE_METHOD_HANDLE;
+        }
         // TODO this has to be adapted to work with varargs methods as well
         call = call.asCollector(Object[].class, type.parameterCount());
 
-        MethodHandle[] filters = new MethodHandle[type.parameterCount()];
-        Arrays.fill(filters, JAVA_TO_JS_CONVERTER_METHOD_HANDLE);
-        call = MethodHandles.filterArguments(call, 2, filters);
-
         if (type.returnType() != void.class) {
-            call = MethodHandles.filterReturnValue(call,
-                            CONVERTER_CONVERT_METHOD_HANDLE.bindTo(Converters.LazySerialConverterAdapter.fromFactories(type.returnType(), Converters.FORCING_CONVERTER_FACTORIES)));
+            call = MethodHandles.filterReturnValue(call, createReturnValueConverter(type.returnType()));
         }
 
-        // insert [function object, this object]
-        call = call.asType(type.insertParameterTypes(0, DynamicObject.class, Object.class));
+        // insert [function object]
+        call = call.asType(type.insertParameterTypes(0, Value.class));
         return call;
     }
 
-    public static void sameThreadCheck(long expectedThreadId) {
-        if (Thread.currentThread().getId() != expectedThreadId) {
-            throw new Error("attempted to execute javascript function in a different thread");
-        }
+    public static Value asValue(Object obj) {
+        return Context.getCurrent().asValue(obj);
     }
+
+    /**
+     * Creates and returns a new {@link UnsupportedOperationException}. Makes generated bytecode
+     * smaller by doing {@code INVOKESTATIC} to this method rather than the {@code NEW}, {@code DUP}
+     * ({@code DUP_X1}, {@code SWAP}), {@code INVOKESPECIAL <init>} sequence.
+     *
+     * @return a newly created {@link UnsupportedOperationException}.
+     */
+    public static UnsupportedOperationException unsupported(String methodName) {
+        return new UnsupportedOperationException(methodName);
+    }
+
+    /**
+     * Returns a new {@link RuntimeException} wrapping the passed throwable if necessary. Makes
+     * generated bytecode smaller by doing an {@code INVOKESTATIC} to this method rather than the
+     * {@code NEW}, {@code DUP_X1}, {@code SWAP}, {@code INVOKESPECIAL <init>} sequence.
+     *
+     * @param t the original throwable to wrap
+     * @return a newly created runtime exception wrapping the passed throwable.
+     */
+    public static RuntimeException wrapThrowable(final Throwable t) {
+        return new RuntimeException(t);
+    }
+
+    private static MethodHandle createReturnValueConverter(Class<?> returnType) {
+        MethodHandle converterHandle = returnValueConverter.get(returnType);
+        if (converterHandle != null) {
+            return converterHandle;
+        }
+
+        if (returnType == byte.class || returnType == short.class || returnType == int.class) {
+            ToIntFunction<Value> converter = value -> {
+                if (value.fitsInInt()) {
+                    return value.asInt();
+                } else if (value.fitsInLong()) {
+                    return (int) value.asLong();
+                } else if (value.fitsInDouble()) {
+                    return (int) value.asDouble();
+                }
+                return value.asInt();
+            };
+            try {
+                MethodHandle apply = MethodHandles.publicLookup().findVirtual(ToIntFunction.class, "applyAsInt", MethodType.methodType(int.class, Object.class));
+                converterHandle = apply.bindTo(converter);
+            } catch (NoSuchMethodException | IllegalAccessException e) {
+                throw new IllegalStateException(e);
+            }
+        } else if (returnType == long.class) {
+            ToLongFunction<Value> converter = value -> {
+                if (value.fitsInLong()) {
+                    return value.asLong();
+                } else if (value.fitsInDouble()) {
+                    return (long) value.asDouble();
+                }
+                return value.asLong();
+            };
+            try {
+                MethodHandle apply = MethodHandles.publicLookup().findVirtual(ToLongFunction.class, "applyAsLong", MethodType.methodType(long.class, Object.class));
+                converterHandle = apply.bindTo(converter);
+            } catch (NoSuchMethodException | IllegalAccessException e) {
+                throw new IllegalStateException(e);
+            }
+        } else if (returnType == float.class || returnType == double.class) {
+            ToDoubleFunction<Value> converter = value -> {
+                return value.asDouble();
+            };
+            try {
+                MethodHandle apply = MethodHandles.publicLookup().findVirtual(ToDoubleFunction.class, "applyAsDouble", MethodType.methodType(double.class, Object.class));
+                converterHandle = apply.bindTo(converter);
+            } catch (NoSuchMethodException | IllegalAccessException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+        if (converterHandle != null) {
+            converterHandle = converterHandle.asType(converterHandle.type().changeParameterType(0, Value.class));
+            MethodHandle existing = returnValueConverter.putIfAbsent(returnType, converterHandle);
+            return existing == null ? converterHandle : existing;
+        }
+
+        return MethodHandles.insertArguments(VALUE_AS_METHOD_HANDLE, 1, returnType);
+    }
+
+    private static final ConcurrentHashMap<Class<?>, MethodHandle> returnValueConverter = new ConcurrentHashMap<>();
 }
