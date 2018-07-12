@@ -117,6 +117,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         public RegExpStringIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            this.isRegExpStringIteratorNode = insert(HasHiddenKeyCacheNode.create(JSString.REGEXP_ITERATOR_ITERATING_REGEXP_ID));
         }
 
         @Specialization(guards = "isRegExpStringIterator(iterator)")
@@ -173,15 +174,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         protected final boolean isRegExpStringIterator(Object thisObj) {
             // If the [[IteratingRegExp]] internal slot is present, the others must be as well.
-            return getIsRegExpStringIteratorNode().executeHasHiddenKey(thisObj);
-        }
-
-        private HasHiddenKeyCacheNode getIsRegExpStringIteratorNode() {
-            if (isRegExpStringIteratorNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isRegExpStringIteratorNode = insert(HasHiddenKeyCacheNode.create(JSString.REGEXP_ITERATOR_ITERATING_REGEXP_ID));
-            }
-            return isRegExpStringIteratorNode;
+            return isRegExpStringIteratorNode.executeHasHiddenKey(thisObj);
         }
 
         private PropertyGetNode getGetIteratingRegExpNode() {

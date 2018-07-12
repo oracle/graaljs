@@ -2350,11 +2350,14 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         public MatchAllIteratorNode(JSContext context) {
             this.context = context;
+            this.toStringNodeForInput = insert(JSToStringNode.create());
+            this.isRegExpNode = insert(IsRegExpNode.create(context));
+            this.createRegExpStringIteratorNode = insert(new CreateRegExpStringIteratorNode(context));
         }
 
         public DynamicObject createMatchAllIterator(VirtualFrame frame, Object regexObj, Object stringObj) {
-            String string = getToStringNodeForInput().executeString(stringObj);
-            if (isRegExpProfile.profile(getIsRegExpNode().executeBoolean(regexObj))) {
+            String string = toStringNodeForInput.executeString(stringObj);
+            if (isRegExpProfile.profile(isRegExpNode.executeBoolean(regexObj))) {
                 DynamicObject regex = (DynamicObject) regexObj;
                 DynamicObject regExpConstructor = context.getRealm().getRegExpConstructor().getFunctionObject();
                 DynamicObject constructor = getSpeciesConstructNode().speciesConstructor(regex, regExpConstructor);
@@ -2364,29 +2367,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 boolean fullUnicode = getToBooleanNodeForUnicode().executeBoolean(getGetUnicodeNode().getValue(matcher));
                 long lastIndex = getToLengthNode().executeLong(getGetLastIndexNode().getValue(regexObj));
                 getSetLastIndexNode().setValue(matcher, lastIndex);
-                return getCreateRegExpStringIteratorNode().createIterator(frame, matcher, string, global, fullUnicode);
+                return createRegExpStringIteratorNode.createIterator(frame, matcher, string, global, fullUnicode);
             } else {
                 String pattern = getToStringNodeForRegex().executeString(regexObj);
                 TruffleObject compiledRegex = getCompileRegexNode().compile(pattern, "g");
                 Object matcher = getCreateRegExpNode().execute(compiledRegex);
-                return getCreateRegExpStringIteratorNode().createIterator(frame, matcher, string, true, false);
+                return createRegExpStringIteratorNode.createIterator(frame, matcher, string, true, false);
             }
-        }
-
-        private JSToStringNode getToStringNodeForInput() {
-            if (toStringNodeForInput == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toStringNodeForInput = insert(JSToStringNode.create());
-            }
-            return toStringNodeForInput;
-        }
-
-        private IsRegExpNode getIsRegExpNode() {
-            if (isRegExpNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isRegExpNode = insert(IsRegExpNode.create(context));
-            }
-            return isRegExpNode;
         }
 
         private ArraySpeciesConstructorNode getSpeciesConstructNode() {
@@ -2491,14 +2478,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 createRegExpNode = insert(CreateRegExpNode.create(context));
             }
             return createRegExpNode;
-        }
-
-        private CreateRegExpStringIteratorNode getCreateRegExpStringIteratorNode() {
-            if (createRegExpStringIteratorNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                createRegExpStringIteratorNode = insert(new CreateRegExpStringIteratorNode(context));
-            }
-            return createRegExpStringIteratorNode;
         }
     }
 
