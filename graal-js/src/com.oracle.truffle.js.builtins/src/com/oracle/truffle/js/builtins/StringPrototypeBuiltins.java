@@ -224,6 +224,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return 6;
             } else if (EnumSet.range(padStart, padEnd).contains(this)) {
                 return 8;
+            } else if (this.equals(matchAll)) {
+                return JSTruffleOptions.ECMAScript2019;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -231,10 +233,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Override
         public boolean isEnabled() {
             if (EnumSet.of(trimStart, trimEnd).contains(this)) {
-                return (JSTruffleOptions.Stage1 || JSTruffleOptions.NashornExtensions);
+                return (JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019 || JSTruffleOptions.NashornExtensions);
             }
             if (this.equals(matchAll)) {
-                return JSTruffleOptions.Stage3;
+                return JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019;
             }
             return true;
         }
@@ -2297,7 +2299,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected Object matchAll(VirtualFrame frame, Object thisObj, Object regex) {
-            assert getContext().getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2018;
+            assert getContext().getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019;
             requireObjectCoercible(thisObj);
             if (isSpecialProfile.profile(!(regex == Undefined.instance || regex == Null.instance))) {
                 Object matcher = getMethod(regex, Symbol.SYMBOL_MATCH_ALL);

@@ -466,7 +466,7 @@ public class JSRealm implements ShapeContext {
         this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
         this.mapIteratorPrototype = es6 ? createMapIteratorPrototype() : null;
         this.stringIteratorPrototype = es6 ? createStringIteratorPrototype() : null;
-        this.regExpStringIteratorPrototype = JSTruffleOptions.Stage3 ? createRegExpStringIteratorPrototype() : null;
+        this.regExpStringIteratorPrototype = JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
 
         this.generatorFunctionConstructor = es6 ? JSFunction.createGeneratorFunctionConstructor(this) : null;
         this.initialGeneratorFactory = es6 ? JSFunction.makeInitialGeneratorFunctionConstructorShape(this, generatorFunctionConstructor.getPrototype(), false).createFactory() : null;

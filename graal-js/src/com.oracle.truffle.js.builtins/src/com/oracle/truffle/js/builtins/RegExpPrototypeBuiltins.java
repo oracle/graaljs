@@ -154,7 +154,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return 6;
             }
             if (this.equals(_matchAll)) {
-                return JSTruffleOptions.ECMAScript2018;
+                return JSTruffleOptions.ECMAScript2019;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
