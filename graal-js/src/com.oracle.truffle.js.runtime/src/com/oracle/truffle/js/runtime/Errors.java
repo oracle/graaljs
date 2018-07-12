@@ -247,6 +247,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorIncompatibleReceiver(String methodName, Object receiver) {
+        return Errors.createTypeError("Method " + methodName + " called on incompatible receiver " + JSRuntime.safeToString(receiver));
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorIncompatibleReceiver(Object what) {
         return Errors.createTypeError("incompatible receiver: " + JSRuntime.safeToString(what));
     }

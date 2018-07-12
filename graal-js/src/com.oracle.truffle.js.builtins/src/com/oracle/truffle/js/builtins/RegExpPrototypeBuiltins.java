@@ -365,7 +365,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isJSObject(thisNonObj)")
         protected Object test(Object thisNonObj, @SuppressWarnings("unused") Object input) {
-            throw Errors.createTypeErrorNotAnObject(thisNonObj);
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.test", thisNonObj);
         }
     }
 
@@ -398,7 +398,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isJSObject(thisNonObj)")
         protected Object toString(Object thisNonObj) {
-            throw Errors.createTypeErrorIncompatibleReceiver(thisNonObj);
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.toString", thisNonObj);
         }
 
     }
@@ -617,7 +617,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isJSObject(thisObj)")
         protected Object split(Object thisObj, @SuppressWarnings("unused") Object pattern, @SuppressWarnings("unused") Object flags) {
-            throw createNoRegExpError(thisObj);
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@split", thisObj);
         }
 
     }
@@ -748,7 +748,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isJSObject(thisObj)")
         protected Object replace(Object thisObj, @SuppressWarnings("unused") Object pattern, @SuppressWarnings("unused") Object flags) {
-            throw createNoRegExpError(thisObj);
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@replae", thisObj);
         }
 
         protected int processResult(DelimitedStringBuilder accumulatedResult, DynamicObject result, String s, String replaceString, int nextSourcePosition, int matchLength, boolean replaceEmpty,
@@ -1058,7 +1058,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isJSObject(thisObj)")
         protected Object match(Object thisObj, @SuppressWarnings("unused") Object string) {
-            throw createNoRegExpError(thisObj);
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@match", thisObj);
         }
 
         private JSToLengthNode getToLengthNode() {
@@ -1101,7 +1101,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isJSObject(thisObj)")
         protected Object search(Object thisObj, @SuppressWarnings("unused") Object string) {
-            throw createNoRegExpError(thisObj);
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@search", thisObj);
         }
     }
 
@@ -1122,7 +1122,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isJSObject(thisObj)")
         protected Object matchAll(Object thisObj, @SuppressWarnings("unused") Object string) {
-            throw createNoRegExpError(thisObj);
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@matchAll", thisObj);
         }
 
         private MatchAllIteratorNode getMatchAllIteratorNode() {
