@@ -372,7 +372,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                 throw Errors.createTypeError("method called on incompatible receiver").setRealm(realm);
             }
         }), 0, "get " + key));
-        JSObjectUtil.putConstantAccessorProperty(context, prototype, key, lengthGetter, Undefined.instance, JSAttributes.configurableNotEnumerable());
+        JSObjectUtil.putConstantAccessorProperty(context, prototype, key, lengthGetter, Undefined.instance);
     }
 
     private abstract static class ArrayBufferViewGetter extends Node {
@@ -453,7 +453,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                 return Undefined.instance;
             }
         }), 0, "get [Symbol.toStringTag]"));
-        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTagGetter, Undefined.instance, JSAttributes.configurableNotEnumerable());
+        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTagGetter, Undefined.instance);
         // The initial value of the @@iterator property is the same function object as the initial
         // value of the %TypedArray%.prototype.values property.
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_ITERATOR, prototype.get("values"), JSAttributes.getDefaultNotEnumerable());

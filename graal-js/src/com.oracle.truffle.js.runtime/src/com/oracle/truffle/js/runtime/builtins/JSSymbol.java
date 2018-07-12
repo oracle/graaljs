@@ -110,7 +110,7 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_PRIMITIVE, createToPrimitiveFunction(realm), JSAttributes.configurableNotEnumerableNotWritable());
         if (ctx.getContextOptions().getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
-            JSObjectUtil.putConstantAccessorProperty(ctx, prototype, DESCRIPTION, createDescriptionGetterFunction(realm), Undefined.instance, JSAttributes.configurableNotEnumerableNotWritable());
+            JSObjectUtil.putConstantAccessorProperty(ctx, prototype, DESCRIPTION, createDescriptionGetterFunction(realm), Undefined.instance);
         }
         return prototype;
     }
@@ -159,7 +159,6 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
             }
         });
         DynamicObject descriptionGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, callTarget, 0, "get " + DESCRIPTION));
-        JSObject.preventExtensions(descriptionGetter);
         return descriptionGetter;
     }
 

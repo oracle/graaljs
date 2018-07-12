@@ -131,7 +131,7 @@ public final class JSSIMD extends JSBuiltinObject {
                 return Undefined.instance;
             }
         }), 0, "get [Symbol.toStringTag]"));
-        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTagGetter, Undefined.instance, JSAttributes.configurableNotEnumerable());
+        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTagGetter, Undefined.instance);
         return prototype;
     }
 
@@ -141,8 +141,7 @@ public final class JSSIMD extends JSBuiltinObject {
         DynamicObject taPrototype = createTypedArrayPrototype(realm, taConstructor);
         JSObjectUtil.putDataProperty(ctx, taConstructor, JSObject.PROTOTYPE, taPrototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
 
-        JSObjectUtil.putConstantAccessorProperty(ctx, taConstructor, Symbol.SYMBOL_SPECIES, createSymbolSpeciesGetterFunction(realm), Undefined.instance,
-                        JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putConstantAccessorProperty(ctx, taConstructor, Symbol.SYMBOL_SPECIES, createSymbolSpeciesGetterFunction(realm), Undefined.instance);
         return new JSConstructor(taConstructor, taPrototype);
     }
 
@@ -171,8 +170,7 @@ public final class JSSIMD extends JSBuiltinObject {
         DynamicObject simdPrototype = createSIMDPrototype(realm, simdConstructor, factory, taConstructor.getPrototype());
         JSObjectUtil.putDataProperty(ctx, simdConstructor, JSObject.PROTOTYPE, simdPrototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(realm, simdConstructor, constructorName);
-        JSObjectUtil.putConstantAccessorProperty(ctx, simdConstructor, Symbol.SYMBOL_SPECIES, createSymbolSpeciesGetterFunction(realm), Undefined.instance,
-                        JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putConstantAccessorProperty(ctx, simdConstructor, Symbol.SYMBOL_SPECIES, createSymbolSpeciesGetterFunction(realm), Undefined.instance);
         return new JSConstructor(simdConstructor, simdPrototype);
     }
 

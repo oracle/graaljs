@@ -102,7 +102,7 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
         /* ECMA2017 24.2.4.1 get SharedArrayBuffer.prototype.byteLength */
         DynamicObject byteLengthGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, createByteLengthGetterCallTarget(context), 0, "get " + BYTE_LENGTH));
         JSObjectUtil.putDataProperty(context, arrayBufferPrototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        JSObjectUtil.putConstantAccessorProperty(context, arrayBufferPrototype, BYTE_LENGTH, byteLengthGetter, Undefined.instance, JSAttributes.configurableNotEnumerable());
+        JSObjectUtil.putConstantAccessorProperty(context, arrayBufferPrototype, BYTE_LENGTH, byteLengthGetter, Undefined.instance);
         return arrayBufferPrototype;
     }
 
