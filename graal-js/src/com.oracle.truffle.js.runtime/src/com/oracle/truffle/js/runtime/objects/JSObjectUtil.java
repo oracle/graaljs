@@ -217,6 +217,10 @@ public final class JSObjectUtil {
         thisObj.define(checkForNoSuchPropertyOrMethod(context, key), accessor, flags | JSProperty.ACCESSOR);
     }
 
+    public static void putConstantAccessorProperty(JSContext context, DynamicObject thisObj, Object key, DynamicObject getter, DynamicObject setter) {
+        putConstantAccessorProperty(context, thisObj, key, getter, setter, JSAttributes.configurableNotEnumerable());
+    }
+
     public static void putConstantAccessorProperty(JSContext context, DynamicObject thisObj, Object key, DynamicObject getter, DynamicObject setter, int flags) {
         putAccessorProperty(context, thisObj, key, getter, setter, flags);
     }

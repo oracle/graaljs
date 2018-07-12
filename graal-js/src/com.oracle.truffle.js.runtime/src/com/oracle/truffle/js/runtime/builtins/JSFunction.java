@@ -638,8 +638,8 @@ public final class JSFunction extends JSBuiltinObject {
     }
 
     private static void addRestrictedFunctionProperties(JSRealm realm, DynamicObject obj) {
-        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, CALLER, realm.getThrowerFunction(), realm.getThrowerFunction(), JSAttributes.configurableNotEnumerable());
-        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, ARGUMENTS, realm.getThrowerFunction(), realm.getThrowerFunction(), JSAttributes.configurableNotEnumerable());
+        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, CALLER, realm.getThrowerFunction(), realm.getThrowerFunction());
+        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, ARGUMENTS, realm.getThrowerFunction(), realm.getThrowerFunction());
     }
 
     public static JSFunctionData createEmptyFunctionData(JSContext context) {

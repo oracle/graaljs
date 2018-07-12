@@ -321,7 +321,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
             JSObjectUtil.putHiddenProperty(prototype, COMPILED_REGEX_PROPERTY, RegexCompilerInterface.compile("", "", ctx));
             JSObjectUtil.putDataProperty(ctx, prototype, LAST_INDEX_PROPERTY, 0);
         }
-        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, FLAGS, createFlagsGetterFunction(realm), Undefined.instance, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, FLAGS, createFlagsGetterFunction(realm), Undefined.instance);
 
         putRegExpPropertyAccessor(realm, prototype, MULTILINE,
                         new CompiledRegexFlagPropertyAccessor(prototype, TRegexUtil.Props.Flags.MULTILINE, Undefined.instance));
@@ -652,7 +652,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     private static void putRegExpPropertyAccessor(JSRealm realm, DynamicObject prototype, String name, JavaScriptRootNode accessor) {
         JSContext ctx = realm.getContext();
         DynamicObject getter = JSFunction.create(realm, JSFunctionData.createCallOnly(ctx, Truffle.getRuntime().createCallTarget(accessor), 0, "get " + name));
-        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, name, getter, Undefined.instance, JSAttributes.configurableNotEnumerable());
+        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, name, getter, Undefined.instance);
     }
 
     @TruffleBoundary

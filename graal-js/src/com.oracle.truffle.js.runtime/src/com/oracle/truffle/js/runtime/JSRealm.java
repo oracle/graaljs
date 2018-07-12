@@ -902,7 +902,7 @@ public class JSRealm implements ShapeContext {
         }), 0, "set " + JSObject.PROTO));
 
         // ES6 draft annex, B.2.2 Additional Properties of the Object.prototype Object
-        JSObjectUtil.putConstantAccessorProperty(context, realm.getObjectPrototype(), JSObject.PROTO, getProto, setProto, JSAttributes.configurableNotEnumerable());
+        JSObjectUtil.putConstantAccessorProperty(context, realm.getObjectPrototype(), JSObject.PROTO, getProto, setProto);
     }
 
     public final DynamicObject getThrowerFunction() {
