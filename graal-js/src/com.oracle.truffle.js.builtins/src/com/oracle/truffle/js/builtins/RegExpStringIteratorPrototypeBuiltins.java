@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -177,6 +178,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         private HasHiddenKeyCacheNode getIsRegExpStringIteratorNode() {
             if (isRegExpStringIteratorNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 isRegExpStringIteratorNode = insert(HasHiddenKeyCacheNode.create(JSString.REGEXP_ITERATOR_ITERATING_REGEXP_ID));
             }
             return isRegExpStringIteratorNode;
@@ -184,6 +186,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         private PropertyGetNode getGetIteratingRegExpNode() {
             if (getIteratingRegExpNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 getIteratingRegExpNode = insert(PropertyGetNode.createGetHidden(JSString.REGEXP_ITERATOR_ITERATING_REGEXP_ID, getContext()));
             }
             return getIteratingRegExpNode;
@@ -191,6 +194,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         private PropertyGetNode getGetIteratedStringNode() {
             if (getIteratedStringNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 getIteratedStringNode = insert(PropertyGetNode.createGetHidden(JSString.REGEXP_ITERATOR_ITERATED_STRING_ID, getContext()));
             }
             return getIteratedStringNode;
@@ -198,6 +202,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         private PropertyGetNode getGetGlobalNode() {
             if (getGlobalNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 getGlobalNode = insert(PropertyGetNode.createGetHidden(JSString.REGEXP_ITERATOR_GLOBAL_ID, getContext()));
             }
             return getGlobalNode;
@@ -205,6 +210,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         private PropertyGetNode getGetUnicodeNode() {
             if (getUnicodeNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 getUnicodeNode = insert(PropertyGetNode.createGetHidden(JSString.REGEXP_ITERATOR_UNICODE_ID, getContext()));
             }
             return getUnicodeNode;
@@ -212,6 +218,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         private PropertyGetNode getGetDoneNode() {
             if (getDoneNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 getDoneNode = insert(PropertyGetNode.createGetHidden(JSString.REGEXP_ITERATOR_DONE_ID, getContext()));
             }
             return getDoneNode;
@@ -219,6 +226,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         private PropertySetNode getSetDoneNode() {
             if (setDoneNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 setDoneNode = insert(PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_DONE_ID, getContext()));
             }
             return setDoneNode;
@@ -226,6 +234,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         private JSToStringNode getToStringNode() {
             if (toStringNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 toStringNode = insert(JSToStringNode.create());
             }
             return toStringNode;
@@ -233,6 +242,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         private JSToLengthNode getToLengthNode() {
             if (toLengthNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 toLengthNode = insert(JSToLengthNode.create());
             }
             return toLengthNode;
@@ -240,6 +250,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         private CreateIterResultObjectNode getCreateIterResultObjectNode() {
             if (createIterResultObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 createIterResultObjectNode = insert(CreateIterResultObjectNode.create(getContext()));
             }
             return createIterResultObjectNode;
