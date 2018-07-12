@@ -216,6 +216,34 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
         assertPropertyRead("cnt");
     }
 
+    @Test
+    public void readPrototypeInCall() {
+        String src = "var addProperty = function(color, func) {" +
+                        "  String.prototype.__defineGetter__(color, func);" +
+                        "};" +
+                        "var colors = [1,2,3,4,5,6,7,8,9,10];" +
+                        "addProperty(colors[0], function(){});" +
+                        "colors.forEach(function(c) {" +
+                        "    addProperty(c, function(){});" +
+                        "  }" +
+                        ");";
+        evalWithTag(src, ReadPropertyExpressionTag.class);
+
+        assertPropertyRead("addProperty");
+        assertPropertyRead("colors");
+        assertNestedPropertyRead("prototype", "String");
+        assertPropertyRead("__defineGetter__");
+
+        assertPropertyRead("colors");
+        assertPropertyRead("forEach");
+
+        for (int i = 0; i < 10; i++) {
+            assertPropertyRead("addProperty");
+            assertNestedPropertyRead("prototype", "String");
+            assertPropertyRead("__defineGetter__");
+        }
+    }
+
     private void assertPropertyRead(String key) {
         enter(ReadPropertyExpressionTag.class, (e, pr) -> {
             assertAttribute(e, KEY, key);
