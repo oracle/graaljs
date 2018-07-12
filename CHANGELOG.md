@@ -5,6 +5,7 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 1.0.0 RC5
 * Add support for `Symbol.prototype.description`, a Stage 3 proposal.
+* Add support for `String.prototype.matchAll`, a Stage 3 proposal.
 
 ## Version 1.0.0 RC4
 * Added stack trace limit option (--js.stack-trace-limit).
