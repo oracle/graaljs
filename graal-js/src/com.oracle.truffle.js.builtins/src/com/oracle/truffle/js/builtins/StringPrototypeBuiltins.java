@@ -2307,7 +2307,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     return call(matcher, regex, new Object[]{thisObj});
                 }
             }
-            return getMatchAllIteratorNode().createMatchAllIterator(frame, thisObj, regex);
+            return getMatchAllIteratorNode().createMatchAllIterator(frame, regex, thisObj);
         }
 
         private MatchAllIteratorNode getMatchAllIteratorNode() {
@@ -2459,7 +2459,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private JSToStringNode getToStringNodeForRegex() {
             if (toStringNodeForRegex == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toStringNodeForRegex = insert(JSToStringNode.create());
+                toStringNodeForRegex = insert(JSToStringNode.createUndefinedToEmpty());
             }
             return toStringNodeForRegex;
         }
