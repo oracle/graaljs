@@ -22,15 +22,179 @@
     "filePath" : "annexB/language/comments/single-line-html-close-asi.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "annexB/language/comments/single-line-html-close-unicode-separators.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "annexB/language/comments/single-line-html-close.js",
     "status" : "FAIL"
   }, {
     "filePath" : "annexB/language/comments/single-line-html-open.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "annexB/language/eval-code/direct/global-block-decl-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/direct/global-block-decl-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/direct/global-if-decl-else-decl-a-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/direct/global-if-decl-else-decl-a-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/direct/global-if-decl-else-decl-b-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/direct/global-if-decl-else-decl-b-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/direct/global-if-decl-else-stmt-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/direct/global-if-decl-else-stmt-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/direct/global-if-decl-no-else-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/direct/global-if-decl-no-else-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/direct/global-if-stmt-else-decl-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/direct/global-if-stmt-else-decl-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/direct/global-switch-case-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/direct/global-switch-case-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/direct/global-switch-dflt-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/direct/global-switch-dflt-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-block-decl-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-block-decl-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-if-decl-else-decl-a-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-if-decl-else-decl-a-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-if-decl-else-decl-b-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-if-decl-else-decl-b-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-if-decl-else-stmt-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-if-decl-else-stmt-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-if-decl-no-else-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-if-decl-no-else-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-if-stmt-else-decl-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-if-stmt-else-decl-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-switch-case-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-switch-case-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-switch-dflt-eval-global-existing-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/eval-code/indirect/global-switch-dflt-eval-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "annexB/language/expressions/yield/star-iterable-return-emulates-undefined-throws-when-called.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
+  }, {
+    "filePath" : "annexB/language/global-code/block-decl-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/global-code/if-decl-else-decl-a-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/global-code/if-decl-else-decl-b-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/global-code/if-decl-else-stmt-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/global-code/if-decl-no-else-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/global-code/if-stmt-else-decl-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/global-code/switch-case-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "annexB/language/global-code/switch-dflt-global-existing-non-enumerable-global-init.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "annexB/language/statements/for-await-of/iterator-close-return-emulates-undefined-throws-when-called.js",
     "status" : "FAIL",
@@ -39,6 +203,50 @@
     "filePath" : "annexB/language/statements/for-of/iterator-close-return-emulates-undefined-throws-when-called.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
+  }, {
+    "filePath" : "built-ins/Array/prototype/filter/target-array-with-non-writable-property.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Array/prototype/flat/array-like-objects.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Array/prototype/flat/bound-function-call.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Array/prototype/flat/empty-array-elements.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Array/prototype/flat/empty-object-elements.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Array/prototype/flat/length.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Array/prototype/flat/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Array/prototype/flat/non-numeric-depth-should-not-throw.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Array/prototype/flat/null-undefined-elements.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Array/prototype/flat/positive-infinity.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Array/prototype/flat/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/Array/prototype/flatMap/array-like-objects.js",
     "status" : "SKIP",
@@ -64,49 +272,25 @@
     "status" : "SKIP",
     "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
   }, {
-    "filePath" : "built-ins/Array/prototype/flatten/array-like-objects.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
-    "filePath" : "built-ins/Array/prototype/flatten/bound-function-call.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
-    "filePath" : "built-ins/Array/prototype/flatten/empty-array-elements.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
-    "filePath" : "built-ins/Array/prototype/flatten/empty-object-elements.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
-    "filePath" : "built-ins/Array/prototype/flatten/length.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
-    "filePath" : "built-ins/Array/prototype/flatten/name.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
-    "filePath" : "built-ins/Array/prototype/flatten/non-numeric-depth-should-not-throw.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
-    "filePath" : "built-ins/Array/prototype/flatten/null-undefined-elements.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
-    "filePath" : "built-ins/Array/prototype/flatten/positive-infinity.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
-    "filePath" : "built-ins/Array/prototype/flatten/prop-desc.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
-    "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/throw/iterator-result-unwrap-promise.js",
+    "filePath" : "built-ins/Array/prototype/indexOf/calls-only-has-on-prototype-after-length-zeroed.js",
     "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Array/prototype/lastIndexOf/calls-only-has-on-prototype-after-length-zeroed.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Array/prototype/map/target-array-with-non-writable-property.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Array/prototype/slice/target-array-with-non-writable-property.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Array/prototype/splice/target-array-with-non-writable-property.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/AsyncGeneratorPrototype/return/request-queue-order-state-executing.js",
     "status" : "FAIL",
@@ -124,101 +308,433 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "built-ins/Atomics/add/bad-range.js",
+    "filePath" : "built-ins/Atomics/add/bigint/bad-range.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/add/nonshared-int-views.js",
+    "filePath" : "built-ins/Atomics/add/bigint/good-views.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/and/bad-range.js",
+    "filePath" : "built-ins/Atomics/add/bigint/nonshared-int-views.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/and/nonshared-int-views.js",
+    "filePath" : "built-ins/Atomics/and/bigint/bad-range.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/compareExchange/bad-range.js",
+    "filePath" : "built-ins/Atomics/and/bigint/good-views.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/compareExchange/nonshared-int-views.js",
+    "filePath" : "built-ins/Atomics/and/bigint/nonshared-int-views.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/exchange/bad-range.js",
+    "filePath" : "built-ins/Atomics/compareExchange/bigint/bad-range.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/exchange/nonshared-int-views.js",
+    "filePath" : "built-ins/Atomics/compareExchange/bigint/good-views.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/load/bad-range.js",
+    "filePath" : "built-ins/Atomics/compareExchange/bigint/nonshared-int-views.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/load/nonshared-int-views.js",
+    "filePath" : "built-ins/Atomics/compareExchange/good-views.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/or/bad-range.js",
+    "filePath" : "built-ins/Atomics/exchange/bigint/bad-range.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/or/nonshared-int-views.js",
+    "filePath" : "built-ins/Atomics/exchange/bigint/good-views.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/store/bad-range.js",
+    "filePath" : "built-ins/Atomics/exchange/bigint/nonshared-int-views.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/store/nonshared-int-views.js",
+    "filePath" : "built-ins/Atomics/isLockFree/bigint/expected-return-value.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/sub/bad-range.js",
+    "filePath" : "built-ins/Atomics/load/bigint/bad-range.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/sub/nonshared-int-views.js",
+    "filePath" : "built-ins/Atomics/load/bigint/good-views.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/wait/bad-range.js",
+    "filePath" : "built-ins/Atomics/load/bigint/nonshared-int-views.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/or/bigint/bad-range.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/or/bigint/good-views.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/or/bigint/nonshared-int-views.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/store/bigint/bad-range.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/store/bigint/good-views.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/store/bigint/nonshared-int-views.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/sub/bigint/bad-range.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/sub/bigint/good-views.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/sub/bigint/nonshared-int-views.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/bad-range.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/cannot-suspend-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/false-for-timeout-agent.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/false-for-timeout.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/nan-for-timeout.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/negative-index-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/negative-timeout-agent.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/negative-timeout.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-no-operation.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-add.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-and.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-compareExchange.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-exchange.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-or.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-store.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-sub.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-on-xor.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/non-bigint64-typedarray-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/non-shared-bufferdata-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/null-bufferdata-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/out-of-range-index-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/value-not-equal.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/waiterlist-block-indexedposition-wake.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/waiterlist-order-of-operations-is-fifo.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/bigint/was-woken-before-timeout.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/cannot-suspend-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/false-for-timeout-agent.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/good-views.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/nan-for-timeout.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/Atomics/wait/negative-index-throws.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "built-ins/Atomics/wait/nonshared-int-views.js",
+    "filePath" : "built-ins/Atomics/wait/negative-timeout-agent.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-no-operation.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-add.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-and.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-compareExchange.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-exchange.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-or.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-store.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-sub.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-xor.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/null-for-timeout-agent.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/object-for-timeout-agent.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/object-for-timeout.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/poisoned-object-for-timeout-throws-agent.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/symbol-for-index-throws-agent.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/symbol-for-timeout-throws-agent.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/symbol-for-value-throws-agent.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/true-for-timeout-agent.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/undefined-for-timeout.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/Atomics/wait/undefined-index-defaults-to-zero.js",
     "status" : "SKIP",
     "comment" : "fails randomly, highly timing sensitive (sleep(5) + wait(10)), will be fixed by Test262 update"
   }, {
-    "filePath" : "built-ins/Atomics/wake/bad-range.js",
+    "filePath" : "built-ins/Atomics/wait/value-not-equal.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/wake/nonshared-int-views.js",
+    "filePath" : "built-ins/Atomics/wait/wait-index-value-not-equal.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/xor/bad-range.js",
+    "filePath" : "built-ins/Atomics/wait/waiterlist-block-indexedposition-wake.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/xor/nonshared-int-views.js",
+    "filePath" : "built-ins/Atomics/wait/waiterlist-order-of-operations-is-fifo.js",
     "status" : "FAIL",
-    "comment" : "BigInt64Array and BigUInt64Array is missing"
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wait/was-woken-before-timeout.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/bigint/bad-range.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/bigint/non-bigint64-typedarray-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/bigint/non-shared-bufferdata-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/bigint/null-bufferdata-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/bigint/wake-all-on-loc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/count-defaults-to-infinity-missing.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/count-defaults-to-infinity-undefined.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/count-from-nans.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/negative-count.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/undefined-index-defaults-to-zero.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/wake-all-on-loc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/wake-all.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/wake-in-order-one-time.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/wake-in-order.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/wake-nan.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/wake-one.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/wake-rewake-noop.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/wake-two.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/wake-with-no-agents-waiting.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/wake-with-no-matching-agents-waiting.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/wake/wake-zero.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/xor/bigint/bad-range.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/xor/bigint/good-views.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Atomics/xor/bigint/nonshared-int-views.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/BigInt/constructor-integer.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/DataView/custom-proto-access-detaches-buffer.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/DataView/prototype/getBigInt64/detached-buffer-after-toindex-byteoffset.js",
     "status" : "FAIL",
@@ -388,15 +904,63 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
+    "filePath" : "built-ins/Function/prototype/bind/length-exceeds-int32.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "built-ins/Function/prototype/toString/line-terminator-normalisation-CR-LF.js",
     "status" : "FAIL"
   }, {
     "filePath" : "built-ins/Function/prototype/toString/line-terminator-normalisation-CR.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "built-ins/Function/prototype/toString/proxy.js",
+    "filePath" : "built-ins/Function/prototype/toString/proxy-arrow-function.js",
     "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Function/prototype/toString/proxy-async-function.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Function/prototype/toString/proxy-async-generator-function.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Function/prototype/toString/proxy-async-generator-method-definition.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Function/prototype/toString/proxy-async-method-definition.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Function/prototype/toString/proxy-bound-function.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Function/prototype/toString/proxy-class.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Function/prototype/toString/proxy-function-expression.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Function/prototype/toString/proxy-generator-function.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Function/prototype/toString/proxy-method-definition.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Object/prototype/toString/symbol-tag-non-str-bigint.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Reflect/ownKeys/return-on-corresponding-order-large-index.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
     "status" : "SKIP",
@@ -573,6 +1137,10 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/Emoji_Presentation.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Extended_Pictographic.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Extender.js",
     "status" : "SKIP",
@@ -922,6 +1490,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Dogra.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Duployan.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -962,6 +1534,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Gunjala_Gondi.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Gurmukhi.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -973,6 +1549,10 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Hangul.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Hanifi_Rohingya.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Hanunoo.js",
     "status" : "SKIP",
@@ -1082,6 +1662,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Makasar.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Malayalam.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1101,6 +1685,10 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Masaram_Gondi.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Medefaidrin.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Meetei_Mayek.js",
     "status" : "SKIP",
@@ -1190,6 +1778,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Old_Sogdian.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Old_South_Arabian.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1269,6 +1861,10 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Sinhala.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Sogdian.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Sora_Sompeng.js",
     "status" : "SKIP",
@@ -1486,6 +2082,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Dogra.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Duployan.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1526,6 +2126,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Gunjala_Gondi.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Gurmukhi.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1537,6 +2141,10 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Hangul.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Hanifi_Rohingya.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Hanunoo.js",
     "status" : "SKIP",
@@ -1646,6 +2254,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Makasar.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Malayalam.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1665,6 +2277,10 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Masaram_Gondi.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Medefaidrin.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Meetei_Mayek.js",
     "status" : "SKIP",
@@ -1754,6 +2370,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Old_Sogdian.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Old_South_Arabian.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1833,6 +2453,10 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Sinhala.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Sogdian.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Sora_Sompeng.js",
     "status" : "SKIP",
@@ -1966,12 +2590,248 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/isregexp-called-once.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/isregexp-this-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/length.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/regexpcreate-this-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/species-constructor-get-constructor-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/species-constructor-get-species-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/species-constructor-is-undefined.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/species-constructor-species-is-null-or-undefined.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/species-constructor-species-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/species-constructor.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/species-regexp-get-global-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/species-regexp-get-unicode-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/string-tostring-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/string-tostring.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/this-get-flags-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/this-get-flags.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/this-lastindex-cached.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/this-tolength-lastindex-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/this-tostring-flags-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/this-tostring-flags.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/ancestry.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/next/custom-regexpexec-call-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/next/custom-regexpexec-get-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/next/custom-regexpexec-match-get-0-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/next/custom-regexpexec-match-get-0-tostring-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/next/custom-regexpexec-match-get-0-tostring.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/next/custom-regexpexec-not-callable.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/next/custom-regexpexec.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/next/length.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/next/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/next/next-iteration-global.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/next/next-iteration.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/next/next-missing-internal-slots.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/next/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/next/regexp-tolength-lastindex-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/next/this-is-not-object-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/RegExpStringIteratorPrototype/Symbol.toStringTag.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/length.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/regexp-get-matchAll-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/regexp-is-null.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/regexp-is-undefined.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/regexp-matchAll-invocation.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/regexp-matchAll-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/regexp-prototype-get-matchAll-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/regexp-prototype-has-no-matchAll.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/regexp-prototype-matchAll-invocation.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/regexp-prototype-matchAll-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/this-val-non-obj-coercible.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/Final_Sigma_U180E.js",
     "status" : "FAIL",
     "comment" : "String.toLowerCase() does not handle Final_Sigma special casing with respect to u180e correctly"
   }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "built-ins/Symbol/matchAll/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Symbol/prototype/description/description-symboldescriptivestring.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Symbol/prototype/description/descriptor.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Symbol/prototype/description/get.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Symbol/prototype/description/this-val-non-symbol.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Symbol/prototype/description/this-val-symbol.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "built-ins/Symbol/prototype/description/wrapper.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/ThrowTypeError/forbidden-arguments.js",
     "status" : "FAIL"
@@ -2691,35 +3551,7 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
-    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/invoked-as-accessor.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/invoked-as-func.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/length.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/name.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
     "filePath" : "built-ins/TypedArray/prototype/length/BigInt/return-length.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/this-has-no-typedarrayname-internal.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/length/BigInt/this-is-not-object.js",
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
@@ -2790,10 +3622,6 @@
     "filePath" : "built-ins/TypedArray/prototype/map/BigInt/values-are-not-cached.js",
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/map/return-new-typedarray-conversion-operation-consistent-nan.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "built-ins/TypedArray/prototype/reduce/BigInt/callbackfn-arguments-custom-accumulator.js",
     "status" : "FAIL",
@@ -3506,35 +4334,7 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
-    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/invoked-as-accessor.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/invoked-as-func.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/length.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/name.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
     "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/return-typedarrayname.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/this-has-no-typedarrayname-internal.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/Symbol.toStringTag/BigInt/this-is-not-object.js",
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
@@ -4854,6 +5654,10 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
+    "filePath" : "intl402/Array/prototype/toLocaleString/calls-toLocaleString-number-elements.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -4878,6 +5682,10 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
+    "filePath" : "intl402/Intl/getCanonicalLocales/Locale-object.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "intl402/Intl/getCanonicalLocales/preferred-grandfathered.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -4898,9 +5706,509 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
+    "filePath" : "intl402/ListFormat/prototype/toStringTag/toString.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/ListFormat/prototype/toStringTag/toStringTag.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-getter-order.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-locale-object.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-non-iana-canon.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-calendar-invalid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-calendar-valid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-casefirst-invalid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-casefirst-valid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-collation-invalid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-collation-valid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-hourcycle-invalid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-hourcycle-valid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-language-grandfathered.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-language-invalid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-language-valid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-numberingsystem-invalid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-numberingsystem-valid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-numeric-valid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-region-invalid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-region-valid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-script-invalid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-options-script-valid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-parse-twice.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-tag-tostring.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-tag.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-unicode-ext-invalid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/constructor-unicode-ext-valid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/extensions-grandfathered.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/extensions-private.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/function-prototype.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/getters-grandfathered.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/getters-missing.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/getters-privateuse.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/getters.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/instance-extensibility.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/instance.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/invalid-tag-throws.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/length.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/likely-subtags-grandfathered.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/likely-subtags.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/baseName/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/baseName/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/baseName/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/calendar/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/calendar/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/calendar/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/caseFirst/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/caseFirst/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/caseFirst/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/collation/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/collation/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/collation/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/constructor/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/hourCycle/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/hourCycle/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/hourCycle/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/language/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/language/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/language/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/maximize/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/maximize/length.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/maximize/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/maximize/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/minimize/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/minimize/length.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/minimize/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/minimize/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/numberingSystem/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/numberingSystem/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/numberingSystem/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/numeric/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/numeric/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/numeric/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/region/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/region/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/region/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/script/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/script/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/script/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/toString/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/toString/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/toStringTag/toString-removed-tag.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/toStringTag/toString.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Locale/prototype/toStringTag/toStringTag.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-fraction-digits.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/format-negative-numbers.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/constructor/locales-invalid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/constructor/options-localeMatcher-invalid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/constructor/options-numeric-invalid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/constructor/options-numeric-valid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/constructor/options-order.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/constructor/options-proto.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/constructor/options-style-invalid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/constructor/options-style-valid.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/length.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/prototype.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/supportedLocalesOf/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/supportedLocalesOf/length.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/supportedLocalesOf/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/supportedLocalesOf/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/instance/extensibility.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/instance/prototype.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/constructor/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/format/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/format/length.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/format/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/format/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/formatToParts/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/formatToParts/length.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/formatToParts/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/formatToParts/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/resolvedOptions/branding.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/resolvedOptions/length.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/resolvedOptions/name.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/resolvedOptions/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/toStringTag/toString.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/toStringTag/toStringTag.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Segmenter/prototype/toStringTag/toString.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "intl402/Segmenter/prototype/toStringTag/toStringTag.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "intl402/supportedLocalesOf-consistent-with-resolvedOptions.js",
     "status" : "FAIL",
@@ -4917,6 +6225,10 @@
     "filePath" : "intl402/supportedLocalesOf-throws-if-element-not-string-or-object.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
+  }, {
+    "filePath" : "intl402/TypedArray/prototype/toLocaleString/calls-toLocaleString-number-elements.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "language/computed-property-names/class/static/method-number.js",
     "status" : "FAIL"
@@ -5003,6 +6315,22 @@
   }, {
     "filePath" : "language/expressions/assignment/S11.13.1_A7_T3.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "language/expressions/async-arrow-function/await-as-param-ident-nested-arrow-parameter-position.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/async-arrow-function/await-as-param-nested-arrow-body-position.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/async-arrow-function/await-as-param-nested-arrow-parameter-position.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/async-arrow-function/await-as-param-rest-nested-arrow-parameter-position.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "language/expressions/async-arrow-function/early-errors-arrow-formals-lineterminator.js",
     "status" : "FAIL",
@@ -5104,6 +6432,34 @@
     "filePath" : "language/expressions/class/async-gen-method-yield-star-sync-next.js",
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
+  }, {
+    "filePath" : "language/expressions/class/class-name-ident-let-escaped.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/class/class-name-ident-let.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/class/class-name-ident-static-escaped.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/class/class-name-ident-static.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/class/class-name-ident-yield-escaped.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/class/class-name-ident-yield.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/class/constructor-this-tdz-during-initializers.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "language/expressions/class/fields-after-same-line-gen-computed-names.js",
     "status" : "FAIL",
@@ -5469,6 +6825,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-09-06)"
   }, {
+    "filePath" : "language/expressions/class/fields-run-once-on-double-super.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "language/expressions/class/fields-same-line-async-gen-computed-names.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-09-06)"
@@ -5637,6 +6997,54 @@
     "filePath" : "language/expressions/generators/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "language/expressions/greater-than-or-equal/bigint-and-incomparable-string.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/greater-than-or-equal/bigint-and-string.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/greater-than/bigint-and-boolean.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/greater-than/bigint-and-incomparable-string.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/greater-than/bigint-and-string.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/greater-than/bigint-and-symbol.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/less-than-or-equal/bigint-and-incomparable-string.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/less-than-or-equal/bigint-and-string.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/less-than/bigint-and-boolean.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/less-than/bigint-and-incomparable-string.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/less-than/bigint-and-string.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/expressions/less-than/bigint-and-symbol.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "language/expressions/logical-and/tco-right.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests SKIPing due to StackOverflow"
@@ -5775,6 +7183,10 @@
     "filePath" : "language/expressions/tagged-template/tco-member.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
+  }, {
+    "filePath" : "language/expressions/tagged-template/template-object-template-map.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "language/expressions/tco-pos.js",
     "status" : "SKIP",
@@ -5998,9 +7410,41 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
+    "filePath" : "language/literals/regexp/invalid-optional-lookbehind.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/literals/regexp/invalid-optional-negative-lookbehind.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/literals/regexp/invalid-range-lookbehind.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/literals/regexp/invalid-range-negative-lookbehind.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "language/literals/regexp/u-surrogate-pairs-atom-escape-decimal.js",
     "status" : "FAIL",
     "comment" : "Back-references cause TRegex to bail out and then JONI is unable to cope with Unicode."
+  }, {
+    "filePath" : "language/literals/string/line-separator-eval.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/literals/string/line-separator.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/literals/string/paragraph-separator-eval.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/literals/string/paragraph-separator.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "language/module-code/eval-export-dflt-cls-anon.js",
     "status" : "FAIL"
@@ -6016,6 +7460,18 @@
   }, {
     "filePath" : "language/module-code/eval-gtbndng-indirect-update-dflt.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "language/module-code/eval-rqstd-once.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/module-code/eval-rqstd-order.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/module-code/eval-self-once.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "language/module-code/instn-iee-star-cycle.js",
     "status" : "FAIL",
@@ -6049,6 +7505,18 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
+    "filePath" : "language/module-code/instn-once.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/module-code/instn-star-as-props-dflt-skip.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/module-code/instn-star-props-nrml.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
     "filePath" : "language/module-code/instn-star-star-cycle.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
@@ -6063,6 +7531,14 @@
     "filePath" : "language/module-code/namespace/internals/enumerate-binding-uninit.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
+  }, {
+    "filePath" : "language/module-code/namespace/internals/get-nested-namespace-dflt-skip.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/module-code/namespace/internals/get-nested-namespace-props-nrml.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "language/module-code/namespace/internals/get-own-property-str-found-uninit.js",
     "status" : "FAIL"
@@ -6143,6 +7619,30 @@
     "filePath" : "language/statements/class/async-gen-method-yield-star-sync-next.js",
     "status" : "FAIL",
     "comment" : "proposal-async-iteration"
+  }, {
+    "filePath" : "language/statements/class/class-name-ident-let-escaped.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/statements/class/class-name-ident-let.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/statements/class/class-name-ident-static-escaped.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/statements/class/class-name-ident-static.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/statements/class/class-name-ident-yield-escaped.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
+  }, {
+    "filePath" : "language/statements/class/class-name-ident-yield.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "language/statements/class/classelementname-abrupt-completion.js",
     "status" : "FAIL",
@@ -6722,6 +8222,10 @@
     "filePath" : "language/statements/class/super-fielddefinition-initializer-abrupt-completion.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
+  }, {
+    "filePath" : "language/statements/class/super/in-constructor-superproperty-evaluation.js",
+    "status" : "FAIL",
+    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "language/statements/do-while/tco-body.js",
     "status" : "SKIP",
