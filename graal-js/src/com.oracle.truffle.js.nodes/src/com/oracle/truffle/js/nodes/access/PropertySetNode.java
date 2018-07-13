@@ -102,6 +102,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
@@ -119,7 +120,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         if (JSTruffleOptions.PropertyCacheLimit > 0) {
             return new UninitializedPropertySetNode(key, isGlobal, context, isStrict, setOwnProperty, attributeFlags);
         } else {
-            return new GenericPropertySetNode(key, isGlobal, isStrict, setOwnProperty, context);
+            return new GenericPropertySetNode(key, isGlobal, isStrict, setOwnProperty, attributeFlags, context);
         }
     }
 
@@ -901,13 +902,16 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         private final boolean isGlobal;
         private final boolean isStrict;
         private final boolean setOwnProperty;
+        private final byte attributeFlags;
         protected final JSContext context;
 
-        public TerminalPropertySetNode(Object key, boolean isGlobal, boolean isStrict, boolean setOwnProperty, JSContext context) {
+        public TerminalPropertySetNode(Object key, boolean isGlobal, boolean isStrict, boolean setOwnProperty, int attributeFlags, JSContext context) {
             super(key);
+            assert setOwnProperty ? attributeFlags == (attributeFlags & JSAttributes.ATTRIBUTES_MASK) : attributeFlags == JSAttributes.getDefault();
             this.isGlobal = isGlobal;
             this.isStrict = isStrict;
             this.setOwnProperty = setOwnProperty;
+            this.attributeFlags = (byte) attributeFlags;
             this.context = context;
         }
 
@@ -960,6 +964,11 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         public JSContext getContext() {
             return context;
         }
+
+        @Override
+        protected int getAttributeFlags() {
+            return attributeFlags;
+        }
     }
 
     @NodeInfo(cost = NodeCost.MEGAMORPHIC)
@@ -973,8 +982,8 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         private final ConditionProfile isForeignObject = ConditionProfile.createBinaryProfile();
         @CompilerDirectives.CompilationFinal private Converters.Converter converter;
 
-        public GenericPropertySetNode(Object key, boolean isGlobal, boolean isStrict, boolean setOwnProperty, JSContext context) {
-            super(key, isGlobal, isStrict, setOwnProperty, context);
+        public GenericPropertySetNode(Object key, boolean isGlobal, boolean isStrict, boolean setOwnProperty, int attributeFlags, JSContext context) {
+            super(key, isGlobal, isStrict, setOwnProperty, attributeFlags, context);
             this.toObjectNode = JSToObjectNode.createToObjectNoCheck(context);
         }
 
@@ -1009,6 +1018,8 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
                 thisJSObj.define(key, value);
             } else if (isGlobal() && isStrict() && !JSObject.hasProperty(thisJSObj, key, jsclassProfile)) {
                 globalPropertySetInStrictMode(thisObj);
+            } else if (isOwnProperty()) {
+                JSObject.defineOwnProperty(thisJSObj, key, PropertyDescriptor.createData(value, getAttributeFlags()), isStrict());
             } else {
                 JSObject.setWithReceiver(thisJSObj, key, value, receiver, isStrict(), jsclassProfile);
             }
@@ -1106,11 +1117,9 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
     public static final class UninitializedPropertySetNode extends TerminalPropertySetNode {
 
         private boolean propertyAssumptionCheckEnabled;
-        private final int attributeFlags;
 
         public UninitializedPropertySetNode(Object key, boolean isGlobal, JSContext context, boolean isStrict, boolean setOwnProperty, int attributeFlags) {
-            super(key, isGlobal, isStrict, setOwnProperty, context);
-            this.attributeFlags = attributeFlags;
+            super(key, isGlobal, isStrict, setOwnProperty, attributeFlags, context);
         }
 
         @Override
@@ -1126,11 +1135,6 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         @Override
         protected void setPropertyAssumptionCheckEnabled(boolean value) {
             this.propertyAssumptionCheckEnabled = value;
-        }
-
-        @Override
-        protected int getAttributeFlags() {
-            return attributeFlags;
         }
     }
 
@@ -1410,7 +1414,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
 
     @Override
     protected PropertySetNode createGenericPropertyNode(JSContext context) {
-        return new GenericPropertySetNode(key, isGlobal(), isStrict(), isOwnProperty(), context);
+        return new GenericPropertySetNode(key, isGlobal(), isStrict(), isOwnProperty(), getAttributeFlags(), context);
     }
 
     protected boolean isStrict() {
