@@ -292,51 +292,45 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
         @Specialization(guards = {"isInt32SharedBufferView(target)", "inboundFast(target,index)"})
         protected long doInt32ArrayLong(DynamicObject target, int index, long expected, long replacement) {
-            doCASLong(target, index, expected, replacement);
-            return replacement;
+            return doCASLong(target, index, expected, replacement);
         }
 
         @Specialization(guards = {"isInt32SharedBufferView(target)", "inboundFast(target,index)"})
-        protected Object doInt32ArrayObj(DynamicObject target, int index, Object expected, Object replacement,
+        protected int doInt32ArrayObj(DynamicObject target, int index, Object expected, Object replacement,
                         @Cached("create()") JSToIntegerSpecialNode toIntegerNode) {
-            doCASInt(target, index, (int) toIntegerNode.executeLong(expected), (int) toIntegerNode.executeLong(replacement));
-            return replacement;
+            return doCASInt(target, index, (int) toIntegerNode.executeLong(expected), (int) toIntegerNode.executeLong(replacement));
         }
 
         @Specialization(guards = {"isInt32SharedBufferView(target)"})
-        protected byte doInt32ArrayByteObjIdx(DynamicObject target, Object index,
+        protected int doInt32ArrayByteObjIdx(DynamicObject target, Object index,
                         byte expected, byte replacement,
                         @Cached("create()") JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-            doCASInt(target, intIndex, expected, replacement);
-            return replacement;
+            return doCASInt(target, intIndex, expected, replacement);
         }
 
         @Specialization(guards = {"isInt32SharedBufferView(target)"})
         protected int doInt32ArrayIntObjIdx(DynamicObject target, Object index, int expected, int replacement,
                         @Cached("create()") JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-            doCASInt(target, intIndex, expected, replacement);
-            return replacement;
+            return doCASInt(target, intIndex, expected, replacement);
         }
 
         @Specialization(guards = {"isInt32SharedBufferView(target)"})
-        protected Object doInt32ArrayLongObjIdx(DynamicObject target, Object index,
+        protected long doInt32ArrayLongObjIdx(DynamicObject target, Object index,
                         long expected, long replacement,
                         @Cached("create()") JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-            doCASLong(target, intIndex, expected, replacement);
-            return replacement;
+            return doCASLong(target, intIndex, expected, replacement);
         }
 
         @Specialization(guards = {"isInt32SharedBufferView(target)"})
-        protected Object doInt32ArrayObjObjIdx(DynamicObject target, Object index,
+        protected int doInt32ArrayObjObjIdx(DynamicObject target, Object index,
                         Object expected, Object replacement,
                         @Cached("create()") JSToIndexNode toIndexNode,
                         @Cached("create()") JSToIntegerSpecialNode toIntegerNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-            doCASInt(target, intIndex, (int) toIntegerNode.executeLong(expected), (int) toIntegerNode.executeLong(replacement));
-            return replacement;
+            return doCASInt(target, intIndex, (int) toIntegerNode.executeLong(expected), (int) toIntegerNode.executeLong(replacement));
         }
 
         @Specialization
