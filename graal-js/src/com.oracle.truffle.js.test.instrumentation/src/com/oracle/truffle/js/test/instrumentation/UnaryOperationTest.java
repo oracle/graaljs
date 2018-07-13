@@ -69,9 +69,7 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
                         assertTrue(JSObject.isJSObject(e4.val));
                     });
                 }).exit();
-                unary.input((e4) -> {
-                    assertTrue(JSObject.isJSObject(e4.val));
-                });
+                unary.input(assertJSFunctionInput);
             }).exit();
             write.input("function");
         }).exit();

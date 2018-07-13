@@ -42,7 +42,7 @@ package com.oracle.truffle.js.test.instrumentation.sourcesections;
 
 import org.junit.Test;
 
-public class AssignmentExpressionTest extends SourceSectionInstrumentationTest {
+public class ExpressionTest extends SourceSectionInstrumentationTest {
 
     @Test
     public void basicVarExpressions() {
@@ -55,7 +55,28 @@ public class AssignmentExpressionTest extends SourceSectionInstrumentationTest {
                         "a",
                         "b",
                         "a + b",
-                        "a = 3; b = 2; a + b;"
+        });
+    }
+
+    @Test
+    public void callExpression() {
+        evalExpressions("String('bla');");
+
+        assertSourceSections(new String[]{
+                        "String",
+                        // "'bla'", // TODO
+                        "String('bla')",
+        });
+    }
+
+    @Test
+    public void newExpression() {
+        evalExpressions("new String('bla');");
+
+        assertSourceSections(new String[]{
+                        "String",
+                        // "'bla'", // TODO
+                        "new String('bla')",
         });
     }
 }

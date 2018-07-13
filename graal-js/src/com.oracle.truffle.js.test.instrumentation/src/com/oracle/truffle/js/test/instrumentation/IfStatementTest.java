@@ -47,7 +47,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 
 public class IfStatementTest extends FineGrainedAccessTest {
 
@@ -85,11 +84,7 @@ public class IfStatementTest extends FineGrainedAccessTest {
             ifbody.input(true);
             // enter if branch
             enter(ControlFlowBlockTag.class, (e2, b) -> {
-                enter(WriteVariableExpressionTag.class, (e3, v) -> {
-                    enter(LiteralExpressionTag.class).exit(assertReturnValue(3));
-                    v.input(3);
-                }).exit();
-                b.input(3);
+                enter(LiteralExpressionTag.class).exit(assertReturnValue(3));
             }).exit();
             ifbody.input(3);
         }).exit();

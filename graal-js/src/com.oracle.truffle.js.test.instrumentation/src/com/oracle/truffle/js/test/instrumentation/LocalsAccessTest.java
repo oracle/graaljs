@@ -172,10 +172,6 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
         evalWithTag("for(const a of [41,42]) {};", WriteVariableExpressionTag.class);
 
         enter(WriteVariableExpressionTag.class, (e, w) -> {
-            w.input(Undefined.instance);
-        }).exit();
-
-        enter(WriteVariableExpressionTag.class, (e, w) -> {
             w.input(41);
         }).exit();
         enter(WriteVariableExpressionTag.class, (e, w) -> {
