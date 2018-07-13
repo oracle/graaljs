@@ -79,6 +79,11 @@ public final class Symbol implements TruffleObject {
      */
     public static final Symbol SYMBOL_MATCH = Symbol.create("Symbol.match");
     /**
+     * A regular expression method that returns an iterator, that yields matches of the regular
+     * expression against a string. Called by the String.prototype.matchAll method.
+     */
+    public static final Symbol SYMBOL_MATCH_ALL = Symbol.create("Symbol.matchAll");
+    /**
      * A regular expression method that replaces matched substrings of a string. Called by the
      * String.prototype.replace method.
      */

@@ -84,6 +84,14 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     public static final HiddenKey ITERATED_STRING_ID = new HiddenKey("IteratedString");
     public static final HiddenKey STRING_ITERATOR_NEXT_INDEX_ID = new HiddenKey("StringIteratorNextIndex");
 
+    public static final String REGEXP_ITERATOR_CLASS_NAME = "RegExp String Iterator";
+    public static final String REGEXP_ITERATOR_PROTOTYPE_NAME = "RegExp String Iterator.prototype";
+    public static final HiddenKey REGEXP_ITERATOR_ITERATING_REGEXP_ID = new HiddenKey("IteratingRegExp");
+    public static final HiddenKey REGEXP_ITERATOR_ITERATED_STRING_ID = new HiddenKey("IteratedString");
+    public static final HiddenKey REGEXP_ITERATOR_GLOBAL_ID = new HiddenKey("Global");
+    public static final HiddenKey REGEXP_ITERATOR_UNICODE_ID = new HiddenKey("Unicode");
+    public static final HiddenKey REGEXP_ITERATOR_DONE_ID = new HiddenKey("Done");
+
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
         STRING_PROPERTY = JSObjectUtil.makeHiddenProperty(STRING_ID, allocator.locationForType(CharSequence.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));

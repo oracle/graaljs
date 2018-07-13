@@ -56,6 +56,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins.JSNumberOperation;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.JSRegExpExecES5Node;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecES5NodeGen;
@@ -71,6 +72,7 @@ import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringInd
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringLastIndexOfNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringLocaleCompareIntlNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringLocaleCompareNodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringMatchAllNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringMatchES5NodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringMatchNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringNormalizeNodeGen;
@@ -102,6 +104,8 @@ import com.oracle.truffle.js.nodes.access.IsRegExpNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToRegExpNode;
@@ -194,6 +198,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         padEnd(1),
 
         // TBD
+        matchAll(1),
         trimStart(0),
         trimEnd(0);
 
@@ -219,6 +224,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return 6;
             } else if (EnumSet.range(padStart, padEnd).contains(this)) {
                 return 8;
+            } else if (this.equals(matchAll)) {
+                return JSTruffleOptions.ECMAScript2019;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -226,7 +233,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Override
         public boolean isEnabled() {
             if (EnumSet.of(trimStart, trimEnd).contains(this)) {
-                return (JSTruffleOptions.Stage1 || JSTruffleOptions.NashornExtensions);
+                return (JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019 || JSTruffleOptions.NashornExtensions);
+            }
+            if (this.equals(matchAll)) {
+                return JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019;
             }
             return true;
         }
@@ -322,6 +332,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             case normalize:
                 return JSStringNormalizeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
 
+            case matchAll:
+                return JSStringMatchAllNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case trimStart:
                 return JSStringTrimLeftNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case trimEnd:
@@ -2271,6 +2283,240 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 sb.append(str);
             }
             return sb.toString();
+        }
+    }
+
+    /**
+     * Implementation of the String.prototype.matchAll() method as specified by the
+     * String.prototype.matchAll draft proposal.
+     */
+    public abstract static class JSStringMatchAllNode extends JSStringOperationWithRegExpArgument {
+        @Child private MatchAllIteratorNode matchAllIteratorNode;
+
+        public JSStringMatchAllNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object matchAll(VirtualFrame frame, Object thisObj, Object regex) {
+            assert getContext().getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019;
+            requireObjectCoercible(thisObj);
+            if (isSpecialProfile.profile(!(regex == Undefined.instance || regex == Null.instance))) {
+                Object matcher = getMethod(regex, Symbol.SYMBOL_MATCH_ALL);
+                if (callSpecialProfile.profile(matcher != Undefined.instance)) {
+                    return call(matcher, regex, new Object[]{thisObj});
+                }
+            }
+            return getMatchAllIteratorNode().createMatchAllIterator(frame, regex, thisObj);
+        }
+
+        private MatchAllIteratorNode getMatchAllIteratorNode() {
+            if (matchAllIteratorNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                matchAllIteratorNode = insert(new MatchAllIteratorNode(getContext()));
+            }
+            return matchAllIteratorNode;
+        }
+    }
+
+    /**
+     * Implementation of the MatchAllIterator abstract operation as specified by the
+     * String.prototype.matchAll draft proposal.
+     */
+    public static class MatchAllIteratorNode extends JavaScriptBaseNode {
+        private final JSContext context;
+
+        @Child private JSToStringNode toStringNodeForInput;
+        @Child private IsRegExpNode isRegExpNode;
+
+        @Child private ArraySpeciesConstructorNode speciesConstructNode;
+        @Child private PropertyGetNode getFlagsNode;
+        @Child private JSToStringNode toStringNodeForFlags;
+        @Child private PropertyGetNode getGlobalNode;
+        @Child private JSToBooleanNode toBooleanNodeForGlobal;
+        @Child private PropertyGetNode getUnicodeNode;
+        @Child private JSToBooleanNode toBooleanNodeForUnicode;
+        @Child private PropertyGetNode getLastIndexNode;
+        @Child private JSToLengthNode toLengthNode;
+        @Child private PropertySetNode setLastIndexNode;
+
+        @Child private JSToStringNode toStringNodeForRegex;
+        @Child private CompileRegexNode compileRegexNode;
+        @Child private CreateRegExpNode createRegExpNode;
+
+        @Child private CreateRegExpStringIteratorNode createRegExpStringIteratorNode;
+
+        private final ConditionProfile isRegExpProfile = ConditionProfile.createBinaryProfile();
+
+        public MatchAllIteratorNode(JSContext context) {
+            this.context = context;
+            this.toStringNodeForInput = insert(JSToStringNode.create());
+            this.isRegExpNode = insert(IsRegExpNode.create(context));
+            this.createRegExpStringIteratorNode = insert(new CreateRegExpStringIteratorNode(context));
+        }
+
+        public DynamicObject createMatchAllIterator(VirtualFrame frame, Object regexObj, Object stringObj) {
+            String string = toStringNodeForInput.executeString(stringObj);
+            if (isRegExpProfile.profile(isRegExpNode.executeBoolean(regexObj))) {
+                DynamicObject regex = (DynamicObject) regexObj;
+                DynamicObject regExpConstructor = context.getRealm().getRegExpConstructor().getFunctionObject();
+                DynamicObject constructor = getSpeciesConstructNode().speciesConstructor(regex, regExpConstructor);
+                String flags = getToStringNodeForFlags().executeString(getGetFlagsNode().getValue(regex));
+                Object matcher = getSpeciesConstructNode().construct(constructor, regex, flags);
+                boolean global = getToBooleanNodeForGlobal().executeBoolean(getGetGlobalNode().getValue(matcher));
+                boolean fullUnicode = getToBooleanNodeForUnicode().executeBoolean(getGetUnicodeNode().getValue(matcher));
+                long lastIndex = getToLengthNode().executeLong(getGetLastIndexNode().getValue(regexObj));
+                getSetLastIndexNode().setValue(matcher, lastIndex);
+                return createRegExpStringIteratorNode.createIterator(frame, matcher, string, global, fullUnicode);
+            } else {
+                String pattern = getToStringNodeForRegex().executeString(regexObj);
+                TruffleObject compiledRegex = getCompileRegexNode().compile(pattern, "g");
+                Object matcher = getCreateRegExpNode().execute(compiledRegex);
+                return createRegExpStringIteratorNode.createIterator(frame, matcher, string, true, false);
+            }
+        }
+
+        private ArraySpeciesConstructorNode getSpeciesConstructNode() {
+            if (speciesConstructNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                speciesConstructNode = insert(ArraySpeciesConstructorNode.create(context, false));
+            }
+            return speciesConstructNode;
+        }
+
+        private PropertyGetNode getGetFlagsNode() {
+            if (getFlagsNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getFlagsNode = insert(PropertyGetNode.create(JSRegExp.FLAGS, context));
+            }
+            return getFlagsNode;
+        }
+
+        private JSToStringNode getToStringNodeForFlags() {
+            if (toStringNodeForFlags == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toStringNodeForFlags = insert(JSToStringNode.create());
+            }
+            return toStringNodeForFlags;
+        }
+
+        private PropertyGetNode getGetGlobalNode() {
+            if (getGlobalNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getGlobalNode = insert(PropertyGetNode.create(JSRegExp.GLOBAL, context));
+            }
+            return getGlobalNode;
+        }
+
+        private JSToBooleanNode getToBooleanNodeForGlobal() {
+            if (toBooleanNodeForGlobal == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toBooleanNodeForGlobal = insert(JSToBooleanNode.create());
+            }
+            return toBooleanNodeForGlobal;
+        }
+
+        private PropertyGetNode getGetUnicodeNode() {
+            if (getUnicodeNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getUnicodeNode = insert(PropertyGetNode.create(JSRegExp.UNICODE, context));
+            }
+            return getUnicodeNode;
+        }
+
+        private JSToBooleanNode getToBooleanNodeForUnicode() {
+            if (toBooleanNodeForUnicode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toBooleanNodeForUnicode = insert(JSToBooleanNode.create());
+            }
+            return toBooleanNodeForUnicode;
+        }
+
+        private PropertyGetNode getGetLastIndexNode() {
+            if (getLastIndexNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getLastIndexNode = insert(PropertyGetNode.create(JSRegExp.LAST_INDEX, context));
+            }
+            return getLastIndexNode;
+        }
+
+        private JSToLengthNode getToLengthNode() {
+            if (toLengthNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toLengthNode = insert(JSToLengthNode.create());
+            }
+            return toLengthNode;
+        }
+
+        private PropertySetNode getSetLastIndexNode() {
+            if (setLastIndexNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                setLastIndexNode = insert(PropertySetNode.create(JSRegExp.LAST_INDEX, false, context, true));
+            }
+            return setLastIndexNode;
+        }
+
+        private JSToStringNode getToStringNodeForRegex() {
+            if (toStringNodeForRegex == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toStringNodeForRegex = insert(JSToStringNode.createUndefinedToEmpty());
+            }
+            return toStringNodeForRegex;
+        }
+
+        private CompileRegexNode getCompileRegexNode() {
+            if (compileRegexNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                compileRegexNode = insert(CompileRegexNode.create(context));
+            }
+            return compileRegexNode;
+        }
+
+        private CreateRegExpNode getCreateRegExpNode() {
+            if (createRegExpNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                createRegExpNode = insert(CreateRegExpNode.create(context));
+            }
+            return createRegExpNode;
+        }
+    }
+
+    /**
+     * Implementation of the CreateRegExpStringIterator abstract operation as specified by the
+     * String.prototype.matchAll draft proposal.
+     */
+    public static class CreateRegExpStringIteratorNode extends JavaScriptBaseNode {
+        private final DynamicObject regExpStringIteratorPrototype;
+        @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
+        @Child private PropertySetNode setIteratingRegExpNode;
+        @Child private PropertySetNode setIteratedStringNode;
+        @Child private PropertySetNode setGlobalNode;
+        @Child private PropertySetNode setUnicodeNode;
+        @Child private PropertySetNode setDoneNode;
+
+        public CreateRegExpStringIteratorNode(JSContext context) {
+            this.regExpStringIteratorPrototype = context.getRealm().getRegExpStringIteratorPrototype();
+            // The CreateRegExpStringIteratorNode is used only in the MatchAllIteratorNode, where
+            // it is lazily constructed just before its first execution. Furthermore, an execution
+            // of the CreateRegExpStringIteratorNode necessitates the execution of all its children,
+            // therefore there is nothing to gain by constructing the children of this node lazily.
+            this.createObjectNode = CreateObjectNode.createWithCachedPrototype(context, null);
+            this.setIteratingRegExpNode = PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_ITERATING_REGEXP_ID, context);
+            this.setIteratedStringNode = PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_ITERATED_STRING_ID, context);
+            this.setGlobalNode = PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_GLOBAL_ID, context);
+            this.setUnicodeNode = PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_UNICODE_ID, context);
+            this.setDoneNode = PropertySetNode.createSetHidden(JSString.REGEXP_ITERATOR_DONE_ID, context);
+            adoptChildren();
+        }
+
+        public DynamicObject createIterator(VirtualFrame frame, Object regex, String string, Boolean global, Boolean fullUnicode) {
+            DynamicObject iterator = createObjectNode.executeDynamicObject(frame, regExpStringIteratorPrototype);
+            setIteratingRegExpNode.setValue(iterator, regex);
+            setIteratedStringNode.setValue(iterator, string);
+            setGlobalNode.setValueBoolean(iterator, global);
+            setUnicodeNode.setValueBoolean(iterator, fullUnicode);
+            setDoneNode.setValueBoolean(iterator, false);
+            return iterator;
         }
     }
 

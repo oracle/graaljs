@@ -148,6 +148,7 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
             defineBuiltins(new AsyncGeneratorPrototypeBuiltins());
             defineBuiltins(new BigIntPrototypeBuiltins());
             defineBuiltins(new BigIntFunctionBuiltins());
+            defineBuiltins(new RegExpStringIteratorPrototypeBuiltins());
         }
 
         if (JSTruffleOptions.Test262Mode) {
