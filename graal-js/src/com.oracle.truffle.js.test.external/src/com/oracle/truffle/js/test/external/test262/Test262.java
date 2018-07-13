@@ -108,7 +108,7 @@ public class Test262 extends TestSuite {
         });
 
         String prefix = strict ? "\"use strict\";" : "";
-        return Stream.concat(Stream.concat(prologStream, harnessStream).map(s -> applyPrefix(s, prefix)), mockupStream).toArray(Source[]::new);
+        return Stream.concat(Stream.concat(prologStream, mockupStream), harnessStream.map(s -> applyPrefix(s, prefix))).toArray(Source[]::new);
     }
 
     private static Source applyPrefix(Source source, String prefix) {
