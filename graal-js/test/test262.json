@@ -2809,30 +2809,6 @@
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Symbol/prototype/description/description-symboldescriptivestring.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Symbol/prototype/description/descriptor.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Symbol/prototype/description/get.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Symbol/prototype/description/this-val-non-symbol.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Symbol/prototype/description/this-val-symbol.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Symbol/prototype/description/wrapper.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "built-ins/ThrowTypeError/forbidden-arguments.js",
     "status" : "FAIL"
   }, {

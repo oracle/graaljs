@@ -1899,7 +1899,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected Symbol callSymbol(Object value) {
-            return Symbol.create(toStringNode.executeString(value));
+            return Symbol.create(value == Undefined.instance ? null : toStringNode.executeString(value));
         }
     }
 

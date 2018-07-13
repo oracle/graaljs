@@ -151,7 +151,9 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
             public Object execute(VirtualFrame frame) {
                 Object obj = frame.getArguments()[0];
                 if (obj instanceof Symbol) {
-                    return ((Symbol) obj).getName();
+                    return ((Symbol) obj).getDescription();
+                } else if (isJSSymbol(obj)) {
+                    return JSSymbol.getSymbolData((DynamicObject) obj).getDescription();
                 } else {
                     CompilerDirectives.transferToInterpreter();
                     throw Errors.createTypeError("Symbol expected");
