@@ -62,7 +62,7 @@ import org.objectweb.asm.util.TraceClassVisitor;
  * {@code ClassLoader}, but rather uses them internally. Instances of this class are normally
  * created by {@link JavaAdapterBytecodeGenerator}.
  */
-public final class JavaAdapterClassLoader {
+final class JavaAdapterClassLoader {
     static final ProtectionDomain GENERATED_PROTECTION_DOMAIN = createGeneratedProtectionDomain();
     static final Collection<String> VISIBLE_INTERNAL_CLASS_NAMES = Collections.singleton(JavaAdapterServices.class.getName());
 
@@ -80,8 +80,7 @@ public final class JavaAdapterClassLoader {
      * @param parentLoader the parent class loader for the generated class loader
      * @return the generated adapter class
      */
-    public Class<?> generateClass(final ClassLoader parentLoader) {
-        // return AccessController.doPrivileged(new PrivilegedAction<StaticClass>() {
+    Class<?> generateClass(final ClassLoader parentLoader) {
         try {
             return Class.forName(className, true, createClassLoader(parentLoader));
         } catch (final ClassNotFoundException e) {
@@ -89,16 +88,6 @@ public final class JavaAdapterClassLoader {
         }
     }
 
-    /*
-     * Note that the adapter class is created in the protection domain of the class/interface being
-     * extended/implemented, and only the privileged global setter action class is generated in the
-     * protection domain of Nashorn itself. Also note that the creation and loading of the global
-     * setter is deferred until it is required by JVM linker, which will only happen on first
-     * invocation of any of the adapted method. We could defer it even more by separating its
-     * invocation into a separate static method on the adapter class, but then someone with ability
-     * to introspect on the class and use setAccessible(true) on it could invoke the method. It's a
-     * security tradeoff...
-     */
     private ClassLoader createClassLoader(final ClassLoader parentLoader) {
         return new SecureClassLoader(parentLoader) {
             private static final boolean PRINT_CODE = false;

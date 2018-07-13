@@ -90,7 +90,7 @@ public final class JavaAdapterServices {
         return overrides;
     }
 
-    public static void setClassOverrides(Value overrides) {
+    static void setClassOverrides(Value overrides) {
         classOverrides.set(overrides);
     }
 
@@ -163,10 +163,6 @@ public final class JavaAdapterServices {
         // insert [function object]
         call = call.asType(type.insertParameterTypes(0, Value.class));
         return call;
-    }
-
-    public static Value asValue(Object obj) {
-        return Context.getCurrent().asValue(obj);
     }
 
     /**

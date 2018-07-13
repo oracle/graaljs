@@ -146,7 +146,7 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
  * classes can only belong to a single protection domain, this could not be implemented securely.
  *
  */
-public final class JavaAdapterBytecodeGenerator {
+final class JavaAdapterBytecodeGenerator {
     // Initializer names
     private static final String INIT = "<init>";
     private static final String CLASS_INIT = "<clinit>";
@@ -258,7 +258,7 @@ public final class JavaAdapterBytecodeGenerator {
      *
      *            throws AdaptationException if the adapter can not be generated for some reason.
      */
-    public JavaAdapterBytecodeGenerator(final Class<?> superClass, final List<Class<?>> interfaces, final ClassLoader commonLoader, final boolean classOverride) {
+    JavaAdapterBytecodeGenerator(final Class<?> superClass, final List<Class<?>> interfaces, final ClassLoader commonLoader, final boolean classOverride) {
         assert superClass != null && !superClass.isInterface();
         assert interfaces != null;
 
@@ -321,7 +321,7 @@ public final class JavaAdapterBytecodeGenerator {
         }
     }
 
-    public JavaAdapterClassLoader createAdapterClassLoader() {
+    JavaAdapterClassLoader createAdapterClassLoader() {
         return new JavaAdapterClassLoader(generatedClassName, cw.toByteArray());
     }
 
