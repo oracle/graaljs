@@ -115,8 +115,8 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
         if (materializedTags.contains(ReadPropertyExpressionTag.class) && !isScopeAccess()) {
             GlobalObjectNode globalObject = GlobalObjectNode.create(context);
             PropertyNode propertyNode = PropertyNode.createProperty(context, globalObject, getPropertyKey());
-            transferSourceSection(this, propertyNode);
-            transferSourceSectionNoTags(this, globalObject);
+            transferSourceSectionAndTags(this, propertyNode);
+            transferSourceSectionAddExpressionTag(this, globalObject);
             return propertyNode;
         } else {
             return this;

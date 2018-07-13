@@ -89,12 +89,12 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
             if (!target.hasSourceSection()) {
                 JavaScriptNode clonedTarget = cloneUninitialized(target);
                 if (clonedTarget instanceof GlobalScopeVarWrapperNode) {
-                    transferSourceSection(this, ((GlobalScopeVarWrapperNode) clonedTarget).getDelegateNode());
+                    transferSourceSectionAddExpressionTag(this, ((GlobalScopeVarWrapperNode) clonedTarget).getDelegateNode());
                 } else {
-                    transferSourceSection(this, clonedTarget);
+                    transferSourceSectionAddExpressionTag(this, clonedTarget);
                 }
                 PropertyNode propertyNode = PropertyNode.createProperty(cache.getContext(), clonedTarget, cache.getKey());
-                transferSourceSection(this, propertyNode);
+                transferSourceSectionAndTags(this, propertyNode);
                 return propertyNode;
             }
         }

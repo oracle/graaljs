@@ -101,7 +101,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
             IterationScopeNode newCopy = cloneUninitialized(copy);
             InstrumentableNode materializedLoop = ((AbstractRepeatingNode) loop.getRepeatingNode()).materializeInstrumentableNodes(materializedTags);
             ForNode materializedNode = new ForNode((RepeatingNode) materializedLoop, newCopy);
-            transferSourceSection(this, materializedNode);
+            transferSourceSectionAndTags(this, materializedNode);
             return materializedNode;
         } else {
             return this;
@@ -176,7 +176,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
                                 JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
                 JavaScriptNode newLoop = new ForRepeatingNode(newCondition, newBody, cloneUninitialized(modify),
                                 cloneUninitialized(copy), isFirstNode, cloneUninitialized(setNotFirstNode));
-                transferSourceSection(this, newLoop);
+                transferSourceSectionAndTags(this, newLoop);
                 return newLoop;
             } else {
                 return this;

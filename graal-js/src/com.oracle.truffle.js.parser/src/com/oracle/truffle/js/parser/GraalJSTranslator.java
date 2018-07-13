@@ -193,14 +193,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         this.isParentStrict = isParentStrict;
     }
 
-    protected static JavaScriptNode result(JavaScriptNode node) {
-        return node;
-    }
-
     protected final JavaScriptNode transform(com.oracle.js.parser.ir.Node node) {
         if (node != null) {
             JavaScriptNode resultNode = node.accept(this);
-            assert resultNode != null;
             if (!resultNode.hasSourceSection()) {
                 assignSourceSection(resultNode, node);
             }
@@ -210,15 +205,33 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return null;
     }
 
-    private static JavaScriptNode tagWithHaltTag(JavaScriptNode resultNode) {
-        resultNode.addStatementTag();
+    private JavaScriptNode tagStatement(JavaScriptNode resultNode, com.oracle.js.parser.ir.Node parseNode) {
+        if (!resultNode.hasSourceSection()) {
+            assignSourceSection(resultNode, parseNode);
+        }
+        assert resultNode.getSourceSection() != null;
         if (resultNode instanceof GlobalScopeVarWrapperNode) {
-            ((GlobalScopeVarWrapperNode) resultNode).getDelegateNode().addStatementTag();
+            tagStatement(((GlobalScopeVarWrapperNode) resultNode).getDelegateNode(), parseNode);
+        } else {
+            resultNode.addStatementTag();
         }
         return resultNode;
     }
 
-    private static JavaScriptNode tagWithCallTag(JavaScriptNode resultNode) {
+    private JavaScriptNode tagExpression(JavaScriptNode resultNode, com.oracle.js.parser.ir.Node parseNode) {
+        if (!resultNode.hasSourceSection()) {
+            assignSourceSection(resultNode, parseNode);
+        }
+        assert resultNode.getSourceSection() != null;
+        if (resultNode instanceof GlobalScopeVarWrapperNode) {
+            tagExpression(((GlobalScopeVarWrapperNode) resultNode).getDelegateNode(), parseNode);
+        } else {
+            resultNode.addExpressionTag();
+        }
+        return resultNode;
+    }
+
+    private static JavaScriptNode tagCall(JavaScriptNode resultNode) {
         resultNode.addCallTag();
         return resultNode;
     }
@@ -379,7 +392,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else {
             functionExpression = factory.createFunctionExpression(functionData, functionRoot);
         }
-        return result(functionExpression);
+        return tagExpression(functionExpression, functionNode);
     }
 
     JavaScriptNode translateFunctionBody(FunctionNode functionNode, boolean isArrowFunction, boolean isGeneratorFunction, boolean isAsyncFunction, boolean isDerivedConstructor,
@@ -733,11 +746,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             for (int argIndex = currentFunction().getLeadingArgumentCount(); i < parameterSlots.length; i++, argIndex++) {
                 final JavaScriptNode valueNode;
                 if (hasRestParameter && i == parameterSlots.length - 1) {
-                    valueNode = ensureHasHiddenSourceSection(factory.createAccessRestArgument(context, argIndex, currentFunction().getTrailingArgumentCount()));
+                    valueNode = tagHiddenExpression(factory.createAccessRestArgument(context, argIndex, currentFunction().getTrailingArgumentCount()));
                 } else {
-                    valueNode = ensureHasHiddenSourceSection(factory.createAccessArgument(argIndex));
+                    valueNode = tagHiddenExpression(factory.createAccessArgument(argIndex));
                 }
-                parameterAssignment[i] = ensureHasHiddenSourceSection(factory.createWriteFrameSlot(parameterSlots[i], 0, 0, ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY, valueNode));
+                parameterAssignment[i] = tagHiddenExpression(factory.createWriteFrameSlot(parameterSlots[i], 0, 0, ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY, valueNode));
             }
             parameterAssignment[i] = body;
             return factory.createExprBlock(parameterAssignment);
@@ -746,8 +759,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
-    private static JavaScriptNode ensureHasHiddenSourceSection(JavaScriptNode node) {
+    private static JavaScriptNode tagHiddenExpression(JavaScriptNode node) {
         node.setSourceSection(unavailableInternalSection);
+        if (node instanceof GlobalScopeVarWrapperNode) {
+            tagHiddenExpression(((GlobalScopeVarWrapperNode) node).getDelegateNode());
+        } else {
+            node.addExpressionTag();
+        }
         return node;
     }
 
@@ -1258,10 +1276,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         if (returnNode.isInTerminalPosition()) {
-            return result(tagWithHaltTag(expression));
+            return tagStatement(expression, returnNode);
         }
 
-        return result(tagWithHaltTag(createReturnNode(expression)));
+        return tagStatement(createReturnNode(expression), returnNode);
     }
 
     private ReturnNode createReturnNode(JavaScriptNode expression) {
@@ -1291,7 +1309,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (block.isFunctionBody() && currentFunction().isGeneratorFunction()) {
             result = finishGeneratorBody(result);
         }
-        return result(result);
+        ensureHasSourceSection(result, block);
+        return result;
     }
 
     /**
@@ -1438,28 +1457,28 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterBlockStatement(BlockStatement blockStatement) {
-        return result(transform(blockStatement.getBlock()));
+        return transform(blockStatement.getBlock());
     }
 
     @Override
     public JavaScriptNode enterLiteralNode(LiteralNode<?> literalNode) {
         if (literalNode instanceof LiteralNode.ArrayLiteralNode) {
-            return enterLiteralArrayNode((LiteralNode.ArrayLiteralNode) literalNode);
+            return tagExpression(enterLiteralArrayNode((LiteralNode.ArrayLiteralNode) literalNode), literalNode);
         } else {
-            return enterLiteralDefaultNode(literalNode);
+            return tagExpression(enterLiteralDefaultNode(literalNode), literalNode);
         }
     }
 
     private JavaScriptNode enterLiteralDefaultNode(LiteralNode<?> literalNode) {
         Object value = literalNode.getValue();
         if (value == null) {
-            return result(factory.createConstantNull());
+            return factory.createConstantNull();
         } else if (value instanceof Long) { // we don't support long type
-            return result(factory.createConstantDouble(((Long) value).doubleValue()));
+            return factory.createConstantDouble(((Long) value).doubleValue());
         } else if (value instanceof Lexer.RegexToken) {
-            return result(factory.createRegExpLiteral(context, ((Lexer.RegexToken) value).getExpression(), ((Lexer.RegexToken) value).getOptions()));
+            return factory.createRegExpLiteral(context, ((Lexer.RegexToken) value).getExpression(), ((Lexer.RegexToken) value).getOptions());
         }
-        return result(factory.createConstant(value));
+        return factory.createConstant(value);
     }
 
     private JavaScriptNode enterLiteralArrayNode(LiteralNode.ArrayLiteralNode arrayLiteralNode) {
@@ -1471,27 +1490,25 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             hasSpread = hasSpread || elementExpression != null && elementExpression.isTokenType(TokenType.SPREAD_ARRAY);
             elements[i] = elementExpression != null ? transform(elementExpression) : factory.createEmpty();
         }
-        return result(hasSpread ? factory.createArrayLiteralWithSpread(context, elements) : factory.createArrayLiteral(context, elements));
+        return hasSpread ? factory.createArrayLiteralWithSpread(context, elements) : factory.createArrayLiteral(context, elements);
     }
 
     @Override
     public JavaScriptNode enterIdentNode(IdentNode identNode) {
         assert !identNode.isPropertyName();
+        final JavaScriptNode result;
         if (identNode.isThis()) {
-            return result(createThisNode());
+            result = createThisNode();
         } else if (identNode.isSuper()) {
-            return result(enterIdentNodeSuper(identNode));
+            result = enterIdentNodeSuper(identNode);
         } else if (identNode.isNewTarget()) {
-            return result(environment.findNewTargetVar().createReadNode());
+            result = environment.findNewTargetVar().createReadNode();
+        } else {
+            String varName = identNode.getName();
+            VarRef varRef = findScopeVarCheckTDZ(varName, false);
+            result = varRef.createReadNode();
         }
-
-        String varName = identNode.getName();
-        VarRef varRef = findScopeVarCheckTDZ(varName, false);
-        JavaScriptNode resultNode = result(varRef.createReadNode());
-        if (resultNode instanceof GlobalScopeVarWrapperNode) {
-            ensureHasSourceSection(((GlobalScopeVarWrapperNode) resultNode).getDelegateNode(), identNode);
-        }
-        return resultNode;
+        return tagExpression(result, identNode);
     }
 
     private JavaScriptNode enterIdentNodeSuper(IdentNode identNode) {
@@ -1615,11 +1632,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         try {
             if (varNode.isAssignment()) {
-                return result(createVarAssignNode(varNode, varName));
+                return createVarAssignNode(varNode, varName);
             } else if (varNode.isBlockScoped() && (!varNode.isDestructuring() || lc.inUnprotectedSwitchContext()) && !symbol.hasBeenDeclared()) {
-                return result(findScopeVar(varName, false).createWriteNode(factory.createConstantUndefined()));
+                return findScopeVar(varName, false).createWriteNode(factory.createConstantUndefined());
             }
-            return result(factory.createEmpty());
+            return factory.createEmpty();
         } finally {
             if (varNode.isBlockScoped()) {
                 if (lc.inUnprotectedSwitchContext()) {
@@ -1636,7 +1653,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode rhs = transform(varNode.getAssignmentSource());
         setAnonymousFunctionName(rhs, varName);
         JavaScriptNode assignment = findScopeVar(varName, false).createWriteNode(rhs);
-        ensureHasSourceSection(assignment, varNode);
+        tagExpression(assignment, varNode);
         if (varNode.isBlockScoped() && varNode.isFunctionDeclaration() && context.isOptionAnnexB()) {
             // B.3.3 Block-Level Function Declarations Web Legacy Compatibility Semantics
             FunctionNode fn = lc.getCurrentFunction();
@@ -1645,6 +1662,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 if (symbol != null && (symbol.isVar() || symbol.isGlobal())) {
                     if (!isVarAlreadyDeclaredLexically(lc, varName, (GraalJSParserOptions) context.getParserOptions(), true)) {
                         assignment = environment.findVar(varName, true, false, true, false).withRequired(false).createWriteNode(assignment);
+                        tagExpression(assignment, varNode);
                     }
                 }
             }
@@ -1652,7 +1670,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         // do not halt on function declarations
         if (!varNode.isHoistableDeclaration()) {
-            tagWithHaltTag(assignment);
+            tagStatement(assignment, varNode);
         }
 
         return discardResult(assignment);
@@ -1679,7 +1697,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     @Override
     public JavaScriptNode enterWhileNode(com.oracle.js.parser.ir.WhileNode whileNode) {
         JavaScriptNode test = transform(whileNode.getTest());
-        tagWithHaltTag(test);
+        tagStatement(test, whileNode.getTest());
         try (JumpTargetCloseable<ContinueTarget> target = currentFunction().pushContinueTarget(null)) {
             JavaScriptNode body = transform(whileNode.getBody());
             JavaScriptNode wrappedBody = target.wrapContinueTargetNode(body);
@@ -1689,7 +1707,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             } else {
                 result = createWhileDo(test, wrappedBody);
             }
-            return result(wrapClearAndGetCompletionValue(target.wrapBreakTargetNode(ensureHasSourceSection(result, whileNode))));
+            return wrapClearAndGetCompletionValue(target.wrapBreakTargetNode(ensureHasSourceSection(result, whileNode)));
         }
     }
 
@@ -1704,10 +1722,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode wrapGetCompletionValue(JavaScriptNode target) {
         if (currentFunction().returnsLastStatementResult()) {
             VarRef returnVar = environment.findTempVar(currentFunction().getReturnSlot());
-            if (target instanceof JSWriteFrameSlotNode) {
-                // writes to internal nodes should not have a source section.
-                target.removeSourceSection();
-            }
             return factory.createExprBlock(target, returnVar.createReadNode());
         }
         return target;
@@ -1748,9 +1762,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     @Override
     public JavaScriptNode enterForNode(ForNode forNode) {
         // if init is destructuring, wait with transformation
-        JavaScriptNode init = forNode.getInit() != null && !forNode.isForInOrOf() ? tagWithHaltTag(transform(forNode.getInit())) : factory.createEmpty();
-        JavaScriptNode test = forNode.getTest() != null && forNode.getTest().getExpression() != null ? tagWithHaltTag(transform(forNode.getTest())) : factory.createConstantBoolean(true);
-        JavaScriptNode modify = forNode.getModify() != null ? tagWithHaltTag(transform(forNode.getModify())) : factory.createEmpty();
+        JavaScriptNode init = forNode.getInit() != null && !forNode.isForInOrOf() ? tagStatement(transform(forNode.getInit()), forNode.getInit()) : factory.createEmpty();
+        JavaScriptNode test = forNode.getTest() != null && forNode.getTest().getExpression() != null ? tagStatement(transform(forNode.getTest()), forNode.getTest())
+                        : factory.createConstantBoolean(true);
+        JavaScriptNode modify = forNode.getModify() != null ? tagStatement(transform(forNode.getModify()), forNode.getModify()) : factory.createEmpty();
         try (JumpTargetCloseable<ContinueTarget> target = currentFunction().pushContinueTarget(null)) {
             JavaScriptNode result;
             if (forNode.isForOf()) {
@@ -1765,7 +1780,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 result = target.wrapBreakTargetNode(desugarFor(forNode, init, test, modify, wrappedBody));
             }
 
-            return result(wrapClearAndGetCompletionValue(result));
+            return wrapClearAndGetCompletionValue(result);
         }
     }
 
@@ -1814,7 +1829,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             VarRef nextResultVar2 = environment.findTempVar(nextResultVar.getFrameSlot());
             JavaScriptNode nextResult = nextResultVar2.createReadNode();
             JavaScriptNode nextValue = factory.createIteratorValue(context, nextResult);
-            JavaScriptNode writeNext = tagWithHaltTag(desugarForHeadAssignment(forNode, nextValue));
+            JavaScriptNode writeNext = tagStatement(desugarForHeadAssignment(forNode, nextValue), forNode);
             JavaScriptNode body = transform(forNode.getBody());
             wrappedBody = blockEnv.wrapBlockScope(createBlock(writeNext, body));
         }
@@ -1829,10 +1844,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode desugarForHeadAssignment(ForNode forNode, JavaScriptNode next) {
         boolean lexicalBindingInit = forNode.hasPerIterationScope();
         if (forNode.getInit() instanceof IdentNode && lexicalBindingInit) {
-            return ensureHasSourceSection(findScopeVarCheckTDZ(((IdentNode) forNode.getInit()).getName(), lexicalBindingInit).createWriteNode(next), forNode);
+            return tagExpression(findScopeVarCheckTDZ(((IdentNode) forNode.getInit()).getName(), lexicalBindingInit).createWriteNode(next), forNode);
         } else {
             // transform destructuring assignment
-            return ensureHasSourceSection(transformAssignment(forNode.getInit(), next, null, false, false, lexicalBindingInit), forNode);
+            return tagExpression(transformAssignment(forNode.getInit(), forNode.getInit(), next, lexicalBindingInit), forNode);
         }
     }
 
@@ -1857,7 +1872,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             VarRef nextResultVar2 = environment.findTempVar(nextResultVar.getFrameSlot());
             JavaScriptNode nextResult = nextResultVar2.createReadNode();
             JavaScriptNode nextValue = factory.createIteratorValue(context, nextResult);
-            JavaScriptNode writeNext = tagWithHaltTag(desugarForHeadAssignment(forNode, nextValue));
+            JavaScriptNode writeNext = tagStatement(desugarForHeadAssignment(forNode, nextValue), forNode);
             JavaScriptNode body = transform(forNode.getBody());
             wrappedBody = blockEnv.wrapBlockScope(createBlock(writeNext, body));
         }
@@ -1875,18 +1890,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     public JavaScriptNode enterLabelNode(com.oracle.js.parser.ir.LabelNode labelNode) {
         try (JumpTargetCloseable<BreakTarget> breakTarget = currentFunction().pushBreakTarget(labelNode.getLabelName())) {
             JavaScriptNode body = transform(labelNode.getBody());
-            return result(breakTarget.wrapLabelBreakTargetNode(body));
+            return breakTarget.wrapLabelBreakTargetNode(body);
         }
     }
 
     @Override
     public JavaScriptNode enterBreakNode(com.oracle.js.parser.ir.BreakNode breakNode) {
-        return result(tagWithHaltTag(factory.createBreak(currentFunction().findBreakTarget(breakNode.getLabelName()))));
+        return tagStatement(factory.createBreak(currentFunction().findBreakTarget(breakNode.getLabelName())), breakNode);
     }
 
     @Override
     public JavaScriptNode enterContinueNode(com.oracle.js.parser.ir.ContinueNode continueNode) {
-        return result(tagWithHaltTag(factory.createContinue(currentFunction().findContinueTarget(continueNode.getLabelName()))));
+        return tagStatement(factory.createContinue(currentFunction().findContinueTarget(continueNode.getLabelName())), continueNode);
     }
 
     @Override
@@ -1894,7 +1909,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode test = transform(ifNode.getTest());
         JavaScriptNode pass = transform(ifNode.getPass());
         JavaScriptNode fail = transform(ifNode.getFail());
-        return result(tagWithHaltTag(factory.createIf(test, pass, fail)));
+        return tagStatement(factory.createIf(test, pass, fail), ifNode);
     }
 
     @Override
@@ -1902,7 +1917,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode test = transform(ternaryNode.getTest());
         JavaScriptNode pass = transform(ternaryNode.getTrueExpression());
         JavaScriptNode fail = transform(ternaryNode.getFalseExpression());
-        return result(factory.createIf(test, pass, fail));
+        return tagExpression(factory.createIf(test, pass, fail), ternaryNode);
     }
 
     @Override
@@ -1922,18 +1937,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             case DECPOSTFIX:
                 return enterUnaryIncDecNode(unaryNode);
             case NEW:
-                return enterNewNode((CallNode) unaryNode.getExpression());
+                return enterNewNode(unaryNode);
             case DELETE:
                 return enterDelete(unaryNode);
             case SPREAD_ARGUMENT:
-                return result(factory.createSpreadArgument(context, transform(unaryNode.getExpression())));
+                return tagExpression(factory.createSpreadArgument(context, transform(unaryNode.getExpression())), unaryNode);
             case SPREAD_ARRAY:
-                return result(factory.createSpreadArray(context, transform(unaryNode.getExpression())));
+                return tagExpression(factory.createSpreadArray(context, transform(unaryNode.getExpression())), unaryNode);
             case YIELD:
             case YIELD_STAR:
-                return result(createYieldNode(unaryNode));
+                return tagExpression(createYieldNode(unaryNode), unaryNode);
             case AWAIT:
-                return result(translateAwaitNode(unaryNode));
+                return tagExpression(translateAwaitNode(unaryNode), unaryNode);
             default:
                 throw new UnsupportedOperationException(unaryNode.tokenType().toString());
         }
@@ -1981,7 +1996,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode enterUnaryDefaultNode(UnaryNode unaryNode) {
         assert unaryNode.tokenType() != TokenType.TYPEOF;
         JavaScriptNode operand = transform(unaryNode.getExpression());
-        return result(factory.createUnary(tokenTypeToUnaryOperation(unaryNode.tokenType()), operand));
+        return tagExpression(factory.createUnary(tokenTypeToUnaryOperation(unaryNode.tokenType()), operand), unaryNode);
     }
 
     private JavaScriptNode enterTypeofNode(UnaryNode unaryNode) {
@@ -1999,8 +2014,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         if (operand == null) {
             operand = transform(unaryNode.getExpression());
+        } else {
+            tagExpression(operand, unaryNode.getExpression());
         }
-        return result(factory.createUnary(tokenTypeToUnaryOperation(unaryNode.tokenType()), ensureHasSourceSection(operand, unaryNode)));
+        return tagExpression(factory.createUnary(tokenTypeToUnaryOperation(unaryNode.tokenType()), operand), unaryNode);
     }
 
     private JavaScriptNode enterUnaryIncDecNode(UnaryNode unaryNode) {
@@ -2012,12 +2029,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 // we know this is going to throw. do the read and throw TypeError.
                 return checkMutableBinding(operand, frameSlot.getIdentifier());
             }
-            return result(createUnaryIncDecLocalNode(unaryNode, operand));
+            return tagExpression(createUnaryIncDecLocalNode(unaryNode, operand), unaryNode);
         } else {
             BinaryOperation operation = unaryNode.tokenType() == TokenType.INCPREFIX || unaryNode.tokenType() == TokenType.INCPOSTFIX ? BinaryOperation.ADD : BinaryOperation.SUBTRACT;
             boolean isPostfix = unaryNode.tokenType() == TokenType.INCPOSTFIX || unaryNode.tokenType() == TokenType.DECPOSTFIX;
             JavaScriptNode constNumericUnit = ensureHasSourceSection(factory.createConstantNumericUnit(), unaryNode);
-            return result(transformAssignment(unaryNode.getExpression(), constNumericUnit, operation, isPostfix, true, false));
+            return tagExpression(transformAssignment(unaryNode, unaryNode.getExpression(), constNumericUnit, operation, isPostfix, true), unaryNode);
         }
     }
 
@@ -2067,34 +2084,37 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode enterDelete(UnaryNode unaryNode) {
         Expression rhs = unaryNode.getExpression();
+        JavaScriptNode result;
         if (rhs instanceof AccessNode) {
-            return enterDeleteAccess(rhs);
+            result = enterDeleteAccess(rhs);
         } else if (rhs instanceof IndexNode) {
-            return enterDeleteIndex(rhs);
+            result = enterDeleteIndex(rhs);
         } else if (rhs instanceof IdentNode) {
-            return enterDeleteIdent(rhs);
+            result = enterDeleteIdent(rhs);
+        } else {
+            // deleting variables is (thankfully) not supported, so always true
+            result = factory.createConstantBoolean(true);
         }
-        // deleting variables is (thankfully) not supported, so always true
-        return result(factory.createConstantBoolean(true)); // ECMAScript 11.4.1
+        return tagExpression(result, unaryNode);
     }
 
     private JavaScriptNode enterDeleteIdent(Expression rhs) {
         String varName = ((IdentNode) rhs).getName();
         VarRef varRef = findScopeVar(varName, varName.equals(Environment.THIS_NAME));
-        return result(ensureHasSourceSection(varRef.createDeleteNode(), rhs));
+        return varRef.createDeleteNode();
     }
 
     private JavaScriptNode enterDeleteIndex(Expression rhs) {
         IndexNode indexNode = (IndexNode) rhs;
         JavaScriptNode target = transform(indexNode.getBase());
         JavaScriptNode element = transform(indexNode.getIndex());
-        return result(factory.createDeleteProperty(target, element, environment.isStrictMode(), context));
+        return factory.createDeleteProperty(target, element, environment.isStrictMode(), context);
     }
 
     private JavaScriptNode enterDeleteAccess(Expression rhs) {
         AccessNode accessNode = (AccessNode) rhs;
         JavaScriptNode target = transform(accessNode.getBase());
-        return result(factory.createDeleteProperty(target, factory.createConstantString(accessNode.getProperty()), environment.isStrictMode(), context));
+        return factory.createDeleteProperty(target, factory.createConstantString(accessNode.getProperty()), environment.isStrictMode(), context);
     }
 
     private JavaScriptNode[] transformArgs(List<Expression> argList) {
@@ -2105,12 +2125,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return args;
     }
 
-    private JavaScriptNode enterNewNode(CallNode callNode) {
+    private JavaScriptNode enterNewNode(UnaryNode unaryNode) {
+        CallNode callNode = (CallNode) unaryNode.getExpression();
         JavaScriptNode function = transform(callNode.getFunction());
         JavaScriptNode[] args = transformArgs(callNode.getArgs());
         JavaScriptNode call = factory.createNew(context, function, args);
-        tagWithCallTag(call);
-        return result(call);
+        return tagExpression(tagCall(call), unaryNode);
     }
 
     @Override
@@ -2131,8 +2151,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 call = createCallDefaultNode(function, args);
             }
         }
-        tagWithCallTag(call);
-        return result(call);
+        return tagExpression(tagCall(call), callNode);
     }
 
     private JavaScriptNode[] insertNewTargetArg(JavaScriptNode[] args) {
@@ -2238,20 +2257,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode enterBinaryExpressionNode(BinaryNode binaryNode) {
         JavaScriptNode lhs = transform(binaryNode.lhs());
         JavaScriptNode rhs = transform(binaryNode.rhs());
-        return result(factory.createBinary(context, tokenTypeToBinaryOperation(binaryNode.tokenType()), lhs, rhs));
+        return tagExpression(factory.createBinary(context, tokenTypeToBinaryOperation(binaryNode.tokenType()), lhs, rhs), binaryNode);
     }
 
     private JavaScriptNode enterBinaryTransformNode(BinaryNode binaryNode) {
         JavaScriptNode assignedValue = transform(binaryNode.getAssignmentSource());
-        return ensureHasSourceSection(result(transformAssignment(binaryNode.getAssignmentDest(), assignedValue, tokenTypeToBinaryOperation(binaryNode.tokenType()), false, false, false)), binaryNode);
+        return tagExpression(transformAssignment(binaryNode, binaryNode.getAssignmentDest(), assignedValue, tokenTypeToBinaryOperation(binaryNode.tokenType()), false, false), binaryNode);
     }
 
     private JavaScriptNode enterBinaryAssignNode(BinaryNode binaryNode) {
         Expression assignmentDest = binaryNode.getAssignmentDest();
         JavaScriptNode assignedValue = transform(binaryNode.getAssignmentSource());
-        JavaScriptNode assignment = transformAssignment(assignmentDest, assignedValue, null, false, false, binaryNode.isTokenType(TokenType.ASSIGN_INIT));
-        ensureHasSourceSection(assignment, binaryNode);
-        return result(assignment);
+        JavaScriptNode assignment = transformAssignment(binaryNode, assignmentDest, assignedValue, binaryNode.isTokenType(TokenType.ASSIGN_INIT));
+        return tagExpression(assignment, binaryNode);
     }
 
     private static BinaryOperation tokenTypeToBinaryOperation(TokenType tokenType) {
@@ -2323,8 +2341,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
-    private JavaScriptNode transformAssignment(Expression lhsExpression, JavaScriptNode assignedValue, BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertLHSToNumeric,
-                    boolean initializationAssignment) {
+    private JavaScriptNode transformAssignment(Expression assignmentExpression, Expression lhsExpression, JavaScriptNode assignedValue, boolean initializationAssignment) {
+        return transformAssignmentImpl(assignmentExpression, lhsExpression, assignedValue, initializationAssignment, null, false, false);
+    }
+
+    private JavaScriptNode transformAssignment(Expression assignmentExpression, Expression lhsExpression, JavaScriptNode assignedValue,
+                    BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertLHSToNumeric) {
+        return transformAssignmentImpl(assignmentExpression, lhsExpression, assignedValue, false, shortcutOperation, returnOldValue, convertLHSToNumeric);
+    }
+
+    private JavaScriptNode transformAssignmentImpl(Expression assignmentExpression, Expression lhsExpression, JavaScriptNode assignedValue, boolean initializationAssignment,
+                    BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertLHSToNumeric) {
         assert shortcutOperation != null || (!returnOldValue && !convertLHSToNumeric) : "returnOldValue / convertLHSToNumeric can only be used with shortcut assignments";
         JavaScriptNode assignedNode = null;
         JavaScriptNode prev = null;
@@ -2361,13 +2388,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         } else {
                             prev = factory.createDual(context, prev, assignment);
                         }
-                        elem = ensureHasSourceSection(newTemp.createReadNode(), lhsExpression);
+                        elem = newTemp.createReadNode();
                     }
 
                     // index must be ToPropertyKey-converted only once, save it in temp var
                     VarRef keyTemp = environment.createTempVar();
 
-                    JavaScriptNode shortcutNode = factory.createReadElementNode(context, target, keyTemp.createReadNode());
+                    JavaScriptNode shortcutNode = tagExpression(factory.createReadElementNode(context, target, keyTemp.createReadNode()), lhsExpression);
 
                     // RequireObjectCoercible(target); safely repeatable, no temp var needed
                     target = factory.createToObject(context, factory.copy(target));
@@ -2382,22 +2409,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         shortcutNode = resultTemp.createWriteNode(shortcutNode);
                     }
 
-                    ensureHasSourceSection(shortcutNode, lhsExpression);
-                    rhs = factory.createBinary(context, shortcutOperation, shortcutNode, assignedValue);
+                    rhs = tagExpression(factory.createBinary(context, shortcutOperation, shortcutNode, assignedValue), lhsExpression);
                 } else {
                     rhs = assignedValue;
                 }
 
-                ensureHasSourceSection(rhs, lhsExpression);
-                ensureHasSourceSection(target, lhsExpression);
-                assignedNode = ensureHasSourceSection(factory.createWriteElementNode(target, elem, rhs, context, environment.isStrictMode()), lhsExpression);
+                assignedNode = factory.createWriteElementNode(target, elem, rhs, context, environment.isStrictMode());
                 break;
             }
             case PERIOD: {
                 // target.property
                 AccessNode accessNode = (AccessNode) lhsExpression;
                 JavaScriptNode target = transform(accessNode.getBase());
-                ensureHasSourceSection(target, accessNode);
 
                 JavaScriptNode rhs;
 
@@ -2408,20 +2431,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         target = newTemp.createReadNode();
                     }
 
-                    JavaScriptNode shortcutNode = factory.createReadProperty(context, target, accessNode.getProperty());
-                    assignSourceSection(shortcutNode, accessNode);
+                    JavaScriptNode shortcutNode = tagExpression(factory.createReadProperty(context, target, accessNode.getProperty()), accessNode);
 
-                    target = ensureHasSourceSection(factory.copy(target), accessNode);
+                    target = factory.copy(target);
 
                     if (convertLHSToNumeric) {
-                        shortcutNode = ensureHasSourceSection(factory.numericConversion(shortcutNode), accessNode);
+                        shortcutNode = factory.numericConversion(shortcutNode);
                     }
 
                     if (returnOldValue) {
-                        shortcutNode = ensureHasSourceSection(resultTemp.createWriteNode(shortcutNode), accessNode);
+                        shortcutNode = resultTemp.createWriteNode(shortcutNode);
                     }
 
-                    rhs = ensureHasSourceSection(ensureHasSourceSection(factory.createBinary(context, shortcutOperation, shortcutNode, assignedValue), accessNode), accessNode);
+                    rhs = tagExpression(factory.createBinary(context, shortcutOperation, shortcutNode, assignedValue), accessNode);
                 } else {
                     rhs = assignedValue;
                 }
@@ -2465,7 +2487,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         lhsExpr = ((UnaryNode) lhsExpr).getExpression();
                     }
                     if (lhsExpr != null) {
-                        initElements[i] = transformAssignment(lhsExpr, rhsNode, null, false, false, initializationAssignment);
+                        initElements[i] = transformAssignment(lhsExpr, lhsExpr, rhsNode, initializationAssignment);
                     } else {
                         initElements[i] = rhsNode;
                     }
@@ -2528,7 +2550,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     if (init != null) {
                         rhsNode = factory.createNotUndefinedOr(rhsNode, transform(init));
                     }
-                    initElements[i] = transformAssignment(lhsExpr, rhsNode, null, false, false, initializationAssignment);
+                    initElements[i] = transformAssignment(lhsExpr, lhsExpr, rhsNode, initializationAssignment);
                 }
                 assignedNode = factory.createExprBlock(initValueTempVar, createBlock(initElements), valueTempVar.createReadNode());
                 break;
@@ -2537,14 +2559,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 throwUnsupportedAssignmentError(lhsExpression);
         }
 
+        if (shortcutOperation != null) {
+            ensureHasSourceSection(assignedNode, assignmentExpression);
+        }
         if (prev != null) {
             assignedNode = factory.createDual(context, prev, assignedNode);
         }
         if (resultTemp != null) {
-            ensureHasSourceSection(assignedNode, lhsExpression);
             assignedNode = factory.createDual(context, assignedNode, resultTemp.createReadNode());
         }
-        return assignedNode;
+        return tagExpression(assignedNode, assignmentExpression);
     }
 
     private static void throwUnsupportedAssignmentError(Expression lhsExpression) {
@@ -2558,17 +2582,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         VarRef scopeVar = findScopeVarCheckTDZ(ident, initializationAssignment);
 
         if (shortcutOperation != null) {
-            JavaScriptNode operand = ensureHasSourceSection(scopeVar.createReadNode(), identNode);
+            JavaScriptNode operand = tagExpression(scopeVar.createReadNode(), identNode);
             JavaScriptNode shortcutNode = convertLHSToNumeric ? factory.numericConversion(operand) : operand;
 
             if (returnOldValue) {
                 shortcutNode = resultTemp.createWriteNode(shortcutNode);
             }
-            rhs = factory.createBinary(context, shortcutOperation, shortcutNode, ensureHasSourceSection(assignedValue, identNode));
+            rhs = tagExpression(factory.createBinary(context, shortcutOperation, shortcutNode, assignedValue), identNode);
         } else {
             rhs = assignedValue;
         }
-        ensureHasSourceSection(rhs, identNode);
 
         if (shortcutOperation != null && scopeVar.isGlobal()) {
             // e.g.: lhs *= rhs => lhs = lhs * rhs
@@ -2606,20 +2629,20 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     public JavaScriptNode enterAccessNode(AccessNode accessNode) {
         String propertyName = accessNode.getProperty();
         JavaScriptNode base = transform(accessNode.getBase());
-        return result(factory.createReadProperty(context, base, propertyName));
+        return tagExpression(factory.createReadProperty(context, base, propertyName), accessNode);
     }
 
     @Override
     public JavaScriptNode enterIndexNode(IndexNode indexNode) {
         JavaScriptNode base = transform(indexNode.getBase());
         JavaScriptNode index = transform(indexNode.getIndex());
-        return result(factory.createReadElementNode(context, base, index));
+        return tagExpression(factory.createReadElementNode(context, base, index), indexNode);
     }
 
     @Override
     public JavaScriptNode enterObjectNode(ObjectNode objectNode) {
         ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(objectNode.getElements(), false);
-        return result(factory.createObjectLiteral(context, members));
+        return tagExpression(factory.createObjectLiteral(context, members), objectNode);
     }
 
     private ArrayList<ObjectLiteralMemberNode> transformPropertyDefinitionList(List<PropertyNode> properties, boolean isClass) {
@@ -2684,7 +2707,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     @Override
     public JavaScriptNode enterTryNode(TryNode tryNode) {
         JavaScriptNode tryBlock = transform(tryNode.getBody());
-        JavaScriptNode localResultNode = tryBlock;
+        JavaScriptNode result = tryBlock;
         if (!tryNode.getCatchBlocks().isEmpty()) {
             for (Block catchParamBlock : tryNode.getCatchBlocks()) {
                 CatchNode catchClause = (CatchNode) catchParamBlock.getLastStatement();
@@ -2710,7 +2733,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         JavaScriptNode destructuring = null;
                         if (pattern != null) {
                             // exception is being destructured
-                            destructuring = transformAssignment(pattern, errorVar.createReadNode(), null, false, false, true);
+                            destructuring = transformAssignment(pattern, pattern, errorVar.createReadNode(), true);
                         }
 
                         JavaScriptNode catchBlock = transform(catchBody);
@@ -2722,7 +2745,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             conditionExpression = null; // equivalent to constant true
                         }
                         BlockScopeNode blockScope = (BlockScopeNode) catchParamEnv.wrapBlockScope(null);
-                        localResultNode = factory.createTryCatch(context, localResultNode, catchBlock, writeErrorVar, blockScope, destructuring, conditionExpression);
+                        result = factory.createTryCatch(context, result, catchBlock, writeErrorVar, blockScope, destructuring, conditionExpression);
+                        ensureHasSourceSection(result, tryNode);
                     } finally {
                         lc.pop(catchParamBlock);
                     }
@@ -2731,14 +2755,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         if (tryNode.getFinallyBody() != null) {
             JavaScriptNode finallyBlock = transform(tryNode.getFinallyBody());
-            localResultNode = wrapClearAndGetCompletionValue(factory.createTryFinally(localResultNode, wrapSaveAndRestoreCompletionValue(finallyBlock)));
+            result = wrapClearAndGetCompletionValue(factory.createTryFinally(result, wrapSaveAndRestoreCompletionValue(finallyBlock)));
         }
-        return result(localResultNode);
+        return result;
     }
 
     @Override
     public JavaScriptNode enterThrowNode(com.oracle.js.parser.ir.ThrowNode throwNode) {
-        return result(tagWithHaltTag(factory.createThrow(transform(throwNode.getExpression()))));
+        return tagStatement(factory.createThrow(transform(throwNode.getExpression())), throwNode);
     }
 
     @Override
@@ -2755,10 +2779,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             switchExpression = ((TypeOfNode) switchExpression).getOperand();
         }
 
-        JavaScriptNode writeSwitchNode = environment.findLocalVar(switchVarName).createWriteNode(switchExpression);
-        tagWithHaltTag(writeSwitchNode);
-
         VarRef switchVar = environment.findLocalVar(switchVarName);
+        JavaScriptNode writeSwitchNode = switchVar.createWriteNode(switchExpression);
 
         JavaScriptNode switchBody;
         try (JumpTargetCloseable<BreakTarget> target = currentFunction().pushBreakTarget(null)) {
@@ -2768,9 +2790,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             } else {
                 switchBody = defaultSwitchNode(switchNode, switchVar, isSwitchTypeofString);
             }
+            tagStatement(switchBody, switchNode);
             switchBody = wrapClearAndGetCompletionValue(target.wrapBreakTargetNode(switchBody));
         }
-        return result(createBlock(writeSwitchNode, switchBody));
+        return createBlock(writeSwitchNode, switchBody);
     }
 
     private JavaScriptNode defaultSwitchNode(com.oracle.js.parser.ir.SwitchNode switchNode, VarRef switchVar, boolean isSwitchTypeofString) {
@@ -2817,11 +2840,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createSwitchCaseExpr(boolean isSwitchTypeofString, CaseNode switchCase, JavaScriptNode readSwitchVarNode) {
+        tagHiddenExpression(readSwitchVarNode);
         if (isSwitchTypeofString) {
             String typeString = (String) ((LiteralNode<?>) switchCase.getTest()).getValue();
-            return factory.createTypeofIdentical(readSwitchVarNode, typeString);
+            return tagExpression(factory.createTypeofIdentical(readSwitchVarNode, typeString), switchCase);
         } else {
-            return factory.createBinary(context, BinaryOperation.IDENTICAL, readSwitchVarNode, transform(switchCase.getTest()));
+            return tagExpression(factory.createBinary(context, BinaryOperation.IDENTICAL, readSwitchVarNode, transform(switchCase.getTest())), switchCase);
         }
     }
 
@@ -2838,13 +2862,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode curNode = null;
         if (defaultCase != null) {
             curNode = dropTerminalDirectBreakStatement(transformStatements(defaultCase.getStatements(), false));
+            ensureHasSourceSection(curNode, defaultCase);
         }
 
         for (int i = cases.size() - 1; i >= 0; i--) {
             CaseNode caseNode = cases.get(i);
             if (caseNode.getTest() != null) { // default case is already last in the cascade
                 JavaScriptNode readSwitchVarNode = switchVar.createReadNode();
-                ensureHasSourceSection(readSwitchVarNode, caseNode);
                 JavaScriptNode test = createSwitchCaseExpr(isSwitchTypeofString, caseNode, readSwitchVarNode);
                 if (caseNode.getStatements().isEmpty()) {
                     if (curNode instanceof com.oracle.truffle.js.nodes.control.IfNode) {
@@ -2858,10 +2882,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         }
                     }
                 } else {
-                    JavaScriptNode pass = ensureHasSourceSection(dropTerminalDirectBreakStatement(transformStatements(caseNode.getStatements(), false)), caseNode);
-                    curNode = factory.createIf(test, pass, ensureHasSourceSection(curNode, caseNode));
+                    JavaScriptNode pass = dropTerminalDirectBreakStatement(transformStatements(caseNode.getStatements(), false));
+                    ensureHasSourceSection(pass, caseNode);
+                    curNode = factory.createIf(test, pass, curNode);
                 }
-                ensureHasSourceSection(test, caseNode);
                 ensureHasSourceSection(curNode, caseNode);
             }
         }
@@ -2943,7 +2967,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterEmptyNode(com.oracle.js.parser.ir.EmptyNode emptyNode) {
-        return result(factory.createEmpty());
+        return factory.createEmpty();
     }
 
     @Override
@@ -2955,7 +2979,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode writeWith = environment.findLocalVar(withVarName).createWriteNode(toObject);
         try (EnvironmentCloseable withEnv = enterWithEnvironment(withVarName)) {
             JavaScriptNode withBody = transform(withNode.getBody());
-            return result(tagWithHaltTag(factory.createWith(writeWith, wrapClearAndGetCompletionValue(withBody))));
+            return tagStatement(factory.createWith(writeWith, wrapClearAndGetCompletionValue(withBody)), withNode);
         }
     }
 
@@ -2967,21 +2991,21 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     public JavaScriptNode enterRuntimeNode(RuntimeNode runtimeNode) {
         if (runtimeNode.getRequest() == RuntimeNode.Request.REFERENCE_ERROR) {
             String msg = com.oracle.js.parser.ECMAErrors.getMessage("parser.error.invalid.lvalue");
-            return result(factory.createThrowError(JSErrorType.ReferenceError, error(msg, runtimeNode.getToken(), lc)));
+            return factory.createThrowError(JSErrorType.ReferenceError, error(msg, runtimeNode.getToken(), lc));
         } else if (runtimeNode.getRequest() == RuntimeNode.Request.GET_TEMPLATE_OBJECT) {
             JavaScriptNode rawStrings = transform(runtimeNode.getArgs().get(0));
             JavaScriptNode cookedStrings = transform(runtimeNode.getArgs().get(1));
-            return result(factory.createTemplateObject(context, rawStrings, cookedStrings));
+            return tagExpression(factory.createTemplateObject(context, rawStrings, cookedStrings), runtimeNode);
         } else if (runtimeNode.getRequest() == RuntimeNode.Request.TO_STRING) {
             JavaScriptNode value = transform(runtimeNode.getArgs().get(0));
-            return result(factory.createToString(value));
+            return tagExpression(factory.createToString(value), runtimeNode);
         }
         throw new UnsupportedOperationException(runtimeNode.toString());
     }
 
     @Override
     public JavaScriptNode enterDebuggerNode(DebuggerNode debuggerNode) {
-        return result(tagWithHaltTag(factory.createDebugger()));
+        return tagStatement(factory.createDebugger(), debuggerNode);
     }
 
     protected static String error(final String message, final long errorToken, final LexicalContext lc) {
@@ -2996,13 +3020,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     @Override
     public JavaScriptNode enterExpressionStatement(ExpressionStatement expressionStatement) {
         JavaScriptNode expression = transform(expressionStatement.getExpression());
-        tagWithHaltTag(expression);
-        return result(expression);
+        return tagStatement(expression, expressionStatement);
     }
 
     @Override
     public JavaScriptNode enterJoinPredecessorExpression(JoinPredecessorExpression expr) {
-        return result(transform(expr.getExpression()));
+        return tagExpression(transform(expr.getExpression()), expr);
     }
 
     @Override
@@ -3021,12 +3044,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
                         members.toArray(new ObjectLiteralMemberNode[members.size()]), className);
 
-        return result(classDefinition);
+        return tagExpression(classDefinition, classNode);
     }
 
     @Override
     public JavaScriptNode enterBlockExpression(BlockExpression blockExpression) {
-        return result(transform(blockExpression.getBlock()));
+        return tagExpression(transform(blockExpression.getBlock()), blockExpression);
     }
 
     @Override
@@ -3038,7 +3061,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else {
             valueNode = factory.createAccessArgument(currentFunction.getLeadingArgumentCount() + paramNode.getIndex());
         }
-        return result(ensureHasHiddenSourceSection(valueNode));
+        return tagExpression(tagHiddenExpression(valueNode), paramNode);
     }
 
     // ---
@@ -3061,7 +3084,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode ensureHasSourceSection(JavaScriptNode resultNode, com.oracle.js.parser.ir.Node parseNode) {
-        if (resultNode != null && !resultNode.hasSourceSection()) {
+        if (!resultNode.hasSourceSection()) {
             assignSourceSection(resultNode, parseNode);
             if (resultNode instanceof GlobalScopeVarWrapperNode) {
                 ensureHasSourceSection(((GlobalScopeVarWrapperNode) resultNode).getDelegateNode(), parseNode);
@@ -3075,7 +3098,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private String makeUniqueTempVarNameForStatement(Statement statement) {
-        String name = statement.getClass().getSimpleName() + ":" + statement.getLineNumber() + ":" + statement.getStart();
+        String name = ':' + statement.getClass().getSimpleName() + ':' + statement.getLineNumber() + ':' + statement.getStart();
         assert !environment.hasLocalVar(name);
         return name;
     }

@@ -94,7 +94,7 @@ public abstract class JSNotNode extends JSUnaryNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (!getOperand().hasSourceSection()) {
-            transferSourceSection(this, getOperand());
+            transferSourceSectionAndTags(this, getOperand());
         }
         return this;
     }

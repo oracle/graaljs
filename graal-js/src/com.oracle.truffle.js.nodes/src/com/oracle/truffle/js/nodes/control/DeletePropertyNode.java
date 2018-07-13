@@ -132,10 +132,10 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         if (materializationNeeded() && materializedTags.contains(UnaryExpressionTag.class)) {
             JavaScriptNode key = cloneUninitialized(propertyNode);
             JavaScriptNode target = cloneUninitialized(targetNode);
-            transferSourceSectionNoTags(this, key);
-            transferSourceSectionNoTags(this, target);
+            transferSourceSectionAddExpressionTag(this, key);
+            transferSourceSectionAddExpressionTag(this, target);
             DeletePropertyNode node = DeletePropertyNode.create(target, key, strict, context);
-            transferSourceSection(this, node);
+            transferSourceSectionAndTags(this, node);
             return node;
         } else {
             return this;

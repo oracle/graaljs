@@ -43,7 +43,9 @@ package com.oracle.truffle.js.nodes.control;
 import java.text.MessageFormat;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 
@@ -57,7 +59,6 @@ public class DebuggerNode extends StatementNode {
     private static boolean timingEnabled;
 
     DebuggerNode() {
-        addAlwaysHaltTag();
     }
 
     public static DebuggerNode create() {
@@ -93,5 +94,13 @@ public class DebuggerNode extends StatementNode {
     @Override
     protected JavaScriptNode copyUninitialized() {
         return create();
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == DebuggerTags.AlwaysHalt.class) {
+            return true;
+        }
+        return super.hasTag(tag);
     }
 }

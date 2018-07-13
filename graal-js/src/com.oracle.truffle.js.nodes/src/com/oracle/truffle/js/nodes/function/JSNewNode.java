@@ -139,7 +139,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ObjectAllocationExpressionTag.class) && materializationNeeded()) {
             JavaScriptNode newNew = create(context, cloneUninitialized(getTarget()), AbstractFunctionArgumentsNode.materializeArgumentsNode(arguments, getSourceSection()));
-            transferSourceSection(this, newNew);
+            transferSourceSectionAndTags(this, newNew);
             return newNew;
         }
         return super.materializeInstrumentableNodes(materializedTags);

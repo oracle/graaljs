@@ -62,6 +62,7 @@ public abstract class AbstractFunctionArgumentsNode extends JavaScriptBaseNode {
         if (argumentsNode instanceof JSFunctionOneConstantArgumentNode) {
             JSConstantNode constantNode = JSConstantNode.create(((JSFunctionOneConstantArgumentNode) argumentsNode).getValue());
             constantNode.setSourceSection(originalSourceSection);
+            constantNode.addExpressionTag();
             return JSFunctionOneArgumentNode.create(constantNode, false);
         } else {
             return argumentsNode;

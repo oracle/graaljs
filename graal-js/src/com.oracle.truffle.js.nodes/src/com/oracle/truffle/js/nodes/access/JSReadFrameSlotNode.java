@@ -48,6 +48,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -82,7 +83,7 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == ReadVariableExpressionTag.class) {
-            return true;
+            return super.hasTag(StandardTags.ExpressionTag.class);
         } else {
             return super.hasTag(tag);
         }

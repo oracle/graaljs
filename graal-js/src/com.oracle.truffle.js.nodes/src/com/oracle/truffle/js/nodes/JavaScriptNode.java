@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -71,8 +70,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
     private static final int CHAR_LENGTH_MASK = ~(STATEMENT_TAG_BIT | CALL_TAG_BIT);
 
     private static final int ROOT_TAG_BIT = 1 << 31;
-    private static final int ALWAYS_HALT_TAG_BIT = 1 << 30;
-    private static final int CHAR_INDEX_MASK = ~(ROOT_TAG_BIT | ALWAYS_HALT_TAG_BIT);
+    private static final int EXPRESSION_TAG_BIT = 1 << 30;
+    private static final int CHAR_INDEX_MASK = ~(ROOT_TAG_BIT | EXPRESSION_TAG_BIT);
 
     protected static final String INTERMEDIATE_VALUE = "(intermediate value)";
 
@@ -244,10 +243,10 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
     @Override
     protected void onReplace(Node newNode, CharSequence reason) {
         super.onReplace(newNode, reason);
-        transferSourceSection(this, (JavaScriptNode) newNode);
+        transferSourceSectionAndTags(this, (JavaScriptNode) newNode);
     }
 
-    public static void transferSourceSection(JavaScriptNode fromNode, JavaScriptNode toNode) {
+    public static void transferSourceSectionAndTags(JavaScriptNode fromNode, JavaScriptNode toNode) {
         if (!toNode.hasSourceSection() && fromNode.hasSourceSection()) {
             // Pass on the source section to the new node.
             toNode.source = fromNode.source;
@@ -256,12 +255,13 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         }
     }
 
-    public static void transferSourceSectionNoTags(JavaScriptNode fromNode, JavaScriptNode toNode) {
+    public static void transferSourceSectionAddExpressionTag(JavaScriptNode fromNode, JavaScriptNode toNode) {
         if (!toNode.hasSourceSection() && fromNode.hasSourceSection()) {
             // Pass on the source section to the new node, but do not propagate tags.
             toNode.source = fromNode.source;
             toNode.charIndex = fromNode.charIndex & CHAR_INDEX_MASK;
             toNode.charLength = fromNode.charLength & CHAR_LENGTH_MASK;
+            toNode.addExpressionTag();
         }
     }
 
@@ -332,11 +332,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
             return (charLength & CALL_TAG_BIT) != 0;
         } else if (tag == StandardTags.RootTag.class) {
             return (charIndex & ROOT_TAG_BIT) != 0;
-        } else if (tag == DebuggerTags.AlwaysHalt.class) {
-            return (charIndex & ALWAYS_HALT_TAG_BIT) != 0;
         } else if (tag == StandardTags.ExpressionTag.class) {
-            // Non-expression nodes override and return false.
-            return true;
+            return (charIndex & EXPRESSION_TAG_BIT) != 0;
         } else {
             return false;
         }
@@ -354,8 +351,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         charIndex |= ROOT_TAG_BIT;
     }
 
-    public final void addAlwaysHaltTag() {
-        charIndex |= ALWAYS_HALT_TAG_BIT;
+    public final void addExpressionTag() {
+        charIndex |= EXPRESSION_TAG_BIT;
     }
 
     protected JavaScriptNode copyUninitialized() {
@@ -375,7 +372,7 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
             T copy = (T) node.copyUninitialized();
             // Assertion might not always hold and fail spuriously.
             assert copy.getClass() == node.getClass() || node instanceof JSBuiltinNode || node instanceof WrapperNode : node.getClass() + " => " + copy.getClass();
-            transferSourceSection(node, copy);
+            transferSourceSectionAndTags(node, copy);
             return copy;
         }
     }

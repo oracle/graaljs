@@ -93,7 +93,7 @@ public abstract class AbstractBlockNode extends StatementNode implements Sequenc
                 } else if (statement instanceof VoidNode) {
                     VoidNode voidNode = (VoidNode) statement;
                     filteredStatements.add(voidNode.getOperand());
-                    transferSourceSection(statement, voidNode.getOperand());
+                    transferSourceSectionAndTags(statement, voidNode.getOperand());
                 } else {
                     assert statement instanceof EmptyNode || statement instanceof JSConstantUndefinedNode;
                 }

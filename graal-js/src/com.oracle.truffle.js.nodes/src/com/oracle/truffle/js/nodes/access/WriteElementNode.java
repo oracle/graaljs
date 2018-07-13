@@ -173,7 +173,7 @@ public class WriteElementNode extends JSTargetableNode {
             JavaScriptNode clonedIndex = indexNode.hasSourceSection() ? cloneUninitialized(indexNode) : JSTaggedExecutionNode.createFor(indexNode, this, ExpressionTag.class);
             JavaScriptNode clonedValue = valueNode.hasSourceSection() ? cloneUninitialized(valueNode) : JSTaggedExecutionNode.createFor(valueNode, this, ExpressionTag.class);
             JavaScriptNode cloned = WriteElementNode.create(clonedTarget, clonedIndex, clonedValue, getContext(), isStrict(), typeCacheNode.writeOwn);
-            transferSourceSection(this, cloned);
+            transferSourceSectionAndTags(this, cloned);
             return cloned;
         }
         return this;
