@@ -423,7 +423,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             case "short":
                 return "v";
             case "long":
-                return "vv";
+                return "vvvv";
         }
         return "";
     }
