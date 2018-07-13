@@ -344,10 +344,6 @@
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/compareExchange/good-views.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "built-ins/Atomics/exchange/bigint/bad-range.js",
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
@@ -516,98 +512,6 @@
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/wait/false-for-timeout-agent.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/good-views.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/nan-for-timeout.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/negative-index-throws.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/negative-timeout-agent.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-no-operation.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-add.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-and.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-compareExchange.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-exchange.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-or.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-store.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-sub.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/no-spurious-wakeup-on-xor.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/null-for-timeout-agent.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/object-for-timeout-agent.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/object-for-timeout.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/poisoned-object-for-timeout-throws-agent.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/symbol-for-index-throws-agent.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/symbol-for-timeout-throws-agent.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/symbol-for-value-throws-agent.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/true-for-timeout-agent.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/undefined-for-timeout.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "built-ins/Atomics/wait/undefined-index-defaults-to-zero.js",
     "status" : "SKIP",
     "comment" : "fails randomly, highly timing sensitive (sleep(5) + wait(10)), will be fixed by Test262 update"
@@ -616,21 +520,9 @@
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/wait/wait-index-value-not-equal.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/waiterlist-block-indexedposition-wake.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "built-ins/Atomics/wait/waiterlist-order-of-operations-is-fifo.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wait/was-woken-before-timeout.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "fails (does not terminate) randomly"
   }, {
     "filePath" : "built-ins/Atomics/wake/bigint/bad-range.js",
     "status" : "FAIL",
@@ -649,70 +541,6 @@
     "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/Atomics/wake/bigint/wake-all-on-loc.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/count-defaults-to-infinity-missing.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/count-defaults-to-infinity-undefined.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/count-from-nans.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/negative-count.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/undefined-index-defaults-to-zero.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/wake-all-on-loc.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/wake-all.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/wake-in-order-one-time.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/wake-in-order.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/wake-nan.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/wake-one.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/wake-rewake-noop.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/wake-two.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/wake-with-no-agents-waiting.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/wake-with-no-matching-agents-waiting.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Atomics/wake/wake-zero.js",
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
   }, {

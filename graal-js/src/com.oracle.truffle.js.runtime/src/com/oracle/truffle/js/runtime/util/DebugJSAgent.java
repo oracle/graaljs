@@ -99,6 +99,7 @@ public class DebugJSAgent extends JSAgent {
                                 "$262.agent.report = Test262.agentReport;" +
                                 "$262.agent.sleep = Test262.agentSleep;" +
                                 "$262.agent.leaving = Test262.agentLeaving;" +
+                                "$262.agent.monotonicNow = Test262.agentMonotonicNow;" +
                                 "$262;";
 
                 Context polyglotContext = contextBuilder.build();
