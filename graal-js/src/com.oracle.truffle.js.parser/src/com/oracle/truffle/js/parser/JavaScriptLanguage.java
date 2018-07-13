@@ -56,6 +56,7 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -104,6 +105,7 @@ import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.parser.foreign.JSMetaObject;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -165,6 +167,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         GraalJSParserOptions.describeOptions(options);
         JSContextOptions.describeOptions(options);
         OPTION_DESCRIPTORS = OptionDescriptors.create(options);
+        ensureErrorClassesInitialized();
     }
 
     @Override
@@ -642,5 +645,14 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
         sb.append('}');
         return sb.toString();
+    }
+
+    private static void ensureErrorClassesInitialized() {
+        if (JSTruffleOptions.SubstrateVM) {
+            return;
+        }
+        // Ensure error-related classes are initialized to avoid NoClassDefFoundError
+        // during conversion of StackOverflowError to RangeError
+        TruffleStackTraceElement.getStackTrace(Errors.createRangeError(""));
     }
 }

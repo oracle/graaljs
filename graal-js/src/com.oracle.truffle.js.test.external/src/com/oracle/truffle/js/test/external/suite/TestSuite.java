@@ -81,12 +81,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.parser.GraalJSParserOptions;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSErrorType;
-import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -548,18 +544,7 @@ public abstract class TestSuite {
         return reason.replace("<", "&lt;");
     }
 
-    private static void preloadErrorClasses() {
-        if (!TruffleOptions.AOT) {
-            // make sure JSException and Errors are initialized to avoid problems with
-            // StackOverflowException. See regress-crbug-465671.js
-            // also see GR-4015
-            JSException.create(JSErrorType.Error, "");
-            Errors.createRangeError("");
-        }
-    }
-
     public int runTestSuite(String[] selectedTestDirs) {
-        preloadErrorClasses();
         long startTime = System.currentTimeMillis();
 
         deleteFiles(getReportFileName(), getHTMLFileName());
