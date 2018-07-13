@@ -49,6 +49,7 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetach
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentBroadcastNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentGetReportNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentLeavingNodeGen;
+import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentMonotonicNowNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentReceiveBroadcastNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentReportNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentSleepNodeGen;
@@ -90,7 +91,8 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
         agentSleep(1),
         agentReceiveBroadcast(1),
         agentReport(1),
-        agentLeaving(0);
+        agentLeaving(0),
+        agentMonotonicNow(0);
 
         private final int length;
 
@@ -131,6 +133,8 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
                             return Test262AgentReportNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                         case agentLeaving:
                             return Test262AgentLeavingNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
+                        case agentMonotonicNow:
+                            return Test262AgentMonotonicNowNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
                     }
                 }
         }
@@ -298,4 +302,17 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
             return Undefined.instance;
         }
     }
+
+    public abstract static class Test262AgentMonotonicNow extends JSBuiltinNode {
+
+        public Test262AgentMonotonicNow(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected double monotonicNow() {
+            return System.nanoTime() / 1000000;
+        }
+    }
+
 }
