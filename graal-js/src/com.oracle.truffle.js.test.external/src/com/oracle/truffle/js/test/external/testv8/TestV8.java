@@ -66,7 +66,7 @@ public class TestV8 extends TestSuite {
     private static final String HARNESS_REL_LOC = "";
 
     private static final String[] PREQUEL_FILES = new String[]{"/test/intl/assert.js", "/test/intl/utils.js", "/test/mjsunit/mjsunit.js"};
-    private static final String[] TEST_DIRS = new String[]{"mjsunit"};
+    private static final String[] TEST_DIRS = new String[]{"mjsunit", "intl"};
     private static final String TESTS_CONFIG_FILE = "testV8.json";
     private static final String FAILED_TESTS_FILE = "testv8.failed";
 
