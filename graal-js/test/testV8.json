@@ -69,6 +69,10 @@
     "filePath" : "intl/number-format/wellformed-unsupported-locale.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "intl/overrides/caching.js",
+    "status" : "SKIP",
+    "comment" : "suspicious performance test"
+  }, {
     "filePath" : "intl/regexp-assert.js",
     "status" : "FAIL"
   }, {
