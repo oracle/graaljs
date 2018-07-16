@@ -48,12 +48,12 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
 public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements WriteNode {
@@ -64,7 +64,7 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements Writ
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == WriteVariableExpressionTag.class) {
-            return super.hasTag(StandardTags.ExpressionTag.class);
+            return !JSFrameUtil.isInternal(frameSlot);
         } else {
             return super.hasTag(tag);
         }

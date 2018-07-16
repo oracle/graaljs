@@ -52,7 +52,6 @@ public class JSTags {
                     ObjectAllocationExpressionTag.class,
                     BinaryExpressionTag.class,
                     UnaryExpressionTag.class,
-                    ControlFlowRootTag.class,
                     WriteVariableExpressionTag.class,
                     ReadElementExpressionTag.class,
                     WriteElementExpressionTag.class,
