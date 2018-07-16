@@ -2709,7 +2709,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 Expression catchParameter = catchClause.getException();
                 Block catchBody = catchClause.getBody();
                 Expression pattern = catchClause.getDestructuringPattern();
-                String errorVarName = ((IdentNode) catchParameter).getName();
 
                 // manually enter the catch block; this hack is only necessary to be able to
                 // evaluate the condition in the same block
@@ -2723,12 +2722,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             assert empty instanceof EmptyNode;
                         }
 
-                        VarRef errorVar = environment.findLocalVar(errorVarName);
-                        JavaScriptNode writeErrorVar = errorVar.createWriteNode(null);
+                        JavaScriptNode writeErrorVar = null;
                         JavaScriptNode destructuring = null;
-                        if (pattern != null) {
-                            // exception is being destructured
-                            destructuring = transformAssignment(pattern, pattern, errorVar.createReadNode(), true);
+                        if (catchParameter != null) {
+                            String errorVarName = ((IdentNode) catchParameter).getName();
+                            VarRef errorVar = environment.findLocalVar(errorVarName);
+                            writeErrorVar = errorVar.createWriteNode(null);
+                            if (pattern != null) {
+                                // exception is being destructured
+                                destructuring = transformAssignment(pattern, pattern, errorVar.createReadNode(), true);
+                            }
                         }
 
                         JavaScriptNode catchBlock = transform(catchBody);

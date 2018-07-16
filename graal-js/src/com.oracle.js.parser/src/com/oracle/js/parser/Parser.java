@@ -182,6 +182,7 @@ public class Parser extends AbstractParser {
     private static final String ARROW_FUNCTION_NAME = ":=>";
 
     private static final String FUNCTION_PARAMETER_CONTEXT = "function parameter";
+    private static final String CATCH_PARAMETER_CONTEXT = "catch parameter";
 
     private static final boolean ES6_FOR_OF = Options.getBooleanProperty("parser.for.of", true);
     private static final boolean ES6_CLASS = Options.getBooleanProperty("parser.class", true);
@@ -199,6 +200,7 @@ public class Parser extends AbstractParser {
     private static final boolean ES8_ASYNC_FUNCTION = Options.getBooleanProperty("parser.async.function", true);
     private static final boolean ES8_REST_SPREAD_PROPERTY = Options.getBooleanProperty("parser.rest.spread.property", true);
     private static final boolean ES8_FOR_AWAIT_OF = Options.getBooleanProperty("parser.for.await.of", true);
+    private static final boolean ES2019_OPTIONAL_CATCH_BINDING = Options.getBooleanProperty("parser.optional.catch.binding", true);
 
     private static final int REPARSE_IS_PROPERTY_ACCESSOR = 1 << 0;
     private static final int REPARSE_IS_METHOD = 1 << 1;
@@ -2887,17 +2889,22 @@ loop:
         // Create try.
 
         try {
-            final Block       tryBody     = getBlock(true);
+            final Block tryBody = getBlock(true);
             final ArrayList<Block> catchBlocks = new ArrayList<>();
 
             while (type == CATCH) {
                 final int  catchLine  = line;
                 final long catchToken = token;
                 next();
+
+                if (type == LBRACE && ES2019_OPTIONAL_CATCH_BINDING) {
+                    catchBlocks.add(catchBlock(catchToken, catchLine, null, null, null));
+                    break;
+                }
+
                 expect(LPAREN);
 
-                final String contextString = "catch parameter";
-                final Expression catchParameter = bindingIdentifierOrPattern(contextString);
+                final Expression catchParameter = bindingIdentifierOrPattern(CATCH_PARAMETER_CONTEXT);
                 final IdentNode exception;
                 final Expression pattern;
                 if (catchParameter instanceof IdentNode) {
@@ -2922,29 +2929,7 @@ loop:
 
                 expect(RPAREN);
 
-                final ParserContextBlockNode catchBlock = newBlock();
-                try {
-                    appendStatement(new VarNode(catchLine, Token.recast(exception.getToken(), LET), exception.getFinish(), exception.setIsDeclaredHere(), null, VarNode.IS_LET));
-                    if (pattern != null) {
-                        verifyDestructuringBindingPattern(pattern, new Consumer<IdentNode>() {
-                            @Override
-                            public void accept(IdentNode identNode) {
-                                verifyStrictIdent(identNode, contextString);
-                                final int varFlags = VarNode.IS_LET | VarNode.IS_DESTRUCTURING;
-                                final VarNode var = new VarNode(catchLine, Token.recast(identNode.getToken(), LET), identNode.getFinish(), identNode.setIsDeclaredHere(), null, varFlags);
-                                appendStatement(var);
-                            }
-                        });
-                    }
-
-                    // Get CATCH body.
-                    final Block catchBody = getBlock(true);
-                    final CatchNode catchNode = new CatchNode(catchLine, catchToken, finish, exception, pattern, ifExpression, catchBody, false);
-                    appendStatement(catchNode);
-                } finally {
-                    restoreBlock(catchBlock);
-                    catchBlocks.add(new Block(catchBlock.getToken(), Math.max(finish, Token.descPosition(catchBlock.getToken())), catchBlock.getFlags() | Block.IS_SYNTHETIC, catchBlock.getStatements()));
-                }
+                catchBlocks.add(catchBlock(catchToken, catchLine, exception, pattern, ifExpression));
 
                 // If unconditional catch then should to be the end.
                 if (ifExpression == null) {
@@ -2974,6 +2959,34 @@ loop:
         }
 
         appendStatement(new BlockStatement(startLine, new Block(tryToken, finish, outer.getFlags() | Block.IS_SYNTHETIC, outer.getStatements())));
+    }
+
+    private Block catchBlock(final long catchToken, final int catchLine, final IdentNode exception, final Expression pattern, final Expression ifExpression) {
+        final ParserContextBlockNode catchBlock = newBlock();
+        try {
+            if (exception != null) {
+                appendStatement(new VarNode(catchLine, Token.recast(exception.getToken(), LET), exception.getFinish(), exception.setIsDeclaredHere(), null, VarNode.IS_LET));
+                if (pattern != null) {
+                    verifyDestructuringBindingPattern(pattern, new Consumer<IdentNode>() {
+                        @Override
+                        public void accept(IdentNode identNode) {
+                            verifyStrictIdent(identNode, CATCH_PARAMETER_CONTEXT);
+                            final int varFlags = VarNode.IS_LET | VarNode.IS_DESTRUCTURING;
+                            final VarNode var = new VarNode(catchLine, Token.recast(identNode.getToken(), LET), identNode.getFinish(), identNode.setIsDeclaredHere(), null, varFlags);
+                            appendStatement(var);
+                        }
+                    });
+                }
+            }
+
+            // Get CATCH body.
+            final Block catchBody = getBlock(true);
+            final CatchNode catchNode = new CatchNode(catchLine, catchToken, finish, exception, pattern, ifExpression, catchBody, false);
+            appendStatement(catchNode);
+        } finally {
+            restoreBlock(catchBlock);
+        }
+        return new Block(catchBlock.getToken(), Math.max(finish, Token.descPosition(catchBlock.getToken())), catchBlock.getFlags() | Block.IS_SYNTHETIC, catchBlock.getStatements());
     }
 
     /**
