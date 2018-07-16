@@ -54,7 +54,6 @@ import com.oracle.truffle.regex.nashorn.regexp.joni.Region;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.result.SingleResult;
 import com.oracle.truffle.regex.result.StartsEndsIndexArrayResult;
-import com.oracle.truffle.regex.tregex.nodes.input.InputToStringNode;
 
 /**
  * These nodes are instantiated only once and used for all Joni-RegExp. Therefore, we do not gain
