@@ -77,6 +77,7 @@ public class Test262Runnable extends TestRunnable {
     private static final String INCLUDES_PREFIX = "includes: ";
     private static final String ONLY_STRICT_FLAG = "onlyStrict";
     private static final String MODULE_FLAG = "module";
+    private static final String CAN_BLOCK_IS_FALSE_FLAG = "CanBlockIsFalse";
     private static final Pattern FLAGS_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?(?:\\w+))*)\\]");
     private static final Pattern INCLUDES_PATTERN = Pattern.compile("includes: \\[(.*)\\]");
     private static final Pattern SPLIT_PATTERN = Pattern.compile(", ");
@@ -105,6 +106,7 @@ public class Test262Runnable extends TestRunnable {
         boolean runStrict = flags.contains(ONLY_STRICT_FLAG);
         boolean asyncTest = isAsyncTest(scriptCodeList);
         boolean module = flags.contains(MODULE_FLAG);
+        boolean agentCannotBlock = flags.contains(CAN_BLOCK_IS_FALSE_FLAG);
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();
 
@@ -131,12 +133,20 @@ public class Test262Runnable extends TestRunnable {
 
         Source[] harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList));
 
+        final Map<String, String> options;
+        if (agentCannotBlock) {
+            options = new HashMap<>(commonOptions);
+            options.put(JSContextOptions.AGENT_CAN_BLOCK_NAME, "false");
+        } else {
+            options = commonOptions;
+        }
+
         // now run it
-        testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources)));
+        testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources, options)));
     }
 
     private TestFile.Result runInternal(int ecmaVersion, File file, org.graalvm.polyglot.Source testSource, boolean negative, boolean asyncTest, String negativeExpectedMessage,
-                    Source[] harnessSources) {
+                    Source[] harnessSources, Map<String, String> options) {
         final String ecmaVersionSuffix = " (ES" + ecmaVersion + ")";
         suite.logVerbose(getName() + ecmaVersionSuffix);
         TestFile.Result testResult;
@@ -147,7 +157,7 @@ public class Test262Runnable extends TestRunnable {
             outputStream = makeDualStream(byteArrayOutputStream, System.out);
         }
 
-        TestCallable tc = new TestCallable(suite, harnessSources, testSource, file, ecmaVersion, commonOptions);
+        TestCallable tc = new TestCallable(suite, harnessSources, testSource, file, ecmaVersion, options);
         tc.setOutput(outputStream);
         tc.setError(outputStream);
 
