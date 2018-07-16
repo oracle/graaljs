@@ -70,8 +70,8 @@ import java.util.function.Predicate;
 import java.util.regex.PatternSyntaxException;
 
 import com.oracle.truffle.regex.nashorn.parser.Scanner;
-import com.oracle.truffle.regex.tregex.parser.CodePointSet;
-import com.oracle.truffle.regex.tregex.parser.UnicodeCharacterProperties;
+import com.oracle.truffle.regex.chardata.CodePointSet;
+import com.oracle.truffle.regex.chardata.UnicodeCharacterProperties;
 
 /**
  * Scan a JavaScript regexp, converting to Java regex if necessary.
