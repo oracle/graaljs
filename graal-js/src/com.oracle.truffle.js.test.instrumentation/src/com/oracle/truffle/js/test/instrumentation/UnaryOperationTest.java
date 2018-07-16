@@ -49,7 +49,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -70,9 +69,7 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
                         assertTrue(JSObject.isJSObject(e4.val));
                     });
                 }).exit();
-                unary.input((e4) -> {
-                    assertTrue(JSObject.isJSObject(e4.val));
-                });
+                unary.input(assertJSFunctionInput);
             }).exit();
             write.input("function");
         }).exit();
@@ -82,21 +79,17 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
     public void voidMethod() {
         evalAllTags("void function foo() {}();");
 
-        enter(WriteVariableExpressionTag.class, (e, var) -> {
-            assertAttribute(e, NAME, "<return>");
-            enter(UnaryExpressionTag.class, (e2, unary) -> {
-                assertAttribute(e2, OPERATOR, "void");
-                enter(FunctionCallExpressionTag.class, (e3, call) -> {
-                    enter(LiteralExpressionTag.class).exit();
-                    call.input(assertUndefinedInput);
-                    enter(LiteralExpressionTag.class).exit();
-                    call.input(assertJSFunctionInput);
-                    // lastly, read undefined to return it
-                    enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
-                }).exit();
-                unary.input(Undefined.instance);
+        enter(UnaryExpressionTag.class, (e2, unary) -> {
+            assertAttribute(e2, OPERATOR, "void");
+            enter(FunctionCallExpressionTag.class, (e3, call) -> {
+                enter(LiteralExpressionTag.class).exit();
+                call.input(assertUndefinedInput);
+                enter(LiteralExpressionTag.class).exit();
+                call.input(assertJSFunctionInput);
+                // lastly, read undefined to return it
+                enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
             }).exit();
-            var.input(Undefined.instance);
+            unary.input(Undefined.instance);
         }).exit();
     }
 

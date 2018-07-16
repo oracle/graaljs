@@ -86,6 +86,12 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
         c.eval(Source.newBuilder("js", new File(args[0])).build());
     }
 
+    public static void trace(String code) {
+        Context c = Context.create("js");
+        c.getEngine().getInstruments().get(ID).lookup(FullExecutionTracerInstrument.class);
+        c.eval(Source.create("js", code));
+    }
+
     @Override
     protected void onCreate(Env env) {
         this.environment = env;

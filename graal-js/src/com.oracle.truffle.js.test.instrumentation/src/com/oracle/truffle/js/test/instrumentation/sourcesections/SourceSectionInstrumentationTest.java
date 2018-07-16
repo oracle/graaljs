@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 import org.graalvm.polyglot.Context;
 import org.junit.After;
@@ -92,7 +93,7 @@ public class SourceSectionInstrumentationTest extends FineGrainedAccessTest {
 
     public final void assertSourceSections(String[] expected) {
         int i = 0;
-        assertEquals(expected.length, sources.size());
+        assertEquals(sources.stream().collect(Collectors.joining("\n")), expected.length, sources.size());
         for (String s : expected) {
             assertEquals(s, sources.get(i++));
         }

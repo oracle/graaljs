@@ -96,8 +96,8 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
         if (materializedTags.contains(BinaryExpressionTag.class)) {
             JSConstantNode constantNode = isInt ? JSConstantIntegerNode.create(leftInt) : JSConstantDoubleNode.create(leftDouble);
             JavaScriptNode node = JSAddNode.createUnoptimized(constantNode, getOperand(), truncate);
-            transferSourceSectionNoTags(this, constantNode);
-            transferSourceSection(this, node);
+            transferSourceSectionAddExpressionTag(this, constantNode);
+            transferSourceSectionAndTags(this, node);
             return node;
         } else {
             return this;

@@ -45,15 +45,64 @@ import org.junit.Test;
 public class IfExpressionTest extends SourceSectionInstrumentationTest {
 
     @Test
-    public void ifExpressionTrue() {
+    public void ifExpressionTrueStmt() {
         evalStatements("21 > 20 ? true : false;");
         assertSourceSections(new String[]{"21 > 20 ? true : false"});
     }
 
     @Test
-    public void ifExpressionFalse() {
+    public void ifExpressionFalseStmt() {
         evalStatements("20 > 21 ? true : false;");
         assertSourceSections(new String[]{"20 > 21 ? true : false"});
     }
 
+    @Test
+    public void ifExpressionTrueExpr() {
+        evalExpressions("21 > 20 ? true : false;");
+        assertSourceSections(new String[]{
+                        "21",
+                        "20",
+                        "21 > 20",
+                        "true",
+                        "21 > 20 ? true : false",
+        });
+    }
+
+    @Test
+    public void ifExpressionFalseExpr() {
+        evalExpressions("20 > 21 ? true : false;");
+        assertSourceSections(new String[]{
+                        "20",
+                        "21",
+                        "20 > 21",
+                        "false",
+                        "20 > 21 ? true : false",
+        });
+    }
+
+    @Test
+    public void ifStatementStmt() {
+        evalStatements("19; if (21 > 20) true; else false; 42;");
+
+        assertSourceSections(new String[]{
+                        "19",
+                        "true",
+                        "if (21 > 20) true; else false;",
+                        "42",
+        });
+    }
+
+    @Test
+    public void ifStatementExpr() {
+        evalExpressions("19; if (21 > 20) true; else false; 42;");
+
+        assertSourceSections(new String[]{
+                        "19",
+                        "21",
+                        "20",
+                        "21 > 20",
+                        "true",
+                        "42",
+        });
+    }
 }

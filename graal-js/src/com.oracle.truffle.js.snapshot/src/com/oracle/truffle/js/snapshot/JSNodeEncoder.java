@@ -381,12 +381,12 @@ public class JSNodeEncoder {
         putInt(charLength);
     }
 
-    public void encodeNodeTagsFixup(int nodeArg, boolean hasStatementTag, boolean hasCallTag, boolean hasAlwaysHaltTag, boolean hasRootTag) {
+    public void encodeNodeTagsFixup(int nodeArg, boolean hasStatementTag, boolean hasCallTag, boolean hasExpressionTag, boolean hasRootTag) {
         putBytecode(ID_NODE_TAGS_FIXUP);
         encodeReg(nodeArg);
         putBoolean(hasStatementTag);
         putBoolean(hasCallTag);
-        putBoolean(hasAlwaysHaltTag);
+        putBoolean(hasExpressionTag);
         putBoolean(hasRootTag);
     }
 }

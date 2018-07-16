@@ -45,19 +45,17 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
-import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -86,10 +84,6 @@ public final class IfNode extends StatementNode implements ResumableNode {
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == ControlFlowRootTag.class) {
             return true;
-        } else if (tag == ExpressionTag.class) {
-            // We assume that all if statements are expressions if not statements.
-            // This enables instrumentation for cases like: 100 > 0 ? true : false;
-            return !hasTag(StatementTag.class);
         }
         return super.hasTag(tag);
     }
@@ -107,7 +101,7 @@ public final class IfNode extends StatementNode implements ResumableNode {
             JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(condition, ControlFlowBranchTag.class,
                             JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
             JavaScriptNode newIf = IfNode.create(newCondition, newThenPart, newElsePart);
-            transferSourceSection(this, newIf);
+            transferSourceSectionAndTags(this, newIf);
             return newIf;
         } else {
             return this;
@@ -121,7 +115,7 @@ public final class IfNode extends StatementNode implements ResumableNode {
 
     private static boolean hasMaterializationTag(Set<Class<? extends Tag>> materializedTags) {
         return materializedTags.contains(ControlFlowRootTag.class) || materializedTags.contains(ControlFlowBranchTag.class) ||
-                        materializedTags.contains(ControlFlowBlockTag.class) || materializedTags.contains(StatementTag.class) || materializedTags.contains(ExpressionTag.class);
+                        materializedTags.contains(ControlFlowBlockTag.class);
     }
 
     private IfNode(JavaScriptNode condition, JavaScriptNode thenPart, JavaScriptNode elsePart) {
