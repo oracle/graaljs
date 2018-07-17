@@ -285,8 +285,8 @@ public class JSContext implements ShapeContext {
         this.emptyShapePrototypeInObject = createEmptyShapePrototypeInObject();
         this.globalScopeShape = createGlobalScopeShape();
 
-        this.noSuchPropertyUnusedAssumption = JSTruffleOptions.NashornExtensions ? Truffle.getRuntime().createAssumption("noSuchPropertyUnusedAssumption") : null;
-        this.noSuchMethodUnusedAssumption = JSTruffleOptions.NashornExtensions ? Truffle.getRuntime().createAssumption("noSuchMethodUnusedAssumption") : null;
+        this.noSuchPropertyUnusedAssumption = Truffle.getRuntime().createAssumption("noSuchPropertyUnusedAssumption");
+        this.noSuchMethodUnusedAssumption = Truffle.getRuntime().createAssumption("noSuchMethodUnusedAssumption");
         this.arrayPrototypeNoElementsAssumption = Truffle.getRuntime().createAssumption("arrayPrototypeNoElementsAssumption");
         this.typedArrayNotDetachedAssumption = Truffle.getRuntime().createAssumption("typedArrayNotDetachedAssumption");
         this.fastArrayAssumption = Truffle.getRuntime().createAssumption("fastArrayAssumption");

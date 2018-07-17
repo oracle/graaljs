@@ -49,7 +49,6 @@ import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -151,7 +150,7 @@ public final class DoWithNode extends JSTargetableNode implements ReadNode, Writ
             if (withObjectHasProperty.hasProperty(target) && isPropertyScopable(target)) {
                 // with object has a scopable property
                 return target;
-            } else if (JSTruffleOptions.NashornExtensions && hasNoSuchProperty(target, false) && !globalObjectHasProperty.hasProperty(GlobalObjectNode.getGlobalObject(context))) {
+            } else if (context.isOptionNashornCompatibilityMode() && hasNoSuchProperty(target, false) && !globalObjectHasProperty.hasProperty(GlobalObjectNode.getGlobalObject(context))) {
                 // Nashorn extension: with object has a __noSuchProperty__ or __noSuchMethod__
                 // NB: this part is not 1:1 compatible with Nashorn w.r.t. chained scopes.
                 return target;

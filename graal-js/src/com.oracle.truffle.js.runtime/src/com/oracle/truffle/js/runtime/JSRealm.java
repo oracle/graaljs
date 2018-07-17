@@ -1445,9 +1445,6 @@ public class JSRealm implements ShapeContext {
      */
     public void addScriptingObjects() {
         CompilerAsserts.neverPartOfCompilation();
-        if (!JSTruffleOptions.NashornExtensions) {
-            return;
-        }
         DynamicObject globalObj = getGlobalObject();
 
         // $OPTIONS

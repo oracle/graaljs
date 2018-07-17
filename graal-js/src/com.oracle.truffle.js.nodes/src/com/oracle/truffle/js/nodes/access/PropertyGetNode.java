@@ -1337,7 +1337,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
 
         protected Object getNoSuchProperty(DynamicObject thisObj) {
-            if (JSTruffleOptions.NashornExtensions && (!context.getNoSuchPropertyUnusedAssumption().isValid() || (isMethod() && !context.getNoSuchMethodUnusedAssumption().isValid()))) {
+            if (context.isOptionNashornCompatibilityMode() && (!context.getNoSuchPropertyUnusedAssumption().isValid() || (isMethod() && !context.getNoSuchMethodUnusedAssumption().isValid()))) {
                 return getNoSuchPropertySlow(thisObj);
             }
             return getFallback(thisObj);
@@ -1897,7 +1897,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     private LinkedPropertyGetNode createUndefinedJSObjectPropertyNode(int depth, JSContext context, DynamicObject jsobject) {
         AbstractShapeCheckNode shapeCheck = createShapeCheckNode(jsobject.getShape(), jsobject, depth, false, false);
         if (JSRuntime.isObject(jsobject)) {
-            if (JSTruffleOptions.NashornExtensions && !(key instanceof Symbol)) {
+            if (context.isOptionNashornCompatibilityMode() && !(key instanceof Symbol)) {
                 if ((!context.getNoSuchMethodUnusedAssumption().isValid() && JSObject.hasProperty(jsobject, JSObject.NO_SUCH_METHOD_NAME)) ||
                                 (!context.getNoSuchPropertyUnusedAssumption().isValid() && JSObject.hasProperty(jsobject, JSObject.NO_SUCH_PROPERTY_NAME))) {
                     return new CheckNoSuchPropertyNode(key, shapeCheck, isGlobal(), context);
