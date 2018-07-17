@@ -7971,22 +7971,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "language/statements/try/optional-catch-binding-finally.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-09-06)"
-  }, {
-    "filePath" : "language/statements/try/optional-catch-binding-lexical.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-09-06)"
-  }, {
-    "filePath" : "language/statements/try/optional-catch-binding-throws.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-09-06)"
-  }, {
-    "filePath" : "language/statements/try/optional-catch-binding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-09-06)"
-  }, {
     "filePath" : "language/statements/try/tco-catch-finally.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
