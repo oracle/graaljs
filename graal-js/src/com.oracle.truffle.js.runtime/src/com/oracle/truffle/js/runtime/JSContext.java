@@ -322,7 +322,7 @@ public class JSContext implements ShapeContext {
         this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
 
         if (JSTruffleOptions.Test262Mode || JSTruffleOptions.TestV8Mode) {
-            this.setJSAgent(new DebugJSAgent(env));
+            this.setJSAgent(new DebugJSAgent(env, contextOptions.canAgentBlock()));
         }
         if (contextOptions.isV8RealmBuiltin()) {
             this.realmList = new ArrayList<>();
@@ -1195,6 +1195,10 @@ public class JSContext implements ShapeContext {
 
     public boolean isOptionPreciseTime() {
         return contextOptions.isPreciseTime();
+    }
+
+    public boolean isOptionAgentCanBlock() {
+        return contextOptions.canAgentBlock();
     }
 
     /**

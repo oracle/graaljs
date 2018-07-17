@@ -61,9 +61,9 @@ public abstract class JSAgent implements EcmaAgent {
     private boolean inAtomicSection;
     private boolean inCriticalSection;
 
-    public JSAgent() {
+    public JSAgent(boolean canBlock) {
         this.signifier = signifierGenerator.incrementAndGet();
-        this.canBlock = true;
+        this.canBlock = canBlock;
         this.inCriticalSection = false;
         this.inAtomicSection = false;
     }

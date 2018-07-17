@@ -73,8 +73,8 @@ public class DebugJSAgent extends JSAgent {
     private boolean quit;
     private Object debugReceiveBroadcast;
 
-    public DebugJSAgent(TruffleLanguage.Env env) {
-        super();
+    public DebugJSAgent(TruffleLanguage.Env env, boolean canBlock) {
+        super(canBlock);
         this.optionValues = env.getOptions();
         this.reportValues = new ConcurrentLinkedDeque<>();
         this.spawnedAgent = new LinkedList<>();
