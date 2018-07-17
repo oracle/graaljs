@@ -64,7 +64,7 @@ import java.util.function.ObjIntConsumer;
 
 import com.oracle.truffle.regex.nashorn.regexp.joni.encoding.CharacterType;
 import com.oracle.truffle.regex.nashorn.regexp.joni.encoding.IntHolder;
-import com.oracle.truffle.regex.util.Constants;
+import com.oracle.truffle.regex.chardata.Constants;
 
 public final class EncodingHelper {
 
