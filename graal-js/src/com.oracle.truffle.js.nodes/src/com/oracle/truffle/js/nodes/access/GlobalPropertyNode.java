@@ -69,7 +69,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
     }
 
     public static JSTargetableNode createPropertyNode(JSContext ctx, String propertyName) {
-        if (ctx.isOptionNashornCompatibilityMode()) {
+        if (ctx != null && ctx.isOptionNashornCompatibilityMode()) {
             if (propertyName.equals("__LINE__")) {
                 return new GlobalConstantNode(ctx, propertyName, new GlobalConstantNode.LineNumberNode());
             } else if (propertyName.equals("__FILE__")) {

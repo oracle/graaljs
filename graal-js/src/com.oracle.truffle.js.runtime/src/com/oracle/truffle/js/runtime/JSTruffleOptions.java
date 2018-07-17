@@ -163,7 +163,6 @@ public class JSTruffleOptions {
 
     // Nashorn extensions
     public static final boolean NashornCompatibilityMode = booleanOption("NashornCompatibilityMode", false, OPTION_LANGUAGE_FEATURE);
-    public static final boolean NashornExtensions = booleanOption("NashornExtensions", true, OPTION_LANGUAGE_FEATURE);
 
     public static final boolean V8LegacyConst = booleanOption("V8LegacyConst", false, OPTION_LANGUAGE_FEATURE);
 
