@@ -198,9 +198,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         padEnd(1),
 
         // TBD
-        matchAll(1),
-        trimStart(0),
-        trimEnd(0);
+        matchAll(1);
 
         private final int length;
 
@@ -232,9 +230,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Override
         public boolean isEnabled() {
-            if (EnumSet.of(trimStart, trimEnd).contains(this)) {
-                return (JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019 || JSTruffleOptions.NashornExtensions);
-            }
             if (this.equals(matchAll)) {
                 return JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019;
             }
@@ -334,10 +329,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             case matchAll:
                 return JSStringMatchAllNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case trimStart:
-                return JSStringTrimLeftNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case trimEnd:
-                return JSStringTrimRightNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case padStart:
                 return JSStringPadNodeGen.create(context, builtin, true, args().withThis().varArgs().createArgumentNodes(context));
             case padEnd:
@@ -371,6 +362,39 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return createHTMLNode(context, builtin, "sup", "");
         }
         return null;
+    }
+
+    public static final class StringPrototypeExtensionBuiltins extends JSBuiltinsContainer.SwitchEnum<StringPrototypeExtensionBuiltins.StringExtensionBuiltins> {
+        protected StringPrototypeExtensionBuiltins() {
+            super(JSString.CLASS_NAME_EXTENSIONS, StringExtensionBuiltins.class);
+        }
+
+        public enum StringExtensionBuiltins implements BuiltinEnum<StringExtensionBuiltins> {
+            trimStart(0),
+            trimEnd(0);
+
+            private final int length;
+
+            StringExtensionBuiltins(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, StringExtensionBuiltins builtinEnum) {
+            switch (builtinEnum) {
+                case trimStart:
+                    return JSStringTrimLeftNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                case trimEnd:
+                    return JSStringTrimRightNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            }
+            return null;
+        }
     }
 
     abstract static class JSStringOperation extends JSNumberOperation {
