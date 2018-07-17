@@ -72,6 +72,7 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     public static final String TYPE_NAME = "string";
     public static final String CLASS_NAME = "String";
     public static final String PROTOTYPE_NAME = "String.prototype";
+    public static final String CLASS_NAME_EXTENSIONS = "StringExtensions";
 
     public static final String LENGTH = "length";
 
@@ -242,6 +243,9 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
             Object trimEnd = JSObject.get(prototype, "trimEnd");
             JSObjectUtil.putDataProperty(ctx, prototype, "trimLeft", trimStart, JSAttributes.configurableNotEnumerableWritable());
             JSObjectUtil.putDataProperty(ctx, prototype, "trimRight", trimEnd, JSAttributes.configurableNotEnumerableWritable());
+        }
+        if (ctx.isOptionNashornCompatibilityMode()) {
+            JSObjectUtil.putFunctionsFromContainer(realm, prototype, CLASS_NAME_EXTENSIONS);
         }
         return prototype;
     }

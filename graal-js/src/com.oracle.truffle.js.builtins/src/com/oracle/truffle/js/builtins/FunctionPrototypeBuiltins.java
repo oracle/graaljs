@@ -105,14 +105,6 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             public boolean isConfigurable() {
                 return false;
             }
-        },
-
-        // Non-standard Function.prototype.toSource function, to provide compatibility with Nashorn.
-        toSource(0) {
-            @Override
-            public boolean isEnabled() {
-                return JSTruffleOptions.NashornExtensions;
-            }
         };
 
         private final int length;
@@ -148,11 +140,38 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return JSCallNodeGen.create(context, builtin, args().withThis().fixedArgs(1).varArgs().createArgumentNodes(context));
             case _hasInstance:
                 return HasInstanceNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-
-            case toSource:
-                return JSFunctionToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
+    }
+
+    public static final class FunctionPrototypeNashornCompatBuiltins extends JSBuiltinsContainer.SwitchEnum<FunctionPrototypeNashornCompatBuiltins.FunctionNashornCompat> {
+        protected FunctionPrototypeNashornCompatBuiltins() {
+            super(JSFunction.CLASS_NAME_NASHORN_COMPAT, FunctionNashornCompat.class);
+        }
+
+        public enum FunctionNashornCompat implements BuiltinEnum<FunctionNashornCompat> {
+            toSource(0);
+
+            private final int length;
+
+            FunctionNashornCompat(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, FunctionNashornCompat builtinEnum) {
+            switch (builtinEnum) {
+                case toSource:
+                    return JSFunctionToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            }
+            return null;
+        }
     }
 
     public abstract static class JSBindNode extends JSBuiltinNode {

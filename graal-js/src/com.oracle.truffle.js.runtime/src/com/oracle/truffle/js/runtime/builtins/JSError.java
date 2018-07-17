@@ -73,6 +73,7 @@ public final class JSError extends JSBuiltinObject {
     public static final String MESSAGE = "message";
     public static final String NAME = "name";
     public static final String CLASS_NAME = "Error";
+    public static final String CLASS_NAME_NASHORN_COMPAT = "ErrorNashornCompat";
     public static final String PROTOTYPE_NAME = "Error.prototype";
     public static final HiddenKey EXCEPTION_PROPERTY_NAME = new HiddenKey("Exception");
     public static final String STACK_NAME = "stack";
@@ -169,6 +170,9 @@ public final class JSError extends JSBuiltinObject {
 
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorPrototype, PROTOTYPE_NAME);
+            if (ctx.isOptionNashornCompatibilityMode()) {
+                JSObjectUtil.putFunctionsFromContainer(realm, errorPrototype, JSError.CLASS_NAME_NASHORN_COMPAT);
+            }
         }
         return errorPrototype;
     }
