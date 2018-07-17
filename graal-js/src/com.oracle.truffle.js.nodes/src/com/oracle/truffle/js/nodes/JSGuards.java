@@ -467,6 +467,10 @@ public final class JSGuards {
         return JSRuntime.doubleIsRepresentableAsLong(d);
     }
 
+    public static boolean isDoubleSafeInteger(double d) {
+        return JSRuntime.isSafeInteger(d);
+    }
+
     public static boolean isIntArrayIndex(int i) {
         return JSRuntime.isArrayIndex(i);
     }
