@@ -14,15 +14,6 @@ suite = {
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
             ]
         },
-        {
-           "name" : "tools",
-           "subdir" : True,
-           "version" : "f863b0ae0e1f30ed361774c1025e2a92e581a7eb",
-           "urls" : [
-                {"url" : "https://github.com/graalvm/graal.git", "kind" : "git"},
-                {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-            ]
-        },
     ],
   },
 
