@@ -88,6 +88,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
@@ -151,7 +152,9 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
                 EvalCallTag.class,
                 ControlFlowRootTag.class,
                 ControlFlowBlockTag.class,
-                ControlFlowBranchTag.class
+                ControlFlowBranchTag.class,
+                // Other
+                InputNodeTag.class,
 })
 
 @TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, mimeType = {

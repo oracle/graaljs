@@ -64,6 +64,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
@@ -101,7 +102,8 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
         // What generates the input events to track?
         SourceSectionFilter inputGeneratingObjects = SourceSectionFilter.newBuilder().tagIs(
                         StandardTags.ExpressionTag.class,
-                        StandardTags.StatementTag.class).build();
+                        StandardTags.StatementTag.class,
+                        InputNodeTag.class).build();
         env.getInstrumenter().attachExecutionEventFactory(sourceSectionFilter, inputGeneratingObjects, getFactory());
     }
 

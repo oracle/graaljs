@@ -59,6 +59,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -257,7 +258,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-            if (materializedTags.contains(FunctionCallExpressionTag.class)) {
+            if (materializedTags.contains(ExpressionTag.class) || materializedTags.contains(FunctionCallExpressionTag.class)) {
                 if (this.hasSourceSection() && !functionNode.hasSourceSection()) {
                     transferSourceSectionAddExpressionTag(this, functionNode);
                 }

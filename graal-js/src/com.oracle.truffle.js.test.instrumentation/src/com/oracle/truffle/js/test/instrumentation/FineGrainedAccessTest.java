@@ -347,7 +347,7 @@ public abstract class FineGrainedAccessTest {
     }
 
     protected void evalWithTags(String src, Class<?>[] filterTags) {
-        evalWithTags(src, filterTags, new Class[]{StandardTags.ExpressionTag.class});
+        evalWithTags(src, filterTags, new Class[]{StandardTags.ExpressionTag.class, JSTags.InputNodeTag.class});
     }
 
     protected void evalWithTags(String src, Class<?>[] sourceSectionTags, Class<?>[] inputGeneratingTags) {
