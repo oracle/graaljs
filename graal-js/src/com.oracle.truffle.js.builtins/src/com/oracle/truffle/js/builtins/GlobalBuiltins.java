@@ -994,7 +994,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary
         private Object printIntl(StringBuilder builder) {
             builder.append(JSRuntime.LINE_SEPARATOR);
-            PrintWriter writer = useErr ? getContext().getErrorWriter() : getContext().getWriter();
+            JSRealm realm = getContext().getRealm();
+            PrintWriter writer = useErr ? realm.getErrorWriter() : realm.getOutputWriter();
             writer.print(builder.toString());
             writer.flush();
             return Undefined.instance;

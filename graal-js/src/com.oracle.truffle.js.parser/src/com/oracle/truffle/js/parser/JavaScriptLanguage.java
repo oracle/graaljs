@@ -395,6 +395,14 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             initLanguageContext(env);
         }
         JSRealm realm = languageContext.createRealm(env);
+
+        if (env.out() != realm.getOutputStream()) {
+            realm.setOutputWriter(null, env.out());
+        }
+        if (env.err() != realm.getErrorStream()) {
+            realm.setErrorWriter(null, env.err());
+        }
+
         return realm;
     }
 
@@ -416,17 +424,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     private JSContext newJSContext(Env env) {
         JSContext context = JSEngine.createJSContext(this, env);
-
-        /*
-         * Ensure that we use the output stream provided by env, but avoid creating a new
-         * PrintWriter when the existing PrintWriter already uses the same stream.
-         */
-        if (env.out() != context.getWriterStream()) {
-            context.setWriter(null, env.out());
-        }
-        if (env.err() != context.getErrorWriterStream()) {
-            context.setErrorWriter(null, env.err());
-        }
 
         if (JSContextOptions.TIME_ZONE.hasBeenSet(env.getOptions())) {
             context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(env.getOptions())).toZoneId());
@@ -456,11 +453,11 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         assert context.getLanguage() == this;
         realm.patchTruffleLanguageEnv(newEnv);
 
-        if (newEnv.out() != context.getWriterStream()) {
-            context.setWriter(null, newEnv.out());
+        if (newEnv.out() != realm.getOutputStream()) {
+            realm.setOutputWriter(null, newEnv.out());
         }
-        if (newEnv.err() != context.getErrorWriterStream()) {
-            context.setErrorWriter(null, newEnv.err());
+        if (newEnv.err() != realm.getErrorStream()) {
+            realm.setErrorWriter(null, newEnv.err());
         }
 
         if (JSContextOptions.TIME_ZONE.hasBeenSet(newEnv.getOptions())) {
