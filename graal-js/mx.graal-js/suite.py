@@ -60,6 +60,72 @@ suite = {
       },
     },
 
+    "ASM-6.2" : {
+      "moduleName" : "org.objectweb.asm",
+      "sha1" : "1b6c4ff09ce03f3052429139c2a68e295cae6604",
+      "maven" : {
+        "groupId" : "org.ow2.asm",
+        "artifactId" : "asm",
+        "version" : "6.2",
+      },
+    },
+
+    "ASM_TREE-6.2" : {
+      "moduleName" : "org.objectweb.asm.tree",
+      "sha1" : "61570e046111559f38d4e0e580c005f75988c0a6",
+      "maven" : {
+        "groupId" : "org.ow2.asm",
+        "artifactId" : "asm-tree",
+        "version" : "6.2",
+      },
+      "dependencies" : [
+        "ASM-6.2",
+      ],
+    },
+
+    "ASM_ANALYSIS-6.2" : {
+      "moduleName" : "org.objectweb.asm.tree.analysis",
+      "sha1" : "c7d9a90d221cbb977848d2c777eb3aa7637e89df",
+      "maven" : {
+        "groupId" : "org.ow2.asm",
+        "artifactId" : "asm-analysis",
+        "version" : "6.2",
+      },
+      "dependencies" : [
+        "ASM_TREE-6.2",
+      ],
+    },
+
+    "ASM_COMMONS-6.2" : {
+      "moduleName" : "org.objectweb.asm.commons",
+      "sha1" : "f0df1c69e34a0463679d7c8db36ddb4312836e76",
+      "maven" : {
+        "groupId" : "org.ow2.asm",
+        "artifactId" : "asm-commons",
+        "version" : "6.2",
+      },
+      "dependencies" : [
+        "ASM-6.2",
+        "ASM_TREE-6.2",
+        "ASM_ANALYSIS-6.2",
+      ],
+    },
+
+    "ASM_UTIL-6.2" : {
+      "moduleName" : "org.objectweb.asm.util",
+      "sha1" : "a9690730f92cc79eeadc20e400ebb41eccce10b1",
+      "maven" : {
+        "groupId" : "org.ow2.asm",
+        "artifactId" : "asm-util",
+        "version" : "6.2",
+      },
+      "dependencies" : [
+        "ASM-6.2",
+        "ASM_TREE-6.2",
+        "ASM_ANALYSIS-6.2",
+      ],
+    },
+
     "TEST262" : {
       "sha1" : "fd6f842f715742397e3cb33f583128474fe1f911",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/test262-0fde488.tar.bz2"],
@@ -121,7 +187,9 @@ suite = {
         "com.oracle.truffle.js.runtime.doubleconv",
         "regex:TREGEX",
         "com.oracle.truffle.regex.nashorn",
-        "mx:ASM_DEBUG_ALL",
+        "ASM-6.2",
+        "ASM_COMMONS-6.2",
+        "ASM_UTIL-6.2",
         "ICU4J",
       ],
       "exports" : ["com.oracle.truffle.js.runtime.java.adapter"],
@@ -369,7 +437,11 @@ suite = {
         "sdk:GRAAL_SDK",
       ],
       "exclude": [
-        "mx:ASM_DEBUG_ALL",
+        "ASM-6.2",
+        "ASM_TREE-6.2",
+        "ASM_ANALYSIS-6.2",
+        "ASM_COMMONS-6.2",
+        "ASM_UTIL-6.2",
         "ICU4J",
       ],
       "description" : "Graal JavaScript engine",
