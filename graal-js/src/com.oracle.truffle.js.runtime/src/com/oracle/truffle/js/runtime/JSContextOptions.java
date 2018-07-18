@@ -109,9 +109,8 @@ public final class JSContextOptions {
     @CompilationFinal private boolean nashornCompatibilityMode;
 
     public static final String STACK_TRACE_LIMIT_NAME = JS_OPTION_PREFIX + "stack-trace-limit";
-    private static final OptionKey<Integer> STACK_TRACE_LIMIT = new OptionKey<>(JSTruffleOptions.StackTraceLimit);
+    public static final OptionKey<Integer> STACK_TRACE_LIMIT = new OptionKey<>(JSTruffleOptions.StackTraceLimit);
     private static final String STACK_TRACE_LIMIT_HELP = helpWithDefault("number of stack frames to capture", STACK_TRACE_LIMIT);
-    @CompilationFinal private int stackTraceLimit;
 
     public static final String DEBUG_BUILTIN_NAME = JS_OPTION_PREFIX + "debug-builtin";
     private static final OptionKey<Boolean> DEBUG_BUILTIN = new OptionKey<>(false);
@@ -190,7 +189,6 @@ public final class JSContextOptions {
         this.v8CompatibilityMode = readBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME);
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME);
         this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME);
-        this.stackTraceLimit = readIntegerOption(STACK_TRACE_LIMIT, STACK_TRACE_LIMIT_NAME);
         this.directByteBuffer = readBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME);
         this.parseOnly = readBooleanOption(PARSE_ONLY, PARSE_ONLY_NAME);
         this.debug = readBooleanOption(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME);
@@ -328,10 +326,6 @@ public final class JSContextOptions {
 
     public boolean canAgentBlock() {
         return agentCanBlock;
-    }
-
-    public int getStackTraceLimit() {
-        return stackTraceLimit;
     }
 
     @Override

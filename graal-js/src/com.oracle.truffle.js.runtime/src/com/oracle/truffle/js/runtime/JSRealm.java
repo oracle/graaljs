@@ -45,6 +45,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -1565,5 +1567,9 @@ public class JSRealm implements ShapeContext {
 
     public final void setEmbedderData(Object embedderData) {
         this.embedderData = embedderData;
+    }
+
+    public OptionValues getOptions() {
+        return getEnv().getOptions();
     }
 }
