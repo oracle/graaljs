@@ -92,7 +92,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         Context.Builder contextConfigToUse = contextConfig;
         if (contextConfigToUse == null) {
             // default config
-            contextConfigToUse = Context.newBuilder(ID).allowHostAccess(true).allowCreateThread(true);
+            contextConfigToUse = Context.newBuilder(ID).allowHostAccess(true).allowCreateThread(true).option("js.nashorn-compat", "true").option("js.syntax-extensions", "true");
         }
         this.factory = new GraalJSEngineFactory(engineToUse);
         this.contextConfig = contextConfigToUse.engine(engineToUse);

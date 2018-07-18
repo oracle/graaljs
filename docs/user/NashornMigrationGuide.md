@@ -31,6 +31,7 @@ Note that, depending on the build setup, GraalVM might still ship Nashorn and it
 
 ### ScriptEngine name `graal.js`
 Graal JavaScript is shipped with ScriptEngine support.
+Nashorn compatibility mode is turned on for this ScriptEngine.
 It registers under several names, including `graal.js`.
 Depending on the build setup, GraalVM might still ship Nashorn and provide it via ScriptEngine.
 
