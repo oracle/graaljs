@@ -46,6 +46,7 @@ import java.util.TimeZone;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.CallTarget;
@@ -391,10 +392,11 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected JSRealm createContext(Env env) {
-        if (languageContext == null) {
-            initLanguageContext(env);
+        JSContext context = languageContext;
+        if (context == null) {
+            context = initLanguageContext(env);
         }
-        JSRealm realm = languageContext.createRealm(env);
+        JSRealm realm = context.createRealm(env);
 
         if (env.out() != realm.getOutputStream()) {
             realm.setOutputWriter(null, env.out());
@@ -406,18 +408,27 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         return realm;
     }
 
-    private synchronized void initLanguageContext(Env env) {
-        if (languageContext == null) {
-            TruffleContext parent = env.getContext().getParent();
-            if (parent == null) {
-                languageContext = newJSContext(env);
-            } else {
-                Object prev = parent.enter();
-                try {
-                    languageContext = getCurrentContext(JavaScriptLanguage.class).getContext();
-                } finally {
-                    parent.leave(prev);
-                }
+    private synchronized JSContext initLanguageContext(Env env) {
+        JSContext curContext = languageContext;
+        if (curContext != null) {
+            assert curContext.getContextOptions().equals(toContextOptions(env.getOptions()));
+            return curContext;
+        }
+        JSContext newContext = newOrParentJSContext(env);
+        languageContext = newContext;
+        return newContext;
+    }
+
+    private JSContext newOrParentJSContext(Env env) {
+        TruffleContext parent = env.getContext().getParent();
+        if (parent == null) {
+            return newJSContext(env);
+        } else {
+            Object prev = parent.enter();
+            try {
+                return getCurrentContext(JavaScriptLanguage.class).getContext();
+            } finally {
+                parent.leave(prev);
             }
         }
     }
@@ -475,6 +486,17 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected void disposeContext(JSRealm realm) {
+    }
+
+    @Override
+    protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+        return firstOptions.equals(newOptions) || toContextOptions(firstOptions).equals(toContextOptions(newOptions));
+    }
+
+    private static JSContextOptions toContextOptions(OptionValues optionValues) {
+        JSContextOptions newOptions = new JSContextOptions(new GraalJSParserOptions());
+        newOptions.setOptionValues(optionValues);
+        return newOptions;
     }
 
     @Override

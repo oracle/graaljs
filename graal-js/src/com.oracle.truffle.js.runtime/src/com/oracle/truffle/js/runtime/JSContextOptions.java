@@ -148,6 +148,7 @@ public final class JSContextOptions {
                     REGEXP_STATIC_RESULT,
                     SHARED_ARRAY_BUFFER,
                     ATOMICS,
+                    DIRECT_BYTE_BUFFER,
                     V8_COMPATIBILITY_MODE,
                     V8_REALM_BUILTIN,
                     NASHORN_COMPATIBILITY_MODE,
@@ -341,6 +342,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.atomics ? 1 : 0);
         hash = 53 * hash + (this.v8CompatibilityMode ? 1 : 0);
         hash = 53 * hash + (this.v8RealmBuiltin ? 1 : 0);
+        hash = 53 * hash + (this.nashornCompatibilityMode ? 1 : 0);
         hash = 53 * hash + (this.debug ? 1 : 0);
         hash = 53 * hash + (this.directByteBuffer ? 1 : 0);
         hash = 53 * hash + (this.parseOnly ? 1 : 0);
@@ -386,6 +388,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.v8RealmBuiltin != other.v8RealmBuiltin) {
+            return false;
+        }
+        if (this.nashornCompatibilityMode != other.nashornCompatibilityMode) {
             return false;
         }
         if (this.debug != other.debug) {
