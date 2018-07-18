@@ -556,10 +556,6 @@
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/DataView/custom-proto-access-detaches-buffer.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "built-ins/DataView/prototype/getBigInt64/detached-buffer-after-toindex-byteoffset.js",
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
