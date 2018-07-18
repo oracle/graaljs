@@ -516,10 +516,6 @@
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Atomics/wait/waiterlist-order-of-operations-is-fifo.js",
-    "status" : "SKIP",
-    "comment" : "fails (does not terminate) randomly"
-  }, {
     "filePath" : "built-ins/Atomics/wake/bigint/bad-range.js",
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
