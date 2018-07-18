@@ -63,6 +63,7 @@ suite = {
     "ASM-6.2" : {
       "moduleName" : "org.objectweb.asm",
       "sha1" : "1b6c4ff09ce03f3052429139c2a68e295cae6604",
+      "sourceSha1" : "a33643c3e25428a77c737a4f5bf8b4afc28b9767",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm",
@@ -73,6 +74,7 @@ suite = {
     "ASM_TREE-6.2" : {
       "moduleName" : "org.objectweb.asm.tree",
       "sha1" : "61570e046111559f38d4e0e580c005f75988c0a6",
+      "sourceSha1" : "e9bf68e648c798bc1564e9dcb6f3611a50cd0af8",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-tree",
@@ -86,6 +88,7 @@ suite = {
     "ASM_ANALYSIS-6.2" : {
       "moduleName" : "org.objectweb.asm.tree.analysis",
       "sha1" : "c7d9a90d221cbb977848d2c777eb3aa7637e89df",
+      "sourceSha1" : "a14aec1bf493541fc9cb94b97eb7f8cf9f161b10",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-analysis",
@@ -99,6 +102,7 @@ suite = {
     "ASM_COMMONS-6.2" : {
       "moduleName" : "org.objectweb.asm.commons",
       "sha1" : "f0df1c69e34a0463679d7c8db36ddb4312836e76",
+      "sourceSha1" : "34e0c61d4d7e9921681e8053a23f4e28fbb998f1",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-commons",
@@ -114,6 +118,7 @@ suite = {
     "ASM_UTIL-6.2" : {
       "moduleName" : "org.objectweb.asm.util",
       "sha1" : "a9690730f92cc79eeadc20e400ebb41eccce10b1",
+      "sourceSha1" : "99279ff8e20fc248dd013f07232810bdb03ab5a3",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-util",
