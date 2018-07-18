@@ -48,6 +48,7 @@ import java.util.Objects;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -55,7 +56,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 
 public final class JSContextOptions {
     @CompilationFinal private ParserOptions parserOptions;
-    @CompilationFinal private Env env;
+    @CompilationFinal private OptionValues optionValues;
 
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSTruffleOptions.MaxECMAScriptVersion);
@@ -171,13 +172,11 @@ public final class JSContextOptions {
         this.parserOptions = parserOptions;
     }
 
-    public void setEnv(Env newEnv) {
+    public void setOptionValues(OptionValues newOptions) {
         CompilerAsserts.neverPartOfCompilation();
-        if (newEnv != null) {
-            this.env = newEnv;
-            cacheOptions();
-            parserOptions = parserOptions.putOptions(env.getOptions());
-        }
+        optionValues = newOptions;
+        cacheOptions();
+        parserOptions = parserOptions.putOptions(newOptions);
     }
 
     private void cacheOptions() {
@@ -200,10 +199,10 @@ public final class JSContextOptions {
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key, String name) {
-        if (env == null) {
+        if (optionValues == null) {
             return readBooleanFromSystemProperty(key, name);
         } else {
-            return env.getOptions().get(key);
+            return key.getValue(optionValues);
         }
     }
 
@@ -216,10 +215,10 @@ public final class JSContextOptions {
     }
 
     private int readIntegerOption(OptionKey<Integer> key, String name) {
-        if (env == null) {
+        if (optionValues == null) {
             return readIntegerFromSystemProperty(key, name);
         } else {
-            return env.getOptions().get(key);
+            return key.getValue(optionValues);
         }
     }
 
@@ -253,9 +252,12 @@ public final class JSContextOptions {
 
     // check for options that are not on their default value.
     // in such case, we cannot use the pre-initialized context for faster startup
-    public static boolean optionsAllowPreInitializedContext(JSRealm realm, Env env) {
+    public static boolean optionsAllowPreInitializedContext(Env preinitEnv, Env env) {
+        if (!preinitEnv.getOptions().hasSetOptions() && !env.getOptions().hasSetOptions()) {
+            return true;
+        }
         for (OptionKey<?> key : PREINIT_CONTEXT_OPTION_KEYS) {
-            if (!realm.getEnv().getOptions().get(key).equals(env.getOptions().get(key))) {
+            if (!preinitEnv.getOptions().get(key).equals(env.getOptions().get(key))) {
                 return false;
             }
         }

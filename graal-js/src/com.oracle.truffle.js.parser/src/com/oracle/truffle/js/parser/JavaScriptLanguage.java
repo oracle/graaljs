@@ -448,7 +448,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     @Override
     protected boolean patchContext(JSRealm realm, Env newEnv) {
         JSContext context = realm.getContext();
-        if (!JSContextOptions.optionsAllowPreInitializedContext(realm, newEnv)) {
+        if (!JSContextOptions.optionsAllowPreInitializedContext(realm.getEnv(), newEnv)) {
             languageContext = null;
             return false;
         }

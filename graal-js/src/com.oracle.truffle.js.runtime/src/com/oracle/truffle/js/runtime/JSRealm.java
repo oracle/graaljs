@@ -1526,7 +1526,7 @@ public class JSRealm implements ShapeContext {
         Objects.requireNonNull(env, "New env cannot be null.");
         truffleLanguageEnv = env;
         context.setAllocationReporter(env);
-        context.getContextOptions().setEnv(env);
+        context.getContextOptions().setOptionValues(env.getOptions());
     }
 
     @TruffleBoundary

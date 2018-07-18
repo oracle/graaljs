@@ -274,7 +274,7 @@ public class JSContext implements ShapeContext {
         this.contextOptions = contextOptions;
 
         if (env != null) { // env could still be null
-            this.contextOptions.setEnv(env);
+            this.contextOptions.setOptionValues(env.getOptions());
             setAllocationReporter(env);
         }
 
