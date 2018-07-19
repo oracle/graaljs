@@ -200,6 +200,10 @@
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
+    "filePath" : "mjsunit/enumeration-order.js",
+    "status" : "FAIL",
+    "comment" : "does not match the specification (300000000000 is not considered an integer index)"
+  }, {
     "filePath" : "mjsunit/error-tostring-omit.js",
     "status" : "FAIL"
   }, {

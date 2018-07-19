@@ -109,7 +109,7 @@ public final class JSRuntime {
     public static final long MAX_SAFE_INTEGER_LONG = (long) MAX_SAFE_INTEGER;
     public static final long MIN_SAFE_INTEGER_LONG = (long) MIN_SAFE_INTEGER;
     public static final long INVALID_INTEGER_INDEX = -1;
-    public static final int MAX_INTEGER_INDEX_DIGITS = 21;
+    public static final int MAX_INTEGER_INDEX_DIGITS = 16;
     public static final int MAX_SAFE_INTEGER_IN_FLOAT = 1 << 24;
     public static final int MIN_SAFE_INTEGER_IN_FLOAT = -MAX_SAFE_INTEGER_IN_FLOAT;
     public static final long MAX_BIG_INT_EXPONENT = Integer.MAX_VALUE;
@@ -1672,6 +1672,10 @@ public final class JSRuntime {
         return 0L <= longValue && longValue <= MAX_ARRAY_LENGTH; // <= 2^32-1, according to 15.4
     }
 
+    public static boolean isIntegerIndex(long longValue) {
+        return 0L <= longValue && longValue <= MAX_SAFE_INTEGER_LONG;
+    }
+
     public static boolean isArrayIndex(int intValue) {
         return intValue >= 0;
     }
@@ -1736,11 +1740,6 @@ public final class JSRuntime {
         if (propertyName != null && propertyName.length() > 0 && propertyName.length() <= MAX_INTEGER_INDEX_DIGITS) {
             if (isAsciiDigit(propertyName.charAt(0))) {
                 return parseArrayIndexRaw(propertyName);
-            } else if (propertyName.charAt(0) == '-' && propertyName.length() >= 2 && isAsciiDigit(propertyName.charAt(1))) {
-                if (parseArrayIndexRaw(propertyName.substring(1)) != INVALID_ARRAY_INDEX) {
-                    // valid numerical index string (but OOB), distinguish from invalid index
-                    return Long.MAX_VALUE;
-                }
             }
         }
         return INVALID_INTEGER_INDEX;
@@ -2395,10 +2394,10 @@ public final class JSRuntime {
         if (isString1 && isString2) {
             String str1 = (String) key1;
             String str2 = (String) key2;
-            long index1 = JSRuntime.propertyNameToArrayIndex(str1);
-            long index2 = JSRuntime.propertyNameToArrayIndex(str2);
-            boolean isIndex1 = isArrayIndex(index1);
-            boolean isIndex2 = isArrayIndex(index2);
+            long index1 = JSRuntime.propertyNameToIntegerIndex(str1);
+            long index2 = JSRuntime.propertyNameToIntegerIndex(str2);
+            boolean isIndex1 = isIntegerIndex(index1);
+            boolean isIndex2 = isIntegerIndex(index2);
             if (isIndex1 && isIndex2) {
                 return Long.compare(index1, index2);
             } else if (isIndex1) {
