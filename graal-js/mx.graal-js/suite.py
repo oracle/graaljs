@@ -275,6 +275,7 @@ suite = {
       "dependencies" : [
         "mx:JUNIT",
         "com.oracle.truffle.js.nodes",
+        "com.oracle.truffle.js.parser",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js.runtime",
