@@ -46,6 +46,9 @@ import static org.junit.Assert.assertTrue;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.graalvm.polyglot.Context;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -97,12 +100,31 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpression
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
+import com.oracle.truffle.js.parser.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class MaterializedNodes {
+
+    private JSContext jsContext;
+    private Context polyContext;
+
+    @Before
+    public void init() {
+        polyContext = Context.create("js");
+        polyContext.enter();
+        JSRealm jsRealm = JavaScriptLanguage.getJSRealm(polyContext);
+        this.jsContext = jsRealm.getContext();
+    }
+
+    @After
+    public void dispose() {
+        polyContext.leave();
+        polyContext.close();
+    }
 
     @Test
     public void functionNode() {
@@ -138,7 +160,6 @@ public class MaterializedNodes {
 
     @Test
     public void desugaredAddNode() {
-
         // This will create an optimized JSAddConstantRightNumberNodeGen
         JavaScriptNode optimized = JSAddNode.create(dummyDouble, dummyInt);
         optimized.setSourceSection(Source.newBuilder("").name("").language(AbstractJavaScriptLanguage.ID).build().createUnavailableSection());
@@ -180,8 +201,9 @@ public class MaterializedNodes {
     private static final JavaScriptNode dummyJSNode = new DummyConstantNode(42);
     private static final SourceSection dummySourceSection = Source.newBuilder("").name("").language(AbstractJavaScriptLanguage.ID).build().createUnavailableSection();
 
-    private static JSContext getDummyCx() {
-        return JSObject.getJSContext(Undefined.instance);
+    private JSContext getDummyCx() {
+        assert jsContext != null;
+        return jsContext;
     }
 
     @Test
