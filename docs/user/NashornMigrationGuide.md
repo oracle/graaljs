@@ -13,6 +13,12 @@ This is the case for Nashorn-specific extensions that Graal JavaScript does not 
 $ js --js.nashorn-compat=true
 ```
 
+When you start from a Java application, set the flag on Java invocation:
+
+```
+$ java -Dpolyglot.js.nashorn-compat=true MyApplication
+```
+
 Functionality only available under this flag includes:
 * `Java.isJavaFunction`, `Java.isJavaMethod`, `Java.isScriptObject`, `Java.isScriptFunction`
 * `new Interface|AbstractClass(fn|obj)`
