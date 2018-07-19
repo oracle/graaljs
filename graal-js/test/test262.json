@@ -770,10 +770,6 @@
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Object/prototype/toString/symbol-tag-non-str-bigint.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "built-ins/Reflect/ownKeys/return-on-corresponding-order-large-index.js",
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"

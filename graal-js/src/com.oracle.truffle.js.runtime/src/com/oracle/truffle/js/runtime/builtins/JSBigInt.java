@@ -132,11 +132,6 @@ public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFa
         return getClassName();
     }
 
-    @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
-        return getClassName(object);
-    }
-
     @TruffleBoundary
     @Override
     public String safeToString(DynamicObject obj) {
