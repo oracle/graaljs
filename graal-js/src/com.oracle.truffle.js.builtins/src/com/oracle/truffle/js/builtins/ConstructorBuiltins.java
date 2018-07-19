@@ -1539,7 +1539,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 viewByteLength = bufferByteLength - offset;
             }
             assert offset >= 0 && offset <= Integer.MAX_VALUE && viewByteLength >= 0 && viewByteLength <= Integer.MAX_VALUE;
-            return swapPrototype(JSDataView.createDataView(getContext(), arrayBuffer, (int) offset, (int) viewByteLength), newTarget);
+            DynamicObject result = swapPrototype(JSDataView.createDataView(getContext(), arrayBuffer, (int) offset, (int) viewByteLength), newTarget);
+            if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorDetachedBuffer();
+            }
+            return result;
         }
 
         @Override
