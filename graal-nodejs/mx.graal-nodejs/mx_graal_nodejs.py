@@ -308,7 +308,8 @@ def setupNodeEnvironment(args):
         _setEnvVar('TRUFFLE_JAR_PATH', mx.distribution('truffle:TRUFFLE_API').path)
     _setEnvVar('LAUNCHER_COMMON_JAR_PATH', mx.distribution('sdk:LAUNCHER_COMMON').path)
     _setEnvVar('TRUFFLENODE_JAR_PATH', mx.distribution('TRUFFLENODE').path)
-    _setEnvVar('NODE_JVM_CLASSPATH', mx.classpath(['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'TRUFFLENODE']))
+    _setEnvVar('NODE_JVM_CLASSPATH', mx.classpath(['TRUFFLENODE']
+            + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER'] if mx.suite('tools', fatalIfMissing=False) is not None else [])))
     setLibraryPath()
 
     prevPATH = os.environ['PATH']
