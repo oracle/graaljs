@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.function;
 
 import java.lang.reflect.Modifier;
-import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -52,7 +51,6 @@ import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -133,21 +131,6 @@ public abstract class JSNewNode extends JavaScriptNode {
         descriptor.addProperty("isNew", true);
         descriptor.addProperty("isInvoke", false);
         return descriptor;
-    }
-
-    @Override
-    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ObjectAllocationExpressionTag.class) && materializationNeeded()) {
-            JavaScriptNode newNew = create(context, cloneUninitialized(getTarget()), AbstractFunctionArgumentsNode.materializeArgumentsNode(arguments, getSourceSection()));
-            transferSourceSectionAndTags(this, newNew);
-            return newNew;
-        }
-        return super.materializeInstrumentableNodes(materializedTags);
-    }
-
-    private boolean materializationNeeded() {
-        // If arguments are not constant, no materialization is needed.
-        return arguments instanceof JSFunctionOneConstantArgumentNode;
     }
 
     public static JSNewNode create(JSContext context, JavaScriptNode function, AbstractFunctionArgumentsNode arguments) {
