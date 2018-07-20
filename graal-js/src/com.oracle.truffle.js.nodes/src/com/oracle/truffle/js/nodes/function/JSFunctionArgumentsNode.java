@@ -44,9 +44,7 @@ import java.util.ArrayList;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -124,11 +122,7 @@ class JSFunctionOneArgumentNode extends AbstractFunctionArgumentsNode {
     }
 
     public static AbstractFunctionArgumentsNode create(JavaScriptNode child) {
-        if (child instanceof JSConstantNode) {
-            return new JSFunctionOneConstantArgumentNode(child.execute(null));
-        } else {
-            return new JSFunctionOneArgumentNode(child);
-        }
+        return new JSFunctionOneArgumentNode(child);
     }
 
     public static AbstractFunctionArgumentsNode create(JavaScriptNode child, boolean optimizeConstantArguments) {
@@ -153,35 +147,6 @@ class JSFunctionOneArgumentNode extends AbstractFunctionArgumentsNode {
     @Override
     protected AbstractFunctionArgumentsNode copyUninitialized() {
         return new JSFunctionOneArgumentNode(JavaScriptNode.cloneUninitialized(child));
-    }
-}
-
-class JSFunctionOneConstantArgumentNode extends AbstractFunctionArgumentsNode {
-    private final Object value;
-
-    protected JSFunctionOneConstantArgumentNode(Object value) {
-        assert !(value instanceof Node);
-        this.value = value;
-    }
-
-    @Override
-    public int getCount(VirtualFrame frame) {
-        return 1;
-    }
-
-    @Override
-    public Object[] executeFillObjectArray(VirtualFrame frame, Object[] arguments, int delta) {
-        arguments[delta] = value;
-        return arguments;
-    }
-
-    @Override
-    protected AbstractFunctionArgumentsNode copyUninitialized() {
-        return new JSFunctionOneConstantArgumentNode(value);
-    }
-
-    public final Object getValue() {
-        return value;
     }
 }
 

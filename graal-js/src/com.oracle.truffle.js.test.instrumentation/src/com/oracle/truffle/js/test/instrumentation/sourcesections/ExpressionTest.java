@@ -64,7 +64,7 @@ public class ExpressionTest extends SourceSectionInstrumentationTest {
 
         assertSourceSections(new String[]{
                         "String",
-                        // "'bla'", // TODO
+                        "'bla'",
                         "String('bla')",
         });
     }
@@ -75,7 +75,7 @@ public class ExpressionTest extends SourceSectionInstrumentationTest {
 
         assertSourceSections(new String[]{
                         "String",
-                        // "'bla'", // TODO
+                        "'bla'",
                         "new String('bla')",
         });
     }
