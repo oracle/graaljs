@@ -102,7 +102,6 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.JSShapeData;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
-import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
 import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexEngine;
@@ -167,8 +166,6 @@ public class JSContext implements ShapeContext {
 
     /** The RegExp engine, as obtained from RegexLanguage. */
     private TruffleObject regexEngine;
-    /** Support for RegExp.$1. */
-    private TruffleObject regexResult;
 
     private JSModuleLoader moduleLoader;
 
@@ -747,21 +744,6 @@ public class JSContext implements ShapeContext {
             }
         }
         return regexEngine;
-    }
-
-    public TruffleObject getRegexResult() {
-        assert isOptionRegexpStaticResult();
-        if (regexResult == null) {
-            regexResult = TRegexUtil.getTRegexEmptyResult();
-        }
-        return regexResult;
-    }
-
-    public void setRegexResult(TruffleObject regexResult) {
-        if (isOptionRegexpStaticResult()) {
-            assert TRegexUtil.readResultIsMatch(TRegexUtil.createReadNode(), regexResult);
-            this.regexResult = regexResult;
-        }
     }
 
     public Shape getDictionaryShapeNullPrototype() {

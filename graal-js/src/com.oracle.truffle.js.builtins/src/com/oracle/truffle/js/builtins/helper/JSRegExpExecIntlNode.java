@@ -238,7 +238,7 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
             TruffleObject result = executeIgnoreLastIndex(regExp, input, lastIndex);
             if (match.profile(regexResultAccessor.isMatch(result))) {
-                context.setRegexResult(result);
+                setStaticResult(result);
                 if (stickyProfile.profile(sticky && regexResultAccessor.captureGroupStart(result, 0) != lastIndex)) {
                     // matcher should never have advanced that far!
                     setLastIndex(regExp, 0);
@@ -267,9 +267,15 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         private TruffleObject executeIgnoreLastIndex(DynamicObject regExp, String input, long fromIndex) {
             TruffleObject result = executeCompiledRegex(JSRegExp.getCompiledRegex(regExp), input, fromIndex);
             if (regexResultAccessor.isMatch(result)) {
-                context.setRegexResult(result);
+                setStaticResult(result);
             }
             return result;
+        }
+
+        private void setStaticResult(TruffleObject result) {
+            if (context.isOptionRegexpStaticResult()) {
+                context.getRealm().setRegexResult(result);
+            }
         }
 
         private TruffleObject executeCompiledRegex(TruffleObject compiledRegex, String input, long fromIndex) {

@@ -58,6 +58,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.Shape;
@@ -116,6 +117,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
+import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 /**
  * Container for JavaScript globals (i.e. an ECMAScript 6 Realm object).
@@ -309,6 +311,9 @@ public class JSRealm implements ShapeContext {
      * Slot for Realm-specific data of the embedder of the JS engine.
      */
     private Object embedderData;
+
+    /** Support for RegExp.$1. */
+    private TruffleObject regexResult;
 
     private OutputStream outputStream;
     private OutputStream errorStream;
@@ -1581,6 +1586,20 @@ public class JSRealm implements ShapeContext {
 
     public final void setEmbedderData(Object embedderData) {
         this.embedderData = embedderData;
+    }
+
+    public TruffleObject getRegexResult() {
+        assert context.isOptionRegexpStaticResult();
+        if (regexResult == null) {
+            regexResult = TRegexUtil.getTRegexEmptyResult();
+        }
+        return regexResult;
+    }
+
+    public void setRegexResult(TruffleObject regexResult) {
+        assert context.isOptionRegexpStaticResult();
+        assert TRegexUtil.readResultIsMatch(TRegexUtil.createReadNode(), regexResult);
+        this.regexResult = regexResult;
     }
 
     public OptionValues getOptions() {
