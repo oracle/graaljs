@@ -5230,10 +5230,6 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
-    "filePath" : "intl402/Array/prototype/toLocaleString/calls-toLocaleString-number-elements.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -5801,10 +5797,6 @@
     "filePath" : "intl402/supportedLocalesOf-throws-if-element-not-string-or-object.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/TypedArray/prototype/toLocaleString/calls-toLocaleString-number-elements.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "language/computed-property-names/class/static/method-number.js",
     "status" : "FAIL"
