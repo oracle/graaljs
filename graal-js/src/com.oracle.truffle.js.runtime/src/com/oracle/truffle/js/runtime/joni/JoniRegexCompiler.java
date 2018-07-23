@@ -104,10 +104,13 @@ public final class JoniRegexCompiler extends RegexCompiler {
     @Override
     public TruffleObject compile(RegexSource source) throws UnsupportedRegexException {
         try {
-            Regex implementation = createJoniRegex(source.getPattern(), source.getFlags());
+            // TODO: Switch to source.getFlags() once RegexSource#getFlags is updated to return
+            // String.
+            RegexFlags flags = RegexFlags.parseFlags(source.getGeneralFlags());
+            Regex implementation = createJoniRegex(source.getPattern(), flags);
             CallTarget callTarget;
             boolean group = PatternAnalyzer.containsGroup(source.getPattern());
-            if (source.getFlags().isSticky()) {
+            if (flags.isSticky()) {
                 callTarget = group ? matchGroupCallTarget() : matchSimpleCallTarget();
             } else {
                 callTarget = group ? searchGroupCallTarget() : searchSimpleCallTarget();
