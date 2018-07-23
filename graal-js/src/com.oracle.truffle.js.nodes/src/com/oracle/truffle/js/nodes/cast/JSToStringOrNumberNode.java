@@ -44,6 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -113,5 +114,10 @@ public abstract class JSToStringOrNumberNode extends JavaScriptBaseNode {
     @Specialization(guards = "isJavaNumber(value)")
     protected double doNumber(Object value) {
         return JSRuntime.doubleValue((Number) value);
+    }
+
+    @Specialization
+    protected BigInt doBigInt(BigInt value) {
+        return value;
     }
 }
