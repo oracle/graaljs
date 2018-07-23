@@ -528,7 +528,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     public static String format(DynamicObject numberFormatObj, Object n) {
         NumberFormat numberFormat = getNumberFormatProperty(numberFormatObj);
         Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
-        return x.doubleValue() == -0 ? numberFormat.format(0) : numberFormat.format(x);
+        return numberFormat.format(x);
     }
 
     static final Map<NumberFormat.Field, String> fieldToType = new HashMap<>();

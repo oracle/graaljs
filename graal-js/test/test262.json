@@ -5630,9 +5630,9 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "intl402/NumberFormat/prototype/format/format-negative-numbers.js",
+    "filePath" : "intl402/NumberFormat/prototype/format/format-significant-digits.js",
     "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "comment" : "Does not match the updated specification, will be fixed by the next Test262 update"
   }, {
     "filePath" : "intl402/RelativeTimeFormat/constructor/constructor/locales-invalid.js",
     "status" : "FAIL",
