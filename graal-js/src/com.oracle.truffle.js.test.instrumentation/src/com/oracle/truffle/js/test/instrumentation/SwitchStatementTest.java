@@ -152,4 +152,41 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
             b.input(2);
         }).exit();
     }
+
+    @Test
+    public void defaultSwitchNode() {
+        String src = "var a = {" +
+                        "  x: 3" +
+                        "};" +
+                        "var b = {" +
+                        "  x: 1," +
+                        "  y: 2," +
+                        "  z: 3" +
+                        "};" +
+                        "var x = 42;" +
+                        "switch (a.x) {" +
+                        "  case b.x:" +
+                        "    x++;" +
+                        "  case b.y:" +
+                        "    x++;" +
+                        "  case b.z:" +
+                        "    ++x;" +
+                        "};";
+
+        evalWithTags(src, new Class[]{
+                        ControlFlowRootTag.class,
+                        ControlFlowBranchTag.class
+        }, new Class[]{/* no input events */});
+
+        enter(ControlFlowRootTag.class, (e, r) -> {
+            // first 'case' a.x == b.x is false
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+            // first 'case' a.x == b.y is false
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+            // first 'case' a.x == b.z is true
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
+            // statement returns value from `++x` statement
+        }).exit(assertReturnValue(43));
+
+    }
 }
