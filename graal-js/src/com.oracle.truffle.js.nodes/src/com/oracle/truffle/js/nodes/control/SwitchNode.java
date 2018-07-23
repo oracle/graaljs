@@ -118,7 +118,9 @@ public final class SwitchNode extends StatementNode {
                 InstrumentableNode materialized = statements[i].materializeInstrumentableNodes(materializedTags);
                 newStatements[i] = JSTaggedExecutionNode.createFor((JavaScriptNode) materialized, ControlFlowBlockTag.class);
             }
-            return SwitchNode.create(newCaseExpressions, jumptable, newStatements);
+            SwitchNode materialized = SwitchNode.create(newCaseExpressions, jumptable, newStatements);
+            transferSourceSectionAndTags(this, materialized);
+            return materialized;
         } else {
             return this;
         }
