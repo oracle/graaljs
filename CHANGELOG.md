@@ -7,7 +7,8 @@ The main focus is on user-observable behavior of the engine.
 * Add support for `Symbol.prototype.description`, a Stage 3 proposal.
 * Add support for `String.prototype.matchAll`, a Stage 3 proposal.
 * Implement optional catch binding proposal, targeted for ES2019.
-* removed legacy `NashornExtensions` option, use `--js.nashorn-compat` instead.
+* Removed legacy `NashornExtensions` option, use `--js.nashorn-compat` instead.
+* Provide Java package globals by default.
 
 ## Version 1.0.0 RC4
 * Added stack trace limit option (--js.stack-trace-limit).
