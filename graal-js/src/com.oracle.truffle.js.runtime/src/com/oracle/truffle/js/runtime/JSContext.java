@@ -444,7 +444,7 @@ public class JSContext implements ShapeContext {
     public JSRealm createRealm(TruffleLanguage.Env env) {
         boolean isTop = env == null || env.getContext().getParent() == null;
         if (isRealmInitialized) {
-            singleRealmAssumption.invalidate();
+            singleRealmAssumption.invalidate("single realm assumption");
         }
         JSRealm newRealm = new JSRealm(this, env);
         newRealm.setupGlobals();
@@ -523,7 +523,7 @@ public class JSContext implements ShapeContext {
     private void invalidatePromiseQueueNotUsedAssumption() {
         if (promiseJobsQueueNotUsedAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            promiseJobsQueueNotUsedAssumption.invalidate();
+            promiseJobsQueueNotUsedAssumption.invalidate("promise jobs queue unused assumption");
         }
     }
 
@@ -1354,7 +1354,7 @@ public class JSContext implements ShapeContext {
     private void invalidatePromiseRejectionTrackerNotUsedAssumption() {
         if (promiseRejectionTrackerNotUsedAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            promiseRejectionTrackerNotUsedAssumption.invalidate();
+            promiseRejectionTrackerNotUsedAssumption.invalidate("promise rejection tracker unused");
         }
     }
 
@@ -1387,7 +1387,7 @@ public class JSContext implements ShapeContext {
     private void invalidatePromiseHookNotUsedAssumption() {
         if (promiseHookNotUsedAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            promiseHookNotUsedAssumption.invalidate();
+            promiseHookNotUsedAssumption.invalidate("promise hook unused");
         }
     }
 

@@ -114,7 +114,7 @@ public abstract class JSAbstractArgumentsObject extends JSAbstractArray {
         Shape oldShape = thisObj.getShape();
         thisObj.setShapeAndGrow(oldShape, oldShape.changeType(JSSlowArgumentsObject.INSTANCE));
         thisObj.define(DISCONNECTED_INDICES_ID, new HashMap<Long, Object>(), 0);
-        JSObject.getJSContext(thisObj).getFastArgumentsObjectAssumption().invalidate();
+        JSObject.getJSContext(thisObj).getFastArgumentsObjectAssumption().invalidate("create slow ArgumentsObject");
         return thisObj;
     }
 

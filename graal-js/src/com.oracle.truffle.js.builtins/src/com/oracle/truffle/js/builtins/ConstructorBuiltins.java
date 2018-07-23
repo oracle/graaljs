@@ -645,11 +645,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if (arrayType instanceof AbstractWritableArray && length > 0) {
                     if (concreteArrayType == UNINIT_ARRAY_TYPE) {
                         concreteArrayType = arrayType;
-                        assumption.invalidate();
+                        assumption.invalidate("TypedArray type initialization");
                         assumption = Truffle.getRuntime().createAssumption("Array allocation site (typed)");
                     } else if (concreteArrayType != arrayType) {
                         concreteArrayType = null;
-                        assumption.invalidate();
+                        assumption.invalidate("TypedArray type rewrite");
                     }
                 }
             }

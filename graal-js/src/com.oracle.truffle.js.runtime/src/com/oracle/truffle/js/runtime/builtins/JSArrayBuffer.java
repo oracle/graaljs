@@ -226,7 +226,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     @TruffleBoundary
     public static void detachArrayBuffer(DynamicObject arrayBuffer) {
         assert isJSAbstractBuffer(arrayBuffer);
-        JSObject.getJSContext(arrayBuffer).getTypedArrayNotDetachedAssumption().invalidate();
+        JSObject.getJSContext(arrayBuffer).getTypedArrayNotDetachedAssumption().invalidate("no detached array buffer");
         if (isJSDirectArrayBuffer(arrayBuffer)) {
             BYTE_BUFFER_PROPERTY.setSafe(arrayBuffer, null, null);
         } else {

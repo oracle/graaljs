@@ -44,6 +44,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
@@ -71,25 +72,25 @@ public final class ConstantEmptyPrototypeArray extends AbstractConstantEmptyArra
 
     @Override
     public AbstractIntArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile) {
-        getArrayPrototypeNoElementsAssumption(object).invalidate();
+        getArrayPrototypeNoElementsAssumption(object).invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         return super.createWriteableInt(object, index, value, profile);
     }
 
     @Override
     public AbstractDoubleArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile) {
-        getArrayPrototypeNoElementsAssumption(object).invalidate();
+        getArrayPrototypeNoElementsAssumption(object).invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         return super.createWriteableDouble(object, index, value, profile);
     }
 
     @Override
     public AbstractJSObjectArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, ProfileHolder profile) {
-        getArrayPrototypeNoElementsAssumption(object).invalidate();
+        getArrayPrototypeNoElementsAssumption(object).invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         return super.createWriteableJSObject(object, index, value, profile);
     }
 
     @Override
     public AbstractObjectArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile) {
-        getArrayPrototypeNoElementsAssumption(object).invalidate();
+        getArrayPrototypeNoElementsAssumption(object).invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         return super.createWriteableObject(object, index, value, profile);
     }
 

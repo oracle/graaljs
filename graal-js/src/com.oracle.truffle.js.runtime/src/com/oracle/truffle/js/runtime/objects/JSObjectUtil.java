@@ -341,10 +341,10 @@ public final class JSObjectUtil {
     public static <T> T checkForNoSuchPropertyOrMethod(JSContext context, T key) {
         if (context != null && key != null && context.isOptionNashornCompatibilityMode()) {
             if (context.getNoSuchPropertyUnusedAssumption().isValid() && key.equals(JSObject.NO_SUCH_PROPERTY_NAME)) {
-                context.getNoSuchPropertyUnusedAssumption().invalidate();
+                context.getNoSuchPropertyUnusedAssumption().invalidate("NoSuchProperty is used");
             }
             if (context.getNoSuchMethodUnusedAssumption().isValid() && key.equals(JSObject.NO_SUCH_METHOD_NAME)) {
-                context.getNoSuchMethodUnusedAssumption().invalidate();
+                context.getNoSuchMethodUnusedAssumption().invalidate("NoSuchMethod is used");
             }
         }
         return key;

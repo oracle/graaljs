@@ -191,7 +191,7 @@ public final class JSObjectPrototype extends JSBuiltinObject {
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
         boolean result = super.set(thisObj, index, value, receiver, isStrict);
-        JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate();
+        JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         return result;
     }
 
@@ -199,7 +199,7 @@ public final class JSObjectPrototype extends JSBuiltinObject {
     public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
         boolean result = super.set(thisObj, key, value, receiver, isStrict);
         if (JSRuntime.isArrayIndex(key)) {
-            JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate();
+            JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         }
         return result;
     }
@@ -208,7 +208,7 @@ public final class JSObjectPrototype extends JSBuiltinObject {
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         boolean result = super.defineOwnProperty(thisObj, key, desc, doThrow);
         if (JSRuntime.isArrayIndex(key)) {
-            JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate();
+            JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         }
         return result;
     }
