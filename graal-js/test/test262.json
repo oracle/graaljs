@@ -6561,54 +6561,6 @@
     "filePath" : "language/expressions/generators/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/greater-than-or-equal/bigint-and-incomparable-string.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/expressions/greater-than-or-equal/bigint-and-string.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/expressions/greater-than/bigint-and-boolean.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/expressions/greater-than/bigint-and-incomparable-string.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/expressions/greater-than/bigint-and-string.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/expressions/greater-than/bigint-and-symbol.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/expressions/less-than-or-equal/bigint-and-incomparable-string.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/expressions/less-than-or-equal/bigint-and-string.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/expressions/less-than/bigint-and-boolean.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/expressions/less-than/bigint-and-incomparable-string.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/expressions/less-than/bigint-and-string.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/expressions/less-than/bigint-and-symbol.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "language/expressions/logical-and/tco-right.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests SKIPing due to StackOverflow"
