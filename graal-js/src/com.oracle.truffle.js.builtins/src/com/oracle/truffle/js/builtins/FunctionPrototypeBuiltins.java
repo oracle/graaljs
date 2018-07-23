@@ -307,15 +307,19 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return toStringDefaultTarget(dct, fnObj);
         }
 
-        @TruffleBoundary
         @Specialization(guards = {"isJSFunction(fnObj)", "isRootTarget(fnObj)", "isBoundTarget(fnObj)"})
         protected String toStringBound(DynamicObject fnObj) {
             if (getContext().isOptionV8CompatibilityMode()) {
                 return "function () { [native code] }";
             } else {
                 String name = JSFunction.getName(fnObj);
-                return "function " + name.substring(name.lastIndexOf(' ') + 1) + "() { [native code] }";
+                return getNameIntl(name);
             }
+        }
+
+        @TruffleBoundary
+        private static String getNameIntl(String name) {
+            return "function " + name.substring(name.lastIndexOf(' ') + 1) + "() { [native code] }";
         }
 
         @TruffleBoundary
