@@ -79,6 +79,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private final Context.Builder contextConfig;
 
     private volatile boolean closed;
+    private boolean evalCalled;
 
     GraalJSScriptEngine(GraalJSEngineFactory factory) {
         this(factory.getPolyglotEngine(), null);
@@ -190,9 +191,14 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         ((DelegatingOutputStream) polyglotContext.getPolyglotBindings().getMember(ERR_SYMBOL).asProxyObject()).setWriter(scriptContext.getErrorWriter());
         ((DelegatingInputStream) polyglotContext.getPolyglotBindings().getMember(IN_SYMBOL).asProxyObject()).setReader(scriptContext.getReader());
         try {
+            if (!evalCalled) {
+                jrunscriptInitWorkaround(source, polyglotContext);
+            }
             return polyglotContext.eval(source).as(Object.class);
         } catch (PolyglotException e) {
             throw new ScriptException(e);
+        } finally {
+            evalCalled = true;
         }
     }
 
@@ -369,4 +375,29 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         return new GraalJSScriptEngine(engine, newContextConfig);
     }
 
+    /**
+     * Detects jrunscript "init.js" and installs a JSAdapter polyfill if needed.
+     */
+    private static void jrunscriptInitWorkaround(Source source, Context polyglotContext) {
+        if (source.getName().equals(JRUNSCRIPT_INIT_NAME)) {
+            String initCode = source.getCharacters().toString();
+            if (initCode.contains("jrunscript") && initCode.contains("JSAdapter") && !polyglotContext.getBindings(ID).hasMember("JSAdapter")) {
+                polyglotContext.eval(ID, JSADAPTER_POLYFILL);
+            }
+        }
+    }
+
+    private static final String JRUNSCRIPT_INIT_NAME = "<system-init>";
+    private static final String JSADAPTER_POLYFILL = "this.JSAdapter || " +
+                    "Object.defineProperty(this, \"JSAdapter\", {configurable:true, writable:true, enumerable: false, value: function(t) {\n" +
+                    "    var target = {};\n" +
+                    "    var handler = {\n" +
+                    "        get: function(target, name) {return typeof t.__get__ == 'function' ? t.__get__.call(target, name) : undefined;},\n" +
+                    "        has: function(target, name) {return typeof t.__has__ == 'function' ? t.__has__.call(target, name) : false;},\n" +
+                    "        deleteProperty: function(target, name) {return typeof t.__delete__ == 'function' ? t.__delete__.call(target, name) : true;},\n" +
+                    "        set: function(target, name, value) {return typeof t.__put__ == 'function' ? t.__put__.call(target, name, value) : undefined;},\n" +
+                    "        ownKeys: function(target) {return typeof t.__getIds__ == 'function' ? t.__getIds__.call(target) : [];},\n" +
+                    "    }\n" +
+                    "    return new Proxy(target, handler);\n" +
+                    "}});\n";
 }
