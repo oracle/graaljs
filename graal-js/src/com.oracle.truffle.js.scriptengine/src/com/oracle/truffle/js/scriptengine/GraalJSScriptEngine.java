@@ -159,12 +159,12 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     @Override
     public Object eval(Reader reader, ScriptContext ctxt) throws ScriptException {
-        return eval(createSource(reader), ctxt);
+        return eval(createSource(reader, ctxt), ctxt);
     }
 
-    private static Source createSource(Reader reader) throws ScriptException {
+    private static Source createSource(Reader reader, ScriptContext ctxt) throws ScriptException {
         try {
-            return Source.newBuilder(ID, reader, "eval-source").build();
+            return Source.newBuilder(ID, reader, getScriptName(ctxt)).build();
         } catch (IOException e) {
             throw new ScriptException(e);
         }
@@ -172,11 +172,16 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     @Override
     public Object eval(String script, ScriptContext ctxt) throws ScriptException {
-        return eval(createSource(script), ctxt);
+        return eval(createSource(script, ctxt), ctxt);
     }
 
-    private static Source createSource(String script) {
-        return Source.newBuilder(ID, script, "eval-source").buildLiteral();
+    private static Source createSource(String script, ScriptContext ctxt) {
+        return Source.newBuilder(ID, script, getScriptName(ctxt)).buildLiteral();
+    }
+
+    private static String getScriptName(final ScriptContext ctxt) {
+        final Object val = ctxt.getAttribute(ScriptEngine.FILENAME);
+        return (val != null) ? val.toString() : "<eval>";
     }
 
     private Object eval(Source source, ScriptContext scriptContext) throws ScriptException {
@@ -262,7 +267,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         if (closed) {
             throw new IllegalStateException("Context already closed.");
         }
-        Source source = createSource(script);
+        Source source = createSource(script, getContext());
         return new CompiledScript() {
             @Override
             public ScriptEngine getEngine() {
@@ -281,7 +286,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         if (closed) {
             throw new IllegalStateException("Context already closed.");
         }
-        Source source = createSource(reader);
+        Source source = createSource(reader, getContext());
         return new CompiledScript() {
             @Override
             public ScriptEngine getEngine() {
