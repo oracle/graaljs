@@ -92,7 +92,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         Context.Builder contextConfigToUse = contextConfig;
         if (contextConfigToUse == null) {
             // default config
-            contextConfigToUse = Context.newBuilder(ID).allowHostAccess(true).allowCreateThread(true).option("js.nashorn-compat", "true").option("js.syntax-extensions", "true");
+            contextConfigToUse = Context.newBuilder(ID).allowHostAccess(true).allowCreateThread(true);
         }
         this.factory = new GraalJSEngineFactory(engineToUse);
         this.contextConfig = contextConfigToUse.engine(engineToUse);
@@ -113,7 +113,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     }
 
     /**
-     * Closes the current context and makes it unusable. Opertions performed after closing will
+     * Closes the current context and makes it unusable. Operations performed after closing will
      * throw an {@link IllegalStateException}.
      */
     @Override

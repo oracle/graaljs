@@ -8,7 +8,6 @@ The main focus is on user-observable behavior of the engine.
 * Add support for `String.prototype.matchAll`, a Stage 3 proposal.
 * Implement optional catch binding proposal, targeted for ES2019.
 * removed legacy `NashornExtensions` option, use `--js.nashorn-compat` instead.
-* Nashorn compatibility mode was turned on for ScriptEngine provided by Graal JavaScript.
 
 ## Version 1.0.0 RC4
 * Added stack trace limit option (--js.stack-trace-limit).
