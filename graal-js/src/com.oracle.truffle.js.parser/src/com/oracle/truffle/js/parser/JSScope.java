@@ -157,14 +157,16 @@ public abstract class JSScope {
     private static JSScope createScope(Node node, MaterializedFrame frame) {
         if (frame != null) {
             if (ScopeFrameNode.isBlockScopeFrame(frame)) {
+                FrameBlockScopeNode blockScopeNode = null;
                 for (Node n = node; n != null; n = n.getParent()) {
                     if (n instanceof FrameBlockScopeNode) {
-                        FrameBlockScopeNode blockScopeNode = (FrameBlockScopeNode) n;
-                        if (frame.getFrameDescriptor() == blockScopeNode.getFrameDescriptor()) {
-                            return new JSBlockScope(blockScopeNode, frame);
+                        if (frame.getFrameDescriptor() == ((FrameBlockScopeNode) n).getFrameDescriptor()) {
+                            blockScopeNode = (FrameBlockScopeNode) n;
+                            break;
                         }
                     }
                 }
+                return new JSBlockScope(blockScopeNode, frame);
             }
         } else {
             for (Node n = node; n != null; n = n.getParent()) {
@@ -296,13 +298,13 @@ public abstract class JSScope {
         protected JSBlockScope(FrameBlockScopeNode blockScopeNode, MaterializedFrame frame) {
             super(blockScopeNode, frame);
             this.blockScopeNode = blockScopeNode;
-            assert frame == null || frame.getFrameDescriptor() == blockScopeNode.getFrameDescriptor();
+            assert frame == null || blockScopeNode == null || frame.getFrameDescriptor() == blockScopeNode.getFrameDescriptor();
         }
 
         @Override
         protected String getName() {
             String locationStr = "";
-            if (node.getSourceSection() != null) {
+            if (node != null && node.getSourceSection() != null) {
                 locationStr = " at " + node.getSourceSection().getSource().getName() + ":" + node.getSourceSection().getStartLine();
             }
             return "JS block scope" + locationStr;
@@ -319,7 +321,7 @@ public abstract class JSScope {
                 return new VariablesMapObject(Collections.emptyMap(), null, null);
             }
             MaterializedFrame f = mFrame != null ? mFrame : frame.materialize();
-            assert f.getFrameDescriptor() == blockScopeNode.getFrameDescriptor();
+            assert blockScopeNode == null || f.getFrameDescriptor() == blockScopeNode.getFrameDescriptor();
             return createVariablesMapObject(f.getFrameDescriptor(), f, null);
         }
 
@@ -375,7 +377,7 @@ public abstract class JSScope {
 
         @Override
         protected Object getVariables(Frame frame) {
-            return createVariablesMapObject(rootNode.getFrameDescriptor(), mFrame, null);
+            return createVariablesMapObject(mFrame != null ? mFrame.getFrameDescriptor() : rootNode.getFrameDescriptor(), mFrame, null);
         }
 
         @Override
@@ -426,8 +428,10 @@ public abstract class JSScope {
             if (mFrame == null) {
                 return null;
             }
-            assert findParentScopeNode() == null;
-            // TODO find captured scope in parent function, if any
+            MaterializedFrame parentFrame = JSFrameUtil.getParentFrame(mFrame);
+            if (parentFrame != null && parentFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME) {
+                return createScope(null, JSFrameUtil.getParentFrame(mFrame));
+            }
             return null;
         }
     }
