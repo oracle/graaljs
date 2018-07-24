@@ -98,7 +98,6 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     private static final HiddenKey COMPILED_REGEX_ID = new HiddenKey("compiledRegex");
     private static final Property COMPILED_REGEX_PROPERTY;
-    private static final Property LAST_INDEX_PROPERTY;
     private static final HiddenKey GROUPS_FACTORY_ID = new HiddenKey("groupsFactory");
     private static final Property GROUPS_FACTORY_PROPERTY;
 
@@ -168,9 +167,6 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     static {
         Shape.Allocator regExpAllocator = JSShape.makeAllocator(JSObject.LAYOUT);
         COMPILED_REGEX_PROPERTY = JSObjectUtil.makeHiddenProperty(COMPILED_REGEX_ID, regExpAllocator.locationForType(TruffleObject.class, EnumSet.of(LocationModifier.NonNull)));
-        // (GR-1991): could start out as an int location.
-        LAST_INDEX_PROPERTY = JSObjectUtil.makeDataProperty(JSRegExp.LAST_INDEX, regExpAllocator.locationForType(Object.class, EnumSet.of(LocationModifier.NonNull)),
-                        JSAttributes.notConfigurableNotEnumerableWritable());
         GROUPS_FACTORY_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_FACTORY_ID, regExpAllocator.locationForType(DynamicObjectFactory.class));
 
         Shape.Allocator resultAllocator = JSShape.makeAllocator(JSObject.LAYOUT);
@@ -185,18 +181,13 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         return (TruffleObject) COMPILED_REGEX_PROPERTY.get(thisObj, isJSRegExp(thisObj));
     }
 
-    public static Object getLastIndexRaw(DynamicObject thisObj) {
-        assert isJSRegExp(thisObj);
-        return LAST_INDEX_PROPERTY.get(thisObj, isJSRegExp(thisObj));
-    }
-
     public static DynamicObjectFactory getGroupsFactory(DynamicObject thisObj) {
         assert isJSRegExp(thisObj);
         return (DynamicObjectFactory) GROUPS_FACTORY_PROPERTY.get(thisObj, isJSRegExp(thisObj));
     }
 
     /**
-     * Creates a new JavaScript RegExp object.
+     * Creates a new JavaScript RegExp object (with a {@code lastIndex} of 0).
      * <p>
      * This overload incurs hitting a {@link TruffleBoundary} when having to examine the
      * {@code compiledRegex} for information about named capture groups. In order to avoid a
@@ -204,12 +195,17 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
      * consider using the {@code com.oracle.truffle.js.nodes.intl.CreateRegExpNode}.
      */
     public static DynamicObject create(JSContext ctx, TruffleObject compiledRegex) {
-        return create(ctx, compiledRegex, computeGroupsFactory(ctx, compiledRegex));
+        DynamicObject obj = create(ctx, compiledRegex, computeGroupsFactory(ctx, compiledRegex));
+        JSObjectUtil.putDataProperty(ctx, obj, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
+        return obj;
     }
 
+    /**
+     * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
+     */
     public static DynamicObject create(JSContext ctx, TruffleObject compiledRegex, DynamicObjectFactory groupsFactory) {
-        // (compiledRegex, lastIndex, groupsFactory)
-        DynamicObject regExp = JSObject.create(ctx, ctx.getRegExpFactory(), compiledRegex, 0, groupsFactory);
+        // (compiledRegex, groupsFactory)
+        DynamicObject regExp = JSObject.create(ctx, ctx.getRegExpFactory(), compiledRegex, groupsFactory);
         assert isJSRegExp(regExp);
         return regExp;
     }
@@ -319,7 +315,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
         if (ctx.getEcmaScriptVersion() < 6) {
             JSObjectUtil.putHiddenProperty(prototype, COMPILED_REGEX_PROPERTY, RegexCompilerInterface.compile("", "", ctx));
-            JSObjectUtil.putDataProperty(ctx, prototype, LAST_INDEX_PROPERTY, 0);
+            JSObjectUtil.putDataProperty(ctx, prototype, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
         }
         JSObjectUtil.putConstantAccessorProperty(ctx, prototype, FLAGS, createFlagsGetterFunction(realm), Undefined.instance);
 
@@ -355,7 +351,6 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         // @formatter:off
         return JSObjectUtil.getProtoChildShape(thisObj, INSTANCE, ctx).
                         addProperty(COMPILED_REGEX_PROPERTY).
-                        addProperty(LAST_INDEX_PROPERTY).
                         addProperty(GROUPS_FACTORY_PROPERTY);
         // @formatter:on
     }

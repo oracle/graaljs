@@ -295,20 +295,19 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         private long getLastIndex(DynamicObject regExp) {
+            if (getLastIndexNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getLastIndexNode = insert(PropertyGetNode.create(JSRegExp.LAST_INDEX, false, context));
+            }
+            Object lastIndex = getLastIndexNode.getValue(regExp);
             if (ecmaScriptVersion < 6) {
-                Object lastIndex = JSRegExp.getLastIndexRaw(regExp);
                 return JSRuntime.intValueVirtual(JSRuntime.toNumber(lastIndex));
             } else {
-                if (getLastIndexNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getLastIndexNode = insert(PropertyGetNode.create(JSRegExp.LAST_INDEX, false, context));
-                }
                 if (toLengthNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     toLengthNode = insert(JSToLengthNode.create());
                 }
-                Object value = getLastIndexNode.getValue(regExp);
-                return toLengthNode.executeLong(value);
+                return toLengthNode.executeLong(lastIndex);
             }
         }
 

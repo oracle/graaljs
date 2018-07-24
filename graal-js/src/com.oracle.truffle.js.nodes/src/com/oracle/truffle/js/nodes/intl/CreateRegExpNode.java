@@ -46,8 +46,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
@@ -55,10 +57,12 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
 
     @Child private Node readNamedCG = TRegexUtil.createReadNode();
     @Child private Node isNamedCGNull = JSInteropUtil.createIsNull();
+    @Child private PropertySetNode setLastIndex;
     private final JSContext context;
 
     protected CreateRegExpNode(JSContext context) {
         this.context = context;
+        this.setLastIndex = PropertySetNode.createImpl(JSRegExp.LAST_INDEX, false, context, true, true, JSAttributes.notConfigurableNotEnumerableWritable());
     }
 
     public static CreateRegExpNode create(JSContext context) {
@@ -69,13 +73,17 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!hasNamedCG(compiledRegex)"})
     protected DynamicObject createWithoutNamedCG(TruffleObject compiledRegex) {
-        return JSRegExp.create(context, compiledRegex, null);
+        DynamicObject reObj = JSRegExp.create(context, compiledRegex, null);
+        setLastIndex.setValueInt(reObj, 0);
+        return reObj;
     }
 
     @Specialization(guards = {"hasNamedCG(compiledRegex)"})
     protected DynamicObject createWithNamedCG(TruffleObject compiledRegex) {
         TruffleObject namedCaptureGroups = TRegexUtil.readNamedCaptureGroups(readNamedCG, compiledRegex);
-        return JSRegExp.create(context, compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups));
+        DynamicObject reObj = JSRegExp.create(context, compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups));
+        setLastIndex.setValueInt(reObj, 0);
+        return reObj;
     }
 
     protected boolean hasNamedCG(TruffleObject compiledRegex) {
