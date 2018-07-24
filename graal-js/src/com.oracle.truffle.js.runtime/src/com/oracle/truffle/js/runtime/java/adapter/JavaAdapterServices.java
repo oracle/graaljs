@@ -43,10 +43,6 @@ package com.oracle.truffle.js.runtime.java.adapter;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.ToDoubleFunction;
-import java.util.function.ToIntFunction;
-import java.util.function.ToLongFunction;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
@@ -189,62 +185,6 @@ public final class JavaAdapterServices {
     }
 
     private static MethodHandle createReturnValueConverter(Class<?> returnType) {
-        MethodHandle converterHandle = returnValueConverter.get(returnType);
-        if (converterHandle != null) {
-            return converterHandle;
-        }
-
-        if (returnType == byte.class || returnType == short.class || returnType == int.class) {
-            ToIntFunction<Value> converter = value -> {
-                if (value.fitsInInt()) {
-                    return value.asInt();
-                } else if (value.fitsInLong()) {
-                    return (int) value.asLong();
-                } else if (value.fitsInDouble()) {
-                    return (int) value.asDouble();
-                }
-                return value.asInt();
-            };
-            try {
-                MethodHandle apply = MethodHandles.publicLookup().findVirtual(ToIntFunction.class, "applyAsInt", MethodType.methodType(int.class, Object.class));
-                converterHandle = apply.bindTo(converter);
-            } catch (NoSuchMethodException | IllegalAccessException e) {
-                throw new IllegalStateException(e);
-            }
-        } else if (returnType == long.class) {
-            ToLongFunction<Value> converter = value -> {
-                if (value.fitsInLong()) {
-                    return value.asLong();
-                } else if (value.fitsInDouble()) {
-                    return (long) value.asDouble();
-                }
-                return value.asLong();
-            };
-            try {
-                MethodHandle apply = MethodHandles.publicLookup().findVirtual(ToLongFunction.class, "applyAsLong", MethodType.methodType(long.class, Object.class));
-                converterHandle = apply.bindTo(converter);
-            } catch (NoSuchMethodException | IllegalAccessException e) {
-                throw new IllegalStateException(e);
-            }
-        } else if (returnType == float.class || returnType == double.class) {
-            ToDoubleFunction<Value> converter = value -> {
-                return value.asDouble();
-            };
-            try {
-                MethodHandle apply = MethodHandles.publicLookup().findVirtual(ToDoubleFunction.class, "applyAsDouble", MethodType.methodType(double.class, Object.class));
-                converterHandle = apply.bindTo(converter);
-            } catch (NoSuchMethodException | IllegalAccessException e) {
-                throw new IllegalStateException(e);
-            }
-        }
-        if (converterHandle != null) {
-            converterHandle = converterHandle.asType(converterHandle.type().changeParameterType(0, Value.class));
-            MethodHandle existing = returnValueConverter.putIfAbsent(returnType, converterHandle);
-            return existing == null ? converterHandle : existing;
-        }
-
         return MethodHandles.insertArguments(VALUE_AS_METHOD_HANDLE, 1, returnType);
     }
-
-    private static final ConcurrentHashMap<Class<?>, MethodHandle> returnValueConverter = new ConcurrentHashMap<>();
 }
