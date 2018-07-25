@@ -59,7 +59,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -83,6 +82,7 @@ import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
 import com.oracle.truffle.js.nodes.access.GlobalConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedTargetableExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
@@ -258,7 +258,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-            if (materializedTags.contains(ExpressionTag.class) || materializedTags.contains(FunctionCallExpressionTag.class)) {
+            if (materializedTags.contains(FunctionCallExpressionTag.class)) {
                 if (this.hasSourceSection() && !functionNode.hasSourceSection()) {
                     transferSourceSectionAddExpressionTag(this, functionNode);
                 }
@@ -266,10 +266,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                     // if we have a target, no de-sugaring needed
                     return this;
                 } else {
-                    JavaScriptNode materializedTargetNode = JSConstantUndefinedNode.createUndefined();
+                    JavaScriptNode materializedTargetNode = JSInputGeneratingNodeWrapper.create(JSConstantUndefinedNode.createUndefined());
                     AbstractFunctionArgumentsNode materializedArgumentsNode = argumentsNode.copyUninitialized();
                     JavaScriptNode call = CallNode.create(functionNode, materializedTargetNode, materializedArgumentsNode, isNew(flags), isNewTarget(flags));
-                    transferSourceSectionAddExpressionTag(this, materializedTargetNode);
                     transferSourceSectionAndTags(this, call);
                     return call;
                 }
