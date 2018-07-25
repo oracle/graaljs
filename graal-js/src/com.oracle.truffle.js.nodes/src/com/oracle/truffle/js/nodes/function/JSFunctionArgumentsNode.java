@@ -92,6 +92,11 @@ public class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
     protected AbstractFunctionArgumentsNode copyUninitialized() {
         return new JSFunctionArgumentsNode(JavaScriptNode.cloneUninitialized(args));
     }
+
+    @Override
+    public JavaScriptNode[] getJavaScriptArgumentNodes() {
+        return args;
+    }
 }
 
 class JSFunctionZeroArgumentsNode extends AbstractFunctionArgumentsNode {
@@ -111,6 +116,11 @@ class JSFunctionZeroArgumentsNode extends AbstractFunctionArgumentsNode {
     @Override
     protected AbstractFunctionArgumentsNode copyUninitialized() {
         return new JSFunctionZeroArgumentsNode();
+    }
+
+    @Override
+    public JavaScriptNode[] getJavaScriptArgumentNodes() {
+        return new JavaScriptNode[]{};
     }
 }
 
@@ -148,6 +158,12 @@ class JSFunctionOneArgumentNode extends AbstractFunctionArgumentsNode {
     protected AbstractFunctionArgumentsNode copyUninitialized() {
         return new JSFunctionOneArgumentNode(JavaScriptNode.cloneUninitialized(child));
     }
+
+    @Override
+    public JavaScriptNode[] getJavaScriptArgumentNodes() {
+        return new JavaScriptNode[]{child};
+    }
+
 }
 
 class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {

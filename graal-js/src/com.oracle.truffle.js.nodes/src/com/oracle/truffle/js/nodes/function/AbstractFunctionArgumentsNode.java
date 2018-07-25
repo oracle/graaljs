@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 
 public abstract class AbstractFunctionArgumentsNode extends JavaScriptBaseNode {
 
@@ -55,5 +56,7 @@ public abstract class AbstractFunctionArgumentsNode extends JavaScriptBaseNode {
     public static <T extends AbstractFunctionArgumentsNode> T cloneUninitialized(T node) {
         return node == null ? null : (T) node.copyUninitialized();
     }
+
+    public abstract JavaScriptNode[] getJavaScriptArgumentNodes();
 
 }

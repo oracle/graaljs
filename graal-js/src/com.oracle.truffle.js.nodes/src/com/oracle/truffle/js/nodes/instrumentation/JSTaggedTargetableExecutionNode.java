@@ -82,13 +82,13 @@ public final class JSTaggedTargetableExecutionNode extends JSTargetableNode {
         if (originalNode instanceof ReadElementNode) {
             expectedTag = ReadElementExpressionTag.class;
             ReadElementNode originalRead = (ReadElementNode) originalNode;
-            JavaScriptNode clonedTarget = cloneUninitializedNoSourceSection(originalRead.getTarget());
+            JavaScriptNode clonedTarget = cloneUninitializedTargetNoSourceSections(originalRead.getTarget());
             JavaScriptNode clonedIndex = JSTaggedExecutionNode.createFor(cloneUninitialized(originalRead.getElement()), StandardTags.ExpressionTag.class);
             clone = ReadElementNode.create(clonedTarget, clonedIndex, originalRead.getContext());
         } else {
             assert originalNode instanceof PropertyNode || originalNode instanceof GlobalConstantNode;
             expectedTag = ReadPropertyExpressionTag.class;
-            clone = (JSTargetableNode) cloneUninitializedNoSourceSection(originalNode);
+            clone = (JSTargetableNode) cloneUninitializedTargetNoSourceSections(originalNode);
         }
         JSTargetableNode wrapper = new JSTaggedTargetableExecutionNode(clone, expectedTag, sourceSection);
         wrapper.setSourceSection(sourceSection);
@@ -97,25 +97,37 @@ public final class JSTaggedTargetableExecutionNode extends JSTargetableNode {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends JavaScriptNode> T cloneUninitializedNoSourceSection(Node node) {
+    private static <T extends JavaScriptNode> T cloneUninitializedTargetNoSourceSections(Node node) {
+        /*
+         * The target node of JSTaggedTargetableExecutionNode is only executed via
+         * `executeWithTarget()`. The target node that gets executed has *no* source sections,
+         * because it should not be exposed to the instrumentation framework.
+         *
+         * This method removes all source sections from all (nested) target nodes to ensure that no
+         * instrumentation event can be detected when evaluating a target node.
+         */
         T cloned = cloneUninitialized((T) node);
-        eraseAllSourceSections(cloned);
-        cloned.removeSourceSection();
-        return cloned;
-    }
-
-    private static void eraseAllSourceSections(Node node) {
-        NodeUtil.forEachChild(node, new NodeVisitor() {
+        eraseTargetSourceSection(cloned);
+        NodeUtil.forEachChild(cloned, new NodeVisitor() {
 
             @Override
             public boolean visit(Node n) {
-                if (n instanceof JavaScriptNode) {
-                    ((JavaScriptNode) n).removeSourceSection();
-                }
+                eraseTargetSourceSection(n);
                 NodeUtil.forEachChild(n, this);
                 return true;
             }
         });
+        return cloned;
+    }
+
+    private static void eraseTargetSourceSection(Node node) {
+        if (node instanceof JSTargetableNode) {
+            ((JavaScriptNode) node).removeSourceSection();
+            JavaScriptNode target = ((JSTargetableNode) node).getTarget();
+            if (target != null) {
+                target.removeSourceSection();
+            }
+        }
     }
 
     protected JSTaggedTargetableExecutionNode(JSTargetableNode child, Class<? extends Tag> expectedTag, SourceSection sourceSection) {
