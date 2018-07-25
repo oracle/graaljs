@@ -53,7 +53,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
             mx.run(['rm', '-rf', 'node_modules', 'build'], cwd=unitTestDir)
             npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
             npm(['--scripts-prepend-node-path=auto', 'test'] + commonArgs, cwd=unitTestDir)
-            npm(['--scripts-prepend-node-path=auto', 'test', '-Dtruffle.js.NashornJavaInterop=true'] + commonArgs, cwd=unitTestDir)
+            npm(['--scripts-prepend-node-path=auto', 'test', '-Dpolyglot.js.nashorn-compat=true'] + commonArgs, cwd=unitTestDir)
 
     with Task('TestNpm', tasks, tags=[GraalNodeJsTags.allTests]) as t:
         if t:
@@ -71,7 +71,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
             unitTestDir = join(mx.project('com.oracle.truffle.trufflenode.jniboundaryprofiler').dir, 'tests')
             mx.run(['rm', '-rf', 'node_modules', 'build'], cwd=unitTestDir)
             npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
-            node(['-profile-native-boundary', '-Dtruffle.js.NashornJavaInterop=true', 'test.js'] + commonArgs, cwd=unitTestDir)
+            node(['-profile-native-boundary', 'test.js'] + commonArgs, cwd=unitTestDir)
 
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 

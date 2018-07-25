@@ -47,11 +47,11 @@ const assert = require('assert');
 assert.equal(cppResult, jsResult, "Native module had a different result than JS one");
 
 const nativeLabel = "executeFunction1: execute";
-assert.equal(CALLS, profiler.getNativeCalls(nativeLabel));
-assert.equal(CALLS, profiler.getJniCalls(nativeLabel, "[com/oracle/truffle/trufflenode/GraalJSAccess] arrayLength").longValue());
-assert.equal(CALLS, profiler.getJniCalls(nativeLabel, "[com/oracle/truffle/trufflenode/GraalJSAccess] objectNew").longValue());
-assert.equal(CALLS * ITERATIONS, profiler.getJniCalls(nativeLabel, "[com/oracle/truffle/trufflenode/GraalJSAccess] objectGetIndex").longValue());
-assert.equal(CALLS * ITERATIONS, profiler.getJniCalls(nativeLabel, "[com/oracle/truffle/trufflenode/GraalJSAccess] objectGet").longValue());
-assert.equal((CALLS * ITERATIONS) + CALLS, profiler.getJniCalls(nativeLabel, "[com/oracle/truffle/trufflenode/GraalJSAccess] objectSet").longValue());
+assert.equal(CALLS, +profiler.getNativeCalls(nativeLabel));
+assert.equal(CALLS, +profiler.getJniCalls(nativeLabel, "[com/oracle/truffle/trufflenode/GraalJSAccess] arrayLength"));
+assert.equal(CALLS, +profiler.getJniCalls(nativeLabel, "[com/oracle/truffle/trufflenode/GraalJSAccess] objectNew"));
+assert.equal(CALLS * ITERATIONS, +profiler.getJniCalls(nativeLabel, "[com/oracle/truffle/trufflenode/GraalJSAccess] objectGetIndex"));
+assert.equal(CALLS * ITERATIONS, +profiler.getJniCalls(nativeLabel, "[com/oracle/truffle/trufflenode/GraalJSAccess] objectGet"));
+assert.equal((CALLS * ITERATIONS) + CALLS, +profiler.getJniCalls(nativeLabel, "[com/oracle/truffle/trufflenode/GraalJSAccess] objectSet"));
 
 console.log("Test OK");

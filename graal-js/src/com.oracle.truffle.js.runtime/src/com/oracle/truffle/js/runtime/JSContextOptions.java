@@ -141,6 +141,10 @@ public final class JSContextOptions {
     private static final String AGENT_CAN_BLOCK_HELP = helpWithDefault("Determines whether agents can block or not.", AGENT_CAN_BLOCK);
     @CompilationFinal private boolean agentCanBlock;
 
+    public static final String JAVA_PACKAGE_GLOBALS_NAME = JS_OPTION_PREFIX + "java-package-globals";
+    public static final OptionKey<Boolean> JAVA_PACKAGE_GLOBALS = new OptionKey<>(true);
+    private static final String JAVA_PACKAGE_GLOBALS_HELP = helpWithDefault("provide Java package globals: Packages, java, javafx, javax, com, org, edu.", JAVA_PACKAGE_GLOBALS);
+
     private static final OptionKey<?>[] PREINIT_CONTEXT_OPTION_KEYS = {
                     ECMASCRIPT_VERSION,
                     ANNEX_B,
@@ -156,6 +160,7 @@ public final class JSContextOptions {
                     DEBUG_BUILTIN,
                     PARSE_ONLY,
                     TIME_ZONE,
+                    JAVA_PACKAGE_GLOBALS,
     };
 
     public JSContextOptions(ParserOptions parserOptions) {
@@ -247,6 +252,7 @@ public final class JSContextOptions {
         options.add(OptionDescriptor.newBuilder(TIME_ZONE, TIME_ZONE_NAME).category(OptionCategory.USER).help(TIME_ZONE_HELP).build());
         options.add(OptionDescriptor.newBuilder(PRECISE_TIME, PRECISE_TIME_NAME).category(OptionCategory.USER).help(PRECISE_TIME_HELP).build());
         options.add(OptionDescriptor.newBuilder(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME).category(OptionCategory.DEBUG).help(AGENT_CAN_BLOCK_HELP).build());
+        options.add(OptionDescriptor.newBuilder(JAVA_PACKAGE_GLOBALS, JAVA_PACKAGE_GLOBALS_NAME).category(OptionCategory.USER).help(JAVA_PACKAGE_GLOBALS_HELP).build());
     }
 
     // check for options that are not on their default value.

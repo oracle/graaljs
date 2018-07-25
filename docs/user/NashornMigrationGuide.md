@@ -4,6 +4,12 @@ See the [JavaInterop.md](JavaInterop.md) for an overview of supported Java inter
 Both Nashorn and Graal JavaScript support a similar set of syntax and semantics for Java interoperability.
 The most important differences relevant for migration are listed here.
 
+Nashorn features available by default:
+* `Java.type`, `Java.typeName`
+* `Java.from`, `Java.to`
+* `Java.extend`, `Java.super`
+* Java package globals: `Packages`, `java`, `javafx`, `javax`, `com`, `org`, `edu`
+
 ## Nashorn compatibility mode
 Graal JavaScript provides a Nashorn compatibility mode.
 Some of the functionality necessary for Nashorn compatibility is only available when this flag is set.
@@ -22,11 +28,12 @@ $ java -Dpolyglot.js.nashorn-compat=true MyApplication
 Functionality only available under this flag includes:
 * `Java.isJavaFunction`, `Java.isJavaMethod`, `Java.isScriptObject`, `Java.isScriptFunction`
 * `new Interface|AbstractClass(fn|obj)`
-* Java package globals: `java`, `javafx`, `javax`, `com`, `org`, `edu`
 * `JavaImporter`
 * `JSAdapter`
 * `java.lang.String` methods on string values
 * `load("nashorn:parser.js")`, `load("nashorn:mozilla_compat.js")`
+
+Nashorn syntax extensions can be enabled using `--js.syntax-extensions=true` or `-Dpolyglot.js.syntax-extensions=true`.
 
 ## Intentional design differences
 Graal JavaScript differs from Nashorn in some aspects that were intentional design decisions.
@@ -37,8 +44,8 @@ Note that, depending on the build setup, GraalVM might still ship Nashorn and it
 
 ### ScriptEngine name `graal.js`
 Graal JavaScript is shipped with ScriptEngine support.
-Nashorn compatibility mode is turned on for this ScriptEngine.
-It registers under several names, including `graal.js`.
+It registers under several names, including "graal.js", "JavaScript", "js".
+Be sure to activate the Nashorn compatibility mode as described above if you need full Nashorn compatibility.
 Depending on the build setup, GraalVM might still ship Nashorn and provide it via ScriptEngine.
 
 ### `ClassFilter`
@@ -61,8 +68,6 @@ should be expressed as:
 var BigDecimal = Java.type('java.math.BigDecimal');
 var bd = new BigDecimal('10');
 ```
-
-Note that some Java packages (like `java`) are added to the global object in the Nashorn compatibility mode, see below.
 
 ### Lossy conversion
 Graal JavaScript does not allow lossy conversions of arguments when calling Java methods.

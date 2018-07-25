@@ -62,8 +62,8 @@ describe('Spawn', function () {
         it('should finish gracefully when a native method is called from a wrong thread', function () {
             var code = `var vm = require('vm');
                         var sandbox = {};
-                        vm.runInNewContext("var f = function() { console.log('crash'); }", sandbox);
-                        var t = new java.lang.Thread(sandbox.f);
+                        vm.runInNewContext("var f = function() { console.log('crash'); }; var t = new java.lang.Thread(f);", sandbox);
+                        var t = sandbox.t;
                         t.start();
                         t.join();`;
             code = code.replace(/\n\s*/g, ' ');

@@ -1195,15 +1195,17 @@ public class JSRealm implements ShapeContext {
         }
 
         if (getEnv() != null && getEnv().isHostLookupAllowed()) {
-            putGlobalProperty(global, "Packages", JavaPackage.create(this, ""));
-            if (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop) {
+            if (JSContextOptions.JAVA_PACKAGE_GLOBALS.getValue(getEnv().getOptions())) {
+                putGlobalProperty(global, "Packages", JavaPackage.create(this, ""));
                 putGlobalProperty(global, "java", JavaPackage.create(this, "java"));
                 putGlobalProperty(global, "javafx", JavaPackage.create(this, "javafx"));
                 putGlobalProperty(global, "javax", JavaPackage.create(this, "javax"));
                 putGlobalProperty(global, "com", JavaPackage.create(this, "com"));
                 putGlobalProperty(global, "org", JavaPackage.create(this, "org"));
                 putGlobalProperty(global, "edu", JavaPackage.create(this, "edu"));
+            }
 
+            if (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop) {
                 putGlobalProperty(global, JavaImporter.CLASS_NAME, getJavaImporterConstructor().getFunctionObject());
             }
         }

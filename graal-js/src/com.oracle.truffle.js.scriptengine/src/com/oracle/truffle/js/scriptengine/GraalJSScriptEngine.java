@@ -79,6 +79,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private final Context.Builder contextConfig;
 
     private volatile boolean closed;
+    private boolean evalCalled;
 
     GraalJSScriptEngine(GraalJSEngineFactory factory) {
         this(factory.getPolyglotEngine(), null);
@@ -92,7 +93,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         Context.Builder contextConfigToUse = contextConfig;
         if (contextConfigToUse == null) {
             // default config
-            contextConfigToUse = Context.newBuilder(ID).allowHostAccess(true).allowCreateThread(true).option("js.nashorn-compat", "true").option("js.syntax-extensions", "true");
+            contextConfigToUse = Context.newBuilder(ID).allowHostAccess(true).allowCreateThread(true);
         }
         this.factory = new GraalJSEngineFactory(engineToUse);
         this.contextConfig = contextConfigToUse.engine(engineToUse);
@@ -113,7 +114,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     }
 
     /**
-     * Closes the current context and makes it unusable. Opertions performed after closing will
+     * Closes the current context and makes it unusable. Operations performed after closing will
      * throw an {@link IllegalStateException}.
      */
     @Override
@@ -159,12 +160,12 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     @Override
     public Object eval(Reader reader, ScriptContext ctxt) throws ScriptException {
-        return eval(createSource(reader), ctxt);
+        return eval(createSource(reader, ctxt), ctxt);
     }
 
-    private static Source createSource(Reader reader) throws ScriptException {
+    private static Source createSource(Reader reader, ScriptContext ctxt) throws ScriptException {
         try {
-            return Source.newBuilder(ID, reader, "eval-source").build();
+            return Source.newBuilder(ID, reader, getScriptName(ctxt)).build();
         } catch (IOException e) {
             throw new ScriptException(e);
         }
@@ -172,11 +173,16 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     @Override
     public Object eval(String script, ScriptContext ctxt) throws ScriptException {
-        return eval(createSource(script), ctxt);
+        return eval(createSource(script, ctxt), ctxt);
     }
 
-    private static Source createSource(String script) {
-        return Source.newBuilder(ID, script, "eval-source").buildLiteral();
+    private static Source createSource(String script, ScriptContext ctxt) {
+        return Source.newBuilder(ID, script, getScriptName(ctxt)).buildLiteral();
+    }
+
+    private static String getScriptName(final ScriptContext ctxt) {
+        final Object val = ctxt.getAttribute(ScriptEngine.FILENAME);
+        return (val != null) ? val.toString() : "<eval>";
     }
 
     private Object eval(Source source, ScriptContext scriptContext) throws ScriptException {
@@ -185,9 +191,14 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         ((DelegatingOutputStream) polyglotContext.getPolyglotBindings().getMember(ERR_SYMBOL).asProxyObject()).setWriter(scriptContext.getErrorWriter());
         ((DelegatingInputStream) polyglotContext.getPolyglotBindings().getMember(IN_SYMBOL).asProxyObject()).setReader(scriptContext.getReader());
         try {
+            if (!evalCalled) {
+                jrunscriptInitWorkaround(source, polyglotContext);
+            }
             return polyglotContext.eval(source).as(Object.class);
         } catch (PolyglotException e) {
             throw new ScriptException(e);
+        } finally {
+            evalCalled = true;
         }
     }
 
@@ -262,7 +273,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         if (closed) {
             throw new IllegalStateException("Context already closed.");
         }
-        Source source = createSource(script);
+        Source source = createSource(script, getContext());
         return new CompiledScript() {
             @Override
             public ScriptEngine getEngine() {
@@ -281,7 +292,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         if (closed) {
             throw new IllegalStateException("Context already closed.");
         }
-        Source source = createSource(reader);
+        Source source = createSource(reader, getContext());
         return new CompiledScript() {
             @Override
             public ScriptEngine getEngine() {
@@ -364,4 +375,29 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         return new GraalJSScriptEngine(engine, newContextConfig);
     }
 
+    /**
+     * Detects jrunscript "init.js" and installs a JSAdapter polyfill if needed.
+     */
+    private static void jrunscriptInitWorkaround(Source source, Context polyglotContext) {
+        if (source.getName().equals(JRUNSCRIPT_INIT_NAME)) {
+            String initCode = source.getCharacters().toString();
+            if (initCode.contains("jrunscript") && initCode.contains("JSAdapter") && !polyglotContext.getBindings(ID).hasMember("JSAdapter")) {
+                polyglotContext.eval(ID, JSADAPTER_POLYFILL);
+            }
+        }
+    }
+
+    private static final String JRUNSCRIPT_INIT_NAME = "<system-init>";
+    private static final String JSADAPTER_POLYFILL = "this.JSAdapter || " +
+                    "Object.defineProperty(this, \"JSAdapter\", {configurable:true, writable:true, enumerable: false, value: function(t) {\n" +
+                    "    var target = {};\n" +
+                    "    var handler = {\n" +
+                    "        get: function(target, name) {return typeof t.__get__ == 'function' ? t.__get__.call(target, name) : undefined;},\n" +
+                    "        has: function(target, name) {return typeof t.__has__ == 'function' ? t.__has__.call(target, name) : false;},\n" +
+                    "        deleteProperty: function(target, name) {return typeof t.__delete__ == 'function' ? t.__delete__.call(target, name) : true;},\n" +
+                    "        set: function(target, name, value) {return typeof t.__put__ == 'function' ? t.__put__.call(target, name, value) : undefined;},\n" +
+                    "        ownKeys: function(target) {return typeof t.__getIds__ == 'function' ? t.__getIds__.call(target) : [];},\n" +
+                    "    }\n" +
+                    "    return new Proxy(target, handler);\n" +
+                    "}});\n";
 }
