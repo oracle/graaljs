@@ -62,7 +62,7 @@ public final class LargeInteger extends Number implements Comparable<LargeIntege
 
     public static LargeInteger valueOf(long value) {
         if (!JSRuntime.isSafeInteger(value)) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException("not in safe integer range");
         }
         return new LargeInteger(value);

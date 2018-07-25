@@ -185,12 +185,12 @@ public abstract class TypedArray extends ScriptArray {
 
     @Override
     public ScriptArray removeRangeImpl(DynamicObject object, long start, long end) {
-        throw Errors.notYetImplemented("cannot removeRange() on TypedArray");
+        throw Errors.unsupported("cannot removeRange() on TypedArray");
     }
 
     @Override
     public ScriptArray addRangeImpl(DynamicObject object, long atOffset, int size) {
-        throw Errors.notYetImplemented("cannot addRange() on TypedArray");
+        throw Errors.unsupported("cannot addRange() on TypedArray");
     }
 
     @Override
