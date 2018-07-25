@@ -482,8 +482,7 @@ public abstract class JSBuiltinObject extends JSClass {
     }
 
     protected static void putConstructorSpeciesGetter(JSRealm realm, DynamicObject constructor) {
-        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), constructor, Symbol.SYMBOL_SPECIES, createSymbolSpeciesGetterFunction(realm), Undefined.instance,
-                        JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), constructor, Symbol.SYMBOL_SPECIES, createSymbolSpeciesGetterFunction(realm), Undefined.instance);
     }
 
     protected static DynamicObject createSymbolSpeciesGetterFunction(JSRealm realm) {

@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.function;
 
 import java.lang.reflect.Modifier;
-import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -52,7 +51,6 @@ import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -86,10 +84,10 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.interop.JavaAccess;
-import com.oracle.truffle.js.runtime.interop.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
+import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -135,24 +133,8 @@ public abstract class JSNewNode extends JavaScriptNode {
         return descriptor;
     }
 
-    @Override
-    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ObjectAllocationExpressionTag.class) && materializationNeeded()) {
-            JavaScriptNode newNew = create(context, cloneUninitialized(getTarget()), AbstractFunctionArgumentsNode.materializeArgumentsNode(arguments, getSourceSection()));
-            transferSourceSection(this, newNew);
-            return newNew;
-        }
-        return super.materializeInstrumentableNodes(materializedTags);
-    }
-
-    private boolean materializationNeeded() {
-        // If arguments are not constant, no materialization is needed.
-        return arguments instanceof JSFunctionOneConstantArgumentNode;
-    }
-
     public static JSNewNode create(JSContext context, JavaScriptNode function, AbstractFunctionArgumentsNode arguments) {
-        JSFunctionCallNode callNew = JSFunctionCallNode.createNew();
-        return JSNewNodeGen.create(arguments, callNew, function, context);
+        return JSNewNodeGen.create(arguments, null, function, context);
     }
 
     public JavaScriptNode getTarget() {
@@ -164,7 +146,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         int userArgumentCount = arguments.getCount(frame);
         Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, target, userArgumentCount);
         args = arguments.executeFillObjectArray(frame, args, JSArguments.RUNTIME_ARGUMENT_COUNT);
-        return callNew.executeCall(args);
+        return getCallNew().executeCall(args);
     }
 
     @Specialization(guards = "isJSAdapter(target)")
@@ -222,7 +204,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         }
         Object[] args = JSArguments.createInitial(target, target, arguments.getCount(frame));
         args = arguments.executeFillObjectArray(frame, args, JSArguments.RUNTIME_ARGUMENT_COUNT);
-        return callNew.executeCall(args);
+        return getCallNew().executeCall(args);
     }
 
     @TruffleBoundary
@@ -234,7 +216,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     public Object doNewJavaObjectSpecialConstructor(VirtualFrame frame, JavaMethod target) {
         Object[] args = JSArguments.createInitial(target, target, arguments.getCount(frame));
         args = arguments.executeFillObjectArray(frame, args, JSArguments.RUNTIME_ARGUMENT_COUNT);
-        return callNew.executeCall(args);
+        return getCallNew().executeCall(args);
     }
 
     @Specialization(guards = {"isForeignObject(target)"})
@@ -300,6 +282,14 @@ public abstract class JSNewNode extends JavaScriptNode {
             callNewTarget = insert(JSFunctionCallNode.createNewTarget());
         }
         return callNewTarget;
+    }
+
+    private JSFunctionCallNode getCallNew() {
+        if (callNew == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            callNew = insert(JSFunctionCallNode.createNew());
+        }
+        return callNew;
     }
 
     @Override

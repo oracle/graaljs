@@ -64,6 +64,7 @@ import com.oracle.truffle.js.runtime.interop.JavaMethod.IncompatibleArgumentsExc
 import com.oracle.truffle.js.runtime.interop.JavaMethod.JavaMethodGetter;
 import com.oracle.truffle.js.runtime.interop.JavaMethod.JavaMethodSetter;
 import com.oracle.truffle.js.runtime.interop.JavaMethod.SingleJavaConstructor;
+import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.util.Pair;
 
 /**
@@ -480,7 +481,7 @@ public final class JavaClass {
     }
 
     public JavaMethod getSuperMethod(String propertyName, boolean allowReflection) {
-        JavaMethod method = (JavaMethod) getMember(JavaAdapterBytecodeGenerator.SUPER_PREFIX + propertyName, JavaClass.INSTANCE, JavaClass.METHOD, allowReflection);
+        JavaMethod method = (JavaMethod) getMember(JavaAdapterFactory.getSuperMethodName(propertyName), JavaClass.INSTANCE, JavaClass.METHOD, allowReflection);
         return method != null ? JavaMethod.toSuperMethod(method) : null;
     }
 }

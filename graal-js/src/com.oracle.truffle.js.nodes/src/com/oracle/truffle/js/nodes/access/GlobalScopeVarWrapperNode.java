@@ -41,10 +41,8 @@
 package com.oracle.truffle.js.nodes.access;
 
 import java.util.Objects;
-import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
@@ -72,8 +70,22 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
         this.scopeHasBinding = GlobalScopeLookupNode.create(context, varName, isWrite());
     }
 
+    public JavaScriptNode getDelegateNode() {
+        return defaultDelegate;
+    }
+
     public String getPropertyName() {
         return varName;
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        return false;
+    }
+
+    @Override
+    public boolean isInstrumentable() {
+        return false;
     }
 
     private boolean isWrite() {
@@ -109,12 +121,6 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
     @Override
     protected JavaScriptNode copyUninitialized() {
         return new GlobalScopeVarWrapperNode(context, varName, cloneUninitialized(defaultDelegate), cloneUninitialized(dynamicScopeNode), cloneUninitialized(scopeAccessNode));
-    }
-
-    @Override
-    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        transferSourceSectionNoTags(this, defaultDelegate);
-        return super.materializeInstrumentableNodes(materializedTags);
     }
 
     public void setMethod() {

@@ -102,7 +102,6 @@ import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
@@ -281,17 +280,6 @@ public final class GraalJSAccess {
         mainJSContext.initializeJavaInteropWorkers(worker, worker);
         deallocator = new Deallocator();
         envForInstruments = mainJSRealm.getEnv();
-
-        ensureErrorClassesInitialized();
-    }
-
-    private static void ensureErrorClassesInitialized() {
-        if (JSTruffleOptions.SubstrateVM) {
-            return;
-        }
-        // Ensure initialization of error-related classes (to avoid NoClassDefFoundError
-        // during conversion of StackOverflowError to RangeError)
-        TruffleStackTraceElement.getStackTrace(Errors.createRangeError(""));
     }
 
     private static String[] prepareArguments(String[] args) {

@@ -44,7 +44,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class LiteralsTest extends FineGrainedAccessTest {
@@ -56,24 +55,16 @@ public class LiteralsTest extends FineGrainedAccessTest {
     protected void testLiteral(String src, LiteralExpressionTag.Type expectedTagType, Object expectedValue) {
         evalAllTags(src);
 
-        enter(WriteVariableExpressionTag.class, (e, var) -> {
-            assertAttribute(e, NAME, "<return>");
-            enter(WritePropertyExpressionTag.class, (e1, prop) -> {
-                prop.input(assertJSObjectInput);
-                assertAttribute(e1, KEY, "x");
-                enter(LiteralExpressionTag.class, (e2) -> {
-                    assertAttribute(e2, TYPE, expectedTagType.name());
-                }).exit();
-                if (expectedValue != null) {
-                    prop.input(expectedValue);
-                } else {
-                    prop.input();
-                }
+        enter(WritePropertyExpressionTag.class, (e1, prop) -> {
+            prop.input(assertJSObjectInput);
+            assertAttribute(e1, KEY, "x");
+            enter(LiteralExpressionTag.class, (e2) -> {
+                assertAttribute(e2, TYPE, expectedTagType.name());
             }).exit();
             if (expectedValue != null) {
-                var.input(expectedValue);
+                prop.input(expectedValue);
             } else {
-                var.input();
+                prop.input();
             }
         }).exit();
     }

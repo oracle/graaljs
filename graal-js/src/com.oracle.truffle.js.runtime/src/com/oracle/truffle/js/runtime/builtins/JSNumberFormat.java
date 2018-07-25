@@ -432,7 +432,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         DynamicObject numberFormatPrototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, numberFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, PROTOTYPE_NAME);
-        JSObjectUtil.putConstantAccessorProperty(ctx, numberFormatPrototype, "format", createFormatFunctionGetter(realm, ctx), Undefined.instance, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putConstantAccessorProperty(ctx, numberFormatPrototype, "format", createFormatFunctionGetter(realm, ctx), Undefined.instance);
         return numberFormatPrototype;
     }
 
@@ -528,7 +528,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     public static String format(DynamicObject numberFormatObj, Object n) {
         NumberFormat numberFormat = getNumberFormatProperty(numberFormatObj);
         Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
-        return x.doubleValue() == -0 ? numberFormat.format(0) : numberFormat.format(x);
+        return numberFormat.format(x);
     }
 
     static final Map<NumberFormat.Field, String> fieldToType = new HashMap<>();

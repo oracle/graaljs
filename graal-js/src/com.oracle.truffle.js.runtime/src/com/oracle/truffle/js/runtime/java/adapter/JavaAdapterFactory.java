@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.interop;
+package com.oracle.truffle.js.runtime.java.adapter;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -110,7 +110,7 @@ public final class JavaAdapterFactory {
         return getAdapterClassFor(type, null, null);
     }
 
-    static Class<?> getAdapterClassFor(Class<?> type, DynamicObject classOverrides, ClassLoader classLoader) {
+    public static Class<?> getAdapterClassFor(Class<?> type, DynamicObject classOverrides, ClassLoader classLoader) {
         boolean isInterface = Modifier.isInterface(type.getModifiers());
         Class<?> superClass = !isInterface ? type : Object.class;
         List<Class<?>> interfaces = !isInterface ? Collections.<Class<?>> emptyList() : Collections.<Class<?>> singletonList(type);
@@ -147,7 +147,7 @@ public final class JavaAdapterFactory {
     }
 
     @TruffleBoundary
-    static String getSuperMethodName(String methodName) {
+    public static String getSuperMethodName(String methodName) {
         assert !methodName.startsWith(JavaAdapterBytecodeGenerator.SUPER_PREFIX);
         return JavaAdapterBytecodeGenerator.SUPER_PREFIX + methodName;
     }

@@ -42,10 +42,6 @@ package com.oracle.truffle.js.runtime;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.io.Writer;
 import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -106,7 +102,6 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.JSShapeData;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
-import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
 import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexEngine;
@@ -121,11 +116,6 @@ public class JSContext implements ShapeContext {
     private final Shape emptyShape;
     private final Shape emptyShapePrototypeInObject;
     private final Shape globalScopeShape;
-
-    private final PrintWriterWrapper writer;
-    private OutputStream writerStream;
-    private final PrintWriterWrapper errorWriter;
-    private OutputStream errorWriterStream;
 
     /**
      * Slot for a context-specific data of the embedder of the JS engine.
@@ -176,8 +166,6 @@ public class JSContext implements ShapeContext {
 
     /** The RegExp engine, as obtained from RegexLanguage. */
     private TruffleObject regexEngine;
-    /** Support for RegExp.$1. */
-    private TruffleObject regexResult;
 
     private JSModuleLoader moduleLoader;
 
@@ -274,7 +262,7 @@ public class JSContext implements ShapeContext {
         this.contextOptions = contextOptions;
 
         if (env != null) { // env could still be null
-            this.contextOptions.setEnv(env);
+            this.contextOptions.setOptionValues(env.getOptions());
             setAllocationReporter(env);
         }
 
@@ -285,8 +273,8 @@ public class JSContext implements ShapeContext {
         this.emptyShapePrototypeInObject = createEmptyShapePrototypeInObject();
         this.globalScopeShape = createGlobalScopeShape();
 
-        this.noSuchPropertyUnusedAssumption = JSTruffleOptions.NashornExtensions ? Truffle.getRuntime().createAssumption("noSuchPropertyUnusedAssumption") : null;
-        this.noSuchMethodUnusedAssumption = JSTruffleOptions.NashornExtensions ? Truffle.getRuntime().createAssumption("noSuchMethodUnusedAssumption") : null;
+        this.noSuchPropertyUnusedAssumption = Truffle.getRuntime().createAssumption("noSuchPropertyUnusedAssumption");
+        this.noSuchMethodUnusedAssumption = Truffle.getRuntime().createAssumption("noSuchMethodUnusedAssumption");
         this.arrayPrototypeNoElementsAssumption = Truffle.getRuntime().createAssumption("arrayPrototypeNoElementsAssumption");
         this.typedArrayNotDetachedAssumption = Truffle.getRuntime().createAssumption("typedArrayNotDetachedAssumption");
         this.fastArrayAssumption = Truffle.getRuntime().createAssumption("fastArrayAssumption");
@@ -296,11 +284,6 @@ public class JSContext implements ShapeContext {
         this.nodeFactory = evaluator.getDefaultNodeFactory();
 
         this.moduleNamespaceFactory = JSModuleNamespace.makeInitialShape(this).createFactory();
-
-        this.writer = new PrintWriterWrapper(System.out, true);
-        this.writerStream = System.out;
-        this.errorWriter = new PrintWriterWrapper(System.err, true);
-        this.errorWriterStream = System.err;
 
         this.promiseJobsQueue = new LinkedList<>();
         this.promiseJobsQueueNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseJobsQueueNotUsedAssumption");
@@ -322,7 +305,7 @@ public class JSContext implements ShapeContext {
         this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
 
         if (JSTruffleOptions.Test262Mode || JSTruffleOptions.TestV8Mode) {
-            this.setJSAgent(new DebugJSAgent(env));
+            this.setJSAgent(new DebugJSAgent(env, contextOptions.canAgentBlock()));
         }
         if (contextOptions.isV8RealmBuiltin()) {
             this.realmList = new ArrayList<>();
@@ -339,62 +322,6 @@ public class JSContext implements ShapeContext {
 
     public Object getNodeFactory() {
         return nodeFactory;
-    }
-
-    public final PrintWriter getWriter() {
-        return writer;
-    }
-
-    /**
-     * Returns the stream used by {@link #getWriter}, or null if the stream is not available.
-     *
-     * Do not write to the stream directly, always use the {@link #getWriter writer} instead. Use
-     * this method only to check if the current writer is already writing to the stream you want to
-     * use, in which case you can avoid creating a new {@link PrintWriter}.
-     */
-    public OutputStream getWriterStream() {
-        return writerStream;
-    }
-
-    public final PrintWriter getErrorWriter() {
-        return errorWriter;
-    }
-
-    /**
-     * Returns the stream used by {@link #getErrorWriter}, or null if the stream is not available.
-     *
-     * Do not write to the stream directly, always use the {@link #getErrorWriter writer} instead.
-     * Use this method only to check if the current writer is already writing to the stream you want
-     * to use, in which case you can avoid creating a new {@link PrintWriter}.
-     */
-    public OutputStream getErrorWriterStream() {
-        return errorWriterStream;
-    }
-
-    public final void setWriter(Writer writer, OutputStream writerStream) {
-        if (writer instanceof PrintWriterWrapper) {
-            this.writer.setFrom((PrintWriterWrapper) writer);
-        } else {
-            if (writerStream != null) {
-                this.writer.setDelegate(writerStream);
-            } else {
-                this.writer.setDelegate(writer);
-            }
-        }
-        this.writerStream = writerStream;
-    }
-
-    public final void setErrorWriter(Writer errorWriter, OutputStream errorWriterStream) {
-        if (errorWriter instanceof PrintWriterWrapper) {
-            this.errorWriter.setFrom((PrintWriterWrapper) errorWriter);
-        } else {
-            if (errorWriterStream != null) {
-                this.errorWriter.setDelegate(errorWriterStream);
-            } else {
-                this.errorWriter.setDelegate(errorWriter);
-            }
-        }
-        this.errorWriterStream = errorWriterStream;
     }
 
     public final ParserOptions getParserOptions() {
@@ -444,7 +371,7 @@ public class JSContext implements ShapeContext {
     public JSRealm createRealm(TruffleLanguage.Env env) {
         boolean isTop = env == null || env.getContext().getParent() == null;
         if (isRealmInitialized) {
-            singleRealmAssumption.invalidate();
+            singleRealmAssumption.invalidate("single realm assumption");
         }
         JSRealm newRealm = new JSRealm(this, env);
         newRealm.setupGlobals();
@@ -523,7 +450,7 @@ public class JSContext implements ShapeContext {
     private void invalidatePromiseQueueNotUsedAssumption() {
         if (promiseJobsQueueNotUsedAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            promiseJobsQueueNotUsedAssumption.invalidate();
+            promiseJobsQueueNotUsedAssumption.invalidate("promise jobs queue unused assumption");
         }
     }
 
@@ -817,21 +744,6 @@ public class JSContext implements ShapeContext {
             }
         }
         return regexEngine;
-    }
-
-    public TruffleObject getRegexResult() {
-        assert isOptionRegexpStaticResult();
-        if (regexResult == null) {
-            regexResult = TRegexUtil.getTRegexEmptyResult();
-        }
-        return regexResult;
-    }
-
-    public void setRegexResult(TruffleObject regexResult) {
-        if (isOptionRegexpStaticResult()) {
-            assert TRegexUtil.readResultIsMatch(TRegexUtil.createReadNode(), regexResult);
-            this.regexResult = regexResult;
-        }
     }
 
     public Shape getDictionaryShapeNullPrototype() {
@@ -1197,118 +1109,8 @@ public class JSContext implements ShapeContext {
         return contextOptions.isPreciseTime();
     }
 
-    /**
-     * Creation of PrintWriter is expensive, this is why we change just the delegate writer in this
-     * wrapper class.
-     */
-    private static final class PrintWriterWrapper extends PrintWriter {
-
-        private OutputStreamWrapper outWrapper;
-
-        PrintWriterWrapper(OutputStream out, boolean autoFlush) {
-            this(new OutputStreamWrapper(out), autoFlush);
-        }
-
-        private PrintWriterWrapper(OutputStreamWrapper outWrapper, boolean autoFlush) {
-            this(new OutputStreamWriter(outWrapper), autoFlush);
-            this.outWrapper = outWrapper;
-        }
-
-        private PrintWriterWrapper(Writer out, boolean autoFlush) {
-            super(out, autoFlush);
-        }
-
-        void setDelegate(Writer out) {
-            synchronized (this.lock) {
-                this.out = out;
-                this.outWrapper = null;
-            }
-        }
-
-        void setDelegate(OutputStream out) {
-            synchronized (this.lock) {
-                if (outWrapper != null) {
-                    outWrapper.setDelegate(out);
-                } else {
-                    outWrapper = new OutputStreamWrapper(out);
-                    this.out = new OutputStreamWriter(outWrapper);
-                }
-            }
-        }
-
-        void setFrom(PrintWriterWrapper otherWrapper) {
-            synchronized (this.lock) {
-                boolean newWrapper = false;
-                if (otherWrapper.outWrapper != null) {
-                    // Need to keep separate OutputStreamWrapper instances
-                    if (this.outWrapper != null) {
-                        // We both have wrappers, great, just need to update the delegate
-                        this.outWrapper.setDelegate(otherWrapper.outWrapper.getDelegate());
-                    } else {
-                        // The other has a wrapper, but we do not. Create our own.
-                        this.outWrapper = new OutputStreamWrapper(otherWrapper.outWrapper.getDelegate());
-                        newWrapper = true;
-                    }
-                } else {
-                    // No wrapper. Will copy the Writer only.
-                    this.outWrapper = null;
-                }
-                if (this.outWrapper != null) {
-                    if (newWrapper) {
-                        this.out = new OutputStreamWriter(this.outWrapper);
-                    }
-                } else {
-                    this.out = otherWrapper.out;
-                }
-            }
-        }
-    }
-
-    /**
-     * A simple wrapper of an {@link OutputStream} that allows to change the delegate. With this
-     * it's not necessary to create a new {@link OutputStreamWriter} for a new {@link OutputStream},
-     * it's enough to just replace the delegate {@link OutputStream}.
-     */
-    private static final class OutputStreamWrapper extends OutputStream {
-
-        private volatile OutputStream out;
-
-        OutputStreamWrapper(OutputStream out) {
-            this.out = out;
-        }
-
-        void setDelegate(OutputStream out) {
-            this.out = out;
-        }
-
-        OutputStream getDelegate() {
-            return out;
-        }
-
-        @Override
-        public void write(int b) throws IOException {
-            out.write(b);
-        }
-
-        @Override
-        public void write(byte[] b) throws IOException {
-            out.write(b);
-        }
-
-        @Override
-        public void write(byte[] b, int off, int len) throws IOException {
-            out.write(b, off, len);
-        }
-
-        @Override
-        public void flush() throws IOException {
-            out.flush();
-        }
-
-        @Override
-        public void close() throws IOException {
-            out.close();
-        }
+    public boolean isOptionAgentCanBlock() {
+        return contextOptions.canAgentBlock();
     }
 
     public void initializeJavaInteropWorkers(EcmaAgent workerMain, EcmaAgent.Factory workerFactory) {
@@ -1350,7 +1152,7 @@ public class JSContext implements ShapeContext {
     private void invalidatePromiseRejectionTrackerNotUsedAssumption() {
         if (promiseRejectionTrackerNotUsedAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            promiseRejectionTrackerNotUsedAssumption.invalidate();
+            promiseRejectionTrackerNotUsedAssumption.invalidate("promise rejection tracker unused");
         }
     }
 
@@ -1383,7 +1185,7 @@ public class JSContext implements ShapeContext {
     private void invalidatePromiseHookNotUsedAssumption() {
         if (promiseHookNotUsedAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            promiseHookNotUsedAssumption.invalidate();
+            promiseHookNotUsedAssumption.invalidate("promise hook unused");
         }
     }
 
@@ -1466,9 +1268,5 @@ public class JSContext implements ShapeContext {
 
     public JSContextOptions getContextOptions() {
         return contextOptions;
-    }
-
-    public int getStackTraceLimit() {
-        return contextOptions.getStackTraceLimit();
     }
 }

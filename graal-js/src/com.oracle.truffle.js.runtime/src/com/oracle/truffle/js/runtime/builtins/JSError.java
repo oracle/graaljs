@@ -53,6 +53,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -73,6 +74,7 @@ public final class JSError extends JSBuiltinObject {
     public static final String MESSAGE = "message";
     public static final String NAME = "name";
     public static final String CLASS_NAME = "Error";
+    public static final String CLASS_NAME_NASHORN_COMPAT = "ErrorNashornCompat";
     public static final String PROTOTYPE_NAME = "Error.prototype";
     public static final HiddenKey EXCEPTION_PROPERTY_NAME = new HiddenKey("Exception");
     public static final String STACK_NAME = "stack";
@@ -169,6 +171,9 @@ public final class JSError extends JSBuiltinObject {
 
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorPrototype, PROTOTYPE_NAME);
+            if (ctx.isOptionNashornCompatibilityMode()) {
+                JSObjectUtil.putFunctionsFromContainer(realm, errorPrototype, JSError.CLASS_NAME_NASHORN_COMPAT);
+            }
         }
         return errorPrototype;
     }
@@ -186,7 +191,7 @@ public final class JSError extends JSBuiltinObject {
         JSObjectUtil.putConstructorPrototypeProperty(context, errorConstructor, classPrototype);
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorConstructor, CLASS_NAME);
-            JSObjectUtil.putDataProperty(context, errorConstructor, STACK_TRACE_LIMIT_PROPERTY_NAME, context.getStackTraceLimit(), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(context, errorConstructor, STACK_TRACE_LIMIT_PROPERTY_NAME, JSContextOptions.STACK_TRACE_LIMIT.getValue(realm.getOptions()), JSAttributes.getDefault());
         }
 
         return new JSConstructor(errorConstructor, classPrototype);

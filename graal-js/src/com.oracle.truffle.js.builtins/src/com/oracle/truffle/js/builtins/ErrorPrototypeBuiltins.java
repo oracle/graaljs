@@ -55,7 +55,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -67,10 +67,6 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
     public ErrorPrototypeBuiltins() {
         super(JSError.PROTOTYPE_NAME);
         defineFunction("toString", 0);
-
-        if (JSTruffleOptions.NashornExtensions) {
-            defineFunction("getStackTrace", 0);
-        }
     }
 
     @Override
@@ -78,10 +74,38 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
         switch (builtin.getName()) {
             case "toString":
                 return ErrorPrototypeToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case "getStackTrace":
-                return ErrorPrototypeGetStackTraceNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
+    }
+
+    public static final class ErrorPrototypeNashornCompatBuiltins extends JSBuiltinsContainer.SwitchEnum<ErrorPrototypeNashornCompatBuiltins.ErrorNashornCompat> {
+        protected ErrorPrototypeNashornCompatBuiltins() {
+            super(JSError.CLASS_NAME_NASHORN_COMPAT, ErrorNashornCompat.class);
+        }
+
+        public enum ErrorNashornCompat implements BuiltinEnum<ErrorNashornCompat> {
+            getStackTrace(0);
+
+            private final int length;
+
+            ErrorNashornCompat(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ErrorNashornCompat builtinEnum) {
+            switch (builtinEnum) {
+                case getStackTrace:
+                    return ErrorPrototypeGetStackTraceNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            }
+            return null;
+        }
     }
 
     public abstract static class ErrorPrototypeToStringNode extends JSBuiltinNode {

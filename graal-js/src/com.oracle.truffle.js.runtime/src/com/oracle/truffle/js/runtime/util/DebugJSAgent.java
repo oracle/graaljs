@@ -73,8 +73,8 @@ public class DebugJSAgent extends JSAgent {
     private boolean quit;
     private Object debugReceiveBroadcast;
 
-    public DebugJSAgent(TruffleLanguage.Env env) {
-        super();
+    public DebugJSAgent(TruffleLanguage.Env env, boolean canBlock) {
+        super(canBlock);
         this.optionValues = env.getOptions();
         this.reportValues = new ConcurrentLinkedDeque<>();
         this.spawnedAgent = new LinkedList<>();
@@ -99,6 +99,7 @@ public class DebugJSAgent extends JSAgent {
                                 "$262.agent.report = Test262.agentReport;" +
                                 "$262.agent.sleep = Test262.agentSleep;" +
                                 "$262.agent.leaving = Test262.agentLeaving;" +
+                                "$262.agent.monotonicNow = Test262.agentMonotonicNow;" +
                                 "$262;";
 
                 Context polyglotContext = contextBuilder.build();

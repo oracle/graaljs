@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.127.1",
+  "mxversion" : "5.176.3",
 
   "name" : "graal-js",
 
@@ -8,16 +8,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "fda115b5e3a9b2ed95aa085c6760307ee7ead568",
-           "urls" : [
-                {"url" : "https://github.com/graalvm/graal.git", "kind" : "git"},
-                {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-            ]
-        },
-        {
-           "name" : "tools",
-           "subdir" : True,
-           "version" : "fda115b5e3a9b2ed95aa085c6760307ee7ead568",
+           "version" : "cadfce6bfbf55d457c3bc376b487e6318ee6118e",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -51,6 +42,7 @@ suite = {
     },
 
     "ICU4J" : {
+      # automatic module
       "sha1" : "6f06e820cf4c8968bbbaae66ae0b33f6a256b57f",
       "maven" : {
         "groupId" : "com.ibm.icu",
@@ -60,8 +52,8 @@ suite = {
     },
 
     "TEST262" : {
-      "sha1" : "c67546176c9b774a2cab9234936e62227d880785",
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/test262-b07c546.tar.bz2"],
+      "sha1" : "fd6f842f715742397e3cb33f583128474fe1f911",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/test262-0fde488.tar.bz2"],
     },
 
     "TESTNASHORN" : {
@@ -123,6 +115,7 @@ suite = {
         "mx:ASM_DEBUG_ALL",
         "ICU4J",
       ],
+      "exports" : ["com.oracle.truffle.js.runtime.java.adapter"],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8",
       "checkstyleVersion" : "8.8",
@@ -137,6 +130,7 @@ suite = {
         "com.oracle.truffle.js.annotations",
         "com.oracle.truffle.js.codec",
       ],
+      "exports" : [],
       "checkstyle" : "com.oracle.truffle.js.runtime",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR", "TRUFFLE_JS_FACTORY_PROCESSOR"],
@@ -147,6 +141,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.js.nodes"],
+      "exports" : [],
       "checkstyle" : "com.oracle.truffle.js.runtime",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -160,6 +155,7 @@ suite = {
         "com.oracle.truffle.js.builtins",
         "com.oracle.js.parser",
       ],
+      "exports" : ["com.oracle.truffle.js.parser to com.oracle.truffle.truffle_api"],
       "checkstyle" : "com.oracle.truffle.js.runtime",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -172,6 +168,7 @@ suite = {
       "dependencies" : [
         "truffle:TRUFFLE_API",
       ],
+      "exports" : [],
       "javaCompliance" : "1.8",
       "checkstyleVersion" : "8.8",
       "workingSets" : "Truffle,JavaScript",
@@ -183,6 +180,7 @@ suite = {
       "dependencies" : [
         "sdk:LAUNCHER_COMMON",
       ],
+      "exports" : [],
       "checkstyle" : "com.oracle.truffle.js.runtime",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,JavaScript",
@@ -192,6 +190,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [],
+      "exports" : [],
       "checkstyle" : "com.oracle.truffle.js.runtime",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,JavaScript",
@@ -201,6 +200,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [],
+      "exports" : [],
       "checkstyle" : "com.oracle.truffle.js.runtime",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,JavaScript",
@@ -233,8 +233,8 @@ suite = {
     "com.oracle.truffle.js.runtime.doubleconv" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : [
-      ],
+      "dependencies" : [],
+      "exports" : [],
       "findbugs" : "false",
 #     checkstyle and findbugs turned off to keep the source aligned
 #     with the original nashorn version as much as possible
@@ -248,6 +248,7 @@ suite = {
       "dependencies" : [
         "regex:TREGEX",
       ],
+      "exports" : [],
       "findbugs" : "false",
 #     checkstyle and findbugs turned off to keep the source aligned
 #     with the original nashorn version as much as possible
@@ -274,6 +275,7 @@ suite = {
       "dependencies" : [
         "mx:JUNIT",
         "com.oracle.truffle.js.nodes",
+        "com.oracle.truffle.js.parser",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js.runtime",
@@ -288,6 +290,7 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK",
       ],
+      "exports" : ["com.oracle.truffle.js.scriptengine"],
       "checkstyle" : "com.oracle.truffle.js.runtime",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,JavaScript",
@@ -349,6 +352,7 @@ suite = {
 
   "distributions" : {
     "GRAALJS" : {
+      "moduleName" : "com.oracle.graal.js",
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.js.parser"],
       "distDependencies" : [
@@ -371,6 +375,7 @@ suite = {
     },
 
     "GRAALJS_LAUNCHER" : {
+      "moduleName" : "com.oracle.graal.js.launcher",
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.js.shell"],
       "mainClass" : "com.oracle.truffle.js.shell.JSLauncher",
@@ -412,6 +417,7 @@ suite = {
     },
 
     "GRAALJS_SCRIPTENGINE" : {
+      "moduleName" : "com.oracle.graal.js.scriptengine",
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.js.scriptengine"],
       "distDependencies" : [

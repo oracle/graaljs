@@ -54,7 +54,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
 
@@ -70,7 +69,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
     }
 
     public static JSTargetableNode createPropertyNode(JSContext ctx, String propertyName) {
-        if (JSTruffleOptions.NashornExtensions) {
+        if (ctx != null && ctx.isOptionNashornCompatibilityMode()) {
             if (propertyName.equals("__LINE__")) {
                 return new GlobalConstantNode(ctx, propertyName, new GlobalConstantNode.LineNumberNode());
             } else if (propertyName.equals("__FILE__")) {
@@ -115,8 +114,8 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
         if (materializedTags.contains(ReadPropertyExpressionTag.class) && !isScopeAccess()) {
             GlobalObjectNode globalObject = GlobalObjectNode.create(context);
             PropertyNode propertyNode = PropertyNode.createProperty(context, globalObject, getPropertyKey());
-            transferSourceSection(this, propertyNode);
-            transferSourceSectionNoTags(this, globalObject);
+            transferSourceSectionAndTags(this, propertyNode);
+            transferSourceSectionAddExpressionTag(this, globalObject);
             return propertyNode;
         } else {
             return this;

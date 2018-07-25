@@ -117,6 +117,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     @Child protected JavaScriptNode targetNode;
     @Child protected JavaScriptNode indexNode;
     @Child protected ReadElementTypeCacheNode typeCacheNode;
+    private final JSContext context;
 
     @CompilationFinal private byte indexState;
     private static final byte INDEX_INT = 1;
@@ -133,7 +134,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     protected ReadElementNode(JavaScriptNode targetNode, JavaScriptNode indexNode, JSContext context) {
         this.targetNode = targetNode;
         this.indexNode = indexNode;
-        this.typeCacheNode = new UninitReadElementTypeCacheNode(context);
+        this.context = context;
     }
 
     @Override
@@ -142,9 +143,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             JavaScriptNode clonedTarget = targetNode.hasSourceSection() ? cloneUninitialized(targetNode) : JSTaggedExecutionNode.createFor(targetNode, ExpressionTag.class);
             JavaScriptNode clonedIndex = indexNode.hasSourceSection() ? cloneUninitialized(indexNode) : JSTaggedExecutionNode.createFor(indexNode, ExpressionTag.class);
             JavaScriptNode cloned = ReadElementNode.create(clonedTarget, clonedIndex, getContext());
-            transferSourceSection(this, cloned);
-            transferSourceSectionNoTags(this, clonedTarget);
-            transferSourceSectionNoTags(this, clonedIndex);
+            transferSourceSectionAndTags(this, cloned);
+            transferSourceSectionAddExpressionTag(this, clonedTarget);
+            transferSourceSectionAddExpressionTag(this, clonedIndex);
             return cloned;
         }
         return this;
@@ -270,27 +271,35 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     public final Object executeWithTargetAndIndex(Object target, Object index) {
-        return typeCacheNode.executeWithTargetAndIndex(target, index);
+        return getTypeCacheNode().executeWithTargetAndIndex(target, index);
     }
 
     public final Object executeWithTargetAndIndex(Object target, int index) {
-        return typeCacheNode.executeWithTargetAndIndex(target, index);
+        return getTypeCacheNode().executeWithTargetAndIndex(target, index);
     }
 
     public final int executeWithTargetAndIndexInt(Object target, Object index) throws UnexpectedResultException {
-        return typeCacheNode.executeWithTargetAndIndexInt(target, index);
+        return getTypeCacheNode().executeWithTargetAndIndexInt(target, index);
     }
 
     public final int executeWithTargetAndIndexInt(Object target, int index) throws UnexpectedResultException {
-        return typeCacheNode.executeWithTargetAndIndexInt(target, index);
+        return getTypeCacheNode().executeWithTargetAndIndexInt(target, index);
     }
 
     public final double executeWithTargetAndIndexDouble(Object target, Object index) throws UnexpectedResultException {
-        return typeCacheNode.executeWithTargetAndIndexDouble(target, index);
+        return getTypeCacheNode().executeWithTargetAndIndexDouble(target, index);
     }
 
     public final double executeWithTargetAndIndexDouble(Object target, int index) throws UnexpectedResultException {
-        return typeCacheNode.executeWithTargetAndIndexDouble(target, index);
+        return getTypeCacheNode().executeWithTargetAndIndexDouble(target, index);
+    }
+
+    private ReadElementTypeCacheNode getTypeCacheNode() {
+        if (typeCacheNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            typeCacheNode = insert(new UninitReadElementTypeCacheNode(context));
+        }
+        return typeCacheNode;
     }
 
     private abstract static class ReadElementCacheNode extends JavaScriptBaseNode {
@@ -1543,7 +1552,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     public final JSContext getContext() {
-        return typeCacheNode.context;
+        return context;
     }
 
     @Override

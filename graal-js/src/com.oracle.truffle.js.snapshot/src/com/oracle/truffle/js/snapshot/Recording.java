@@ -80,7 +80,6 @@ import java.util.stream.IntStream;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -870,15 +869,15 @@ public class Recording {
         private final Inst node;
         private final boolean hasStatementTag;
         private final boolean hasCallTag;
-        private final boolean hasAlwaysHaltTag;
+        private final boolean hasExpressionTag;
         private final boolean hasRootTag;
 
-        FixUpNodeTagsInst(Inst node, boolean hasStatementTag, boolean hasCallTag, boolean hasAlwaysHaltTag, boolean hasRootTag) {
+        FixUpNodeTagsInst(Inst node, boolean hasStatementTag, boolean hasCallTag, boolean hasExpressionTag, boolean hasRootTag) {
             super();
             this.node = node;
             this.hasStatementTag = hasStatementTag;
             this.hasCallTag = hasCallTag;
-            this.hasAlwaysHaltTag = hasAlwaysHaltTag;
+            this.hasExpressionTag = hasExpressionTag;
             this.hasRootTag = hasRootTag;
         }
 
@@ -891,8 +890,8 @@ public class Recording {
             if (hasCallTag) {
                 joiner.add(node + "." + "addCallTag" + "()");
             }
-            if (hasAlwaysHaltTag) {
-                joiner.add(node + "." + "addAlwaysHaltTag" + "()");
+            if (hasExpressionTag) {
+                joiner.add(node + "." + "addExpressionTag" + "()");
             }
             if (hasRootTag) {
                 joiner.add(node + "." + "addRootTag" + "()");
@@ -914,7 +913,7 @@ public class Recording {
 
         @Override
         public void encodeTo(JSNodeEncoder encoder) {
-            encoder.encodeNodeTagsFixup(node.getId(), hasStatementTag, hasCallTag, hasAlwaysHaltTag, hasRootTag);
+            encoder.encodeNodeTagsFixup(node.getId(), hasStatementTag, hasCallTag, hasExpressionTag, hasRootTag);
         }
 
         @Override
@@ -1307,10 +1306,10 @@ public class Recording {
                     if (FIXUP_TAGS) {
                         boolean hasStatementTag = jsnode.hasTag(StandardTags.StatementTag.class);
                         boolean hasCallTag = jsnode.hasTag(StandardTags.CallTag.class);
-                        boolean hasAlwaysHaltTag = jsnode.hasTag(DebuggerTags.AlwaysHalt.class);
+                        boolean hasExpressionTag = jsnode.hasTag(StandardTags.ExpressionTag.class);
                         boolean hasRootTag = jsnode.hasTag(StandardTags.RootTag.class);
-                        if (hasStatementTag || hasCallTag || hasAlwaysHaltTag || hasRootTag) {
-                            insts.add(new FixUpNodeTagsInst(nodeInst.asVar(), hasStatementTag, hasCallTag, hasAlwaysHaltTag, hasRootTag));
+                        if (hasStatementTag || hasCallTag || hasExpressionTag || hasRootTag) {
+                            insts.add(new FixUpNodeTagsInst(nodeInst.asVar(), hasStatementTag, hasCallTag, hasExpressionTag, hasRootTag));
                         }
                     }
                     return true;

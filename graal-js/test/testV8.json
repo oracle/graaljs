@@ -1,5 +1,84 @@
 {
   "testFiles" : [ {
+    "filePath" : "intl/break-iterator/default-locale.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/break-iterator/en-break.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/break-iterator/property-override.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/break-iterator/resolved-options-is-method.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/break-iterator/wellformed-unsupported-locale.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/break-iterator/zh-break.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/collator/de-sort.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/collator/default-locale.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/collator/wellformed-unsupported-locale.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/date-format/calendar-with-multiple-type-subtags.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/date-format/default-locale.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/date-format/resolved-options.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/date-format/timezone-name.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/date-format/timezone.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/date-format/wellformed-unsupported-locale.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/general/case-mapping.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/general/constructor.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/general/mapped-locale.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/general/supported-locales-of.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/number-format/check-minimum-fraction-digits.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/number-format/default-locale.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/number-format/format-currency.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/number-format/wellformed-unsupported-locale.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/overrides/caching.js",
+    "status" : "SKIP",
+    "comment" : "suspicious performance test"
+  }, {
+    "filePath" : "intl/regexp-assert.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "intl/toStringTag.js",
+    "status" : "FAIL"
+  }, {
     "filePath" : "mjsunit/accessors-on-global-object.js",
     "status" : "SKIP",
     "comment" : "__defineGetter__, __defineSetter__, __lookupSetter__, __lookupGetter__ not according to spec"
@@ -120,6 +199,10 @@
     "filePath" : "mjsunit/elements-kind.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
+  }, {
+    "filePath" : "mjsunit/enumeration-order.js",
+    "status" : "FAIL",
+    "comment" : "does not match the specification (300000000000 is not considered an integer index)"
   }, {
     "filePath" : "mjsunit/error-tostring-omit.js",
     "status" : "FAIL"
@@ -503,6 +586,9 @@
     "filePath" : "mjsunit/harmony/import-from-instantiation-errored.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/intl-numberformat-formattoparts.js",
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-1.js",
     "status" : "FAIL",
@@ -1254,6 +1340,9 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
+    "filePath" : "mjsunit/regress/regress-6288.js",
+    "status" : "FAIL"
+  }, {
     "filePath" : "mjsunit/regress/regress-631050.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -1490,6 +1579,9 @@
     "filePath" : "mjsunit/regress/regress-crbug-696622.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-714696.js",
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-740398.js",
     "status" : "FAIL",

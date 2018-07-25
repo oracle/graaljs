@@ -48,7 +48,7 @@ public final class TernaryNode extends Expression {
      * @param falseExpr expression evaluated when test evaluates to true
      */
     public TernaryNode(final long token, final Expression test, final JoinPredecessorExpression trueExpr, final JoinPredecessorExpression falseExpr) {
-        super(token, falseExpr.getFinish());
+        super(token, test.getStart(), falseExpr.getFinish());
         this.test = test;
         this.trueExpr = trueExpr;
         this.falseExpr = falseExpr;

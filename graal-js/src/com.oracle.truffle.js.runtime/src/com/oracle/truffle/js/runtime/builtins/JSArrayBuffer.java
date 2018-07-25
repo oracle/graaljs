@@ -120,7 +120,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         putConstructorProperty(context, arrayBufferPrototype, ctor);
         putFunctionsFromContainer(realm, arrayBufferPrototype, PROTOTYPE_NAME);
         DynamicObject byteLengthGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, createByteLengthGetterCallTarget(context), 0, "get " + BYTE_LENGTH));
-        JSObjectUtil.putConstantAccessorProperty(context, arrayBufferPrototype, BYTE_LENGTH, byteLengthGetter, Undefined.instance, JSAttributes.configurableNotEnumerable());
+        JSObjectUtil.putConstantAccessorProperty(context, arrayBufferPrototype, BYTE_LENGTH, byteLengthGetter, Undefined.instance);
         JSObjectUtil.putDataProperty(context, arrayBufferPrototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return arrayBufferPrototype;
     }
@@ -226,7 +226,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     @TruffleBoundary
     public static void detachArrayBuffer(DynamicObject arrayBuffer) {
         assert isJSAbstractBuffer(arrayBuffer);
-        JSObject.getJSContext(arrayBuffer).getTypedArrayNotDetachedAssumption().invalidate();
+        JSObject.getJSContext(arrayBuffer).getTypedArrayNotDetachedAssumption().invalidate("no detached array buffer");
         if (isJSDirectArrayBuffer(arrayBuffer)) {
             BYTE_BUFFER_PROPERTY.setSafe(arrayBuffer, null, null);
         } else {

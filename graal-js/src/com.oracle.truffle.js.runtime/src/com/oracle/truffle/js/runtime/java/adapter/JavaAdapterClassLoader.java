@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.interop;
+package com.oracle.truffle.js.runtime.java.adapter;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
@@ -48,6 +48,8 @@ import java.security.CodeSource;
 import java.security.Permissions;
 import java.security.ProtectionDomain;
 import java.security.SecureClassLoader;
+import java.util.Collection;
+import java.util.Collections;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.util.TraceClassVisitor;
@@ -60,8 +62,9 @@ import org.objectweb.asm.util.TraceClassVisitor;
  * {@code ClassLoader}, but rather uses them internally. Instances of this class are normally
  * created by {@link JavaAdapterBytecodeGenerator}.
  */
-public final class JavaAdapterClassLoader {
-    private static final ProtectionDomain GENERATED_PROTECTION_DOMAIN = createGeneratedProtectionDomain();
+final class JavaAdapterClassLoader {
+    static final ProtectionDomain GENERATED_PROTECTION_DOMAIN = createGeneratedProtectionDomain();
+    static final Collection<String> VISIBLE_INTERNAL_CLASS_NAMES = Collections.singleton(JavaAdapterServices.class.getName());
 
     private final String className;
     private final byte[] classBytes;
@@ -77,8 +80,7 @@ public final class JavaAdapterClassLoader {
      * @param parentLoader the parent class loader for the generated class loader
      * @return the generated adapter class
      */
-    public Class<?> generateClass(final ClassLoader parentLoader) {
-        // return AccessController.doPrivileged(new PrivilegedAction<StaticClass>() {
+    Class<?> generateClass(final ClassLoader parentLoader) {
         try {
             return Class.forName(className, true, createClassLoader(parentLoader));
         } catch (final ClassNotFoundException e) {
@@ -86,16 +88,6 @@ public final class JavaAdapterClassLoader {
         }
     }
 
-    /*
-     * Note that the adapter class is created in the protection domain of the class/interface being
-     * extended/implemented, and only the privileged global setter action class is generated in the
-     * protection domain of Nashorn itself. Also note that the creation and loading of the global
-     * setter is deferred until it is required by JVM linker, which will only happen on first
-     * invocation of any of the adapted method. We could defer it even more by separating its
-     * invocation into a separate static method on the adapter class, but then someone with ability
-     * to introspect on the class and use setAccessible(true) on it could invoke the method. It's a
-     * security tradeoff...
-     */
     private ClassLoader createClassLoader(final ClassLoader parentLoader) {
         return new SecureClassLoader(parentLoader) {
             private static final boolean PRINT_CODE = false;
@@ -111,7 +103,7 @@ public final class JavaAdapterClassLoader {
                      * loader that prevents package.access. If so, it'd throw SecurityException for
                      * internal classes used by generated adapter classes.
                      */
-                    if (isAccessibleInternalClassName(name)) {
+                    if (VISIBLE_INTERNAL_CLASS_NAMES.contains(name)) {
                         return myLoader != null ? myLoader.loadClass(name) : Class.forName(name, false, myLoader);
                     }
                     throw se;
@@ -137,10 +129,6 @@ public final class JavaAdapterClassLoader {
                 System.out.println(new String(baos.toByteArray()));
             }
         };
-    }
-
-    static boolean isAccessibleInternalClassName(final String name) {
-        return name.startsWith("com.oracle.truffle.js.");
     }
 
     private static ProtectionDomain createGeneratedProtectionDomain() {

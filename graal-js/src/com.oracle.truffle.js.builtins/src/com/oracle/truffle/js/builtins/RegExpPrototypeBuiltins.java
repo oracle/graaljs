@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -57,12 +58,14 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstru
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpCompileNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecES5NodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecNodeGen;
+import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpMatchAllNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpMatchNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpReplaceNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpSearchNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpSplitNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpTestNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpToStringNodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltins.MatchAllIteratorNode;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode.JSRegExpExecBuiltinNode;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
@@ -86,6 +89,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -117,7 +121,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         _split(2, Symbol.SYMBOL_SPLIT),
 
         // Annex B
-        compile(2);
+        compile(2),
+
+        // TBD
+        _matchAll(1, Symbol.SYMBOL_MATCH_ALL);
 
         private final int length;
         private final Object key;
@@ -145,6 +152,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         public int getECMAScriptVersion() {
             if (EnumSet.of(_match, _replace, _search, _split).contains(this)) {
                 return 6;
+            }
+            if (this.equals(_matchAll)) {
+                return JSTruffleOptions.ECMAScript2019;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -178,6 +188,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSRegExpSplitNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case compile:
                 return JSRegExpCompileNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case _matchAll:
+                return JSRegExpMatchAllNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -353,7 +365,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isJSObject(thisNonObj)")
         protected Object test(Object thisNonObj, @SuppressWarnings("unused") Object input) {
-            throw Errors.createTypeErrorNotAnObject(thisNonObj);
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.test", thisNonObj);
         }
     }
 
@@ -386,7 +398,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isJSObject(thisNonObj)")
         protected Object toString(Object thisNonObj) {
-            throw Errors.createTypeErrorIncompatibleReceiver(thisNonObj);
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.toString", thisNonObj);
         }
 
     }
@@ -501,7 +513,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             DynamicObject regexpConstructor = getContext().getRealm().getRegExpConstructor().getFunctionObject();
             DynamicObject c = getArraySpeciesConstructorNode().speciesConstructor(rx, regexpConstructor);
             String flags = toString2Node.executeString(getFlagsNode.getValue(rx));
-            boolean unicodeMatching = Boundaries.stringIndexOf(flags, 'u') >= 0;
+            boolean unicodeMatching = flags.indexOf('u') >= 0;
             DynamicObject splitter = (DynamicObject) getArraySpeciesConstructorNode().construct(c, rx, ensureSticky(flags));
             DynamicObject a = JSArray.createEmptyZeroLength(getContext());
             long lim;
@@ -567,7 +579,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
          * Ensure sticky ("y") is part of the flags.
          */
         private static Object ensureSticky(String flags) {
-            return (flags.length() == 0) ? "y" : (Boundaries.stringIndexOf(flags, 'y') >= 0) ? flags : addStickyFlag(flags);
+            return (flags.length() == 0) ? "y" : (flags.indexOf('y') >= 0) ? flags : addStickyFlag(flags);
         }
 
         private long toLength(Object obj) {
@@ -605,7 +617,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isJSObject(thisObj)")
         protected Object split(Object thisObj, @SuppressWarnings("unused") Object pattern, @SuppressWarnings("unused") Object flags) {
-            throw createNoRegExpError(thisObj);
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@split", thisObj);
         }
 
     }
@@ -636,6 +648,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final ConditionProfile globalProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile functionalReplaceProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile lazyResultArrayProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile replaceEmptyProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile replaceRawProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile noMatchProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile validPositionProfile = ConditionProfile.createBinaryProfile();
@@ -664,8 +677,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 replaceFunction = (DynamicObject) replaceValue;
             } else {
                 replaceString = getToString2Node().executeString(replaceValue);
-                replaceEmpty = replaceString.length() == 0;
-                replaceRaw = replaceString.length() > 0 && Boundaries.stringIndexOf(replaceString, '$') < 0;
+                replaceEmpty = replaceString.isEmpty();
+                replaceRaw = replaceString.length() > 0 && replaceString.indexOf('$') < 0;
             }
 
             boolean global = toBoolean1Node.executeBoolean(getGlobalNode.getValue(rx));
@@ -678,7 +691,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (functionalReplaceProfile.profile(functionalReplace)) {
                 results = new ArrayList<>();
             }
-            DelimitedStringBuilder accumulatedResult = new DelimitedStringBuilder(s.length() + 16);
+            DelimitedStringBuilder accumulatedResult = new DelimitedStringBuilder(replaceEmptyProfile.profile(replaceEmpty) ? s.length() : s.length() + 16);
             int nextSourcePosition = 0;
             while (true) {
                 DynamicObject result = (DynamicObject) getRegexExecIntlNode().execute(rx, s);
@@ -735,7 +748,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isJSObject(thisObj)")
         protected Object replace(Object thisObj, @SuppressWarnings("unused") Object pattern, @SuppressWarnings("unused") Object flags) {
-            throw createNoRegExpError(thisObj);
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@replae", thisObj);
         }
 
         protected int processResult(DelimitedStringBuilder accumulatedResult, DynamicObject result, String s, String replaceString, int nextSourcePosition, int matchLength, boolean replaceEmpty,
@@ -743,7 +756,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             int position = Math.max(Math.min(toIntegerNode.executeInt(getIndexNode.getValue(result)), s.length()), 0);
             if (validPositionProfile.profile(position >= nextSourcePosition)) {
                 accumulatedResult.append(s, nextSourcePosition, position);
-                if (!replaceEmpty) {
+                if (!replaceEmptyProfile.profile(replaceEmpty)) {
                     if (replaceRawProfile.profile(replaceRaw)) {
                         accumulatedResult.append(replaceString);
                     } else {
@@ -791,7 +804,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private void appendSubstitution(DelimitedStringBuilder accumulatedResult, DynamicObject result, DynamicObject namedCaptures, int matchLength, String str, int position, String replacement) {
-            int dollarPos = Boundaries.stringIndexOf(replacement, '$');
+            int dollarPos = replacement.indexOf('$');
             int tailPos = position + matchLength;
             accumulatedResult.append(replacement, 0, dollarPos);
             int pos = dollarPos;
@@ -802,7 +815,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private static int nextDollar(DelimitedStringBuilder sb, int start, String replacement) {
-            int pos = Boundaries.stringIndexOf(replacement, '$', start);
+            int pos = replacement.indexOf('$', start);
             int end = (pos <= -1) ? replacement.length() : pos;
             sb.append(replacement, start, end);
             return pos;
@@ -1045,7 +1058,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isJSObject(thisObj)")
         protected Object match(Object thisObj, @SuppressWarnings("unused") Object string) {
-            throw createNoRegExpError(thisObj);
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@match", thisObj);
         }
 
         private JSToLengthNode getToLengthNode() {
@@ -1088,7 +1101,36 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isJSObject(thisObj)")
         protected Object search(Object thisObj, @SuppressWarnings("unused") Object string) {
-            throw createNoRegExpError(thisObj);
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@search", thisObj);
+        }
+    }
+
+    /**
+     * This implements the RegExp.prototype.[@@matchAll] method.
+     */
+    public abstract static class JSRegExpMatchAllNode extends JSBuiltinNode {
+        @Child private MatchAllIteratorNode matchAllIteratorNode;
+
+        public JSRegExpMatchAllNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSObject(regex)")
+        protected Object matchAll(VirtualFrame frame, DynamicObject regex, Object stringObj) {
+            return getMatchAllIteratorNode().createMatchAllIterator(frame, regex, stringObj);
+        }
+
+        @Specialization(guards = "!isJSObject(thisObj)")
+        protected Object matchAll(Object thisObj, @SuppressWarnings("unused") Object string) {
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@matchAll", thisObj);
+        }
+
+        private MatchAllIteratorNode getMatchAllIteratorNode() {
+            if (matchAllIteratorNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                matchAllIteratorNode = insert(new MatchAllIteratorNode(getContext()));
+            }
+            return matchAllIteratorNode;
         }
     }
 }

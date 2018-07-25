@@ -107,8 +107,8 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
             // need to call the generated factory directly to avoid constant optimizations
             JSConstantNode constantNode = JSConstantIntegerNode.create(rightValue);
             JavaScriptNode node = JSUnsignedRightShiftNodeGen.create(getOperand(), constantNode);
-            transferSourceSectionNoTags(this, constantNode);
-            transferSourceSection(this, node);
+            transferSourceSectionAddExpressionTag(this, constantNode);
+            transferSourceSectionAndTags(this, node);
             return node;
         } else {
             return this;

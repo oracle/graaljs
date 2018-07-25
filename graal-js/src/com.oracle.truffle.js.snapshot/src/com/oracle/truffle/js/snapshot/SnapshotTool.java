@@ -49,10 +49,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.polyglot.Context;
+
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.parser.JSEngine;
 import com.oracle.truffle.js.parser.JavaScriptTranslator;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -67,10 +68,6 @@ public class SnapshotTool {
     private JSContext context;
 
     public SnapshotTool() {
-    }
-
-    static JSContext createDefaultContext() {
-        return JSEngine.createJSContext();
     }
 
     public static void main(String[] args) throws IOException {
@@ -141,6 +138,17 @@ public class SnapshotTool {
             return context = createDefaultContext();
         }
         return context;
+    }
+
+    static JSContext createDefaultContext() {
+        Context polyglotContext = Context.create(AbstractJavaScriptLanguage.ID);
+        polyglotContext.enter();
+        try {
+            polyglotContext.initialize(AbstractJavaScriptLanguage.ID);
+            return AbstractJavaScriptLanguage.getCurrentJSRealm().getContext();
+        } finally {
+            polyglotContext.leave();
+        }
     }
 
     private interface TimerCloseable extends AutoCloseable {

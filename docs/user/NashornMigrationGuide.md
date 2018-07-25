@@ -4,6 +4,12 @@ See the [JavaInterop.md](JavaInterop.md) for an overview of supported Java inter
 Both Nashorn and Graal JavaScript support a similar set of syntax and semantics for Java interoperability.
 The most important differences relevant for migration are listed here.
 
+Nashorn features available by default:
+* `Java.type`, `Java.typeName`
+* `Java.from`, `Java.to`
+* `Java.extend`, `Java.super`
+* Java package globals: `Packages`, `java`, `javafx`, `javax`, `com`, `org`, `edu`
+
 ## Nashorn compatibility mode
 Graal JavaScript provides a Nashorn compatibility mode.
 Some of the functionality necessary for Nashorn compatibility is only available when this flag is set.
@@ -13,14 +19,21 @@ This is the case for Nashorn-specific extensions that Graal JavaScript does not 
 $ js --js.nashorn-compat=true
 ```
 
+When you start from a Java application, set the flag on Java invocation:
+
+```
+$ java -Dpolyglot.js.nashorn-compat=true MyApplication
+```
+
 Functionality only available under this flag includes:
 * `Java.isJavaFunction`, `Java.isJavaMethod`, `Java.isScriptObject`, `Java.isScriptFunction`
 * `new Interface|AbstractClass(fn|obj)`
-* Java package globals: `java`, `javafx`, `javax`, `com`, `org`, `edu`
 * `JavaImporter`
 * `JSAdapter`
 * `java.lang.String` methods on string values
 * `load("nashorn:parser.js")`, `load("nashorn:mozilla_compat.js")`
+
+Nashorn syntax extensions can be enabled using `--js.syntax-extensions=true` or `-Dpolyglot.js.syntax-extensions=true`.
 
 ## Intentional design differences
 Graal JavaScript differs from Nashorn in some aspects that were intentional design decisions.
@@ -31,7 +44,8 @@ Note that, depending on the build setup, GraalVM might still ship Nashorn and it
 
 ### ScriptEngine name `graal.js`
 Graal JavaScript is shipped with ScriptEngine support.
-It registers under several names, including `graal.js`.
+It registers under several names, including "graal.js", "JavaScript", "js".
+Be sure to activate the Nashorn compatibility mode as described above if you need full Nashorn compatibility.
 Depending on the build setup, GraalVM might still ship Nashorn and provide it via ScriptEngine.
 
 ### `ClassFilter`
@@ -55,8 +69,6 @@ var BigDecimal = Java.type('java.math.BigDecimal');
 var bd = new BigDecimal('10');
 ```
 
-The following Java package globals can be enabled using the `js.nashorn-compat` option: `java`, `javafx`, `javax`, `com`, `org`, `edu`.
-
 ### Lossy conversion
 Graal JavaScript does not allow lossy conversions of arguments when calling Java methods.
 This could lead to bugs with numeric values that are hard to detect.
@@ -70,22 +82,6 @@ Graal JavaScript does not provide objects of the class `ScriptObjectMirror`.
 Instead, JavaScript objects are exposed to Java code as objects implementing Java's `Map` interface.
 
 Code referencing `ScriptObjectMirror` instances can be rewritten by changing the type to either an interface (`Map`, `List`) or the polyglot [Value](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html) class which provides similar capabilities.
-
-## Incompatibilities being worked on
-The following incompatibilities are present in Graal JavaScript currently.
-Future versions of Graal JavaScript will provide better compatibility to Nashorn in those areas.
-
-### String `length` property
-Graal JavaScript does not treat the length property of a String specially.
-The canonical way of accessing the String length is reading the `length` property.
-
-```
-myJavaString.length;
-```
-
-Nashorn allows to both access `length` as a property and a function.
-Existing function calls `length()` should be expressed as property access.
-Nashorn behavior can be enabled using the `js.nashorn-compat` option.
 
 ### Multithreading
 Graal JavaScript supports multithreading by creating several `Context` objects from Java code.
@@ -115,18 +111,38 @@ A child thread may create a new `Context` instance, though.
 new Thread(aJavaRunnable).start(); // allowed on Graal JavaScript
 ```
 
+## Extensions only available in Nashorn compatibility mode
+The following extensions to JavaScript available in Nashorn are deactivated in Graal JavaScript by default.
+They are provided in GraalVM's Nashorn compatibility mode.
+It is highly recommended not to implement new applications based on those features, but only to use it as a means to migrate existing applications to GraalVM.
+
+### String `length` property
+Graal JavaScript does not treat the length property of a String specially.
+The canonical way of accessing the String length is reading the `length` property.
+
+```
+myJavaString.length;
+```
+
+Nashorn allows to both access `length` as a property and a function.
+Existing function calls `length()` should be expressed as property access.
+Nashorn behavior is mimicked in the Nashorn compatibility mode.
+
+### Java packages in the JavaScript global object
+Graal JavaScript requires the use of `Java.type` instead of fully qualified names.
+In Nashorn compatibility mode, the following Java package are added to the JavaScript global object: `java`, `javafx`, `javax`, `com`, `org`, `edu`.
+
 ### JavaImporter
-The `JavaImporter` feature is available only in Nashorn compatibility mode (`js.nashorn-compat` option).
+The `JavaImporter` feature is available only in Nashorn compatibility mode.
 
 ### JSAdapter
 Use of the non-standard `JSAdapter` is discouraged and should be replaced with the equivalent standard `Proxy` feature.
-For compatibility, `JSAdapter` is still available under the `js.nashorn-compat` option.
+For compatibility, `JSAdapter` is still available in Nashorn compatibility mode.
 
 ### Java.* methods
 Several methods provided by Nashorn on the `Java` global object are available only in Nashorn compatibility mode or currently not supported by Graal JavaScript.
-Available with the `js.nashorn-compat` option: `Java.isJavaFunction`, `Java.isJavaMethod`, `Java.isScriptObject`, `Java.isScriptFunction`.
+Available in Nashorn compatibility mode are: `Java.isJavaFunction`, `Java.isJavaMethod`, `Java.isScriptObject`, `Java.isScriptFunction`.
 Currently not supported: `Java.asJSONCompatible`.
-We are evaluating their use in real-world applications and might add them in the future, by default or behind a flag.
 
 ### Accessors
 In Nashorn compatibility mode, Graal JavaScript allows to access getters and setters just by the name as properties, while omitting `get`, `set`, or `is`.

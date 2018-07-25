@@ -259,17 +259,17 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (materializedTags.contains(FunctionCallExpressionTag.class)) {
                 if (this.hasSourceSection() && !functionNode.hasSourceSection()) {
-                    transferSourceSectionNoTags(this, functionNode);
+                    transferSourceSectionAddExpressionTag(this, functionNode);
                 }
                 if (targetNode != null) {
                     // if we have a target, no de-sugaring needed
                     return this;
                 } else {
                     JavaScriptNode materializedTargetNode = JSConstantUndefinedNode.createUndefined();
-                    AbstractFunctionArgumentsNode materializedArgumentsNode = AbstractFunctionArgumentsNode.materializeArgumentsNode(argumentsNode, getSourceSection());
+                    AbstractFunctionArgumentsNode materializedArgumentsNode = argumentsNode.copyUninitialized();
                     JavaScriptNode call = CallNode.create(functionNode, materializedTargetNode, materializedArgumentsNode, isNew(flags), isNewTarget(flags));
-                    transferSourceSectionNoTags(this, materializedTargetNode);
-                    transferSourceSection(this, call);
+                    transferSourceSectionAddExpressionTag(this, materializedTargetNode);
+                    transferSourceSectionAndTags(this, call);
                     return call;
                 }
             } else {
@@ -400,9 +400,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             }
             if (materializedTags.contains(FunctionCallExpressionTag.class) || materializedTags.contains(ReadPropertyExpressionTag.class) ||
                             materializedTags.contains(ReadElementExpressionTag.class)) {
-                AbstractFunctionArgumentsNode materializedArgumentsNode = AbstractFunctionArgumentsNode.materializeArgumentsNode(getArgumentsNode(), getSourceSection());
-                JavaScriptNode call = new MaterializedInvokeNode(getFunctionTargetNode(), materializedArgumentsNode, flags);
-                transferSourceSection(this, call);
+                AbstractFunctionArgumentsNode materializedArgumentsNode = getArgumentsNode().copyUninitialized();
+                JavaScriptNode call = new MaterializedInvokeNode(cloneUninitialized(getFunctionTargetNode()), materializedArgumentsNode, flags);
+                transferSourceSectionAndTags(this, call);
                 return call;
             } else {
                 return this;
@@ -433,8 +433,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             this.argumentsNode = argumentsNode;
             this.functionTargetNode = createEventEmittingWrapper(functionTargetNode, functionTargetNode.getSourceSection());
             this.targetNode = functionTargetNode.getTarget();
-            transferSourceSection(functionTargetNode, this.targetNode);
-            transferSourceSection(functionTargetNode, this.functionTargetNode);
+            transferSourceSectionAndTags(functionTargetNode, this.targetNode);
+            transferSourceSectionAndTags(functionTargetNode, this.functionTargetNode);
         }
 
         private JSTargetableNode createEventEmittingWrapper(JSTargetableNode functionTarget, SourceSection sourceSection) {

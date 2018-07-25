@@ -45,6 +45,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * @see JSSymbol
@@ -77,6 +78,11 @@ public final class Symbol implements TruffleObject {
      * the String.prototype.match method.
      */
     public static final Symbol SYMBOL_MATCH = Symbol.create("Symbol.match");
+    /**
+     * A regular expression method that returns an iterator, that yields matches of the regular
+     * expression against a string. Called by the String.prototype.matchAll method.
+     */
+    public static final Symbol SYMBOL_MATCH_ALL = Symbol.create("Symbol.matchAll");
     /**
      * A regular expression method that replaces matched substrings of a string. Called by the
      * String.prototype.replace method.
@@ -113,29 +119,37 @@ public final class Symbol implements TruffleObject {
      */
     public static final Symbol SYMBOL_UNSCOPABLES = Symbol.create("Symbol.unscopables");
 
-    private final String name;
+    /**
+     * [[Description]] of Symbol if it is a String value, {@code null} otherwise ([[Description]] is
+     * undefined).
+     */
+    private final String description;
 
-    private Symbol(String name) {
-        this.name = name;
+    private Symbol(String description) {
+        this.description = description;
     }
 
-    public static Symbol create(String name) {
-        return new Symbol(name);
+    public static Symbol create(String description) {
+        return new Symbol(description);
+    }
+
+    public Object getDescription() {
+        return (description == null) ? Undefined.instance : description;
     }
 
     public String getName() {
-        return name;
+        return description == null ? "" : description;
     }
 
     @Override
     @TruffleBoundary
     public String toString() {
-        return "Symbol(" + name + ")";
+        return "Symbol(" + getName() + ")";
     }
 
     @TruffleBoundary
     public String toFunctionNameString() {
-        return name.isEmpty() ? "" : '[' + name + ']';
+        return (description == null) ? "" : '[' + description + ']';
     }
 
     @Override

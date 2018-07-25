@@ -46,6 +46,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Stack;
+import java.util.StringJoiner;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -73,9 +74,9 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag.Type;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -92,30 +93,33 @@ public abstract class FineGrainedAccessTest {
 
     @SuppressWarnings("unchecked")
     public static final String getTagNames(JavaScriptNode node) {
-        String tags = "";
+        StringJoiner tags = new StringJoiner(" ");
 
         if (node.hasTag(StandardTags.StatementTag.class)) {
-            tags += "STMT ";
+            tags.add("STMT");
         }
         if (node.hasTag(StandardTags.RootTag.class)) {
-            tags += "ROOT ";
+            tags.add("ROOT");
+        }
+        if (node.hasTag(StandardTags.ExpressionTag.class)) {
+            tags.add("EXPR");
         }
         for (Class<?> c : JSTags.ALL) {
             if (node.hasTag((Class<? extends Tag>) c)) {
-                tags += c.getSimpleName() + " ";
+                tags.add(c.getSimpleName());
             }
         }
-        return tags;
+        return tags.toString();
     }
 
     protected Context context;
     private boolean collecting;
     private ArrayList<Event> events;
     private Stack<JavaScriptNode> stack;
-    private Instrumenter instrumenter;
-    private TestingExecutionInstrument instrument;
+    protected Instrumenter instrumenter;
+    protected TestingExecutionInstrument instrument;
     private ExecutionEventNodeFactory factory;
-    private EventBinding<ExecutionEventNodeFactory> binding;
+    protected EventBinding<ExecutionEventNodeFactory> binding;
 
     protected static class Event {
         enum Kind {
@@ -165,22 +169,22 @@ public abstract class FineGrainedAccessTest {
 
         AssertedEvent input(Object value) {
             Event event = test.getNextEvent();
-            assertTrue(event.instrumentedNode.hasTag(tag));
+            assertTag(tag, event);
             assertEquals(Event.Kind.INPUT, event.kind);
-            assertEquals(event.val, value);
+            assertEquals(value, event.val);
             return this;
         }
 
         AssertedEvent input() {
             Event event = test.getNextEvent();
-            assertTrue(event.instrumentedNode.hasTag(tag));
+            assertTag(tag, event);
             assertEquals(Event.Kind.INPUT, event.kind);
             return this;
         }
 
         AssertedEvent input(Consumer<Event> verify) {
             Event event = test.getNextEvent();
-            assertTrue(event.instrumentedNode.hasTag(tag));
+            assertTag(tag, event);
             assertEquals(Event.Kind.INPUT, event.kind);
             verify.accept(event);
             return this;
@@ -188,34 +192,39 @@ public abstract class FineGrainedAccessTest {
 
         void exit() {
             Event event = test.getNextEvent();
-            assertTrue(event.instrumentedNode.hasTag(tag));
-            assertEquals(event.kind, Event.Kind.RETURN);
+            assertTag(tag, event);
+            assertEquals(Event.Kind.RETURN, event.kind);
         }
 
         void exitExceptional() {
             Event event = test.getNextEvent();
-            assertTrue(event.instrumentedNode.hasTag(tag));
-            assertEquals(event.kind, Event.Kind.RETURN_EXCEPTIONAL);
+            assertTag(tag, event);
+            assertEquals(Event.Kind.RETURN_EXCEPTIONAL, event.kind);
         }
 
         void exit(Consumer<Event> verify) {
             Event event = test.getNextEvent();
-            assertTrue(event.instrumentedNode.hasTag(tag));
-            assertEquals(event.kind, Event.Kind.RETURN);
+            assertTag(tag, event);
+            assertEquals(Event.Kind.RETURN, event.kind);
             verify.accept(event);
         }
+
+    }
+
+    private static void assertTag(Class<? extends Tag> tag, Event event) {
+        assertTrue("expected " + tag.getSimpleName() + ", actual [" + getTagNames(event.instrumentedNode) + "]", event.instrumentedNode.hasTag(tag));
     }
 
     protected AssertedEvent enter(Class<? extends Tag> tag) {
         Event event = getNextEvent();
-        assertTrue(event.instrumentedNode.hasTag(tag));
+        assertTag(tag, event);
         assertEquals(event.kind, Event.Kind.ENTER);
         return new AssertedEvent(this, tag);
     }
 
     protected AssertedEvent enter(Class<? extends Tag> tag, Consumer<Event> verify) {
         Event event = getNextEvent();
-        assertTrue(event.instrumentedNode.hasTag(tag));
+        assertTag(tag, event);
         assertEquals(event.kind, Event.Kind.ENTER);
         verify.accept(event);
         return new AssertedEvent(this, tag);
@@ -223,7 +232,7 @@ public abstract class FineGrainedAccessTest {
 
     protected AssertedEvent enter(Class<? extends Tag> tag, BiConsumer<Event, AssertedEvent> verify) {
         Event event = getNextEvent();
-        assertTrue(event.instrumentedNode.hasTag(tag));
+        assertTag(tag, event);
         assertEquals(event.kind, Event.Kind.ENTER);
         AssertedEvent chain = new AssertedEvent(this, tag);
         verify.accept(event, chain);
@@ -352,8 +361,8 @@ public abstract class FineGrainedAccessTest {
 
     @After
     public void disposeAgent() {
-        assertTrue(events.isEmpty());
-        assertTrue(stack.isEmpty());
+        assertTrue(events.toString(), events.isEmpty());
+        assertTrue(stack.toString(), stack.isEmpty());
         context.leave();
         events.clear();
         binding.dispose();

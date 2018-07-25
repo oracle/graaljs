@@ -91,6 +91,12 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     private static final JSDateTimeFormat INSTANCE = new JSDateTimeFormat();
 
+    /**
+     * Maps the upper-case version of a supported time zone to the corresponding case-regularized
+     * canonical ID.
+     */
+    private static Map<String, String> canonicalTimeZoneIDMap;
+
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
         INTERNAL_STATE_PROPERTY = JSObjectUtil.makeHiddenProperty(INTERNAL_STATE_ID, allocator.locationForType(InternalState.class, EnumSet.of(LocationModifier.NonNull, LocationModifier.Final)));
@@ -128,7 +134,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         DynamicObject numberFormatPrototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, numberFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, PROTOTYPE_NAME);
-        JSObjectUtil.putConstantAccessorProperty(ctx, numberFormatPrototype, "format", createFormatFunctionGetter(realm, ctx), Undefined.instance, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putConstantAccessorProperty(ctx, numberFormatPrototype, "format", createFormatFunctionGetter(realm, ctx), Undefined.instance);
         return numberFormatPrototype;
     }
 
@@ -417,7 +423,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             case "short":
                 return "v";
             case "long":
-                return "vv";
+                return "vvvv";
         }
         return "";
     }
@@ -429,11 +435,23 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                         minuteOptToSkeleton(minuteOpt) + secondOptToSkeleton(secondOpt) + timeZoneNameOptToSkeleton(timeZoneNameOpt);
     }
 
+    private static synchronized Map<String, String> getCanonicalTimeZoneIDMap() {
+        Map<String, String> map = canonicalTimeZoneIDMap;
+        if (map == null) {
+            map = new HashMap<>();
+            for (String available : TimeZone.getAvailableIDs()) {
+                map.put(IntlUtil.toUpperCase(available), TimeZone.getCanonicalID(available));
+            }
+            canonicalTimeZoneIDMap = map;
+        }
+        return map;
+    }
+
     @TruffleBoundary
     // https://tc39.github.io/ecma402/#sec-canonicalizetimezonename
     private static String canonicalizeTimeZone(String tzId) {
         String ucTzId = IntlUtil.toUpperCase(tzId);
-        String canTzId = TimeZone.getCanonicalID(ucTzId);
+        String canTzId = getCanonicalTimeZoneIDMap().get(ucTzId);
         if (canTzId == null) {
             return null;
         }

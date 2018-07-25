@@ -42,14 +42,11 @@ package com.oracle.truffle.js.parser;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Queue;
 import java.util.TimeZone;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.CallTarget;
@@ -60,6 +57,7 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -108,6 +106,7 @@ import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.parser.foreign.JSMetaObject;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -157,11 +156,11 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 })
 
 @TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, mimeType = {
-                JavaScriptLanguage.APPLICATION_MIME_TYPE, JavaScriptLanguage.TEXT_MIME_TYPE})
+                JavaScriptLanguage.APPLICATION_MIME_TYPE, JavaScriptLanguage.TEXT_MIME_TYPE}, contextPolicy = TruffleLanguage.ContextPolicy.REUSE)
 public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private static final int MAX_TOSTRING_DEPTH = 10;
 
-    private final Map<JSContextOptions, Queue<JSContext>> contextPools = new ConcurrentHashMap<>();
+    private volatile JSContext languageContext;
 
     public static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
@@ -169,6 +168,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         GraalJSParserOptions.describeOptions(options);
         JSContextOptions.describeOptions(options);
         OPTION_DESCRIPTORS = OptionDescriptors.create(options);
+        ensureErrorClassesInitialized();
     }
 
     @Override
@@ -392,42 +392,49 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected JSRealm createContext(Env env) {
-        JSContext languageContext = null;
+        JSContext context = languageContext;
+        if (context == null) {
+            context = initLanguageContext(env);
+        }
+        JSRealm realm = context.createRealm(env);
+
+        if (env.out() != realm.getOutputStream()) {
+            realm.setOutputWriter(null, env.out());
+        }
+        if (env.err() != realm.getErrorStream()) {
+            realm.setErrorWriter(null, env.err());
+        }
+
+        return realm;
+    }
+
+    private synchronized JSContext initLanguageContext(Env env) {
+        JSContext curContext = languageContext;
+        if (curContext != null) {
+            assert curContext.getContextOptions().equals(toContextOptions(env.getOptions()));
+            return curContext;
+        }
+        JSContext newContext = newOrParentJSContext(env);
+        languageContext = newContext;
+        return newContext;
+    }
+
+    private JSContext newOrParentJSContext(Env env) {
         TruffleContext parent = env.getContext().getParent();
         if (parent == null) {
-            if (useContextPool(env) && !contextPools.isEmpty()) {
-                JSContextOptions options = new JSContextOptions(new GraalJSParserOptions());
-                options.setEnv(env);
-                languageContext = pollContextPool(options);
-            }
-            if (languageContext == null) {
-                languageContext = newJSContext(env);
-            }
+            return newJSContext(env);
         } else {
             Object prev = parent.enter();
             try {
-                languageContext = getCurrentContext(JavaScriptLanguage.class).getContext();
+                return getCurrentContext(JavaScriptLanguage.class).getContext();
             } finally {
                 parent.leave(prev);
             }
         }
-        JSRealm realm = languageContext.createRealm(env);
-        return realm;
     }
 
     private JSContext newJSContext(Env env) {
         JSContext context = JSEngine.createJSContext(this, env);
-
-        /*
-         * Ensure that we use the output stream provided by env, but avoid creating a new
-         * PrintWriter when the existing PrintWriter already uses the same stream.
-         */
-        if (env.out() != context.getWriterStream()) {
-            context.setWriter(null, env.out());
-        }
-        if (env.err() != context.getErrorWriterStream()) {
-            context.setErrorWriter(null, env.err());
-        }
 
         if (JSContextOptions.TIME_ZONE.hasBeenSet(env.getOptions())) {
             context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(env.getOptions())).toZoneId());
@@ -449,18 +456,19 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     @Override
     protected boolean patchContext(JSRealm realm, Env newEnv) {
         JSContext context = realm.getContext();
-        if (!JSContextOptions.optionsAllowPreInitializedContext(realm, newEnv)) {
+        if (!JSContextOptions.optionsAllowPreInitializedContext(realm.getEnv(), newEnv)) {
+            languageContext = null;
             return false;
         }
 
         assert context.getLanguage() == this;
         realm.patchTruffleLanguageEnv(newEnv);
 
-        if (newEnv.out() != context.getWriterStream()) {
-            context.setWriter(null, newEnv.out());
+        if (newEnv.out() != realm.getOutputStream()) {
+            realm.setOutputWriter(null, newEnv.out());
         }
-        if (newEnv.err() != context.getErrorWriterStream()) {
-            context.setErrorWriter(null, newEnv.err());
+        if (newEnv.err() != realm.getErrorStream()) {
+            realm.setErrorWriter(null, newEnv.err());
         }
 
         if (JSContextOptions.TIME_ZONE.hasBeenSet(newEnv.getOptions())) {
@@ -478,25 +486,17 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected void disposeContext(JSRealm realm) {
-        if (useContextPool(realm.getEnv()) && !realm.isChildRealm()) {
-            JSContext context = realm.getContext();
-            Queue<JSContext> contextPool = getContextPool(context.getContextOptions());
-            assert !contextPool.contains(context);
-            contextPool.offer(context);
-        }
     }
 
-    private Queue<JSContext> getContextPool(JSContextOptions configKey) {
-        return contextPools.computeIfAbsent(configKey, k -> new ConcurrentLinkedQueue<>());
+    @Override
+    protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+        return firstOptions.equals(newOptions) || toContextOptions(firstOptions).equals(toContextOptions(newOptions));
     }
 
-    private JSContext pollContextPool(JSContextOptions configKey) {
-        Queue<JSContext> contextPool = contextPools.get(configKey);
-        return contextPool == null ? null : contextPool.poll();
-    }
-
-    private static boolean useContextPool(Env env) {
-        return JSContextOptions.CODE_SHARING.getValue(env.getOptions()).equals("pool");
+    private static JSContextOptions toContextOptions(OptionValues optionValues) {
+        JSContextOptions newOptions = new JSContextOptions(new GraalJSParserOptions());
+        newOptions.setOptionValues(optionValues);
+        return newOptions;
     }
 
     @Override
@@ -665,5 +665,14 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
         sb.append('}');
         return sb.toString();
+    }
+
+    private static void ensureErrorClassesInitialized() {
+        if (JSTruffleOptions.SubstrateVM) {
+            return;
+        }
+        // Ensure error-related classes are initialized to avoid NoClassDefFoundError
+        // during conversion of StackOverflowError to RangeError
+        TruffleStackTraceElement.getStackTrace(Errors.createRangeError(""));
     }
 }

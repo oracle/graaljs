@@ -41,9 +41,7 @@
 package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode;
 
 public abstract class AbstractFunctionArgumentsNode extends JavaScriptBaseNode {
 
@@ -56,16 +54,6 @@ public abstract class AbstractFunctionArgumentsNode extends JavaScriptBaseNode {
     @SuppressWarnings("unchecked")
     public static <T extends AbstractFunctionArgumentsNode> T cloneUninitialized(T node) {
         return node == null ? null : (T) node.copyUninitialized();
-    }
-
-    public static AbstractFunctionArgumentsNode materializeArgumentsNode(AbstractFunctionArgumentsNode argumentsNode, SourceSection originalSourceSection) {
-        if (argumentsNode instanceof JSFunctionOneConstantArgumentNode) {
-            JSConstantNode constantNode = JSConstantNode.create(((JSFunctionOneConstantArgumentNode) argumentsNode).getValue());
-            constantNode.setSourceSection(originalSourceSection);
-            return JSFunctionOneArgumentNode.create(constantNode, false);
-        } else {
-            return argumentsNode;
-        }
     }
 
 }

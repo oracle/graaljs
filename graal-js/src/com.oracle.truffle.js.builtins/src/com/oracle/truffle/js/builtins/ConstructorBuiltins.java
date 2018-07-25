@@ -645,11 +645,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if (arrayType instanceof AbstractWritableArray && length > 0) {
                     if (concreteArrayType == UNINIT_ARRAY_TYPE) {
                         concreteArrayType = arrayType;
-                        assumption.invalidate();
+                        assumption.invalidate("TypedArray type initialization");
                         assumption = Truffle.getRuntime().createAssumption("Array allocation site (typed)");
                     } else if (concreteArrayType != arrayType) {
                         concreteArrayType = null;
-                        assumption.invalidate();
+                        assumption.invalidate("TypedArray type rewrite");
                     }
                 }
             }
@@ -1539,7 +1539,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 viewByteLength = bufferByteLength - offset;
             }
             assert offset >= 0 && offset <= Integer.MAX_VALUE && viewByteLength >= 0 && viewByteLength <= Integer.MAX_VALUE;
-            return swapPrototype(JSDataView.createDataView(getContext(), arrayBuffer, (int) offset, (int) viewByteLength), newTarget);
+            DynamicObject result = swapPrototype(JSDataView.createDataView(getContext(), arrayBuffer, (int) offset, (int) viewByteLength), newTarget);
+            if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorDetachedBuffer();
+            }
+            return result;
         }
 
         @Override
@@ -1899,7 +1904,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected Symbol callSymbol(Object value) {
-            return Symbol.create(toStringNode.executeString(value));
+            return Symbol.create(value == Undefined.instance ? null : toStringNode.executeString(value));
         }
     }
 

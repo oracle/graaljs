@@ -47,7 +47,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 
 public class IfStatementTest extends FineGrainedAccessTest {
 
@@ -55,20 +54,17 @@ public class IfStatementTest extends FineGrainedAccessTest {
     public void basicNoBranch() {
         evalAllTags("if (!true) {};");
 
-        // JS will write the result to <return>
-        enter(WriteVariableExpressionTag.class, (e, write) -> {
-            enter(ControlFlowRootTag.class, (e1, ifbody) -> {
-                assertAttribute(e1, TYPE, ControlFlowRootTag.Type.Conditional.name());
-                // condition
-                enter(ControlFlowBranchTag.class, (e2, ifstatement) -> {
-                    assertAttribute(e2, TYPE, ControlFlowBranchTag.Type.Condition.name());
+        enter(ControlFlowRootTag.class, (e1, ifbody) -> {
+            assertAttribute(e1, TYPE, ControlFlowRootTag.Type.Conditional.name());
+            // condition
+            enter(ControlFlowBranchTag.class, (e2, ifstatement) -> {
+                assertAttribute(e2, TYPE, ControlFlowBranchTag.Type.Condition.name());
 
-                    enter(LiteralExpressionTag.class).exit();
-                    ifstatement.input(false);
-                }).exit(assertReturnValue(false));
-                ifbody.input(false);
-                // no branch is executed; body returns
-            }).exit();
+                enter(LiteralExpressionTag.class).exit();
+                ifstatement.input(false);
+            }).exit(assertReturnValue(false));
+            ifbody.input(false);
+            // no branch is executed; body returns
         }).exit();
     }
 
@@ -76,28 +72,21 @@ public class IfStatementTest extends FineGrainedAccessTest {
     public void basicBranch() {
         evalAllTags("if (true) { 3; };");
 
-        // JS will write the result to <return>
-        enter(WriteVariableExpressionTag.class, (e, write) -> {
-            enter(ControlFlowRootTag.class, (e1, ifbody) -> {
-                assertAttribute(e1, TYPE, ControlFlowRootTag.Type.Conditional.name());
-                // condition
-                enter(ControlFlowBranchTag.class, (e2, ifstatement) -> {
-                    assertAttribute(e2, TYPE, ControlFlowBranchTag.Type.Condition.name());
+        enter(ControlFlowRootTag.class, (e1, ifbody) -> {
+            assertAttribute(e1, TYPE, ControlFlowRootTag.Type.Conditional.name());
+            // condition
+            enter(ControlFlowBranchTag.class, (e2, ifstatement) -> {
+                assertAttribute(e2, TYPE, ControlFlowBranchTag.Type.Condition.name());
 
-                    enter(LiteralExpressionTag.class).exit();
-                    ifstatement.input(true);
-                }).exit(assertReturnValue(true));
-                ifbody.input(true);
-                // enter if branch
-                enter(ControlFlowBlockTag.class, (e2, b) -> {
-                    enter(WriteVariableExpressionTag.class, (e3, v) -> {
-                        enter(LiteralExpressionTag.class).exit(assertReturnValue(3));
-                        v.input(3);
-                    }).exit();
-                    b.input(3);
-                }).exit();
-                ifbody.input(3);
+                enter(LiteralExpressionTag.class).exit();
+                ifstatement.input(true);
+            }).exit(assertReturnValue(true));
+            ifbody.input(true);
+            // enter if branch
+            enter(ControlFlowBlockTag.class, (e2, b) -> {
+                enter(LiteralExpressionTag.class).exit(assertReturnValue(3));
             }).exit();
+            ifbody.input(3);
         }).exit();
     }
 

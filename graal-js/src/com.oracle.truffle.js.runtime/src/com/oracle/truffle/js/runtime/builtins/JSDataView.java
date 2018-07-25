@@ -178,7 +178,7 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
                 throw Errors.createTypeErrorNotADataView().setRealm(realm);
             }
         }), 0, "get " + name));
-        JSObjectUtil.putConstantAccessorProperty(context, prototype, name, getter, Undefined.instance, JSAttributes.configurableNotEnumerable());
+        JSObjectUtil.putConstantAccessorProperty(context, prototype, name, getter, Undefined.instance);
     }
 
     public static Shape makeInitialArrayBufferViewShape(JSContext ctx, DynamicObject prototype) {

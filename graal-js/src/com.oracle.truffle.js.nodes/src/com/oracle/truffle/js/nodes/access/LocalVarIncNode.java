@@ -194,68 +194,62 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
 
 abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
 
-    @Child protected JavaScriptNode writeTmp;
-    @Child protected JavaScriptNode readTmp;
-    @Child protected JavaScriptNode opNode;
-    @Child protected JavaScriptNode one;
+    @Child protected JavaScriptNode readPrev;
+    @Child protected JavaScriptNode writeNew;
 
     LocalVarOpMaterializedNode(LocalVarIncNode from) {
         super(from.op, from.frameSlot, from.hasTemporalDeadZone, from.scopeFrameNode);
-        readTmp = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
-        one = JSConstantIntegerNode.create(1);
+        JavaScriptNode readTmp = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
+        JavaScriptNode one = JSConstantIntegerNode.create(1);
+        JavaScriptNode opNode;
         if (from.op instanceof DecOp) {
             opNode = JSSubtractNode.create(readTmp, one);
         } else {
             opNode = JSAddNode.create(readTmp, one);
         }
-        writeTmp = JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, opNode, hasTemporalDeadZone);
-        transferSourceSectionNoTags(from, readTmp);
-        transferSourceSectionNoTags(from, one);
-        transferSourceSectionNoTags(from, writeTmp);
-        transferSourceSectionNoTags(from, opNode);
-        transferSourceSection(from, this);
+        this.writeNew = JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, opNode, hasTemporalDeadZone);
+        transferSourceSectionAddExpressionTag(from, readTmp);
+        transferSourceSectionAddExpressionTag(from, one);
+        transferSourceSectionAddExpressionTag(from, writeNew);
+        transferSourceSectionAddExpressionTag(from, opNode);
+        transferSourceSectionAndTags(from, this);
     }
 
-    LocalVarOpMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode read) {
+    LocalVarOpMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode read, JavaScriptNode write) {
         super(op, slot, hasTdz, scope);
-        readTmp = read;
-        one = JSConstantIntegerNode.create(1);
-        if (op instanceof DecOp) {
-            opNode = JSSubtractNode.create(readTmp, one);
-        } else {
-            opNode = JSAddNode.create(readTmp, one);
-        }
-        writeTmp = JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, opNode, hasTemporalDeadZone);
+        this.readPrev = read;
+        this.writeNew = write;
     }
 }
 
 class LocalVarPostfixIncMaterializedNode extends LocalVarOpMaterializedNode {
 
-    LocalVarPostfixIncMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode read) {
-        super(op, slot, hasTdz, scope, read);
+    LocalVarPostfixIncMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode read, JavaScriptNode write) {
+        super(op, slot, hasTdz, scope, read, write);
     }
 
     LocalVarPostfixIncMaterializedNode(LocalVarPostfixIncNode from) {
         super(from);
+        this.readPrev = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        Object value = readTmp.execute(frame);
-        writeTmp.execute(frame);
+        Object value = readPrev.execute(frame);
+        writeNew.execute(frame);
         return value;
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new LocalVarPostfixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), (ScopeFrameNode) scopeFrameNode.copy(), cloneUninitialized(readTmp));
+        return new LocalVarPostfixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), (ScopeFrameNode) scopeFrameNode.copy(), cloneUninitialized(readPrev), cloneUninitialized(writeNew));
     }
 }
 
 class LocalVarPrefixIncMaterializedNode extends LocalVarOpMaterializedNode {
 
-    LocalVarPrefixIncMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode read) {
-        super(op, slot, hasTdz, scope, read);
+    LocalVarPrefixIncMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode read, JavaScriptNode write) {
+        super(op, slot, hasTdz, scope, read, write);
     }
 
     LocalVarPrefixIncMaterializedNode(LocalVarPrefixIncNode from) {
@@ -264,12 +258,12 @@ class LocalVarPrefixIncMaterializedNode extends LocalVarOpMaterializedNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return writeTmp.execute(frame);
+        return writeNew.execute(frame);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new LocalVarPrefixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), (ScopeFrameNode) scopeFrameNode.copy(), cloneUninitialized(readTmp));
+        return new LocalVarPrefixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), (ScopeFrameNode) scopeFrameNode.copy(), cloneUninitialized(readPrev), cloneUninitialized(writeNew));
     }
 
 }

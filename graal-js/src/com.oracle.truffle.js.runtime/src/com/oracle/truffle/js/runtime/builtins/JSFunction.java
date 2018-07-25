@@ -90,6 +90,7 @@ public final class JSFunction extends JSBuiltinObject {
 
     public static final String TYPE_NAME = "function";
     public static final String CLASS_NAME = "Function";
+    public static final String CLASS_NAME_NASHORN_COMPAT = "FunctionNashornCompat";
     public static final String PROTOTYPE_NAME = "Function.prototype";
     public static final String GENERATOR_FUNCTION_NAME = "GeneratorFunction";
     public static final String GENERATOR_NAME = "Generator";
@@ -638,8 +639,8 @@ public final class JSFunction extends JSBuiltinObject {
     }
 
     private static void addRestrictedFunctionProperties(JSRealm realm, DynamicObject obj) {
-        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, CALLER, realm.getThrowerFunction(), realm.getThrowerFunction(), JSAttributes.configurableNotEnumerable());
-        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, ARGUMENTS, realm.getThrowerFunction(), realm.getThrowerFunction(), JSAttributes.configurableNotEnumerable());
+        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, CALLER, realm.getThrowerFunction(), realm.getThrowerFunction());
+        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, ARGUMENTS, realm.getThrowerFunction(), realm.getThrowerFunction());
     }
 
     public static JSFunctionData createEmptyFunctionData(JSContext context) {
@@ -656,6 +657,9 @@ public final class JSFunction extends JSBuiltinObject {
         JSObjectUtil.putFunctionsFromContainer(realm, realm.getFunctionPrototype(), JSFunction.PROTOTYPE_NAME);
         if (ctx.getEcmaScriptVersion() >= 6) {
             addRestrictedFunctionProperties(realm, realm.getFunctionPrototype());
+        }
+        if (ctx.isOptionNashornCompatibilityMode()) {
+            JSObjectUtil.putFunctionsFromContainer(realm, realm.getFunctionPrototype(), JSFunction.CLASS_NAME_NASHORN_COMPAT);
         }
     }
 

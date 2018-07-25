@@ -1563,13 +1563,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected String toLocaleString(Object thisObj,
+        protected String toLocaleString(VirtualFrame frame, Object thisObj,
                         @Cached("create()") JSToStringNode toStringNode) {
             TruffleObject arrayObj = toObject(thisObj);
             long len = getLength(arrayObj);
             if (len == 0) {
                 return "";
             }
+            Object[] userArguments = JSArguments.extractUserArguments(frame.getArguments());
             long k = 0;
             DelimitedStringBuilder r = new DelimitedStringBuilder();
             while (k < len) {
@@ -1578,7 +1579,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
                 Object nextElement = read(arrayObj, k);
                 if (nextElement != Null.instance && nextElement != Undefined.instance) {
-                    Object result = callToLocaleString(nextElement);
+                    Object result = callToLocaleString(nextElement, userArguments);
                     String executeString = toStringNode.executeString(result);
                     r.append(executeString);
                 }
@@ -1587,7 +1588,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return r.toString();
         }
 
-        private Object callToLocaleString(Object nextElement) {
+        private Object callToLocaleString(Object nextElement, Object[] userArguments) {
             if (getToLocaleString == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getToLocaleString = insert(PropertyGetNode.create("toLocaleString", false, getContext()));
@@ -1596,7 +1597,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             Object toLocaleString = getToLocaleString.getValue(nextElement);
             JSFunction.checkIsFunction(toLocaleString);
-            return callToLocaleString.executeCall(JSArguments.createZeroArg(nextElement, toLocaleString));
+            return callToLocaleString.executeCall(JSArguments.create(nextElement, toLocaleString, userArguments));
         }
     }
 

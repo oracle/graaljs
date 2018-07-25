@@ -119,58 +119,38 @@ public class SharedMemorySync {
         return false;
     }
 
-    @TruffleBoundary
-    public static boolean compareAndSwapLong(JSContext cx, DynamicObject target, int intArrayOffset, long initial, long result) {
-        cx.getJSAgent().atomicSectionEnter(target);
-        int value = doVolatileGet(target, intArrayOffset);
-        if (value == initial) {
-            doVolatilePut(target, intArrayOffset, (int) result);
-            cx.getJSAgent().atomicSectionLeave(target);
-            return true;
-        }
-        cx.getJSAgent().atomicSectionLeave(target);
-        return false;
-    }
-
-    @TruffleBoundary
-    public static boolean compareAndSwapUnsigned(JSContext cx, DynamicObject target, int intArrayOffset, Object expected, Object result) {
-        cx.getJSAgent().atomicSectionEnter(target);
-        Object value = JSRuntime.toUInt32(doVolatileGet(target, intArrayOffset));
-        if (value.equals(JSRuntime.toUInt32(expected))) {
-            doVolatilePut(target, intArrayOffset, (int) JSRuntime.toUInt32(result));
-            cx.getJSAgent().atomicSectionLeave(target);
-            return true;
-        }
-        cx.getJSAgent().atomicSectionLeave(target);
-        return false;
-    }
-
     // ##### Atomic Fetch-or-Get primitives
     @TruffleBoundary
     public static Object atomicFetchOrGetUnsigned(JSContext cx, DynamicObject target, int intArrayOffset, Object expected, Object replacement) {
-        if (compareAndSwapUnsigned(cx, target, intArrayOffset, expected, replacement)) {
-            return JSRuntime.toUInt32(expected);
-        } else {
-            return doVolatileGet(target, intArrayOffset) & 0xFFFFFFFFL;
+        cx.getJSAgent().atomicSectionEnter(target);
+        long read = JSRuntime.toUInt32(doVolatileGet(target, intArrayOffset));
+        if (read == JSRuntime.toUInt32(expected)) {
+            doVolatilePut(target, intArrayOffset, (int) JSRuntime.toUInt32(replacement));
         }
+        cx.getJSAgent().atomicSectionLeave(target);
+        return read;
     }
 
     @TruffleBoundary
     public static long atomicFetchOrGetLong(JSContext cx, DynamicObject target, int intArrayOffset, long expected, long replacement) {
-        if (compareAndSwapLong(cx, target, intArrayOffset, expected, replacement)) {
-            return expected;
-        } else {
-            return doVolatileGet(target, intArrayOffset);
+        cx.getJSAgent().atomicSectionEnter(target);
+        int read = doVolatileGet(target, intArrayOffset);
+        if (read == expected) {
+            doVolatilePut(target, intArrayOffset, (int) replacement);
         }
+        cx.getJSAgent().atomicSectionLeave(target);
+        return read;
     }
 
     @TruffleBoundary
     public static int atomicFetchOrGetInt(JSContext cx, DynamicObject target, int intArrayOffset, int expected, int replacement) {
-        if (compareAndSwapInt(cx, target, intArrayOffset, expected, replacement)) {
-            return expected;
-        } else {
-            return doVolatileGet(target, intArrayOffset);
+        cx.getJSAgent().atomicSectionEnter(target);
+        int read = doVolatileGet(target, intArrayOffset);
+        if (read == expected) {
+            doVolatilePut(target, intArrayOffset, replacement);
         }
+        cx.getJSAgent().atomicSectionLeave(target);
+        return read;
     }
 
     @TruffleBoundary

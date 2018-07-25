@@ -143,8 +143,19 @@ public abstract class JSToInt32Node extends JSUnaryNode {
         return (int) (long) value;
     }
 
-    @Specialization(guards = {"isDoubleLargerThan2e32(value)", "isDoubleRepresentableAsLong(value)"})
+    @Specialization(guards = {"isDoubleLargerThan2e32(value)", "isDoubleRepresentableAsLong(value)", "isDoubleSafeInteger(value)"})
+    protected int doDoubleRepresentableAsSafeInteger(double value) {
+        assert !Double.isFinite(value) || value % 1 == 0;
+
+        assert !Double.isNaN(value);
+        assert !JSRuntime.isNegativeZero(value);
+
+        return (int) (long) value;
+    }
+
+    @Specialization(guards = {"isDoubleLargerThan2e32(value)", "isDoubleRepresentableAsLong(value)"}, replaces = "doDoubleRepresentableAsSafeInteger")
     protected int doDoubleRepresentableAsLong(double value) {
+        assert !Double.isFinite(value) || value % 1 == 0;
         return JSRuntime.toInt32NoTruncate(value);
     }
 

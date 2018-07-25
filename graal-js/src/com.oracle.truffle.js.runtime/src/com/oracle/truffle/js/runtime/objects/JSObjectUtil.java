@@ -57,7 +57,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -217,6 +216,10 @@ public final class JSObjectUtil {
         thisObj.define(checkForNoSuchPropertyOrMethod(context, key), accessor, flags | JSProperty.ACCESSOR);
     }
 
+    public static void putConstantAccessorProperty(JSContext context, DynamicObject thisObj, Object key, DynamicObject getter, DynamicObject setter) {
+        putConstantAccessorProperty(context, thisObj, key, getter, setter, JSAttributes.configurableNotEnumerable());
+    }
+
     public static void putConstantAccessorProperty(JSContext context, DynamicObject thisObj, Object key, DynamicObject getter, DynamicObject setter, int flags) {
         putAccessorProperty(context, thisObj, key, getter, setter, flags);
     }
@@ -336,12 +339,12 @@ public final class JSObjectUtil {
     }
 
     public static <T> T checkForNoSuchPropertyOrMethod(JSContext context, T key) {
-        if (context != null && key != null && JSTruffleOptions.NashornExtensions) {
+        if (context != null && key != null && context.isOptionNashornCompatibilityMode()) {
             if (context.getNoSuchPropertyUnusedAssumption().isValid() && key.equals(JSObject.NO_SUCH_PROPERTY_NAME)) {
-                context.getNoSuchPropertyUnusedAssumption().invalidate();
+                context.getNoSuchPropertyUnusedAssumption().invalidate("NoSuchProperty is used");
             }
             if (context.getNoSuchMethodUnusedAssumption().isValid() && key.equals(JSObject.NO_SUCH_METHOD_NAME)) {
-                context.getNoSuchMethodUnusedAssumption().invalidate();
+                context.getNoSuchMethodUnusedAssumption().invalidate("NoSuchMethod is used");
             }
         }
         return key;

@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -55,12 +56,14 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Object wrapper around a primitive symbol.
@@ -74,6 +77,7 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
     public static final String TYPE_NAME = "symbol";
     public static final String CLASS_NAME = "Symbol";
     public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
+    public static final String DESCRIPTION = "description";
 
     private static final HiddenKey SYMBOL_DATA_ID = new HiddenKey("Symbol");
     private static final Property SYMBOL_DATA_PROPERTY;
@@ -105,6 +109,9 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_PRIMITIVE, createToPrimitiveFunction(realm), JSAttributes.configurableNotEnumerableNotWritable());
+        if (ctx.getContextOptions().getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
+            JSObjectUtil.putConstantAccessorProperty(ctx, prototype, DESCRIPTION, createDescriptionGetterFunction(realm), Undefined.instance);
+        }
         return prototype;
     }
 
@@ -134,6 +141,27 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
             }
         });
         return JSFunction.create(realm, JSFunctionData.createCallOnly(context, callTarget, 1, "[Symbol.toPrimitive]"));
+    }
+
+    private static DynamicObject createDescriptionGetterFunction(JSRealm realm) {
+        JSContext context = realm.getContext();
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object obj = frame.getArguments()[0];
+                if (obj instanceof Symbol) {
+                    return ((Symbol) obj).getDescription();
+                } else if (isJSSymbol(obj)) {
+                    return JSSymbol.getSymbolData((DynamicObject) obj).getDescription();
+                } else {
+                    CompilerDirectives.transferToInterpreter();
+                    throw Errors.createTypeError("Symbol expected");
+                }
+            }
+        });
+        DynamicObject descriptionGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, callTarget, 0, "get " + DESCRIPTION));
+        return descriptionGetter;
     }
 
     @Override

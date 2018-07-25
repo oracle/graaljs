@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.instrumentation;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -56,6 +55,7 @@ import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
+import com.oracle.truffle.js.runtime.Errors;
 
 /**
  * A utility node used by the instrumentation framework to simulate the execution of an AST node
@@ -92,6 +92,7 @@ public final class JSTaggedTargetableExecutionNode extends JSTargetableNode {
         }
         JSTargetableNode wrapper = new JSTaggedTargetableExecutionNode(clone, expectedTag, sourceSection);
         wrapper.setSourceSection(sourceSection);
+        wrapper.addExpressionTag();
         return wrapper;
     }
 
@@ -123,6 +124,7 @@ public final class JSTaggedTargetableExecutionNode extends JSTargetableNode {
         this.sourceSection = sourceSection;
         this.echo = new TargetValueEchoNode(getNodeObject());
         this.echo.setSourceSection(sourceSection);
+        this.echo.addExpressionTag();
     }
 
     @Override
@@ -187,8 +189,7 @@ public final class JSTaggedTargetableExecutionNode extends JSTargetableNode {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new AssertionError();
+            throw Errors.shouldNotReachHere();
         }
     }
 

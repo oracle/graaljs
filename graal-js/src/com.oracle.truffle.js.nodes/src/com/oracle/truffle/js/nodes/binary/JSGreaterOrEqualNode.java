@@ -109,6 +109,18 @@ public abstract class JSGreaterOrEqualNode extends JSCompareNode {
     }
 
     @Specialization
+    protected boolean doStringBigInt(String a, BigInt b) {
+        BigInt aBigInt = JSRuntime.stringToBigInt(a);
+        return (aBigInt == null) ? false : doBigInt(aBigInt, b);
+    }
+
+    @Specialization
+    protected boolean doBigIntString(BigInt a, String b) {
+        BigInt bBigInt = JSRuntime.stringToBigInt(b);
+        return (bBigInt == null) ? false : doBigInt(a, bBigInt);
+    }
+
+    @Specialization
     protected boolean doBigInt(BigInt a, BigInt b) {
         return a.compareTo(b) >= 0;
     }
