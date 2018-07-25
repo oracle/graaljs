@@ -85,6 +85,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     protected static final String ARRAY_LENGTH_NOT_WRITABLE = "array length is not writable";
     private static final String LENGTH_PROPERTY_NOT_WRITABLE = "length property not writable";
     protected static final String MAKE_SLOW_ARRAY_NEVER_PART_OF_COMPILATION_MESSAGE = "do not convert to slow array from compiled code";
+    public static final String ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION = "Array.prototype no element assumption";
 
     private static final HiddenKey ARRAY_ID = new HiddenKey("array");
     private static final HiddenKey ARRAY_TYPE_ID = new HiddenKey("arraytype");
@@ -706,9 +707,9 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         Shape oldShape = thisObj.getShape();
         thisObj.setShapeAndGrow(oldShape, oldShape.changeType(JSSlowArray.INSTANCE));
         JSContext context = JSObject.getJSContext(thisObj);
-        context.getFastArrayAssumption().invalidate();
+        context.getFastArrayAssumption().invalidate("create slow ArgumentsObject");
         if (isArrayPrototype(thisObj)) {
-            context.getArrayPrototypeNoElementsAssumption().invalidate();
+            context.getArrayPrototypeNoElementsAssumption().invalidate("Array.prototype has no elements");
         }
         return thisObj;
     }
@@ -757,7 +758,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     @TruffleBoundary
     @Override
     public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
-        JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate();
+        JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         return super.setPrototypeOf(thisObj, newPrototype);
     }
 

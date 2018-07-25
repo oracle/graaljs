@@ -1007,7 +1007,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
 
     private void invalidateCache() {
         if (invalidationAssumption != null) {
-            invalidationAssumption.invalidate();
+            invalidationAssumption.invalidate("PropertyCacheNode invalidation");
             invalidationAssumption = Truffle.getRuntime().createAssumption("PropertyCacheNode");
             cacheAssumptionInvalidatedCount.inc();
         }

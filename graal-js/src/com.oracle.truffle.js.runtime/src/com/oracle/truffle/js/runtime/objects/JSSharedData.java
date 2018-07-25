@@ -118,7 +118,7 @@ public final class JSSharedData implements ShapeListener {
 
     private void invalidatePropertyAssumptionImpl(Object propertyName, Assumption assumption) {
         if (assumption != NeverValidAssumption.INSTANCE) {
-            assumption.invalidate();
+            assumption.invalidate("invalidatePropertyAssumption");
             propertyAssumptions.put(propertyName, NeverValidAssumption.INSTANCE);
             propertyAssumptionsRemoved.inc();
         }

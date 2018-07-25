@@ -50,6 +50,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
+import com.oracle.truffle.js.nodes.binary.DualNode;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
 
 @NodeInfo(cost = NodeCost.NONE)
@@ -115,6 +116,8 @@ public abstract class AbstractBlockNode extends StatementNode implements Sequenc
                 return new EmptyNode();
             } else if (finalStatements.length == 1) {
                 return finalStatements[0];
+            } else if (finalStatements.length == 2) {
+                return DualNode.create(finalStatements[0], finalStatements[1]);
             } else {
                 return new ExprBlockNode(finalStatements);
             }

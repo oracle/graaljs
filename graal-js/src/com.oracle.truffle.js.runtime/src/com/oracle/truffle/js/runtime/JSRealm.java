@@ -333,7 +333,7 @@ public class JSRealm implements ShapeContext {
         context.setRealmInitialized(false);
 
         if (env != null && isChildRealm()) {
-            context.noChildRealmsAssumption.invalidate();
+            context.noChildRealmsAssumption.invalidate("no child realms");
         }
 
         // need to build Function and Function.proto in a weird order to avoid circular dependencies
