@@ -46,6 +46,7 @@ import java.util.TimeZone;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.CallTarget;
@@ -391,42 +392,49 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected JSRealm createContext(Env env) {
-        if (languageContext == null) {
-            initLanguageContext(env);
+        JSContext context = languageContext;
+        if (context == null) {
+            context = initLanguageContext(env);
         }
-        JSRealm realm = languageContext.createRealm(env);
+        JSRealm realm = context.createRealm(env);
+
+        if (env.out() != realm.getOutputStream()) {
+            realm.setOutputWriter(null, env.out());
+        }
+        if (env.err() != realm.getErrorStream()) {
+            realm.setErrorWriter(null, env.err());
+        }
+
         return realm;
     }
 
-    private synchronized void initLanguageContext(Env env) {
-        if (languageContext == null) {
-            TruffleContext parent = env.getContext().getParent();
-            if (parent == null) {
-                languageContext = newJSContext(env);
-            } else {
-                Object prev = parent.enter();
-                try {
-                    languageContext = getCurrentContext(JavaScriptLanguage.class).getContext();
-                } finally {
-                    parent.leave(prev);
-                }
+    private synchronized JSContext initLanguageContext(Env env) {
+        JSContext curContext = languageContext;
+        if (curContext != null) {
+            assert curContext.getContextOptions().equals(toContextOptions(env.getOptions()));
+            return curContext;
+        }
+        JSContext newContext = newOrParentJSContext(env);
+        languageContext = newContext;
+        return newContext;
+    }
+
+    private JSContext newOrParentJSContext(Env env) {
+        TruffleContext parent = env.getContext().getParent();
+        if (parent == null) {
+            return newJSContext(env);
+        } else {
+            Object prev = parent.enter();
+            try {
+                return getCurrentContext(JavaScriptLanguage.class).getContext();
+            } finally {
+                parent.leave(prev);
             }
         }
     }
 
     private JSContext newJSContext(Env env) {
         JSContext context = JSEngine.createJSContext(this, env);
-
-        /*
-         * Ensure that we use the output stream provided by env, but avoid creating a new
-         * PrintWriter when the existing PrintWriter already uses the same stream.
-         */
-        if (env.out() != context.getWriterStream()) {
-            context.setWriter(null, env.out());
-        }
-        if (env.err() != context.getErrorWriterStream()) {
-            context.setErrorWriter(null, env.err());
-        }
 
         if (JSContextOptions.TIME_ZONE.hasBeenSet(env.getOptions())) {
             context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(env.getOptions())).toZoneId());
@@ -448,7 +456,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     @Override
     protected boolean patchContext(JSRealm realm, Env newEnv) {
         JSContext context = realm.getContext();
-        if (!JSContextOptions.optionsAllowPreInitializedContext(realm, newEnv)) {
+        if (!JSContextOptions.optionsAllowPreInitializedContext(realm.getEnv(), newEnv)) {
             languageContext = null;
             return false;
         }
@@ -456,11 +464,11 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         assert context.getLanguage() == this;
         realm.patchTruffleLanguageEnv(newEnv);
 
-        if (newEnv.out() != context.getWriterStream()) {
-            context.setWriter(null, newEnv.out());
+        if (newEnv.out() != realm.getOutputStream()) {
+            realm.setOutputWriter(null, newEnv.out());
         }
-        if (newEnv.err() != context.getErrorWriterStream()) {
-            context.setErrorWriter(null, newEnv.err());
+        if (newEnv.err() != realm.getErrorStream()) {
+            realm.setErrorWriter(null, newEnv.err());
         }
 
         if (JSContextOptions.TIME_ZONE.hasBeenSet(newEnv.getOptions())) {
@@ -478,6 +486,17 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected void disposeContext(JSRealm realm) {
+    }
+
+    @Override
+    protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+        return firstOptions.equals(newOptions) || toContextOptions(firstOptions).equals(toContextOptions(newOptions));
+    }
+
+    private static JSContextOptions toContextOptions(OptionValues optionValues) {
+        JSContextOptions newOptions = new JSContextOptions(new GraalJSParserOptions());
+        newOptions.setOptionValues(optionValues);
+        return newOptions;
     }
 
     @Override

@@ -38,60 +38,55 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.parser;
+package com.oracle.truffle.js.runtime.util;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.js.builtins.JSDefaultBuiltinLookup;
-import com.oracle.truffle.js.runtime.Evaluator;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionLookup;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 
-public final class JSEngine {
-    private static final JSEngine INSTANCE = new JSEngine();
+/**
+ * A simple wrapper of an {@link OutputStream} that allows to change the delegate. With this it's
+ * not necessary to create a new {@link OutputStreamWriter} for a new {@link OutputStream}, it's
+ * enough to just replace the delegate {@link OutputStream}.
+ */
+final class OutputStreamWrapper extends OutputStream {
 
-    private final JSFunctionLookup functionLookup;
-    private final JSParser parser;
+    private volatile OutputStream out;
 
-    private JSEngine() {
-        this.functionLookup = new JSDefaultBuiltinLookup();
-        this.parser = new GraalJSEvaluator();
+    OutputStreamWrapper(OutputStream out) {
+        this.out = out;
     }
 
-    public static JSEngine getInstance() {
-        return INSTANCE;
+    void setDelegate(OutputStream out) {
+        this.out = out;
     }
 
-    public Evaluator getEvaluator() {
-        return parser;
+    OutputStream getDelegate() {
+        return out;
     }
 
-    public JSFunctionLookup getFunctionLookup() {
-        return functionLookup;
+    @Override
+    public void write(int b) throws IOException {
+        out.write(b);
     }
 
-    public JSParser getParser() {
-        return parser;
+    @Override
+    public void write(byte[] b) throws IOException {
+        out.write(b);
     }
 
-    private JSContext createContext(JavaScriptLanguage language, TruffleLanguage.Env env) {
-        return createContext(language, new GraalJSParserOptions(), env);
+    @Override
+    public void write(byte[] b, int off, int len) throws IOException {
+        out.write(b, off, len);
     }
 
-    public JSContext createContext(JavaScriptLanguage language, GraalJSParserOptions parserOptions, TruffleLanguage.Env env) {
-        JSContextOptions contextOptions = new JSContextOptions(parserOptions);
-        return JSContext.createContext(parser, functionLookup, contextOptions, language, env);
+    @Override
+    public void flush() throws IOException {
+        out.flush();
     }
 
-    public JSContext createContext(JavaScriptLanguage language, JSContextOptions contextOptions, TruffleLanguage.Env env) {
-        return JSContext.createContext(parser, functionLookup, contextOptions, language, env);
-    }
-
-    public static JavaScriptLanguage createLanguage() {
-        return new JavaScriptLanguage();
-    }
-
-    public static JSContext createJSContext(JavaScriptLanguage language, TruffleLanguage.Env env) {
-        return JSEngine.getInstance().createContext(language, env);
+    @Override
+    public void close() throws IOException {
+        out.close();
     }
 }

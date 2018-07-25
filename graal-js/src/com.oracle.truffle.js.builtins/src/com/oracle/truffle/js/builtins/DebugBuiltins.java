@@ -364,12 +364,11 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         protected Object dumpFunctionTree(DynamicObject functionObj) {
             CallTarget target = JSFunction.getCallTarget(functionObj);
             if (target instanceof RootCallTarget) {
-                NodeUtil.printTree(getContext().getWriter(), ((RootCallTarget) target).getRootNode());
+                NodeUtil.printTree(getContext().getRealm().getOutputWriter(), ((RootCallTarget) target).getRootNode());
+                return Undefined.instance;
             } else {
-                getContext().getErrorWriter().println("Node tree node accessible.");
+                throw Errors.shouldNotReachHere();
             }
-
-            return Undefined.instance;
         }
     }
 
@@ -423,7 +422,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @Specialization
         protected Object inspect(@SuppressWarnings("unused") Object thisObj, DynamicObject object, Object level0) {
             int level = JSRuntime.toInt32(level0);
-            getContext().getWriter().println(((DynamicObjectImpl) object).debugDump(level));
+            getContext().getRealm().getOutputWriter().println(((DynamicObjectImpl) object).debugDump(level));
             return Undefined.instance;
         }
 
@@ -442,7 +441,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @Specialization
         protected Object printObject(DynamicObject object, Object level0) {
             int level = level0 == Undefined.instance ? 1 : JSRuntime.toInt32(level0);
-            getContext().getWriter().println(debugPrint(object, 0, level));
+            getContext().getRealm().getOutputWriter().println(debugPrint(object, 0, level));
             return Undefined.instance;
         }
 

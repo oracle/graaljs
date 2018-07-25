@@ -53,6 +53,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -190,7 +191,7 @@ public final class JSError extends JSBuiltinObject {
         JSObjectUtil.putConstructorPrototypeProperty(context, errorConstructor, classPrototype);
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorConstructor, CLASS_NAME);
-            JSObjectUtil.putDataProperty(context, errorConstructor, STACK_TRACE_LIMIT_PROPERTY_NAME, context.getStackTraceLimit(), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(context, errorConstructor, STACK_TRACE_LIMIT_PROPERTY_NAME, JSContextOptions.STACK_TRACE_LIMIT.getValue(realm.getOptions()), JSAttributes.getDefault());
         }
 
         return new JSConstructor(errorConstructor, classPrototype);

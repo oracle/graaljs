@@ -40,10 +40,15 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -53,6 +58,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.Shape;
@@ -110,6 +116,8 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
+import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 /**
  * Container for JavaScript globals (i.e. an ECMAScript 6 Realm object).
@@ -303,6 +311,14 @@ public class JSRealm implements ShapeContext {
      * Slot for Realm-specific data of the embedder of the JS engine.
      */
     private Object embedderData;
+
+    /** Support for RegExp.$1. */
+    private TruffleObject regexResult;
+
+    private OutputStream outputStream;
+    private OutputStream errorStream;
+    private PrintWriterWrapper outputWriter;
+    private PrintWriterWrapper errorWriter;
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
@@ -508,6 +524,11 @@ public class JSRealm implements ShapeContext {
 
         this.javaInteropWorkerConstructor = isJavaInteropAvailable() ? JSJavaWorkerBuiltin.createWorkerConstructor(this) : null;
         this.javaInteropWorkerFactory = isJavaInteropAvailable() ? JSJavaWorkerBuiltin.makeInitialShape(context, javaInteropWorkerConstructor.getPrototype()).createFactory() : null;
+
+        this.outputStream = System.out;
+        this.errorStream = System.err;
+        this.outputWriter = new PrintWriterWrapper(outputStream, true);
+        this.errorWriter = new PrintWriterWrapper(errorStream, true);
     }
 
     private void initializeTypedArrayConstructors() {
@@ -1526,7 +1547,7 @@ public class JSRealm implements ShapeContext {
         Objects.requireNonNull(env, "New env cannot be null.");
         truffleLanguageEnv = env;
         context.setAllocationReporter(env);
-        context.getContextOptions().setEnv(env);
+        context.getContextOptions().setOptionValues(env.getOptions());
     }
 
     @TruffleBoundary
@@ -1565,5 +1586,79 @@ public class JSRealm implements ShapeContext {
 
     public final void setEmbedderData(Object embedderData) {
         this.embedderData = embedderData;
+    }
+
+    public TruffleObject getRegexResult() {
+        assert context.isOptionRegexpStaticResult();
+        if (regexResult == null) {
+            regexResult = TRegexUtil.getTRegexEmptyResult();
+        }
+        return regexResult;
+    }
+
+    public void setRegexResult(TruffleObject regexResult) {
+        assert context.isOptionRegexpStaticResult();
+        assert TRegexUtil.readResultIsMatch(TRegexUtil.createReadNode(), regexResult);
+        this.regexResult = regexResult;
+    }
+
+    public OptionValues getOptions() {
+        return getEnv().getOptions();
+    }
+
+    public final PrintWriter getOutputWriter() {
+        return outputWriter;
+    }
+
+    /**
+     * Returns the stream used by {@link #getOutputWriter}, or null if the stream is not available.
+     *
+     * Do not write to the stream directly, always use the {@link #getOutputWriter writer} instead.
+     * Use this method only to check if the current writer is already writing to the stream you want
+     * to use, in which case you can avoid creating a new {@link PrintWriter}.
+     */
+    public final OutputStream getOutputStream() {
+        return outputStream;
+    }
+
+    public final PrintWriter getErrorWriter() {
+        return errorWriter;
+    }
+
+    /**
+     * Returns the stream used by {@link #getErrorWriter}, or null if the stream is not available.
+     *
+     * Do not write to the stream directly, always use the {@link #getErrorWriter writer} instead.
+     * Use this method only to check if the current writer is already writing to the stream you want
+     * to use, in which case you can avoid creating a new {@link PrintWriter}.
+     */
+    public final OutputStream getErrorStream() {
+        return errorStream;
+    }
+
+    public final void setOutputWriter(Writer writer, OutputStream stream) {
+        if (writer instanceof PrintWriterWrapper) {
+            this.outputWriter.setFrom((PrintWriterWrapper) writer);
+        } else {
+            if (stream != null) {
+                this.outputWriter.setDelegate(stream);
+            } else {
+                this.outputWriter.setDelegate(writer);
+            }
+        }
+        this.outputStream = stream;
+    }
+
+    public final void setErrorWriter(Writer writer, OutputStream stream) {
+        if (writer instanceof PrintWriterWrapper) {
+            this.errorWriter.setFrom((PrintWriterWrapper) writer);
+        } else {
+            if (stream != null) {
+                this.errorWriter.setDelegate(stream);
+            } else {
+                this.errorWriter.setDelegate(writer);
+            }
+        }
+        this.errorStream = stream;
     }
 }
