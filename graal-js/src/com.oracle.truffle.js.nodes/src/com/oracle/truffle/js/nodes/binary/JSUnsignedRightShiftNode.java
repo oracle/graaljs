@@ -121,9 +121,9 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
         long lnum = toUInt32(a);
         int shiftCount = b & 0x1F;
         if (returnType.profile(lnum >= Integer.MAX_VALUE || lnum <= Integer.MIN_VALUE)) {
-            return lnum >>> shiftCount;
+            return (double) (lnum >>> shiftCount);
         }
-        return (lnum >>> shiftCount);
+        return (int) (lnum >>> shiftCount);
     }
 
     @Specialization
@@ -136,7 +136,7 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
         if (returnType.profile(lnum >= Integer.MAX_VALUE || lnum <= Integer.MIN_VALUE)) {
             return (double) (lnum >>> shiftCount);
         }
-        return (lnum >>> shiftCount);
+        return (int) (lnum >>> shiftCount);
     }
 
     @Specialization
