@@ -438,31 +438,23 @@ public final class Errors {
         return Errors.createRangeError("Invalid array length");
     }
 
-    /**
-     * @see #notYetImplemented(String)
-     */
-    public static RuntimeException notYetImplemented() {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("not yet implemented");
+    public static RuntimeException unsupported(String message) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException(message);
     }
 
-    /**
-     * Similar to UnsupportedOperationException, but with a flavor of a missing feature that will be
-     * resolved in the future. In contrast, UnsupportedOperationException should be used for
-     * operations that are expected to be unsupported forever.
-     */
-    public static RuntimeException notYetImplemented(String message) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("not yet implemented: " + message);
+    public static RuntimeException notImplemented(String message) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException("not implemented: " + message);
     }
 
     public static RuntimeException shouldNotReachHere() {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new IllegalStateException("should not reach here");
     }
 
     public static RuntimeException shouldNotReachHere(String message) {
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new IllegalStateException("should not reach here: " + message);
     }
 

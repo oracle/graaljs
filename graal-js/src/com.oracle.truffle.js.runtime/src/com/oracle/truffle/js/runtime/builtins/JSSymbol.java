@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -146,7 +145,6 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
     private static DynamicObject createDescriptionGetterFunction(JSRealm realm) {
         JSContext context = realm.getContext();
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-
             @Override
             public Object execute(VirtualFrame frame) {
                 Object obj = frame.getArguments()[0];
@@ -155,7 +153,6 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
                 } else if (isJSSymbol(obj)) {
                     return JSSymbol.getSymbolData((DynamicObject) obj).getDescription();
                 } else {
-                    CompilerDirectives.transferToInterpreter();
                     throw Errors.createTypeError("Symbol expected");
                 }
             }

@@ -290,7 +290,7 @@ public class Recording {
 
         @SuppressWarnings("unused")
         public void encodeTo(JSNodeEncoder encoder) {
-            throw Errors.notYetImplemented(getClass().isAnonymousClass() ? getClass().getName() : getClass().getSimpleName());
+            throw Errors.notImplemented(getClass().isAnonymousClass() ? getClass().getName() : getClass().getSimpleName());
         }
 
         public String getName() {
