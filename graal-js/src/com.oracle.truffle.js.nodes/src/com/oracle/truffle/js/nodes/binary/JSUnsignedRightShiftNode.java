@@ -68,7 +68,6 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     }
 
     @Child private JSToUInt32Node toUInt32Node;
-    @Child private JSToNumericNode toNumericNode;
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         Truncatable.truncate(left);
@@ -79,7 +78,15 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
         return JSUnsignedRightShiftNodeGen.create(left, right);
     }
 
-    protected abstract Number executeNumber(Object a, Object b);
+    static JSUnsignedRightShiftNode create() {
+        return JSUnsignedRightShiftNodeGen.create(null, null);
+    }
+
+    protected final Number executeNumber(Object a, Object b) {
+        return (Number) executeObject(a, b);
+    }
+
+    protected abstract Object executeObject(Object a, Object b);
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
@@ -145,26 +152,19 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     }
 
     @Specialization
-    protected void doBigInt(@SuppressWarnings("unused") BigInt a, @SuppressWarnings("unused") BigInt b) {
+    protected Number doBigInt(@SuppressWarnings("unused") BigInt a, @SuppressWarnings("unused") BigInt b) {
         throw Errors.createTypeError("BigInts have no unsigned right shift, use >> instead");
     }
 
     @Specialization(guards = "!isHandled(lval, rval)")
     protected Number doGeneric(Object lval, Object rval,
+                    @Cached("create()") JSToNumericNode lvalToNumericNode,
                     @Cached("create()") JSToNumericNode rvalToNumericNode,
-                    @Cached("copyUninitialized()") JavaScriptNode innerShiftNode) {
-        Object lnum = toNumeric(lval);
+                    @Cached("create()") JSUnsignedRightShiftNode innerShiftNode) {
+        Object lnum = lvalToNumericNode.executeObject(lval);
         Object rnum = rvalToNumericNode.executeObject(rval);
         JSRuntime.ensureBothSameNumericType(lnum, rnum);
-        return ((JSUnsignedRightShiftNode) innerShiftNode).executeNumber(lnum, rnum);
-    }
-
-    private Object toNumeric(Object target) {
-        if (toNumericNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toNumericNode = insert(JSToNumericNode.create());
-        }
-        return toNumericNode.executeObject(target);
+        return innerShiftNode.executeNumber(lnum, rnum);
     }
 
     private long toUInt32(Object target) {
