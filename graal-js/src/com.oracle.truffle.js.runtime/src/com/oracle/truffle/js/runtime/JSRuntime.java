@@ -1859,6 +1859,17 @@ public final class JSRuntime {
         return doubleValueVirtual(number);
     }
 
+    public static double doubleValue(Number number, BranchProfile profile) {
+        if (number instanceof Double) {
+            return ((Double) number).doubleValue();
+        }
+        if (number instanceof Integer) {
+            return ((Integer) number).doubleValue();
+        }
+        profile.enter();
+        return doubleValueVirtual(number);
+    }
+
     @TruffleBoundary
     public static double doubleValueVirtual(Number number) {
         return number.doubleValue();
