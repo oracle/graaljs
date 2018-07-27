@@ -1178,16 +1178,35 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isJSObject(re)")
         protected String doObject(DynamicObject re) {
-            StringBuilder sb = new StringBuilder(6);
-            appendFlag(re, getGlobal, sb, 'g');
-            appendFlag(re, getIgnoreCase, sb, 'i');
-            appendFlag(re, getMultiline, sb, 'm');
-            if (getDotAll != null) {
-                appendFlag(re, getDotAll, sb, 's');
+            char[] flags = new char[6];
+            int len = 0;
+            if (getFlag(re, getGlobal)) {
+                flags[len++] = 'g';
             }
-            appendFlag(re, getUnicode, sb, 'u');
-            appendFlag(re, getSticky, sb, 'y');
-            return Boundaries.builderToString(sb);
+            if (getFlag(re, getIgnoreCase)) {
+                flags[len++] = 'i';
+            }
+            if (getFlag(re, getMultiline)) {
+                flags[len++] = 'm';
+            }
+            if (getDotAll != null && getFlag(re, getDotAll)) {
+                flags[len++] = 's';
+            }
+            if (getFlag(re, getUnicode)) {
+                flags[len++] = 'u';
+            }
+            if (getFlag(re, getSticky)) {
+                flags[len++] = 'y';
+            }
+            if (len == 0) {
+                return "";
+            }
+            return newString(flags, len);
+        }
+
+        @TruffleBoundary(allowInlining = true)
+        private static String newString(char[] flags, int len) {
+            return new String(flags, 0, len);
         }
 
         @Specialization(guards = "!isJSObject(thisObj)")
@@ -1195,7 +1214,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeErrorNotAnObject(thisObj);
         }
 
-        private void appendFlag(DynamicObject re, PropertyGetNode getNode, StringBuilder sb, char chr) {
+        private boolean getFlag(DynamicObject re, PropertyGetNode getNode) {
             boolean flag;
             if (toBoolean == null) {
                 try {
@@ -1208,9 +1227,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else {
                 flag = toBoolean.executeBoolean(getNode.getValue(re));
             }
-            if (flag) {
-                Boundaries.builderAppend(sb, chr);
-            }
+            return flag;
         }
     }
 }
