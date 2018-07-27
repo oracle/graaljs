@@ -51,6 +51,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -65,6 +66,7 @@ import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpSea
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpSplitNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpTestNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpToStringNodeGen;
+import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.RegExpFlagsGetterNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltins.MatchAllIteratorNode;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode.JSRegExpExecBuiltinNode;
@@ -1131,6 +1133,84 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 matchAllIteratorNode = insert(new MatchAllIteratorNode(getContext()));
             }
             return matchAllIteratorNode;
+        }
+    }
+
+    public static final class RegExpPrototypeGetterBuiltins extends JSBuiltinsContainer.Switch {
+        protected RegExpPrototypeGetterBuiltins() {
+            super(JSRegExp.PROTOTYPE_GETTER_NAME);
+            defineFunction("get " + JSRegExp.FLAGS, 0);
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget) {
+            switch (builtin.getName()) {
+                case "get " + JSRegExp.FLAGS:
+                    return RegExpFlagsGetterNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Implements the RegExp.prototype.flags getter.
+     */
+    public abstract static class RegExpFlagsGetterNode extends JSBuiltinNode {
+        @Child private PropertyGetNode getGlobal;
+        @Child private PropertyGetNode getIgnoreCase;
+        @Child private PropertyGetNode getMultiline;
+        @Child private PropertyGetNode getDotAll;
+        @Child private PropertyGetNode getUnicode;
+        @Child private PropertyGetNode getSticky;
+        @Child private JSToBooleanNode toBoolean;
+
+        public RegExpFlagsGetterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.getGlobal = PropertyGetNode.create(JSRegExp.GLOBAL, context);
+            this.getIgnoreCase = PropertyGetNode.create(JSRegExp.IGNORE_CASE, context);
+            this.getMultiline = PropertyGetNode.create(JSRegExp.MULTILINE, context);
+            if (context.getEcmaScriptVersion() >= 9) {
+                this.getDotAll = PropertyGetNode.create(JSRegExp.DOT_ALL, context);
+            }
+            this.getUnicode = PropertyGetNode.create(JSRegExp.UNICODE, context);
+            this.getSticky = PropertyGetNode.create(JSRegExp.STICKY, context);
+        }
+
+        @Specialization(guards = "isJSObject(re)")
+        protected String doObject(DynamicObject re) {
+            StringBuilder sb = new StringBuilder(6);
+            appendFlag(re, getGlobal, sb, 'g');
+            appendFlag(re, getIgnoreCase, sb, 'i');
+            appendFlag(re, getMultiline, sb, 'm');
+            if (getDotAll != null) {
+                appendFlag(re, getDotAll, sb, 's');
+            }
+            appendFlag(re, getUnicode, sb, 'u');
+            appendFlag(re, getSticky, sb, 'y');
+            return Boundaries.builderToString(sb);
+        }
+
+        @Specialization(guards = "!isJSObject(thisObj)")
+        protected String doNotObject(Object thisObj) {
+            throw Errors.createTypeErrorNotAnObject(thisObj);
+        }
+
+        private void appendFlag(DynamicObject re, PropertyGetNode getNode, StringBuilder sb, char chr) {
+            boolean flag;
+            if (toBoolean == null) {
+                try {
+                    flag = getNode.getValueBoolean(re);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    this.toBoolean = insert(JSToBooleanNode.create());
+                    flag = toBoolean.executeBoolean(e.getResult());
+                }
+            } else {
+                flag = toBoolean.executeBoolean(getNode.getValue(re));
+            }
+            if (flag) {
+                Boundaries.builderAppend(sb, chr);
+            }
         }
     }
 }

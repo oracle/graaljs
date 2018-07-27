@@ -44,7 +44,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetReg
 
 import java.util.EnumSet;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -63,7 +62,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
@@ -95,6 +93,8 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     public static final String LAST_INDEX = "lastIndex";
     public static final String INPUT = "input";
     public static final String GROUPS = "groups";
+
+    public static final String PROTOTYPE_GETTER_NAME = PROTOTYPE_NAME + " getter";
 
     private static final HiddenKey COMPILED_REGEX_ID = new HiddenKey("compiledRegex");
     private static final Property COMPILED_REGEX_PROPERTY;
@@ -269,45 +269,6 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         return isInstance(obj, INSTANCE);
     }
 
-    private static DynamicObject createFlagsGetterFunction(JSRealm realm) {
-        JSContext context = realm.getContext();
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return getFlagsIntl(frame.getArguments()[0]);
-            }
-
-            @TruffleBoundary
-            private Object getFlagsIntl(Object obj) {
-                if (!JSRuntime.isObject(obj)) {
-                    throw Errors.createTypeErrorNotAnObject(obj);
-                }
-                DynamicObject re = (DynamicObject) obj;
-                StringBuilder sb = new StringBuilder(6);
-                appendFlag(re, GLOBAL, sb, 'g');
-                appendFlag(re, IGNORE_CASE, sb, 'i');
-                appendFlag(re, MULTILINE, sb, 'm');
-                if (context.getEcmaScriptVersion() >= 9) {
-                    appendFlag(re, DOT_ALL, sb, 's');
-                }
-                appendFlag(re, UNICODE, sb, 'u');
-                appendFlag(re, STICKY, sb, 'y');
-                return Boundaries.builderToString(sb);
-            }
-
-            private void appendFlag(DynamicObject re, String name, StringBuilder sb, char chr) {
-                Object value = JSObject.get(re, name);
-                if (JSRuntime.toBoolean(value)) {
-                    Boundaries.builderAppend(sb, chr);
-                }
-            }
-        });
-        DynamicObject flagsGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, callTarget, 0, "get " + FLAGS));
-        JSObject.preventExtensions(flagsGetter);
-        return flagsGetter;
-    }
-
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
@@ -317,7 +278,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
             JSObjectUtil.putHiddenProperty(prototype, COMPILED_REGEX_PROPERTY, RegexCompilerInterface.compile("", "", ctx));
             JSObjectUtil.putDataProperty(ctx, prototype, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
         }
-        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, FLAGS, createFlagsGetterFunction(realm), Undefined.instance);
+        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, FLAGS, realm.lookupFunction(PROTOTYPE_GETTER_NAME, "get " + FLAGS), Undefined.instance);
 
         putRegExpPropertyAccessor(realm, prototype, MULTILINE,
                         new CompiledRegexFlagPropertyAccessor(prototype, TRegexUtil.Props.Flags.MULTILINE, Undefined.instance));
