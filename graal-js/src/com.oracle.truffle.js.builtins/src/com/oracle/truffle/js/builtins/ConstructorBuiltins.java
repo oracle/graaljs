@@ -782,7 +782,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             } else {
                 Object value = toPrimitive(arg0);
                 if (stringOrNumberProfile.profile(JSRuntime.isString(value))) {
-                    return parseDate(JSRuntime.toString(value));
+                    return parseDate(JSRuntime.toStringIsString(value));
                 } else {
                     double dval = toDouble(value);
                     if (Double.isInfinite(dval) || Double.isNaN(dval)) {
