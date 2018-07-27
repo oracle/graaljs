@@ -134,7 +134,7 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
     protected Object doGeneric(Object a,
                     @Cached("create()") JSToNumericNode leftToNumericNode,
                     @Cached("makeCopy()") JSLeftShiftConstantNode innerShiftNode) {
-        Object numericLeft = leftToNumericNode.executeObject(a);
+        Object numericLeft = leftToNumericNode.execute(a);
         return innerShiftNode.executeInt(numericLeft);
     }
 

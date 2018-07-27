@@ -160,8 +160,8 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
                     @Cached("create()") JSToNumericNode lvalToNumericNode,
                     @Cached("create()") JSToNumericNode rvalToNumericNode,
                     @Cached("create()") JSUnsignedRightShiftNode innerShiftNode) {
-        Object lnum = lvalToNumericNode.executeObject(lval);
-        Object rnum = rvalToNumericNode.executeObject(rval);
+        Object lnum = lvalToNumericNode.execute(lval);
+        Object rnum = rvalToNumericNode.execute(rval);
         ensureBothSameNumericType(lnum, rnum);
         return innerShiftNode.executeNumber(lnum, rnum);
     }

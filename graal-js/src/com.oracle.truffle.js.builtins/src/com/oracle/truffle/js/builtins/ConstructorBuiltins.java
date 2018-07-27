@@ -1197,7 +1197,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Number callNumber(Object[] args,
                         @Cached("create()") JSToNumericNode toNumericNode,
                         @Cached("create()") JSNumericToNumberNode toNumberFromNumericNode) {
-            return (Number) toNumberFromNumericNode.executeObject((toNumericNode.executeObject(args[0])));
+            return (Number) toNumberFromNumericNode.executeObject(toNumericNode.execute(args[0]));
         }
     }
 
@@ -1215,7 +1215,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected DynamicObject constructNumber(DynamicObject newTarget, Object[] args,
                         @Cached("create()") JSToNumericNode toNumericNode,
                         @Cached("create()") JSNumericToNumberNode toNumberFromNumericNode) {
-            return swapPrototype(JSNumber.create(getContext(), (Number) toNumberFromNumericNode.executeObject(toNumericNode.executeObject(args[0]))), newTarget);
+            return swapPrototype(JSNumber.create(getContext(), (Number) toNumberFromNumericNode.executeObject(toNumericNode.execute(args[0]))), newTarget);
         }
 
         @Override

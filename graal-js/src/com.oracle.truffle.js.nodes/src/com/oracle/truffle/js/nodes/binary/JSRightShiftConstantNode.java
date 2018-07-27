@@ -135,7 +135,7 @@ public abstract class JSRightShiftConstantNode extends JSUnaryNode {
     protected int doGeneric(Object a,
                     @Cached("create()") JSToNumericNode leftToNumeric,
                     @Cached("makeCopy()") JSRightShiftConstantNode innerShiftNode) {
-        Object leftOperand = leftToNumeric.executeObject(a);
+        Object leftOperand = leftToNumeric.execute(a);
         return innerShiftNode.executeInt(leftOperand);
     }
 
