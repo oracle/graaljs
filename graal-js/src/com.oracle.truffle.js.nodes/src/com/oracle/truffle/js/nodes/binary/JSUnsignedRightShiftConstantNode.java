@@ -76,7 +76,7 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
         this.rightValue = rightValue;
     }
 
-    public abstract Number executeNumber(Object a);
+    public abstract int executeInt(Object a);
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         assert right instanceof JSConstantIntegerNode;
@@ -133,16 +133,16 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
     }
 
     @Specialization
-    protected void doBigInt(@SuppressWarnings("unused") BigInt a) {
+    protected int doBigInt(@SuppressWarnings("unused") BigInt a) {
         throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
     }
 
     @Specialization(guards = "!isHandled(lval)")
-    protected Object doGeneric(Object lval,
+    protected int doGeneric(Object lval,
                     @Cached("create()") JSToNumericNode leftToNumeric,
-                    @Cached("makeCopy()") JSUnsignedRightShiftConstantNode innerShiftNode) {
-        Object leftOperand = leftToNumeric.executeObject(lval);
-        return innerShiftNode.executeNumber(leftOperand);
+                    @Cached("createInner()") JSUnsignedRightShiftConstantNode innerShiftNode) {
+        Object leftOperand = leftToNumeric.execute(lval);
+        return innerShiftNode.executeInt(leftOperand);
     }
 
     protected static boolean isHandled(Object lval) {
@@ -154,8 +154,8 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
         return clazz == int.class;
     }
 
-    protected JSUnsignedRightShiftConstantNode makeCopy() {
-        return (JSUnsignedRightShiftConstantNode) copyUninitialized();
+    protected JSUnsignedRightShiftConstantNode createInner() {
+        return JSUnsignedRightShiftConstantNodeGen.create(null, shiftValue, rightValue);
     }
 
     @Override

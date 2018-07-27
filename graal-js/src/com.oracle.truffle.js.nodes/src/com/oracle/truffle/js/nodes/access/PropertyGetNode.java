@@ -1376,14 +1376,14 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
         @Specialization(replaces = "doJSObjectCached")
         protected Object doJSObjectDirect(DynamicObject object, Object receiver, boolean isMethod) {
-            return getPropertyFromJSObjectIntlBoundary(JSObject.getJSClass(object), object, receiver, isMethod);
+            return getPropertyFromJSObjectIntl(JSObject.getJSClass(object), object, receiver, isMethod);
         }
 
         protected JSClass getJSClass(DynamicObject object) {
             return JSObject.getJSClass(object);
         }
 
-        public Object getPropertyFromJSObjectIntl(JSClass jsclass, DynamicObject object, Object receiver, boolean isMethod) {
+        private Object getPropertyFromJSObjectIntl(JSClass jsclass, DynamicObject object, Object receiver, boolean isMethod) {
             assert !(key instanceof HiddenKey);
             // 0. check for null or undefined
             if (jsclass == Null.NULL_CLASS) {
@@ -1400,12 +1400,6 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             // 2. try to call fallback handler or return undefined
             fallbackBranch.enter();
             return getNoSuchProperty(object, isMethod);
-        }
-
-        @TruffleBoundary
-        // just add TruffleBoundary to getPropertyFromJSObjectIntl()
-        public Object getPropertyFromJSObjectIntlBoundary(JSClass jsclass, DynamicObject object, Object receiver, boolean isMethod) {
-            return getPropertyFromJSObjectIntl(jsclass, object, receiver, isMethod);
         }
 
         protected Object getNoSuchProperty(DynamicObject thisObj, boolean isMethod) {

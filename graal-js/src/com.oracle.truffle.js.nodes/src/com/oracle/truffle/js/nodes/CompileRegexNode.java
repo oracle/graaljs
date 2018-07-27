@@ -69,17 +69,17 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
     }
 
     public final TruffleObject compile(CharSequence pattern, String flags) {
-        return (TruffleObject) executeCompile(pattern, flags);
+        return executeCompile(pattern, flags);
     }
 
-    protected abstract Object executeCompile(CharSequence pattern, String flags);
+    protected abstract TruffleObject executeCompile(CharSequence pattern, String flags);
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"stringEquals(pattern, cachedPattern)", "stringEquals(flags, cachedFlags)"}, limit = "MaxCompiledRegexCacheLength")
-    protected Object getCached(String pattern, String flags, //
-                    @Cached("pattern") String cachedPattern, //
-                    @Cached("flags") String cachedFlags, //
-                    @Cached("doCompile(pattern, flags)") Object cachedCompiledRegex) {
+    protected TruffleObject getCached(String pattern, String flags,
+                    @Cached("pattern") String cachedPattern,
+                    @Cached("flags") String cachedFlags,
+                    @Cached("doCompile(pattern, flags)") TruffleObject cachedCompiledRegex) {
         return cachedCompiledRegex;
     }
 
@@ -89,13 +89,13 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"!TrimCompiledRegexCache"})
-    protected Object doCompileNoTrimCache(String pattern, String flags) {
+    protected TruffleObject doCompileNoTrimCache(String pattern, String flags) {
         // optional specialization that does not trim the cache
         return doCompile(pattern, flags);
     }
 
     @Specialization(replaces = {"getCached"})
-    protected Object doCompile(String pattern, String flags) {
+    protected TruffleObject doCompile(String pattern, String flags) {
         return RegexCompilerInterface.compile(pattern, flags, context, executeCompilerNode);
     }
 }

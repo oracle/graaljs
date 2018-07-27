@@ -124,10 +124,11 @@ public abstract class JSMultiplyNode extends JSBinaryNode {
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSMultiplyNode nestedMultiplyNode,
                     @Cached("create()") JSToNumericNode toNumeric1Node,
-                    @Cached("create()") JSToNumericNode toNumeric2Node) {
+                    @Cached("create()") JSToNumericNode toNumeric2Node,
+                    @Cached("create()") BranchProfile mixedNumericTypes) {
         Object operandA = toNumeric1Node.execute(a);
         Object operandB = toNumeric2Node.execute(b);
-        JSRuntime.ensureBothSameNumericType(operandA, operandB);
+        ensureBothSameNumericType(operandA, operandB, mixedNumericTypes);
         return nestedMultiplyNode.execute(operandA, operandB);
     }
 
