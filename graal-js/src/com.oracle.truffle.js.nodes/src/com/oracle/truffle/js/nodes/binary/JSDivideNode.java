@@ -47,7 +47,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
 
 @NodeInfo(shortName = "/")
 public abstract class JSDivideNode extends JSBinaryNode {
@@ -115,7 +114,7 @@ public abstract class JSDivideNode extends JSBinaryNode {
                     @Cached("create()") JSToNumericNode toNumeric2Node) {
         Object numericA = toNumeric1Node.execute(a);
         Object numericB = toNumeric2Node.execute(b);
-        JSRuntime.ensureBothSameNumericType(numericA, numericB);
+        ensureBothSameNumericType(numericA, numericB);
         return nestedDivideNode.execute(numericA, numericB);
     }
 

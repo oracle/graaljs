@@ -127,7 +127,7 @@ public abstract class JSMultiplyNode extends JSBinaryNode {
                     @Cached("create()") JSToNumericNode toNumeric2Node) {
         Object operandA = toNumeric1Node.execute(a);
         Object operandB = toNumeric2Node.execute(b);
-        JSRuntime.ensureBothSameNumericType(operandA, operandB);
+        ensureBothSameNumericType(operandA, operandB);
         return nestedMultiplyNode.execute(operandA, operandB);
     }
 

@@ -48,6 +48,9 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
 public abstract class JSBinaryNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode leftNode;
@@ -76,6 +79,16 @@ public abstract class JSBinaryNode extends JavaScriptNode {
             }
         }
         return null;
+    }
+
+    protected static boolean largerThan2e32(double d) {
+        return Math.abs(d) >= JSRuntime.TWO32;
+    }
+
+    protected static void ensureBothSameNumericType(Object a, Object b) {
+        if ((a instanceof BigInt) != (b instanceof BigInt)) {
+            throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+        }
     }
 
     @Override

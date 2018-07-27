@@ -426,12 +426,6 @@ public final class JSRuntime {
         return value instanceof BigInt;
     }
 
-    public static void ensureBothSameNumericType(Object a, Object b) {
-        if ((a instanceof BigInt) != (b instanceof BigInt)) {
-            throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
-        }
-    }
-
     public static boolean isJavaNumber(Object value) {
         return value instanceof Number;
     }

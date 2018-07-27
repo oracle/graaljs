@@ -53,11 +53,10 @@ import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 @NodeInfo(shortName = "<<")
-public abstract class JSLeftShiftNode extends JSBinaryIntegerShiftNode {
+public abstract class JSLeftShiftNode extends JSBinaryNode {
 
     protected JSLeftShiftNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
@@ -126,9 +125,13 @@ public abstract class JSLeftShiftNode extends JSBinaryIntegerShiftNode {
                     @Cached("create()") JSToNumericNode rightToNumeric) {
         Object operandA = leftToNumeric.execute(a);
         Object operandB = rightToNumeric.execute(b);
-        JSRuntime.ensureBothSameNumericType(operandA, operandB);
-
+        ensureBothSameNumericType(operandA, operandB);
         return leftShift.executeObject(operandA, operandB);
+    }
+
+    @Override
+    public boolean isResultAlwaysOfType(Class<?> clazz) {
+        return clazz == int.class;
     }
 
     public static JSLeftShiftNode create() {

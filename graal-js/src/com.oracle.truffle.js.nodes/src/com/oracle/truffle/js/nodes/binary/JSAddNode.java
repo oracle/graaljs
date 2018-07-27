@@ -233,7 +233,7 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         } else {
             castA = toNumericA.execute(primitiveA);
             castB = toNumericB.execute(primitiveB);
-            JSRuntime.ensureBothSameNumericType(castA, castB);
+            ensureBothSameNumericType(castA, castB);
         }
         return add.execute(castA, castB);
     }

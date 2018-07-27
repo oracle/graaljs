@@ -50,7 +50,6 @@ import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNumericUnitNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSRuntime;
 
 @NodeInfo(shortName = "-")
 public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable {
@@ -102,9 +101,7 @@ public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable
 
         Object castA = toNumericA.execute(a);
         Object castB = toNumericB.execute(b);
-
-        JSRuntime.ensureBothSameNumericType(castA, castB);
-
+        ensureBothSameNumericType(castA, castB);
         return ((JSSubtractNode) subtract).execute(castA, castB);
     }
 

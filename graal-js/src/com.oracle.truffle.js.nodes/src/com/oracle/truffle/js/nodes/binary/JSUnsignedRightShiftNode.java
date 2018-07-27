@@ -54,7 +54,6 @@ import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 /**
@@ -163,7 +162,7 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
                     @Cached("create()") JSUnsignedRightShiftNode innerShiftNode) {
         Object lnum = lvalToNumericNode.executeObject(lval);
         Object rnum = rvalToNumericNode.executeObject(rval);
-        JSRuntime.ensureBothSameNumericType(lnum, rnum);
+        ensureBothSameNumericType(lnum, rnum);
         return innerShiftNode.executeNumber(lnum, rnum);
     }
 

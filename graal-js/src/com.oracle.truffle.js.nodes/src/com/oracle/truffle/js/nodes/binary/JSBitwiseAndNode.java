@@ -49,7 +49,6 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
@@ -106,7 +105,7 @@ public abstract class JSBitwiseAndNode extends JSBinaryNode {
                     @Cached("createBlind()") JSBitwiseAndNode and) {
         Object left = leftNumeric.execute(a);
         Object right = rightNumeric.execute(b);
-        JSRuntime.ensureBothSameNumericType(left, right);
+        ensureBothSameNumericType(left, right);
         return and.executeObject(left, right);
     }
 

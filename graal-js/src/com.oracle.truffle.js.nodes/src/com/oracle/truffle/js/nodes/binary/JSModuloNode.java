@@ -48,7 +48,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
 
 @NodeInfo(shortName = "%")
 public abstract class JSModuloNode extends JSBinaryNode {
@@ -125,7 +124,7 @@ public abstract class JSModuloNode extends JSBinaryNode {
                     @Cached("create()") JSToNumericNode toNumeric2Node) {
         Object operandA = toNumeric1Node.execute(a);
         Object operandB = toNumeric2Node.execute(b);
-        JSRuntime.ensureBothSameNumericType(operandA, operandB);
+        ensureBothSameNumericType(operandA, operandB);
         return nestedModuloNode.execute(operandA, operandB);
     }
 
