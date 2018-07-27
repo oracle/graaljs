@@ -1284,7 +1284,6 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
         public GenericPropertyGetNode(Object key, JSContext context, boolean isMethod, boolean getOwnProperty, boolean isRequired) {
             super(key, context, getOwnProperty);
-            this.toObjectNode = JSToObjectNode.createToObjectNoCheck(context);
             if (isMethod) {
                 setMethod();
             }
@@ -1305,6 +1304,10 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                     return foreignGetNode.getValue(thisObj, receiver);
                 } else {
                     // a primitive, or a Symbol
+                    if (toObjectNode == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        toObjectNode = insert(JSToObjectNode.createToObjectNoCheck(context));
+                    }
                     DynamicObject object = JSRuntime.expectJSObject(toObjectNode.executeTruffleObject(thisObj), notAJSObjectBranch);
                     return getPropertyFromJSObject(object, receiver);
                 }

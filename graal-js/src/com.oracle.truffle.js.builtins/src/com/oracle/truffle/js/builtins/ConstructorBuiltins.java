@@ -582,10 +582,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = "isOneNumberArg(args)")
         protected DynamicObject constructWithLength(DynamicObject newTarget, Object[] args,
                         @Cached("create()") JSToUInt32Node toUInt32Node,
-                        @Cached("create(getContext())") ArrayCreateNode arrayCreateNode) {
+                        @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,
+                        @Cached("create()") BranchProfile rangeErrorProfile,
+                        @Cached("create()") BranchProfile toArrayIndex1Profile,
+                        @Cached("create()") BranchProfile toArrayIndex2Profile) {
             Number origLen = (Number) args[0]; // guard ensures this is a Number
             Number origLen32 = (Number) toUInt32Node.execute(origLen);
-            long len = JSArray.toArrayIndexOrRangeError(origLen, origLen32);
+            long len = JSArray.toArrayIndexOrRangeError(origLen, origLen32, rangeErrorProfile, toArrayIndex1Profile, toArrayIndex2Profile);
             DynamicObject array = arrayCreateNode.execute(len);
             return swapPrototype(array, newTarget);
         }

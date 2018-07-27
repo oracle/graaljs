@@ -318,12 +318,17 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         }
 
         public DynamicObject execute(DynamicObject errorObj, GraalJSException exception) {
-            // fill in any missing stack trace elements
-            TruffleStackTraceElement.fillIn(exception);
-
             setException.setValue(errorObj, exception);
             // stack is not formatted until it is accessed
             setFormattedStack.setValue(errorObj, null);
+            // fill in any missing stack trace elements
+            return executeIntl(errorObj, exception);
+        }
+
+        @TruffleBoundary
+        private DynamicObject executeIntl(DynamicObject errorObj, GraalJSException exception) {
+            TruffleStackTraceElement.fillIn(exception);
+
             Property stackProperty = errorObj.getShape().getProperty(JSError.STACK_NAME);
             int attrs = JSAttributes.getDefaultNotEnumerable();
             if (stackProperty != null) {
