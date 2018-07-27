@@ -103,8 +103,8 @@ import com.oracle.truffle.js.runtime.objects.JSShapeData;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
+import com.oracle.truffle.regex.CachingRegexEngine;
 import com.oracle.truffle.regex.RegexCompiler;
-import com.oracle.truffle.regex.RegexEngine;
 import com.oracle.truffle.regex.RegexLanguage;
 
 public class JSContext implements ShapeContext {
@@ -740,7 +740,7 @@ public class JSContext implements ShapeContext {
                     throw ex.raise();
                 }
             } else {
-                regexEngine = new RegexEngine(joniCompiler, JSTruffleOptions.RegexRegressionTestMode);
+                regexEngine = new CachingRegexEngine(joniCompiler, JSTruffleOptions.RegexRegressionTestMode);
             }
         }
         return regexEngine;
