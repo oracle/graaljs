@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.binary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
@@ -106,10 +107,11 @@ public abstract class JSBitwiseOrNode extends JSBinaryNode {
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSToNumericNode leftNumeric,
                     @Cached("create()") JSToNumericNode rightNumeric,
-                    @Cached("createBlind()") JSBitwiseOrNode or) {
+                    @Cached("createInner()") JSBitwiseOrNode or,
+                    @Cached("create()") BranchProfile mixedNumericTypes) {
         Object left = leftNumeric.execute(a);
         Object right = rightNumeric.execute(b);
-        ensureBothSameNumericType(left, right);
+        ensureBothSameNumericType(left, right, mixedNumericTypes);
         return or.executeObject(left, right);
     }
 
@@ -118,7 +120,7 @@ public abstract class JSBitwiseOrNode extends JSBinaryNode {
         return JSBitwiseOrNodeGen.create(cloneUninitialized(getLeft()), cloneUninitialized(getRight()));
     }
 
-    public static final JSBitwiseOrNode createBlind() {
-        return (JSBitwiseOrNode) create(null, null);
+    public static final JSBitwiseOrNode createInner() {
+        return JSBitwiseOrNodeGen.create(null, null);
     }
 }

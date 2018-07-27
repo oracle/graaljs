@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
@@ -159,10 +160,11 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     protected Number doGeneric(Object lval, Object rval,
                     @Cached("create()") JSToNumericNode lvalToNumericNode,
                     @Cached("create()") JSToNumericNode rvalToNumericNode,
-                    @Cached("create()") JSUnsignedRightShiftNode innerShiftNode) {
+                    @Cached("create()") JSUnsignedRightShiftNode innerShiftNode,
+                    @Cached("create()") BranchProfile mixedNumericTypes) {
         Object lnum = lvalToNumericNode.execute(lval);
         Object rnum = rvalToNumericNode.execute(rval);
-        ensureBothSameNumericType(lnum, rnum);
+        ensureBothSameNumericType(lnum, rnum, mixedNumericTypes);
         return innerShiftNode.executeNumber(lnum, rnum);
     }
 

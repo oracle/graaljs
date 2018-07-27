@@ -42,9 +42,11 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
@@ -85,8 +87,9 @@ public abstract class JSBinaryNode extends JavaScriptNode {
         return Math.abs(d) >= JSRuntime.TWO32;
     }
 
-    protected static void ensureBothSameNumericType(Object a, Object b) {
-        if ((a instanceof BigInt) != (b instanceof BigInt)) {
+    protected static void ensureBothSameNumericType(Object a, Object b, BranchProfile mixedNumericTypes) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, (a instanceof BigInt) != (b instanceof BigInt))) {
+            mixedNumericTypes.enter();
             throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
         }
     }

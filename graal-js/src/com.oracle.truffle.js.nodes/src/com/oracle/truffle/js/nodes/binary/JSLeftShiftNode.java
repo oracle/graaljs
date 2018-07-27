@@ -44,6 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
@@ -122,10 +123,11 @@ public abstract class JSLeftShiftNode extends JSBinaryNode {
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSLeftShiftNode leftShift,
                     @Cached("create()") JSToNumericNode leftToNumeric,
-                    @Cached("create()") JSToNumericNode rightToNumeric) {
+                    @Cached("create()") JSToNumericNode rightToNumeric,
+                    @Cached("create()") BranchProfile mixedNumericTypes) {
         Object operandA = leftToNumeric.execute(a);
         Object operandB = rightToNumeric.execute(b);
-        ensureBothSameNumericType(operandA, operandB);
+        ensureBothSameNumericType(operandA, operandB, mixedNumericTypes);
         return leftShift.executeObject(operandA, operandB);
     }
 
