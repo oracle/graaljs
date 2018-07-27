@@ -92,6 +92,16 @@ public abstract class JSToNumericNode extends JSUnaryNode {
     }
 
     @Specialization
+    protected static int doInt(int value) {
+        return value;
+    }
+
+    @Specialization
+    protected static double doDouble(double value) {
+        return value;
+    }
+
+    @Specialization
     protected Object doBigInt(BigInt value) {
         return value;
     }
