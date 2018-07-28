@@ -648,8 +648,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSToStringNode toString3Node;
         @Child private JSToStringNode toString4Node;
         @Child private JSFunctionCallNode functionCallNode;
-        @Child private JSToBooleanNode toBoolean1Node;
-        @Child private JSToBooleanNode toBoolean2Node;
+        @Child private JSToBooleanNode toBooleanNode;
         @Child private IsCallableNode isCallableNode;
         @Child private ReadElementNode readNamedCaptureGroupNode;
         @Child private JSToObjectNode toObjectNode;
@@ -665,10 +664,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         protected JSRegExpReplaceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getGlobalNode = PropertyGetNode.create("global", false, context);
+            this.getGlobalNode = PropertyGetNode.create(JSRegExp.GLOBAL, false, context);
             this.getIndexNode = PropertyGetNode.create("index", false, context);
             this.toIntegerNode = JSToIntegerNode.create();
-            this.toBoolean1Node = JSToBooleanNode.create();
             this.isCallableNode = IsCallableNode.create();
         }
 
@@ -691,10 +689,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 replaceRaw = replaceString.length() > 0 && replaceString.indexOf('$') < 0;
             }
 
-            boolean global = toBoolean1Node.executeBoolean(getGlobalNode.getValue(rx));
+            boolean global = getFlag(rx, getGlobalNode);
             boolean fullUnicode = false;
             if (globalProfile.profile(global)) {
-                fullUnicode = getToBoolean2Node().executeBoolean(getGetUnicodeNode().getValue(rx));
+                fullUnicode = getFlag(rx, getGetUnicodeNode());
                 getSetLastIndexNode().setValue(rx, 0);
             }
             List<DynamicObject> results = null;
@@ -758,7 +756,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isJSObject(thisObj)")
         protected Object replace(Object thisObj, @SuppressWarnings("unused") Object pattern, @SuppressWarnings("unused") Object flags) {
-            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@replae", thisObj);
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@replace", thisObj);
         }
 
         protected int processResult(DelimitedStringBuilder accumulatedResult, DynamicObject result, String s, String replaceString, int nextSourcePosition, int matchLength, boolean replaceEmpty,
@@ -962,7 +960,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private PropertyGetNode getGetUnicodeNode() {
             if (getUnicodeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getUnicodeNode = insert(PropertyGetNode.create("unicode", false, getContext()));
+                getUnicodeNode = insert(PropertyGetNode.create(JSRegExp.UNICODE, false, getContext()));
             }
             return getUnicodeNode;
         }
@@ -981,14 +979,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 toLengthNode = insert(JSToLengthNode.create());
             }
             return toLengthNode.executeLong(value);
-        }
-
-        private JSToBooleanNode getToBoolean2Node() {
-            if (toBoolean2Node == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toBoolean2Node = insert(JSToBooleanNode.create());
-            }
-            return toBoolean2Node;
         }
 
         private Object getGroups(Object regexResult) {
@@ -1013,6 +1003,22 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
             }
             return toObjectNode;
+        }
+
+        private boolean getFlag(DynamicObject re, PropertyGetNode getNode) {
+            boolean flag;
+            if (toBooleanNode == null) {
+                try {
+                    flag = getNode.getValueBoolean(re);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    this.toBooleanNode = insert(JSToBooleanNode.create());
+                    flag = toBooleanNode.executeBoolean(e.getResult());
+                }
+            } else {
+                flag = toBooleanNode.executeBoolean(getNode.getValue(re));
+            }
+            return flag;
         }
     }
 
