@@ -493,22 +493,24 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private PropertyGetNode getLengthNode;
         @Child private JSToUInt32Node toUInt32Node;
         @Child private JSToLengthNode toLengthNode;
+        private final ConditionProfile sizeZeroProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile eIsP = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile zIsNull = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isUnicode = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile limitProfile = ConditionProfile.createBinaryProfile();
+        private final BranchProfile prematureReturnBranch = BranchProfile.create();
+        private final ConditionProfile emptyFlags = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile stickyFlagSet = ConditionProfile.createBinaryProfile();
 
         protected JSRegExpSplitNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getFlagsNode = PropertyGetNode.create("flags", false, context);
+            this.getFlagsNode = PropertyGetNode.create(JSRegExp.FLAGS, false, context);
         }
 
         @Specialization(guards = "isJSObject(rx)")
         protected DynamicObject split(DynamicObject rx, Object separator, Object limit,
                         @Cached("create()") JSToStringNode toString1Node,
-                        @Cached("create()") JSToStringNode toString2Node,
-                        @Cached("createBinaryProfile()") ConditionProfile sizeZeroProfile,
-                        @Cached("createBinaryProfile()") ConditionProfile eIsP,
-                        @Cached("createBinaryProfile()") ConditionProfile zIsNull,
-                        @Cached("createBinaryProfile()") ConditionProfile isUnicode,
-                        @Cached("createBinaryProfile()") ConditionProfile limitProfile,
-                        @Cached("create()") BranchProfile prematureReturnBranch) {
+                        @Cached("create()") JSToStringNode toString2Node) {
 
             String s = toString1Node.executeString(separator);
 
@@ -545,11 +547,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
                 DynamicObject z = (DynamicObject) getRegexExecIntlNode().execute(splitter, s);
                 if (zIsNull.profile(z == Null.instance)) {
-                    q = movePosition(isUnicode, s, unicodeMatching, q);
+                    q = movePosition(s, unicodeMatching, q);
                 } else {
                     int e = (int) toLength(getGetLastIndexNode().getValue(splitter));
                     if (eIsP.profile(e == p)) {
-                        q = movePosition(isUnicode, s, unicodeMatching, q);
+                        q = movePosition(s, unicodeMatching, q);
                     } else {
                         write(a, lengthA, Boundaries.substring(s, p, q));
                         lengthA++;
@@ -580,8 +582,14 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         /**
          * Ensure sticky ("y") is part of the flags.
          */
-        private static Object ensureSticky(String flags) {
-            return (flags.length() == 0) ? "y" : (flags.indexOf('y') >= 0) ? flags : addStickyFlag(flags);
+        private Object ensureSticky(String flags) {
+            if (emptyFlags.profile(flags.length() == 0)) {
+                return "y";
+            } else if (stickyFlagSet.profile(flags.indexOf('y') >= 0)) {
+                return flags;
+            } else {
+                return addStickyFlag(flags);
+            }
         }
 
         private long toLength(Object obj) {
@@ -600,11 +608,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return getLengthNode.getValue(obj);
         }
 
-        private int movePosition(ConditionProfile isUnicode, String s, boolean unicodeMatching, int q) {
+        private int movePosition(String s, boolean unicodeMatching, int q) {
             return isUnicode.profile(unicodeMatching) ? advanceStringIndexUnicode(s, q) : q + 1;
         }
 
-        @TruffleBoundary
+        @TruffleBoundary(allowInlining = true)
         private static String addStickyFlag(String flags) {
             return flags + "y";
         }
