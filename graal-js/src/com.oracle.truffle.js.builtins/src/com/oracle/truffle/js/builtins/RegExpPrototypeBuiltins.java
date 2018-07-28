@@ -413,6 +413,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private WriteElementNode writeNode;
         @Child private ReadElementNode readNode;
         @Child private ArraySpeciesConstructorNode arraySpeciesCreateNode;
+        @Child private JSToBooleanNode toBooleanNode;
         private final ConditionProfile advanceIndexLengthProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile advanceIndexFirstProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile advanceIndexSecondProfile = ConditionProfile.createBinaryProfile();
@@ -482,6 +483,22 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 regexExecIntlNode = insert(JSRegExpExecIntlNode.create(getContext()));
             }
             return regexExecIntlNode;
+        }
+
+        protected final boolean getFlag(DynamicObject re, PropertyGetNode getNode) {
+            boolean flag;
+            if (toBooleanNode == null) {
+                try {
+                    flag = getNode.getValueBoolean(re);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    this.toBooleanNode = insert(JSToBooleanNode.create());
+                    flag = toBooleanNode.executeBoolean(e.getResult());
+                }
+            } else {
+                flag = toBooleanNode.executeBoolean(getNode.getValue(re));
+            }
+            return flag;
         }
     }
 
@@ -648,7 +665,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSToStringNode toString3Node;
         @Child private JSToStringNode toString4Node;
         @Child private JSFunctionCallNode functionCallNode;
-        @Child private JSToBooleanNode toBooleanNode;
         @Child private IsCallableNode isCallableNode;
         @Child private ReadElementNode readNamedCaptureGroupNode;
         @Child private JSToObjectNode toObjectNode;
@@ -1004,22 +1020,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             return toObjectNode;
         }
-
-        private boolean getFlag(DynamicObject re, PropertyGetNode getNode) {
-            boolean flag;
-            if (toBooleanNode == null) {
-                try {
-                    flag = getNode.getValueBoolean(re);
-                } catch (UnexpectedResultException e) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    this.toBooleanNode = insert(JSToBooleanNode.create());
-                    flag = toBooleanNode.executeBoolean(e.getResult());
-                }
-            } else {
-                flag = toBooleanNode.executeBoolean(getNode.getValue(re));
-            }
-            return flag;
-        }
     }
 
     /**
@@ -1035,22 +1035,20 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         protected JSRegExpMatchNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getUnicodeNode = PropertyGetNode.create("unicode", false, context);
-            this.getGlobalNode = PropertyGetNode.create("global", false, context);
+            this.getUnicodeNode = PropertyGetNode.create(JSRegExp.UNICODE, false, context);
+            this.getGlobalNode = PropertyGetNode.create(JSRegExp.GLOBAL, false, context);
             this.toLengthNode = JSToLengthNode.create();
         }
 
         @Specialization(guards = "isJSObject(rx)")
         protected Object match(DynamicObject rx, Object param,
                         @Cached("create()") JSToStringNode toString1Node,
-                        @Cached("create()") JSToStringNode toString2Node,
-                        @Cached("create()") JSToBooleanNode toBoolean1Node,
-                        @Cached("create()") JSToBooleanNode toBoolean2Node) {
+                        @Cached("create()") JSToStringNode toString2Node) {
             String s = toString1Node.executeString(param);
-            if (isGlobalProfile.profile(!toBoolean1Node.executeBoolean(getGlobalNode.getValue(rx)))) {
+            if (isGlobalProfile.profile(!getFlag(rx, getGlobalNode))) {
                 return getRegexExecIntlNode().execute(rx, s);
             } else {
-                boolean fullUnicode = toBoolean2Node.executeBoolean(getUnicodeNode.getValue(rx));
+                boolean fullUnicode = getFlag(rx, getUnicodeNode);
                 getSetLastIndexNode().setValue(rx, 0);
                 DynamicObject a = JSArray.createEmptyZeroLength(getContext());
                 int n = 0;
