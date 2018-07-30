@@ -51,6 +51,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -65,6 +66,7 @@ import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpSea
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpSplitNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpTestNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpToStringNodeGen;
+import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.RegExpFlagsGetterNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltins.MatchAllIteratorNode;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode.JSRegExpExecBuiltinNode;
@@ -411,6 +413,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private WriteElementNode writeNode;
         @Child private ReadElementNode readNode;
         @Child private ArraySpeciesConstructorNode arraySpeciesCreateNode;
+        @Child private JSToBooleanNode toBooleanNode;
         private final ConditionProfile advanceIndexLengthProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile advanceIndexFirstProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile advanceIndexSecondProfile = ConditionProfile.createBinaryProfile();
@@ -481,6 +484,22 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             return regexExecIntlNode;
         }
+
+        protected final boolean getFlag(DynamicObject re, PropertyGetNode getNode) {
+            boolean flag;
+            if (toBooleanNode == null) {
+                try {
+                    flag = getNode.getValueBoolean(re);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    this.toBooleanNode = insert(JSToBooleanNode.create());
+                    flag = toBooleanNode.executeBoolean(e.getResult());
+                }
+            } else {
+                flag = toBooleanNode.executeBoolean(getNode.getValue(re));
+            }
+            return flag;
+        }
     }
 
     /**
@@ -491,22 +510,24 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private PropertyGetNode getLengthNode;
         @Child private JSToUInt32Node toUInt32Node;
         @Child private JSToLengthNode toLengthNode;
+        private final ConditionProfile sizeZeroProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile eIsP = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile zIsNull = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isUnicode = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile limitProfile = ConditionProfile.createBinaryProfile();
+        private final BranchProfile prematureReturnBranch = BranchProfile.create();
+        private final ConditionProfile emptyFlags = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile stickyFlagSet = ConditionProfile.createBinaryProfile();
 
         protected JSRegExpSplitNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getFlagsNode = PropertyGetNode.create("flags", false, context);
+            this.getFlagsNode = PropertyGetNode.create(JSRegExp.FLAGS, false, context);
         }
 
         @Specialization(guards = "isJSObject(rx)")
         protected DynamicObject split(DynamicObject rx, Object separator, Object limit,
                         @Cached("create()") JSToStringNode toString1Node,
-                        @Cached("create()") JSToStringNode toString2Node,
-                        @Cached("createBinaryProfile()") ConditionProfile sizeZeroProfile,
-                        @Cached("createBinaryProfile()") ConditionProfile eIsP,
-                        @Cached("createBinaryProfile()") ConditionProfile zIsNull,
-                        @Cached("createBinaryProfile()") ConditionProfile isUnicode,
-                        @Cached("createBinaryProfile()") ConditionProfile limitProfile,
-                        @Cached("create()") BranchProfile prematureReturnBranch) {
+                        @Cached("create()") JSToStringNode toString2Node) {
 
             String s = toString1Node.executeString(separator);
 
@@ -543,11 +564,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
                 DynamicObject z = (DynamicObject) getRegexExecIntlNode().execute(splitter, s);
                 if (zIsNull.profile(z == Null.instance)) {
-                    q = movePosition(isUnicode, s, unicodeMatching, q);
+                    q = movePosition(s, unicodeMatching, q);
                 } else {
                     int e = (int) toLength(getGetLastIndexNode().getValue(splitter));
                     if (eIsP.profile(e == p)) {
-                        q = movePosition(isUnicode, s, unicodeMatching, q);
+                        q = movePosition(s, unicodeMatching, q);
                     } else {
                         write(a, lengthA, Boundaries.substring(s, p, q));
                         lengthA++;
@@ -578,8 +599,14 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         /**
          * Ensure sticky ("y") is part of the flags.
          */
-        private static Object ensureSticky(String flags) {
-            return (flags.length() == 0) ? "y" : (flags.indexOf('y') >= 0) ? flags : addStickyFlag(flags);
+        private Object ensureSticky(String flags) {
+            if (emptyFlags.profile(flags.length() == 0)) {
+                return "y";
+            } else if (stickyFlagSet.profile(flags.indexOf('y') >= 0)) {
+                return flags;
+            } else {
+                return addStickyFlag(flags);
+            }
         }
 
         private long toLength(Object obj) {
@@ -598,11 +625,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return getLengthNode.getValue(obj);
         }
 
-        private int movePosition(ConditionProfile isUnicode, String s, boolean unicodeMatching, int q) {
+        private int movePosition(String s, boolean unicodeMatching, int q) {
             return isUnicode.profile(unicodeMatching) ? advanceStringIndexUnicode(s, q) : q + 1;
         }
 
-        @TruffleBoundary
+        @TruffleBoundary(allowInlining = true)
         private static String addStickyFlag(String flags) {
             return flags + "y";
         }
@@ -638,8 +665,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSToStringNode toString3Node;
         @Child private JSToStringNode toString4Node;
         @Child private JSFunctionCallNode functionCallNode;
-        @Child private JSToBooleanNode toBoolean1Node;
-        @Child private JSToBooleanNode toBoolean2Node;
         @Child private IsCallableNode isCallableNode;
         @Child private ReadElementNode readNamedCaptureGroupNode;
         @Child private JSToObjectNode toObjectNode;
@@ -655,10 +680,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         protected JSRegExpReplaceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getGlobalNode = PropertyGetNode.create("global", false, context);
+            this.getGlobalNode = PropertyGetNode.create(JSRegExp.GLOBAL, false, context);
             this.getIndexNode = PropertyGetNode.create("index", false, context);
             this.toIntegerNode = JSToIntegerNode.create();
-            this.toBoolean1Node = JSToBooleanNode.create();
             this.isCallableNode = IsCallableNode.create();
         }
 
@@ -681,10 +705,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 replaceRaw = replaceString.length() > 0 && replaceString.indexOf('$') < 0;
             }
 
-            boolean global = toBoolean1Node.executeBoolean(getGlobalNode.getValue(rx));
+            boolean global = getFlag(rx, getGlobalNode);
             boolean fullUnicode = false;
             if (globalProfile.profile(global)) {
-                fullUnicode = getToBoolean2Node().executeBoolean(getGetUnicodeNode().getValue(rx));
+                fullUnicode = getFlag(rx, getGetUnicodeNode());
                 getSetLastIndexNode().setValue(rx, 0);
             }
             List<DynamicObject> results = null;
@@ -748,7 +772,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "!isJSObject(thisObj)")
         protected Object replace(Object thisObj, @SuppressWarnings("unused") Object pattern, @SuppressWarnings("unused") Object flags) {
-            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@replae", thisObj);
+            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@replace", thisObj);
         }
 
         protected int processResult(DelimitedStringBuilder accumulatedResult, DynamicObject result, String s, String replaceString, int nextSourcePosition, int matchLength, boolean replaceEmpty,
@@ -952,7 +976,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private PropertyGetNode getGetUnicodeNode() {
             if (getUnicodeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getUnicodeNode = insert(PropertyGetNode.create("unicode", false, getContext()));
+                getUnicodeNode = insert(PropertyGetNode.create(JSRegExp.UNICODE, false, getContext()));
             }
             return getUnicodeNode;
         }
@@ -971,14 +995,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 toLengthNode = insert(JSToLengthNode.create());
             }
             return toLengthNode.executeLong(value);
-        }
-
-        private JSToBooleanNode getToBoolean2Node() {
-            if (toBoolean2Node == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toBoolean2Node = insert(JSToBooleanNode.create());
-            }
-            return toBoolean2Node;
         }
 
         private Object getGroups(Object regexResult) {
@@ -1019,22 +1035,20 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         protected JSRegExpMatchNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getUnicodeNode = PropertyGetNode.create("unicode", false, context);
-            this.getGlobalNode = PropertyGetNode.create("global", false, context);
+            this.getUnicodeNode = PropertyGetNode.create(JSRegExp.UNICODE, false, context);
+            this.getGlobalNode = PropertyGetNode.create(JSRegExp.GLOBAL, false, context);
             this.toLengthNode = JSToLengthNode.create();
         }
 
         @Specialization(guards = "isJSObject(rx)")
         protected Object match(DynamicObject rx, Object param,
                         @Cached("create()") JSToStringNode toString1Node,
-                        @Cached("create()") JSToStringNode toString2Node,
-                        @Cached("create()") JSToBooleanNode toBoolean1Node,
-                        @Cached("create()") JSToBooleanNode toBoolean2Node) {
+                        @Cached("create()") JSToStringNode toString2Node) {
             String s = toString1Node.executeString(param);
-            if (isGlobalProfile.profile(!toBoolean1Node.executeBoolean(getGlobalNode.getValue(rx)))) {
+            if (isGlobalProfile.profile(!getFlag(rx, getGlobalNode))) {
                 return getRegexExecIntlNode().execute(rx, s);
             } else {
-                boolean fullUnicode = toBoolean2Node.executeBoolean(getUnicodeNode.getValue(rx));
+                boolean fullUnicode = getFlag(rx, getUnicodeNode);
                 getSetLastIndexNode().setValue(rx, 0);
                 DynamicObject a = JSArray.createEmptyZeroLength(getContext());
                 int n = 0;
@@ -1131,6 +1145,101 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 matchAllIteratorNode = insert(new MatchAllIteratorNode(getContext()));
             }
             return matchAllIteratorNode;
+        }
+    }
+
+    public static final class RegExpPrototypeGetterBuiltins extends JSBuiltinsContainer.Switch {
+        protected RegExpPrototypeGetterBuiltins() {
+            super(JSRegExp.PROTOTYPE_GETTER_NAME);
+            defineFunction("get " + JSRegExp.FLAGS, 0);
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget) {
+            switch (builtin.getName()) {
+                case "get " + JSRegExp.FLAGS:
+                    return RegExpFlagsGetterNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Implements the RegExp.prototype.flags getter.
+     */
+    public abstract static class RegExpFlagsGetterNode extends JSBuiltinNode {
+        @Child private PropertyGetNode getGlobal;
+        @Child private PropertyGetNode getIgnoreCase;
+        @Child private PropertyGetNode getMultiline;
+        @Child private PropertyGetNode getDotAll;
+        @Child private PropertyGetNode getUnicode;
+        @Child private PropertyGetNode getSticky;
+        @Child private JSToBooleanNode toBoolean;
+
+        public RegExpFlagsGetterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.getGlobal = PropertyGetNode.create(JSRegExp.GLOBAL, context);
+            this.getIgnoreCase = PropertyGetNode.create(JSRegExp.IGNORE_CASE, context);
+            this.getMultiline = PropertyGetNode.create(JSRegExp.MULTILINE, context);
+            if (context.getEcmaScriptVersion() >= 9) {
+                this.getDotAll = PropertyGetNode.create(JSRegExp.DOT_ALL, context);
+            }
+            this.getUnicode = PropertyGetNode.create(JSRegExp.UNICODE, context);
+            this.getSticky = PropertyGetNode.create(JSRegExp.STICKY, context);
+        }
+
+        @Specialization(guards = "isJSObject(re)")
+        protected String doObject(DynamicObject re) {
+            char[] flags = new char[6];
+            int len = 0;
+            if (getFlag(re, getGlobal)) {
+                flags[len++] = 'g';
+            }
+            if (getFlag(re, getIgnoreCase)) {
+                flags[len++] = 'i';
+            }
+            if (getFlag(re, getMultiline)) {
+                flags[len++] = 'm';
+            }
+            if (getDotAll != null && getFlag(re, getDotAll)) {
+                flags[len++] = 's';
+            }
+            if (getFlag(re, getUnicode)) {
+                flags[len++] = 'u';
+            }
+            if (getFlag(re, getSticky)) {
+                flags[len++] = 'y';
+            }
+            if (len == 0) {
+                return "";
+            }
+            return newString(flags, len);
+        }
+
+        @TruffleBoundary(allowInlining = true)
+        private static String newString(char[] flags, int len) {
+            return new String(flags, 0, len);
+        }
+
+        @Specialization(guards = "!isJSObject(thisObj)")
+        protected String doNotObject(Object thisObj) {
+            throw Errors.createTypeErrorNotAnObject(thisObj);
+        }
+
+        private boolean getFlag(DynamicObject re, PropertyGetNode getNode) {
+            boolean flag;
+            if (toBoolean == null) {
+                try {
+                    flag = getNode.getValueBoolean(re);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    this.toBoolean = insert(JSToBooleanNode.create());
+                    flag = toBoolean.executeBoolean(e.getResult());
+                }
+            } else {
+                flag = toBoolean.executeBoolean(getNode.getValue(re));
+            }
+            return flag;
         }
     }
 }

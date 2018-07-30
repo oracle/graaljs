@@ -45,6 +45,7 @@ import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltins.FunctionPrototyp
 import com.oracle.truffle.js.builtins.GlobalBuiltins.GlobalNashornExtensionsBuiltins;
 import com.oracle.truffle.js.builtins.JavaBuiltins.JavaNashornCompatBuiltins;
 import com.oracle.truffle.js.builtins.PolyglotBuiltins.PolyglotInternalBuiltins;
+import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.RegExpPrototypeGetterBuiltins;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltins.StringPrototypeExtensionBuiltins;
 import com.oracle.truffle.js.builtins.math.MathBuiltins;
 import com.oracle.truffle.js.builtins.simd.SIMDBoolFunctionBuiltins;
@@ -57,8 +58,6 @@ import com.oracle.truffle.js.builtins.simd.SIMDTypePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
-import com.oracle.truffle.js.runtime.builtins.JSError;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionLookup;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -103,15 +102,16 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         defineBuiltins(new BooleanPrototypeBuiltins());
 
         defineBuiltins(new FunctionPrototypeBuiltins());
-        defineBuiltins(JSFunction.CLASS_NAME_NASHORN_COMPAT, new FunctionPrototypeNashornCompatBuiltins());
+        defineBuiltins(new FunctionPrototypeNashornCompatBuiltins());
 
         defineBuiltins(new DatePrototypeBuiltins());
         defineBuiltins(new DateFunctionBuiltins());
 
         defineBuiltins(new RegExpPrototypeBuiltins());
+        defineBuiltins(new RegExpPrototypeGetterBuiltins());
 
         defineBuiltins(new ErrorPrototypeBuiltins());
-        defineBuiltins(JSError.CLASS_NAME_NASHORN_COMPAT, new ErrorPrototypeNashornCompatBuiltins());
+        defineBuiltins(new ErrorPrototypeNashornCompatBuiltins());
         defineBuiltins(new ErrorFunctionBuiltins());
         defineBuiltins(new CallSitePrototypeBuiltins());
 
