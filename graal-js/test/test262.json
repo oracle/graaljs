@@ -512,10 +512,6 @@
     "status" : "SKIP",
     "comment" : "fails randomly, highly timing sensitive (sleep(5) + wait(10)), will be fixed by Test262 update"
   }, {
-    "filePath" : "built-ins/Atomics/wait/value-not-equal.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "built-ins/Atomics/wake/bigint/bad-range.js",
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
