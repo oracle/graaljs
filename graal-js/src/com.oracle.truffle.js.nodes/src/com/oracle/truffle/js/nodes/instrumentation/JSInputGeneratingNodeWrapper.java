@@ -38,46 +38,48 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.instrumentation.sourcesections;
+package com.oracle.truffle.js.nodes.instrumentation;
 
-import org.junit.Test;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode;
 
-public class ExpressionTest extends SourceSectionInstrumentationTest {
+public final class JSInputGeneratingNodeWrapper extends JavaScriptNode {
 
-    @Test
-    public void basicVarExpressions() {
-        evalExpressions("a = 3; b = 2; a + b;");
-        assertSourceSections(new String[]{
-                        "3",
-                        "a = 3",
-                        "2",
-                        "b = 2",
-                        "a",
-                        "b",
-                        "a + b",
-        });
+    @Child private JavaScriptNode delegate;
+
+    private JSInputGeneratingNodeWrapper(JavaScriptNode toWrap) {
+        this.delegate = toWrap;
     }
 
-    @Test
-    public void callExpression() {
-        evalExpressions("String('bla');");
-
-        assertSourceSections(new String[]{
-                        "String",
-                        "'bla'",
-                        "String('bla')",
-        });
+    public static JavaScriptNode create(JSConstantNode toWrap) {
+        JSInputGeneratingNodeWrapper wrapper = new JSInputGeneratingNodeWrapper(toWrap);
+        transferSourceSectionAndTags(toWrap, wrapper);
+        return wrapper;
     }
 
-    @Test
-    public void newExpression() {
-        evalExpressions("new String('bla');");
-
-        assertSourceSections(new String[]{
-                        "String",
-                        "'bla'",
-                        "new String('bla')",
-        });
+    @Override
+    public Object execute(VirtualFrame frame) {
+        return delegate.execute(frame);
     }
 
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == JSTags.InputNodeTag.class) {
+            return true;
+        } else {
+            return delegate.hasTag(tag);
+        }
+    }
+
+    @Override
+    public boolean isInstrumentable() {
+        return true;
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized() {
+        return new JSInputGeneratingNodeWrapper(cloneUninitialized(delegate));
+    }
 }

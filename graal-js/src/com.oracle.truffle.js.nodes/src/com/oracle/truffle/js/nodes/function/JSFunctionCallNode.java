@@ -82,6 +82,7 @@ import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
 import com.oracle.truffle.js.nodes.access.GlobalConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedTargetableExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
@@ -265,10 +266,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                     // if we have a target, no de-sugaring needed
                     return this;
                 } else {
-                    JavaScriptNode materializedTargetNode = JSConstantUndefinedNode.createUndefined();
+                    JavaScriptNode materializedTargetNode = JSInputGeneratingNodeWrapper.create(JSConstantUndefinedNode.createUndefined());
                     AbstractFunctionArgumentsNode materializedArgumentsNode = argumentsNode.copyUninitialized();
                     JavaScriptNode call = CallNode.create(functionNode, materializedTargetNode, materializedArgumentsNode, isNew(flags), isNewTarget(flags));
-                    transferSourceSectionAddExpressionTag(this, materializedTargetNode);
                     transferSourceSectionAndTags(this, call);
                     return call;
                 }
