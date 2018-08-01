@@ -466,4 +466,77 @@ public class CallAccessTest extends FineGrainedAccessTest {
         }).exit(assertJSObjectReturn);
     }
 
+    @Test
+    public void splitMaterializedCallTest() {
+        evalWithTag("function setKey(obj, keys) {" +
+                        "  obj.a;" +
+                        "  keys.slice(0, -1).forEach(function(key) {});" +
+                        "};" +
+                        "setKey({}, ['a']);" +
+                        "for(var i =0; i<2; i++) {" +
+                        "  setKey({a:1}, ['a']);" +
+                        "};", FunctionCallExpressionTag.class);
+
+        for (int i = 0; i < 3; i++) {
+            enter(FunctionCallExpressionTag.class, (e, call) -> {
+                call.input(assertUndefinedInput);
+                call.input(assertJSFunctionInput("setKey"));
+                call.input(assertJSObjectInput);
+                call.input(assertJSArrayInput);
+
+                enter(FunctionCallExpressionTag.class, (e1, call1) -> {
+                    enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                        call2.input(assertJSArrayInput);
+                        call2.input(assertJSFunctionInput("slice"));
+                        call2.input(0);
+                        call2.input(-1);
+                    }).exit();
+
+                    call1.input(assertJSArrayInput);
+                    call1.input(assertJSFunctionInput("forEach"));
+                    call1.input(assertJSFunctionInput);
+                }).exit();
+            }).exit();
+        }
+    }
+
+    @Test
+    public void splitMaterializedElementCallTest() {
+        evalWithTag("function setKey(obj, keys) {" +
+                        "  obj.a;\n" +
+                        "  keys.slice[0][1][2](0, -1).forEach(function(key) {});" +
+                        "};" +
+                        "const callable = {" +
+                        "  slice : [['',['','',function fakeslice() { return [1,2]; }]]]" +
+                        "};" +
+                        "setKey({}, callable);" +
+                        "for (var i = 0; i < 2; i++) {" +
+                        "  setKey({" +
+                        "    a: 1" +
+                        "  }, callable);" +
+                        "};", FunctionCallExpressionTag.class);
+
+        for (int i = 0; i < 3; i++) {
+            enter(FunctionCallExpressionTag.class, (e, call) -> {
+                call.input(assertUndefinedInput);
+                call.input(assertJSFunctionInput("setKey"));
+                call.input(assertJSObjectInput);
+                call.input(assertJSObjectInput);
+
+                enter(FunctionCallExpressionTag.class, (e1, call1) -> {
+                    enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                        call2.input(assertJSArrayInput);
+                        call2.input(assertJSFunctionInput("fakeslice"));
+                        call2.input(0);
+                        call2.input(-1);
+                    }).exit();
+
+                    call1.input(assertJSArrayInput);
+                    call1.input(assertJSFunctionInput("forEach"));
+                    call1.input(assertJSFunctionInput);
+                }).exit();
+            }).exit();
+        }
+    }
+
 }

@@ -401,7 +401,14 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             if (materializedTags.contains(FunctionCallExpressionTag.class) || materializedTags.contains(ReadPropertyExpressionTag.class) ||
                             materializedTags.contains(ReadElementExpressionTag.class)) {
                 AbstractFunctionArgumentsNode materializedArgumentsNode = getArgumentsNode().copyUninitialized();
-                JavaScriptNode call = new MaterializedInvokeNode(cloneUninitialized(getFunctionTargetNode()), materializedArgumentsNode, flags);
+                JSTargetableNode clonedTarget = cloneUninitialized(getFunctionTargetNode());
+                transferSourceSectionAddExpressionTag(this, clonedTarget);
+                JavaScriptNode[] clonedArgumentsNodes = materializedArgumentsNode.getJavaScriptArgumentNodes();
+                JavaScriptNode[] originalArgumentsNodes = getArgumentsNode().getJavaScriptArgumentNodes();
+                for (int i = 0; i < clonedArgumentsNodes.length; i++) {
+                    transferSourceSectionAddExpressionTag(originalArgumentsNodes[i], clonedArgumentsNodes[i]);
+                }
+                JavaScriptNode call = new MaterializedInvokeNode(clonedTarget, materializedArgumentsNode, flags);
                 transferSourceSectionAndTags(this, call);
                 return call;
             } else {
