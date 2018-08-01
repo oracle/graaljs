@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -203,24 +204,13 @@ public final class JSInteropNodeUtil {
         return keys;
     }
 
-    /**
-     * Best-effort "HAS" message: call read and see if UnknownIdentifierException is called, or not.
-     * A graal.js extension.
-     */
-    public static boolean hasProperty(TruffleObject obj, Object key, Node readNode) {
-        try {
-            ForeignAccess.sendRead(readNode, obj, key);
-            return true;
-        } catch (UnknownIdentifierException e) {
-            return false;
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, Message.READ, null);
-        }
+    public static boolean hasProperty(TruffleObject obj, Object key, Node keyInfoNode) {
+        return KeyInfo.isExisting(ForeignAccess.sendKeyInfo(keyInfoNode, obj, key));
     }
 
     @TruffleBoundary
     public static boolean hasProperty(TruffleObject obj, Object key) {
-        return hasProperty(obj, key, getReadNode());
+        return hasProperty(obj, key, JSInteropUtil.createKeyInfo());
     }
 
     /**
