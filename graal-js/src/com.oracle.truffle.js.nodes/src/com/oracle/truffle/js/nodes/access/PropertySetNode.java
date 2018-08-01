@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -1028,84 +1029,106 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
 
     public static final class ForeignPropertySetNode extends LinkedPropertySetNode {
 
-        @Child private Node foreignSet;
+        @Child private Node isNull;
+        @Child private Node keyInfo;
+        @Child private Node write;
         @Child private ExportValueNode export;
-        @Child private Node foreignSetterInvoke;
+        @Child private Node setterKeyInfo;
+        @Child private Node setterInvoke;
         private final JSContext context;
 
         public ForeignPropertySetNode(Object key, JSContext context) {
             super(key, new ForeignLanguageCheckNode());
             this.context = context;
-            this.foreignSet = Message.WRITE.createNode();
+            this.isNull = Message.IS_NULL.createNode();
+            this.keyInfo = Message.KEY_INFO.createNode();
+            this.write = Message.WRITE.createNode();
             this.export = ExportValueNode.create(context);
         }
 
         @Override
         public void setValueUncheckedInt(Object thisObj, int value, Object receiver, boolean condition) {
             TruffleObject truffleObject = (TruffleObject) thisObj;
-            try {
-                ForeignAccess.sendWrite(foreignSet, truffleObject, key, value);
-            } catch (UnknownIdentifierException e) {
-                if (context.isOptionNashornCompatibilityMode()) {
-                    tryInvokeSetter(truffleObject, value);
+            if (ForeignAccess.sendIsNull(isNull, truffleObject)) {
+                throw Errors.createTypeErrorCannotSetProperty(key, truffleObject, this);
+            }
+            if (KeyInfo.isWritable(ForeignAccess.sendKeyInfo(keyInfo, truffleObject, key))) {
+                try {
+                    ForeignAccess.sendWrite(write, truffleObject, key, value);
+                } catch (UnknownIdentifierException e) {
+                    // do nothing
+                } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                    throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
                 }
-                // do nothing
-            } catch (UnsupportedMessageException e) {
-                // do nothing
-            } catch (UnsupportedTypeException e) {
-                throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
+            } else if (context.isOptionNashornCompatibilityMode()) {
+                tryInvokeSetter(truffleObject, value);
             }
         }
 
         @Override
         public void setValueUncheckedDouble(Object thisObj, double value, Object receiver, boolean condition) {
             TruffleObject truffleObject = (TruffleObject) thisObj;
-            try {
-                ForeignAccess.sendWrite(foreignSet, truffleObject, key, value);
-            } catch (UnknownIdentifierException e) {
-                if (context.isOptionNashornCompatibilityMode()) {
-                    tryInvokeSetter(truffleObject, value);
+            if (ForeignAccess.sendIsNull(isNull, truffleObject)) {
+                throw Errors.createTypeErrorCannotSetProperty(key, truffleObject, this);
+            }
+            if (KeyInfo.isWritable(ForeignAccess.sendKeyInfo(keyInfo, truffleObject, key))) {
+                try {
+                    ForeignAccess.sendWrite(write, truffleObject, key, value);
+                } catch (UnknownIdentifierException e) {
+                    // do nothing
+                } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                    throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
                 }
-                // do nothing
-            } catch (UnsupportedMessageException e) {
-                // do nothing
-            } catch (UnsupportedTypeException e) {
-                throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
+            } else if (context.isOptionNashornCompatibilityMode()) {
+                tryInvokeSetter(truffleObject, value);
             }
         }
 
         @Override
         public void setValueUnchecked(Object thisObj, Object value, Object receiver, boolean condition) {
             TruffleObject truffleObject = (TruffleObject) thisObj;
+            if (ForeignAccess.sendIsNull(isNull, truffleObject)) {
+                throw Errors.createTypeErrorCannotSetProperty(key, truffleObject, this);
+            }
             Object boundValue = export.executeWithTarget(value, Undefined.instance);
-            try {
-                ForeignAccess.sendWrite(foreignSet, truffleObject, key, boundValue);
-            } catch (UnknownIdentifierException e) {
-                if (context.isOptionNashornCompatibilityMode()) {
-                    tryInvokeSetter((TruffleObject) thisObj, boundValue);
+            if (KeyInfo.isWritable(ForeignAccess.sendKeyInfo(keyInfo, truffleObject, key))) {
+                try {
+                    ForeignAccess.sendWrite(write, truffleObject, key, boundValue);
+                } catch (UnknownIdentifierException e) {
+                    // do nothing
+                } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                    throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
                 }
-                // do nothing
-            } catch (UnsupportedMessageException e) {
-                // do nothing
-            } catch (UnsupportedTypeException e) {
-                throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
+            } else if (context.isOptionNashornCompatibilityMode()) {
+                tryInvokeSetter(truffleObject, boundValue);
             }
         }
 
         // in nashorn-compat mode, `javaObj.xyz = a` can mean `javaObj.setXyz(a)`.
         private void tryInvokeSetter(TruffleObject thisObj, Object value) {
             assert context.isOptionNashornCompatibilityMode();
+            if (!(key instanceof String)) {
+                return;
+            }
             TruffleLanguage.Env env = context.getRealm().getEnv();
-            if (env.isHostObject(thisObj) && JSRuntime.isString(getKey())) {
-                if (foreignSetterInvoke == null) {
+            if (env.isHostObject(thisObj)) {
+                String setterKey = getAccessorKey("set");
+                if (setterKey == null) {
+                    return;
+                }
+                if (setterKeyInfo == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    foreignSetterInvoke = insert(Message.createInvoke(1).createNode());
+                    setterKeyInfo = insert(Message.KEY_INFO.createNode());
+                }
+                if (!KeyInfo.isInvocable(ForeignAccess.sendKeyInfo(setterKeyInfo, thisObj, setterKey))) {
+                    return;
+                }
+                if (setterInvoke == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    setterInvoke = insert(Message.createInvoke(1).createNode());
                 }
                 try {
-                    String setterKey = getAccessorKey("set");
-                    if (setterKey != null) {
-                        ForeignAccess.sendInvoke(foreignSetterInvoke, thisObj, setterKey, new Object[]{value});
-                    }
+                    ForeignAccess.sendInvoke(setterInvoke, thisObj, setterKey, new Object[]{value});
                 } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
                     // silently ignore
                 }
