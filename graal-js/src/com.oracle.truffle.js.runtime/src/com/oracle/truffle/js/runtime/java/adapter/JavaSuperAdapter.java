@@ -80,13 +80,10 @@ public final class JavaSuperAdapter implements TruffleObject {
         return JavaSuperAdapterForeign.ACCESS;
     }
 
-    @Resolve(message = "READ")
-    abstract static class ReadNode extends Node {
-        @Child private Node readNode = Message.READ.createNode();
+    private static final class NameCache {
         @CompilationFinal private Pair<String, String> cachedNameToSuper;
 
-        Object access(JavaSuperAdapter superAdapter, String name) {
-            String superMethodName;
+        String getSuperMethodName(String name) {
             if (cachedNameToSuper == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 cachedNameToSuper = Pair.create(name, JavaAdapterFactory.getSuperMethodName(name));
@@ -94,15 +91,25 @@ public final class JavaSuperAdapter implements TruffleObject {
             String cachedName = cachedNameToSuper.getLeft();
             if (cachedName != null) {
                 if (cachedName.equals(name)) {
-                    superMethodName = cachedNameToSuper.getRight();
+                    return cachedNameToSuper.getRight();
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     cachedNameToSuper = Pair.empty();
-                    superMethodName = JavaAdapterFactory.getSuperMethodName(name);
+                    return JavaAdapterFactory.getSuperMethodName(name);
                 }
             } else {
-                superMethodName = JavaAdapterFactory.getSuperMethodName(name);
+                return JavaAdapterFactory.getSuperMethodName(name);
             }
+        }
+    }
+
+    @Resolve(message = "READ")
+    abstract static class ReadNode extends Node {
+        @Child private Node readNode = Message.READ.createNode();
+        private final NameCache cache = new NameCache();
+
+        Object access(JavaSuperAdapter superAdapter, String name) {
+            String superMethodName = cache.getSuperMethodName(name);
             try {
                 return ForeignAccess.sendRead(readNode, (TruffleObject) superAdapter.getAdapter(), superMethodName);
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
@@ -114,31 +121,26 @@ public final class JavaSuperAdapter implements TruffleObject {
     @Resolve(message = "INVOKE")
     abstract static class InvokeNode extends Node {
         @Child private Node invokeNode = JSInteropUtil.INVOKE.createNode();
-        @CompilationFinal private Pair<String, String> cachedNameToSuper;
+        private final NameCache cache = new NameCache();
 
         Object access(JavaSuperAdapter superAdapter, String name, Object[] args) {
-            String superMethodName;
-            if (cachedNameToSuper == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                cachedNameToSuper = Pair.create(name, JavaAdapterFactory.getSuperMethodName(name));
-            }
-            String cachedName = cachedNameToSuper.getLeft();
-            if (cachedName != null) {
-                if (cachedName.equals(name)) {
-                    superMethodName = cachedNameToSuper.getRight();
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    cachedNameToSuper = Pair.empty();
-                    superMethodName = JavaAdapterFactory.getSuperMethodName(name);
-                }
-            } else {
-                superMethodName = JavaAdapterFactory.getSuperMethodName(name);
-            }
+            String superMethodName = cache.getSuperMethodName(name);
             try {
                 return ForeignAccess.sendInvoke(invokeNode, (TruffleObject) superAdapter.getAdapter(), superMethodName, args);
             } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
                 throw e.raise();
             }
+        }
+    }
+
+    @Resolve(message = "KEY_INFO")
+    abstract static class KeyInfoNode extends Node {
+        @Child private Node keyInfo = Message.KEY_INFO.createNode();
+        private final NameCache cache = new NameCache();
+
+        int access(JavaSuperAdapter superAdapter, String name) {
+            String superMethodName = cache.getSuperMethodName(name);
+            return ForeignAccess.sendKeyInfo(keyInfo, (TruffleObject) superAdapter.getAdapter(), superMethodName);
         }
     }
 }
