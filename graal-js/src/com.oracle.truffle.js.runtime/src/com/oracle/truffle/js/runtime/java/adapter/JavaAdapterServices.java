@@ -40,16 +40,20 @@
  */
 package com.oracle.truffle.js.runtime.java.adapter;
 
+import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.ID;
+
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 /**
  * Provides static utility services to generated Java adapter classes.
@@ -58,6 +62,7 @@ public final class JavaAdapterServices {
     private static final MethodHandle VALUE_EXECUTE_METHOD_HANDLE;
     private static final MethodHandle VALUE_EXECUTE_VOID_METHOD_HANDLE;
     private static final MethodHandle VALUE_AS_METHOD_HANDLE;
+    private static final Source HAS_OWN_PROPERTY_SOURCE = Source.newBuilder(ID, "(function(obj, name){return Object.prototype.hasOwnProperty.call(obj, name);})", "hasOwnProperty").buildLiteral();
     private static final ThreadLocal<Value> classOverrides = new ThreadLocal<>();
 
     static {
@@ -71,6 +76,7 @@ public final class JavaAdapterServices {
     }
 
     private JavaAdapterServices() {
+        assert !JSTruffleOptions.SubstrateVM;
     }
 
     /**
@@ -122,9 +128,9 @@ public final class JavaAdapterServices {
     }
 
     private static boolean hasOwnProperty(final Value obj, final String name) {
-        Value bindings = Context.getCurrent().getBindings("js");
+        Value hasOwnProperty = Context.getCurrent().eval(HAS_OWN_PROPERTY_SOURCE);
         try {
-            return bindings.getMember("Object").getMember("prototype").getMember("hasOwnProperty").getMember("call").execute(obj, name).asBoolean();
+            return hasOwnProperty.execute(obj, name).asBoolean();
         } catch (Exception e) {
             // probably due to monkey patching, ignore
             return false;
