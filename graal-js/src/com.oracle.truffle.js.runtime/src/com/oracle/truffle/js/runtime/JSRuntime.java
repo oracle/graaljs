@@ -1761,6 +1761,16 @@ public final class JSRuntime {
         return value instanceof String || isLazyString(value);
     }
 
+    public static String toStringIsString(Object value) {
+        assert isString(value);
+        if (value instanceof String) {
+            return (String) value;
+        } else {
+            assert isLazyString(value);
+            return ((JSLazyString) value).toString();
+        }
+    }
+
     /**
      * Is value is a {@link CharSequence} that lazily evaluates to a {@link String}).
      */
