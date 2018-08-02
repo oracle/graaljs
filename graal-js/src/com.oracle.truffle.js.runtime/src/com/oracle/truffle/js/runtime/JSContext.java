@@ -93,6 +93,7 @@ import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 import com.oracle.truffle.js.runtime.interop.DefaultJavaInteropWorker;
 import com.oracle.truffle.js.runtime.interop.DefaultJavaInteropWorker.DefaultMainWorker;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
+import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.joni.JoniRegexCompiler;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
@@ -256,6 +257,8 @@ public class JSContext implements ShapeContext {
     private final JSContextOptions contextOptions;
 
     private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
+
+    private volatile ClassValue<Class<?>> javaAdapterClasses;
 
     protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
         this.functionLookup = lookup;
@@ -1268,5 +1271,24 @@ public class JSContext implements ShapeContext {
 
     public JSContextOptions getContextOptions() {
         return contextOptions;
+    }
+
+    public Class<?> getJavaAdapterClassFor(Class<?> clazz) {
+        if (JSTruffleOptions.SubstrateVM) {
+            throw Errors.unsupported("JavaAdapter");
+        }
+        if (javaAdapterClasses == null) {
+            synchronized (this) {
+                if (javaAdapterClasses == null) {
+                    javaAdapterClasses = new ClassValue<Class<?>>() {
+                        @Override
+                        protected Class<?> computeValue(Class<?> type) {
+                            return JavaAdapterFactory.getAdapterClassFor(type);
+                        }
+                    };
+                }
+            }
+        }
+        return javaAdapterClasses.get(clazz);
     }
 }

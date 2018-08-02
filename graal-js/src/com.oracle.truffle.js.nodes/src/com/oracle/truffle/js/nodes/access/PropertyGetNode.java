@@ -54,6 +54,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -1159,10 +1160,12 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     public static final class ForeignPropertyGetNode extends LinkedPropertyGetNode {
 
         @Child private Node isNull;
-        @Child private Node foreignGet;
-        @Child private Node hasSizeProperty;
+        @Child private Node keyInfo;
+        @Child private Node read;
+        @Child private Node hasSize;
         @Child private Node getSize;
-        @Child private Node foreignGetterInvoke;
+        @Child private Node getterKeyInfo;
+        @Child private Node getterInvoke;
         @Child private JSForeignToJSTypeNode toJSType;
         private final boolean isLength;
         private final boolean isMethod;
@@ -1172,6 +1175,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         public ForeignPropertyGetNode(Object key, boolean isMethod, boolean isGlobal, JSContext context) {
             super(key, new ForeignLanguageCheckNode());
             this.context = context;
+            this.isNull = Message.IS_NULL.createNode();
+            this.keyInfo = Message.KEY_INFO.createNode();
             this.toJSType = JSForeignToJSTypeNodeGen.create();
             this.isLength = key.equals(JSAbstractArray.LENGTH);
             this.isMethod = isMethod;
@@ -1179,27 +1184,23 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
 
         private Object foreignGet(TruffleObject thisObj) {
-            if (isNull == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.isNull = insert(Message.IS_NULL.createNode());
-            }
             if (ForeignAccess.sendIsNull(isNull, thisObj)) {
                 throw Errors.createTypeErrorCannotGetProperty(key, thisObj, isMethod, this);
             }
-            if (foreignGet == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.foreignGet = insert(Message.READ.createNode());
-            }
             Object foreignResult;
-            try {
-                foreignResult = ForeignAccess.sendRead(foreignGet, thisObj, key);
-            } catch (UnknownIdentifierException e) {
-                if (context.isOptionNashornCompatibilityMode()) {
-                    foreignResult = tryInvokeGetter(thisObj);
-                } else {
+            if (KeyInfo.isReadable(ForeignAccess.sendKeyInfo(keyInfo, thisObj, key))) {
+                if (read == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    this.read = insert(Message.READ.createNode());
+                }
+                try {
+                    foreignResult = ForeignAccess.sendRead(read, thisObj, key);
+                } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                     return Undefined.instance;
                 }
-            } catch (UnsupportedMessageException e) {
+            } else if (context.isOptionNashornCompatibilityMode() && key instanceof String) {
+                foreignResult = tryInvokeGetter(thisObj);
+            } else {
                 return Undefined.instance;
             }
             return toJSType.executeWithTarget(foreignResult);
@@ -1210,10 +1211,6 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             assert context.isOptionNashornCompatibilityMode();
             TruffleLanguage.Env env = context.getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
-                if (foreignGetterInvoke == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    foreignGetterInvoke = insert(Message.createInvoke(0).createNode());
-                }
                 Object result = tryGetResult(thisObj, "get");
                 if (result != null) {
                     return result;
@@ -1227,9 +1224,23 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
 
         private Object tryGetResult(TruffleObject thisObj, String prefix) {
+            String getterKey = getAccessorKey(prefix);
+            if (getterKey == null) {
+                return null;
+            }
+            if (getterKeyInfo == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getterKeyInfo = insert(Message.KEY_INFO.createNode());
+            }
+            if (!KeyInfo.isInvocable(ForeignAccess.sendKeyInfo(getterKeyInfo, thisObj, getterKey))) {
+                return null;
+            }
+            if (getterInvoke == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getterInvoke = insert(Message.createInvoke(0).createNode());
+            }
             try {
-                String getterKey = getAccessorKey(prefix);
-                return ForeignAccess.sendInvoke(foreignGetterInvoke, thisObj, getterKey, new Object[]{});
+                return ForeignAccess.sendInvoke(getterInvoke, thisObj, getterKey, new Object[]{});
             } catch (UnknownIdentifierException e) {
                 return null;
             } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
@@ -1251,11 +1262,11 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
 
         private boolean hasSizeProperty(TruffleObject thisObj) {
-            if (hasSizeProperty == null) {
+            if (hasSize == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.hasSizeProperty = insert(Message.HAS_SIZE.createNode());
+                this.hasSize = insert(Message.HAS_SIZE.createNode());
             }
-            return ForeignAccess.sendHasSize(hasSizeProperty, thisObj);
+            return ForeignAccess.sendHasSize(hasSize, thisObj);
         }
 
         @Override
