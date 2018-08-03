@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -49,6 +50,7 @@ import com.oracle.truffle.js.runtime.BigInt;
  * using this node. Currently utilized in Number constructor, as a legal mean to get Numbers back
  * from BigInts.
  */
+@ReportPolymorphism
 public abstract class JSNumericToNumberNode extends JavaScriptBaseNode {
 
     public abstract Object executeObject(Object value);

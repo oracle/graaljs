@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -78,6 +79,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
  */
 @TypeSystemReference(IntToLongTypeSystem.class)
 @ImportStatic(value = {JSRuntime.class, JSInteropUtil.class})
+@ReportPolymorphism
 public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
 
     private final boolean hasOwnProperty;
