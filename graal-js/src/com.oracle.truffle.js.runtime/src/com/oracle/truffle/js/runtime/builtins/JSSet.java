@@ -90,6 +90,12 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
     private JSSet() {
     }
 
+    public static DynamicObject create(JSContext context) {
+        DynamicObject obj = JSObject.create(context, context.getSetFactory(), new JSHashMap());
+        assert isJSSet(obj);
+        return obj;
+    }
+
     public static Object normalize(Object value) {
         if (value instanceof Double) {
             return normalizeDouble((Double) value);
