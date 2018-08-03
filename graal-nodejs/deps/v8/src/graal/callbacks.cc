@@ -88,7 +88,11 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("sendAsyncHandle", "(J)V", &GraalSendAsyncHandle),
     CALLBACK("notifyPromiseHook", "(ILjava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyPromiseHook),
     CALLBACK("notifyPromiseRejectionTracker", "(Ljava/lang/Object;ILjava/lang/Object;)V", &GraalNotifyPromiseRejectionTracker),
-    CALLBACK("executeResolveCallback", "(JLjava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteResolveCallback)
+    CALLBACK("executeResolveCallback", "(JLjava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteResolveCallback),
+    CALLBACK("writeHostObject", "(JLjava/lang/Object;)V", &GraalWriteHostObject),
+    CALLBACK("readHostObject", "(J)Ljava/lang/Object;", &GraalReadHostObject),
+    CALLBACK("throwDataCloneError", "(JLjava/lang/String;)V", &GraalThrowDataCloneError),
+    CALLBACK("getSharedArrayBufferId", "(JLjava/lang/Object;)I", &GraalGetSharedArrayBufferId)
  };
 
 static const int CALLBACK_COUNT = sizeof(callbacks) / sizeof(*callbacks);
@@ -595,4 +599,39 @@ jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong call
         GraalModule* graal_module = reinterpret_cast<GraalModule*> (*v8_module);
         return env->NewLocalRef(graal_module->GetJavaObject());
     }
+}
+
+void GraalWriteHostObject(JNIEnv* env, jclass nativeAccess, jlong delegate, jobject java_object) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_object);
+    v8::Object* object = reinterpret_cast<v8::Object*> (graal_value);
+    v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    v8::ValueSerializer::Delegate* d = reinterpret_cast<v8::ValueSerializer::Delegate*> (delegate);
+    d->WriteHostObject(isolate, object);
+}
+
+jobject GraalReadHostObject(JNIEnv* env, jclass nativeAccess, jlong delegate) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    v8::ValueDeserializer::Delegate* d = reinterpret_cast<v8::ValueDeserializer::Delegate*> (delegate);
+    v8::Local<v8::Object> object = d->ReadHostObject(isolate).ToLocalChecked();
+    GraalValue* graal_value = reinterpret_cast<GraalValue*> (*object);
+    return env->NewLocalRef(graal_value->GetJavaObject());
+}
+
+void GraalThrowDataCloneError(JNIEnv* env, jclass nativeAccess, jlong delegate, jstring java_message) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    GraalString* graal_message = new GraalString(graal_isolate, java_message);
+    v8::String* message = reinterpret_cast<v8::String*> (graal_message);
+    v8::ValueSerializer::Delegate* d = reinterpret_cast<v8::ValueSerializer::Delegate*> (delegate);
+    d->ThrowDataCloneError(message);
+}
+
+jint GraalGetSharedArrayBufferId(JNIEnv* env, jclass nativeAccess, jlong delegate, jobject sharedArrayBuffer) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, sharedArrayBuffer);
+    v8::SharedArrayBuffer* object = reinterpret_cast<v8::SharedArrayBuffer*> (graal_value);
+    v8::ValueSerializer::Delegate* d = reinterpret_cast<v8::ValueSerializer::Delegate*> (delegate);
+    return d->GetSharedArrayBufferId(isolate, object).FromJust();
 }

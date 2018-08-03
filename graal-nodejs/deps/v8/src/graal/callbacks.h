@@ -136,4 +136,12 @@ void GraalNotifyPromiseRejectionTracker(JNIEnv* env, jclass nativeAccess, jobjec
 
 jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jstring java_specifier, jobject java_referrer);
 
+void GraalWriteHostObject(JNIEnv* env, jclass nativeAccess, jlong delegate, jobject java_object);
+
+jobject GraalReadHostObject(JNIEnv* env, jclass nativeAccess, jlong delegate);
+
+void GraalThrowDataCloneError(JNIEnv* env, jclass nativeAccess, jlong delegate, jstring java_message);
+
+jint GraalGetSharedArrayBufferId(JNIEnv* env, jclass nativeAccess, jlong delegate, jobject sharedArrayBuffer);
+
 #endif /* CALLBACKS_H_ */

@@ -195,10 +195,11 @@ import com.oracle.truffle.trufflenode.node.debug.MakeMirrorNode;
 import com.oracle.truffle.trufflenode.node.debug.PromiseStatusNode;
 import com.oracle.truffle.trufflenode.node.debug.PromiseValueNode;
 import com.oracle.truffle.trufflenode.node.debug.SetBreakPointNode;
+import com.oracle.truffle.trufflenode.serialization.Deserializer;
+import com.oracle.truffle.trufflenode.serialization.Serializer;
 
 /**
- *
- * @author Jan Stola
+ * Entry point for any access to the JavaScript engine from the native code.
  */
 @SuppressWarnings("static-method")
 public final class GraalJSAccess {
@@ -2095,7 +2096,11 @@ public final class GraalJSAccess {
     }
 
     public int objectInternalFieldCount(Object target) {
-        Object ret = ((DynamicObject) target).get(INTERNAL_FIELD_COUNT_KEY);
+        return internalFieldCount((DynamicObject) target);
+    }
+
+    public static int internalFieldCount(DynamicObject target) {
+        Object ret = target.get(INTERNAL_FIELD_COUNT_KEY);
         if (ret instanceof Integer) {
             return (int) ret;
         } else if (ret instanceof Double) {
@@ -2352,19 +2357,32 @@ public final class GraalJSAccess {
 
     public Object regexpNew(Object context, Object pattern, int flags) {
         JSContext jsContext = ((JSRealm) context).getContext();
-        TruffleObject compiledRegexp = RegexCompilerInterface.compile((String) pattern, regexpFlagsToString(flags), jsContext);
-        return JSRegExp.create(jsContext, compiledRegexp);
+        return regexpCreate(jsContext, (String) pattern, flags);
+    }
+
+    public static Object regexpCreate(JSContext context, String pattern, int v8Flags) {
+        TruffleObject compiledRegexp = RegexCompilerInterface.compile(pattern, regexpFlagsToString(v8Flags), context);
+        return JSRegExp.create(context, compiledRegexp);
     }
 
     @TruffleBoundary
     public String regexpGetSource(Object regexp) {
-        TruffleObject compiledRegex = JSRegExp.getCompiledRegex((DynamicObject) regexp);
+        return regexpPattern((DynamicObject) regexp);
+    }
+
+    public static String regexpPattern(DynamicObject regexp) {
+        assert JSRegExp.isJSRegExp(regexp);
+        TruffleObject compiledRegex = JSRegExp.getCompiledRegex(regexp);
         return STATIC_COMPILED_REGEX_ACCESSOR.pattern(compiledRegex);
     }
 
     @TruffleBoundary
     public int regexpGetFlags(Object regexp) {
-        TruffleObject compiledRegex = JSRegExp.getCompiledRegex((DynamicObject) regexp);
+        return regexpV8Flags((DynamicObject) regexp);
+    }
+
+    public static int regexpV8Flags(DynamicObject regexp) {
+        TruffleObject compiledRegex = JSRegExp.getCompiledRegex(regexp);
         TruffleObject flagsObj = STATIC_COMPILED_REGEX_ACCESSOR.flags(compiledRegex);
 
         int v8Flags = 0; // v8::RegExp::Flags::kNone
@@ -2548,6 +2566,86 @@ public final class GraalJSAccess {
 
     public int moduleGetIdentityHash(Object module) {
         return System.identityHashCode(module);
+    }
+
+    public Object valueSerializerNew(long delegatePointer) {
+        return new Serializer(delegatePointer);
+    }
+
+    public int valueSerializerSize(Object serializer) {
+        return ((Serializer) serializer).size();
+    }
+
+    public void valueSerializerRelease(Object serializer, Object targetBuffer) {
+        ((Serializer) serializer).release((ByteBuffer) targetBuffer);
+    }
+
+    public void valueSerializerWriteHeader(Object serializer) {
+        ((Serializer) serializer).writeHeader();
+    }
+
+    public void valueSerializerWriteValue(Object serializer, Object value) {
+        ((Serializer) serializer).writeValue(value);
+    }
+
+    public void valueSerializerWriteUint32(Object serializer, int value) {
+        ((Serializer) serializer).writeVarInt(Integer.toUnsignedLong(value));
+    }
+
+    public void valueSerializerWriteUint64(Object serializer, long value) {
+        ((Serializer) serializer).writeVarInt(value);
+    }
+
+    public void valueSerializerWriteDouble(Object serializer, double value) {
+        ((Serializer) serializer).writeDouble(value);
+    }
+
+    public void valueSerializerWriteRawBytes(Object serializer, Object bytes) {
+        ((Serializer) serializer).writeBytes((ByteBuffer) bytes);
+    }
+
+    public void valueSerializerSetTreatArrayBufferViewsAsHostObjects(Object serializer, boolean treatArrayBufferViewsAsHostObjects) {
+        ((Serializer) serializer).setTreatArrayBufferViewsAsHostObjects(treatArrayBufferViewsAsHostObjects);
+    }
+
+    public void valueSerializerTransferArrayBuffer(Object serializer, int id, Object arrayBuffer) {
+        ((Serializer) serializer).transferArrayBuffer(id, arrayBuffer);
+    }
+
+    public Object valueDeserializerNew(long delegate, Object buffer) {
+        return new Deserializer(delegate, (ByteBuffer) buffer);
+    }
+
+    public void valueDeserializerReadHeader(Object deserializer) {
+        ((Deserializer) deserializer).readHeader();
+    }
+
+    public Object valueDeserializerReadValue(Object context, Object deserializer) {
+        return ((Deserializer) deserializer).readValue(((JSRealm) context).getContext());
+    }
+
+    public int valueDeserializerReadUint32(Object deserializer) {
+        return ((Deserializer) deserializer).readVarInt();
+    }
+
+    public long valueDeserializerReadUint64(Object deserializer) {
+        return ((Deserializer) deserializer).readVarLong();
+    }
+
+    public double valueDeserializerReadDouble(Object deserializer) {
+        return ((Deserializer) deserializer).readDouble();
+    }
+
+    public int valueDeserializerReadRawBytes(Object deserializer, int length) {
+        return ((Deserializer) deserializer).readBytes(length);
+    }
+
+    public void valueDeserializerTransferArrayBuffer(Object deserializer, int id, Object arrayBuffer) {
+        ((Deserializer) deserializer).transferArrayBuffer(id, (DynamicObject) arrayBuffer);
+    }
+
+    public int valueDeserializerGetWireFormatVersion(Object deserializer) {
+        return ((Deserializer) deserializer).getWireFormatVersion();
     }
 
     private static class WeakCallback extends WeakReference<Object> {
