@@ -90,6 +90,7 @@ public class JSTruffleOptions {
 
     // Runtime options
     public static final boolean LazyStrings = booleanOption("LazyStrings", true);
+    public static final boolean RestrictForceSplittingBuiltins = booleanOption("RestrictForceSplittingBuiltins", false);
     public static final int MinLazyStringLength = integerOption("MinLazyStringLength", 20);
     public static final int ConcatToLeafLimit = integerOption("ConcatToLeafLimit", MinLazyStringLength / 2);
     public static final int MaxLoadCacheLength = integerOption("MaxLoadCacheLength", 0);
