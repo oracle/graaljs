@@ -349,8 +349,16 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
 
             CachedReadElementTypeCacheNode specialized = makeTypeCacheNode(target);
+            checkForPolymorphicSpecialize();
             this.replace(specialized);
             return specialized.executeWithTargetAndIndex(target, index);
+        }
+
+        private void checkForPolymorphicSpecialize() {
+            Node parent = getParent();
+            if (parent != null && parent instanceof ReadElementCacheNode) {
+                reportPolymorphicSpecialize();
+            }
         }
 
         @SuppressWarnings("unchecked")
@@ -763,6 +771,10 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 lock.lock();
                 purgeStaleCacheEntries(target);
                 this.replace(selection);
+                Node parent = getParent();
+                if (parent != null && parent instanceof CachedArrayReadElementCacheNode) {
+                    reportPolymorphicSpecialize();
+                }
             } finally {
                 lock.unlock();
             }
