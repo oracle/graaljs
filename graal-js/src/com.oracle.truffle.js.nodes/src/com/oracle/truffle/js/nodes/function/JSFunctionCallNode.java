@@ -445,8 +445,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         public final Object execute(VirtualFrame frame) {
             Object targetValue = executeTarget(frame);
             Object receiver = evaluateReceiver(frame, targetValue);
-
-            Object function = echo.executeWithTarget(frame, receiver);
+            Object function = echo.executeWithTarget(frame, targetValue);
             // Note that the arguments must not be evaluated before the target.
             return executeCall(createArguments(frame, receiver, function));
         }
@@ -478,7 +477,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected Object getPropertyKey() {
-            System.out.println(">");
             if (echo instanceof MaterializedTargetableNode) {
                 return maybeGetPropertyKey(echo);
             } else if (echo instanceof WrapperNode) {
@@ -490,7 +488,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         private static Object maybeGetPropertyKey(Node node) {
             if (node instanceof MaterializedTargetableNode) {
-                return ((MaterializedInvokeNode) node).getPropertyKey();
+                return ((MaterializedTargetableNode) node).getPropertyKey();
             } else if (node instanceof WrapperNode) {
                 return maybeGetPropertyKey(((WrapperNode) node).getDelegateNode());
             } else if (node instanceof PropertyNode) {

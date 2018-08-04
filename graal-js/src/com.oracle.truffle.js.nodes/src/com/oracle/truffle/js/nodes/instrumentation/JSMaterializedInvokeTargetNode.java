@@ -151,6 +151,7 @@ public abstract class JSMaterializedInvokeTargetNode extends JSTargetableNode {
         public TargetablePropertyNode(PropertyNode target) {
             this(target.getContext(), target.getPropertyKey());
             this.echo = new Echo();
+            this.setMethod();
         }
 
         @Override
