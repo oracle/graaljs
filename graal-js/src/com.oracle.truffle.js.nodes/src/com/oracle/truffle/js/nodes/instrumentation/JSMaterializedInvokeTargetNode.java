@@ -55,7 +55,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 
 public abstract class JSMaterializedInvokeTargetNode extends JSTargetableNode {
 
-    public static interface MaterializedTargetableNode {
+    public interface MaterializedTargetableNode {
 
         Object getPropertyKey();
     }
@@ -81,7 +81,13 @@ public abstract class JSMaterializedInvokeTargetNode extends JSTargetableNode {
             super(targetNode, indexNode, context);
         }
 
-        public TargetableElementNode(ReadElementNode from) {
+        protected TargetableElementNode(JavaScriptNode index, JSTargetableNode echo, JSContext context) {
+            super(null, null, context);
+            this.index = index;
+            this.echo = echo;
+        }
+
+        TargetableElementNode(ReadElementNode from) {
             this(null, null, from.getContext());
             this.index = from.getElement();
             this.echo = new Echo();
@@ -120,11 +126,31 @@ public abstract class JSMaterializedInvokeTargetNode extends JSTargetableNode {
         public Object getPropertyKey() {
             return null;
         }
+
+        @Override
+        protected JavaScriptNode copyUninitialized() {
+            return new TargetableElementNode(cloneUninitialized(index), cloneUninitialized(echo), context);
+        }
     }
 
     private static class TargetablePropertyNode extends PropertyNode implements MaterializedTargetableNode {
 
         @Child private JSTargetableNode echo;
+
+        protected TargetablePropertyNode(JSContext context, Object propertyKey) {
+            super(context, null, propertyKey);
+        }
+
+        protected TargetablePropertyNode(JSContext context, JSTargetableNode echo, Object propertyKey) {
+            this(context, propertyKey);
+            this.echo = echo;
+        }
+
+        TargetablePropertyNode(PropertyNode target) {
+            this(target.getContext(), target.getPropertyKey());
+            this.echo = new Echo();
+            this.setMethod();
+        }
 
         @Override
         public boolean isInstrumentable() {
@@ -144,22 +170,16 @@ public abstract class JSMaterializedInvokeTargetNode extends JSTargetableNode {
             return this;
         }
 
-        protected TargetablePropertyNode(JSContext context, Object propertyKey) {
-            super(context, null, propertyKey);
-        }
-
-        public TargetablePropertyNode(PropertyNode target) {
-            this(target.getContext(), target.getPropertyKey());
-            this.echo = new Echo();
-            this.setMethod();
-        }
-
         @Override
         public Object executeWithTarget(VirtualFrame frame, Object targetValue) {
             echo.executeWithTarget(frame, targetValue);
             return super.executeWithTarget(frame, targetValue);
         }
 
+        @Override
+        protected JavaScriptNode copyUninitialized() {
+            return new TargetablePropertyNode(getContext(), cloneUninitialized(echo), getPropertyKey());
+        }
     }
 
     private static class Echo extends JSTargetableNode {
@@ -187,6 +207,10 @@ public abstract class JSMaterializedInvokeTargetNode extends JSTargetableNode {
             throw new AssertionError();
         }
 
+        @Override
+        protected JavaScriptNode copyUninitialized() {
+            return new Echo();
+        }
     }
 
 }

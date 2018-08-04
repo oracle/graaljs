@@ -117,7 +117,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     @Child private JavaScriptNode targetNode;
     @Child private JavaScriptNode indexNode;
     @Child private ReadElementTypeCacheNode typeCacheNode;
-    private final JSContext context;
+    protected final JSContext context;
 
     @CompilationFinal private byte indexState;
     private static final byte INDEX_INT = 1;

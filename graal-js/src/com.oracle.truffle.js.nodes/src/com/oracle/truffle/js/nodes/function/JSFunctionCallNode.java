@@ -442,7 +442,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        public final Object execute(VirtualFrame frame) {
+        public Object execute(VirtualFrame frame) {
             Object targetValue = executeTarget(frame);
             Object receiver = evaluateReceiver(frame, targetValue);
             Object function = echo.executeWithTarget(frame, targetValue);
