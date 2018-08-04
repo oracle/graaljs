@@ -80,10 +80,10 @@ import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
-import com.oracle.truffle.js.nodes.instrumentation.JSMaterializedInvokeTargetNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSMaterializedInvokeTargetableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
-import com.oracle.truffle.js.nodes.instrumentation.JSMaterializedInvokeTargetNode.MaterializedTargetableNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSMaterializedInvokeTargetableNode.MaterializedTargetableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
@@ -398,7 +398,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             }
             if (materializedTags.contains(FunctionCallExpressionTag.class) || materializedTags.contains(ReadPropertyExpressionTag.class) ||
                             materializedTags.contains(ReadElementExpressionTag.class)) {
-                // TODO clone?
                 JavaScriptNode call = new MaterializedInvokeNode(functionTargetNode, argumentsNode, flags);
                 transferSourceSectionAndTags(this, call);
                 return call;
@@ -422,47 +421,52 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
      */
     static final class MaterializedInvokeNode extends InvokeNode {
 
-        @Child private JavaScriptNode target;
-        @Child private JSTargetableNode echo;
+        // node declaration order is used by the instrumentation framework to derive the index order
+        // for each instrumented data event. We must re-declare nodes and keep null ref in parent
+        // class to expose instrumentation events with the correct order.
+        @Child private JavaScriptNode callTargetNode;
+        @Child private JSTargetableNode functionReaderNode;
         @Child private AbstractFunctionArgumentsNode argumentsNode;
 
         protected MaterializedInvokeNode(JSTargetableNode functionTargetNode, AbstractFunctionArgumentsNode argumentsNode, byte flags) {
             super(flags);
-            this.target = cloneUninitialized(functionTargetNode.getTarget());
-            this.echo = JSMaterializedInvokeTargetNode.createFor(functionTargetNode);
+            this.callTargetNode = cloneUninitialized(functionTargetNode.getTarget());
+            this.functionReaderNode = JSMaterializedInvokeTargetableNode.createFor(functionTargetNode);
             this.argumentsNode = argumentsNode;
-            transferSourceSectionAddExpressionTag(functionTargetNode, echo);
+            transferSourceSectionAddExpressionTag(functionTargetNode, functionReaderNode);
         }
 
         private MaterializedInvokeNode(JSTargetableNode functionTargetNode, JavaScriptNode target, AbstractFunctionArgumentsNode argumentsNode, byte flags) {
             super(flags);
-            this.target = target;
-            this.echo = functionTargetNode;
+            this.callTargetNode = target;
+            this.functionReaderNode = functionTargetNode;
             this.argumentsNode = argumentsNode;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
+            // will report the 'target' value to the instrumentation framework
             Object targetValue = executeTarget(frame);
             Object receiver = evaluateReceiver(frame, targetValue);
-            Object function = echo.executeWithTarget(frame, targetValue);
-            // Note that the arguments must not be evaluated before the target.
+            // will report the 'function' value to the instrumentation framework
+            Object function = functionReaderNode.executeWithTarget(frame, targetValue);
+            // will report all arguments to the instrumentation framework
             return executeCall(createArguments(frame, receiver, function));
         }
 
         @Override
         public JSTargetableNode getFunctionTargetNode() {
-            return echo;
+            return functionReaderNode;
         }
 
         @Override
         public JavaScriptNode getTarget() {
-            return target;
+            return callTargetNode;
         }
 
         @Override
         protected Object executeTarget(VirtualFrame frame) {
-            return target.execute(frame);
+            return callTargetNode.execute(frame);
         }
 
         @Override
@@ -472,17 +476,17 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return new MaterializedInvokeNode(cloneUninitialized(echo), cloneUninitialized(target), AbstractFunctionArgumentsNode.cloneUninitialized(getArgumentsNode()), flags);
+            return new MaterializedInvokeNode(cloneUninitialized(functionReaderNode), cloneUninitialized(callTargetNode), AbstractFunctionArgumentsNode.cloneUninitialized(getArgumentsNode()), flags);
         }
 
         @Override
         protected Object getPropertyKey() {
-            if (echo instanceof MaterializedTargetableNode) {
-                return maybeGetPropertyKey(echo);
-            } else if (echo instanceof WrapperNode) {
-                return maybeGetPropertyKey(((WrapperNode) echo).getDelegateNode());
+            if (functionReaderNode instanceof MaterializedTargetableNode) {
+                return maybeGetPropertyKey(functionReaderNode);
+            } else if (functionReaderNode instanceof WrapperNode) {
+                return maybeGetPropertyKey(((WrapperNode) functionReaderNode).getDelegateNode());
             } else {
-                return maybeGetPropertyKey(echo);
+                return maybeGetPropertyKey(functionReaderNode);
             }
         }
 
@@ -496,7 +500,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             }
             return null;
         }
-
     }
 
     static class ExecuteCallNode extends JSFunctionCallNode {

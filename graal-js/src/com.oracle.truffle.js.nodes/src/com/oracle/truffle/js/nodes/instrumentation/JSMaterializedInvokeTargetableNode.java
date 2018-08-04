@@ -51,9 +51,28 @@ import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 
-public abstract class JSMaterializedInvokeTargetNode extends JSTargetableNode {
+/**
+ * Materialized nodes used by <code>MaterializedInvokeNode</code> to report JS function values to
+ * the instrumentation framework.
+ *
+ * By default, <code>InvokeNode</code> evaluates its target node in two separate steps: first, the
+ * node is evaluated to retrieve the <code>target</code> value. Then, the same node is evaluated via
+ * <code>executeWithTarget()</code> to retrieve the JS function instance to be called. The second
+ * evaluation via <code>executeWithTarget()</code> causes a read event (e.g., property read) that
+ * will be detected by the instrumentation framework. Since the target is already evaluated, such
+ * read event will however miss its <code>target</code> value, resulting in a wrong series of
+ * instrumentation events.
+ *
+ * The materialized nodes in this class internally re-evaluate the <code>target</code> value
+ * provided via <code>executeWithTarget()</code> using the internal <code>EchoTargetValueNode</code>
+ * . In this way, the instrumentation framework is able to trace <code>target</code> and report it
+ * correctly as an <code>onInput</code> value.
+ *
+ */
+public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNode {
 
     public interface MaterializedTargetableNode {
 
@@ -62,35 +81,55 @@ public abstract class JSMaterializedInvokeTargetNode extends JSTargetableNode {
 
     public static JSTargetableNode createFor(JSTargetableNode target) {
         if (target instanceof PropertyNode) {
-            return new TargetablePropertyNode((PropertyNode) target);
+            return new MaterializedTargetablePropertyNode((PropertyNode) target);
         } else if (target instanceof ReadElementNode) {
-            return new TargetableElementNode((ReadElementNode) target);
+            return new MaterializedTargetableReadElementNode((ReadElementNode) target);
         } else if (target instanceof GlobalConstantNode) {
             return target;
         } else {
-            throw new UnsupportedOperationException(target.getClass().getSimpleName());
+            // Unknown targetable node: we might need to implement a new materialized node for it.
+            throw Errors.shouldNotReachHere("Unsupported materialization node type: " + target.getClass());
         }
     }
 
-    private static class TargetableElementNode extends ReadElementNode implements MaterializedTargetableNode {
+    /**
+     * Materialized version of <code>ReadElementNode</code> to be used as a target node by
+     * <code>MaterializedInvokeNode</code>.
+     *
+     */
+    private static class MaterializedTargetableReadElementNode extends ReadElementNode implements MaterializedTargetableNode {
 
+        // node declaration order is used by the instrumentation framework to derive the index order
+        // for each instrumented data event. We must re-declare nodes and keep null ref in parent
+        // class to expose instrumentation events with the correct order.
         @Child private JSTargetableNode echo;
         @Child private JavaScriptNode index;
 
-        protected TargetableElementNode(JavaScriptNode targetNode, JavaScriptNode indexNode, JSContext context) {
+        protected MaterializedTargetableReadElementNode(JavaScriptNode targetNode, JavaScriptNode indexNode, JSContext context) {
             super(targetNode, indexNode, context);
         }
 
-        protected TargetableElementNode(JavaScriptNode index, JSTargetableNode echo, JSContext context) {
+        protected MaterializedTargetableReadElementNode(JavaScriptNode index, JSTargetableNode echo, JSContext context) {
             super(null, null, context);
             this.index = index;
             this.echo = echo;
         }
 
-        TargetableElementNode(ReadElementNode from) {
+        MaterializedTargetableReadElementNode(ReadElementNode from) {
             this(null, null, from.getContext());
             this.index = from.getElement();
-            this.echo = new Echo();
+            this.echo = new EchoTargetValueNode();
+        }
+
+        @Override
+        public Object executeWithTarget(VirtualFrame frame, Object targetValue) {
+            echo.executeWithTarget(frame, targetValue);
+            return super.executeWithTarget(frame, targetValue);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw Errors.shouldNotReachHere("Must use executeWithTarget()");
         }
 
         @Override
@@ -99,57 +138,67 @@ public abstract class JSMaterializedInvokeTargetNode extends JSTargetableNode {
         }
 
         @Override
-        public boolean isInstrumentable() {
-            return true;
-        }
-
-        @Override
-        public boolean hasTag(Class<? extends Tag> tag) {
-            if (tag == InputNodeTag.class) {
-                return true;
-            }
-            return super.hasTag(tag);
-        }
-
-        @Override
-        public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-            return this;
-        }
-
-        @Override
-        public Object executeWithTarget(VirtualFrame frame, Object targetValue) {
-            echo.executeWithTarget(frame, targetValue);
-            return super.executeWithTarget(frame, targetValue);
-        }
-
-        @Override
         public Object getPropertyKey() {
             return null;
         }
 
         @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            if (tag == InputNodeTag.class) {
+                return true;
+            }
+            return super.hasTag(tag);
+        }
+
+        @Override
+        public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+            return this;
+        }
+
+        @Override
         protected JavaScriptNode copyUninitialized() {
-            return new TargetableElementNode(cloneUninitialized(index), cloneUninitialized(echo), context);
+            return new MaterializedTargetableReadElementNode(cloneUninitialized(index), cloneUninitialized(echo), context);
         }
     }
 
-    private static class TargetablePropertyNode extends PropertyNode implements MaterializedTargetableNode {
+    /**
+     * Materialized version of <code>PropertyNode</code> to be used as a target node by
+     * <code>MaterializedInvokeNode</code>.
+     *
+     */
+    private static class MaterializedTargetablePropertyNode extends PropertyNode implements MaterializedTargetableNode {
 
         @Child private JSTargetableNode echo;
 
-        protected TargetablePropertyNode(JSContext context, Object propertyKey) {
+        protected MaterializedTargetablePropertyNode(JSContext context, Object propertyKey) {
             super(context, null, propertyKey);
         }
 
-        protected TargetablePropertyNode(JSContext context, JSTargetableNode echo, Object propertyKey) {
+        protected MaterializedTargetablePropertyNode(JSContext context, JSTargetableNode echo, Object propertyKey) {
             this(context, propertyKey);
             this.echo = echo;
         }
 
-        TargetablePropertyNode(PropertyNode target) {
+        MaterializedTargetablePropertyNode(PropertyNode target) {
             this(target.getContext(), target.getPropertyKey());
-            this.echo = new Echo();
+            this.echo = new EchoTargetValueNode();
             this.setMethod();
+        }
+
+        @Override
+        public Object executeWithTarget(VirtualFrame frame, Object targetValue) {
+            echo.executeWithTarget(frame, targetValue);
+            return super.executeWithTarget(frame, targetValue);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw Errors.shouldNotReachHere("Must use executeWithTarget()");
         }
 
         @Override
@@ -171,18 +220,27 @@ public abstract class JSMaterializedInvokeTargetNode extends JSTargetableNode {
         }
 
         @Override
-        public Object executeWithTarget(VirtualFrame frame, Object targetValue) {
-            echo.executeWithTarget(frame, targetValue);
-            return super.executeWithTarget(frame, targetValue);
-        }
-
-        @Override
         protected JavaScriptNode copyUninitialized() {
-            return new TargetablePropertyNode(getContext(), cloneUninitialized(echo), getPropertyKey());
+            return new MaterializedTargetablePropertyNode(getContext(), cloneUninitialized(echo), getPropertyKey());
         }
     }
 
-    private static class Echo extends JSTargetableNode {
+    /**
+     * Instrumentable node reporting to the instrumentation framework any value provided to
+     * <code>executeWithTarget()</code>.
+     *
+     */
+    private static class EchoTargetValueNode extends JSTargetableNode {
+
+        @Override
+        public Object executeWithTarget(VirtualFrame frame, Object target) {
+            return target;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw Errors.shouldNotReachHere("Must use executeWithTarget()");
+        }
 
         @Override
         public boolean isInstrumentable() {
@@ -198,18 +256,8 @@ public abstract class JSMaterializedInvokeTargetNode extends JSTargetableNode {
         }
 
         @Override
-        public Object executeWithTarget(VirtualFrame frame, Object target) {
-            return target;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            throw new AssertionError();
-        }
-
-        @Override
         protected JavaScriptNode copyUninitialized() {
-            return new Echo();
+            return new EchoTargetValueNode();
         }
     }
 
