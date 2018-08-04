@@ -211,4 +211,8 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
         }
         return null;
     }
+
+    public JSContext getContext() {
+        return cache.getContext();
+    }
 }
