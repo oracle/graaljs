@@ -90,6 +90,12 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
     private JSMap() {
     }
 
+    public static DynamicObject create(JSContext context) {
+        DynamicObject obj = JSObject.create(context, context.getMapFactory(), new JSHashMap());
+        assert isJSMap(obj);
+        return obj;
+    }
+
     public static JSHashMap getInternalMap(DynamicObject obj) {
         assert isJSMap(obj);
         return (JSHashMap) MAP_PROPERTY.get(obj, isJSMap(obj));

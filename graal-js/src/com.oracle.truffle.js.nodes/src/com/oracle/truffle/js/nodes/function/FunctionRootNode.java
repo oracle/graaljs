@@ -171,7 +171,7 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
         if (target == JSFunctionData.Target.Call) {
             CallTarget functionCallTarget;
             if (functionData.requiresNew()) {
-                functionCallTarget = Truffle.getRuntime().createCallTarget(factory.createConstructorRequiresNewRoot(functionData.getContext(), functionRoot.getSourceSection()));
+                functionCallTarget = Truffle.getRuntime().createCallTarget(factory.createConstructorRequiresNewRoot(functionData, functionRoot.getSourceSection()));
             } else {
                 if (functionData.needsNewTarget()) {
                     // functions that use new.target are wrapped with a delegating call target that

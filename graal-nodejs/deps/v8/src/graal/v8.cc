@@ -2409,135 +2409,219 @@ namespace v8 {
         return private_->desc.has_writable_;
     }
 
-    ValueSerializer::~ValueSerializer() {
-        TRACE
+    struct ValueSerializer::PrivateData {
+
+        PrivateData(Isolate* i, Delegate* d) : isolate(i), delegate(d) {
+            GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (i);
+            JNI_CALL(jobject, result, graal_isolate, GraalAccessMethod::value_serializer_new, Object, (jlong) d);
+            JNIEnv* env = graal_isolate->GetJNIEnv(); 
+            serializer = env->NewGlobalRef(result);
+            env->DeleteLocalRef(result);
+        }
+
+        ~PrivateData() {
+            GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+            graal_isolate->GetJNIEnv()->DeleteGlobalRef(serializer);
+        }
+
+        Isolate* isolate;
+        Delegate* delegate;
+        jobject serializer;
+    };
+
+    ValueSerializer::ValueSerializer(Isolate* isolate, Delegate* delegate) : private_(new PrivateData(isolate, delegate)) {
     }
 
-    ValueSerializer::ValueSerializer(Isolate* isolate, Delegate* delegate) {
-        TRACE
+    ValueSerializer::~ValueSerializer() {
+        delete private_;
     }
 
     void ValueSerializer::WriteUint32(uint32_t value) {
-        TRACE
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_serializer_write_uint32, private_->serializer, (jint) value);
     }
 
     void ValueSerializer::WriteUint64(uint64_t value) {
-        TRACE
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_serializer_write_uint64, private_->serializer, (jlong) value);
     }
 
     void ValueSerializer::WriteDouble(double value) {
-        TRACE
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_serializer_write_double, private_->serializer, (jdouble) value);
     }
 
     void ValueSerializer::WriteRawBytes(const void* source, size_t length) {
-        TRACE
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        jobject java_buffer = env->NewDirectByteBuffer(const_cast<void*> (source), length);
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_serializer_write_raw_bytes, private_->serializer, java_buffer);
+        env->DeleteLocalRef(java_buffer);
     }
 
     Maybe<bool> ValueSerializer::WriteValue(Local<Context> context, Local<Value> value) {
-        TRACE
-        return Nothing<bool>();
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        GraalValue* graal_value = reinterpret_cast<GraalValue*> (*value);
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_serializer_write_value, private_->serializer, graal_value->GetJavaObject());
+        return Just<bool>(true);
     }
 
     void ValueSerializer::SetTreatArrayBufferViewsAsHostObjects(bool mode) {
-        TRACE
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_serializer_set_treat_array_buffer_views_as_host_objects, private_->serializer, (jboolean) mode);
     }
 
     void ValueSerializer::TransferArrayBuffer(uint32_t transfer_id, Local<ArrayBuffer> array_buffer) {
-        TRACE
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        GraalValue* graal_value = reinterpret_cast<GraalValue*> (*array_buffer);
+        jobject java_value = graal_value->GetJavaObject();
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_serializer_transfer_array_buffer, private_->serializer, (jint) transfer_id, java_value);
     }
 
     std::pair<uint8_t*, size_t> ValueSerializer::Release() {
-        TRACE
-        return {nullptr, 0};
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        JNI_CALL(jint, size, graal_isolate, GraalAccessMethod::value_serializer_size, Int, private_->serializer);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        void* address = private_->delegate->ReallocateBufferMemory(nullptr, size, nullptr);
+        jobject buffer = env->NewDirectByteBuffer(address, size);
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_serializer_release, private_->serializer, buffer);
+        return {(uint8_t*) address, (size_t) size};
     }
 
     void ValueSerializer::WriteHeader() {
-        TRACE
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_serializer_write_header, private_->serializer);
     }
 
     Maybe<bool> ValueSerializer::Delegate::WriteHostObject(Isolate* isolate, Local<Object> object) {
-        TRACE
+        isolate->ThrowException(Exception::Error(String::NewFromUtf8(isolate, "Host object could not be cloned.")));
         return Nothing<bool>();
     }
 
     Maybe<uint32_t> ValueSerializer::Delegate::GetSharedArrayBufferId(Isolate* isolate, Local<SharedArrayBuffer> shared_array_buffer) {
-        TRACE
+        isolate->ThrowException(Exception::Error(String::NewFromUtf8(isolate, "#<SharedArrayBuffer> could not be cloned.")));
         return Nothing<uint32_t>();
     }
 
     Maybe<uint32_t> ValueSerializer::Delegate::GetWasmModuleTransferId(Isolate* isolate, Local<WasmCompiledModule> module) {
-        TRACE
+        isolate->ThrowException(Exception::Error(String::NewFromUtf8(isolate, "Wasm module could not be transferred.")));
         return Nothing<uint32_t>();
     }
 
     void* ValueSerializer::Delegate::ReallocateBufferMemory(void* old_buffer, size_t size, size_t* actual_size) {
-        TRACE
-        return nullptr;
+        if (actual_size) {
+            *actual_size = size;
+        }
+        void* address = realloc(old_buffer, size);
+        return address;
     }
 
     void ValueSerializer::Delegate::FreeBufferMemory(void* buffer) {
-        TRACE
+        return free(buffer);
     }
 
-    ValueDeserializer::ValueDeserializer(Isolate* isolate, const uint8_t* data, size_t size, Delegate* delegate) {
-        TRACE
+    struct ValueDeserializer::PrivateData {
+
+        PrivateData(Isolate* i, const uint8_t* data, size_t size, Delegate* d) : isolate(i), delegate(d) {
+            GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (i);
+            JNIEnv* env = graal_isolate->GetJNIEnv();
+            jobject buffer = env->NewDirectByteBuffer(const_cast<uint8_t*> (data), size);
+            JNI_CALL(jobject, result, graal_isolate, GraalAccessMethod::value_deserializer_new, Object, (jlong) d, buffer);
+            env->DeleteLocalRef(buffer);
+            deserializer = env->NewGlobalRef(result);
+            env->DeleteLocalRef(result);
+            this->data = data;
+        }
+
+        ~PrivateData() {
+            GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+            graal_isolate->GetJNIEnv()->DeleteGlobalRef(deserializer);
+        }
+
+        Isolate* isolate;
+        Delegate* delegate;
+        jobject deserializer;
+        const uint8_t* data;
+    };
+
+    ValueDeserializer::ValueDeserializer(Isolate* isolate, const uint8_t* data, size_t size, Delegate* delegate) : private_(new PrivateData(isolate, data, size, delegate)) {
     }
 
     ValueDeserializer::~ValueDeserializer() {
-        TRACE
+        delete private_;
     }
 
     Maybe<bool> ValueDeserializer::ReadHeader(Local<Context> context) {
-        TRACE
-        return Nothing<bool>();
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_deserializer_read_header, private_->deserializer);
+        return graal_isolate->GetJNIEnv()->ExceptionCheck() ? Nothing<bool>() : Just<bool>(true);
     }
 
     MaybeLocal<Value> ValueDeserializer::ReadValue(Local<Context> context) {
-        TRACE
-        return MaybeLocal<Value>();
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
+        JNI_CALL(jobject, java_value, graal_isolate, GraalAccessMethod::value_deserializer_read_value, Object, graal_context->GetJavaObject(), private_->deserializer);
+        GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_value);
+        Local<Value> v8_value = reinterpret_cast<Value*> (graal_value);
+        return v8_value;
     }
 
     bool ValueDeserializer::ReadDouble(double* value) {
-        TRACE
-        return false;
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        JNI_CALL(jdouble, result, graal_isolate, GraalAccessMethod::value_deserializer_read_double, Double, private_->deserializer);
+        *value = result;
+        return true;
     }
 
     bool ValueDeserializer::ReadUint32(uint32_t* value) {
-        TRACE
-        return false;
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        JNI_CALL(jint, result, graal_isolate, GraalAccessMethod::value_deserializer_read_uint32, Int, private_->deserializer);
+        *value = result;
+        return true;
     }
 
     bool ValueDeserializer::ReadUint64(uint64_t* value) {
-        TRACE
-        return false;
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        JNI_CALL(jlong, result, graal_isolate, GraalAccessMethod::value_deserializer_read_uint64, Long, private_->deserializer);
+        *value = result;
+        return true;
     }
 
     bool ValueDeserializer::ReadRawBytes(size_t length, const void** data) {
-        TRACE
-        return false;
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        JNI_CALL(jint, position, graal_isolate, GraalAccessMethod::value_deserializer_read_raw_bytes, Int, private_->deserializer, (jint) length);
+        *data = private_->data + position;
+        return true;
     }
 
     MaybeLocal<Object> ValueDeserializer::Delegate::ReadHostObject(Isolate* isolate) {
-        TRACE
+        isolate->ThrowException(Exception::Error(String::NewFromUtf8(isolate, "Host object could not be cloned.")));
         return MaybeLocal<Object>();
     }
 
     MaybeLocal<WasmCompiledModule> ValueDeserializer::Delegate::GetWasmModuleFromId(Isolate* isolate, uint32_t transfer_id) {
-        TRACE
+        isolate->ThrowException(Exception::Error(String::NewFromUtf8(isolate, "Wasm module could not be transferred.")));
         return MaybeLocal<WasmCompiledModule>();
     }
 
     uint32_t ValueDeserializer::GetWireFormatVersion() const {
-        TRACE
-        return 0;
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        JNI_CALL(jint, version, graal_isolate, GraalAccessMethod::value_deserializer_get_wire_format_version, Int, private_->deserializer);
+        return version;
     }
 
     void ValueDeserializer::TransferArrayBuffer(uint32_t transfer_id, Local<ArrayBuffer> array_buffer) {
-        TRACE
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        GraalValue* graal_value = reinterpret_cast<GraalValue*> (*array_buffer);
+        jobject java_value = graal_value->GetJavaObject();
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_deserializer_transfer_array_buffer, private_->deserializer, (jint) transfer_id, java_value);
     }
 
     void ValueDeserializer::TransferSharedArrayBuffer(uint32_t id, Local<SharedArrayBuffer> shared_array_buffer) {
-        TRACE
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
+        GraalValue* graal_value = reinterpret_cast<GraalValue*> (*shared_array_buffer);
+        jobject java_value = graal_value->GetJavaObject();
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_deserializer_transfer_array_buffer, private_->deserializer, (jint) id, java_value);
     }
 
     v8::platform::tracing::TraceObject::~TraceObject() {

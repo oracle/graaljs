@@ -145,4 +145,12 @@ public final class NativeAccess {
 
     public static native Object executeResolveCallback(long callback, Object context, String specifier, Object referrer);
 
+    public static native void writeHostObject(long delegate, Object object);
+
+    public static native Object readHostObject(long delegate);
+
+    public static native void throwDataCloneError(long delegate, String message);
+
+    public static native int getSharedArrayBufferId(long delegate, Object sharedArrayBuffer);
+
 }
