@@ -114,10 +114,10 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 public class ReadElementNode extends JSTargetableNode implements ReadNode {
-    @Child protected JavaScriptNode targetNode;
-    @Child protected JavaScriptNode indexNode;
-    @Child protected ReadElementTypeCacheNode typeCacheNode;
-    private final JSContext context;
+    @Child private JavaScriptNode targetNode;
+    @Child private JavaScriptNode indexNode;
+    @Child private ReadElementTypeCacheNode typeCacheNode;
+    protected final JSContext context;
 
     @CompilationFinal private byte indexState;
     private static final byte INDEX_INT = 1;
@@ -141,7 +141,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ReadElementExpressionTag.class) && materializationNeeded()) {
             JavaScriptNode clonedTarget = targetNode.hasSourceSection() ? cloneUninitialized(targetNode) : JSTaggedExecutionNode.createFor(targetNode, ExpressionTag.class);
-            JavaScriptNode clonedIndex = indexNode.hasSourceSection() ? cloneUninitialized(indexNode) : JSTaggedExecutionNode.createFor(indexNode, ExpressionTag.class);
+            JavaScriptNode clonedIndex = getIndexNode().hasSourceSection() ? cloneUninitialized(getIndexNode()) : JSTaggedExecutionNode.createFor(getIndexNode(), ExpressionTag.class);
             JavaScriptNode cloned = ReadElementNode.create(clonedTarget, clonedIndex, getContext());
             transferSourceSectionAndTags(this, cloned);
             transferSourceSectionAddExpressionTag(this, clonedTarget);
@@ -153,7 +153,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     private boolean materializationNeeded() {
         // Materialization is needed only if we don't have source sections.
-        return !(targetNode.hasSourceSection() && indexNode.hasSourceSection());
+        return !(targetNode.hasSourceSection() && getIndexNode().hasSourceSection());
     }
 
     @Override
@@ -189,7 +189,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     public Object executeWithTarget(VirtualFrame frame, Object target) {
         if (indexState == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            Object index = indexNode.execute(frame);
+            Object index = getIndexNode().execute(frame);
             if (index instanceof Integer) {
                 indexState = INDEX_INT;
                 return executeWithTargetAndIndex(target, (int) index);
@@ -201,7 +201,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         if (indexState == INDEX_INT) {
             int index;
             try {
-                index = indexNode.executeInt(frame);
+                index = getIndexNode().executeInt(frame);
             } catch (UnexpectedResultException e) {
                 indexState = INDEX_OBJECT;
                 return executeWithTargetAndIndex(target, e.getResult());
@@ -209,7 +209,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return executeWithTargetAndIndex(target, index);
         } else {
             assert indexState == INDEX_OBJECT;
-            Object index = indexNode.execute(frame);
+            Object index = getIndexNode().execute(frame);
             return executeWithTargetAndIndex(target, index);
         }
     }
@@ -217,7 +217,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     public int executeWithTargetInt(VirtualFrame frame, Object target) throws UnexpectedResultException {
         if (indexState == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            Object index = indexNode.execute(frame);
+            Object index = getIndexNode().execute(frame);
             if (index instanceof Integer) {
                 indexState = INDEX_INT;
                 return executeWithTargetAndIndexInt(target, (int) index);
@@ -229,7 +229,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         if (indexState == INDEX_INT) {
             int index;
             try {
-                index = indexNode.executeInt(frame);
+                index = getIndexNode().executeInt(frame);
             } catch (UnexpectedResultException e) {
                 indexState = INDEX_OBJECT;
                 return executeWithTargetAndIndexInt(target, e.getResult());
@@ -237,7 +237,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return executeWithTargetAndIndexInt(target, index);
         } else {
             assert indexState == INDEX_OBJECT;
-            Object index = indexNode.execute(frame);
+            Object index = getIndexNode().execute(frame);
             return executeWithTargetAndIndexInt(target, index);
         }
     }
@@ -245,7 +245,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     public double executeWithTargetDouble(VirtualFrame frame, Object target) throws UnexpectedResultException {
         if (indexState == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            Object index = indexNode.execute(frame);
+            Object index = getIndexNode().execute(frame);
             if (index instanceof Integer) {
                 indexState = INDEX_INT;
                 return executeWithTargetAndIndexDouble(target, (int) index);
@@ -257,7 +257,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         if (indexState == INDEX_INT) {
             int index;
             try {
-                index = indexNode.executeInt(frame);
+                index = getIndexNode().executeInt(frame);
             } catch (UnexpectedResultException e) {
                 indexState = INDEX_OBJECT;
                 return executeWithTargetAndIndexDouble(target, e.getResult());
@@ -265,7 +265,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return executeWithTargetAndIndexDouble(target, index);
         } else {
             assert indexState == INDEX_OBJECT;
-            Object index = indexNode.execute(frame);
+            Object index = getIndexNode().execute(frame);
             return executeWithTargetAndIndexDouble(target, index);
         }
     }
@@ -1548,7 +1548,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     public final JavaScriptNode getElement() {
-        return indexNode;
+        return getIndexNode();
     }
 
     public final JSContext getContext() {
@@ -1557,15 +1557,19 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(targetNode), cloneUninitialized(indexNode), getContext());
+        return create(cloneUninitialized(targetNode), cloneUninitialized(getIndexNode()), getContext());
     }
 
     @Override
     public String expressionToString() {
-        if (targetNode != null && indexNode != null) {
-            return Objects.toString(targetNode.expressionToString(), INTERMEDIATE_VALUE) + "[" + Objects.toString(indexNode.expressionToString(), INTERMEDIATE_VALUE) + "]";
+        if (targetNode != null && getIndexNode() != null) {
+            return Objects.toString(targetNode.expressionToString(), INTERMEDIATE_VALUE) + "[" + Objects.toString(getIndexNode().expressionToString(), INTERMEDIATE_VALUE) + "]";
         }
         return null;
+    }
+
+    public JavaScriptNode getIndexNode() {
+        return indexNode;
     }
 
 }

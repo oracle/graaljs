@@ -191,4 +191,38 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
         }).exit();
     }
 
+    @Test
+    public void nestedInvokeReads() {
+        evalWithTag("function setKey(obj, keys) {" +
+                        " obj.a;" +
+                        " keys.slice[0][1][2](0, -1).forEach(function(key) {});" +
+                        "};" +
+                        "const callable = {" +
+                        " slice : [['',['','',function fakeslice() { return [1,2]; }]]]" +
+                        "};" +
+                        "setKey({}, callable);" +
+                        "for (var i = 0; i < 2; i++) {" +
+                        " setKey({" +
+                        " a: 1" +
+                        " }, callable);" +
+                        "}", ReadElementExpressionTag.class);
+
+        for (int i = 0; i < 3; i++) {
+            // First to reads are to retrieve the invoke "target"
+            enter(ReadElementExpressionTag.class, (e, elem) -> {
+                enter(ReadElementExpressionTag.class, (e1, elem1) -> {
+                    elem1.input(assertJSArrayInput);
+                    elem1.input(0);
+                }).exit(assertJSObjectReturn);
+
+                elem.input(assertJSArrayInput);
+                elem.input(1);
+            }).exit(assertJSObjectReturn);
+            // Third read to retrieve the invoked function
+            enter(ReadElementExpressionTag.class, (e, elem) -> {
+                elem.input(assertJSArrayInput);
+                elem.input(2);
+            }).exit(assertJSFunctionReturn);
+        }
+    }
 }
