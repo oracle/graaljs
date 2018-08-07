@@ -6922,22 +6922,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "language/literals/regexp/invalid-optional-lookbehind.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/literals/regexp/invalid-optional-negative-lookbehind.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/literals/regexp/invalid-range-lookbehind.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/literals/regexp/invalid-range-negative-lookbehind.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "language/literals/regexp/u-surrogate-pairs-atom-escape-decimal.js",
     "status" : "FAIL",
     "comment" : "Back-references cause TRegex to bail out and then JONI is unable to cope with Unicode."
