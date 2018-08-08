@@ -1,6 +1,0 @@
-include_rules = [
-  "-include",
-  "+include/v8config.h",
-  "-src",
-  "+src/base",
-]
