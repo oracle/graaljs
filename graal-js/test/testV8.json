@@ -735,6 +735,10 @@
     "status" : "SKIP",
     "comment" : "Test that is supposed to pass only if we disable our implementation of Unicode property escapes."
   }, {
+    "filePath" : "mjsunit/harmony/regexp-property-script-extensions.js",
+    "status" : "FAIL",
+    "comment" : "Test based on outdated Unicode data."
+  }, {
     "filePath" : "mjsunit/harmony/regress/regress-4658.js",
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
