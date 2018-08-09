@@ -8,7 +8,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "e1be2d66073418facf953cbc2371b8538d41e42f",
+           "version" : "e02678bff9f526dd1576e61c072fa101e36775d3",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -43,11 +43,11 @@ suite = {
 
     "ICU4J" : {
       # automatic module
-      "sha1" : "6f06e820cf4c8968bbbaae66ae0b33f6a256b57f",
+      "sha1" : "7a4d00d5ec5febd252a6182e8b6e87a0a9821f81",
       "maven" : {
         "groupId" : "com.ibm.icu",
         "artifactId" : "icu4j",
-        "version" : "59.1",
+        "version" : "62.1",
       },
     },
 
