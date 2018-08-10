@@ -695,6 +695,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::value_deserializer_read_raw_bytes, "valueDeserializerReadRawBytes", "(Ljava/lang/Object;I)I")
     ACCESS_METHOD(GraalAccessMethod::value_deserializer_transfer_array_buffer, "valueDeserializerTransferArrayBuffer", "(Ljava/lang/Object;ILjava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::value_deserializer_get_wire_format_version, "valueDeserializerGetWireFormatVersion", "(Ljava/lang/Object;)I")
+    ACCESS_METHOD(GraalAccessMethod::map_new, "mapNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::map_set, "mapSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V")
 
     int root_offset = v8::internal::Internals::kIsolateRootsOffset / v8::internal::kApiPointerSize;
     slot[v8::internal::Internals::kExternalMemoryOffset / v8::internal::kApiPointerSize] = (void*) 0;

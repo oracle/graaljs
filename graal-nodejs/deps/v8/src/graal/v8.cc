@@ -49,6 +49,7 @@
 #include "graal_function.h"
 #include "graal_function_template.h"
 #include "graal_isolate.h"
+#include "graal_map.h"
 #include "graal_message.h"
 #include "graal_module.h"
 #include "graal_number.h"
@@ -60,6 +61,7 @@
 #include "graal_stack_frame.h"
 #include "graal_stack_trace.h"
 #include "graal_string.h"
+#include "graal_symbol.h"
 #include "graal_unbound_script.h"
 #include "graal_value.h"
 #include "v8.h"
@@ -68,7 +70,6 @@
 #include "src/base/once.h"
 #include "src/base/platform/mutex.h"
 #include "stdlib.h"
-#include "graal_symbol.h"
 #include <string.h>
 #include <string>
 
@@ -2872,13 +2873,11 @@ namespace v8 {
     }
 
     Local<Map> Map::New(Isolate* isolate) {
-        TRACE
-        return Local<Map>();
+        return GraalMap::New(isolate);
     }
 
     MaybeLocal<Map> Map::Set(Local<Context> context, Local<Value> key, Local<Value> value) {
-        TRACE
-        return MaybeLocal<Map>();
+        return reinterpret_cast<GraalMap*> (this)->Set(context, key, value);
     }
 
     void Object::CheckCast(v8::Value* obj) {}

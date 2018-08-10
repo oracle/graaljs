@@ -39,6 +39,7 @@
  * SOFTWARE.
  */
 
+#include "graal_isolate.h"
 #include "graal_map.h"
 
 GraalMap::GraalMap(GraalIsolate* isolate, jobject java_map) : GraalObject(isolate, java_map) {
@@ -50,4 +51,24 @@ GraalHandleContent* GraalMap::CopyImpl(jobject java_object_copy) {
 
 bool GraalMap::IsMap() const {
     return true;
+}
+
+v8::Local<v8::Map> GraalMap::New(v8::Isolate* isolate) {
+    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+    jobject java_context = graal_isolate->CurrentJavaContext();
+    JNI_CALL(jobject, java_map, graal_isolate, GraalAccessMethod::map_new, Object, java_context);
+    GraalMap* graal_map = new GraalMap(graal_isolate, java_map);
+    return reinterpret_cast<v8::Map*> (graal_map);
+}
+
+v8::MaybeLocal<v8::Map> GraalMap::Set(v8::Local<v8::Context> context, v8::Local<v8::Value> key, v8::Local<v8::Value> value) {
+    GraalValue* graal_map = reinterpret_cast<GraalValue*> (this);
+    GraalValue* graal_key = reinterpret_cast<GraalValue*> (*key);
+    GraalValue* graal_value = reinterpret_cast<GraalValue*> (*value);
+    GraalIsolate* graal_isolate = graal_map->Isolate();
+    jobject java_map = graal_map->GetJavaObject();
+    jobject java_key = graal_key->GetJavaObject();
+    jobject java_value = graal_value->GetJavaObject();
+    JNI_CALL_VOID(graal_isolate, GraalAccessMethod::map_set, java_map, java_key, java_value);
+    return v8::Local<v8::Map>(reinterpret_cast<v8::Map*> (this));
 }

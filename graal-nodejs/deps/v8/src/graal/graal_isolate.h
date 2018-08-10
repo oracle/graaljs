@@ -288,6 +288,8 @@ enum GraalAccessMethod {
     value_deserializer_read_raw_bytes,
     value_deserializer_transfer_array_buffer,
     value_deserializer_get_wire_format_version,
+    map_new,
+    map_set,
 
     count // Should be the last item of GraalAccessMethod
 };

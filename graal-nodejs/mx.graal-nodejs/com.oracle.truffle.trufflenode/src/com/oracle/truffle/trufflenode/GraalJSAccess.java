@@ -2648,6 +2648,16 @@ public final class GraalJSAccess {
         return ((Deserializer) deserializer).getWireFormatVersion();
     }
 
+    public Object mapNew(Object context) {
+        JSContext jsContext = ((JSRealm) context).getContext();
+        return JSMap.create(jsContext);
+    }
+
+    public void mapSet(Object set, Object key, Object value) {
+        DynamicObject object = (DynamicObject) set;
+        JSMap.getInternalMap(object).put(JSSet.normalize(key), value);
+    }
+
     private static class WeakCallback extends WeakReference<Object> {
 
         long data;
