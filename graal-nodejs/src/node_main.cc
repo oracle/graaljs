@@ -20,7 +20,9 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "node.h"
+#include <stdlib.h>
 #include <stdio.h>
+#include <pthread.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -91,7 +93,7 @@ namespace node {
   extern bool linux_at_secure;
 }  // namespace node
 
-int main(int argc, char* argv[]) {
+int main_orig(int argc, char *argv[]) {
 #if defined(__POSIX__) && defined(NODE_SHARED_MODE)
   // In node::PlatformInit(), we squash all signal handlers for non-shared lib
   // build. In order to run test cases against shared lib build, we also need
@@ -122,5 +124,76 @@ int main(int argc, char* argv[]) {
   setvbuf(stdout, nullptr, _IONBF, 0);
   setvbuf(stderr, nullptr, _IONBF, 0);
   return node::Start(argc, argv);
+}
+
+struct args {
+    int argc;
+    char** argv;
+    int ret;
+};
+typedef struct args args_t;
+
+void* main_new_thread(void* args) {
+    args_t* arguments = reinterpret_cast<args_t*> (args);
+    arguments->ret = node::Start(arguments->argc, arguments->argv);
+    return reinterpret_cast<void*> (&arguments->ret);
+}
+
+int main(int argc, char *argv[]) {
+    bool update_env = false;
+    long stack_size = node::GraalArgumentsPreprocessing(argc, argv);
+    if (stack_size <= 0) {
+        char* stack_size_str = getenv("NODE_STACK_SIZE");
+        if (stack_size_str != nullptr) {
+            stack_size = strtol(stack_size_str, nullptr, 10);
+        }
+    } else {
+        // stack size specified on the command line (using --jvm/native.Xss<value>)
+        update_env = true;
+    }
+    if (stack_size <= 0) {
+        // stack size not specified using env. variable or arguments
+        update_env = true;
+        stack_size = 2*1024*1024;
+    }
+    if (update_env) { // NODE_STACK_SIZE is read elsewhere as well and propagated to child processes
+        char buffer[32];
+        snprintf(buffer, sizeof(buffer), "%ld", stack_size);
+        setenv("NODE_STACK_SIZE", buffer, 1);
+    }
+#if defined(__sparc__) && defined(__linux__)
+/**
+ * On Linux/SPARC we cannot run graal-nodejs from the main thread.
+ *
+ * The memory layout here looks like:
+ * +-------+ <- Low Address
+ * | Heap  |
+ * |   |   |
+ * |   v   |
+ * +-------+
+ * |   ^   |
+ * |   |   |
+ * | Stack |
+ * +-------+ <- High Address
+ * HotSpot tries to allocate guard pages somewhere between heap and stack.
+ * The OS does not allow mmap in this area between heap and stack.
+ */
+    if (1) {
+#else
+    if (stack_size > 0) {
+#endif
+        args_t arguments = {argc, argv, 0};
+        void* ret;
+        pthread_t tid;
+        pthread_attr_t attr;
+
+        pthread_attr_init(&attr);
+        pthread_attr_setstacksize(&attr, (size_t) stack_size);
+        pthread_create(&tid, &attr, main_new_thread, &arguments);
+        pthread_join(tid, &ret);
+        return *reinterpret_cast<int*> (ret);
+    } else {
+        return main_orig(argc, argv);
+    }
 }
 #endif

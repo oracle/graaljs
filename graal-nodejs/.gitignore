@@ -14,9 +14,11 @@
 !.mailmap
 !.nycrc
 !.remarkrc
+!.checkstyle_checks.xml
 !.travis.yml
 
 core
+*.jar
 vgcore.*
 v8*.log
 perf.data
@@ -30,8 +32,8 @@ tmp/
 test/tmp*/
 iojs
 iojs_g
-node
-node_g
+/node
+/node_g
 *.swp
 .benchmark_reports
 icu_config.gypi
@@ -39,12 +41,14 @@ icu_config.gypi
 node_trace.*.log
 coverage/
 
+/nbproject/private
 /out
 
 # various stuff that VC++ produces/uses
 Debug/
 !**/node_modules/debug/
 !deps/v8/src/debug/
+!**/src/main/java/**/debug/
 Release/
 !doc/blog/**
 *.sln
@@ -112,10 +116,36 @@ tools/remark-cli/node_modules
 tools/remark-preset-lint-node/node_modules
 icu_config.gypi
 *.tap
+/test/graal/node_modules/
+/test/graal/build/
 
 # Xcode workspaces and project folders
 *.xcodeproj
 *.xcworkspace
+/trufflenode/target/
+/trufflenode/nbproject/
+
+/graalvm
+/workingsets.xml
+.classpath
+.externalToolBuilders
+.factorypath
+.metadata/
+.project
+.settings/
+eclipse-launches
+env
+/mxbuild/
+/build/
+/svmbuild/
+.idea/
+*.iml
+mx.graal-nodejs/com.oracle.truffle.trufflenode/build.xml
+mx.graal-nodejs/com.oracle.truffle.trufflenode/nbproject/
+mx.graal-nodejs/com.oracle.truffle.trufflenode.jniboundaryprofiler/build.xml
+mx.graal-nodejs/com.oracle.truffle.trufflenode.jniboundaryprofiler/nbproject/
+mx.graal-nodejs/com.oracle.truffle.trufflenode.jniboundaryprofiler/tests/build/
+/eclipseformat.backup.zip
 
 # libuv book and GitHub template
 deps/uv/.github/

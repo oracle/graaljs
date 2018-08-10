@@ -127,6 +127,10 @@
             'cflags': [ '-fPIE' ],
             'ldflags': [ '-fPIE', '-pie' ]
           }],
+          ['target_arch=="sparcv9"', {
+            'cflags': [ '-m64' ],
+            'ldflags': [ '-m64' ]
+          }],
           ['node_shared=="true"', {
             'msvs_settings': {
              'VCCLCompilerTool': {
@@ -191,6 +195,10 @@
           ['OS == "android"', {
             'cflags': [ '-fPIE' ],
             'ldflags': [ '-fPIE', '-pie' ]
+          }],
+          ['target_arch=="sparcv9"', {
+            'cflags': [ '-m64' ],
+            'ldflags': [ '-m64' ]
           }],
           ['node_shared=="true"', {
             'msvs_settings': {

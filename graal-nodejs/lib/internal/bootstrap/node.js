@@ -37,6 +37,28 @@
 
     setupProcessObject();
 
+    // graal-node.js patch start
+    if (process._breakFirstLine) {
+      process.binding('inspector').callAndPauseOnStart = function(fn, self, ...args) {
+        const Debug = NativeModule.require('vm').runInDebugContext('Debug');
+        Debug.setBreakPoint(fn, 0, 0, undefined, true);
+        return fn.apply(self, args);
+      }
+    }
+
+    if (typeof Packages !== 'undefined') {
+      Packages[Symbol.toStringTag] = 'Packages'; // breaking isRhino check of acorn package
+
+      // Keep track of thread-based execution
+      if (Packages.java.lang.System.getProperty("node.cluster.threading") === 'true') {
+        process.__node_cluster_threading = true;
+      }
+    }
+    if (typeof Debug === 'undefined') {
+        Object.defineProperty(global, 'Debug', { configurable: true, writable: true });
+    }
+    // graal-node.js patch end
+
     // Do this good and early, since it handles errors.
     setupProcessFatal();
 
@@ -234,6 +256,14 @@
         cluster._setupWorker();
         // Make sure it's not accidentally inherited by child processes.
         delete process.env.NODE_UNIQUE_ID;
+      } else {
+        if (process.__node_cluster_threading) {
+          // When using threads, we need to init JNI bindings and extra classes
+          if (!process._graalThreadingInit) {
+            console.log("cannot init threading support. build with --enable-threading");
+          }
+          process._graalThreadingInit();
+        }
       }
 
       if (process._eval != null && !process._forceRepl) {

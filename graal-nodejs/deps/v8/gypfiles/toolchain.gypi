@@ -290,6 +290,11 @@
           'V8_TARGET_ARCH_ARM64',
         ],
       }],
+      ['v8_target_arch=="sparcv9"', {
+        'defines': [
+          'V8_TARGET_ARCH_SPARCV9',
+        ],
+      }],
       ['v8_target_arch=="s390" or v8_target_arch=="s390x"', {
         'defines': [
           'V8_TARGET_ARCH_S390',

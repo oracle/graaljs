@@ -68,7 +68,7 @@ parser = optparse.OptionParser()
 valid_os = ('win', 'mac', 'solaris', 'freebsd', 'openbsd', 'linux',
             'android', 'aix', 'cloudabi')
 valid_arch = ('arm', 'arm64', 'ia32', 'mips', 'mipsel', 'mips64el', 'ppc',
-              'ppc64', 'x32','x64', 'x86', 'x86_64', 's390', 's390x')
+              'ppc64', 'x32','x64', 'x86', 'x86_64', 's390', 's390x', 'sparcv9')
 valid_arm_float_abi = ('soft', 'softfp', 'hard')
 valid_arm_fpu = ('vfp', 'vfpv3', 'vfpv3-d16', 'neon')
 valid_mips_arch = ('loongson', 'r1', 'r2', 'r6', 'rx')
@@ -233,6 +233,41 @@ shared_optgroup.add_option('--shared-libuv-libpath',
     action='store',
     dest='shared_libuv_libpath',
     help='a directory to search for the shared libuv DLL')
+
+shared_optgroup.add_option('--shared-graalvm',
+    action='store',
+    dest='shared_graalvm',
+    help='a directory where GraalVM is installed')
+
+shared_optgroup.add_option('--shared-trufflejs',
+    action='store',
+    dest='shared_trufflejs',
+    help='JAR file with trufflejs.jar implementation. By default derived from --shared-graalvm setting')
+
+shared_optgroup.add_option('--enable-shared-library',
+    action='store_true',
+    dest='enable_shared_library',
+    help='build as a shared library with JNI support')
+
+shared_optgroup.add_option('--enable-threading',
+    action='store_true',
+    dest='enable_threading',
+    help='enable support for spawning uv loops using threads')
+
+shared_optgroup.add_option('--svm',
+    action='store_true',
+    dest='svm',
+    help='build binary for svm image')
+
+shared_optgroup.add_option('--build-only-native',
+    action='store_true',
+    dest='build_only_native',
+    help='build only the native parts, do not build the Java parts')
+
+shared_optgroup.add_option('--production',
+    action='store_true',
+    dest='build_production',
+    help='production build')
 
 shared_optgroup.add_option('--shared-nghttp2',
     action='store_true',
@@ -403,7 +438,7 @@ parser.add_option('--with-etw',
 intl_optgroup.add_option('--with-intl',
     action='store',
     dest='with_intl',
-    default='small-icu',
+    default='none',
     choices=valid_intl_modes,
     help='Intl mode (valid choices: {0}) [default: %default]'.format(
         ', '.join(valid_intl_modes)))
@@ -813,8 +848,8 @@ def is_arm_hard_float_abi():
 
 def host_arch_cc():
   """Host architecture check using the CC command."""
-
-  if sys.platform.startswith('aix'):
+  import platform
+  if sys.platform.startswith('aix') or platform.processor() == "sparc":
     # we only support gcc at this point and the default on AIX
     # would be xlc so hard code gcc
     k = cc_macros('gcc')
@@ -832,6 +867,7 @@ def host_arch_cc():
     '__x86_64__'  : 'x64',
     '__s390__'    : 's390',
     '__s390x__'   : 's390x',
+    '__sparc__' : 'sparcv9',
   }
 
   rtn = 'ia32' # default
@@ -980,6 +1016,47 @@ def configure_node(o):
   if options.no_ifaddrs:
     o['defines'] += ['SUNOS_NO_IFADDRS']
 
+  # graalvm check
+  if not options.shared_graalvm:
+    raise Exception('provide path to GraalVM via --shared-graalvm=path_to_the_vm')
+
+  trufflejs = options.shared_trufflejs
+  if not trufflejs:
+    trufflejs = options.shared_graalvm + '/jre/language/js/trufflejs.jar'
+
+  if not os.path.exists(trufflejs):
+    raise Exception('cannot find ' + trufflejs + ' is ' + options.shared_graalvm + ' correct path?')
+
+  o['variables']['graalvm'] = options.shared_graalvm
+  o['variables']['trufflejs'] = trufflejs
+
+  # production build
+  if options.build_production:
+    o['variables']['node_production'] = 'true'
+
+  # shared library
+  if options.enable_shared_library:
+    o['variables']['node_target_type'] = 'shared_library'
+    o['cflags'] += ['-fPIC']
+
+  jniroot = options.shared_graalvm + '/include'
+  # threading support via JNI
+  if options.enable_threading:
+    if flavor == 'mac':
+      jnilinux = jniroot + '/darwin'
+    if flavor == 'linux':
+      jnilinux = jniroot + '/linux'
+    if not os.path.exists(jniroot):
+      raise Exception('cannot find ' + jniroot)
+    o['include_dirs'] += [jniroot]
+    o['include_dirs'] += [jnilinux]
+    o['variables']['node_enable_threading'] = b(True)
+
+  if options.build_only_native:
+    o['variables']['node_build_only_native'] = 'true'
+
+  o['variables']['svm'] = b(options.svm)
+
   # By default, enable ETW on Windows.
   if flavor == 'win':
     o['variables']['node_use_etw'] = b(not options.without_etw)
@@ -1046,6 +1123,7 @@ def configure_node(o):
     o['variables']['library_files'] = options.linked_module
 
   o['variables']['asan'] = int(options.enable_asan or 0)
+  o['variables']['v8_inspector'] = 'false'
 
   if options.coverage:
     o['variables']['coverage'] = 'true'

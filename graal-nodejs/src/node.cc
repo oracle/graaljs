@@ -1224,7 +1224,8 @@ static void Exit(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   WaitForInspectorDisconnect(env);
   v8_platform.StopTracingAgent();
-  env->Exit(args[0]->Int32Value());
+//  env->Exit(args[0]->Int32Value());
+  args.GetIsolate()->Dispose(true, args[0]->Int32Value());
 }
 
 extern "C" void node_module_register(void* m) {
@@ -1423,16 +1424,26 @@ static void DLOpen(const FunctionCallbackInfo<Value>& args) {
   }
 
   // -1 is used for N-API modules
-  if ((mp->nm_version != -1) && (mp->nm_version != NODE_MODULE_VERSION)) {
-    // Even if the module did self-register, it may have done so with the wrong
-    // version. We must only give up after having checked to see if it has an
-    // appropriate initializer callback.
-    if (auto callback = GetInitializerCallback(&dlib)) {
-      callback(exports, module, context);
-      return;
-    }
+  if ((mp->nm_version != -1) && (mp->nm_version != -NODE_MODULE_VERSION)) {
     char errmsg[1024];
-    snprintf(errmsg,
+    if (mp->nm_version == NODE_MODULE_VERSION) {
+        snprintf(errmsg,
+             sizeof(errmsg),
+             "Native module '%s' is compiled against the original Node.js!\n"
+             "Use '--nodedir=<GraalVMHome>/jre/languages/js' option of 'npm install' "
+             "(resp. 'node-gyp') for the compilation against Graal-Node.js.\n"
+             "If the native module is downloaded by 'node-pre-gyp' then use also "
+             "'--build-from-source' option (to force the compilation).",
+             *filename);
+    } else {
+      // Even if the module did self-register, it may have done so with the wrong
+      // version. We must only give up after having checked to see if it has an
+      // appropriate initializer callback.
+      if (auto callback = GetInitializerCallback(&dlib)) {
+        callback(exports, module, context);
+        return;
+      }
+      snprintf(errmsg,
              sizeof(errmsg),
              "The module '%s'"
              "\nwas compiled against a different Node.js version using"
@@ -1440,7 +1451,8 @@ static void DLOpen(const FunctionCallbackInfo<Value>& args) {
              "\nNODE_MODULE_VERSION %d. Please try re-compiling or "
              "re-installing\nthe module (for instance, using `npm rebuild` "
              "or `npm install`).",
-             *filename, mp->nm_version, NODE_MODULE_VERSION);
+             *filename, mp->nm_version, -NODE_MODULE_VERSION);
+    }
 
     // NOTE: `mp` is allocated inside of the shared library's memory, calling
     // `dlclose` will deallocate it
@@ -2381,6 +2393,10 @@ void SetupProcessObject(Environment* env,
     env->SetMethod(process, "abort", Abort);
     env->SetMethod(process, "chdir", Chdir);
     env->SetMethod(process, "umask", Umask);
+
+#ifdef GRAAL_ENABLE_THREADING
+  env->SetMethod(process, "_graalThreadingInit", GraalThreadingInit);
+#endif
   }
   env->SetMethod(process, "_getActiveRequests", GetActiveRequests);
   env->SetMethod(process, "_getActiveHandles", GetActiveHandles);
@@ -2861,9 +2877,9 @@ static void ParseArgs(int* argc,
     } else if (strcmp(arg, "--version") == 0 || strcmp(arg, "-v") == 0) {
       printf("%s\n", NODE_VERSION);
       exit(0);
-    } else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0) {
-      PrintHelp();
-      exit(0);
+//    } else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0) {
+//      PrintHelp();
+//      exit(0);
     } else if (strcmp(arg, "--eval") == 0 ||
                strcmp(arg, "-e") == 0 ||
                strcmp(arg, "--print") == 0 ||
@@ -2920,8 +2936,7 @@ static void ParseArgs(int* argc,
     } else if (strcmp(arg, "--no-force-async-hooks-checks") == 0) {
       no_force_async_hooks_checks = true;
     } else if (strcmp(arg, "--trace-events-enabled") == 0) {
-      if (trace_enabled_categories.empty())
-        trace_enabled_categories = "v8,node,node.async_hooks";
+      fprintf(stderr, "Tracing is not supported by graal-node.js!\n");
     } else if (strcmp(arg, "--trace-event-categories") == 0) {
       const char* categories = argv[index + 1];
       if (categories == nullptr) {
@@ -3355,7 +3370,6 @@ void ProcessArgv(int* argc,
   for (int i = 1; i < v8_argc; i++) {
     fprintf(stderr, "%s: bad option: %s\n", argv[0], v8_argv[i]);
   }
-  delete[] v8_argv;
   v8_argv = nullptr;
 
   if (v8_argc > 1) {
@@ -3746,6 +3760,10 @@ Isolate* NewIsolate(ArrayBufferAllocator* allocator) {
   return isolate;
 }
 
+static void StartInPolyglotEngine(void* isolate_, void* event_loop_, void* allocator_,
+                                  int argc, void* argv,
+                                  int exec_argc, void* exec_argv);
+
 inline int Start(uv_loop_t* event_loop,
                  int argc, const char* const* argv,
                  int exec_argc, const char* const* exec_argv) {
@@ -3754,6 +3772,18 @@ inline int Start(uv_loop_t* event_loop,
   Isolate* const isolate = NewIsolate(allocator.get());
   if (isolate == nullptr)
     return 12;  // Signal internal error.
+  isolate->EnterPolyglotEngine(event_loop, allocator.get(), argc, (void*) argv, exec_argc, (void*) exec_argv, &StartInPolyglotEngine);
+  return 0;
+}
+
+static void StartInPolyglotEngine(void* isolate_, void* event_loop_, void* allocator_,
+                                  int argc, void* argv_,
+                                  int exec_argc, void* exec_argv_) {
+  Isolate* isolate = static_cast<Isolate*>(isolate_);
+  uv_loop_t* event_loop = static_cast<uv_loop_t*> (event_loop_);
+  const char* const* argv = static_cast<const char* const*> (argv_);
+  const char* const* exec_argv = static_cast<const char* const*> (exec_argv_);
+  ArrayBufferAllocator* allocator = static_cast<ArrayBufferAllocator*>(allocator_);
 
   {
     Mutex::ScopedLock scoped_lock(node_isolate_mutex);
@@ -3771,7 +3801,7 @@ inline int Start(uv_loop_t* event_loop,
             isolate,
             event_loop,
             v8_platform.Platform(),
-            allocator.get()),
+            allocator),
         &FreeIsolateData);
     if (track_heap_objects) {
       isolate->GetHeapProfiler()->StartTrackingHeapObjects(true);
@@ -3786,9 +3816,7 @@ inline int Start(uv_loop_t* event_loop,
     node_isolate = nullptr;
   }
 
-  isolate->Dispose();
-
-  return exit_code;
+  isolate->Dispose(true, exit_code);
 }
 
 int Start(int argc, char** argv) {
@@ -3846,6 +3874,75 @@ int Start(int argc, char** argv) {
 
   return exit_code;
 }
+
+// GRAAL EXTENSIONS
+
+long GraalArgumentsPreprocessing(int argc, char *argv[]) {
+  long result = -1;
+  for (int i = 1; i < argc; i++) {
+    const char *arg = argv[i];
+    const char *nptr = nullptr;
+    const char *classpath = nullptr;
+    if (!strncmp(arg, "--jvm.Xss", sizeof("--jvm.Xss") - 1)) {
+      nptr = arg + sizeof("--jvm.Xss") - 1;
+    } else if(!strncmp(arg, "--native.Xss", sizeof("--native.Xss") - 1)) {
+      nptr = arg + sizeof("--native.Xss") - 1;
+    } else if (!strncmp(arg, "--jvm.classpath", sizeof ("--jvm.classpath") - 1)) {
+      classpath = arg + sizeof ("--jvm.classpath") - 1;
+    } else if (!strncmp(arg, "--jvm.cp", sizeof ("--jvm.cp") - 1)) {
+      classpath = arg + sizeof ("--jvm.cp") - 1;
+    } else if (arg[0] != '-') { // stop at first non-option argument
+        break;
+    }
+    if (classpath != nullptr) {
+      if (classpath[0] == '=') {
+        setenv("NODE_JVM_CLASSPATH", classpath + 1, 1);
+      } else if (classpath[0] == 0 && i + 1 < argc) {
+        setenv("NODE_JVM_CLASSPATH", argv[++i], 1);
+        // Hack: replace the argument with the classpath by a string full of '-'.
+        // This ensures that it looks like an option (i.e. is passed to JS engine
+        // options, i.e., is not considered to be a name of the script to execute).
+        memset(argv[i], '-', strlen(argv[i]));
+      } else {
+        fprintf(stderr, "the --jvm.classpath and --jvm.cp arguments must be of the form --jvm.[classpath|cp]=<classpath>");
+        exit(9);
+      }
+    }
+    if (nptr != nullptr) {
+      // NOTE: if more than one value is specified, return the last one. If
+      // --native and --jvm are mixed, let the parsing code for all arguments
+      // handle this.
+      char *endptr;
+      long value = strtol(nptr, &endptr, 10);
+      if (endptr != nptr) {
+        long multiplier;
+        if (*endptr == '\0') {
+          multiplier = 1;
+        } else if(!strcmp("k", endptr) || !strcmp("K", endptr)) {
+          multiplier = 1000;
+        } else if(!strcmp("m", endptr) || !strcmp("M", endptr)) {
+          multiplier = 1000000;
+        } else if(!strcmp("g", endptr) || !strcmp("G", endptr)) {
+          multiplier = 1000000000;
+        } else {
+          multiplier = -1; // garbage
+        }
+        if (multiplier > -1) {
+          result = value * multiplier;
+        }
+      }
+    }
+  }
+  return result;
+}
+
+#ifdef GRAAL_ENABLE_THREADING
+#include "graal/graal_threading.h"
+
+void GraalThreadingInit(const FunctionCallbackInfo<Value>& args) {
+  graal::threading::RegisterNativeCallbacks();
+}
+#endif
 
 // Call built-in modules' _register_<module name> function to
 // do module registration explicitly.

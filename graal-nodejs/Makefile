@@ -16,6 +16,11 @@ GNUMAKEFLAGS += --no-print-directory
 GCOV ?= gcov
 PWD = $(CURDIR)
 
+ifeq "$(OSTYPE)" "sunos"
+  CC=gcc
+  CXX=g++
+endif
+
 ifdef JOBS
   PARALLEL_ARGS = -j $(JOBS)
 else
@@ -84,11 +89,11 @@ help: ## Print help for targets with comments.
 # and recreated which can break the addons build when running test-ci
 # See comments on the build-addons target for some more info
 $(NODE_EXE): config.gypi out/Makefile
-	$(MAKE) -C out BUILDTYPE=Release V=$(V)
+	$(MAKE) -C out BUILDTYPE=Release V=$(V) CC=$(CC) CXX=$(CXX)
 	if [ ! -r $@ -o ! -L $@ ]; then ln -fs out/Release/$(NODE_EXE) $@; fi
 
 $(NODE_G_EXE): config.gypi out/Makefile
-	$(MAKE) -C out BUILDTYPE=Debug V=$(V)
+	$(MAKE) -C out BUILDTYPE=Debug V=$(V) CC=$(CC) CXX=$(CXX)
 	if [ ! -r $@ -o ! -L $@ ]; then ln -fs out/Debug/$(NODE_EXE) $@; fi
 
 CODE_CACHE_DIR ?= out/$(BUILDTYPE)/obj/gen

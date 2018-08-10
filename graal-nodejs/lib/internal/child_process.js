@@ -20,9 +20,18 @@ const dgram = require('dgram');
 const util = require('util');
 const assert = require('assert');
 
-const { Process } = process.binding('process_wrap');
+const defaultProcess = process.binding('process_wrap').Process;
+if (process.__node_cluster_threading) {
+  var vProcess = require('internal/graal/thread_process_wrap').Process;
+  var vPipe = require('internal/graal/thread_pipe_wrap').Pipe;
+} else {
+  var vProcess = defaultProcess;
+  var vPipe = process.binding('pipe_wrap').Pipe;
+}
+const Process = vProcess;
+const Pipe = vPipe;
 const { WriteWrap } = process.binding('stream_wrap');
-const { Pipe, constants: PipeConstants } = process.binding('pipe_wrap');
+const { constants: PipeConstants } = process.binding('pipe_wrap');
 const { TTY } = process.binding('tty_wrap');
 const { TCP } = process.binding('tcp_wrap');
 const { UDP } = process.binding('udp_wrap');
@@ -315,6 +324,12 @@ ChildProcess.prototype.spawn = function(options) {
     }
 
     options.envPairs.push('NODE_CHANNEL_FD=' + ipcFd);
+  } else if (process.__node_cluster_threading) {
+    // If no IPC channel was created, we are about to spawn a non-node process.
+    var oldHandle = this._handle;
+    this._handle = new defaultProcess();
+    this._handle.owner = oldHandle.owner;
+    this._handle.onexit = oldHandle.onexit;
   }
 
   if (typeof options.file !== 'string') {
@@ -328,6 +343,10 @@ ChildProcess.prototype.spawn = function(options) {
     this.spawnargs = [];
   else
     throw new ERR_INVALID_ARG_TYPE('options.args', 'Array', options.args);
+
+  // (db) we extend 'options' with info for thread-based spawn
+  options.ipc = ipc;
+  options.ipcFd = ipcFd;
 
   var err = this._handle.spawn(options);
 

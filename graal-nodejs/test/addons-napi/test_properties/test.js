@@ -2,7 +2,7 @@
 const common = require('../../common');
 const assert = require('assert');
 const readonlyErrorRE =
-  /^TypeError: Cannot assign to read only property '.*' of object '#<Object>'$/;
+  /^TypeError: Cannot assign to read only property '.*' of object '#<Object>'$|^TypeError: ".*" is not a writable property of|^TypeError: Cannot redefine property .* which has only a getter$/;
 
 // Testing api calls for defining properties
 const test_object = require(`./build/${common.buildType}/test_properties`);

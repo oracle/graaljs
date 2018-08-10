@@ -9,6 +9,10 @@
 #include "node_api.h"
 #include "node_internals.h"
 #include "env.h"
+#include "current_isolate.h"
+#include "graal_value.h"
+#include "graal_function.h"
+
 
 static
 napi_status napi_set_last_error(napi_env env, napi_status error_code,
@@ -272,14 +276,20 @@ node::Persistent<v8::Value>* NodePersistentFromJsDeferred(napi_deferred local) {
 
 static
 napi_value JsValueFromV8LocalValue(v8::Local<v8::Value> local) {
-  return reinterpret_cast<napi_value>(*local);
+    if (local.IsEmpty()) {
+        local = v8::Undefined(v8::Isolate::GetCurrent());
+    }
+    GraalHandleContent* graal_handle = reinterpret_cast<GraalHandleContent*> (*local);
+    return reinterpret_cast<napi_value> (graal_handle->ToNewLocalJavaObject());
 }
 
 static
 v8::Local<v8::Value> V8LocalValueFromJsValue(napi_value v) {
-  v8::Local<v8::Value> local;
-  memcpy(&local, &v, sizeof(v));
-  return local;
+    if (v == nullptr) {
+        return v8::Undefined(v8::Isolate::GetCurrent());
+    }
+    GraalValue* graal_value = GraalValue::FromJavaObject(CurrentIsolate(), reinterpret_cast<jobject> (v), true);
+    return reinterpret_cast<v8::Value*> (graal_value);
 }
 
 static inline void trigger_fatal_exception(
@@ -2039,23 +2049,20 @@ napi_status napi_call_function(napi_env env,
     CHECK_ARG(env, argv);
   }
 
-  v8::Isolate* isolate = env->isolate;
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
-
-  v8::Local<v8::Value> v8recv = v8impl::V8LocalValueFromJsValue(recv);
-
   v8::Local<v8::Function> v8func;
   CHECK_TO_FUNCTION(env, v8func, func);
 
-  auto maybe = v8func->Call(context, v8recv, argc,
-    reinterpret_cast<v8::Local<v8::Value>*>(const_cast<napi_value*>(argv)));
+  jobject maybe = reinterpret_cast<GraalFunction*> (*v8func)->Call(
+          reinterpret_cast<jobject> (recv),
+          argc,
+          reinterpret_cast<jobject*> (const_cast<napi_value*>(argv)));
 
   if (try_catch.HasCaught()) {
     return napi_set_last_error(env, napi_pending_exception);
   } else {
     if (result != nullptr) {
-      CHECK_MAYBE_EMPTY(env, maybe, napi_generic_failure);
-      *result = v8impl::JsValueFromV8LocalValue(maybe.ToLocalChecked());
+      RETURN_STATUS_IF_FALSE(env, maybe != NULL, napi_generic_failure);
+      *result = reinterpret_cast<napi_value> (maybe);
     }
     return napi_clear_last_error(env);
   }
@@ -2843,8 +2850,12 @@ napi_status napi_new_instance(napi_env env,
   v8::Local<v8::Function> ctor;
   CHECK_TO_FUNCTION(env, ctor, constructor);
 
-  auto maybe = ctor->NewInstance(context, argc,
-    reinterpret_cast<v8::Local<v8::Value>*>(const_cast<napi_value*>(argv)));
+  v8::Local<v8::Value> args[argc];
+  for (size_t i = 0; i < argc; i++) {
+      args[i] = v8impl::V8LocalValueFromJsValue(argv[i]);
+  }
+
+  auto maybe = ctor->NewInstance(context, argc, args);
 
   CHECK_MAYBE_EMPTY(env, maybe, napi_generic_failure);
 
@@ -2959,10 +2970,15 @@ napi_status napi_make_callback(napi_env env,
     static node::async_context empty_context = { 0, 0 };
     node_async_context = &empty_context;
   }
+  
+  v8::Local<v8::Value> args[argc];
+  for (size_t i = 0; i < argc; i++) {
+      args[i] = v8impl::V8LocalValueFromJsValue(argv[i]);
+  }
 
   v8::MaybeLocal<v8::Value> callback_result = node::MakeCallback(
       isolate, v8recv, v8func, argc,
-      reinterpret_cast<v8::Local<v8::Value>*>(const_cast<napi_value*>(argv)),
+      args,
       *node_async_context);
 
   if (try_catch.HasCaught()) {

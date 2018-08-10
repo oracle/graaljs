@@ -9,6 +9,26 @@ prefix sequential
 # on Node.js.
 test-fs-readfile-tostring-fail: PASS, FLAKY
 
+### Graal-specific start ###
+
+# missing multiline support in REPL
+test-repl-timeout-throw     : FAIL
+
+# Unstable, timing sensitive (fails randomly)
+test-readline-interface     : SKIP
+
+[$system==solaris]
+
+# runs out of memory
+test-child-process-pass-fd  : SKIP
+
+[$system==macos]
+
+# fails randomly
+test-timers-blocking-callback : SKIP
+
+### Graal-specific end ###
+
 [$system==win32]
 test-inspector-async-call-stack          : PASS, FLAKY
 test-inspector-async-hook-setup-at-signal:  PASS, FLAKY

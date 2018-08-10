@@ -21,6 +21,7 @@
 
 'use strict';
 
+const graalBuffer = require('internal/graal/buffer');
 const {
   byteLengthUtf8,
   copy: _copy,
@@ -103,6 +104,7 @@ Buffer.poolSize = 8 * 1024;
 var poolSize, poolOffset, allocPool;
 
 setupBufferJS(Buffer.prototype, bindingObj);
+graalBuffer.install(Buffer.prototype);
 
 // |zeroFill| can be undefined when running inside an isolate where we
 // do not own the ArrayBuffer allocator.  Zero fill is always on in that case.
