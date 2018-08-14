@@ -148,7 +148,7 @@ jobject GraalExecuteFunction(JNIEnv* env, jclass nativeAccess, jint id, jobjectA
     int offset = is_new_target ? 3 : 2;
     std::vector<GraalValue*> values(length - offset + 1);
     for (int i = 0; i < length - offset; i++) {
-        jobject java_value = env->GetObjectArrayElement(arguments, i + 2);
+        jobject java_value = env->GetObjectArrayElement(arguments, i + offset);
         GraalValue* graal_value = GraalValue::FromJavaObject(isolate, java_value);
         values[length - offset - 1 - i] = graal_value;
     }
