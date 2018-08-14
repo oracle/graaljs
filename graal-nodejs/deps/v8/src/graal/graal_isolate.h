@@ -176,6 +176,7 @@ enum GraalAccessMethod {
     isolate_enable_promise_hook,
     isolate_enable_promise_reject_callback,
     template_set,
+    template_set_accessor_property,
     object_template_new,
     object_template_new_instance,
     object_template_set_accessor,

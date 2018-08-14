@@ -39,9 +39,10 @@
  * SOFTWARE.
  */
 
+#include "graal_function_template.h"
 #include "graal_isolate.h"
-#include "graal_name.h"
 #include "graal_template.h"
+#include "graal_value.h"
 
 GraalTemplate::GraalTemplate(GraalIsolate* isolate, jobject java_template) : GraalData(isolate, java_template) {
 }
@@ -51,4 +52,16 @@ void GraalTemplate::Set(v8::Local<v8::Value> key, v8::Local<v8::Data> value, v8:
     jobject java_value = reinterpret_cast<GraalValue*> (*value)->GetJavaObject();
     jint java_attributes = static_cast<jint> (attributes);
     JNI_CALL_VOID(Isolate(), GraalAccessMethod::template_set, GetJavaObject(), java_key, java_value, java_attributes);
+}
+
+void GraalTemplate::SetAccessorProperty(
+        v8::Local<v8::Name> name,
+        v8::Local<v8::FunctionTemplate> getter,
+        v8::Local<v8::FunctionTemplate> setter,
+        v8::PropertyAttribute attributes) {
+    jobject java_name = reinterpret_cast<GraalValue*> (*name)->GetJavaObject();
+    jobject java_getter = getter.IsEmpty() ? nullptr : reinterpret_cast<GraalFunctionTemplate*> (*getter)->GetJavaObject();
+    jobject java_setter = setter.IsEmpty() ? nullptr : reinterpret_cast<GraalFunctionTemplate*> (*setter)->GetJavaObject();
+    jint java_attributes = static_cast<jint> (attributes);
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::template_set_accessor_property, GetJavaObject(), java_name, java_getter, java_setter, java_attributes);
 }

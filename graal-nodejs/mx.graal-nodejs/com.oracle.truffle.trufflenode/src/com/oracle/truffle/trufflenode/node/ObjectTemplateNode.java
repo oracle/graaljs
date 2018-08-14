@@ -55,8 +55,10 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.info.Accessor;
@@ -102,20 +104,31 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
 
         for (Value value : template.getValues()) {
             JavaScriptNode valueNode;
-            if (value.getValue() instanceof FunctionTemplate) {
+            Object propertyValue = value.getValue();
+            if (propertyValue instanceof FunctionTemplate) {
                 // process all found FunctionTemplates, recursively
-                FunctionTemplate functionTempl = (FunctionTemplate) value.getValue();
+                FunctionTemplate functionTempl = (FunctionTemplate) propertyValue;
                 valueNode = JSConstantNode.create(graalJSAccess.functionTemplateGetFunction(context.getRealm(), functionTempl));
             } else {
-                valueNode = JSConstantNode.create(value.getValue());
+                valueNode = JSConstantNode.create(propertyValue);
             }
             Object name = value.getName();
             int attributes = value.getAttributes();
-            if (name instanceof String || name instanceof Symbol) {
+            if (propertyValue instanceof Pair) {
+                Pair<?, ?> pair = (Pair<?, ?>) propertyValue;
+                JSRealm realm = context.getRealm();
+                Object getterTemplate = pair.getFirst();
+                Object setterTemplate = pair.getSecond();
+                Object getter = (getterTemplate == null) ? Undefined.instance : graalJSAccess.functionTemplateGetFunction(realm, getterTemplate);
+                Object setter = (setterTemplate == null) ? Undefined.instance : graalJSAccess.functionTemplateGetFunction(realm, setterTemplate);
+                JavaScriptNode getterNode = JSConstantNode.create(getter);
+                JavaScriptNode setterNode = JSConstantNode.create(setter);
+                members.add(ObjectLiteralNode.newAccessorMember(name, false, attributes, getterNode, setterNode));
+            } else if (name instanceof String || name instanceof Symbol) {
                 members.add(ObjectLiteralNode.newDataMember(name, false, attributes, valueNode));
             } else if (name instanceof HiddenKey) {
                 if (!template.hasPropertyHandler()) {
-                    members.add(new InternalFieldNode(false, attributes, (HiddenKey) name, value.getValue(), context));
+                    members.add(new InternalFieldNode(false, attributes, (HiddenKey) name, propertyValue, context));
                 } // else set on the proxy/handler
             } else {
                 members.add(ObjectLiteralNode.newComputedDataMember(JSConstantNode.create(name), false, attributes, valueNode));

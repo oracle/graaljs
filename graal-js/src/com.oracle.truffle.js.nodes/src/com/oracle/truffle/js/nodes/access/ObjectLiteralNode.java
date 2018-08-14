@@ -617,7 +617,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         return new ObjectLiteralDataMemberNode(name, isStatic, attributes, valueNode);
     }
 
-    public static ObjectLiteralMemberNode newAccessorMember(String name, boolean isStatic, int attributes, JavaScriptNode getterNode, JavaScriptNode setterNode) {
+    public static ObjectLiteralMemberNode newAccessorMember(Object name, boolean isStatic, int attributes, JavaScriptNode getterNode, JavaScriptNode setterNode) {
         return new ObjectLiteralAccessorMemberNode(name, isStatic, attributes, getterNode, setterNode);
     }
 

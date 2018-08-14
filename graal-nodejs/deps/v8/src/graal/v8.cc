@@ -924,6 +924,15 @@ namespace v8 {
         reinterpret_cast<GraalTemplate*> (this)->Set(name, value, attributes);
     }
 
+    void Template::SetAccessorProperty(
+            Local<Name> name,
+            Local<FunctionTemplate> getter,
+            Local<FunctionTemplate> setter,
+            PropertyAttribute attributes,
+            AccessControl settings) {
+        reinterpret_cast<GraalTemplate*> (this)->SetAccessorProperty(name, getter, setter, attributes);
+    }
+
     Local<Value> TryCatch::ReThrow() {
         rethrow_ = true;
         exception_ = nullptr;
@@ -2606,15 +2615,6 @@ namespace v8 {
     }
 
     void String::VerifyExternalStringResource(ExternalStringResource* val) const {
-        TRACE
-    }
-
-    void Template::SetAccessorProperty(
-            Local<Name> name,
-            Local<FunctionTemplate> getter,
-            Local<FunctionTemplate> setter,
-            PropertyAttribute attribute,
-            AccessControl settings) {
         TRACE
     }
 

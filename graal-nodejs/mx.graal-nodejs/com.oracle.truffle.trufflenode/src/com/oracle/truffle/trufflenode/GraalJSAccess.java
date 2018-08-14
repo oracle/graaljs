@@ -1170,6 +1170,10 @@ public final class GraalJSAccess {
         template.addValue(new Value(name, value, propertyAttributes(attributes)));
     }
 
+    public void templateSetAccessorProperty(Object templateObj, Object name, Object getter, Object setter, int attributes) {
+        templateSet(templateObj, name, new Pair<>(getter, setter), attributes);
+    }
+
     public Object functionTemplateNew(int id, long pointer, Object additionalData, Object signature) {
         FunctionTemplate template = new FunctionTemplate(id, pointer, additionalData, (FunctionTemplate) signature);
         template.getInstanceTemplate().setParentFunctionTemplate(template);
@@ -1415,14 +1419,23 @@ public final class GraalJSAccess {
                 FunctionTemplate functionTempl = (FunctionTemplate) processedValue;
                 processedValue = functionTemplateGetFunction(realm, functionTempl);
             }
-            if (name instanceof HiddenKey) {
-                if (!template.hasPropertyHandler()) {
-                    obj.define(name, processedValue);
-                } // else set on the proxy/handler
-            } else if (JSObject.hasOwnProperty(obj, name)) {
-                JSObject.set(obj, name, processedValue);
+            if (processedValue instanceof Pair) {
+                Pair<?, ?> pair = (Pair<?, ?>) processedValue;
+                Object getterTemplate = pair.getFirst();
+                Object setterTemplate = pair.getSecond();
+                Object getter = (getterTemplate == null) ? Undefined.instance : functionTemplateGetFunction(realm, getterTemplate);
+                Object setter = (setterTemplate == null) ? Undefined.instance : functionTemplateGetFunction(realm, setterTemplate);
+                JSObjectUtil.putAccessorProperty(context, obj, name, (DynamicObject) getter, (DynamicObject) setter, attributes);
             } else {
-                JSObjectUtil.putDataProperty(obj, name, processedValue, attributes);
+                if (name instanceof HiddenKey) {
+                    if (!template.hasPropertyHandler()) {
+                        obj.define(name, processedValue);
+                    } // else set on the proxy/handler
+                } else if (JSObject.hasOwnProperty(obj, name)) {
+                    JSObject.set(obj, name, processedValue);
+                } else {
+                    JSObjectUtil.putDataProperty(obj, name, processedValue, attributes);
+                }
             }
         }
     }
