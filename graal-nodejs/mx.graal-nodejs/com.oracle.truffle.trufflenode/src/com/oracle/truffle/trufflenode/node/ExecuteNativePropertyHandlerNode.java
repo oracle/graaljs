@@ -165,11 +165,11 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
     private Object executeSetter(Object holder, Object[] arguments) {
         Object key = arguments[3];
         if (JSRuntime.isArrayIndex(key)) {
-            if (indexedHandler != null) {
+            if (indexedHandler != null && indexedHandler.getSetter() != 0) {
                 NativeAccess.executePropertyHandlerSetter(indexedHandler.getSetter(), holder, arguments, indexedHandlerData, false);
             }
         } else if (!(key instanceof HiddenKey) && (!stringKeysOnly || JSRuntime.isString(key))) {
-            if (namedHandler != null) {
+            if (namedHandler != null && namedHandler.getSetter() != 0) {
                 NativeAccess.executePropertyHandlerSetter(namedHandler.getSetter(), holder, arguments, namedHandlerData, true);
             }
         } else {
@@ -182,12 +182,12 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
     private Object executeQuery(Object holder, Object[] arguments) {
         Object key = arguments[3];
         if (JSRuntime.isArrayIndex(key)) {
-            if (indexedHandler != null) {
+            if (indexedHandler != null && indexedHandler.getQuery() != 0) {
                 Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
                 return (NativeAccess.executePropertyHandlerQuery(indexedHandler.getQuery(), holder, nativeCallArgs, indexedHandlerData, false) != null);
             }
         } else if (!stringKeysOnly || JSRuntime.isString(key)) {
-            if (namedHandler != null) {
+            if (namedHandler != null && namedHandler.getQuery() != 0) {
                 Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
                 return (NativeAccess.executePropertyHandlerQuery(namedHandler.getQuery(), holder, nativeCallArgs, namedHandlerData, true) != null);
             }
@@ -201,12 +201,12 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         boolean success = true;
         Object key = arguments[3];
         if (JSRuntime.isArrayIndex(key)) {
-            if (indexedHandler != null) {
+            if (indexedHandler != null && indexedHandler.getDeleter() != 0) {
                 Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
                 success = NativeAccess.executePropertyHandlerDeleter(indexedHandler.getDeleter(), holder, nativeCallArgs, indexedHandlerData, false);
             }
         } else if (!stringKeysOnly || JSRuntime.isString(key)) {
-            if (namedHandler != null) {
+            if (namedHandler != null && namedHandler.getDeleter() != 0) {
                 Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
                 success = NativeAccess.executePropertyHandlerDeleter(namedHandler.getDeleter(), holder, nativeCallArgs, namedHandlerData, true);
             }
@@ -248,9 +248,12 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         PropertyHandler handler = named ? namedHandler : indexedHandler;
         Object handlerData = named ? namedHandlerData : indexedHandlerData;
         Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
-        Object attributes = NativeAccess.executePropertyHandlerQuery(handler.getQuery(), holder, nativeCallArgs, handlerData, named);
-        attributes = graalAccess.correctReturnValue(attributes);
-        if (attributes == null) {
+        Object attributes = null;
+        if (handler.getQuery() != 0) {
+            NativeAccess.executePropertyHandlerQuery(handler.getQuery(), holder, nativeCallArgs, handlerData, named);
+            attributes = graalAccess.correctReturnValue(attributes);
+        }
+        if (attributes == null && handler.getEnumerator() != 0) {
             nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2]);
             DynamicObject ownKeys = (DynamicObject) NativeAccess.executePropertyHandlerEnumerator(handler.getEnumerator(), holder, nativeCallArgs, handlerData);
             if (JSRuntime.isArray(ownKeys) && arrayContains(ownKeys, arguments[3])) {
@@ -285,12 +288,15 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
     private Object executeEnumerator(Object holder, Object[] arguments) {
         Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2]);
         DynamicObject array = null;
-        if (namedHandler != null) {
+        if (namedHandler != null && namedHandler.getEnumerator() != 0) {
             array = (DynamicObject) NativeAccess.executePropertyHandlerEnumerator(namedHandler.getEnumerator(), holder, nativeCallArgs, namedHandlerData);
         }
-        if (indexedHandler != null) {
+        if (indexedHandler != null && indexedHandler.getEnumerator() != 0) {
             DynamicObject array2 = (DynamicObject) NativeAccess.executePropertyHandlerEnumerator(indexedHandler.getEnumerator(), holder, nativeCallArgs, indexedHandlerData);
             array = concatArrays(array, array2, context);
+        }
+        if (array == null) {
+            array = JSArray.createEmpty(context, 0);
         }
         Object fn = JSObject.get(array, "values");
         return JSFunction.call((DynamicObject) fn, array, JSArguments.EMPTY_ARGUMENTS_ARRAY);
@@ -300,12 +306,15 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
     private Object executeOwnKeys(Object holder, Object[] arguments) {
         Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2]);
         DynamicObject ownKeys = null;
-        if (namedHandler != null) {
+        if (namedHandler != null && namedHandler.getEnumerator() != 0) {
             ownKeys = (DynamicObject) NativeAccess.executePropertyHandlerEnumerator(namedHandler.getEnumerator(), holder, nativeCallArgs, namedHandlerData);
         }
-        if (indexedHandler != null) {
+        if (indexedHandler != null && indexedHandler.getEnumerator() != 0) {
             DynamicObject ownKeys2 = (DynamicObject) NativeAccess.executePropertyHandlerEnumerator(indexedHandler.getEnumerator(), holder, nativeCallArgs, indexedHandlerData);
             ownKeys = concatArrays(ownKeys, ownKeys2, context);
+        }
+        if (ownKeys == null) {
+            ownKeys = JSArray.createEmpty(context, 0);
         }
         DynamicObject target = (DynamicObject) arguments[2];
         fixOwnKeysInvariants(ownKeys, target);
