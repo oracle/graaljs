@@ -121,6 +121,8 @@ public final class Options {
                         "expose-natives-as",
                         "harmony",
                         "harmony-default-parameters",
+                        "harmony-dynamic-import",
+                        "harmony-import-meta",
                         "harmony-proxies",
                         "harmony-shipping",
                         "lazy",
