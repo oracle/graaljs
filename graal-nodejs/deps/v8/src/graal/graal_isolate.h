@@ -256,6 +256,7 @@ enum GraalAccessMethod {
     json_parse,
     json_stringify,
     symbol_new,
+    symbol_name,
     promise_result,
     promise_state,
     promise_resolver_new,

@@ -59,6 +59,14 @@ v8::Local<v8::Symbol> GraalSymbol::New(v8::Isolate* isolate, v8::Local<v8::Strin
     return reinterpret_cast<v8::Symbol*> (graal_symbol);
 }
 
+v8::Local<v8::Value> GraalSymbol::Name() const {
+    GraalIsolate* graal_isolate = Isolate();
+    jobject java_symbol = GetJavaObject();
+    JNI_CALL(jobject, java_name, graal_isolate, GraalAccessMethod::symbol_name, Object, java_symbol);
+    GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_name);
+    return reinterpret_cast<v8::Value*> (graal_value);
+}
+
 bool GraalSymbol::IsSymbol() const {
     return true;
 }

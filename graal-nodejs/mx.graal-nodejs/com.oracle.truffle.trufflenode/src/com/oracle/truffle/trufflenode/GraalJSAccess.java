@@ -1002,6 +1002,10 @@ public final class GraalJSAccess {
         return Symbol.create((String) name);
     }
 
+    public Object symbolName(Object symbol) {
+        return ((Symbol) symbol).getDescription();
+    }
+
     public Object functionNewInstance(Object function, Object[] arguments) {
         DynamicObject functionObject = (DynamicObject) function;
         JSFunctionData functionData = JSFunction.getFunctionData(functionObject);

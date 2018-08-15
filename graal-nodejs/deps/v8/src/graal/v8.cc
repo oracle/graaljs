@@ -2067,6 +2067,10 @@ namespace v8 {
         return GraalSymbol::New(isolate, name.IsEmpty() ? String::Empty(isolate) : name);
     }
 
+    Local<Value> Symbol::Name() const {
+        return reinterpret_cast<const GraalSymbol*> (this)->Name();
+    }
+
     Local<Private> Private::New(Isolate* isolate, Local<String> name) {
         return reinterpret_cast<Private*> (*name);
     }
@@ -2653,10 +2657,6 @@ namespace v8 {
 
     void HeapProfiler::AddBuildEmbedderGraphCallback(BuildEmbedderGraphCallback callback, void* data) {
         TRACE
-    }
-
-    Local<Value> Symbol::Name() const {
-        return Local<Value>();
     }
 
     Local<BigInt64Array> BigInt64Array::New(Local<ArrayBuffer> array_buffer, size_t byte_offset, size_t length) {

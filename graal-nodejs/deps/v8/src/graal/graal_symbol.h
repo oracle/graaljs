@@ -48,6 +48,7 @@ class GraalSymbol : public GraalName {
 public:
     GraalSymbol(GraalIsolate* isolate, jobject java_symbol);
     static v8::Local<v8::Symbol> New(v8::Isolate* isolate, v8::Local<v8::String> name);
+    v8::Local<v8::Value> Name() const;
     bool IsSymbol() const override;
     bool IsName() const override;
 protected:
