@@ -59,7 +59,7 @@ import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
 
-    private static final int V8MaxStringLength = (1 << 28) - 16;
+    private static final int V8MaxStringLength = (1 << 30) - 1 - 24;
 
     protected final BranchProfile nativePath = BranchProfile.create();
 
@@ -122,7 +122,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
         }
         int length = actualEnd - start;
         if (length > V8MaxStringLength) {
-            throw Errors.createError("\"toString()\" failed");
+            return doNativeFallback(target, start, end);
         }
         int bufferLen = getLength(target);
         if (length > bufferLen) {
