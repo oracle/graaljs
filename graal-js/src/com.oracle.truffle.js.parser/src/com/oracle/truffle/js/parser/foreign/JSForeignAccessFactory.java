@@ -43,8 +43,6 @@ package com.oracle.truffle.js.parser.foreign;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import org.graalvm.collections.EconomicSet;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -375,16 +373,7 @@ public class JSForeignAccessFactory {
 
         @TruffleBoundary
         public Object access(DynamicObject target, @SuppressWarnings("unused") boolean internal) {
-            EconomicSet<Object> keySet = EconomicSet.create();
-            for (DynamicObject proto = target; proto != Null.instance; proto = JSObject.getPrototype(proto)) {
-                for (String key : JSObject.enumerableOwnNames(proto)) {
-                    keySet.add(key);
-                }
-                if (JSProxy.isProxy(proto)) {
-                    break;
-                }
-            }
-            Object[] keys = keySet.toArray(new Object[keySet.size()]);
+            Object[] keys = JSObject.enumerableOwnNames(target).toArray();
             JSContext context = JSObject.getJSContext(target);
             return JSArray.createConstant(context, keys);
         }
