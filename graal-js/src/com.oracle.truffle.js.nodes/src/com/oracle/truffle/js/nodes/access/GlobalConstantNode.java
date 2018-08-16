@@ -174,7 +174,9 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
         }
 
         private String getFileName() {
-            return getEncapsulatingSourceSection().getSource().getName();
+            Source source = getEncapsulatingSourceSection().getSource();
+            String path = source.getPath();
+            return (path == null) ? source.getName() : path;
         }
 
         @Override
