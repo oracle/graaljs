@@ -59,7 +59,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
  * Provides static utility services to generated Java adapter classes.
  */
 public final class JavaAdapterFactory {
-    private static final Class<?> INTERNAL_CLASS = JavaAdapterServices.class;
 
     @TruffleBoundary
     public static Class<?> getAdapterClassFor(Class<?>[] types, DynamicObject classOverrides) {
@@ -115,7 +114,7 @@ public final class JavaAdapterFactory {
         Class<?> superClass = !isInterface ? type : Object.class;
         List<Class<?>> interfaces = !isInterface ? Collections.<Class<?>> emptyList() : Collections.<Class<?>> singletonList(type);
 
-        ClassLoader commonLoader = classLoader != null ? classLoader : getClassLoaderWithAccessTo(type);
+        ClassLoader commonLoader = classLoader != null ? classLoader : type.getClassLoader();
         return getAdapterClassForCommon(superClass, interfaces, classOverrides, commonLoader);
     }
 
@@ -172,22 +171,12 @@ public final class JavaAdapterFactory {
         return true;
     }
 
-    private static ClassLoader getClassLoaderWithAccessTo(Class<?> superType) {
-        if (classLoaderCanSee(superType.getClassLoader(), INTERNAL_CLASS)) {
-            return superType.getClassLoader();
-        } else if (classLoaderCanSee(INTERNAL_CLASS.getClassLoader(), superType)) {
-            return INTERNAL_CLASS.getClassLoader();
-        } else {
-            throw Errors.createTypeErrorFormat("Could not determine a class loader with access to the JS engine and %s", superType);
-        }
-    }
-
     private static ClassLoader getCommonClassLoader(Class<?>[] types) {
         Map<ClassLoader, Boolean> distinctLoaders = new HashMap<>();
         for (Class<?> type : types) {
             ClassLoader loader = type.getClassLoader();
             if (distinctLoaders.computeIfAbsent(loader, cl -> classLoaderCanSee(cl, types))) {
-                return getClassLoaderWithAccessTo(type);
+                return loader;
             }
         }
         throw Errors.createTypeErrorFormat("Could not determine a class loader that can see all types: %s", Arrays.toString(types));
