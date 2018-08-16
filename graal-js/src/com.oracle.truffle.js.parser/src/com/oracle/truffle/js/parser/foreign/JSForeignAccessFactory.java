@@ -377,10 +377,8 @@ public class JSForeignAccessFactory {
         public Object access(DynamicObject target, @SuppressWarnings("unused") boolean internal) {
             EconomicSet<Object> keySet = EconomicSet.create();
             for (DynamicObject proto = target; proto != Null.instance; proto = JSObject.getPrototype(proto)) {
-                for (Object key : JSObject.ownPropertyKeys(proto)) {
-                    if (key instanceof String) {
-                        keySet.add(key);
-                    }
+                for (String key : JSObject.enumerableOwnNames(proto)) {
+                    keySet.add(key);
                 }
                 if (JSProxy.isProxy(proto)) {
                     break;
