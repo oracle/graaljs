@@ -81,6 +81,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.UserScriptException;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
+import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -273,20 +275,25 @@ public class JSForeignAccessFactory {
     @Resolve(message = "GET_SIZE")
     abstract static class GetSizeNode extends Node {
 
-        public int access(DynamicObject target) {
+        public Object access(DynamicObject target) {
             if (JSArray.isJSArray(target)) {
-                long size = JSArray.arrayGetLength(target);
-                if (size < Integer.MAX_VALUE) {
-                    return (int) size;
-                } else {
-                    throw UnsupportedMessageException.raise(Message.GET_SIZE);
-                }
+                return toIntOrLong(JSArray.arrayGetLength(target));
             } else if (JSArrayBufferView.isJSArrayBufferView(target)) {
                 return JSArrayBufferView.typedArrayGetLength(target);
+            } else if (JSArgumentsObject.isJSArgumentsObject(target)) {
+                return toIntOrLong(JSRuntime.toInteger(JSObject.get(target, JSAbstractArray.LENGTH)));
             } else if (JSString.isJSString(target)) {
                 return JSString.getStringLength(target);
             } else {
                 throw UnsupportedMessageException.raise(Message.GET_SIZE);
+            }
+        }
+
+        private static Object toIntOrLong(long size) {
+            if ((int) size == size) {
+                return (int) size;
+            } else {
+                return size;
             }
         }
     }
@@ -356,7 +363,7 @@ public class JSForeignAccessFactory {
 
         public Object access(DynamicObject target) {
             ObjectType objectType = target.getShape().getObjectType();
-            return objectType instanceof JSArray || objectType instanceof JSArrayBufferView || objectType instanceof JSString;
+            return objectType instanceof JSAbstractArray || objectType instanceof JSArrayBufferView || objectType instanceof JSString;
         }
     }
 
