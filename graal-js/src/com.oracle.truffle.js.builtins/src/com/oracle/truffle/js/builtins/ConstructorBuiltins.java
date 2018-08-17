@@ -705,7 +705,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @TruffleBoundary
         protected String callDate() {
             // called as function ECMAScript 15.9.2.1
-            return JSDate.toString(System.currentTimeMillis(), getContext());
+            return JSDate.toString(getContext().getRealm().currentTimeMillis(), getContext());
         }
     }
 
@@ -764,8 +764,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @TruffleBoundary
-        private static double now() {
-            return System.currentTimeMillis();
+        private double now() {
+            return getContext().getRealm().currentTimeMillis();
         }
 
         @TruffleBoundary
