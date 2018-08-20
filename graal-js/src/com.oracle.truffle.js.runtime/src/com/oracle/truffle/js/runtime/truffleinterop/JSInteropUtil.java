@@ -49,10 +49,6 @@ import com.oracle.truffle.api.nodes.Node;
  *
  */
 public final class JSInteropUtil {
-    public static final Message EXECUTE = Message.createExecute(0);
-    public static final Message INVOKE = Message.createInvoke(0);
-    public static final Message NEW = Message.createNew(0);
-
     private JSInteropUtil() {
         // this class should not be instantiated
     }
@@ -94,15 +90,15 @@ public final class JSInteropUtil {
     }
 
     public static Node createCall() {
-        return EXECUTE.createNode();
+        return Message.EXECUTE.createNode();
     }
 
     public static Node createInvoke() {
-        return INVOKE.createNode();
+        return Message.INVOKE.createNode();
     }
 
     public static Node createNew() {
-        return NEW.createNode();
+        return Message.NEW.createNode();
     }
 
     public static Node createRemove() {

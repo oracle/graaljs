@@ -562,14 +562,14 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                 }
                 return ForeignAccess.sendExecute(execute, target, convertedArgs);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(obj, e, JSInteropUtil.EXECUTE, this);
+                throw Errors.createTypeErrorInteropException(obj, e, Message.EXECUTE, this);
             }
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
         protected boolean unsupported(Object obj, Object[] arguments) {
-            throw Errors.createTypeErrorNotATruffleObject(JSInteropUtil.EXECUTE);
+            throw Errors.createTypeErrorNotATruffleObject(Message.EXECUTE);
         }
     }
 
@@ -592,14 +592,14 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                 }
                 return ForeignAccess.sendNew(newNode, target, convertedArgs);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(obj, e, JSInteropUtil.NEW, this);
+                throw Errors.createTypeErrorInteropException(obj, e, Message.NEW, this);
             }
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isTruffleObject(obj)")
         protected boolean unsupported(Object obj, Object[] arguments) {
-            throw Errors.createTypeErrorNotATruffleObject(JSInteropUtil.NEW);
+            throw Errors.createTypeErrorNotATruffleObject(Message.NEW);
         }
     }
 

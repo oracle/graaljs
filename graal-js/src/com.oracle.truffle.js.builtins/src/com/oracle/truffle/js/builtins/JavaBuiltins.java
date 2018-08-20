@@ -644,7 +644,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
             if (newNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                newNode = insert(Message.createNew(1).createNode());
+                newNode = insert(Message.NEW.createNode());
             }
             if (writeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();

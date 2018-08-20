@@ -738,7 +738,7 @@ public class JSContext implements ShapeContext {
                 TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder("").name("TRegex Engine Builder Request").language(RegexLanguage.ID).build()).call();
                 String regexOptions = createRegexEngineOptions();
                 try {
-                    regexEngine = (TruffleObject) ForeignAccess.sendExecute(Message.createExecute(2).createNode(), regexEngineBuilder, regexOptions, joniCompiler);
+                    regexEngine = (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), regexEngineBuilder, regexOptions, joniCompiler);
                 } catch (InteropException ex) {
                     throw ex.raise();
                 }
