@@ -63,6 +63,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -735,7 +736,7 @@ public class JSContext implements ShapeContext {
         if (regexEngine == null) {
             RegexCompiler joniCompiler = new JoniRegexCompiler(null);
             if (JSTruffleOptions.UseTRegex) {
-                TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder("").name("TRegex Engine Builder Request").language(RegexLanguage.ID).build()).call();
+                TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder(RegexLanguage.ID, "", "TRegex Engine Builder Request").build()).call();
                 String regexOptions = createRegexEngineOptions();
                 try {
                     regexEngine = (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), regexEngineBuilder, regexOptions, joniCompiler);
@@ -776,7 +777,8 @@ public class JSContext implements ShapeContext {
                         if (existingModule != null) {
                             return existingModule;
                         }
-                        Source source = Source.newBuilder(moduleFile).name(specifier).language(AbstractJavaScriptLanguage.ID).build();
+                        TruffleFile truffleFile = getRealm().getEnv().getTruffleFile(moduleFile.getPath());
+                        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, truffleFile).name(specifier).build();
                         JSModuleRecord newModule = getEvaluator().parseModule(JSContext.this, source, this);
                         moduleMap.put(canonicalPath, newModule);
                         return newModule;

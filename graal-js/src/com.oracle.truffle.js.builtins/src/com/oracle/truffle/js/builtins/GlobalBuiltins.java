@@ -470,16 +470,16 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary
         protected final Source sourceFromURL(URL url) {
             try {
-                return Source.newBuilder(url).name(url.getFile()).language(AbstractJavaScriptLanguage.ID).build();
+                return Source.newBuilder(AbstractJavaScriptLanguage.ID, url).name(url.getFile()).build();
             } catch (IOException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
         }
 
         @TruffleBoundary
-        protected final Source sourceFromFileName(String fileName) {
+        protected final Source sourceFromFileName(String fileName, JSRealm realm) {
             try {
-                return AbstractJavaScriptLanguage.sourceFromFileName(fileName);
+                return Source.newBuilder(AbstractJavaScriptLanguage.ID, realm.getEnv().getTruffleFile(fileName)).name(fileName).build();
             } catch (IOException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
@@ -932,7 +932,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (sourceName == null) {
                 sourceName = Evaluator.EVAL_SOURCE_NAME;
             }
-            return getContext().getEvaluator().evaluate(realm, this, Source.newBuilder(sourceText).name(sourceName).language(AbstractJavaScriptLanguage.ID).build());
+            return getContext().getEvaluator().evaluate(realm, this, Source.newBuilder(AbstractJavaScriptLanguage.ID, sourceText, sourceName).build());
         }
 
         @Specialization(guards = "!isString(source)")
@@ -1030,12 +1030,13 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization
         protected Object loadString(VirtualFrame frame, String path) {
-            Source source = sourceFromPath(path);
-            return runImpl(realmNode.execute(frame), source);
+            JSRealm realm = realmNode.execute(frame);
+            Source source = sourceFromPath(path, realm);
+            return runImpl(realm, source);
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
-        private Source sourceFromPath(String path) {
+        private Source sourceFromPath(String path, JSRealm realm) {
             Source source = null;
             if (path.indexOf(':') != -1) {
                 source = sourceFromURI(path);
@@ -1046,7 +1047,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
             File file = resolveRelativeFilePath(path);
             if (file.isFile()) {
-                source = sourceFromFileName(file.getPath());
+                source = sourceFromFileName(file.getPath(), realm);
             }
 
             if (source == null) {
@@ -1062,7 +1063,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization
         protected Object loadFile(VirtualFrame frame, File file) {
-            return runImpl(realmNode.execute(frame), sourceFromFileName(fileGetPath(file)));
+            JSRealm realm = realmNode.execute(frame);
+            return runImpl(realm, sourceFromFileName(fileGetPath(file), realm));
         }
 
         @Specialization(guards = "isForeignObject(scriptObj)")
@@ -1151,7 +1153,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
             if (stream != null) {
                 try {
-                    return Source.newBuilder(new InputStreamReader(stream, StandardCharsets.UTF_8)).name(resource).language(AbstractJavaScriptLanguage.ID).build();
+                    return Source.newBuilder(AbstractJavaScriptLanguage.ID, new InputStreamReader(stream, StandardCharsets.UTF_8), resource).build();
                 } catch (IOException e) {
                 }
             }

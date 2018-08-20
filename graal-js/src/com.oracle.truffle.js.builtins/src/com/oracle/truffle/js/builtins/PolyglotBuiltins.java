@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -50,6 +49,7 @@ import java.nio.file.NoSuchFileException;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -633,15 +633,20 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isString(languageId)", "isString(source)"})
+        @Specialization(guards = {"isString(language)", "isString(source)"})
         @TruffleBoundary
-        protected Object evalString(Object languageId, Object source) {
+        protected Object evalString(Object language, Object source) {
+            String languageIdOrMimeType = language.toString();
             String sourceText = source.toString();
-            String languageIdOrMimeType = languageId.toString();
-            Source sourceObject = Source.newBuilder(sourceText).name(Evaluator.EVAL_SOURCE_NAME).language(languageIdOrMimeType).mimeType(languageIdOrMimeType).build();
+            String languageId = languageIdOrMimeType;
+            String mimeType = null;
+            if (languageIdOrMimeType.indexOf('/') >= 0) {
+                languageId = Source.findLanguage(languageIdOrMimeType);
+                mimeType = languageIdOrMimeType;
+            }
+            Source sourceObject = Source.newBuilder(languageId, sourceText, Evaluator.EVAL_SOURCE_NAME).mimeType(mimeType).build();
 
             CallTarget callTarget;
-
             try {
                 callTarget = getContext().getRealm().getEnv().parse(sourceObject);
             } catch (Exception e) {
@@ -664,25 +669,32 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isString(languageId)", "isString(fileName)"})
+        @Specialization(guards = {"isString(language)", "isString(file)"})
         @TruffleBoundary
-        protected Object evalString(Object languageId, Object fileName) {
-            String fileNameStr = fileName.toString();
+        protected Object evalString(Object language, Object file) {
+            String languageIdOrMimeType = language.toString();
+            String fileName = file.toString();
+            String languageId = languageIdOrMimeType;
+            String mimeType = null;
+            if (languageIdOrMimeType.indexOf('/') >= 0) {
+                languageId = Source.findLanguage(languageIdOrMimeType);
+                mimeType = languageIdOrMimeType;
+            }
+            TruffleLanguage.Env env = getContext().getRealm().getEnv();
             Source source;
-            String languageIdOrMimeType = languageId.toString();
             try {
-                source = Source.newBuilder(new File(fileNameStr)).language(languageIdOrMimeType).mimeType(languageIdOrMimeType).build();
+                source = Source.newBuilder(languageId, env.getTruffleFile(fileName)).mimeType(mimeType).build();
             } catch (AccessDeniedException e) {
-                throw Errors.createError("Cannot evaluate file " + fileNameStr + ": permission denied");
+                throw Errors.createError("Cannot evaluate file " + fileName + ": permission denied");
             } catch (NoSuchFileException e) {
-                throw Errors.createError("Cannot evaluate file " + fileNameStr + ": no such file");
+                throw Errors.createError("Cannot evaluate file " + fileName + ": no such file");
             } catch (IOException e) {
                 throw Errors.createError("Cannot evaluate file: " + e.getMessage());
             }
 
             CallTarget callTarget;
             try {
-                callTarget = getContext().getRealm().getEnv().parse(source);
+                callTarget = env.parse(source);
             } catch (Exception e) {
                 throw Errors.createError(e.getMessage());
             }

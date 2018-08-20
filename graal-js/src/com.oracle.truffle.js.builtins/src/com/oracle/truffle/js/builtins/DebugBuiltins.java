@@ -747,7 +747,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                         throw Errors.createSyntaxError(String.format("Could not find imported module %s", specifier));
                     }
                     String code = JSRuntime.toString(moduleEntry);
-                    return Source.newBuilder(code).name(name).language(AbstractJavaScriptLanguage.ID).build();
+                    return Source.newBuilder(AbstractJavaScriptLanguage.ID, code, name).build();
                 }
 
                 @Override
