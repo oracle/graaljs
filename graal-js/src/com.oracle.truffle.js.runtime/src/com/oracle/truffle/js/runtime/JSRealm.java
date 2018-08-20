@@ -318,7 +318,8 @@ public class JSRealm implements ShapeContext {
 
     public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
     private final SplittableRandom random = new SplittableRandom();
-    private final long nanoToCurrentTimeOffset = System.currentTimeMillis() * NANOSECONDS_PER_MILLISECOND - System.nanoTime();
+    private final long nanoToZeroTimeOffset = -System.nanoTime();
+    private final long nanoToCurrentTimeOffset = System.currentTimeMillis() * NANOSECONDS_PER_MILLISECOND + nanoToZeroTimeOffset;
     private long lastFuzzyTime = Long.MIN_VALUE;
 
     private OutputStream outputStream;
@@ -1670,35 +1671,31 @@ public class JSRealm implements ShapeContext {
         this.errorStream = stream;
     }
 
-    public long currentTimeNanos() {
-        long ns = System.nanoTime() + nanoToCurrentTimeOffset;
-        if (getContext().isOptionPreciseTime()) {
-            return ns;
+    public long nanoTime() {
+        return nanoTime(nanoToZeroTimeOffset);
+    }
+
+    public long nanoTime(long offset) {
+        long ns = System.nanoTime() + offset;
+        long resolution = getContext().getTimerResolution();
+        if (resolution > 0) {
+            return (ns / resolution) * resolution;
         } else {
-            long resolution = JSTruffleOptions.TimestampResolution;
-            if (resolution > 0) {
-                return (ns / resolution) * resolution;
+            // fuzzy time
+            long fuzz = random.nextLong(NANOSECONDS_PER_MILLISECOND) + 1;
+            ns = ns - ns % fuzz;
+            long last = lastFuzzyTime;
+            if (ns > last) {
+                lastFuzzyTime = ns;
+                return ns;
             } else {
-                // fuzzy time
-                long fuzz = random.nextLong(NANOSECONDS_PER_MILLISECOND) + 1;
-                ns = ns - ns % fuzz;
-                long last = lastFuzzyTime;
-                if (ns > last) {
-                    lastFuzzyTime = ns;
-                    return ns;
-                } else {
-                    return last;
-                }
+                return last;
             }
         }
     }
 
     public long currentTimeMillis() {
-        if (getContext().isOptionPreciseTime()) {
-            return System.currentTimeMillis();
-        } else {
-            return currentTimeNanos() / NANOSECONDS_PER_MILLISECOND;
-        }
+        return nanoTime(nanoToCurrentTimeOffset) / NANOSECONDS_PER_MILLISECOND;
     }
 
 }

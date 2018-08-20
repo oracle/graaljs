@@ -156,8 +156,6 @@ public class JSTruffleOptions {
 
     /** Enable non-standard extensions. */
     public static final boolean Extensions = booleanOption("Extensions", true, OPTION_LANGUAGE_FEATURE);
-    /** Timestamp resolution of performance.now() in nanoseconds. */
-    public static final long TimestampResolution = integerOption("TimestampResolution", 1_000_000, OPTION_LIMIT);
     /** Java implementation of SIMD.js. */
     public static final boolean SIMDJS = booleanOption("SIMDJS", false, OPTION_LANGUAGE_FEATURE);
 

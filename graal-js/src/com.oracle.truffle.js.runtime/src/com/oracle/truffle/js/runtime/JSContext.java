@@ -1108,8 +1108,8 @@ public class JSContext implements ShapeContext {
         return contextOptions.isParseOnly();
     }
 
-    public boolean isOptionPreciseTime() {
-        return contextOptions.isPreciseTime();
+    public long getTimerResolution() {
+        return contextOptions.getTimerResolution();
     }
 
     public boolean isOptionAgentCanBlock() {

@@ -63,7 +63,7 @@ public final class PerformanceBuiltins extends JSBuiltinsContainer.Lambda {
 
         @Specialization
         protected double now() {
-            long ns = getContext().getRealm().currentTimeNanos();
+            long ns = getContext().getRealm().nanoTime();
             return ns / (double) JSRealm.NANOSECONDS_PER_MILLISECOND;
         }
     }
