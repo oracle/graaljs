@@ -175,8 +175,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     };
 
-    private static final SourceSection unavailableInternalSection = Source.newBuilder("<internal>").name("<internal>").mimeType(
-                    AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).internal().build().createUnavailableSection();
+    private static final SourceSection unavailableInternalSection = Source.newBuilder(AbstractJavaScriptLanguage.ID, "<internal>", "<internal>").mimeType(
+                    AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).internal(true).build().createUnavailableSection();
 
     private Environment environment;
     protected final JSContext context;

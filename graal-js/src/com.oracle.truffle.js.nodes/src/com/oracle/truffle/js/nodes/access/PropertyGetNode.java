@@ -1237,7 +1237,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             }
             if (getterInvoke == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getterInvoke = insert(Message.createInvoke(0).createNode());
+                getterInvoke = insert(Message.INVOKE.createNode());
             }
             try {
                 return ForeignAccess.sendInvoke(getterInvoke, thisObj, getterKey, new Object[]{});

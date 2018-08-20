@@ -57,6 +57,7 @@ import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.parser.JavaScriptTranslator;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 public class SnapshotTool {
@@ -65,7 +66,6 @@ public class SnapshotTool {
     }
 
     private final TimeStats timeStats = new TimeStats();
-    private JSContext context;
 
     public SnapshotTool() {
     }
@@ -95,15 +95,20 @@ public class SnapshotTool {
 
         SnapshotTool snapshotTool = new SnapshotTool();
         if (!srcFiles.isEmpty() && outDir != null) {
-            for (String srcFile : srcFiles) {
-                File sourceFile = inDir == null ? new File(srcFile) : Paths.get(inDir, srcFile).toFile();
-                File outputFile = Paths.get(outDir, srcFile + (binary ? ".bin" : ".java")).toFile();
-                if (!sourceFile.isFile()) {
-                    throw new IllegalArgumentException("Not a file: " + sourceFile);
+            try (Context polyglotContext = Context.newBuilder(AbstractJavaScriptLanguage.ID).allowIO(true).build()) {
+                polyglotContext.initialize(AbstractJavaScriptLanguage.ID);
+                polyglotContext.enter();
+                for (String srcFile : srcFiles) {
+                    File sourceFile = inDir == null ? new File(srcFile) : Paths.get(inDir, srcFile).toFile();
+                    File outputFile = Paths.get(outDir, srcFile + (binary ? ".bin" : ".java")).toFile();
+                    if (!sourceFile.isFile()) {
+                        throw new IllegalArgumentException("Not a file: " + sourceFile);
+                    }
+                    snapshotTool.snapshotScriptFileTo(srcFile, sourceFile, outputFile, binary);
                 }
-                snapshotTool.snapshotScriptFileTo(srcFile, sourceFile, outputFile, binary);
+                snapshotTool.timeStats.print();
+                polyglotContext.leave();
             }
-            snapshotTool.timeStats.print();
         } else {
             System.out.println("Usage: [--java|--binary] --outdir=DIR [--indir=DIR] --file=FILE [--file=FILE ...]");
         }
@@ -117,12 +122,14 @@ public class SnapshotTool {
     }
 
     private void snapshotScriptFileTo(String fileName, File sourceFile, File outputFile, boolean binary) throws IOException {
+        JSRealm realm = AbstractJavaScriptLanguage.getCurrentJSRealm();
+        JSContext context = realm.getContext();
         Recording.logv("recording snapshot of %s", fileName);
-        Source source = Source.newBuilder(sourceFile).name(fileName).language(AbstractJavaScriptLanguage.ID).build();
+        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, realm.getEnv().getTruffleFile(sourceFile.getPath())).name(fileName).build();
         final Recording rec;
         try (TimerCloseable timer = timeStats.file(fileName)) {
             rec = new Recording();
-            ScriptNode program = JavaScriptTranslator.translateScript(RecordingProxy.createRecordingNodeFactory(rec, NodeFactory.getInstance(getContext())), getContext(), source, false);
+            ScriptNode program = JavaScriptTranslator.translateScript(RecordingProxy.createRecordingNodeFactory(rec, NodeFactory.getInstance(context)), context, source, false);
             rec.finish(program.getRootNode());
             outputFile.getParentFile().mkdirs();
             try (FileOutputStream outs = new FileOutputStream(outputFile)) {
@@ -130,24 +137,6 @@ public class SnapshotTool {
             }
         } catch (RuntimeException e) {
             throw new RuntimeException(fileName, e);
-        }
-    }
-
-    private JSContext getContext() {
-        if (context == null) {
-            return context = createDefaultContext();
-        }
-        return context;
-    }
-
-    static JSContext createDefaultContext() {
-        Context polyglotContext = Context.create(AbstractJavaScriptLanguage.ID);
-        polyglotContext.enter();
-        try {
-            polyglotContext.initialize(AbstractJavaScriptLanguage.ID);
-            return AbstractJavaScriptLanguage.getCurrentJSRealm().getContext();
-        } finally {
-            polyglotContext.leave();
         }
     }
 

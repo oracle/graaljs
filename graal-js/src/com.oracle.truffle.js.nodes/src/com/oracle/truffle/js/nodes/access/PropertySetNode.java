@@ -1125,7 +1125,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
                 }
                 if (setterInvoke == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    setterInvoke = insert(Message.createInvoke(1).createNode());
+                    setterInvoke = insert(Message.INVOKE.createNode());
                 }
                 try {
                     ForeignAccess.sendInvoke(setterInvoke, thisObj, setterKey, new Object[]{value});
