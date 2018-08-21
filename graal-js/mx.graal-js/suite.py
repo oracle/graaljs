@@ -1,14 +1,24 @@
 suite = {
-  "mxversion" : "5.176.3",
+  "mxversion" : "5.180.0",
 
   "name" : "graal-js",
+
+  "version" : "1.0.0-rc6",
+  "groupId" : "org.graalvm.js",
+  "url" : "http://www.graalvm.org/",
+  "developer" : {
+    "name" : "Truffle and Graal developers",
+    "email" : "graalvm-users@oss.oracle.com",
+    "organization" : "Graal",
+    "organizationUrl" : "http://www.graalvm.org/",
+  },
 
   "imports" : {
     "suites" : [
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "5e7409244ac702a26b310c1802296a2d3a80cb27",
+           "version" : "d8bf902fed4f94bea98e5cb4bf51b33da3fe6fc3",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -425,7 +435,7 @@ suite = {
 
   "distributions" : {
     "GRAALJS" : {
-      "moduleName" : "com.oracle.graal.js",
+      "moduleName" : "org.graalvm.js",
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.js.parser"],
       "distDependencies" : [
@@ -443,21 +453,40 @@ suite = {
       ],
       "description" : "Graal JavaScript engine",
       "maven" : {
-        "artifactId" : "graal-js",
+        "artifactId" : "js",
       },
       "license": [
         "UPL",  # Main code
         "MIT",  # JONI regexp engine
       ],
+      "allowsJavadocWarnings": True,
     },
 
     "GRAALJS_LAUNCHER" : {
-      "moduleName" : "com.oracle.graal.js.launcher",
+      "moduleName" : "org.graalvm.js.launcher",
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.js.shell"],
       "mainClass" : "com.oracle.truffle.js.shell.JSLauncher",
       "distDependencies" : ["sdk:LAUNCHER_COMMON"],
       "description" : "Graal JavaScript Launcher",
+      "maven" : {
+        "artifactId" : "launcher",
+      },
+      "allowsJavadocWarnings": True,
+    },
+
+    "GRAALJS_SCRIPTENGINE" : {
+      "moduleName" : "org.graalvm.js.scriptengine",
+      "subDir" : "src",
+      "dependencies" : ["com.oracle.truffle.js.scriptengine"],
+      "distDependencies" : [
+        "sdk:GRAAL_SDK"
+      ],
+      "description" : "Graal JavaScript ScriptEngine",
+      "maven" : {
+        "artifactId" : "scriptengine",
+      },
+      "allowsJavadocWarnings": True,
     },
 
     "TRUFFLE_JS_FACTORY_PROCESSOR" : {
@@ -489,16 +518,6 @@ suite = {
         "GRAALJS",
         "NETBEANS_PROFILER",
         "GRAALJS_LAUNCHER"
-      ],
-      "maven" : False,
-    },
-
-    "GRAALJS_SCRIPTENGINE" : {
-      "moduleName" : "com.oracle.graal.js.scriptengine",
-      "subDir" : "src",
-      "dependencies" : ["com.oracle.truffle.js.scriptengine"],
-      "distDependencies" : [
-        "sdk:GRAAL_SDK"
       ],
       "maven" : False,
     },
