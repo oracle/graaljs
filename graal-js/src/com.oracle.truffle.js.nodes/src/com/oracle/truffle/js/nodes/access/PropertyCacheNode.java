@@ -1254,10 +1254,14 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode<T>> extends 
         return "reached cache limit";
     }
 
-    @TruffleBoundary
     protected String getAccessorKey(String getset) {
-        assert JSRuntime.isString(getKey());
-        String origKey = getKey() instanceof String ? (String) getKey() : ((JSLazyString) getKey()).toString();
+        return getAccessorKey(getset, getKey());
+    }
+
+    @TruffleBoundary
+    protected static String getAccessorKey(String getset, Object key) {
+        assert JSRuntime.isString(key);
+        String origKey = key instanceof String ? (String) key : ((JSLazyString) key).toString();
         if (origKey.length() > 0 && Character.isLetter(origKey.charAt(0))) {
             String accessorKey = getset + origKey.substring(0, 1).toUpperCase() + origKey.substring(1);
             return accessorKey;
