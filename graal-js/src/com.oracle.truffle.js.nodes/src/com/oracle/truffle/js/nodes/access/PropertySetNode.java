@@ -46,6 +46,7 @@ import java.util.concurrent.locks.Lock;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
@@ -1035,72 +1036,120 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         @Child private ExportValueNode export;
         @Child private Node setterKeyInfo;
         @Child private Node setterInvoke;
+        @CompilationFinal private boolean optimistic = true;
         private final JSContext context;
 
         public ForeignPropertySetNode(Object key, JSContext context) {
             super(key, new ForeignLanguageCheckNode());
             this.context = context;
             this.isNull = Message.IS_NULL.createNode();
-            this.keyInfo = Message.KEY_INFO.createNode();
             this.write = Message.WRITE.createNode();
             this.export = ExportValueNode.create(context);
         }
 
-        @Override
-        public void setValueUncheckedInt(Object thisObj, int value, Object receiver, boolean condition) {
-            TruffleObject truffleObject = (TruffleObject) thisObj;
+        private TruffleObject nullCheck(TruffleObject truffleObject) {
             if (ForeignAccess.sendIsNull(isNull, truffleObject)) {
                 throw Errors.createTypeErrorCannotSetProperty(key, truffleObject, this);
             }
-            if (KeyInfo.isWritable(ForeignAccess.sendKeyInfo(keyInfo, truffleObject, key))) {
+            return truffleObject;
+        }
+
+        @Override
+        public void setValueUncheckedInt(Object thisObj, int value, Object receiver, boolean condition) {
+            TruffleObject truffleObject = nullCheck((TruffleObject) thisObj);
+            if (optimistic) {
                 try {
                     ForeignAccess.sendWrite(write, truffleObject, key, value);
                 } catch (UnknownIdentifierException e) {
-                    // do nothing
+                    unknownIdentifier(truffleObject, value);
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                     throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
                 }
-            } else if (context.isOptionNashornCompatibilityMode()) {
-                tryInvokeSetter(truffleObject, value);
+            } else {
+                if (keyInfo == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    keyInfo = insert(Message.KEY_INFO.createNode());
+                }
+                if (KeyInfo.isWritable(ForeignAccess.sendKeyInfo(keyInfo, truffleObject, key))) {
+                    try {
+                        ForeignAccess.sendWrite(write, truffleObject, key, value);
+                    } catch (UnknownIdentifierException e) {
+                        // do nothing
+                    } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                        throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
+                    }
+                } else if (context.isOptionNashornCompatibilityMode()) {
+                    tryInvokeSetter(truffleObject, value);
+                }
             }
         }
 
         @Override
         public void setValueUncheckedDouble(Object thisObj, double value, Object receiver, boolean condition) {
-            TruffleObject truffleObject = (TruffleObject) thisObj;
-            if (ForeignAccess.sendIsNull(isNull, truffleObject)) {
-                throw Errors.createTypeErrorCannotSetProperty(key, truffleObject, this);
-            }
-            if (KeyInfo.isWritable(ForeignAccess.sendKeyInfo(keyInfo, truffleObject, key))) {
+            TruffleObject truffleObject = nullCheck((TruffleObject) thisObj);
+            if (optimistic) {
                 try {
                     ForeignAccess.sendWrite(write, truffleObject, key, value);
                 } catch (UnknownIdentifierException e) {
-                    // do nothing
+                    unknownIdentifier(truffleObject, value);
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                     throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
                 }
-            } else if (context.isOptionNashornCompatibilityMode()) {
-                tryInvokeSetter(truffleObject, value);
+            } else {
+                if (keyInfo == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    keyInfo = insert(Message.KEY_INFO.createNode());
+                }
+                if (KeyInfo.isWritable(ForeignAccess.sendKeyInfo(keyInfo, truffleObject, key))) {
+                    try {
+                        ForeignAccess.sendWrite(write, truffleObject, key, value);
+                    } catch (UnknownIdentifierException e) {
+                        // do nothing
+                    } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                        throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
+                    }
+                } else if (context.isOptionNashornCompatibilityMode()) {
+                    tryInvokeSetter(truffleObject, value);
+                }
             }
         }
 
         @Override
         public void setValueUnchecked(Object thisObj, Object value, Object receiver, boolean condition) {
-            TruffleObject truffleObject = (TruffleObject) thisObj;
-            if (ForeignAccess.sendIsNull(isNull, truffleObject)) {
-                throw Errors.createTypeErrorCannotSetProperty(key, truffleObject, this);
-            }
-            Object boundValue = export.executeWithTarget(value, Undefined.instance);
-            if (KeyInfo.isWritable(ForeignAccess.sendKeyInfo(keyInfo, truffleObject, key))) {
+            TruffleObject truffleObject = nullCheck((TruffleObject) thisObj);
+            Object exportedValue = export.executeWithTarget(value, Undefined.instance);
+            if (optimistic) {
                 try {
-                    ForeignAccess.sendWrite(write, truffleObject, key, boundValue);
+                    ForeignAccess.sendWrite(write, truffleObject, key, exportedValue);
                 } catch (UnknownIdentifierException e) {
-                    // do nothing
+                    unknownIdentifier(truffleObject, exportedValue);
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                     throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
                 }
-            } else if (context.isOptionNashornCompatibilityMode()) {
-                tryInvokeSetter(truffleObject, boundValue);
+            } else {
+                if (keyInfo == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    keyInfo = insert(Message.KEY_INFO.createNode());
+                }
+                if (KeyInfo.isWritable(ForeignAccess.sendKeyInfo(keyInfo, truffleObject, key))) {
+                    try {
+                        ForeignAccess.sendWrite(write, truffleObject, key, exportedValue);
+                    } catch (UnknownIdentifierException e) {
+                        // do nothing
+                    } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                        throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
+                    }
+                } else if (context.isOptionNashornCompatibilityMode()) {
+                    tryInvokeSetter(truffleObject, exportedValue);
+                }
+            }
+        }
+
+        private void unknownIdentifier(TruffleObject truffleObject, Object value) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            optimistic = false;
+            if (context.isOptionNashornCompatibilityMode()) {
+                tryInvokeSetter(truffleObject, value);
             }
         }
 

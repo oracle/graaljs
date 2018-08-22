@@ -1170,13 +1170,14 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final boolean isLength;
         private final boolean isMethod;
         private final boolean isGlobal;
+        @CompilationFinal private boolean optimistic = true;
         private final JSContext context;
 
         public ForeignPropertyGetNode(Object key, boolean isMethod, boolean isGlobal, JSContext context) {
             super(key, new ForeignLanguageCheckNode());
             this.context = context;
             this.isNull = Message.IS_NULL.createNode();
-            this.keyInfo = Message.KEY_INFO.createNode();
+            this.read = Message.READ.createNode();
             this.toJSType = JSForeignToJSTypeNodeGen.create();
             this.isLength = key.equals(JSAbstractArray.LENGTH);
             this.isMethod = isMethod;
@@ -1188,20 +1189,36 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 throw Errors.createTypeErrorCannotGetProperty(key, thisObj, isMethod, this);
             }
             Object foreignResult;
-            if (KeyInfo.isReadable(ForeignAccess.sendKeyInfo(keyInfo, thisObj, key))) {
-                if (read == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    this.read = insert(Message.READ.createNode());
-                }
+            if (optimistic) {
                 try {
                     foreignResult = ForeignAccess.sendRead(read, thisObj, key);
-                } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                } catch (UnknownIdentifierException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    optimistic = false;
+                    if (context.isOptionNashornCompatibilityMode() && key instanceof String) {
+                        foreignResult = tryInvokeGetter(thisObj);
+                    } else {
+                        return Undefined.instance;
+                    }
+                } catch (UnsupportedMessageException e) {
                     return Undefined.instance;
                 }
-            } else if (context.isOptionNashornCompatibilityMode() && key instanceof String) {
-                foreignResult = tryInvokeGetter(thisObj);
             } else {
-                return Undefined.instance;
+                if (keyInfo == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    keyInfo = insert(Message.KEY_INFO.createNode());
+                }
+                if (KeyInfo.isReadable(ForeignAccess.sendKeyInfo(keyInfo, thisObj, key))) {
+                    try {
+                        foreignResult = ForeignAccess.sendRead(read, thisObj, key);
+                    } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                        return Undefined.instance;
+                    }
+                } else if (context.isOptionNashornCompatibilityMode() && key instanceof String) {
+                    foreignResult = tryInvokeGetter(thisObj);
+                } else {
+                    return Undefined.instance;
+                }
             }
             return toJSType.executeWithTarget(foreignResult);
         }
