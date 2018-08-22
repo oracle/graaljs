@@ -443,8 +443,20 @@ int GraalString::Write(uint16_t* buffer, int start, int length, int options) con
     return length;
 }
 
+namespace v8 {
+    namespace internal {
+
+        class Heap {
+            static void DisposeExternalString(v8::String::ExternalStringResourceBase* external_string) {
+                external_string->Dispose();
+            }
+            friend GraalString;
+        };
+    }
+}
+
 void GraalString::ExternalResourceDeallocator(const v8::WeakCallbackInfo<void>& data) {
-    delete reinterpret_cast<v8::String::ExternalStringResourceBase*> (data.GetParameter());
+    v8::internal::Heap::DisposeExternalString(reinterpret_cast<v8::String::ExternalStringResourceBase*> (data.GetParameter()));
 }
 
 v8::Local<v8::String> GraalString::NewExternal(v8::Isolate* isolate, v8::String::ExternalOneByteStringResource* resource) {
