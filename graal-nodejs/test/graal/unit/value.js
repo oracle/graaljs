@@ -163,6 +163,9 @@ describe('Value - Is*()', function () {
         it('should return true for 0', function () {
             assert.strictEqual(module.Value_IsInt32(0), true);
         });
+        it('should return false for -0', function () {
+            assert.strictEqual(module.Value_IsInt32(-0), false);
+        });
         it('should return false for 0.5', function () {
             assert.strictEqual(module.Value_IsInt32(0.5), false);
         });
@@ -188,6 +191,9 @@ describe('Value - Is*()', function () {
         });
         it('should return true for 0', function () {
             assert.strictEqual(module.Value_IsUint32(0), true);
+        });
+        it('should return false for -0', function () {
+            assert.strictEqual(module.Value_IsUint32(-0), false);
         });
         it('should return false for -5', function () {
             assert.strictEqual(module.Value_IsUint32(-5), false);
