@@ -588,7 +588,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::object_template_new_instance, "objectTemplateNewInstance", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_template_set_accessor, "objectTemplateSetAccessor", "(Ljava/lang/Object;Ljava/lang/Object;JJLjava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_set_named_property_handler, "objectTemplateSetNamedPropertyHandler", "(Ljava/lang/Object;JJJJJLjava/lang/Object;)V")
-    ACCESS_METHOD(GraalAccessMethod::object_template_set_handler, "objectTemplateSetHandler", "(Ljava/lang/Object;JJJJJLjava/lang/Object;ZZ)V")
+    ACCESS_METHOD(GraalAccessMethod::object_template_set_handler, "objectTemplateSetHandler", "(Ljava/lang/Object;JJJJJJJLjava/lang/Object;ZZ)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_set_call_as_function_handler, "objectTemplateSetCallAsFunctionHandler", "(Ljava/lang/Object;IJLjava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::function_new_instance, "functionNewInstance", "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::function_set_name, "functionSetName", "(Ljava/lang/Object;Ljava/lang/String;)V")

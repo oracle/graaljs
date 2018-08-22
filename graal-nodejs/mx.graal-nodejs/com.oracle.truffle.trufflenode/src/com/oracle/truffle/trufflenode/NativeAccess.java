@@ -123,6 +123,11 @@ public final class NativeAccess {
 
     public static native Object executePropertyHandlerEnumerator(long functionPointer, Object holder, Object[] arguments, Object additionalData);
 
+    public static native void executePropertyHandlerDefiner(long functionPointer, Object holder, Object value, Object set, Object get, int flags, Object[] arguments, Object additionalData,
+                    boolean named);
+
+    public static native Object executePropertyHandlerDescriptor(long functionPointer, Object holder, Object[] arguments, Object additionalData, boolean named);
+
     public static native void deallocate(long pointer);
 
     public static native void weakCallback(long callback, long data, int type);

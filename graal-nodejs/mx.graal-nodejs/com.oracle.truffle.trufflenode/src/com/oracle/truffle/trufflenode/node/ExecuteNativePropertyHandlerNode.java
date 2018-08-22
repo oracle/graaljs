@@ -126,9 +126,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
             case OWN_KEYS:
                 return executeOwnKeys(holder, arguments);
             case DEFINE_PROPERTY:
-                executeDeleter(holder, arguments);
-                PropertyDescriptor descriptor = JSRuntime.toPropertyDescriptor(arguments[4]);
-                return JSObject.defineOwnProperty((DynamicObject) arguments[2], arguments[3], descriptor);
+                return executeDefiner(holder, arguments);
             default:
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalArgumentException();
@@ -182,14 +180,28 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
     private Object executeQuery(Object holder, Object[] arguments) {
         Object key = arguments[3];
         if (JSRuntime.isArrayIndex(key)) {
-            if (indexedHandler != null && indexedHandler.getQuery() != 0) {
+            if (indexedHandler != null) {
                 Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
-                return (NativeAccess.executePropertyHandlerQuery(indexedHandler.getQuery(), holder, nativeCallArgs, indexedHandlerData, false) != null);
+                if (indexedHandler.getQuery() != 0) {
+                    return (NativeAccess.executePropertyHandlerQuery(indexedHandler.getQuery(), holder, nativeCallArgs, indexedHandlerData, false) != null);
+                } else if (indexedHandler.getDescriptor() != 0) {
+                    Object result = (NativeAccess.executePropertyHandlerDescriptor(indexedHandler.getDescriptor(), holder, nativeCallArgs, indexedHandlerData, false) != null);
+                    if (result != null) {
+                        return true;
+                    }
+                }
             }
         } else if (!stringKeysOnly || JSRuntime.isString(key)) {
-            if (namedHandler != null && namedHandler.getQuery() != 0) {
+            if (namedHandler != null) {
                 Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
-                return (NativeAccess.executePropertyHandlerQuery(namedHandler.getQuery(), holder, nativeCallArgs, namedHandlerData, true) != null);
+                if (namedHandler.getQuery() != 0) {
+                    return (NativeAccess.executePropertyHandlerQuery(namedHandler.getQuery(), holder, nativeCallArgs, namedHandlerData, true) != null);
+                } else if (namedHandler.getDescriptor() != 0) {
+                    Object result = NativeAccess.executePropertyHandlerDescriptor(namedHandler.getDescriptor(), holder, nativeCallArgs, namedHandlerData, true);
+                    if (result != null) {
+                        return true;
+                    }
+                }
             }
         }
         DynamicObject target = (DynamicObject) arguments[2];
@@ -224,12 +236,18 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         PropertyDescriptor desc = null;
         if (JSRuntime.isArrayIndex(key)) {
             if (indexedHandler != null) {
+                if (indexedHandler.getDescriptor() != 0) {
+                    return executeDescriptorCallback(holder, arguments, false);
+                }
                 desc = executeGetOwnPropertyDescriptorHelper(holder, arguments, false);
             } else {
                 desc = JSObject.getOwnProperty((DynamicObject) arguments[2], arguments[3]);
             }
         } else if (!stringKeysOnly || JSRuntime.isString(key)) {
             if (namedHandler != null) {
+                if (namedHandler.getDescriptor() != 0) {
+                    return executeDescriptorCallback(holder, arguments, true);
+                }
                 desc = executeGetOwnPropertyDescriptorHelper(holder, arguments, true);
             } else {
                 desc = JSObject.getOwnProperty((DynamicObject) arguments[2], arguments[3]);
@@ -240,6 +258,19 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
             }
         }
         return (desc == null) ? Undefined.instance : JSRuntime.fromPropertyDescriptor(desc, context);
+    }
+
+    private Object executeDescriptorCallback(Object holder, Object[] arguments, boolean named) {
+        PropertyHandler handler = named ? namedHandler : indexedHandler;
+        Object handlerData = named ? namedHandlerData : indexedHandlerData;
+        Object result = NativeAccess.executePropertyHandlerDescriptor(handler.getDescriptor(), holder, arguments, handlerData, named);
+        if (result == null) {
+            PropertyDescriptor desc = JSObject.getOwnProperty((DynamicObject) arguments[2], arguments[3]);
+            if (desc != null && desc.hasConfigurable() && !desc.getConfigurable()) {
+                return JSRuntime.fromPropertyDescriptor(desc, context);
+            }
+        }
+        return (result == null) ? Undefined.instance : result;
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -360,6 +391,49 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         } else {
             return array2;
         }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private Object executeDefiner(Object holder, Object[] arguments) {
+        Object key = arguments[3];
+        PropertyDescriptor descriptor = JSRuntime.toPropertyDescriptor(arguments[4]);
+        int flags = (descriptor.hasConfigurable() ? (1 << 0) : 0) +
+                        (descriptor.getConfigurable() ? (1 << 1) : 0) +
+                        (descriptor.hasEnumerable() ? (1 << 2) : 0) +
+                        (descriptor.getEnumerable() ? (1 << 3) : 0) +
+                        (descriptor.hasWritable() ? (1 << 4) : 0) +
+                        (descriptor.getWritable() ? (1 << 5) : 0);
+        if (JSRuntime.isArrayIndex(key)) {
+            if (indexedHandler != null && indexedHandler.getDefiner() != 0) {
+                NativeAccess.executePropertyHandlerDefiner(
+                                indexedHandler.getDefiner(),
+                                holder,
+                                descriptor.getValue(),
+                                descriptor.getGet(),
+                                descriptor.getSet(),
+                                flags,
+                                arguments,
+                                indexedHandlerData,
+                                false);
+                return true;
+            }
+        } else if (!stringKeysOnly || JSRuntime.isString(key)) {
+            if (namedHandler != null && namedHandler.getDefiner() != 0) {
+                NativeAccess.executePropertyHandlerDefiner(
+                                namedHandler.getDefiner(),
+                                holder,
+                                descriptor.getValue(),
+                                descriptor.getGet(),
+                                descriptor.getSet(),
+                                flags,
+                                arguments,
+                                namedHandlerData,
+                                true);
+                return true;
+            }
+        }
+        executeDeleter(holder, arguments);
+        return JSObject.defineOwnProperty((DynamicObject) arguments[2], key, descriptor);
     }
 
 }

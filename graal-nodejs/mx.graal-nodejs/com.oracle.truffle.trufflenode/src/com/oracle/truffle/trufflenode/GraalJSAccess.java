@@ -807,36 +807,53 @@ public final class GraalJSAccess {
     }
 
     public Object objectGetRealNamedProperty(Object object, Object key) {
-        Object obj = object;
-        if (JSProxy.isProxy(obj)) {
-            obj = JSProxy.getTarget((DynamicObject) obj);
+        Object propertyKey = JSRuntime.toPropertyKey(key);
+        Object current = object;
+        while (JSRuntime.isObject(current)) {
+            DynamicObject currentDO = (DynamicObject) current;
+            if (JSProxy.isProxy(currentDO)) {
+                current = JSProxy.getTarget(currentDO);
+            } else {
+                PropertyDescriptor descriptor = JSObject.getOwnProperty(currentDO, propertyKey);
+                if (descriptor != null) {
+                    return descriptor.isAccessorDescriptor() ? null : objectGet(currentDO, propertyKey);
+                }
+                current = JSObject.getPrototype(currentDO);
+            }
         }
-        boolean has = objectHas(obj, key);
-        return has ? objectGet(obj, key) : null;
+        return null;
     }
 
     public int objectGetRealNamedPropertyAttributes(Object object, Object key) {
-        Object obj = object;
-        if (JSProxy.isProxy(obj)) {
-            obj = JSProxy.getTarget((DynamicObject) obj);
+        Object propertyKey = JSRuntime.toPropertyKey(key);
+        Object current = object;
+        while (JSRuntime.isObject(current)) {
+            DynamicObject currentDO = (DynamicObject) current;
+            if (JSProxy.isProxy(currentDO)) {
+                current = JSProxy.getTarget(currentDO);
+            } else {
+                PropertyDescriptor descriptor = JSObject.getOwnProperty(currentDO, propertyKey);
+                if (descriptor != null) {
+                    if (descriptor.isAccessorDescriptor()) {
+                        return -1;
+                    } else {
+                        int attributes = 0;
+                        if (!descriptor.getWritable()) {
+                            attributes |= 1; /* v8::PropertyAttribute::ReadOnly */
+                        }
+                        if (!descriptor.getEnumerable()) {
+                            attributes |= 2; /* v8::PropertyAttribute::DontEnum */
+                        }
+                        if (!descriptor.getConfigurable()) {
+                            attributes |= 4; /* v8::PropertyAttribute::DontDelete */
+                        }
+                        return attributes;
+                    }
+                }
+                current = JSObject.getPrototype(currentDO);
+            }
         }
-        PropertyDescriptor desc = JSObject.getOwnProperty((DynamicObject) obj, key);
-        int attributes;
-        if (desc == null) {
-            attributes = -1;
-        } else {
-            attributes = 0;
-            if (!desc.getWritable()) {
-                attributes |= 1; /* v8::PropertyAttribute::ReadOnly */
-            }
-            if (!desc.getEnumerable()) {
-                attributes |= 2; /* v8::PropertyAttribute::DontEnum */
-            }
-            if (!desc.getConfigurable()) {
-                attributes |= 4; /* v8::PropertyAttribute::DontDelete */
-            }
-        }
-        return attributes;
+        return -1;
     }
 
     public Object objectCreationContext(Object object) {
@@ -1453,12 +1470,13 @@ public final class GraalJSAccess {
                     long getter, long setter, long query, long deleter, long enumerator, Object data) {
         ObjectTemplate template = (ObjectTemplate) templateObj;
         template.setNamedPropertyHandler(new PropertyHandler(
-                        getter, setter, query, deleter, enumerator, data), true);
+                        getter, setter, query, deleter, enumerator, 0, 0, data), true);
     }
 
-    public void objectTemplateSetHandler(Object templateObj, long getter, long setter, long query, long deleter, long enumerator, Object data, boolean named, boolean stringKeysOnly) {
+    public void objectTemplateSetHandler(Object templateObj, long getter, long setter, long query, long deleter, long enumerator, long definer, long descriptor, Object data, boolean named,
+                    boolean stringKeysOnly) {
         ObjectTemplate template = (ObjectTemplate) templateObj;
-        PropertyHandler handler = new PropertyHandler(getter, setter, query, deleter, enumerator, data);
+        PropertyHandler handler = new PropertyHandler(getter, setter, query, deleter, enumerator, definer, descriptor, data);
         if (named) {
             template.setNamedPropertyHandler(handler, stringKeysOnly);
         } else {

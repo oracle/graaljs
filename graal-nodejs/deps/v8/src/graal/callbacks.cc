@@ -78,6 +78,8 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("executePropertyHandlerQuery", "(JLjava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;Z)Ljava/lang/Object;", &GraalExecutePropertyHandlerQuery),
     CALLBACK("executePropertyHandlerDeleter", "(JLjava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;Z)Z", &GraalExecutePropertyHandlerDeleter),
     CALLBACK("executePropertyHandlerEnumerator", "(JLjava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecutePropertyHandlerEnumerator),
+    CALLBACK("executePropertyHandlerDefiner", "(JLjava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I[Ljava/lang/Object;Ljava/lang/Object;Z)V", &GraalExecutePropertyHandlerDefiner),
+    CALLBACK("executePropertyHandlerDescriptor", "(JLjava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;Z)Ljava/lang/Object;", &GraalExecutePropertyHandlerDescriptor),
     CALLBACK("deallocate", "(J)V", &GraalDeallocate),
     CALLBACK("weakCallback", "(JJI)V", &GraalWeakCallback),
     CALLBACK("notifyGCCallbacks", "(Z)V", &GraalNotifyGCCallbacks),
@@ -458,6 +460,77 @@ jobject GraalExecutePropertyHandlerEnumerator(JNIEnv* env, jclass nativeAccess, 
     GraalValue*** graal_value = reinterpret_cast<GraalValue***> (&value);
     jobject return_value = (**graal_value == nullptr) ? isolate->GetUndefined()->GetJavaObject() : env->NewLocalRef((**graal_value)->GetJavaObject());
     return return_value;
+}
+
+void GraalExecutePropertyHandlerDefiner(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobject value, jobject get, jobject set, int flags, jobjectArray arguments, jobject data, jboolean named) {
+    GraalIsolate* isolate = CurrentIsolateChecked();
+
+    jobject java_key = env->GetObjectArrayElement(arguments, 3);
+    GraalValue* graal_key = GraalValue::FromJavaObject(isolate, java_key);
+    GraalPropertyCallbackInfo<v8::Value> info = GraalPropertyCallbackInfo<v8::Value>::New(isolate, arguments, 0, data, holder);
+    bool has_configurable = flags & (1 << 0);
+    bool congigurable = flags & (1 << 1);
+    bool has_enumerable = flags & (1 << 2);
+    bool enumerable = flags & (1 << 3);
+    bool has_writable = flags & (1 << 4);
+    bool writable = flags & (1 << 5);
+
+    v8::PropertyDescriptor* descriptor;
+    if (value != nullptr) {
+        GraalValue* graal_value = GraalValue::FromJavaObject(isolate, value);
+        v8::Local<v8::Value> v8_value = reinterpret_cast<v8::Value*> (graal_value);
+        if (has_writable) {
+            descriptor = new v8::PropertyDescriptor(v8_value, writable);
+        } else {
+            descriptor = new v8::PropertyDescriptor(v8_value);
+        }
+    } else if (get != nullptr || set != nullptr) {
+        GraalValue* graal_get = (get == nullptr) ? nullptr : GraalValue::FromJavaObject(isolate, get);
+        GraalValue* graal_set = (set == nullptr) ? nullptr : GraalValue::FromJavaObject(isolate, set);
+        v8::Local<v8::Value> v8_get = reinterpret_cast<v8::Value*> (graal_get);
+        v8::Local<v8::Value> v8_set = reinterpret_cast<v8::Value*> (graal_set);
+        descriptor = new v8::PropertyDescriptor(v8_get, v8_set);
+    } else {
+        descriptor = new v8::PropertyDescriptor();
+    }
+    if (has_configurable) {
+        descriptor->set_configurable(congigurable);
+    }
+    if (has_enumerable) {
+        descriptor->set_enumerable(enumerable);
+    }
+
+    if (named) {
+        v8::Name* property_name = reinterpret_cast<v8::Name*> (graal_key);
+        v8::GenericNamedPropertyDefinerCallback callback = (v8::GenericNamedPropertyDefinerCallback) pointer;
+        callback(property_name, *descriptor, info);
+    } else {
+        uint32_t index = graal_key->ToUint32(reinterpret_cast<v8::Isolate*> (isolate))->Value();
+        v8::IndexedPropertyDefinerCallback callback = (v8::IndexedPropertyDefinerCallback) pointer;
+        callback(index, *descriptor, info);
+    }
+    delete descriptor;
+}
+
+jobject GraalExecutePropertyHandlerDescriptor(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobjectArray arguments, jobject data, jboolean named) {
+    GraalIsolate* isolate = CurrentIsolateChecked();
+
+    jobject java_key = env->GetObjectArrayElement(arguments, 3);
+    GraalValue* graal_key = GraalValue::FromJavaObject(isolate, java_key);
+    GraalPropertyCallbackInfo<v8::Value> info = GraalPropertyCallbackInfo<v8::Value>::New(isolate, arguments, 0, data, holder);
+
+    if (named) {
+        v8::Name* property_name = reinterpret_cast<v8::Name*> (graal_key);
+        v8::GenericNamedPropertyDescriptorCallback callback = (v8::GenericNamedPropertyDescriptorCallback)pointer;
+        callback(property_name, info);
+    } else {
+        uint32_t index = graal_key->ToUint32(reinterpret_cast<v8::Isolate*> (isolate))->Value();
+        v8::IndexedPropertyDescriptorCallback callback = (v8::IndexedPropertyDescriptorCallback)pointer;
+        callback(index, info);
+    }
+
+    v8::ReturnValue<v8::Value> value = info.GetReturnValue();
+    return isolate->CorrectReturnValue(**reinterpret_cast<GraalValue***> (&value), nullptr);
 }
 
 void GraalDeallocate(JNIEnv* env, jclass nativeAccess, jlong pointer) {

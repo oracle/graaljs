@@ -51,14 +51,18 @@ public final class PropertyHandler {
     private final long query;
     private final long deleter;
     private final long enumerator;
+    private final long definer;
+    private final long descriptor;
     private final Object data;
 
-    public PropertyHandler(long getter, long setter, long query, long deleter, long enumerator, Object data) {
+    public PropertyHandler(long getter, long setter, long query, long deleter, long enumerator, long definer, long descriptor, Object data) {
         this.getter = getter;
         this.setter = setter;
         this.query = query;
         this.deleter = deleter;
         this.enumerator = enumerator;
+        this.definer = definer;
+        this.descriptor = descriptor;
         this.data = data;
     }
 
@@ -80,6 +84,14 @@ public final class PropertyHandler {
 
     public long getEnumerator() {
         return enumerator;
+    }
+
+    public long getDefiner() {
+        return definer;
+    }
+
+    public long getDescriptor() {
+        return descriptor;
     }
 
     public Object getData() {
