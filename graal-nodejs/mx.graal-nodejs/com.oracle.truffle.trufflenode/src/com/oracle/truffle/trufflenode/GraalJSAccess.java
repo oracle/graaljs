@@ -449,7 +449,7 @@ public final class GraalJSAccess {
     public Object valueToInteger(Object value) {
         if (value instanceof Double) {
             double doubleValue = (Double) value;
-            if (doubleValue < Long.MIN_VALUE || Long.MAX_VALUE < doubleValue) {
+            if (doubleValue < Long.MIN_VALUE || Long.MAX_VALUE < doubleValue || doubleValue == 0) {
                 return value; // Integer already
             }
         }
@@ -484,6 +484,9 @@ public final class GraalJSAccess {
     public Object valueToArrayIndex(Object value) {
         if (JSRuntime.isArrayIndex(value)) {
             double index = JSRuntime.toDouble(value);
+            if (index == 0) {
+                index = 0; // handles the negative zero
+            }
             resetSharedBuffer();
             sharedBuffer.putDouble(index);
             return index;
