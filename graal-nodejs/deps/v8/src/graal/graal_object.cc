@@ -319,11 +319,11 @@ v8::Maybe<bool> GraalObject::DefineProperty(v8::Local<v8::Context> context, v8::
     jobject get = descriptor.has_get() ? reinterpret_cast<GraalHandleContent*> (*descriptor.get())->GetJavaObject() : NULL;
     jobject set = descriptor.has_set() ? reinterpret_cast<GraalHandleContent*> (*descriptor.set())->GetJavaObject() : NULL;
     jboolean has_enumerable = descriptor.has_enumerable();
-    jboolean enumerable = has_enumerable ? false : descriptor.enumerable();
+    jboolean enumerable = has_enumerable ? descriptor.enumerable() : false;
     jboolean has_configurable = descriptor.has_configurable();
-    jboolean configurable = has_configurable ? false : descriptor.configurable();
+    jboolean configurable = has_configurable ? descriptor.configurable() : false;
     jboolean has_writable = descriptor.has_writable();
-    jboolean writable = has_writable ? false : descriptor.writable();
+    jboolean writable = has_writable ? descriptor.writable() : false;
     JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::object_define_property, Boolean, GetJavaObject(), java_key,
             value, get, set, has_enumerable, enumerable, has_configurable, configurable, has_writable, writable);
     return v8::Just((bool) result);

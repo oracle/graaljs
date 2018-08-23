@@ -54,7 +54,7 @@ EXPORT_TO_JS(New) {
     void* buf = (void*) externalBuffer;
     Local<External> ext = External::New(isolate, buf);
 
-    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New();
+    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(isolate);
     objectTemplate->SetInternalFieldCount(1);
     Local<Object> obj = objectTemplate->NewInstance();
 
@@ -65,8 +65,9 @@ EXPORT_TO_JS(New) {
 // Value::IsExternal
 
 EXPORT_TO_JS(CheckInternalFieldIsExtern) {
+    Isolate* isolate = args.GetIsolate();
     Local<Object> obj = args[0].As<Object>();
-    Local<Value> val = obj->GetInternalField(args[1]->ToInt32()->Value());
+    Local<Value> val = obj->GetInternalField(args[1]->ToInt32(isolate->GetCurrentContext()).ToLocalChecked()->Value());
     args.GetReturnValue().Set(val->IsExternal());
 }
 

@@ -530,6 +530,10 @@ namespace v8 {
         return reinterpret_cast<GraalObject*> (this)->CreationContext();
     }
 
+    bool Object::Delete(Local<Value> key) {
+        return reinterpret_cast<GraalObject*> (this)->Delete(key);
+    }
+
     Maybe<bool> Object::Delete(Local<Context> context, Local<Value> key) {
         return Just(reinterpret_cast<GraalObject*> (this)->Delete(key));
     }

@@ -44,12 +44,6 @@
 // RegExp::New
 
 EXPORT_TO_JS(RegExp) {
-    Local<String> pattern = args[0].As<String>();
-    Local<Value> re = RegExp::New(pattern, RegExp::Flags::kGlobal);
-    args.GetReturnValue().Set(re);
-}
-
-EXPORT_TO_JS(RegExpMaybe) {
     Isolate* isolate = args.GetIsolate();
     Local<String> pattern = args[0].As<String>();
     MaybeLocal<RegExp> re = RegExp::New(isolate->GetCurrentContext(), pattern, RegExp::Flags::kGlobal);

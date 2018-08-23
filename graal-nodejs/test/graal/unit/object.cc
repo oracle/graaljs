@@ -46,13 +46,13 @@
 int simpleGetterCallCount = 0;
 int simpleSetterCallCount = 0;
 
-void SimpleAccessorGetter(Local<String> property, const PropertyCallbackInfo<Value>& info) {
+void SimpleAccessorGetter(Local<Name> property, const PropertyCallbackInfo<Value>& info) {
     Isolate* isolate = info.GetIsolate();
     simpleGetterCallCount++;
-    info.GetReturnValue().Set(String::Concat(String::NewFromUtf8(isolate, "accessor getter called: "), property));
+    info.GetReturnValue().Set(String::Concat(String::NewFromUtf8(isolate, "accessor getter called: "), property.As<String>()));
 }
 
-void SimpleAccessorSetter(Local<String> property, Local<Value> value, const PropertyCallbackInfo<void>& info) {
+void SimpleAccessorSetter(Local<Name> property, Local<Value> value, const PropertyCallbackInfo<void>& info) {
     Isolate* isolate = info.GetIsolate();
     simpleSetterCallCount++;
     Local<Object> obj = info.This();
@@ -101,15 +101,6 @@ EXPORT_TO_JS(SetByIndex) {
     args.GetReturnValue().Set(obj->Set(index, value));
 }
 
-// Object::ForceSet
-
-EXPORT_TO_JS(ForceSet) {
-    Local<Object> obj = args[0].As<Object>();
-    Local<Value> key = args[1];
-    Local<Value> value = args[2];
-    args.GetReturnValue().Set(obj->ForceSet(key, value));
-}
-
 // Object::Has
 
 EXPORT_TO_JS(HasByName) {
@@ -119,7 +110,7 @@ EXPORT_TO_JS(HasByName) {
 // Object::HasOwnProperty
 
 EXPORT_TO_JS(HasOwnProperty) {
-    args.GetReturnValue().Set(args[0].As<Object>()->HasOwnProperty(args[1].As<String>()));
+    args.GetReturnValue().Set(args[0].As<Object>()->HasOwnProperty(args.GetIsolate()->GetCurrentContext(), args[1].As<String>()).FromJust());
 }
 
 // Object::HasRealNamedProperty
@@ -131,7 +122,8 @@ EXPORT_TO_JS(HasRealNamedProperty) {
 // Object::HasRealIndexedProperty
 
 EXPORT_TO_JS(HasRealIndexedProperty) {
-    args.GetReturnValue().Set(args[0].As<Object>()->HasRealIndexedProperty(args[1]->ToUint32()->Value()));
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
+    args.GetReturnValue().Set(args[0].As<Object>()->HasRealIndexedProperty(args[1]->ToUint32(context).ToLocalChecked()->Value()));
 }
 
 // Object::Delete
@@ -194,10 +186,11 @@ EXPORT_TO_JS(Clone) {
 // Object::SetAccessor
 
 EXPORT_TO_JS(SetAccessor) {
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
     Local<Object> obj = args[0].As<Object>();
     Local<String> key = args[1].As<String>();
 
-    obj->SetAccessor(key, SimpleAccessorGetter, SimpleAccessorSetter);
+    obj->SetAccessor(context, key, SimpleAccessorGetter, SimpleAccessorSetter);
 
     args.GetReturnValue().Set(true);
 }

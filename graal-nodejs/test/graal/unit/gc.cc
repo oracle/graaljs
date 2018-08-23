@@ -44,7 +44,8 @@
 #ifdef SUITE_INTERNALS
 
 void GC_InvokeGC(Isolate* isolate) {
-    Script::Compile(String::NewFromUtf8(isolate, "gc()"))->Run();
+    Local<Context> context = isolate->GetCurrentContext();
+    Script::Compile(context, String::NewFromUtf8(isolate, "gc()")).ToLocalChecked()->Run(context);
 }
 
 static int callback1_invocations;

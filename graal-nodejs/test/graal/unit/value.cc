@@ -341,7 +341,9 @@ EXPORT_TO_JS(ToBoolean) {
 }
 
 EXPORT_TO_JS(ToNumber) {
-    args.GetReturnValue().Set(args[0]->ToNumber());
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    args.GetReturnValue().Set(args[0]->ToNumber(context).ToLocalChecked());
 }
 
 EXPORT_TO_JS(ToString) {
@@ -353,19 +355,25 @@ EXPORT_TO_JS(ToInteger) {
 }
 
 EXPORT_TO_JS(ToUint32) {
-    args.GetReturnValue().Set(args[0]->ToUint32());
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    args.GetReturnValue().Set(args[0]->ToUint32(context).ToLocalChecked());
 }
 
 EXPORT_TO_JS(ToInt32) {
-    args.GetReturnValue().Set(args[0]->ToInt32());
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    args.GetReturnValue().Set(args[0]->ToInt32(context).ToLocalChecked());
 }
 
 EXPORT_TO_JS(ToArrayIndex) {
-    Local<Uint32> result = args[0]->ToArrayIndex();
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    MaybeLocal<Uint32> result = args[0]->ToArrayIndex(context);
     if (result.IsEmpty()) {
         args.GetReturnValue().SetUndefined();
     } else {
-        args.GetReturnValue().Set(result);
+        args.GetReturnValue().Set(result.ToLocalChecked());
     }
 }
 

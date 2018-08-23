@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -269,6 +270,17 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
             if (desc != null && desc.hasConfigurable() && !desc.getConfigurable()) {
                 return JSRuntime.fromPropertyDescriptor(desc, context);
             }
+        } else {
+            if (!JSObject.hasProperty((DynamicObject) result, JSAttributes.CONFIGURABLE) || !JSRuntime.toBoolean(JSObject.get((DynamicObject) result, JSAttributes.CONFIGURABLE))) {
+                PropertyDescriptor desc = JSObject.getOwnProperty((DynamicObject) arguments[2], arguments[3]);
+                if (desc == null) {
+                    // target does not have a property with this key => the property
+                    // cannot be non-configurable according to Proxy invariants
+                    desc = JSRuntime.toPropertyDescriptor(result);
+                    desc.setConfigurable(true);
+                    return JSRuntime.fromPropertyDescriptor(desc, context);
+                }
+            }
         }
         return (result == null) ? Undefined.instance : result;
     }
@@ -403,6 +415,17 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                         (descriptor.getEnumerable() ? (1 << 3) : 0) +
                         (descriptor.hasWritable() ? (1 << 4) : 0) +
                         (descriptor.getWritable() ? (1 << 5) : 0);
+        DynamicObject target = (DynamicObject) arguments[2];
+        boolean nonConfigurable = !descriptor.hasConfigurable() || !descriptor.getConfigurable();
+        PropertyDescriptor targetDesc = null;
+        if (nonConfigurable) {
+            targetDesc = JSObject.getOwnProperty(target, key);
+            if (targetDesc != null && targetDesc.hasConfigurable() && targetDesc.getConfigurable()) {
+                flags |= 1 << 1;
+                nonConfigurable = false;
+            }
+        }
+        boolean handled = false;
         if (JSRuntime.isArrayIndex(key)) {
             if (indexedHandler != null && indexedHandler.getDefiner() != 0) {
                 NativeAccess.executePropertyHandlerDefiner(
@@ -415,7 +438,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                                 arguments,
                                 indexedHandlerData,
                                 false);
-                return true;
+                handled = true;
             }
         } else if (!stringKeysOnly || JSRuntime.isString(key)) {
             if (namedHandler != null && namedHandler.getDefiner() != 0) {
@@ -429,11 +452,19 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                                 arguments,
                                 namedHandlerData,
                                 true);
-                return true;
+                handled = true;
             }
         }
-        executeDeleter(holder, arguments);
-        return JSObject.defineOwnProperty((DynamicObject) arguments[2], key, descriptor);
+        if (handled) {
+            if (nonConfigurable && targetDesc == null) {
+                return JSObject.defineOwnProperty(target, key, descriptor);
+            } else {
+                return true;
+            }
+        } else {
+            executeDeleter(holder, arguments);
+            return JSObject.defineOwnProperty(target, key, descriptor);
+        }
     }
 
 }

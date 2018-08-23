@@ -44,17 +44,19 @@
 // Function::NewInstance
 
 EXPORT_TO_JS(NewInstance) {
+    Isolate* isolate = args.GetIsolate();
     Local<Function> func = args[0].As<Function>();
-    args.GetReturnValue().Set(func->NewInstance());
+    args.GetReturnValue().Set(func->NewInstance(isolate->GetCurrentContext()).ToLocalChecked());
 }
 
 EXPORT_TO_JS(NewInstanceWithArguments) {
+    Isolate* isolate = args.GetIsolate();
     int argc = args[0].As<Number>()->Value();
     Local<Value>* argv = 0;
     printf("%d\n", args.Length());
 
     Local<Function> func = args[0].As<Function>();
-    args.GetReturnValue().Set(func->NewInstance(argc, argv));
+    args.GetReturnValue().Set(func->NewInstance(isolate->GetCurrentContext(), argc, argv).ToLocalChecked());
 }
 
 // Function::SetName

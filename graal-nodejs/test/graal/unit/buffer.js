@@ -63,7 +63,7 @@ describe('Buffer.utf8Write', function() {
         }, RangeError);
     });
     it('should report tot bytes for utf8 values', function() {
-        assert.strictEqual(new Buffer(10).utf8Write('Â½Â½Â½', 0, 2), 2);
+        assert.strictEqual(new Buffer(10).utf8Write('½½½', 0, 2), 2);
     });
     it('should fail if argument is not a string', function() {
         assert.throws(() => {
@@ -85,10 +85,10 @@ describe('Buffer.utf8Write', function() {
         }, TypeError);
     });
     it('should deal with utf8 inputs', function() {
-        assert.strictEqual(new Buffer(10).utf8Write('Â½Â½', 0, 3), 2);
+        assert.strictEqual(new Buffer(10).utf8Write('½½', 0, 3), 2);
     });
     it('should deal with utf8 inputs #2', function() {
-        assert.strictEqual(new Buffer(10).utf8Write('Â½Â½Â½'), 6);
+        assert.strictEqual(new Buffer(10).utf8Write('½½½'), 6);
     });
     it('length is zero', function() {
         assert.strictEqual(new Buffer(0).utf8Write.length, 0);

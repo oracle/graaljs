@@ -58,10 +58,6 @@ describe('Script', function () {
             assert.strictEqual(scriptId2 > 0, true);
             assert.strictEqual(scriptId1 + 1, scriptId2);
         });
-        it('should also work when providing a ScriptOrigin', function () {
-            var scriptId = module.Script_CompileWithScriptOrigin(ret42Script, "");
-            assert.strictEqual(scriptId > 0, true);
-        });
     });
     describe('Run', function () {
         it('should be able to run an easy script', function () {
