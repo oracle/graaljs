@@ -529,4 +529,9 @@ public final class Errors {
     public static JSException createTypeErrorClassNotFound(String className) {
         return Errors.createTypeErrorFormat("Access to host class %s is not allowed or does not exist.", className);
     }
+
+    @TruffleBoundary
+    public static JSException createNotAFileError(String path) {
+        return Errors.createTypeError("Not a file: " + path);
+    }
 }

@@ -62,6 +62,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -407,11 +408,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
     }
 
-    static File resolveRelativeFilePath(String path) {
+    static TruffleFile resolveRelativeFilePath(String path, TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
-        File file = new File(path);
+        TruffleFile file = env.getTruffleFile(path);
         if (!file.isAbsolute() && !file.exists()) {
-            File f = tryResolveCallerRelativeFilePath(path);
+            TruffleFile f = tryResolveCallerRelativeFilePath(path, env);
             if (f != null) {
                 return f;
             }
@@ -419,7 +420,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         return file;
     }
 
-    private static File tryResolveCallerRelativeFilePath(String path) {
+    private static TruffleFile tryResolveCallerRelativeFilePath(String path, TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
         CallTarget caller = Truffle.getRuntime().getCallerFrame().getCallTarget();
         if (caller instanceof RootCallTarget) {
@@ -427,10 +428,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (callerSourceSection != null && callerSourceSection.isAvailable()) {
                 String callerPath = callerSourceSection.getSource().getPath();
                 if (callerPath != null) {
-                    File callerFile = new File(callerPath);
+                    TruffleFile callerFile = env.getTruffleFile(callerPath);
                     if (callerFile.isAbsolute()) {
-                        File file = callerFile.toPath().resolveSibling(path).normalize().toFile();
-                        if (file.isFile()) {
+                        TruffleFile file = callerFile.resolveSibling(path).normalize();
+                        if (file.isRegularFile()) {
                             return file;
                         }
                     }
@@ -480,6 +481,15 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected final Source sourceFromFileName(String fileName, JSRealm realm) {
             try {
                 return Source.newBuilder(AbstractJavaScriptLanguage.ID, realm.getEnv().getTruffleFile(fileName)).name(fileName).build();
+            } catch (IOException e) {
+                throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
+            }
+        }
+
+        @TruffleBoundary
+        protected final Source sourceFromTruffleFile(TruffleFile file) {
+            try {
+                return Source.newBuilder(AbstractJavaScriptLanguage.ID, file).build();
             } catch (IOException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
@@ -1045,9 +1055,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 }
             }
 
-            File file = resolveRelativeFilePath(path);
-            if (file.isFile()) {
-                source = sourceFromFileName(file.getPath(), realm);
+            TruffleFile file = resolveRelativeFilePath(path, realm.getEnv());
+            if (file.isRegularFile()) {
+                source = sourceFromTruffleFile(file);
             }
 
             if (source == null) {
@@ -1282,28 +1292,30 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
     }
 
-    static File getFileFromArgument(Object arg, TruffleLanguage.Env env) {
+    static Object getFileFromArgument(Object arg, TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
         String path;
-        File file = null;
         if (JSRuntime.isString(arg)) {
             path = arg.toString();
         } else if (!JSTruffleOptions.SubstrateVM && env.isHostObject(arg) && env.asHostObject(arg) instanceof File) {
-            file = (File) env.asHostObject(arg);
-            path = file.getPath();
+            return verifyFile((File) env.asHostObject(arg));
         } else if (JSTruffleOptions.NashornJavaInterop && arg instanceof File) {
-            file = (File) arg;
-            path = file.getPath();
+            return verifyFile((File) arg);
         } else {
             path = JSRuntime.toString(arg);
         }
 
-        if (file == null) {
-            file = resolveRelativeFilePath(JSRuntime.toString(path));
-        }
+        TruffleFile file = resolveRelativeFilePath(path, env);
 
+        if (!file.isRegularFile()) {
+            throw Errors.createNotAFileError(path);
+        }
+        return file;
+    }
+
+    private static File verifyFile(File file) {
         if (!file.isFile()) {
-            throw Errors.createTypeError("Not a file: " + path);
+            throw Errors.createNotAFileError(file.getPath());
         }
         return file;
     }
@@ -1322,23 +1334,29 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected String read(Object fileParam) {
-            File file = getFileFromArgument(fileParam, getContext().getRealm().getEnv());
+            Object file = getFileFromArgument(fileParam, getContext().getRealm().getEnv());
 
             try {
-                return readImpl(file);
+                if (file instanceof TruffleFile) {
+                    return readImpl(((TruffleFile) file).newBufferedReader());
+                } else {
+                    return readImpl(Files.newBufferedReader(((File) file).toPath()));
+                }
             } catch (Exception ex) {
                 throw JSException.create(JSErrorType.Error, ex.getMessage(), ex, this);
             }
         }
 
-        private static String readImpl(File file) throws IOException {
+        private static String readImpl(BufferedReader reader) throws IOException {
             final StringBuilder sb = new StringBuilder();
             final char[] arr = new char[BUFFER_SIZE];
-            try (BufferedReader reader = Files.newBufferedReader(file.toPath())) {
+            try {
                 int numChars;
                 while ((numChars = reader.read(arr, 0, arr.length)) > 0) {
                     sb.append(arr, 0, numChars);
                 }
+            } finally {
+                reader.close();
             }
             return sb.toString();
         }
@@ -1356,10 +1374,16 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected final DynamicObject readbuffer(Object fileParam) {
-            File file = getFileFromArgument(fileParam, getContext().getRealm().getEnv());
+            Object file = getFileFromArgument(fileParam, getContext().getRealm().getEnv());
 
             try {
-                final byte[] bytes = Files.readAllBytes(file.toPath());
+                final byte[] bytes;
+                if (file instanceof TruffleFile) {
+                    bytes = ((TruffleFile) file).readAllBytes();
+                } else {
+                    bytes = Files.readAllBytes(((File) file).toPath());
+                }
+
                 final DynamicObject arrayBuffer;
                 if (getContext().isOptionDirectByteBuffer()) {
                     ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length);
