@@ -2001,7 +2001,6 @@ public final class GraalJSAccess {
         }
 
         WeakCallback callback = updateWeakCallback(target, reference, 0, 0, 0, key);
-        pollWeakCallbackQueue(false);
         return callback.data;
     }
 
@@ -2111,6 +2110,7 @@ public final class GraalJSAccess {
     }
 
     public void isolateRunMicrotasks() {
+        pollWeakCallbackQueue(false);
         try {
             boolean seenJob;
             do {
