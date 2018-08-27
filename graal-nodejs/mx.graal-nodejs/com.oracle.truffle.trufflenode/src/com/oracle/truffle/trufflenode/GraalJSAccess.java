@@ -1320,15 +1320,18 @@ public final class GraalJSAccess {
         JSRealm jsRealm = (JSRealm) realm;
         JSContext jsContext = jsRealm.getContext();
         ObjectTemplate template = (ObjectTemplate) templateObj;
-        FunctionTemplate parentFunctionTemplate = template.getParentFunctionTemplate();
-        if (parentFunctionTemplate != null) {
-            DynamicObject function = (DynamicObject) functionTemplateGetFunction(realm, parentFunctionTemplate);
-            return JSFunction.getConstructTarget(function).call(JSFunction.CONSTRUCT, function);
-        }
         FunctionTemplate functionHandler = template.getFunctionHandler();
         DynamicObject instance;
         if (functionHandler == null) {
-            instance = JSUserObject.create(jsRealm);
+            FunctionTemplate parentFunctionTemplate = template.getParentFunctionTemplate();
+            if (parentFunctionTemplate == null) {
+                instance = JSUserObject.create(jsRealm);
+            } else {
+                DynamicObject function = (DynamicObject) functionTemplateGetFunction(realm, parentFunctionTemplate);
+                DynamicObject prototype = (DynamicObject) JSObject.get(function, JSObject.PROTOTYPE);
+                instance = JSUserObject.createWithPrototype(prototype, jsRealm);
+                instance.define(FunctionTemplate.CONSTRUCTOR, parentFunctionTemplate);
+            }
         } else {
             instance = functionTemplateCreateCallback(jsContext, jsRealm, functionHandler);
         }
