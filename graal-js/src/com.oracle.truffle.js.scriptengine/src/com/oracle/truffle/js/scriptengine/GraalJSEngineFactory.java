@@ -55,9 +55,9 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
 
     private static final String ENGINE_NAME = "Graal.js";
     private static final String NAME = "javascript";
-    private static final String ENGINE_VERSION = "1.0"; // also in AbstractJavaScriptLanguage
+    private static final String GRAALVM_VERSION;
     private static final String LANGUAGE = "ECMAScript";
-    private static final String LANGUAGE_VERSION = "ECMA - 262 Edition 6";
+    private static final String LANGUAGE_VERSION = "ECMA - 262 Edition 9";
 
     private static final String NASHORN_ENGINE_NAME = "Oracle Nashorn";
     private static final List<String> names = new ArrayList<>(Arrays.asList("Graal.js", "graal.js", "Graal-js", "graal-js", "Graal.JS", "Graal-JS", "GraalJS", "GraalJSPolyglot", "js", "JS",
@@ -66,6 +66,13 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
     private static final List<String> extensions = new ArrayList<>(Arrays.asList("js"));
 
     public static final boolean RegisterAsNashornScriptEngineFactory = Boolean.getBoolean("graaljs.RegisterGraalJSAsNashorn");
+
+    static {
+        // Copied from `JSRealm`.
+        String version = System.getProperty("graalvm.version");
+        String altVersion = System.getProperty("org.graalvm.version");
+        GRAALVM_VERSION = version != null ? version : altVersion;
+    }
 
     static {
         boolean java8 = System.getProperty("java.specification.version").compareTo("1.9") < 0;
@@ -106,7 +113,7 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
 
     @Override
     public String getEngineVersion() {
-        return ENGINE_VERSION;
+        return GRAALVM_VERSION;
     }
 
     @Override
