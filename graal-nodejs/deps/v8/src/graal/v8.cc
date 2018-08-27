@@ -1056,7 +1056,7 @@ namespace v8 {
 
     const char* V8::GetVersion() {
         TRACE
-        return "5.0.0";
+        return "6.7.0.0-node.0";
     }
 
     internal::Object** V8::GlobalizeReference(internal::Isolate* isolate, internal::Object** obj) {
