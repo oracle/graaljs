@@ -119,7 +119,14 @@ public final class JSError extends JSBuiltinObject {
                     JSRealm realm = currentRealm(store);
                     value = prepareStack(realm, store, truffleException);
                 }
-                store.set(FORMATTED_STACK_NAME, value);
+                // FORMATTED_STACK_NAME could have been set during invocation
+                // of user-defined Error.prepareStackTrace => do not overwrite it
+                Object currentValue = store.get(FORMATTED_STACK_NAME);
+                if (currentValue == null) {
+                    store.set(FORMATTED_STACK_NAME, value);
+                } else {
+                    value = currentValue;
+                }
             }
             return value;
         }
