@@ -142,15 +142,7 @@ public class JSRealm implements ShapeContext {
         // Copied from `Launcher`. See GR-6243.
         String version = System.getProperty(GRAALVM_VERSION_PROPERTY);
         String altVersion = System.getProperty(ALT_GRAALVM_VERSION_PROPERTY);
-        if (version != null && altVersion == null) {
-            GRAALVM_VERSION = version;
-        } else if (altVersion != null && version == null) {
-            GRAALVM_VERSION = altVersion;
-        } else if (version != null && version.equals(altVersion)) {
-            GRAALVM_VERSION = version;
-        } else {
-            GRAALVM_VERSION = null;
-        }
+        GRAALVM_VERSION = version != null ? version : altVersion;
     }
 
     private final JSContext context;
@@ -1134,13 +1126,8 @@ public class JSRealm implements ShapeContext {
         DynamicObject graalObject = JSUserObject.create(context);
         JSObjectUtil.putDataProperty(context, graalObject, "language", AbstractJavaScriptLanguage.NAME);
         JSObjectUtil.putDataProperty(context, graalObject, "versionJS", AbstractJavaScriptLanguage.VERSION_NUMBER);
-        String graalVMVersion = System.getProperty(ALT_GRAALVM_VERSION_PROPERTY);
-        if (graalVMVersion == null) {
-            graalVMVersion = GRAALVM_VERSION;
-        }
-
-        if (graalVMVersion != null) {
-            JSObjectUtil.putDataProperty(context, graalObject, "versionGraalVM", graalVMVersion);
+        if (GRAALVM_VERSION != null) {
+            JSObjectUtil.putDataProperty(context, graalObject, "versionGraalVM", GRAALVM_VERSION);
         }
         JSObjectUtil.putDataProperty(context, graalObject, "isGraalRuntime", isGraalRuntime());
         putGlobalProperty(global, "Graal", graalObject);
