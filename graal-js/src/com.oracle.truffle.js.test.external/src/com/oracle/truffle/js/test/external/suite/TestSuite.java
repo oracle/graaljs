@@ -537,7 +537,7 @@ public abstract class TestSuite {
     }
 
     protected String formatLogFailHTML(String filename, String failMessage, String reason) {
-        return failMessage + " <a href=\"" + config.getSuiteTestsLoc() + filename + "\">" + filename + "</a> " + encodeHTML(reason);
+        return failMessage + " <a href=\"" + config.getSuiteTestsLoc() + "/" + filename + "\">" + filename + "</a> " + encodeHTML(reason);
     }
 
     private static String encodeHTML(String reason) {
