@@ -503,7 +503,7 @@ public class CallAccessTest extends FineGrainedAccessTest {
     @Test
     public void splitMaterializedElementCallTest() {
         evalWithTag("function setKey(obj, keys) {" +
-                        "  obj.a;\n" +
+                        "  obj.a;" +
                         "  keys.slice[0][1][2](0, -1).forEach(function(key) {});" +
                         "};" +
                         "const callable = {" +
