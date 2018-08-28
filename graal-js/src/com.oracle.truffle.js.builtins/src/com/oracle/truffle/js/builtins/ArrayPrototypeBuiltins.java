@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -156,6 +157,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
 import com.oracle.truffle.js.runtime.util.Pair;
 
@@ -2161,10 +2163,18 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected DynamicObject sort(Object thisObj, final Object comparefn,
-                        @Cached("create()") BranchProfile notAJSObjectBranch) {
+        protected TruffleObject sort(Object thisObj, final Object comparefn,
+                        @Cached("createBinaryProfile()") ConditionProfile isJSObject) {
             checkCompareFunction(comparefn);
-            DynamicObject thisJSObj = JSRuntime.expectJSObject(toObject(thisObj), notAJSObjectBranch);
+            TruffleObject thisJSObj = toObject(thisObj);
+            if (isJSObject.profile(JSObject.isJSObject(thisJSObj))) {
+                return sortJSObject(comparefn, (DynamicObject) thisJSObj);
+            } else {
+                return sortTruffleObject(comparefn, thisJSObj);
+            }
+        }
+
+        private DynamicObject sortJSObject(final Object comparefn, DynamicObject thisJSObj) {
             if (JSObject.isFrozen(thisJSObj)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("cannot write to frozen object");
@@ -2183,6 +2193,20 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return thisJSObj;
         }
 
+        public TruffleObject sortTruffleObject(Object comparefn, TruffleObject thisObj) {
+            assert JSGuards.isForeignObject(thisObj);
+            long len = getLength(thisObj);
+            Object[] array = truffleobjectToArray(thisObj, len);
+
+            Comparator<Object> comparator = getComparator(thisObj, comparefn);
+            sortIntl(comparator, array);
+
+            for (int i = 0; i < array.length; i++) {
+                write(thisObj, i, array[i]);
+            }
+            return thisObj;
+        }
+
         private void checkCompareFunction(Object compare) {
             if (!(JSRuntime.isCallable(compare) || JSRuntime.isForeignObject(compare) || getContext().isOptionV8CompatibilityMode() || compare == Undefined.instance)) {
                 errorBranch.enter();
@@ -2190,10 +2214,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private Comparator<Object> getComparator(final DynamicObject thisObj, final Object compare) {
+        private Comparator<Object> getComparator(final TruffleObject thisObj, final Object compare) {
             if (JSRuntime.isCallable(compare) || JSRuntime.isForeignObject(compare)) {
                 hasCompareFnBranch.enter();
-                DynamicObject arrayBufferObj = isTypedArrayImplementation && JSArrayBufferView.isJSArrayBufferView(thisObj) ? JSArrayBufferView.getArrayBuffer(thisObj) : null;
+                DynamicObject arrayBufferObj = isTypedArrayImplementation && JSArrayBufferView.isJSArrayBufferView(thisObj) ? JSArrayBufferView.getArrayBuffer((DynamicObject) thisObj) : null;
                 return new SortComparator(compare, arrayBufferObj);
             } else {
                 noCompareFnBranch.enter();
@@ -2202,12 +2226,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @TruffleBoundary
-        private Comparator<Object> getDefaultComparator(DynamicObject thisObj) {
+        private Comparator<Object> getDefaultComparator(TruffleObject thisObj) {
             if (isTypedArrayImplementation) {
                 return new JSArrayBufferView.DefaultJSArrayBufferViewComparator();
             } else {
                 if (JSArray.isJSArray(thisObj)) {
-                    ScriptArray array = arrayGetArrayType(thisObj);
+                    ScriptArray array = arrayGetArrayType((DynamicObject) thisObj);
                     if (array instanceof AbstractIntArray || array instanceof ConstantByteArray || array instanceof ConstantIntArray) {
                         return new JSArray.DefaultJSArrayIntegerComparator();
                     } else if (array instanceof AbstractDoubleArray || array instanceof ConstantDoubleArray) {
@@ -2223,7 +2247,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
          * of non-empty elements) and the "length" (value of the property). I.e., it cleans up
          * garbage remaining after sorting all elements to lower indices (in case there are holes).
          */
-        private void deleteGenericElements(DynamicObject obj, long fromIndex, long toIndex, Iterable<Object> keys) {
+        private void deleteGenericElements(TruffleObject obj, long fromIndex, long toIndex, Iterable<Object> keys) {
             for (Object key : keys) {
                 long index = JSRuntime.propertyKeyToArrayIndex(key);
                 if (fromIndex <= index && index < toIndex) {
@@ -2317,6 +2341,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @TruffleBoundary
+        private static Object[] truffleobjectToArray(TruffleObject thisObj, long len) {
+            ArrayList<Object> list = new ArrayList<>();
+            for (int index = 0; index < len; index++) {
+                Boundaries.listAdd(list, JSInteropNodeUtil.read(thisObj, index));
+            }
+            return list.toArray();
+        }
+
+        @TruffleBoundary
         private Iterable<Object> getKeys(DynamicObject thisObj) {
             if (getContext().isOptionArraySortInherited()) {
                 Set<Object> keys = new LinkedHashSet<>();
@@ -2330,6 +2363,33 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return keys;
             }
             return JSObject.ownPropertyKeys(thisObj);
+        }
+
+        @TruffleBoundary
+        private static Iterable<Object> getKeys(TruffleObject thisObj) {
+            if (JSInteropNodeUtil.hasSize(thisObj)) {
+                int size = (int) JSRuntime.toInteger(JSInteropNodeUtil.getSize(thisObj));
+                return new Iterable<Object>() {
+                    @Override
+                    public Iterator<Object> iterator() {
+                        return new Iterator<Object>() {
+                            private int current = 0;
+
+                            @Override
+                            public Object next() {
+                                return current++;
+                            }
+
+                            @Override
+                            public boolean hasNext() {
+                                return current < size;
+                            }
+                        };
+                    }
+                };
+            } else {
+                return JSInteropNodeUtil.keys(thisObj);
+            }
         }
     }
 
@@ -2671,4 +2731,5 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return createArrayIteratorNode.execute(frame, toObjectNode.executeTruffleObject(thisObj));
         }
     }
+
 }
