@@ -1124,12 +1124,13 @@ public class JSRealm implements ShapeContext {
 
     private void putGraalObject(DynamicObject global) {
         DynamicObject graalObject = JSUserObject.create(context);
-        JSObjectUtil.putDataProperty(context, graalObject, "language", AbstractJavaScriptLanguage.NAME);
-        JSObjectUtil.putDataProperty(context, graalObject, "versionJS", AbstractJavaScriptLanguage.VERSION_NUMBER);
+        int flags = JSAttributes.notConfigurableEnumerableNotWritable();
+        JSObjectUtil.putDataProperty(context, graalObject, "language", AbstractJavaScriptLanguage.NAME, flags);
+        JSObjectUtil.putDataProperty(context, graalObject, "versionJS", AbstractJavaScriptLanguage.VERSION_NUMBER, flags);
         if (GRAALVM_VERSION != null) {
-            JSObjectUtil.putDataProperty(context, graalObject, "versionGraalVM", GRAALVM_VERSION);
+            JSObjectUtil.putDataProperty(context, graalObject, "versionGraalVM", GRAALVM_VERSION, flags);
         }
-        JSObjectUtil.putDataProperty(context, graalObject, "isGraalRuntime", isGraalRuntime());
+        JSObjectUtil.putDataProperty(context, graalObject, "isGraalRuntime", isGraalRuntime(), flags);
         putGlobalProperty(global, "Graal", graalObject);
     }
 
