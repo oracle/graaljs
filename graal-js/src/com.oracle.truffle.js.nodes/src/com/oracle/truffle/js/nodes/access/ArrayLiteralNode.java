@@ -51,6 +51,7 @@ import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -559,14 +560,18 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
             int arrayOffset = 0;
             int usedLength = 0;
             for (int i = 0; i < elements.length; i++) {
-                if (elements[i] instanceof EmptyNode) {
+                Node node = elements[i];
+                if (elements[i] instanceof WrapperNode) {
+                    node = ((WrapperNode) elements[i]).getDelegateNode();
+                }
+                if (node instanceof EmptyNode) {
                     Boundaries.listAdd(evaluatedElements, null);
                     holeCount++;
                     if (i == arrayOffset) {
                         arrayOffset = i + 1;
                     }
-                } else if (elements[i] instanceof SpreadArrayNode) {
-                    usedLength += ((SpreadArrayNode) elements[i]).executeToList(frame, evaluatedElements);
+                } else if (node instanceof SpreadArrayNode) {
+                    usedLength += ((SpreadArrayNode) node).executeToList(frame, evaluatedElements);
                 } else {
                     Boundaries.listAdd(evaluatedElements, elements[i].execute(frame));
                     usedLength++;
@@ -610,7 +615,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            throw new UnsupportedOperationException();
+            throw Errors.shouldNotReachHere("Cannot execute SpreadArrayNode");
         }
 
         @Override
