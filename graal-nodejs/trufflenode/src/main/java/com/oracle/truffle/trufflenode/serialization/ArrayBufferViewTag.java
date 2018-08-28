@@ -38,28 +38,57 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.binary;
+package com.oracle.truffle.trufflenode.serialization;
 
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.*;
-import com.oracle.truffle.js.runtime.*;
+import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 
 /**
- * Sub-nodes of this type always return an integer. This can be exploited by not having to insert a
- * {@link JSToIntegerNode}.
+ * A tag that determines the type of the serialized {@code ArrayBufferView}.
  */
-public abstract class JSBinaryIntegerShiftNode extends JSBinaryNode {
+public enum ArrayBufferViewTag {
+    INT8_ARRAY('b', TypedArrayFactory.Int8Array), // kInt8Array
+    UINT8_ARRAY('B', TypedArrayFactory.Uint8Array), // kUint8Array
+    UINT8_CLAMPED_ARRAY('C', TypedArrayFactory.Uint8ClampedArray), // kUint8ClampedArray
+    INT16_ARRAY('w', TypedArrayFactory.Int16Array), // kInt16Array
+    UINT16_ARRAY('W', TypedArrayFactory.Uint16Array), // kUint16Array
+    INT32_ARRAY('d', TypedArrayFactory.Int32Array), // kInt32Array
+    UINT32_ARRAY('D', TypedArrayFactory.Uint32Array), // kUint32Array
+    FLOAT32_ARRAY('f', TypedArrayFactory.Float32Array), // kFloat32Array
+    FLOAT64_ARRAY('F', TypedArrayFactory.Float64Array), // kFloat64Array
+    DATA_VIEW('?', null); // kDataView
 
-    protected JSBinaryIntegerShiftNode(JavaScriptNode left, JavaScriptNode right) {
-        super(left, right);
+    private final byte tag;
+    private final TypedArrayFactory factory;
+
+    ArrayBufferViewTag(char tag, TypedArrayFactory factory) {
+        this.tag = (byte) tag;
+        this.factory = factory;
     }
 
-    protected static boolean largerThan2e32(double d) {
-        return Math.abs(d) >= JSRuntime.TWO32;
+    public byte getTag() {
+        return tag;
     }
 
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == int.class;
+    public TypedArrayFactory getFactory() {
+        return factory;
     }
+
+    public static ArrayBufferViewTag fromTag(byte tag) {
+        for (ArrayBufferViewTag t : values()) {
+            if (t.tag == tag) {
+                return t;
+            }
+        }
+        return null;
+    }
+
+    public static ArrayBufferViewTag fromFactory(TypedArrayFactory factory) {
+        for (ArrayBufferViewTag t : values()) {
+            if (t.factory == factory) {
+                return t;
+            }
+        }
+        return null;
+    }
+
 }

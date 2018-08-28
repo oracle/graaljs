@@ -99,6 +99,10 @@
     "status" : "SKIP",
     "comment" : "Using 'jdk.nashorn.internal.runtime.Source'"
   }, {
+    "filePath" : "basic/hideLocationProperties.js",
+    "status" : "FAIL",
+    "comment" : "Prints the absolute name of the script"
+  }, {
     "filePath" : "basic/java.js",
     "status" : "FAIL",
     "comment" : "Java interop migration"

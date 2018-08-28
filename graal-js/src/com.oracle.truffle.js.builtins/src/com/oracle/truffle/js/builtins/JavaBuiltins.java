@@ -395,7 +395,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
             Class<?> result;
             if (types.length == 1 && classOverrides == null) {
-                result = JavaAdapterFactory.getAdapterClassFor(types[0]);
+                result = getContext().getJavaAdapterClassFor(types[0]);
             } else {
                 result = JavaAdapterFactory.getAdapterClassFor(types, classOverrides);
             }
@@ -644,7 +644,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
             if (newNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                newNode = insert(Message.createNew(1).createNode());
+                newNode = insert(Message.NEW.createNode());
             }
             if (writeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();

@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
@@ -217,7 +218,8 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
                     @Cached("create()") JSToStringNode toStringB,
                     @Cached("createBinaryProfile()") ConditionProfile profileA,
                     @Cached("createBinaryProfile()") ConditionProfile profileB,
-                    @Cached("copyRecursive()") JSAddNode add) {
+                    @Cached("copyRecursive()") JSAddNode add,
+                    @Cached("create()") BranchProfile mixedNumericTypes) {
 
         Object primitiveA = toPrimitiveA.execute(a);
         Object primitiveB = toPrimitiveB.execute(b);
@@ -233,7 +235,7 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         } else {
             castA = toNumericA.execute(primitiveA);
             castB = toNumericB.execute(primitiveB);
-            JSRuntime.ensureBothSameNumericType(castA, castB);
+            ensureBothSameNumericType(castA, castB, mixedNumericTypes);
         }
         return add.execute(castA, castB);
     }

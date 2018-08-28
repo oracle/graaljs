@@ -89,6 +89,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
@@ -152,11 +153,13 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
                 EvalCallTag.class,
                 ControlFlowRootTag.class,
                 ControlFlowBlockTag.class,
-                ControlFlowBranchTag.class
+                ControlFlowBranchTag.class,
+                // Other
+                InputNodeTag.class,
 })
 
-@TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, mimeType = {
-                JavaScriptLanguage.APPLICATION_MIME_TYPE, JavaScriptLanguage.TEXT_MIME_TYPE}, contextPolicy = TruffleLanguage.ContextPolicy.REUSE)
+@TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, mimeType = {JavaScriptLanguage.APPLICATION_MIME_TYPE,
+                JavaScriptLanguage.TEXT_MIME_TYPE}, contextPolicy = TruffleLanguage.ContextPolicy.REUSE, dependentLanguages = "regex")
 public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private static final int MAX_TOSTRING_DEPTH = 10;
 
@@ -267,7 +270,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 code.append("return ");
                 code.append(source.getCharacters());
                 code.append("\n})");
-                Source wrappedSource = Source.newBuilder(code.toString()).name(Evaluator.FUNCTION_SOURCE_NAME).language(ID).build();
+                Source wrappedSource = Source.newBuilder(ID, code.toString(), Evaluator.FUNCTION_SOURCE_NAME).build();
                 Object function = parseInContext(wrappedSource, realm.getContext()).run(realm);
                 return JSRuntime.jsObjectToJavaObject(JSFunction.call(JSArguments.create(Undefined.instance, function, arguments)));
             }

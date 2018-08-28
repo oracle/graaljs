@@ -44,8 +44,10 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -283,15 +285,16 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
     }
 
     public static final class ForeignHasPropertyCacheNode extends LinkedHasPropertyCacheNode {
+        @Child private Node keyInfoNode;
 
-        public ForeignHasPropertyCacheNode(Object key, JSContext context) {
-            super(key, new InstanceofCheckNode(TruffleObject.class, context));
+        public ForeignHasPropertyCacheNode(Object key) {
+            super(key, new ForeignLanguageCheckNode());
+            this.keyInfoNode = Message.KEY_INFO.createNode();
         }
 
         @Override
         public boolean hasPropertyUnchecked(Object thisObj, boolean floatingCondition) {
-            return JSInteropNodeUtil.hasProperty((TruffleObject) thisObj, key);
-
+            return JSInteropNodeUtil.hasProperty((TruffleObject) thisObj, key, keyInfoNode);
         }
     }
 
@@ -522,6 +525,6 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
 
     @Override
     protected HasPropertyCacheNode createTruffleObjectPropertyNode(TruffleObject thisObject, JSContext context) {
-        return new ForeignHasPropertyCacheNode(key, context);
+        return new ForeignHasPropertyCacheNode(key);
     }
 }

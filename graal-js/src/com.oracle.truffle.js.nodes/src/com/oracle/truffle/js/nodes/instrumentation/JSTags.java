@@ -65,6 +65,7 @@ public class JSTags {
                     ControlFlowRootTag.class,
                     ControlFlowBlockTag.class,
                     ControlFlowBranchTag.class,
+
     };
 
     // ##### ECMA218 12.x - JavaScript Expressions
@@ -486,6 +487,19 @@ public class JSTags {
     @Tag.Identifier("EvalCall")
     public static final class EvalCallTag extends Tag {
         private EvalCallTag() {
+        }
+    }
+
+    /**
+     * Input generating node.
+     *
+     * Special Tag that marks Graal.js AST nodes that are expected to provide an input value to
+     * their parent nodes, and are neither ECMA expressions or statements.
+     *
+     */
+    @Tag.Identifier("InputNode")
+    public static final class InputNodeTag extends Tag {
+        private InputNodeTag() {
         }
     }
 

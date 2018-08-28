@@ -57,6 +57,7 @@ import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentStartNo
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262CreateRealmNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262EvalScriptNodeGen;
 import com.oracle.truffle.js.nodes.access.RealmNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
@@ -161,7 +162,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @TruffleBoundary
         private Object evalScript(JSRealm realm, String sourceText) {
-            Source source = Source.newBuilder(sourceText).name(Evaluator.EVAL_SOURCE_NAME).language(AbstractJavaScriptLanguage.ID).build();
+            Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, sourceText, Evaluator.EVAL_SOURCE_NAME).build();
             return realm.getContext().getEvaluator().evaluate(realm, this, source);
         }
 
@@ -275,6 +276,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
      * Used by test262mockup.js to test concurrent agents.
      */
     public abstract static class Test262AgentReport extends JSBuiltinNode {
+        @Child private JSToStringNode toStringNode = JSToStringNode.create();
 
         public Test262AgentReport(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -282,7 +284,8 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @Specialization
         protected Object report(Object value) {
-            ((DebugJSAgent) getContext().getJSAgent()).report(value);
+            String message = toStringNode.executeString(value);
+            ((DebugJSAgent) getContext().getJSAgent()).report(message);
             return Undefined.instance;
         }
     }

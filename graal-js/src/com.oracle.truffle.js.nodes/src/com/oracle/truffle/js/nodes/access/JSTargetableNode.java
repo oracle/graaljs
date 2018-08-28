@@ -81,7 +81,7 @@ public abstract class JSTargetableNode extends JavaScriptNode {
         if (this instanceof WrapperNode) {
             return ((JSTargetableNode) ((WrapperNode) this).getDelegateNode()).getTarget();
         }
-        throw Errors.notYetImplemented();
+        throw Errors.notImplemented("getTarget");
     }
 
     @Override

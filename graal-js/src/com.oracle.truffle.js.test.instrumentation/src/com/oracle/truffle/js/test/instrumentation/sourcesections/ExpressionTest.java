@@ -79,4 +79,5 @@ public class ExpressionTest extends SourceSectionInstrumentationTest {
                         "new String('bla')",
         });
     }
+
 }

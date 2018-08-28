@@ -45,10 +45,6 @@ test-crypto-dh-leak                                                : SKIP
 # v8.cachedDataVersionTag() not supported
 test-v8-version-tag                                                : FAIL
 
-# v8 serialization API not supported
-test-v8-serdes                                                     : FAIL
-test-v8-serdes-sharedarraybuffer                                   : FAIL
-
 # check of an inferred name of an arrow function
 test-performance-function                                          : FAIL
 
@@ -101,6 +97,9 @@ test-vm-syntax-error-stderr                                        : FAIL
 
 # fails randomly
 test-http2-server-rst-stream                                       : SKIP
+
+# expired certificates (CRL) in currently imported version of test
+test-tls-server-verify                                             : FAIL
 
 [$system==solaris]
 test-http2-respond-file-fd-invalid : FAIL

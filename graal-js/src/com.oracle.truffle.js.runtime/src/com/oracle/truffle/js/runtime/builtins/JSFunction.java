@@ -982,7 +982,7 @@ public final class JSFunction extends JSBuiltinObject {
     }
 
     public static SourceSection createBuiltinSourceSection(String name) {
-        return Source.newBuilder("").name(name).language(AbstractJavaScriptLanguage.ID).internal().build().createUnavailableSection();
+        return Source.newBuilder(AbstractJavaScriptLanguage.ID, "", name).internal(true).build().createUnavailableSection();
     }
 
     public static boolean isBuiltinSourceSection(SourceSection sourceSection) {

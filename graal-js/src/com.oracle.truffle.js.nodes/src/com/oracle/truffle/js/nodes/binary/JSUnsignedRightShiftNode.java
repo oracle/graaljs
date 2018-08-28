@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
@@ -54,7 +55,6 @@ import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 /**
@@ -68,7 +68,6 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     }
 
     @Child private JSToUInt32Node toUInt32Node;
-    @Child private JSToNumericNode toNumericNode;
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         Truncatable.truncate(left);
@@ -79,7 +78,15 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
         return JSUnsignedRightShiftNodeGen.create(left, right);
     }
 
-    protected abstract Number executeNumber(Object a, Object b);
+    static JSUnsignedRightShiftNode create() {
+        return JSUnsignedRightShiftNodeGen.create(null, null);
+    }
+
+    protected final Number executeNumber(Object a, Object b) {
+        return (Number) executeObject(a, b);
+    }
+
+    protected abstract Object executeObject(Object a, Object b);
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
@@ -121,9 +128,9 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
         long lnum = toUInt32(a);
         int shiftCount = b & 0x1F;
         if (returnType.profile(lnum >= Integer.MAX_VALUE || lnum <= Integer.MIN_VALUE)) {
-            return lnum >>> shiftCount;
+            return (double) (lnum >>> shiftCount);
         }
-        return (lnum >>> shiftCount);
+        return (int) (lnum >>> shiftCount);
     }
 
     @Specialization
@@ -136,7 +143,7 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
         if (returnType.profile(lnum >= Integer.MAX_VALUE || lnum <= Integer.MIN_VALUE)) {
             return (double) (lnum >>> shiftCount);
         }
-        return (lnum >>> shiftCount);
+        return (int) (lnum >>> shiftCount);
     }
 
     @Specialization
@@ -145,26 +152,20 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     }
 
     @Specialization
-    protected void doBigInt(@SuppressWarnings("unused") BigInt a, @SuppressWarnings("unused") BigInt b) {
+    protected Number doBigInt(@SuppressWarnings("unused") BigInt a, @SuppressWarnings("unused") BigInt b) {
         throw Errors.createTypeError("BigInts have no unsigned right shift, use >> instead");
     }
 
     @Specialization(guards = "!isHandled(lval, rval)")
     protected Number doGeneric(Object lval, Object rval,
+                    @Cached("create()") JSToNumericNode lvalToNumericNode,
                     @Cached("create()") JSToNumericNode rvalToNumericNode,
-                    @Cached("copyUninitialized()") JavaScriptNode innerShiftNode) {
-        Object lnum = toNumeric(lval);
-        Object rnum = rvalToNumericNode.executeObject(rval);
-        JSRuntime.ensureBothSameNumericType(lnum, rnum);
-        return ((JSUnsignedRightShiftNode) innerShiftNode).executeNumber(lnum, rnum);
-    }
-
-    private Object toNumeric(Object target) {
-        if (toNumericNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toNumericNode = insert(JSToNumericNode.create());
-        }
-        return toNumericNode.executeObject(target);
+                    @Cached("create()") JSUnsignedRightShiftNode innerShiftNode,
+                    @Cached("create()") BranchProfile mixedNumericTypes) {
+        Object lnum = lvalToNumericNode.execute(lval);
+        Object rnum = rvalToNumericNode.execute(rval);
+        ensureBothSameNumericType(lnum, rnum, mixedNumericTypes);
+        return innerShiftNode.executeNumber(lnum, rnum);
     }
 
     private long toUInt32(Object target) {

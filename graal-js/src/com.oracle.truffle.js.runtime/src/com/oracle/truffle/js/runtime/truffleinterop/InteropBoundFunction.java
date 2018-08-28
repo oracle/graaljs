@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.js.runtime.truffleinterop;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public final class InteropBoundFunction implements TruffleObject {
+
     private final DynamicObject function;
     private final Object receiver;
 
@@ -64,6 +67,26 @@ public final class InteropBoundFunction implements TruffleObject {
 
     public static boolean isInstance(TruffleObject object) {
         return object instanceof InteropBoundFunction;
+    }
+
+    @Override
+    public int hashCode() {
+        int result;
+        result = 31 + ((function == null) ? 0 : function.hashCode());
+        result = 31 * result + ((receiver == null) ? 0 : receiver.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        } else if (obj instanceof InteropBoundFunction) {
+            InteropBoundFunction other = (InteropBoundFunction) obj;
+            return Objects.equals(function, other.function) && Objects.equals(receiver, other.receiver);
+        } else {
+            return false;
+        }
     }
 
     @Override

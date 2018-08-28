@@ -92,6 +92,7 @@ public class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
     protected AbstractFunctionArgumentsNode copyUninitialized() {
         return new JSFunctionArgumentsNode(JavaScriptNode.cloneUninitialized(args));
     }
+
 }
 
 class JSFunctionZeroArgumentsNode extends AbstractFunctionArgumentsNode {
@@ -112,6 +113,7 @@ class JSFunctionZeroArgumentsNode extends AbstractFunctionArgumentsNode {
     protected AbstractFunctionArgumentsNode copyUninitialized() {
         return new JSFunctionZeroArgumentsNode();
     }
+
 }
 
 class JSFunctionOneArgumentNode extends AbstractFunctionArgumentsNode {
@@ -148,6 +150,7 @@ class JSFunctionOneArgumentNode extends AbstractFunctionArgumentsNode {
     protected AbstractFunctionArgumentsNode copyUninitialized() {
         return new JSFunctionOneArgumentNode(JavaScriptNode.cloneUninitialized(child));
     }
+
 }
 
 class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {

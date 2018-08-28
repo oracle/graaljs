@@ -43,13 +43,13 @@ package com.oracle.truffle.js.nodes.binary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
@@ -103,10 +103,11 @@ public abstract class JSBitwiseXorNode extends JSBinaryNode {
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSToNumericNode leftNumeric,
                     @Cached("create()") JSToNumericNode rightNumeric,
-                    @Cached("createBlind()") JSBitwiseXorNode xor) {
+                    @Cached("createInner()") JSBitwiseXorNode xor,
+                    @Cached("create()") BranchProfile mixedNumericTypes) {
         Object left = leftNumeric.execute(a);
         Object right = rightNumeric.execute(b);
-        JSRuntime.ensureBothSameNumericType(left, right);
+        ensureBothSameNumericType(left, right, mixedNumericTypes);
         return xor.executeObject(left, right);
     }
 
@@ -115,7 +116,7 @@ public abstract class JSBitwiseXorNode extends JSBinaryNode {
         return JSBitwiseXorNodeGen.create(cloneUninitialized(getLeft()), cloneUninitialized(getRight()));
     }
 
-    public static final JSBitwiseXorNode createBlind() {
-        return (JSBitwiseXorNode) create(null, null);
+    public static final JSBitwiseXorNode createInner() {
+        return JSBitwiseXorNodeGen.create(null, null);
     }
 }

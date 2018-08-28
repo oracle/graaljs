@@ -3,6 +3,10 @@
 This changelog summarizes major changes between GraalVM versions of the Graal JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 1.0.0 RC6
+* Serialization API of v8/Node.js implemented
+* Update version of Unicode to 11 in RegExp and Intl.
+
 ## Version 1.0.0 RC5
 * Add support for `Symbol.prototype.description`, a Stage 3 proposal.
 * Add support for `String.prototype.matchAll`, a Stage 3 proposal.

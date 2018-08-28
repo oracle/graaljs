@@ -93,6 +93,7 @@ public class TestNashornCallable extends TestCallable {
         ByteArrayOutputStream err = new ByteArrayOutputStream();
         contextBuilder.err(err);
         contextBuilder.allowHostAccess(true);
+        contextBuilder.allowIO(true);
 
         contextBuilder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(ecmaScriptVersion));
         contextBuilder.option(GraalJSParserOptions.STRICT_NAME, Boolean.toString(forceStrictMode));

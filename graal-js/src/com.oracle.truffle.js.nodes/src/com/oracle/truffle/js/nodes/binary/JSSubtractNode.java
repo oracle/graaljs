@@ -45,12 +45,12 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNumericUnitNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSRuntime;
 
 @NodeInfo(shortName = "-")
 public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable {
@@ -98,13 +98,12 @@ public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSToNumericNode toNumericA,
                     @Cached("create()") JSToNumericNode toNumericB,
-                    @Cached("copyRecursive()") JavaScriptNode subtract) {
+                    @Cached("copyRecursive()") JavaScriptNode subtract,
+                    @Cached("create()") BranchProfile mixedNumericTypes) {
 
         Object castA = toNumericA.execute(a);
         Object castB = toNumericB.execute(b);
-
-        JSRuntime.ensureBothSameNumericType(castA, castB);
-
+        ensureBothSameNumericType(castA, castB, mixedNumericTypes);
         return ((JSSubtractNode) subtract).execute(castA, castB);
     }
 

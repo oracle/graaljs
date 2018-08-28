@@ -63,6 +63,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -93,6 +94,7 @@ import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 import com.oracle.truffle.js.runtime.interop.DefaultJavaInteropWorker;
 import com.oracle.truffle.js.runtime.interop.DefaultJavaInteropWorker.DefaultMainWorker;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
+import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.joni.JoniRegexCompiler;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
@@ -103,8 +105,8 @@ import com.oracle.truffle.js.runtime.objects.JSShapeData;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
+import com.oracle.truffle.regex.CachingRegexEngine;
 import com.oracle.truffle.regex.RegexCompiler;
-import com.oracle.truffle.regex.RegexEngine;
 import com.oracle.truffle.regex.RegexLanguage;
 
 public class JSContext implements ShapeContext {
@@ -256,6 +258,8 @@ public class JSContext implements ShapeContext {
     private final JSContextOptions contextOptions;
 
     private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
+
+    private volatile ClassValue<Class<?>> javaAdapterClasses;
 
     protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
         this.functionLookup = lookup;
@@ -732,15 +736,15 @@ public class JSContext implements ShapeContext {
         if (regexEngine == null) {
             RegexCompiler joniCompiler = new JoniRegexCompiler(null);
             if (JSTruffleOptions.UseTRegex) {
-                TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder("").name("TRegex Engine Builder Request").language(RegexLanguage.ID).build()).call();
+                TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder(RegexLanguage.ID, "", "TRegex Engine Builder Request").build()).call();
                 String regexOptions = createRegexEngineOptions();
                 try {
-                    regexEngine = (TruffleObject) ForeignAccess.sendExecute(Message.createExecute(2).createNode(), regexEngineBuilder, regexOptions, joniCompiler);
+                    regexEngine = (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), regexEngineBuilder, regexOptions, joniCompiler);
                 } catch (InteropException ex) {
                     throw ex.raise();
                 }
             } else {
-                regexEngine = new RegexEngine(joniCompiler, JSTruffleOptions.RegexRegressionTestMode);
+                regexEngine = new CachingRegexEngine(joniCompiler, JSTruffleOptions.RegexRegressionTestMode);
             }
         }
         return regexEngine;
@@ -773,7 +777,8 @@ public class JSContext implements ShapeContext {
                         if (existingModule != null) {
                             return existingModule;
                         }
-                        Source source = Source.newBuilder(moduleFile).name(specifier).language(AbstractJavaScriptLanguage.ID).build();
+                        TruffleFile truffleFile = getRealm().getEnv().getTruffleFile(moduleFile.getPath());
+                        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, truffleFile).name(specifier).build();
                         JSModuleRecord newModule = getEvaluator().parseModule(JSContext.this, source, this);
                         moduleMap.put(canonicalPath, newModule);
                         return newModule;
@@ -1105,8 +1110,8 @@ public class JSContext implements ShapeContext {
         return contextOptions.isParseOnly();
     }
 
-    public boolean isOptionPreciseTime() {
-        return contextOptions.isPreciseTime();
+    public long getTimerResolution() {
+        return contextOptions.getTimerResolution();
     }
 
     public boolean isOptionAgentCanBlock() {
@@ -1268,5 +1273,24 @@ public class JSContext implements ShapeContext {
 
     public JSContextOptions getContextOptions() {
         return contextOptions;
+    }
+
+    public Class<?> getJavaAdapterClassFor(Class<?> clazz) {
+        if (JSTruffleOptions.SubstrateVM) {
+            throw Errors.unsupported("JavaAdapter");
+        }
+        if (javaAdapterClasses == null) {
+            synchronized (this) {
+                if (javaAdapterClasses == null) {
+                    javaAdapterClasses = new ClassValue<Class<?>>() {
+                        @Override
+                        protected Class<?> computeValue(Class<?> type) {
+                            return JavaAdapterFactory.getAdapterClassFor(type);
+                        }
+                    };
+                }
+            }
+        }
+        return javaAdapterClasses.get(clazz);
     }
 }

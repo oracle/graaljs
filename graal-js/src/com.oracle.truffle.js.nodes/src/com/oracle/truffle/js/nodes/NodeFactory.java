@@ -927,13 +927,15 @@ public class NodeFactory {
         return NewTargetRootNode.createDropNewTarget(callTarget);
     }
 
-    public JavaScriptRootNode createConstructorRequiresNewRoot(JSContext context, SourceSection sourceSection) {
+    public JavaScriptRootNode createConstructorRequiresNewRoot(JSFunctionData functionData, SourceSection sourceSection) {
         // no JavaScriptRealmBoundaryRootNode: error should be thrown in the context of the caller!
         // ES6: 9.2.1. line 2.
+        JSContext context = functionData.getContext();
+        String message = "Class constructor " + functionData.getName() + " cannot be invoked without 'new'";
         return new JavaScriptRootNode(context.getLanguage(), sourceSection, null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                throw Errors.createTypeError("Class constructor requires 'new'");
+                throw Errors.createTypeError(message);
             }
         };
     }

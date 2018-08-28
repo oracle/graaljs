@@ -177,12 +177,14 @@ import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
@@ -193,7 +195,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
-import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.WeakMap;
 
@@ -582,10 +583,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = "isOneNumberArg(args)")
         protected DynamicObject constructWithLength(DynamicObject newTarget, Object[] args,
                         @Cached("create()") JSToUInt32Node toUInt32Node,
-                        @Cached("create(getContext())") ArrayCreateNode arrayCreateNode) {
+                        @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,
+                        @Cached("create()") BranchProfile rangeErrorProfile,
+                        @Cached("create()") BranchProfile toArrayIndex1Profile,
+                        @Cached("create()") BranchProfile toArrayIndex2Profile) {
             Number origLen = (Number) args[0]; // guard ensures this is a Number
             Number origLen32 = (Number) toUInt32Node.execute(origLen);
-            long len = JSArray.toArrayIndexOrRangeError(origLen, origLen32);
+            long len = JSArray.toArrayIndexOrRangeError(origLen, origLen32, rangeErrorProfile, toArrayIndex1Profile, toArrayIndex2Profile);
             DynamicObject array = arrayCreateNode.execute(len);
             return swapPrototype(array, newTarget);
         }
@@ -701,7 +705,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @TruffleBoundary
         protected String callDate() {
             // called as function ECMAScript 15.9.2.1
-            return JSDate.toString(System.currentTimeMillis(), getContext());
+            return JSDate.toString(getContext().getRealm().currentTimeMillis(), getContext());
         }
     }
 
@@ -760,8 +764,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @TruffleBoundary
-        private static double now() {
-            return System.currentTimeMillis();
+        private double now() {
+            return getContext().getRealm().currentTimeMillis();
         }
 
         @TruffleBoundary
@@ -779,7 +783,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             } else {
                 Object value = toPrimitive(arg0);
                 if (stringOrNumberProfile.profile(JSRuntime.isString(value))) {
-                    return parseDate(JSRuntime.toString(value));
+                    return parseDate(JSRuntime.toStringIsString(value));
                 } else {
                     double dval = toDouble(value);
                     if (Double.isInfinite(dval) || Double.isNaN(dval)) {
@@ -1194,7 +1198,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Number callNumber(Object[] args,
                         @Cached("create()") JSToNumericNode toNumericNode,
                         @Cached("create()") JSNumericToNumberNode toNumberFromNumericNode) {
-            return (Number) toNumberFromNumericNode.executeObject((toNumericNode.executeObject(args[0])));
+            return (Number) toNumberFromNumericNode.executeObject(toNumericNode.execute(args[0]));
         }
     }
 
@@ -1212,7 +1216,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected DynamicObject constructNumber(DynamicObject newTarget, Object[] args,
                         @Cached("create()") JSToNumericNode toNumericNode,
                         @Cached("create()") JSNumericToNumberNode toNumberFromNumericNode) {
-            return swapPrototype(JSNumber.create(getContext(), (Number) toNumberFromNumericNode.executeObject(toNumericNode.executeObject(args[0]))), newTarget);
+            return swapPrototype(JSNumber.create(getContext(), (Number) toNumberFromNumericNode.executeObject(toNumericNode.execute(args[0]))), newTarget);
         }
 
         @Override
@@ -1734,7 +1738,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected DynamicObject constructMap(DynamicObject newTarget, Object iterable) {
             JSContext context = getContext();
-            DynamicObject mapObj = JSObject.create(context, context.getMapFactory(), new JSHashMap());
+            DynamicObject mapObj = JSMap.create(context);
             fillWithIterable(mapObj, iterable);
             return swapPrototype(mapObj, newTarget);
         }
@@ -1803,7 +1807,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected DynamicObject constructSet(DynamicObject newTarget, Object iterable) {
             JSContext context = getContext();
-            DynamicObject setObj = JSObject.create(context, context.getSetFactory(), new JSHashMap());
+            DynamicObject setObj = JSSet.create(context);
             fillWithIterable(setObj, iterable);
             return swapPrototype(setObj, newTarget);
         }

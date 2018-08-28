@@ -48,7 +48,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 final class NullOrUndefinedForeignAccessFactory implements ForeignAccess.Factory, ForeignAccess.StandardFactory {
 
@@ -83,12 +82,12 @@ final class NullOrUndefinedForeignAccessFactory implements ForeignAccess.Factory
 
     @Override
     public CallTarget accessExecute(int argumentsLength) {
-        return createCallTarget(new UnsupportedMessageNode(JSInteropUtil.EXECUTE));
+        return createCallTarget(new UnsupportedMessageNode(Message.EXECUTE));
     }
 
     @Override
     public CallTarget accessInvoke(int argumentsLength) {
-        return createCallTarget(new UnsupportedMessageNode(JSInteropUtil.INVOKE));
+        return createCallTarget(new UnsupportedMessageNode(Message.INVOKE));
     }
 
     @Override
@@ -123,7 +122,7 @@ final class NullOrUndefinedForeignAccessFactory implements ForeignAccess.Factory
 
     @Override
     public CallTarget accessNew(int argumentsLength) {
-        return createCallTarget(new UnsupportedMessageNode(JSInteropUtil.NEW));
+        return createCallTarget(new UnsupportedMessageNode(Message.NEW));
     }
 
     @Override

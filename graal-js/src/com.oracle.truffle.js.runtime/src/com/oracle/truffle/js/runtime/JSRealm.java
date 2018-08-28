@@ -47,6 +47,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.SplittableRandom;
 
 import org.graalvm.options.OptionValues;
 
@@ -314,6 +315,12 @@ public class JSRealm implements ShapeContext {
 
     /** Support for RegExp.$1. */
     private TruffleObject regexResult;
+
+    public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
+    private final SplittableRandom random = new SplittableRandom();
+    private final long nanoToZeroTimeOffset = -System.nanoTime();
+    private final long nanoToCurrentTimeOffset = System.currentTimeMillis() * NANOSECONDS_PER_MILLISECOND + nanoToZeroTimeOffset;
+    private long lastFuzzyTime = Long.MIN_VALUE;
 
     private OutputStream outputStream;
     private OutputStream errorStream;
@@ -1663,4 +1670,32 @@ public class JSRealm implements ShapeContext {
         }
         this.errorStream = stream;
     }
+
+    public long nanoTime() {
+        return nanoTime(nanoToZeroTimeOffset);
+    }
+
+    public long nanoTime(long offset) {
+        long ns = System.nanoTime() + offset;
+        long resolution = getContext().getTimerResolution();
+        if (resolution > 0) {
+            return (ns / resolution) * resolution;
+        } else {
+            // fuzzy time
+            long fuzz = random.nextLong(NANOSECONDS_PER_MILLISECOND) + 1;
+            ns = ns - ns % fuzz;
+            long last = lastFuzzyTime;
+            if (ns > last) {
+                lastFuzzyTime = ns;
+                return ns;
+            } else {
+                return last;
+            }
+        }
+    }
+
+    public long currentTimeMillis() {
+        return nanoTime(nanoToCurrentTimeOffset) / NANOSECONDS_PER_MILLISECOND;
+    }
+
 }

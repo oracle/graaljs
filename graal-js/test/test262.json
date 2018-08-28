@@ -512,10 +512,6 @@
     "status" : "SKIP",
     "comment" : "fails randomly, highly timing sensitive (sleep(5) + wait(10)), will be fixed by Test262 update"
   }, {
-    "filePath" : "built-ins/Atomics/wait/value-not-equal.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "built-ins/Atomics/wake/bigint/bad-range.js",
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
@@ -947,8 +943,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Extended_Pictographic.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Extender.js",
     "status" : "SKIP",
@@ -1299,8 +1295,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Dogra.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Duployan.js",
     "status" : "SKIP",
@@ -1343,8 +1339,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Gunjala_Gondi.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Gurmukhi.js",
     "status" : "SKIP",
@@ -1359,8 +1355,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Hanifi_Rohingya.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Hanunoo.js",
     "status" : "SKIP",
@@ -1471,8 +1467,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Makasar.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Malayalam.js",
     "status" : "SKIP",
@@ -1495,8 +1491,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Medefaidrin.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Meetei_Mayek.js",
     "status" : "SKIP",
@@ -1587,8 +1583,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Old_Sogdian.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Old_South_Arabian.js",
     "status" : "SKIP",
@@ -1671,8 +1667,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Sogdian.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Sora_Sompeng.js",
     "status" : "SKIP",
@@ -1891,8 +1887,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Dogra.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Duployan.js",
     "status" : "SKIP",
@@ -1935,8 +1931,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Gunjala_Gondi.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Gurmukhi.js",
     "status" : "SKIP",
@@ -1951,8 +1947,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Hanifi_Rohingya.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Hanunoo.js",
     "status" : "SKIP",
@@ -2063,8 +2059,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Makasar.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Malayalam.js",
     "status" : "SKIP",
@@ -2087,8 +2083,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Medefaidrin.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Meetei_Mayek.js",
     "status" : "SKIP",
@@ -2179,8 +2175,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Old_Sogdian.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Old_South_Arabian.js",
     "status" : "SKIP",
@@ -2263,8 +2259,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Sogdian.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Sora_Sompeng.js",
     "status" : "SKIP",
@@ -6925,22 +6921,6 @@
     "filePath" : "language/literals/numeric/numeric-separator-literal-sign-plus-dds-nsl-dd.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/literals/regexp/invalid-optional-lookbehind.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/literals/regexp/invalid-optional-negative-lookbehind.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/literals/regexp/invalid-range-lookbehind.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/literals/regexp/invalid-range-negative-lookbehind.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "language/literals/regexp/u-surrogate-pairs-atom-escape-decimal.js",
     "status" : "FAIL",

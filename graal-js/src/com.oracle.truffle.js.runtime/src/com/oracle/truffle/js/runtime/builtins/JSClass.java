@@ -123,14 +123,19 @@ public abstract class JSClass extends ObjectType {
         return JSRuntime.nullToUndefined(getHelper(thisObj, thisObj, index));
     }
 
+    @TruffleBoundary
     public abstract Object getHelper(DynamicObject store, Object thisObj, Object key);
 
+    @TruffleBoundary
     public abstract Object getHelper(DynamicObject store, Object thisObj, long index);
 
+    @TruffleBoundary
     public abstract Object getOwnHelper(DynamicObject store, Object thisObj, Object key);
 
+    @TruffleBoundary
     public abstract Object getOwnHelper(DynamicObject store, Object thisObj, long index);
 
+    @TruffleBoundary
     public abstract Object getMethodHelper(DynamicObject store, Object thisObj, Object key);
 
     /**

@@ -38,30 +38,64 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime;
+package com.oracle.truffle.trufflenode.serialization;
 
-import com.oracle.truffle.api.TruffleLanguage;
+/**
+ * A tag that determines the type of the serialized value.
+ */
+public enum SerializationTag {
+    TRUE('T'), // kTrue
+    FALSE('F'), // kFalse
+    UNDEFINED('_'), // kUndefined
+    NULL('0'), // kNull
+    INT32('I'), // kInt32
+    UINT32('U'), // kUint32
+    DOUBLE('N'), // kDouble
+    UTF8_STRING('S'), // kUtf8String
+    ONE_BYTE_STRING('"'), // kOneByteString
+    TWO_BYTE_STRING('c'), // kTwoByteString
+    PADDING('\0'), // kPadding
+    DATE('D'), // kDate
+    TRUE_OBJECT('y'), // kTrueObject
+    FALSE_OBJECT('x'), // kFalseObject
+    NUMBER_OBJECT('n'), // kNumberObject
+    STRING_OBJECT('s'), // kStringObject
+    REGEXP('R'), // kRegExp
+    ARRAY_BUFFER('B'), // kArrayBuffer
+    SHARED_ARRAY_BUFFER('u'), // kSharedArrayBuffer
+    ARRAY_BUFFER_TRANSFER('t'), // kArrayBufferTransfer
+    ARRAY_BUFFER_VIEW('V'), // kArrayBufferView
+    BEGIN_JS_MAP(';'), // kBeginJSMap
+    END_JS_MAP(':'), // kEndJSMap
+    BEGIN_JS_SET('\''), // kBeginJSSet
+    END_JS_SET(','), // kEndJSSet
+    BEGIN_JS_OBJECT('o'), // kBeginJSObject
+    END_JS_OBJECT('{'), // kEndJSObject
+    BEGIN_SPARSE_JS_ARRAY('a'), // kBeginSparseJSArray
+    END_SPARSE_JS_ARRAY('@'), // kEndSparseJSArray
+    BEGIN_DENSE_JS_ARRAY('A'), // kBeginDenseJSArray
+    END_DENSE_JS_ARRAY('$'), // kEndDenseJSArray
+    THE_HOLE('-'), // kTheHole
+    OBJECT_REFERENCE('^'), // kObjectReference
+    HOST_OBJECT('\\'); // kHostObject
 
-public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm> {
-    public static final String TEXT_MIME_TYPE = "text/javascript";
-    public static final String APPLICATION_MIME_TYPE = "application/javascript";
-    public static final String SCRIPT_SOURCE_NAME_SUFFIX = ".js";
-    public static final String MODULE_SOURCE_NAME_SUFFIX = ".mjs";
-    public static final String MODULE_SOURCE_NAME_PREFIX = "module:";
+    private final byte tag;
 
-    public static final String VERSION_NUMBER = "1.0"; // also in GraalJSEngineFactory
-    public static final String NAME = "JavaScript";
-    public static final String ID = "js";
-
-    public static JSRealm getCurrentJSRealm() {
-        return getCurrentContext(AbstractJavaScriptLanguage.class);
+    SerializationTag(char tag) {
+        this.tag = (byte) tag;
     }
 
-    public static AbstractJavaScriptLanguage getCurrentLanguage() {
-        return getCurrentLanguage(AbstractJavaScriptLanguage.class);
+    public byte getTag() {
+        return tag;
     }
 
-    public static TruffleLanguage.Env getCurrentEnv() {
-        return getCurrentContext(AbstractJavaScriptLanguage.class).getEnv();
+    public static SerializationTag fromTag(byte tag) {
+        for (SerializationTag t : values()) {
+            if (t.tag == tag) {
+                return t;
+            }
+        }
+        return null;
     }
+
 }

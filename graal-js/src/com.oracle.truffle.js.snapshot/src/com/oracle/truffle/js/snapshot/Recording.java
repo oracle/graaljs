@@ -99,6 +99,7 @@ import com.oracle.truffle.js.parser.BinarySnapshotProvider;
 import com.oracle.truffle.js.parser.SnapshotProvider;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.json.JSONParser;
+import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -290,7 +291,7 @@ public class Recording {
 
         @SuppressWarnings("unused")
         public void encodeTo(JSNodeEncoder encoder) {
-            throw Errors.notYetImplemented(getClass().isAnonymousClass() ? getClass().getName() : getClass().getSimpleName());
+            throw Errors.notImplemented(getClass().isAnonymousClass() ? getClass().getName() : getClass().getSimpleName());
         }
 
         public String getName() {
@@ -1792,7 +1793,7 @@ public class Recording {
 
     private void testDecode(ByteBuffer buffer) {
         BinarySnapshotProvider snapshot = new BinarySnapshotProvider(buffer);
-        JSContext context = SnapshotTool.createDefaultContext();
+        JSContext context = AbstractJavaScriptLanguage.getCurrentJSRealm().getContext();
         snapshot.apply(NodeFactory.getDefaultInstance(), context, source);
     }
 

@@ -357,7 +357,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         if (hasTemporalDeadZone()) {
             checkNotDead(value, deadBranch);
         }
-        Object number = toNumeric.executeObject(value);
+        Object number = toNumeric.execute(value);
         if (isBigIntProfile.profile(number instanceof BigInt)) {
             frame.setObject(frameSlot, op.doBigInt((BigInt) number));
         } else {
@@ -487,7 +487,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         if (hasTemporalDeadZone()) {
             checkNotDead(value, deadBranch);
         }
-        Object number = toNumeric.executeObject(value);
+        Object number = toNumeric.execute(value);
         Object newValue;
         if (isBigIntProfile.profile(number instanceof BigInt)) {
             newValue = op.doBigInt((BigInt) number);

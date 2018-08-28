@@ -419,7 +419,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return JSDate.INVALID_DATE_STRING;
             }
             DynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
-            return JSDateTimeFormat.format(formatter, t);
+            return JSDateTimeFormat.format(getContext(), formatter, t);
         }
 
         @Specialization(guards = {"!isForeignObject(thisDate)", "!isJSObject(thisDate)"})
@@ -500,7 +500,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return JSDate.INVALID_DATE_STRING;
             }
             DynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
-            return JSDateTimeFormat.format(formatter, t);
+            return JSDateTimeFormat.format(getContext(), formatter, t);
         }
     }
 
@@ -536,7 +536,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return JSDate.INVALID_DATE_STRING;
             }
             DynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
-            return JSDateTimeFormat.format(formatter, t);
+            return JSDateTimeFormat.format(getContext(), formatter, t);
         }
     }
 

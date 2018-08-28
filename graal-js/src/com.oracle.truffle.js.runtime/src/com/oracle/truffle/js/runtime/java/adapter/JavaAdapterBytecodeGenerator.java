@@ -810,6 +810,11 @@ final class JavaAdapterBytecodeGenerator {
         mv.visitLabel(tryBlockEnd);
         mv.areturn(asmReturnType);
 
+        final Label rethrowHandler = new Label();
+        mv.visitLabel(rethrowHandler);
+        // Rethrow handler for RuntimeException, Error, and all declared exception types
+        mv.athrow();
+
         // If Throwable is not declared, we need an adapter from Throwable to RuntimeException
         final boolean throwableDeclared = isThrowableDeclared(exceptions);
         final Label throwableHandler;
@@ -818,16 +823,10 @@ final class JavaAdapterBytecodeGenerator {
             throwableHandler = new Label();
             mv.visitLabel(throwableHandler);
             wrapThrowable(mv);
-            // Fall through to rethrow handler
+            mv.athrow();
         } else {
             throwableHandler = null;
         }
-        final Label rethrowHandler = new Label();
-        mv.visitLabel(rethrowHandler);
-        // Rethrow handler for RuntimeException, Error, and all declared exception types
-        mv.athrow();
-        final Label methodEnd = new Label();
-        mv.visitLabel(methodEnd);
 
         if (throwableDeclared) {
             mv.visitTryCatchBlock(tryBlockStart, tryBlockEnd, rethrowHandler, THROWABLE_TYPE_NAME);

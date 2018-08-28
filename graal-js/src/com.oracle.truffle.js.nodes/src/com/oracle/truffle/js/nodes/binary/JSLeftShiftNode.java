@@ -44,6 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
@@ -53,11 +54,10 @@ import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 @NodeInfo(shortName = "<<")
-public abstract class JSLeftShiftNode extends JSBinaryIntegerShiftNode {
+public abstract class JSLeftShiftNode extends JSBinaryNode {
 
     protected JSLeftShiftNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
@@ -123,12 +123,17 @@ public abstract class JSLeftShiftNode extends JSBinaryIntegerShiftNode {
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSLeftShiftNode leftShift,
                     @Cached("create()") JSToNumericNode leftToNumeric,
-                    @Cached("create()") JSToNumericNode rightToNumeric) {
+                    @Cached("create()") JSToNumericNode rightToNumeric,
+                    @Cached("create()") BranchProfile mixedNumericTypes) {
         Object operandA = leftToNumeric.execute(a);
         Object operandB = rightToNumeric.execute(b);
-        JSRuntime.ensureBothSameNumericType(operandA, operandB);
-
+        ensureBothSameNumericType(operandA, operandB, mixedNumericTypes);
         return leftShift.executeObject(operandA, operandB);
+    }
+
+    @Override
+    public boolean isResultAlwaysOfType(Class<?> clazz) {
+        return clazz == int.class;
     }
 
     public static JSLeftShiftNode create() {

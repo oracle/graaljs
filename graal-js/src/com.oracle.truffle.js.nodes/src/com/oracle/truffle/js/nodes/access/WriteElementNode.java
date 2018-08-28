@@ -52,11 +52,14 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -79,6 +82,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
+import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -121,6 +125,7 @@ import com.oracle.truffle.js.runtime.interop.Converters;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
@@ -1759,22 +1764,41 @@ public class WriteElementNode extends JSTargetableNode {
 
     private static class TruffleObjectWriteElementTypeCacheNode extends CachedWriteElementTypeCacheNode {
         private final Class<? extends TruffleObject> targetClass;
-        @Child private Node foreignArrayAccess;
+        @Child private Node write;
+        @Child private Node isNull;
+        @Child private ExportValueNode exportKey;
+        @Child private ExportValueNode exportValue;
+        @Child private Node setterKeyInfo;
+        @Child private Node setterInvoke;
 
         TruffleObjectWriteElementTypeCacheNode(JSContext context, boolean isStrict, Class<? extends TruffleObject> targetClass, boolean writeOwn) {
             super(context, isStrict, writeOwn);
             this.targetClass = targetClass;
-            this.foreignArrayAccess = Message.WRITE.createNode();
+            this.isNull = Message.IS_NULL.createNode();
+            this.write = Message.WRITE.createNode();
+            this.exportKey = ExportValueNode.create(context);
+            this.exportValue = ExportValueNode.create(context);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
             TruffleObject truffleObject = targetClass.cast(target);
+            if (ForeignAccess.sendIsNull(isNull, truffleObject)) {
+                throw Errors.createTypeErrorCannotSetProperty(index, truffleObject, this);
+            }
+            Object convertedKey = exportKey.executeWithTarget(index, Undefined.instance);
+            if (convertedKey instanceof Symbol) {
+                return;
+            }
+            Object exportedValue = exportValue.executeWithTarget(value, Undefined.instance);
             try {
-                ForeignAccess.sendWrite(foreignArrayAccess, truffleObject, index, value);
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                ForeignAccess.sendWrite(write, truffleObject, convertedKey, exportedValue);
+            } catch (UnknownIdentifierException e) {
+                if (context.isOptionNashornCompatibilityMode() && convertedKey instanceof String) {
+                    tryInvokeSetter(truffleObject, (String) convertedKey, exportedValue);
+                }
                 // do nothing
-            } catch (UnsupportedTypeException e) {
+            } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                 throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
             }
         }
@@ -1787,6 +1811,33 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         public boolean guard(Object target) {
             return targetClass.isInstance(target);
+        }
+
+        private void tryInvokeSetter(TruffleObject thisObj, String key, Object value) {
+            assert context.isOptionNashornCompatibilityMode();
+            TruffleLanguage.Env env = context.getRealm().getEnv();
+            if (env.isHostObject(thisObj)) {
+                String setterKey = PropertyCacheNode.getAccessorKey("set", key);
+                if (setterKey == null) {
+                    return;
+                }
+                if (setterKeyInfo == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    setterKeyInfo = insert(Message.KEY_INFO.createNode());
+                }
+                if (!KeyInfo.isInvocable(ForeignAccess.sendKeyInfo(setterKeyInfo, thisObj, setterKey))) {
+                    return;
+                }
+                if (setterInvoke == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    setterInvoke = insert(Message.INVOKE.createNode());
+                }
+                try {
+                    ForeignAccess.sendInvoke(setterInvoke, thisObj, setterKey, new Object[]{value});
+                } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                    // silently ignore
+                }
+            }
         }
     }
 

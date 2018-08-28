@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -47,8 +48,10 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
+import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.UserScriptException;
@@ -61,6 +64,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 @NodeInfo(shortName = "throw")
 public class ThrowNode extends StatementNode {
     @Child private JavaScriptNode exceptionNode;
+    @Child private PropertyGetNode getErrorNode;
     private final ConditionProfile isError = ConditionProfile.createBinaryProfile();
 
     protected ThrowNode(JavaScriptNode exceptionNode) {
@@ -97,9 +101,19 @@ public class ThrowNode extends StatementNode {
                     JSError.setColumnNumber(context, jsobject, sourceSection.getStartColumn());
                 }
             }
-            throw JSError.getException(jsobject);
+            throw getException(jsobject);
         }
         throw UserScriptException.create(exceptionObject, this);
+    }
+
+    private GraalJSException getException(DynamicObject errorObj) {
+        if (getErrorNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            getErrorNode = insert(PropertyGetNode.create(JSError.EXCEPTION_PROPERTY_NAME, JSObject.getJSContext(errorObj)));
+        }
+        Object exception = getErrorNode.getValue(errorObj);
+        return exception instanceof GraalJSException ? (GraalJSException) exception : null;
+
     }
 
     @Override

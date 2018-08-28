@@ -476,16 +476,16 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     }
 
     @TruffleBoundary
-    public static String format(DynamicObject numberFormatObj, Object n) {
+    public static String format(JSContext context, DynamicObject numberFormatObj, Object n) {
         ensureIsDateTimeFormat(numberFormatObj);
         DateFormat dateFormat = getDateFormatProperty(numberFormatObj);
-        return dateFormat.format(timeClip(n));
+        return dateFormat.format(timeClip(context, n));
     }
 
-    private static double timeClip(Object n) {
+    private static double timeClip(JSContext context, Object n) {
         double x;
         if (n == Undefined.instance) {
-            x = getDateNow();
+            x = context.getRealm().currentTimeMillis();
         } else {
             x = JSDate.timeClip(JSRuntime.toDouble(n));
             if (Double.isNaN(x)) {
@@ -493,10 +493,6 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             }
         }
         return x;
-    }
-
-    private static double getDateNow() {
-        return System.currentTimeMillis();
     }
 
     private static void throwDateOutOfRange() throws JSException {
@@ -527,7 +523,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         ensureIsDateTimeFormat(numberFormatObj);
         DateFormat dateFormat = getDateFormatProperty(numberFormatObj);
 
-        double x = timeClip(n);
+        double x = timeClip(context, n);
 
         List<Object> resultParts = new LinkedList<>();
         AttributedCharacterIterator fit = dateFormat.formatToCharacterIterator(x);
@@ -694,7 +690,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                 Object[] arguments = frame.getArguments();
                 DynamicObject thisObj = JSRuntime.toObject(context, JSArguments.getThisObject(arguments));
                 Object n = JSArguments.getUserArgumentCount(arguments) > 0 ? JSArguments.getUserArgument(arguments, 0) : Undefined.instance;
-                return format(thisObj, n);
+                return format(context, thisObj, n);
             }
         }), 1, "format");
     }

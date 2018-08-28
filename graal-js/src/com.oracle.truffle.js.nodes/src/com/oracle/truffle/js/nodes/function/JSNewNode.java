@@ -87,7 +87,6 @@ import com.oracle.truffle.js.runtime.interop.JavaAccess;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
-import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -256,8 +255,8 @@ public abstract class JSNewNode extends JavaScriptNode {
         }
         // Equivalent to Java.extend(type)
         JavaAccess.checkAccess(new Class<?>[]{type}, context);
-        Class<?> adapterClass = JavaAdapterFactory.getAdapterClassFor(type);
-        return (TruffleObject) env.asGuestValue(adapterClass);
+        Class<?> adapterClass = context.getJavaAdapterClassFor(type);
+        return (TruffleObject) env.asHostSymbol(adapterClass);
     }
 
     protected Node createNewCache() {

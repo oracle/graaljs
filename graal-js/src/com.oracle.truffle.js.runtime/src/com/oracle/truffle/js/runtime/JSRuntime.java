@@ -426,12 +426,6 @@ public final class JSRuntime {
         return value instanceof BigInt;
     }
 
-    public static void ensureBothSameNumericType(Object a, Object b) {
-        if ((a instanceof BigInt) != (b instanceof BigInt)) {
-            throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
-        }
-    }
-
     public static boolean isJavaNumber(Object value) {
         return value instanceof Number;
     }
@@ -1767,6 +1761,16 @@ public final class JSRuntime {
         return value instanceof String || isLazyString(value);
     }
 
+    public static String toStringIsString(Object value) {
+        assert isString(value);
+        if (value instanceof String) {
+            return (String) value;
+        } else {
+            assert isLazyString(value);
+            return ((JSLazyString) value).toString();
+        }
+    }
+
     /**
      * Is value is a {@link CharSequence} that lazily evaluates to a {@link String}).
      */
@@ -1856,6 +1860,17 @@ public final class JSRuntime {
         if (number instanceof Integer) {
             return ((Integer) number).doubleValue();
         }
+        return doubleValueVirtual(number);
+    }
+
+    public static double doubleValue(Number number, BranchProfile profile) {
+        if (number instanceof Double) {
+            return ((Double) number).doubleValue();
+        }
+        if (number instanceof Integer) {
+            return ((Integer) number).doubleValue();
+        }
+        profile.enter();
         return doubleValueVirtual(number);
     }
 

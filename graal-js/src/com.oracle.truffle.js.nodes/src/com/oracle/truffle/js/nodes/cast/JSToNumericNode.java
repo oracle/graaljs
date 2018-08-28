@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNodeGen.JSToNumericWrapperNodeGen;
@@ -50,23 +51,19 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 
-public abstract class JSToNumericNode extends JSUnaryNode {
+public abstract class JSToNumericNode extends JavaScriptBaseNode {
 
     @Child private JSToNumberNode toNumberNode;
     @Child private JSToPrimitiveNode toPrimitiveNode;
 
     public abstract Object execute(Object value);
 
-    protected JSToNumericNode(JavaScriptNode operand) {
-        super(operand);
-    }
-
-    public final Object executeObject(Object value) {
-        return execute(value);
+    protected JSToNumericNode() {
+        super();
     }
 
     public static JSToNumericNode create() {
-        return JSToNumericNodeGen.create(null);
+        return JSToNumericNodeGen.create();
     }
 
     public static JavaScriptNode create(JavaScriptNode child) {
@@ -83,12 +80,17 @@ public abstract class JSToNumericNode extends JSUnaryNode {
                 }
             }
         }
-        return JSToNumericNodeGen.create(child);
+        return JSToNumericWrapperNode.create(child);
     }
 
-    @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(getOperand()));
+    @Specialization
+    protected static int doInt(int value) {
+        return value;
+    }
+
+    @Specialization
+    protected static double doDouble(double value) {
+        return value;
     }
 
     @Specialization
@@ -147,7 +149,7 @@ public abstract class JSToNumericNode extends JSUnaryNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toNumericNode = insert(JSToNumericNode.create());
             }
-            return toNumericNode.executeObject(value);
+            return toNumericNode.execute(value);
         }
 
         @Override

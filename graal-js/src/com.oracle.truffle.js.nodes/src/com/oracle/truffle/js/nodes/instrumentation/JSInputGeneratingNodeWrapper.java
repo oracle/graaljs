@@ -38,74 +38,48 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.binary;
+package com.oracle.truffle.js.nodes.instrumentation;
 
-import java.util.Objects;
-
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
-import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.nodes.access.JSConstantNode;
 
-public abstract class JSBinaryNode extends JavaScriptNode {
-    @Child @Executed protected JavaScriptNode leftNode;
-    @Child @Executed protected JavaScriptNode rightNode;
+public final class JSInputGeneratingNodeWrapper extends JavaScriptNode {
 
-    protected JSBinaryNode(JavaScriptNode left, JavaScriptNode right) {
-        this.leftNode = left;
-        this.rightNode = right;
+    @Child private JavaScriptNode delegate;
+
+    private JSInputGeneratingNodeWrapper(JavaScriptNode toWrap) {
+        this.delegate = toWrap;
     }
 
-    public final JavaScriptNode getLeft() {
-        return leftNode;
-    }
-
-    public final JavaScriptNode getRight() {
-        return rightNode;
+    public static JavaScriptNode create(JSConstantNode toWrap) {
+        JSInputGeneratingNodeWrapper wrapper = new JSInputGeneratingNodeWrapper(toWrap);
+        transferSourceSectionAndTags(toWrap, wrapper);
+        return wrapper;
     }
 
     @Override
-    public String expressionToString() {
-        if (getLeft() != null && getRight() != null) {
-            NodeInfo annotation = getClass().getAnnotation(NodeInfo.class);
-            if (annotation != null && !annotation.shortName().isEmpty()) {
-                return "(" + Objects.toString(getLeft().expressionToString(), INTERMEDIATE_VALUE) + " " + annotation.shortName() + " " +
-                                Objects.toString(getRight().expressionToString(), INTERMEDIATE_VALUE) + ")";
-            }
-        }
-        return null;
-    }
-
-    protected static boolean largerThan2e32(double d) {
-        return Math.abs(d) >= JSRuntime.TWO32;
-    }
-
-    protected static void ensureBothSameNumericType(Object a, Object b, BranchProfile mixedNumericTypes) {
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, (a instanceof BigInt) != (b instanceof BigInt))) {
-            mixedNumericTypes.enter();
-            throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
-        }
+    public Object execute(VirtualFrame frame) {
+        return delegate.execute(frame);
     }
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == BinaryExpressionTag.class) {
+        if (tag == JSTags.InputNodeTag.class) {
             return true;
         } else {
-            return super.hasTag(tag);
+            return delegate.hasTag(tag);
         }
     }
 
     @Override
-    public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("operator", getClass().getAnnotation(NodeInfo.class).shortName());
+    public boolean isInstrumentable() {
+        return true;
     }
 
+    @Override
+    protected JavaScriptNode copyUninitialized() {
+        return new JSInputGeneratingNodeWrapper(cloneUninitialized(delegate));
+    }
 }

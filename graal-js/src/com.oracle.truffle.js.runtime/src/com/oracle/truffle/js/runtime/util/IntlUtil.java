@@ -40,11 +40,9 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
-import com.ibm.icu.impl.ICUResourceBundle;
 import com.ibm.icu.text.CaseMap;
 import com.ibm.icu.text.CaseMap.Lower;
 import com.ibm.icu.text.CaseMap.Upper;
-import com.ibm.icu.text.NumberFormat;
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.js.runtime.Errors;
@@ -71,21 +69,6 @@ public class IntlUtil {
                     "mtei", "mymr", "mymrshan", "mymrtlng", "native", "newa", "nkoo", "olck", "orya", "osma", "roman", "romanlow", "saur", "shrd", "sind", "sinh", "sora", "sund", "takr", "talu",
                     "taml", "tamldec", "telu", "thai", "tirh", "tibt", "traditio", "vaii", "wara"});
     public static final List<String> BANNED_BCP47_NU_KEYS = Arrays.asList(new String[]{"native", "traditio", "finance"});
-
-    static final ULocale[] localesAvailable = ULocale.getAvailableLocales();
-    static final Locale[] javaLocalesAvailable = new Locale[localesAvailable.length];
-
-    static {
-        if (JSTruffleOptions.SubstrateVM) {
-            int i = 0;
-            for (ULocale ul : localesAvailable) {
-                javaLocalesAvailable[i++] = ul.toLocale();
-            }
-            Locale el = Locale.ENGLISH;
-            NumberFormat.getInstance(el);
-            ICUResourceBundle.clearCache();
-        }
-    }
 
     public static String selectedLocale(String[] locales) {
         Locale matchedLocale = lookupMatcher(locales);
@@ -155,6 +138,13 @@ public class IntlUtil {
 
         if (JSTruffleOptions.SubstrateVM) {
             // GR-6347 (Locale.getAvailableLocales() support is missing in SVM)
+            ULocale[] localesAvailable = ULocale.getAvailableLocales();
+            Locale[] javaLocalesAvailable = new Locale[localesAvailable.length];
+            int i = 0;
+            for (ULocale ul : localesAvailable) {
+                javaLocalesAvailable[i++] = ul.toLocale();
+            }
+
             result.addAll(Arrays.asList(javaLocalesAvailable));
         } else {
             result.addAll(Arrays.asList(Locale.getAvailableLocales()));
