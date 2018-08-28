@@ -99,6 +99,11 @@ public final class JSInteropNodeUtil {
         return JSInteropUtil.createIsBoxed();
     }
 
+    static Node getIsExecutableNode() {
+        CompilerAsserts.neverPartOfCompilation();
+        return JSInteropUtil.createIsExecutable();
+    }
+
     static Node getUnboxNode() {
         CompilerAsserts.neverPartOfCompilation();
         return JSInteropUtil.createUnbox();
@@ -312,5 +317,15 @@ public final class JSInteropNodeUtil {
     @TruffleBoundary
     public static boolean isNull(TruffleObject obj) {
         return ForeignAccess.sendIsNull(getIsNullNode(), obj);
+    }
+
+    @TruffleBoundary
+    public static boolean isExecutable(TruffleObject obj) {
+        return ForeignAccess.sendIsExecutable(getIsExecutableNode(), obj);
+    }
+
+    @TruffleBoundary
+    public static boolean isExecutable(TruffleObject obj, Node isExecutableNode) {
+        return ForeignAccess.sendIsExecutable(isExecutableNode, obj);
     }
 }
