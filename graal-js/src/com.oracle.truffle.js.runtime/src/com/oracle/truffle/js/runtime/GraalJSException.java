@@ -243,17 +243,21 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             }
         }
 
+        private static RootNode rootNode(TruffleStackTraceElement element) {
+            CallTarget callTarget = element.getTarget();
+            return (callTarget instanceof RootCallTarget) ? ((RootCallTarget) callTarget).getRootNode() : null;
+        }
+
         public boolean visitFrame(TruffleStackTraceElement element) {
             Node callNode = element.getLocation();
             if (first) {
                 first = false;
-                callNode = originatingNode;
+                if (JSRuntime.isJSRootNode(rootNode(element))) {
+                    callNode = originatingNode;
+                }
             }
             if (callNode == null) {
-                CallTarget callTarget = element.getTarget();
-                if (callTarget instanceof RootCallTarget) {
-                    callNode = ((RootCallTarget) callTarget).getRootNode();
-                }
+                callNode = rootNode(element);
             }
             switch (stackFrameType(callNode)) {
                 case STACK_FRAME_JS: {
