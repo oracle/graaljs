@@ -38,33 +38,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.scriptengine.test;
+package com.oracle.truffle.js.runtime;
 
-import static org.junit.Assert.assertEquals;
+/**
+ * Default class implementing a dummy ECMA2017 8.7 Agent for the JS main thread.
+ */
+public final class MainJSAgent extends JSAgent {
 
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
-
-import org.junit.Test;
-
-public class TestMainJSAgent {
-
-    static final String TESTED_ENGINE_NAME = "JavaScript";
-
-    private final ScriptEngineManager manager = new ScriptEngineManager();
-
-    private ScriptEngine getEngine() {
-        return manager.getEngineByName(TESTED_ENGINE_NAME);
+    public MainJSAgent() {
+        super(false);
     }
 
-    @Test
-    public void getProperty() throws ScriptException {
-        // @formatter:off
-        assertEquals(true, getEngine().eval(
-                        "Atomics.wake(new Int32Array(new SharedArrayBuffer(4)), 0, 0);" +
-                        "true;"
-        ));
-        // @formatter:on
+    @Override
+    public void execute(EcmaAgent owner, Runnable task) {
+        throw Errors.unsupported("Multithreading not supported");
     }
+
+    @Override
+    public boolean isTerminated() {
+        return false;
+    }
+
+    @Override
+    public void terminate(int timeout) {
+        // No-op
+    }
+
+    @Override
+    public void wakeAgent(int w) {
+        // No-op
+    }
+
 }
