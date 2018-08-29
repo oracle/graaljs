@@ -68,11 +68,12 @@ v8::MaybeLocal<v8::Module> GraalModule::Compile(v8::Local<v8::String> source, v8
 }
 
 v8::Maybe<bool> GraalModule::InstantiateModule(v8::Local<v8::Context> context, v8::Module::ResolveCallback callback) {
+    GraalIsolate* graal_isolate = Isolate();
     GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
     jobject java_context = graal_context->GetJavaObject();
     jlong java_callback = (jlong) callback;
-    JNI_CALL_VOID(Isolate(), GraalAccessMethod::module_instantiate, java_context, GetJavaObject(), java_callback);
-    return v8::Just(true);
+    JNI_CALL_VOID(graal_isolate, GraalAccessMethod::module_instantiate, java_context, GetJavaObject(), java_callback);
+    return v8::Just(!graal_isolate->GetJNIEnv()->ExceptionCheck());
 }
 
 v8::MaybeLocal<v8::Value> GraalModule::Evaluate(v8::Local<v8::Context> context) {
