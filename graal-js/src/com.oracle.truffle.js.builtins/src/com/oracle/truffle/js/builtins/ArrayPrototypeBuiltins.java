@@ -2117,7 +2117,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "isJSFastArray(thisObj)")
-        protected DynamicObject sortArray(final DynamicObject thisObj, final Object compare, //
+        protected DynamicObject sortArray(final DynamicObject thisObj, final Object compare,
                         @Cached("create(getContext())") JSToObjectArrayNode arrayToObjectArrayNode,
                         @Cached("createClassProfile()") ValueProfile classProfile) {
             checkCompareFunction(compare);
@@ -2214,14 +2214,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private void checkCompareFunction(Object compare) {
-            if (!(JSRuntime.isCallable(compare) || JSRuntime.isForeignObject(compare) || getContext().isOptionV8CompatibilityMode() || compare == Undefined.instance)) {
+            if (!(isCallable(compare) || getContext().isOptionV8CompatibilityMode() || compare == Undefined.instance)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("illegal compare function");
             }
         }
 
         private Comparator<Object> getComparator(final TruffleObject thisObj, final Object compare) {
-            if (JSRuntime.isCallable(compare) || JSRuntime.isForeignObject(compare)) {
+            if (isCallable(compare)) {
                 hasCompareFnBranch.enter();
                 DynamicObject arrayBufferObj = isTypedArrayImplementation && JSArrayBufferView.isJSArrayBufferView(thisObj) ? JSArrayBufferView.getArrayBuffer((DynamicObject) thisObj) : null;
                 return new SortComparator(compare, arrayBufferObj);
