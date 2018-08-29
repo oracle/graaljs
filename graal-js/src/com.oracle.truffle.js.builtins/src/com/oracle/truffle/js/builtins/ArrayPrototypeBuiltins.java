@@ -2364,33 +2364,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             return JSObject.ownPropertyKeys(thisObj);
         }
-
-        @TruffleBoundary
-        private static Iterable<Object> getKeys(TruffleObject thisObj) {
-            if (JSInteropNodeUtil.hasSize(thisObj)) {
-                int size = (int) JSRuntime.toInteger(JSInteropNodeUtil.getSize(thisObj));
-                return new Iterable<Object>() {
-                    @Override
-                    public Iterator<Object> iterator() {
-                        return new Iterator<Object>() {
-                            private int current = 0;
-
-                            @Override
-                            public Object next() {
-                                return current++;
-                            }
-
-                            @Override
-                            public boolean hasNext() {
-                                return current < size;
-                            }
-                        };
-                    }
-                };
-            } else {
-                return JSInteropNodeUtil.keys(thisObj);
-            }
-        }
     }
 
     public abstract static class JSArrayReduceNode extends ArrayForEachIndexCallOperation {
