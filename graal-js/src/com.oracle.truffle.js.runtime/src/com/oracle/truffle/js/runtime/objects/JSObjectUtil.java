@@ -319,7 +319,7 @@ public final class JSObjectUtil {
         CompilerAsserts.neverPartOfCompilation("do not set object prototype from compiled code");
 
         final Shape oldShape = object.getShape();
-        JSShape.invalidateAllPropertyAssumptions(oldShape);
+        JSShape.invalidatePrototypeAssumption(oldShape);
         final Shape newRootShape;
         if (newPrototype == Null.instance) {
             newRootShape = JSShape.makeEmptyRoot(oldShape.getLayout(), oldShape.getObjectType(), JSShape.getJSContext(oldShape), JSShape.makePrototypeProperty(newPrototype));

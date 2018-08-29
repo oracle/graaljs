@@ -135,12 +135,16 @@ public final class JSShape {
         getSharedData(shape).invalidatePropertyAssumption(propertyName);
     }
 
-    public static void invalidateAllPropertyAssumptions(Shape shape) {
-        getSharedData(shape).invalidateAllPropertyAssumptions();
-    }
-
     public static JSContext getJSContext(Shape shape) {
         return getSharedData(shape).getContext();
+    }
+
+    public static Assumption getPrototypeAssumption(Shape shape) {
+        return getSharedData(shape).getPrototypeAssumption();
+    }
+
+    public static void invalidatePrototypeAssumption(Shape shape) {
+        getSharedData(shape).invalidatePrototypeAssumption();
     }
 
     private static boolean isRoot(Shape shape) {

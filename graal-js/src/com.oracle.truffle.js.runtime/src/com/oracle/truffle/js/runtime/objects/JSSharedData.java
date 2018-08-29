@@ -58,16 +58,19 @@ public final class JSSharedData implements ShapeListener {
     private final JSContext context;
     private final Property prototypeProperty;
     private Map<Object, Assumption> propertyAssumptions;
+    private Assumption prototypeAssumption;
 
     private static final DebugCounter propertyAssumptionsCreated = DebugCounter.create("Property assumptions created");
     private static final DebugCounter propertyAssumptionsRemoved = DebugCounter.create("Property assumptions removed");
+    private static final DebugCounter prototypeAssumptionsCreated = DebugCounter.create("Prototype assumptions created");
+    private static final DebugCounter prototypeAssumptionsRemoved = DebugCounter.create("Prototype assumptions removed");
 
     public JSSharedData(JSContext context, Property prototypeProperty) {
         this.context = context;
         this.prototypeProperty = prototypeProperty;
     }
 
-    public Assumption getPropertyAssumption(Object propertyName) {
+    Assumption getPropertyAssumption(Object propertyName) {
         if (propertyAssumptions == null) {
             propertyAssumptions = new HashMap<>();
         } else {
@@ -82,7 +85,7 @@ public final class JSSharedData implements ShapeListener {
         return assumption;
     }
 
-    public void invalidatePropertyAssumption(Object propertyName) {
+    void invalidatePropertyAssumption(Object propertyName) {
         if (propertyAssumptions != null) {
             Assumption assumption = propertyAssumptions.get(propertyName);
             if (assumption != null) {
@@ -99,20 +102,28 @@ public final class JSSharedData implements ShapeListener {
         }
     }
 
-    void invalidateAllPropertyAssumptions() {
-        if (propertyAssumptions != null) {
-            for (Map.Entry<Object, Assumption> entry : propertyAssumptions.entrySet()) {
-                invalidatePropertyAssumptionImpl(entry.getKey(), entry.getValue());
-            }
-        }
-    }
-
-    public JSContext getContext() {
+    JSContext getContext() {
         return context;
     }
 
     Property getPrototypeProperty() {
         return prototypeProperty;
+    }
+
+    Assumption getPrototypeAssumption() {
+        if (prototypeAssumption == null) {
+            prototypeAssumption = Truffle.getRuntime().createAssumption("stable prototype");
+            prototypeAssumptionsCreated.inc();
+        }
+        return prototypeAssumption;
+    }
+
+    void invalidatePrototypeAssumption() {
+        if (prototypeAssumption != null) {
+            prototypeAssumption.invalidate();
+            prototypeAssumption = NeverValidAssumption.INSTANCE;
+            prototypeAssumptionsRemoved.inc();
+        }
     }
 
     @Override
