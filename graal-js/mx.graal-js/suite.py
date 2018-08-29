@@ -367,6 +367,20 @@ suite = {
       "testProject" : True,
     },
 
+    "com.oracle.truffle.js.test.threading" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "sdk:GRAAL_SDK",
+      ],
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.js.runtime",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,JavaScript",
+      "testProject" : True,
+    },
+
     "com.oracle.truffle.js.scriptengine" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
