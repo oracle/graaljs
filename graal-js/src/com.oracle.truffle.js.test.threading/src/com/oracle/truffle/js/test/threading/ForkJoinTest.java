@@ -40,47 +40,78 @@
  */
 package com.oracle.truffle.js.test.threading;
 
-import java.util.concurrent.Callable;
+import static org.junit.Assert.assertEquals;
 
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.RecursiveTask;
+import java.util.function.Supplier;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
+import org.junit.Test;
 
-abstract class MultiThreadedTest {
+public class ForkJoinTest {
 
-    static class TestingThread extends Thread {
+    /**
+     * Language bindings and Java interop can be used to expose synchronization primitives to
+     * Graal.js.
+     */
+    @Test
+    public void forkJoinPool() {
+        final ForkJoinPool pool = new ForkJoinPool();
+        int result = pool.invoke(new GraaljsFibTask(13, tl));
+        assertEquals(result, 233);
+    }
 
-        private final Runnable task;
-        private volatile Object result;
+    private final Engine engine = Engine.create();
+    private final ThreadLocal<Value> tl = ThreadLocal.withInitial(new Supplier<Value>() {
 
-        TestingThread(Callable<Value> task) {
-            this.result = null;
-            this.task = new Runnable() {
+        @Override
+        public Value get() {
+            String src = "function(n) {" +
+                            "   if (n <= 1) " +
+                            "      return n;" +
+                            "   var f1 = fib.task(n - 1);" +
+                            "   f1.fork();" +
+                            "   var f2 = fib.task(n - 2);" +
+                            "   return f2.compute() + f1.join();" +
+                            "}";
 
-                @Override
-                public void run() {
-                    try {
-                        result = task.call();
-                    } catch (Exception e) {
-                        result = null;
-                        throw new AssertionError(e);
-                    }
-                }
-            };
+            Context cx = Context.newBuilder("js").engine(engine).build();
+            cx.getBindings("js").putMember("fib", new FibTaskCreator(tl));
+            return cx.eval("js", src);
+        }
+    });
+
+    public static class GraaljsFibTask extends RecursiveTask<Integer> {
+
+        private static final long serialVersionUID = 1L;
+
+        private final int num;
+        private final ThreadLocal<Value> fib;
+
+        public GraaljsFibTask(int num, ThreadLocal<Value> tl) {
+            this.fib = tl;
+            this.num = num;
         }
 
         @Override
-        public void run() {
-            task.run();
+        public Integer compute() {
+            return fib.get().execute(num).asInt();
+        }
+    }
+
+    public static class FibTaskCreator {
+        private final ThreadLocal<Value> tl;
+
+        public FibTaskCreator(ThreadLocal<Value> tl) {
+            this.tl = tl;
         }
 
-        public Value joinWithReturnValue() {
-            try {
-                join();
-            } catch (InterruptedException e) {
-                throw new AssertionError(e);
-            }
-            return (Value) result;
+        public GraaljsFibTask task(int num) {
+            return new GraaljsFibTask(num, tl);
         }
-
     }
 
 }

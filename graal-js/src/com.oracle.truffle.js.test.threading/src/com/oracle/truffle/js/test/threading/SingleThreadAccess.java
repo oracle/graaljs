@@ -48,7 +48,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
-public class SingleThreadAccess extends MultiThreadedTest {
+public class SingleThreadAccess {
 
     /**
      * A primitive value created by one thread can be accessed from another thread.
@@ -91,7 +91,7 @@ public class SingleThreadAccess extends MultiThreadedTest {
     }
 
     /**
-     * A Graal.js context can be created from one thread, and used from another thread.
+     * A Graal.js context can be created in one thread, and used from another thread.
      */
     @Test
     public void evalInTwoThreads() {
@@ -117,4 +117,67 @@ public class SingleThreadAccess extends MultiThreadedTest {
         cx.close();
     }
 
+    /**
+     * A Graal.js context can be created in one thread, and used from another thread.
+     */
+    @Test
+    public void createThread() {
+        final Context cx = Context.create("js");
+
+        cx.eval("js", "var foo = 42;");
+
+        TestingThread t = new TestingThread(new Callable<Value>() {
+
+            @Override
+            public Value call() throws Exception {
+                cx.enter();
+                try {
+                    return cx.eval("js", "foo;");
+                } finally {
+                    cx.leave();
+                }
+            }
+        });
+
+        t.start();
+        assertEquals(t.joinWithReturnValue().asInt(), 42);
+        cx.close();
+    }
+
+    static class TestingThread extends Thread {
+
+        private final Runnable task;
+        private volatile Object result;
+
+        TestingThread(Callable<Value> task) {
+            this.result = null;
+            this.task = new Runnable() {
+
+                @Override
+                public void run() {
+                    try {
+                        result = task.call();
+                    } catch (Exception e) {
+                        result = null;
+                        throw new AssertionError(e);
+                    }
+                }
+            };
+        }
+
+        @Override
+        public void run() {
+            task.run();
+        }
+
+        public Value joinWithReturnValue() {
+            try {
+                join();
+            } catch (InterruptedException e) {
+                throw new AssertionError(e);
+            }
+            return (Value) result;
+        }
+
+    }
 }
