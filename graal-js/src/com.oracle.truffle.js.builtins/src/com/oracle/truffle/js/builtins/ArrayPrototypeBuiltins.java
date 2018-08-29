@@ -48,7 +48,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -2363,33 +2362,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return keys;
             }
             return JSObject.ownPropertyKeys(thisObj);
-        }
-
-        @TruffleBoundary
-        private static Iterable<Object> getKeys(TruffleObject thisObj) {
-            if (JSInteropNodeUtil.hasSize(thisObj)) {
-                int size = (int) JSRuntime.toInteger(JSInteropNodeUtil.getSize(thisObj));
-                return new Iterable<Object>() {
-                    @Override
-                    public Iterator<Object> iterator() {
-                        return new Iterator<Object>() {
-                            private int current = 0;
-
-                            @Override
-                            public Object next() {
-                                return current++;
-                            }
-
-                            @Override
-                            public boolean hasNext() {
-                                return current < size;
-                            }
-                        };
-                    }
-                };
-            } else {
-                return JSInteropNodeUtil.keys(thisObj);
-            }
         }
     }
 
