@@ -200,6 +200,15 @@ public final class JSObject {
     }
 
     @TruffleBoundary
+    public static Object get(TruffleObject obj, long index) {
+        if (isJSObject(obj)) {
+            return get((DynamicObject) obj, index);
+        } else {
+            return JSInteropNodeUtil.read(obj, index);
+        }
+    }
+
+    @TruffleBoundary
     public static Object getMethod(DynamicObject obj, Object name) {
         assert JSRuntime.isPropertyKey(name);
         Object result = JSRuntime.nullToUndefined(JSObject.getJSClass(obj).getMethodHelper(obj, obj, name));

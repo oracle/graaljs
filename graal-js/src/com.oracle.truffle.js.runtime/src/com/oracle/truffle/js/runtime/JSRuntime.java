@@ -2164,10 +2164,21 @@ public final class JSRuntime {
      * ES2015 7.2.3 IsCallable(argument).
      */
     public static boolean isCallable(Object value) {
-        if (JSFunction.isJSFunction(value)) {
-            return true;
-        } else if (JSProxy.isProxy(value)) {
-            return isCallableProxy((DynamicObject) value);
+        if (value instanceof TruffleObject) {
+            if (JSFunction.isJSFunction(value)) {
+                return true;
+            } else if (JSProxy.isProxy(value)) {
+                return isCallableProxy((DynamicObject) value);
+            }
+            return isCallableForeign((TruffleObject) value);
+        }
+        return false;
+    }
+
+    @TruffleBoundary
+    private static boolean isCallableForeign(TruffleObject value) {
+        if (isForeignObject(value)) {
+            return JSInteropNodeUtil.isExecutable(value);
         }
         return false;
     }
