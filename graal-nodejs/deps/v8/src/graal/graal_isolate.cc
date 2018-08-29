@@ -677,6 +677,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::module_get_request, "moduleGetRequest", "(Ljava/lang/Object;I)Ljava/lang/String;")
     ACCESS_METHOD(GraalAccessMethod::module_get_namespace, "moduleGetNamespace", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_get_identity_hash, "moduleGetIdentityHash", "(Ljava/lang/Object;)I")
+    ACCESS_METHOD(GraalAccessMethod::module_get_exception, "moduleGetException", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::value_serializer_new, "valueSerializerNew", "(J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::value_serializer_release, "valueSerializerRelease", "(Ljava/lang/Object;Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::value_serializer_size, "valueSerializerSize", "(Ljava/lang/Object;)I")

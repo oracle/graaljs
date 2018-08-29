@@ -2693,8 +2693,7 @@ namespace v8 {
     }
 
     Local<Value> Module::GetException() const {
-        TRACE
-        return Local<Value>();
+        return reinterpret_cast<const GraalModule*> (this)->GetException();
     }
 
     void Isolate::SetHostImportModuleDynamicallyCallback(HostImportModuleDynamicallyCallback callback) {

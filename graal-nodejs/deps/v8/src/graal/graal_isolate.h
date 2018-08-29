@@ -270,6 +270,7 @@ enum GraalAccessMethod {
     module_get_request,
     module_get_namespace,
     module_get_identity_hash,
+    module_get_exception,
     value_serializer_new,
     value_serializer_release,
     value_serializer_size,

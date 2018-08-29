@@ -118,3 +118,10 @@ int GraalModule::GetIdentityHash() const {
     JNI_CALL(jint, hash, Isolate(), GraalAccessMethod::module_get_identity_hash, Int, GetJavaObject());
     return hash;
 }
+
+v8::Local<v8::Value> GraalModule::GetException() const {
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_error, graal_isolate, GraalAccessMethod::module_get_exception, Object, GetJavaObject());
+    GraalValue* graal_error = GraalValue::FromJavaObject(graal_isolate, java_error);
+    return reinterpret_cast<v8::Value*> (graal_error);
+}

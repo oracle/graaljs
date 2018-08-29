@@ -2560,24 +2560,36 @@ public final class GraalJSAccess {
         return JavaScriptTranslator.translateModule(factory, jsContext, source, getModuleLoader());
     }
 
+    private Map<JSModuleRecord, Object> moduleErrorMap = new WeakHashMap<>();
+
     public void moduleInstantiate(Object context, Object module, long resolveCallback) {
         ESModuleLoader loader = getModuleLoader();
         loader.setResolver(resolveCallback);
         JSContext jsContext = ((JSRealm) context).getContext();
-        jsContext.getEvaluator().moduleDeclarationInstantiation((JSModuleRecord) module);
-        loader.setResolver(0);
+        try {
+            jsContext.getEvaluator().moduleDeclarationInstantiation((JSModuleRecord) module);
+        } finally {
+            loader.setResolver(0);
+        }
     }
 
     public Object moduleEvaluate(Object context, Object module) {
         JSRealm jsRealm = (JSRealm) context;
         JSContext jsContext = jsRealm.getContext();
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
-        Object result = jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
-        return result;
+        try {
+            return jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
+        } catch (GraalJSException ex) {
+            moduleErrorMap.put((JSModuleRecord) module, ex.getErrorObjectEager(jsContext));
+            throw ex;
+        }
     }
 
     public int moduleGetStatus(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
+        if (moduleErrorMap.containsKey(record)) {
+            return 5; // v8::Module::Status::kErrored
+        }
         if (record.isResolved()) {
             if (record.isEvaluated()) {
                 return 4; // v8::Module::Status::kEvaluated
@@ -2587,6 +2599,11 @@ public final class GraalJSAccess {
         } else {
             return 0; // v8::Module::Status::kUninstantiated
         }
+    }
+
+    public Object moduleGetException(Object module) {
+        JSModuleRecord record = (JSModuleRecord) module;
+        return moduleErrorMap.get(record);
     }
 
     public int moduleGetRequestsLength(Object module) {
