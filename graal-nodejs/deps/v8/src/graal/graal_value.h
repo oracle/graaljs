@@ -88,6 +88,7 @@ public:
     bool IsMapIterator() const;
     bool IsSetIterator() const;
     bool IsSharedArrayBuffer() const;
+    bool IsArgumentsObject() const;
     int32_t Int32Value() const;
     uint32_t Uint32Value() const;
     int64_t IntegerValue() const;

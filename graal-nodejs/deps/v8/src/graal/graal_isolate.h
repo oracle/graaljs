@@ -98,6 +98,7 @@ enum GraalAccessMethod {
     value_is_set_iterator,
     value_is_map_iterator,
     value_is_shared_array_buffer,
+    value_is_arguments_object,
     value_equals,
     value_strict_equals,
     value_instance_of,

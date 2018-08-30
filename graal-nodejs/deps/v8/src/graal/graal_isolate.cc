@@ -505,6 +505,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::value_is_set_iterator, "valueIsSetIterator", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_is_map_iterator, "valueIsMapIterator", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_is_shared_array_buffer, "valueIsSharedArrayBuffer", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_is_arguments_object, "valueIsArgumentsObject", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_equals, "valueEquals", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_strict_equals, "valueStrictEquals", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_instance_of, "valueInstanceOf", "(Ljava/lang/Object;Ljava/lang/Object;)Z")

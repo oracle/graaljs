@@ -147,6 +147,7 @@ import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
+import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -531,6 +532,10 @@ public final class GraalJSAccess {
 
     public boolean valueIsSharedArrayBuffer(Object object) {
         return JSSharedArrayBuffer.isJSSharedArrayBuffer(object);
+    }
+
+    public boolean valueIsArgumentsObject(Object object) {
+        return JSArgumentsObject.isJSArgumentsObject(object);
     }
 
     public boolean valueEquals(Object left, Object right) {
