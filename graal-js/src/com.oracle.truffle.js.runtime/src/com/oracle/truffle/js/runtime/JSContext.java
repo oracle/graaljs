@@ -310,6 +310,8 @@ public class JSContext implements ShapeContext {
 
         if (JSTruffleOptions.Test262Mode || JSTruffleOptions.TestV8Mode) {
             this.setJSAgent(new DebugJSAgent(env, contextOptions.canAgentBlock()));
+        } else {
+            this.setJSAgent(new MainJSAgent());
         }
         if (contextOptions.isV8RealmBuiltin()) {
             this.realmList = new ArrayList<>();
