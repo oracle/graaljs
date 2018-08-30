@@ -257,6 +257,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Override
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (materializedTags.contains(FunctionCallExpressionTag.class)) {
+                argumentsNode.materializeInstrumentableArguments();
                 if (this.hasSourceSection() && !functionNode.hasSourceSection()) {
                     transferSourceSectionAddExpressionTag(this, functionNode);
                 }
@@ -399,6 +400,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             if (materializedTags.contains(FunctionCallExpressionTag.class) || materializedTags.contains(ReadPropertyExpressionTag.class) ||
                             materializedTags.contains(ReadElementExpressionTag.class)) {
                 JavaScriptNode call = new MaterializedInvokeNode(functionTargetNode, argumentsNode, flags);
+                argumentsNode.materializeInstrumentableArguments();
                 transferSourceSectionAndTags(this, call);
                 return call;
             } else {
@@ -433,6 +435,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             this.callTargetNode = cloneUninitialized(functionTargetNode.getTarget());
             this.functionReaderNode = JSMaterializedInvokeTargetableNode.createFor(functionTargetNode);
             this.argumentsNode = argumentsNode;
+            transferSourceSectionAddExpressionTag(functionTargetNode, callTargetNode);
             transferSourceSectionAddExpressionTag(functionTargetNode, functionReaderNode);
         }
 

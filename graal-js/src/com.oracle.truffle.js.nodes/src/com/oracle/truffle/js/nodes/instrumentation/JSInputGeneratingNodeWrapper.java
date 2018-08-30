@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.instrumentation;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode;
 
 public final class JSInputGeneratingNodeWrapper extends JavaScriptNode {
 
@@ -53,7 +52,7 @@ public final class JSInputGeneratingNodeWrapper extends JavaScriptNode {
         this.delegate = toWrap;
     }
 
-    public static JavaScriptNode create(JSConstantNode toWrap) {
+    public static JavaScriptNode create(JavaScriptNode toWrap) {
         JSInputGeneratingNodeWrapper wrapper = new JSInputGeneratingNodeWrapper(toWrap);
         transferSourceSectionAndTags(toWrap, wrapper);
         return wrapper;
