@@ -2114,11 +2114,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         public JSArraySortNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
-            this.deletePropertyNode = DeletePropertyNode.create(THROW_ERROR, context);
         }
 
         @Specialization(guards = "isJSFastArray(thisObj)")
-        protected DynamicObject sortArray(final DynamicObject thisObj, final Object compare, //
+        protected DynamicObject sortArray(final DynamicObject thisObj, final Object compare,
                         @Cached("create(getContext())") JSToObjectArrayNode arrayToObjectArrayNode,
                         @Cached("createClassProfile()") ValueProfile classProfile) {
             checkCompareFunction(compare);
@@ -2155,10 +2154,18 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             } else {
                 arrayIsDefaultBranch.enter();
                 for (int i = array.length; i < len; i++) {
-                    deletePropertyNode.executeEvaluated(thisObj, i);
+                    delete(thisObj, i);
                 }
             }
             return thisObj;
+        }
+
+        private void delete(TruffleObject obj, Object i) {
+            if (deletePropertyNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                deletePropertyNode = DeletePropertyNode.create(THROW_ERROR, getContext());
+            }
+            deletePropertyNode.executeEvaluated(obj, i);
         }
 
         @Specialization
@@ -2207,14 +2214,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private void checkCompareFunction(Object compare) {
-            if (!(JSRuntime.isCallable(compare) || JSRuntime.isForeignObject(compare) || getContext().isOptionV8CompatibilityMode() || compare == Undefined.instance)) {
+            if (!(isCallable(compare) || getContext().isOptionV8CompatibilityMode() || compare == Undefined.instance)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("illegal compare function");
             }
         }
 
         private Comparator<Object> getComparator(final TruffleObject thisObj, final Object compare) {
-            if (JSRuntime.isCallable(compare) || JSRuntime.isForeignObject(compare)) {
+            if (isCallable(compare)) {
                 hasCompareFnBranch.enter();
                 DynamicObject arrayBufferObj = isTypedArrayImplementation && JSArrayBufferView.isJSArrayBufferView(thisObj) ? JSArrayBufferView.getArrayBuffer((DynamicObject) thisObj) : null;
                 return new SortComparator(compare, arrayBufferObj);
@@ -2250,7 +2257,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             for (Object key : keys) {
                 long index = JSRuntime.propertyKeyToArrayIndex(key);
                 if (fromIndex <= index && index < toIndex) {
-                    deletePropertyNode.executeEvaluated(obj, key);
+                    delete(obj, key);
                 }
             }
         }
@@ -2258,7 +2265,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private void deleteSparse(DynamicObject thisObj, long start, long end) {
             long pos = start;
             while (pos < end) {
-                deletePropertyNode.executeEvaluated(thisObj, pos);
+                delete(thisObj, pos);
                 pos = nextElementIndex(thisObj, pos, end);
             }
         }
