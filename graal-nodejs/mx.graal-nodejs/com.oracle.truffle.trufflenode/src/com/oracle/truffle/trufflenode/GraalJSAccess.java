@@ -167,6 +167,8 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
+import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
@@ -178,6 +180,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
+import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.trufflenode.buffer.NIOBufferObject;
@@ -2163,6 +2166,39 @@ public final class GraalJSAccess {
 
     public void objectSetAlignedPointerInInternalField(Object target, long value) {
         ((DynamicObject) target).define(INTERNAL_FIELD_ZERO_KEY, value);
+    }
+
+    public Object objectPreviewEntries(Object object) {
+        DynamicObject dynamicObject = (DynamicObject) object;
+        JSContext context = JSObject.getJSContext(dynamicObject);
+        JSHashMap.Cursor cursor = (JSHashMap.Cursor) dynamicObject.get(JSRuntime.ITERATOR_NEXT_INDEX);
+        if (cursor != null) {
+            Object kindObject = dynamicObject.get(JSMap.MAP_ITERATION_KIND_ID);
+            int kind = kindObject == null ? JSRuntime.ITERATION_KIND_KEY : ((Number) kindObject).intValue();
+            cursor = cursor.copy();
+            List<Object> entries = new ArrayList<>();
+            while (cursor.advance()) {
+                Object key = cursor.getKey();
+                Object value = cursor.getValue();
+                if (kind == JSRuntime.ITERATION_KIND_KEY) {
+                    entries.add(key);
+                } else if (kind == JSRuntime.ITERATION_KIND_VALUE) {
+                    entries.add(value);
+                } else {
+                    entries.add(key);
+                    entries.add(value);
+                    assert kind == JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE;
+                }
+            }
+            resetSharedBuffer();
+            sharedBuffer.putInt(kind == JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE ? 1 : 0);
+            return JSArray.createConstantObjectArray(context, entries.toArray());
+        }
+        if (JSWeakMap.isJSWeakMap(object) || JSWeakSet.isJSWeakSet(object)) {
+            // Implementation of these collections does not allow to preview entries
+            return JSArray.createConstantEmptyArray(context);
+        }
+        return null;
     }
 
     public void isolateInternalErrorCheck(Object exception) {

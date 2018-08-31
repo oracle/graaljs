@@ -535,6 +535,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::object_get_own_property_names, "objectGetOwnPropertyNames", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_creation_context, "objectCreationContext", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_define_property, "objectDefineProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;ZZZZZZ)Z")
+    ACCESS_METHOD(GraalAccessMethod::object_preview_entries, "objectPreviewEntries", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_new, "arrayNew", "(Ljava/lang/Object;I)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_length, "arrayLength", "(Ljava/lang/Object;)J")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_new, "arrayBufferNew", "(Ljava/lang/Object;I)Ljava/lang/Object;")

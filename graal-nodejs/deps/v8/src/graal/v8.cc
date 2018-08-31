@@ -2865,8 +2865,7 @@ namespace v8 {
     }
 
     MaybeLocal<Array> Object::PreviewEntries(bool* is_key_value) {
-        TRACE
-        return MaybeLocal<Array>();
+        return reinterpret_cast<GraalObject*> (this)->PreviewEntries(is_key_value);
     }
 
     MaybeLocal<SharedArrayBuffer> ValueDeserializer::Delegate::GetSharedArrayBufferFromId(Isolate* isolate, uint32_t clone_id) {

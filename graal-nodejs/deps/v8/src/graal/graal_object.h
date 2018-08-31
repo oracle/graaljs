@@ -86,6 +86,7 @@ public:
     v8::Maybe<bool> DeletePrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key);
     v8::MaybeLocal<v8::Value> GetOwnPropertyDescriptor(v8::Local<v8::Context> context, v8::Local<v8::Name> key);
     v8::Maybe<bool> DefineProperty(v8::Local<v8::Context> context, v8::Local<v8::Name> key, v8::PropertyDescriptor& descriptor);
+    v8::MaybeLocal<v8::Array> PreviewEntries(bool* is_key_value);
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 private:

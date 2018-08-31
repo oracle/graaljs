@@ -128,6 +128,7 @@ enum GraalAccessMethod {
     object_get_own_property_names,
     object_creation_context,
     object_define_property,
+    object_preview_entries,
     array_new,
     array_length,
     array_buffer_new,

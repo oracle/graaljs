@@ -328,3 +328,17 @@ v8::Maybe<bool> GraalObject::DefineProperty(v8::Local<v8::Context> context, v8::
             value, get, set, has_enumerable, enumerable, has_configurable, configurable, has_writable, writable);
     return v8::Just((bool) result);
 }
+
+v8::MaybeLocal<v8::Array> GraalObject::PreviewEntries(bool* is_key_value) {
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_entries, graal_isolate, GraalAccessMethod::object_preview_entries, Object, GetJavaObject());
+    if (java_entries == NULL) {
+        return v8::MaybeLocal<v8::Array>();
+    } else {
+        graal_isolate->ResetSharedBuffer();
+        *is_key_value = graal_isolate->ReadInt32FromSharedBuffer() != 0;
+        GraalValue* graal_entries = GraalValue::FromJavaObject(graal_isolate, java_entries);
+        v8::Local<v8::Array> v8_entries = reinterpret_cast<v8::Array*> (graal_entries);
+        return v8_entries;
+    }
+}
