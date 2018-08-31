@@ -541,6 +541,14 @@ public final class GraalJSAccess {
         return JSArgumentsObject.isJSArgumentsObject(object);
     }
 
+    public boolean valueIsWeakMap(Object object) {
+        return JSWeakMap.isJSWeakMap(object);
+    }
+
+    public boolean valueIsWeakSet(Object object) {
+        return JSWeakSet.isJSWeakSet(object);
+    }
+
     public boolean valueEquals(Object left, Object right) {
         return JSRuntime.equal(left, right);
     }

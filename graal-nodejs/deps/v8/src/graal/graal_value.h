@@ -89,6 +89,8 @@ public:
     bool IsSetIterator() const;
     bool IsSharedArrayBuffer() const;
     bool IsArgumentsObject() const;
+    bool IsWeakMap() const;
+    bool IsWeakSet() const;
     int32_t Int32Value() const;
     uint32_t Uint32Value() const;
     int64_t IntegerValue() const;

@@ -218,6 +218,16 @@ bool GraalValue::IsArgumentsObject() const {
     return result;
 }
 
+bool GraalValue::IsWeakMap() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_weak_map, Boolean, GetJavaObject());
+    return result;
+}
+
+bool GraalValue::IsWeakSet() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_weak_set, Boolean, GetJavaObject());
+    return result;
+}
+
 int32_t GraalValue::Int32Value() const {
     JNI_CALL(jint, result, Isolate(), GraalAccessMethod::value_int32_value, Int, GetJavaObject());
     return result;

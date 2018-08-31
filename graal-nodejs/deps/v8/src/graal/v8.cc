@@ -2774,13 +2774,11 @@ namespace v8 {
     }
 
     bool Value::IsWeakMap() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalValue*> (this)->IsWeakMap();
     }
 
     bool Value::IsWeakSet() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalValue*> (this)->IsWeakSet();
     }
 
     bool Value::IsNumberObject() const {
