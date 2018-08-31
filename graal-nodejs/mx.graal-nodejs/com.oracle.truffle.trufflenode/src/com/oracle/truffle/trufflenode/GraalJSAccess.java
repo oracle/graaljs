@@ -790,7 +790,7 @@ public final class GraalJSAccess {
     public String objectGetConstructorName(Object object) {
         DynamicObject dynamicObject = (DynamicObject) object;
         DynamicObject constructor = (DynamicObject) JSObject.get(dynamicObject, JSObject.CONSTRUCTOR);
-        return JSFunction.getName(constructor);
+        return JSFunction.isJSFunction(constructor) ? JSFunction.getName(constructor) : "";
     }
 
     public Object objectGetOwnPropertyNames(Object object) {
