@@ -1881,7 +1881,8 @@ namespace v8 {
             "old_space",
             "code_space",
             "map_space",
-            "large_object_space"
+            "large_object_space",
+            "read_only_space"
         };
         space_statistics->space_name_ = names[index];
         space_statistics->space_size_ = 0;
@@ -1892,7 +1893,7 @@ namespace v8 {
     }
 
     size_t Isolate::NumberOfHeapSpaces() {
-        return 5;
+        return 6;
     }
 
     Local<AccessorSignature> AccessorSignature::New(Isolate* isolate, Local<FunctionTemplate> receiver) {
