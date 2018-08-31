@@ -42,9 +42,11 @@ package com.oracle.truffle.js.nodes.function;
 
 import java.util.ArrayList;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -93,6 +95,16 @@ public class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
         return new JSFunctionArgumentsNode(JavaScriptNode.cloneUninitialized(args));
     }
 
+    @Override
+    public void materializeInstrumentableArguments() {
+        for (int i = 0; i < args.length; i++) {
+            if (!args[i].isInstrumentable()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                args[i] = insert(JSInputGeneratingNodeWrapper.create(args[i]));
+            }
+        }
+    }
+
 }
 
 class JSFunctionZeroArgumentsNode extends AbstractFunctionArgumentsNode {
@@ -112,6 +124,11 @@ class JSFunctionZeroArgumentsNode extends AbstractFunctionArgumentsNode {
     @Override
     protected AbstractFunctionArgumentsNode copyUninitialized() {
         return new JSFunctionZeroArgumentsNode();
+    }
+
+    @Override
+    public void materializeInstrumentableArguments() {
+        // No-op
     }
 
 }
@@ -151,6 +168,13 @@ class JSFunctionOneArgumentNode extends AbstractFunctionArgumentsNode {
         return new JSFunctionOneArgumentNode(JavaScriptNode.cloneUninitialized(child));
     }
 
+    @Override
+    public void materializeInstrumentableArguments() {
+        if (!child.isInstrumentable()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            child = insert(JSInputGeneratingNodeWrapper.create(child));
+        }
+    }
 }
 
 class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {
@@ -183,5 +207,11 @@ class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {
     @Override
     protected AbstractFunctionArgumentsNode copyUninitialized() {
         return new SpreadFunctionArgumentsNode(JavaScriptNode.cloneUninitialized(args));
+    }
+
+    @Override
+    public void materializeInstrumentableArguments() {
+        // The returned Object[] is exposed to the instrumentation framework after it gets converted
+        // to a JS array: no instrumentation needed for argument nodes.
     }
 }
