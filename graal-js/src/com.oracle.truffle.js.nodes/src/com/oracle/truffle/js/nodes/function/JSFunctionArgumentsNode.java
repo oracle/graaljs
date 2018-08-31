@@ -42,20 +42,19 @@ package com.oracle.truffle.js.nodes.function;
 
 import java.util.ArrayList;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.runtime.Boundaries;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
-public class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
+class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
 
     @Children protected final JavaScriptNode[] args;
 
     public static AbstractFunctionArgumentsNode create(JavaScriptNode[] args) {
+        assert args.length <= JSTruffleOptions.MaxFunctionArgumentsLength;
         for (JavaScriptNode arg : args) {
             if (arg instanceof SpreadArgumentNode) {
                 return new SpreadFunctionArgumentsNode(args);
@@ -71,9 +70,6 @@ public class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
 
     protected JSFunctionArgumentsNode(JavaScriptNode[] args) {
         this.args = args;
-        if (args.length > JSTruffleOptions.MaxFunctionArgumentsLength) {
-            throw Errors.createSyntaxError("function has too many parameters");
-        }
     }
 
     @Override
@@ -98,8 +94,7 @@ public class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
     @Override
     public void materializeInstrumentableArguments() {
         for (int i = 0; i < args.length; i++) {
-            if (!args[i].isInstrumentable()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (!(args[i] instanceof SpreadArgumentNode) && !args[i].isInstrumentable()) {
                 args[i] = insert(JSInputGeneratingNodeWrapper.create(args[i]));
             }
         }
@@ -171,7 +166,6 @@ class JSFunctionOneArgumentNode extends AbstractFunctionArgumentsNode {
     @Override
     public void materializeInstrumentableArguments() {
         if (!child.isInstrumentable()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             child = insert(JSInputGeneratingNodeWrapper.create(child));
         }
     }
@@ -207,11 +201,5 @@ class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {
     @Override
     protected AbstractFunctionArgumentsNode copyUninitialized() {
         return new SpreadFunctionArgumentsNode(JavaScriptNode.cloneUninitialized(args));
-    }
-
-    @Override
-    public void materializeInstrumentableArguments() {
-        // The returned Object[] is exposed to the instrumentation framework after it gets converted
-        // to a JS array: no instrumentation needed for argument nodes.
     }
 }

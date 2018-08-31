@@ -54,23 +54,23 @@ import org.junit.Test;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GlobalConstantNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBooleanNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantDoubleNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
+import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBooleanNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantDoubleNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
-import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.binary.JSAddConstantLeftNumberNode;
 import com.oracle.truffle.js.nodes.binary.JSAddConstantRightNumberNode;
 import com.oracle.truffle.js.nodes.binary.JSAddNode;
@@ -83,9 +83,7 @@ import com.oracle.truffle.js.nodes.binary.JSUnsignedRightShiftConstantNode;
 import com.oracle.truffle.js.nodes.control.ForNode;
 import com.oracle.truffle.js.nodes.control.IfNode;
 import com.oracle.truffle.js.nodes.control.WhileNode;
-import com.oracle.truffle.js.nodes.function.AbstractFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.IterationScopeNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode.InvokeNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode;
@@ -128,8 +126,8 @@ public class MaterializedNodes {
 
     @Test
     public void functionNode() {
-        AbstractFunctionArgumentsNode args = JSFunctionArgumentsNode.create(new JavaScriptNode[]{});
-        JSFunctionCallNode c = JSFunctionCallNode.create(JSConstantNode.createUndefined(), null, args, false, false);
+        JavaScriptNode[] args = new JavaScriptNode[]{};
+        JSFunctionCallNode c = JSFunctionCallNode.createCall(JSConstantNode.createUndefined(), null, args, false, false);
         c.setSourceSection(Source.newBuilder(AbstractJavaScriptLanguage.ID, "", "").build().createUnavailableSection());
         Set<Class<? extends Tag>> s = new HashSet<>();
         s.add(FunctionCallExpressionTag.class);
@@ -142,7 +140,7 @@ public class MaterializedNodes {
     @Test
     public void materializeMulti() {
         JSTargetableNode undef = GlobalConstantNode.createGlobalConstant(JSObject.getJSContext(Undefined.instance), "test", Undefined.instance);
-        AbstractFunctionArgumentsNode args = JSFunctionArgumentsNode.create(new JavaScriptNode[]{});
+        JavaScriptNode[] args = new JavaScriptNode[]{};
         JSFunctionCallNode c = JSFunctionCallNode.createInvoke(undef, args, false, false);
         c.setSourceSection(Source.newBuilder(AbstractJavaScriptLanguage.ID, "", "").build().createUnavailableSection());
         undef.setSourceSection(Source.newBuilder(AbstractJavaScriptLanguage.ID, "", "").build().createUnavailableSection());
@@ -321,8 +319,8 @@ public class MaterializedNodes {
 
     @Test
     public void materializeMultiCall() {
-        AbstractFunctionArgumentsNode args = JSFunctionArgumentsNode.create(new JavaScriptNode[]{});
-        JSFunctionCallNode c = JSFunctionCallNode.create(JSConstantNode.createUndefined(), null, args, false, false);
+        JavaScriptNode[] args = new JavaScriptNode[]{};
+        JSFunctionCallNode c = JSFunctionCallNode.createCall(JSConstantNode.createUndefined(), null, args, false, false);
         assertNotMaterializedTwice(c, FunctionCallExpressionTag.class);
     }
 
@@ -330,7 +328,7 @@ public class MaterializedNodes {
     public void materializeMultiInvoke() {
         JSTargetableNode prop = PropertyNode.createProperty(getDummyCx(), dummy, "foo");
         prop.setSourceSection(dummySourceSection);
-        AbstractFunctionArgumentsNode args = JSFunctionArgumentsNode.create(new JavaScriptNode[]{});
+        JavaScriptNode[] args = new JavaScriptNode[]{};
         JSFunctionCallNode c = JSFunctionCallNode.createInvoke(prop, args, false, false);
         assertNotMaterializedTwice(c, FunctionCallExpressionTag.class);
     }
@@ -338,7 +336,7 @@ public class MaterializedNodes {
     @Test
     public void materializeNew() {
         JSTargetableNode prop = GlobalPropertyNode.createPropertyNode(getDummyCx(), "foo");
-        AbstractFunctionArgumentsNode args = JSFunctionArgumentsNode.create(new JavaScriptNode[]{});
+        JavaScriptNode[] args = new JavaScriptNode[]{};
         JSNewNode newnode = JSNewNode.create(getDummyCx(), prop, args);
         assertNotMaterializedTwice(newnode, ObjectAllocationExpressionTag.class);
     }

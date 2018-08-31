@@ -110,11 +110,10 @@ public abstract class JSNewNode extends JavaScriptNode {
 
     protected final JSContext context;
 
-    protected JSNewNode(AbstractFunctionArgumentsNode arguments, JSFunctionCallNode callNew, JavaScriptNode targetNode, JSContext context) {
-        this.callNew = callNew;
-        this.arguments = arguments;
-        this.targetNode = targetNode;
+    protected JSNewNode(JSContext context, JavaScriptNode targetNode, AbstractFunctionArgumentsNode arguments) {
         this.context = context;
+        this.targetNode = targetNode;
+        this.arguments = arguments;
     }
 
     @Override
@@ -139,9 +138,9 @@ public abstract class JSNewNode extends JavaScriptNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializationNeeded(materializedTags)) {
             JavaScriptNode newTarget = JSInputGeneratingNodeWrapper.create(getTarget());
-            JSNewNode materialized = JSNewNodeGen.create(arguments, callNew, newTarget, context);
+            JSNewNode materialized = JSNewNodeGen.create(context, newTarget, arguments);
             arguments.materializeInstrumentableArguments();
-            transferSourceSectionAddExpressionTag(this, materialized);
+            transferSourceSectionAndTags(this, materialized);
             return materialized;
         }
         return this;
@@ -154,8 +153,8 @@ public abstract class JSNewNode extends JavaScriptNode {
         return false;
     }
 
-    public static JSNewNode create(JSContext context, JavaScriptNode function, AbstractFunctionArgumentsNode arguments) {
-        return JSNewNodeGen.create(arguments, null, function, context);
+    public static JSNewNode create(JSContext context, JavaScriptNode function, JavaScriptNode[] arguments) {
+        return JSNewNodeGen.create(context, function, JSFunctionArgumentsNode.create(arguments));
     }
 
     public JavaScriptNode getTarget() {
@@ -315,7 +314,7 @@ public abstract class JSNewNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(context, cloneUninitialized(getTarget()), AbstractFunctionArgumentsNode.cloneUninitialized(arguments));
+        return JSNewNodeGen.create(context, cloneUninitialized(getTarget()), AbstractFunctionArgumentsNode.cloneUninitialized(arguments));
     }
 
     public abstract static class SpecializedNewObjectNode extends JSTargetableNode {

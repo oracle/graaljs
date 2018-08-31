@@ -63,6 +63,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -74,23 +75,23 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.access.JSProxyCallNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.nodes.instrumentation.JSMaterializedInvokeTargetableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
-import com.oracle.truffle.js.nodes.instrumentation.JSMaterializedInvokeTargetableNode.MaterializedTargetableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.interop.ExportArgumentsNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.unary.FlattenNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -154,12 +155,32 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         return isNewTarget ? NEW_TARGET : (isNew ? NEW : CALL);
     }
 
-    public static JSFunctionCallNode create(JavaScriptNode function, JavaScriptNode target, AbstractFunctionArgumentsNode arguments, boolean isNew, boolean isNewTarget) {
-        return new CallNode(target, function, arguments, flags(isNew, isNewTarget));
+    public static JSFunctionCallNode createCall(JavaScriptNode function, JavaScriptNode target, JavaScriptNode[] arguments, boolean isNew, boolean isNewTarget) {
+        assert arguments.length <= JSTruffleOptions.MaxFunctionArgumentsLength;
+        boolean spread = hasSpreadArgument(arguments);
+        if (spread) {
+            return new CallSpreadNode(target, function, arguments, flags(isNew, isNewTarget));
+        }
+        if (arguments.length == 0) {
+            return new Call0Node(target, function, flags(isNew, isNewTarget));
+        } else if (arguments.length == 1) {
+            return new Call1Node(target, function, arguments[0], flags(isNew, isNewTarget));
+        }
+        return new CallNNode(target, function, arguments, flags(isNew, isNewTarget));
     }
 
-    public static JSFunctionCallNode createInvoke(JSTargetableNode targetFunction, AbstractFunctionArgumentsNode arguments, boolean isNew, boolean isNewTarget) {
-        return new InvokeNode(targetFunction, arguments, flags(isNew, isNewTarget));
+    public static JSFunctionCallNode createInvoke(JSTargetableNode targetFunction, JavaScriptNode[] arguments, boolean isNew, boolean isNewTarget) {
+        assert arguments.length <= JSTruffleOptions.MaxFunctionArgumentsLength;
+        boolean spread = hasSpreadArgument(arguments);
+        if (spread) {
+            return new InvokeSpreadNode(targetFunction, arguments, flags(isNew, isNewTarget));
+        }
+        if (arguments.length == 0) {
+            return new Invoke0Node(targetFunction, flags(isNew, isNewTarget));
+        } else if (arguments.length == 1) {
+            return new Invoke1Node(targetFunction, arguments[0], flags(isNew, isNewTarget));
+        }
+        return new InvokeNNode(targetFunction, arguments, flags(isNew, isNewTarget));
     }
 
     private AbstractCacheNode createUninitializedCache() {
@@ -172,6 +193,15 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
     static boolean isNew(byte flags) {
         return (flags & NEW) != 0;
+    }
+
+    private static boolean hasSpreadArgument(JavaScriptNode[] arguments) {
+        for (JavaScriptNode arg : arguments) {
+            if (arg instanceof SpreadArgumentNode) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public final boolean isNew() {
@@ -205,7 +235,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
      * @param arguments function, this, ...rest
      */
     public static JSFunctionCallNode createInternalCall(JavaScriptNode[] arguments) {
-        return create(arguments[0], arguments[1], JSFunctionArgumentsNode.create(Arrays.copyOfRange(arguments, 2, arguments.length)), false, false);
+        return createCall(arguments[0], arguments[1], Arrays.copyOfRange(arguments, 2, arguments.length), false, false);
     }
 
     public final Object executeCall(Object[] arguments) {
@@ -216,19 +246,47 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         return cacheNode.executeCall(arguments);
     }
 
-    static class CallNode extends JSFunctionCallNode {
+    @Override
+    public abstract JavaScriptNode getTarget();
+
+    protected final Object evaluateReceiver(VirtualFrame frame, Object target) {
+        Node targetNode = getTarget();
+        if (targetNode instanceof WrapperNode) {
+            targetNode = ((WrapperNode) targetNode).getDelegateNode();
+        }
+        if (targetNode instanceof SuperPropertyReferenceNode) {
+            return ((SuperPropertyReferenceNode) targetNode).evaluateTarget(frame);
+        }
+        return target;
+    }
+
+    @ExplodeLoop
+    protected static Object[] executeFillObjectArraySpread(JavaScriptNode[] arguments, VirtualFrame frame, Object[] args, int delta) {
+        ArrayList<Object> argList = new ArrayList<>(arguments.length + delta);
+        for (int i = 0; i < delta; i++) {
+            Boundaries.listAdd(argList, args[i]);
+        }
+        for (int i = 0; i < arguments.length; i++) {
+            if (arguments[i] instanceof SpreadArgumentNode) {
+                ((SpreadArgumentNode) arguments[i]).executeToList(frame, argList);
+            } else {
+                Boundaries.listAdd(argList, arguments[i].execute(frame));
+            }
+        }
+        return Boundaries.listToArray(argList);
+    }
+
+    abstract static class CallNode extends JSFunctionCallNode {
         /**
          * May be {@code null}, the target value is {@code undefined}, then.
          */
         @Child protected JavaScriptNode targetNode;
         @Child protected JavaScriptNode functionNode;
-        @Child protected AbstractFunctionArgumentsNode argumentsNode;
 
-        protected CallNode(JavaScriptNode targetNode, JavaScriptNode functionNode, AbstractFunctionArgumentsNode argumentsNode, byte flags) {
+        protected CallNode(JavaScriptNode targetNode, JavaScriptNode functionNode, byte flags) {
             super(flags);
             this.targetNode = targetNode;
             this.functionNode = functionNode;
-            this.argumentsNode = argumentsNode;
         }
 
         @Override
@@ -240,10 +298,11 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             return functionNode;
         }
 
-        protected final Object[] createArguments(VirtualFrame frame, Object target, Object function) {
-            Object[] arguments = JSArguments.createInitial(target, function, argumentsNode.getCount(frame));
-            return argumentsNode.executeFillObjectArray(frame, arguments, JSArguments.RUNTIME_ARGUMENT_COUNT);
-        }
+        protected abstract Object[] createArguments(VirtualFrame frame, Object target, Object function);
+
+        protected abstract JavaScriptNode[] getArgumentNodes();
+
+        protected abstract void materializeInstrumentableArguments();
 
         @Override
         public Object execute(VirtualFrame frame) {
@@ -254,51 +313,12 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             return executeCall(createArguments(frame, receiver, function));
         }
 
-        @Override
-        public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-            if (materializedTags.contains(FunctionCallExpressionTag.class)) {
-                argumentsNode.materializeInstrumentableArguments();
-                if (this.hasSourceSection() && !functionNode.hasSourceSection()) {
-                    transferSourceSectionAddExpressionTag(this, functionNode);
-                }
-                if (targetNode != null) {
-                    // if we have a target, no de-sugaring needed
-                    return this;
-                } else {
-                    JavaScriptNode materializedTargetNode = JSInputGeneratingNodeWrapper.create(JSConstantUndefinedNode.createUndefined());
-                    AbstractFunctionArgumentsNode materializedArgumentsNode = argumentsNode.copyUninitialized();
-                    JavaScriptNode call = CallNode.create(functionNode, materializedTargetNode, materializedArgumentsNode, isNew(flags), isNewTarget(flags));
-                    transferSourceSectionAndTags(this, call);
-                    return call;
-                }
-            } else {
-                return this;
-            }
-        }
-
         final Object executeTarget(VirtualFrame frame) {
             if (targetNode != null) {
                 return targetNode.execute(frame);
             } else {
                 return Undefined.instance;
             }
-        }
-
-        private Object evaluateReceiver(VirtualFrame frame, Object target) {
-            if (targetNode instanceof SuperPropertyReferenceNode) {
-                return ((SuperPropertyReferenceNode) targetNode).evaluateTarget(frame);
-            } else if (targetNode instanceof WrapperNode) {
-                WrapperNode wrapper = (WrapperNode) targetNode;
-                if (wrapper.getDelegateNode() instanceof SuperPropertyReferenceNode) {
-                    return ((SuperPropertyReferenceNode) wrapper.getDelegateNode()).evaluateTarget(frame);
-                }
-            }
-            return target;
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return new CallNode(cloneUninitialized(targetNode), cloneUninitialized(functionNode), AbstractFunctionArgumentsNode.cloneUninitialized(argumentsNode), flags);
         }
 
         @Override
@@ -308,10 +328,151 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected Object getPropertyKey() {
-            if (functionNode instanceof PropertyNode) {
-                return ((PropertyNode) functionNode).getPropertyKey();
+            JavaScriptNode propertyNode = functionNode;
+            if (propertyNode instanceof WrapperNode) {
+                propertyNode = (JavaScriptNode) ((WrapperNode) propertyNode).getDelegateNode();
+            }
+            if (propertyNode instanceof PropertyNode) {
+                return ((PropertyNode) propertyNode).getPropertyKey();
             }
             return null;
+        }
+
+        @Override
+        public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+            if (materializedTags.contains(FunctionCallExpressionTag.class)) {
+                materializeInstrumentableArguments();
+                if (this.hasSourceSection() && !functionNode.hasSourceSection()) {
+                    transferSourceSectionAddExpressionTag(this, functionNode);
+                }
+                if (targetNode != null) {
+                    // if we have a target, no de-sugaring needed
+                    return this;
+                } else {
+                    JavaScriptNode materializedTargetNode = JSInputGeneratingNodeWrapper.create(JSConstantUndefinedNode.createUndefined());
+                    JavaScriptNode call = createCall(functionNode, materializedTargetNode, getArgumentNodes(), isNew(flags), isNewTarget(flags));
+                    transferSourceSectionAndTags(this, call);
+                    return call;
+                }
+            } else {
+                return this;
+            }
+        }
+    }
+
+    static class Call0Node extends CallNode {
+        protected Call0Node(JavaScriptNode targetNode, JavaScriptNode functionNode, byte flags) {
+            super(targetNode, functionNode, flags);
+        }
+
+        @Override
+        protected final Object[] createArguments(VirtualFrame frame, Object target, Object function) {
+            return JSArguments.createZeroArg(target, function);
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized() {
+            return new Call0Node(cloneUninitialized(targetNode), cloneUninitialized(functionNode), flags);
+        }
+
+        @Override
+        protected JavaScriptNode[] getArgumentNodes() {
+            return new JavaScriptNode[0];
+        }
+
+        @Override
+        protected void materializeInstrumentableArguments() {
+        }
+    }
+
+    static class Call1Node extends CallNode {
+        @Child protected JavaScriptNode argument0;
+
+        protected Call1Node(JavaScriptNode targetNode, JavaScriptNode functionNode, JavaScriptNode argument0, byte flags) {
+            super(targetNode, functionNode, flags);
+            this.argument0 = argument0;
+        }
+
+        @Override
+        protected final Object[] createArguments(VirtualFrame frame, Object target, Object function) {
+            Object arg0 = argument0.execute(frame);
+            return JSArguments.createOneArg(target, function, arg0);
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized() {
+            return new Call1Node(cloneUninitialized(targetNode), cloneUninitialized(functionNode), cloneUninitialized(argument0), flags);
+        }
+
+        @Override
+        protected JavaScriptNode[] getArgumentNodes() {
+            return new JavaScriptNode[]{argument0};
+        }
+
+        @Override
+        protected void materializeInstrumentableArguments() {
+            if (!argument0.isInstrumentable()) {
+                argument0 = insert(JSInputGeneratingNodeWrapper.create(argument0));
+            }
+        }
+    }
+
+    static class CallNNode extends CallNode {
+        @Children protected final JavaScriptNode[] arguments;
+
+        protected CallNNode(JavaScriptNode targetNode, JavaScriptNode functionNode, JavaScriptNode[] arguments, byte flags) {
+            super(targetNode, functionNode, flags);
+            this.arguments = arguments;
+        }
+
+        @Override
+        protected final Object[] createArguments(VirtualFrame frame, Object target, Object function) {
+            Object[] args = JSArguments.createInitial(target, function, arguments.length);
+            return executeFillObjectArray(frame, args, JSArguments.RUNTIME_ARGUMENT_COUNT);
+        }
+
+        @ExplodeLoop
+        protected Object[] executeFillObjectArray(VirtualFrame frame, Object[] args, int delta) {
+            for (int i = 0; i < arguments.length; i++) {
+                assert !(arguments[i] instanceof SpreadArgumentNode);
+                args[i + delta] = arguments[i].execute(frame);
+            }
+            return args;
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized() {
+            return new CallNNode(cloneUninitialized(targetNode), cloneUninitialized(functionNode), cloneUninitialized(arguments), flags);
+        }
+
+        @Override
+        protected JavaScriptNode[] getArgumentNodes() {
+            return arguments;
+        }
+
+        @Override
+        protected void materializeInstrumentableArguments() {
+            for (int i = 0; i < arguments.length; i++) {
+                if (!(arguments[i] instanceof SpreadArgumentNode) && !arguments[i].isInstrumentable()) {
+                    arguments[i] = insert(JSInputGeneratingNodeWrapper.create(arguments[i]));
+                }
+            }
+        }
+    }
+
+    static class CallSpreadNode extends CallNNode {
+        protected CallSpreadNode(JavaScriptNode targetNode, JavaScriptNode functionNode, JavaScriptNode[] arguments, byte flags) {
+            super(targetNode, functionNode, arguments, flags);
+        }
+
+        @Override
+        protected Object[] executeFillObjectArray(VirtualFrame frame, Object[] args, int delta) {
+            return executeFillObjectArraySpread(arguments, frame, args, delta);
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized() {
+            return new CallSpreadNode(cloneUninitialized(targetNode), cloneUninitialized(functionNode), cloneUninitialized(arguments), flags);
         }
     }
 
@@ -320,29 +481,34 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
      * {@code true}, target not only serves as the this argument of the call, but also the target
      * object for the member expression that retrieves the function.
      */
-    public static class InvokeNode extends JSFunctionCallNode {
-        @Child private JSTargetableNode functionTargetNode;
-        @Child private AbstractFunctionArgumentsNode argumentsNode;
+    public abstract static class InvokeNode extends JSFunctionCallNode {
+        @Child protected JavaScriptNode targetNode;
+        @Child protected JSTargetableNode functionTargetNode;
 
-        protected InvokeNode(byte flags) {
-            super(flags);
-        }
-
-        protected InvokeNode(JSTargetableNode functionTargetNode, AbstractFunctionArgumentsNode argumentsNode, byte flags) {
+        protected InvokeNode(JSTargetableNode functionTargetNode, byte flags) {
             super(flags);
             this.functionTargetNode = functionTargetNode;
-            this.argumentsNode = argumentsNode;
+        }
+
+        protected InvokeNode(JavaScriptNode targetNode, JSTargetableNode functionTargetNode, byte flags) {
+            super(flags);
+            this.targetNode = targetNode;
+            this.functionTargetNode = functionTargetNode;
         }
 
         @Override
         public JavaScriptNode getTarget() {
+            if (targetNode != null) {
+                return targetNode;
+            }
             return functionTargetNode.getTarget();
         }
 
-        protected final Object[] createArguments(VirtualFrame frame, Object target, Object function) {
-            Object[] arguments = JSArguments.createInitial(target, function, getArgumentsNode().getCount(frame));
-            return getArgumentsNode().executeFillObjectArray(frame, arguments, JSArguments.RUNTIME_ARGUMENT_COUNT);
-        }
+        protected abstract Object[] createArguments(VirtualFrame frame, Object target, Object function);
+
+        protected abstract JavaScriptNode[] getArgumentNodes();
+
+        protected abstract void materializeInstrumentableArguments();
 
         @Override
         public Object execute(VirtualFrame frame) {
@@ -354,154 +520,188 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         protected Object executeTarget(VirtualFrame frame) {
+            if (targetNode != null) {
+                return targetNode.execute(frame);
+            }
             return functionTargetNode.evaluateTarget(frame);
         }
 
         final Object executeFunctionWithTarget(VirtualFrame frame, Object target) {
-            return getFunctionTargetNode().executeWithTarget(frame, target);
+            return functionTargetNode.executeWithTarget(frame, target);
         }
 
-        protected Object evaluateReceiver(VirtualFrame frame, Object target) {
-            Node targetNode = getTarget();
-            if (targetNode instanceof SuperPropertyReferenceNode) {
-                return ((SuperPropertyReferenceNode) targetNode).evaluateTarget(frame);
-            } else if (targetNode instanceof WrapperNode) {
-                WrapperNode wrapper = (WrapperNode) targetNode;
-                if (wrapper.getDelegateNode() instanceof SuperPropertyReferenceNode) {
-                    return ((SuperPropertyReferenceNode) wrapper.getDelegateNode()).evaluateTarget(frame);
-                }
+        @Override
+        public String expressionToString() {
+            return Objects.toString(functionTargetNode.expressionToString(), INTERMEDIATE_VALUE) + "(...)";
+        }
+
+        @Override
+        public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+            if (targetNode != null) {
+                // if we have a target, no de-sugaring needed
+                return this;
             }
-            return target;
+            if (materializedTags.contains(FunctionCallExpressionTag.class) || materializedTags.contains(ReadPropertyExpressionTag.class) ||
+                            materializedTags.contains(ReadElementExpressionTag.class)) {
+                materializeInstrumentableArguments();
+                InvokeNode invoke = (InvokeNode) createInvoke(null, getArgumentNodes(), isNew(flags), isNewTarget(flags));
+                JavaScriptNode target = functionTargetNode.getTarget();
+                invoke.targetNode = !target.isInstrumentable() ? JSInputGeneratingNodeWrapper.create(target) : target;
+                invoke.functionTargetNode = JSMaterializedInvokeTargetableNode.createFor(functionTargetNode);
+                transferSourceSectionAndTags(functionTargetNode, invoke.functionTargetNode);
+                transferSourceSectionAndTags(this, invoke);
+                return invoke;
+            } else {
+                return this;
+            }
+        }
+
+        @Override
+        protected Object getPropertyKey() {
+            JavaScriptNode propertyNode = functionTargetNode;
+            if (propertyNode instanceof WrapperNode) {
+                propertyNode = (JavaScriptNode) ((WrapperNode) propertyNode).getDelegateNode();
+            }
+            if (propertyNode instanceof PropertyNode) {
+                return ((PropertyNode) propertyNode).getPropertyKey();
+            }
+            return null;
         }
 
         public JSTargetableNode getFunctionTargetNode() {
             return functionTargetNode;
         }
+    }
 
-        protected AbstractFunctionArgumentsNode getArgumentsNode() {
-            return argumentsNode;
+    static class Invoke0Node extends InvokeNode {
+        protected Invoke0Node(JSTargetableNode functionNode, byte flags) {
+            this(null, functionNode, flags);
+        }
+
+        protected Invoke0Node(JavaScriptNode targetNode, JSTargetableNode functionNode, byte flags) {
+            super(targetNode, functionNode, flags);
+        }
+
+        @Override
+        protected final Object[] createArguments(VirtualFrame frame, Object target, Object function) {
+            return JSArguments.createZeroArg(target, function);
         }
 
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return new InvokeNode(cloneUninitialized(getFunctionTargetNode()), AbstractFunctionArgumentsNode.cloneUninitialized(getArgumentsNode()), flags);
+            return new Invoke0Node(cloneUninitialized(targetNode), cloneUninitialized(functionTargetNode), flags);
         }
 
         @Override
-        public String expressionToString() {
-            return Objects.toString(getFunctionTargetNode().expressionToString(), INTERMEDIATE_VALUE) + "(...)";
+        protected JavaScriptNode[] getArgumentNodes() {
+            return new JavaScriptNode[0];
         }
 
         @Override
-        public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-            if (this instanceof MaterializedInvokeNode) {
-                return this;
-            }
-            if (materializedTags.contains(FunctionCallExpressionTag.class) || materializedTags.contains(ReadPropertyExpressionTag.class) ||
-                            materializedTags.contains(ReadElementExpressionTag.class)) {
-                JavaScriptNode call = new MaterializedInvokeNode(functionTargetNode, argumentsNode, flags);
-                argumentsNode.materializeInstrumentableArguments();
-                transferSourceSectionAndTags(this, call);
-                return call;
-            } else {
-                return this;
-            }
-        }
-
-        @Override
-        protected Object getPropertyKey() {
-            if (functionTargetNode instanceof PropertyNode) {
-                return ((PropertyNode) functionTargetNode).getPropertyKey();
-            }
-            return null;
+        protected void materializeInstrumentableArguments() {
         }
     }
 
-    /**
-     * Materialized version of {@link InvokeNode}. Used by the instrumentation framework when invoke
-     * calls are instrumented.
-     */
-    static final class MaterializedInvokeNode extends InvokeNode {
+    static class Invoke1Node extends InvokeNode {
+        @Child protected JavaScriptNode argument0;
 
-        // node declaration order is used by the instrumentation framework to derive the index order
-        // for each instrumented data event. We must re-declare nodes and keep null ref in parent
-        // class to expose instrumentation events with the correct order.
-        @Child private JavaScriptNode callTargetNode;
-        @Child private JSTargetableNode functionReaderNode;
-        @Child private AbstractFunctionArgumentsNode argumentsNode;
-
-        protected MaterializedInvokeNode(JSTargetableNode functionTargetNode, AbstractFunctionArgumentsNode argumentsNode, byte flags) {
-            super(flags);
-            this.callTargetNode = cloneUninitialized(functionTargetNode.getTarget());
-            this.functionReaderNode = JSMaterializedInvokeTargetableNode.createFor(functionTargetNode);
-            this.argumentsNode = argumentsNode;
-            transferSourceSectionAddExpressionTag(functionTargetNode, callTargetNode);
-            transferSourceSectionAddExpressionTag(functionTargetNode, functionReaderNode);
+        protected Invoke1Node(JSTargetableNode functionNode, JavaScriptNode argument0, byte flags) {
+            this(null, functionNode, argument0, flags);
         }
 
-        private MaterializedInvokeNode(JSTargetableNode functionTargetNode, JavaScriptNode target, AbstractFunctionArgumentsNode argumentsNode, byte flags) {
-            super(flags);
-            this.callTargetNode = target;
-            this.functionReaderNode = functionTargetNode;
-            this.argumentsNode = argumentsNode;
+        protected Invoke1Node(JavaScriptNode targetNode, JSTargetableNode functionNode, JavaScriptNode argument0, byte flags) {
+            super(targetNode, functionNode, flags);
+            this.argument0 = argument0;
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
-            // will report the 'target' value to the instrumentation framework
-            Object targetValue = executeTarget(frame);
-            Object receiver = evaluateReceiver(frame, targetValue);
-            // will report the 'function' value to the instrumentation framework
-            Object function = functionReaderNode.executeWithTarget(frame, targetValue);
-            // will report all arguments to the instrumentation framework
-            return executeCall(createArguments(frame, receiver, function));
-        }
-
-        @Override
-        public JSTargetableNode getFunctionTargetNode() {
-            return functionReaderNode;
-        }
-
-        @Override
-        public JavaScriptNode getTarget() {
-            return callTargetNode;
-        }
-
-        @Override
-        protected Object executeTarget(VirtualFrame frame) {
-            return callTargetNode.execute(frame);
-        }
-
-        @Override
-        protected AbstractFunctionArgumentsNode getArgumentsNode() {
-            return argumentsNode;
+        protected final Object[] createArguments(VirtualFrame frame, Object target, Object function) {
+            Object arg0 = argument0.execute(frame);
+            return JSArguments.createOneArg(target, function, arg0);
         }
 
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return new MaterializedInvokeNode(cloneUninitialized(functionReaderNode), cloneUninitialized(callTargetNode), AbstractFunctionArgumentsNode.cloneUninitialized(getArgumentsNode()), flags);
+            return new Invoke1Node(cloneUninitialized(targetNode), cloneUninitialized(functionTargetNode), cloneUninitialized(argument0), flags);
         }
 
         @Override
-        protected Object getPropertyKey() {
-            if (functionReaderNode instanceof MaterializedTargetableNode) {
-                return maybeGetPropertyKey(functionReaderNode);
-            } else if (functionReaderNode instanceof WrapperNode) {
-                return maybeGetPropertyKey(((WrapperNode) functionReaderNode).getDelegateNode());
-            } else {
-                return maybeGetPropertyKey(functionReaderNode);
-            }
+        protected JavaScriptNode[] getArgumentNodes() {
+            return new JavaScriptNode[]{argument0};
         }
 
-        private static Object maybeGetPropertyKey(Node node) {
-            if (node instanceof MaterializedTargetableNode) {
-                return ((MaterializedTargetableNode) node).getPropertyKey();
-            } else if (node instanceof WrapperNode) {
-                return maybeGetPropertyKey(((WrapperNode) node).getDelegateNode());
-            } else if (node instanceof PropertyNode) {
-                return ((PropertyNode) node).getPropertyKey();
+        @Override
+        protected void materializeInstrumentableArguments() {
+            if (!argument0.isInstrumentable()) {
+                argument0 = insert(JSInputGeneratingNodeWrapper.create(argument0));
             }
-            return null;
+        }
+    }
+
+    static class InvokeNNode extends InvokeNode {
+        @Children protected final JavaScriptNode[] arguments;
+
+        protected InvokeNNode(JSTargetableNode functionNode, JavaScriptNode[] arguments, byte flags) {
+            this(null, functionNode, arguments, flags);
+        }
+
+        protected InvokeNNode(JavaScriptNode targetNode, JSTargetableNode functionNode, JavaScriptNode[] arguments, byte flags) {
+            super(targetNode, functionNode, flags);
+            this.arguments = arguments;
+        }
+
+        @Override
+        protected final Object[] createArguments(VirtualFrame frame, Object target, Object function) {
+            Object[] args = JSArguments.createInitial(target, function, arguments.length);
+            return executeFillObjectArray(frame, args, JSArguments.RUNTIME_ARGUMENT_COUNT);
+        }
+
+        @ExplodeLoop
+        protected Object[] executeFillObjectArray(VirtualFrame frame, Object[] args, int delta) {
+            for (int i = 0; i < arguments.length; i++) {
+                assert !(arguments[i] instanceof SpreadArgumentNode);
+                args[i + delta] = arguments[i].execute(frame);
+            }
+            return args;
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized() {
+            return new InvokeNNode(cloneUninitialized(targetNode), cloneUninitialized(functionTargetNode), cloneUninitialized(arguments), flags);
+        }
+
+        @Override
+        protected JavaScriptNode[] getArgumentNodes() {
+            return arguments;
+        }
+
+        @Override
+        protected void materializeInstrumentableArguments() {
+            for (int i = 0; i < arguments.length; i++) {
+                if (!(arguments[i] instanceof SpreadArgumentNode) && !arguments[i].isInstrumentable()) {
+                    arguments[i] = insert(JSInputGeneratingNodeWrapper.create(arguments[i]));
+                }
+            }
+        }
+    }
+
+    static class InvokeSpreadNode extends InvokeNNode {
+        protected InvokeSpreadNode(JSTargetableNode functionNode, JavaScriptNode[] arguments, byte flags) {
+            this(null, functionNode, arguments, flags);
+        }
+
+        protected InvokeSpreadNode(JavaScriptNode targetNode, JSTargetableNode functionNode, JavaScriptNode[] arguments, byte flags) {
+            super(targetNode, functionNode, arguments, flags);
+        }
+
+        @Override
+        protected Object[] executeFillObjectArray(VirtualFrame frame, Object[] args, int delta) {
+            return executeFillObjectArraySpread(arguments, frame, args, delta);
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized() {
+            return new InvokeSpreadNode(cloneUninitialized(targetNode), cloneUninitialized(functionTargetNode), cloneUninitialized(arguments), flags);
         }
     }
 
@@ -1497,7 +1697,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             }
             if (callNode != null) {
                 if (callNode instanceof InvokeNode) {
-                    expressionStr = ((InvokeNode) callNode).getFunctionTargetNode().expressionToString();
+                    expressionStr = ((InvokeNode) callNode).functionTargetNode.expressionToString();
                 } else if (callNode instanceof CallNode) {
                     expressionStr = ((CallNode) callNode).functionNode.expressionToString();
                 }

@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.arguments.AccessArgumentsArrayDirectlyNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -71,12 +70,11 @@ public class CallApplyArgumentsNode extends JavaScriptNode {
 
     private void replaceWithOrdinaryCall() {
         atomic(() -> {
-            NodeUtil.forEachChild(callNode.getArgumentsNode(), node -> {
+            for (JavaScriptNode node : callNode.getArgumentNodes()) {
                 if (node instanceof AccessArgumentsArrayDirectlyNode) {
                     ((AccessArgumentsArrayDirectlyNode) node).replaceWithDefaultArguments();
                 }
-                return true;
-            });
+            }
             this.replace(callNode, "not the built-in apply function");
         });
     }
