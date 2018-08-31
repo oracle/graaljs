@@ -433,6 +433,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             this.callTargetNode = cloneUninitialized(functionTargetNode.getTarget());
             this.functionReaderNode = JSMaterializedInvokeTargetableNode.createFor(functionTargetNode);
             this.argumentsNode = argumentsNode;
+            transferSourceSectionAddExpressionTag(functionTargetNode, callTargetNode);
             transferSourceSectionAddExpressionTag(functionTargetNode, functionReaderNode);
         }
 
