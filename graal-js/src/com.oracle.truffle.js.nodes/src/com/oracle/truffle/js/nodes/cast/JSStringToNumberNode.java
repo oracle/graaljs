@@ -88,7 +88,7 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
 
     @TruffleBoundary
     protected static final boolean isLong(String input) {
-        return input.length() <= 18 && !input.contains(".");
+        return input.length() <= 18 && input.indexOf('.') == -1;
     }
 
     protected static final boolean isHex(String input) {

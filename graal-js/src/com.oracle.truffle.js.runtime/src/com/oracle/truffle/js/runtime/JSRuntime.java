@@ -461,7 +461,7 @@ public final class JSRuntime {
         try {
             if (sci) {
                 return stringToNumberSci(str);
-            } else if (str.length() <= 18 && !str.contains(".")) {
+            } else if (str.length() <= 18 && str.indexOf('.') == -1) {
                 // 18 digits always fit into long
                 if (hex) {
                     return Long.valueOf(str.substring(2), 16);
@@ -502,7 +502,7 @@ public final class JSRuntime {
         }
         String part2 = str.substring(firstIdx + 1);
         int exponent = Integer.parseInt(part2);
-        if (exponent <= -324 || exponent >= 324 || part1.contains(".")) {
+        if (exponent <= -324 || exponent >= 324 || part1.indexOf('.') != -1) {
             return stringToNumberSciBigExponent(part1, exponent);
         } else {
             return movePointRight(part1, exponent).doubleValue();
