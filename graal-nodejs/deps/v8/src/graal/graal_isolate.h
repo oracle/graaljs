@@ -103,6 +103,7 @@ enum GraalAccessMethod {
     value_is_number_object,
     value_is_string_object,
     value_is_symbol_object,
+    value_is_big_int_object,
     value_is_weak_map,
     value_is_weak_set,
     value_equals,

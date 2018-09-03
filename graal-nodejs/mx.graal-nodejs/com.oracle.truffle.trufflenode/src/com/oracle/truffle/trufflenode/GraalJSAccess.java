@@ -151,6 +151,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -556,6 +557,10 @@ public final class GraalJSAccess {
 
     public boolean valueIsSymbolObject(Object object) {
         return JSSymbol.isJSSymbol(object);
+    }
+
+    public boolean valueIsBigIntObject(Object object) {
+        return JSBigInt.isJSBigInt(object);
     }
 
     public boolean valueIsWeakMap(Object object) {

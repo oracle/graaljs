@@ -2799,8 +2799,7 @@ namespace v8 {
     }
 
     bool Value::IsBigIntObject() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalValue*> (this)->IsBigIntObject();
     }
 
     bool Value::IsArgumentsObject() const {

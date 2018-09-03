@@ -238,6 +238,11 @@ bool GraalValue::IsSymbolObject() const {
     return result;
 }
 
+bool GraalValue::IsBigIntObject() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_big_int_object, Boolean, GetJavaObject());
+    return result;
+}
+
 bool GraalValue::IsWeakMap() const {
     JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_weak_map, Boolean, GetJavaObject());
     return result;

@@ -510,6 +510,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::value_is_number_object, "valueIsNumberObject", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_is_string_object, "valueIsStringObject", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_is_symbol_object, "valueIsSymbolObject", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_is_big_int_object, "valueIsBigIntObject", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_is_weak_map, "valueIsWeakMap", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_is_weak_set, "valueIsWeakSet", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_equals, "valueEquals", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
