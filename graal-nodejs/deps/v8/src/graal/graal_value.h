@@ -91,6 +91,7 @@ public:
     bool IsArgumentsObject() const;
     bool IsBooleanObject() const;
     bool IsNumberObject() const;
+    bool IsStringObject() const;
     bool IsWeakMap() const;
     bool IsWeakSet() const;
     int32_t Int32Value() const;

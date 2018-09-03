@@ -549,6 +549,10 @@ public final class GraalJSAccess {
         return JSNumber.isJSNumber(object);
     }
 
+    public boolean valueIsStringObject(Object object) {
+        return JSString.isJSString(object);
+    }
+
     public boolean valueIsWeakMap(Object object) {
         return JSWeakMap.isJSWeakMap(object);
     }

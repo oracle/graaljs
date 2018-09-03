@@ -228,6 +228,11 @@ bool GraalValue::IsNumberObject() const {
     return result;
 }
 
+bool GraalValue::IsStringObject() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_string_object, Boolean, GetJavaObject());
+    return result;
+}
+
 bool GraalValue::IsWeakMap() const {
     JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_weak_map, Boolean, GetJavaObject());
     return result;
