@@ -113,6 +113,7 @@ public final class JSRuntime {
     public static final int MAX_SAFE_INTEGER_IN_FLOAT = 1 << 24;
     public static final int MIN_SAFE_INTEGER_IN_FLOAT = -MAX_SAFE_INTEGER_IN_FLOAT;
     public static final long MAX_BIG_INT_EXPONENT = Integer.MAX_VALUE;
+    public static final long INVALID_SAFE_INTEGER = Long.MIN_VALUE;
 
     public static final String TO_STRING = "toString";
     public static final String VALUE_OF = "valueOf";
@@ -501,11 +502,15 @@ public final class JSRuntime {
             return -0.0;
         }
         String part2 = str.substring(firstIdx + 1);
-        int exponent = Integer.parseInt(part2);
-        if (exponent <= -324 || exponent >= 324 || part1.indexOf('.') != -1) {
-            return stringToNumberSciBigExponent(part1, exponent);
-        } else {
-            return movePointRight(part1, exponent).doubleValue();
+        try {
+            int exponent = Integer.parseInt(part2);
+            if (exponent <= -324 || exponent >= 324 || part1.indexOf('.') != -1) {
+                return stringToNumberSciBigExponent(part1, exponent);
+            } else {
+                return movePointRight(part1, exponent).doubleValue();
+            }
+        } catch (NumberFormatException e) {
+            return Double.NaN;
         }
     }
 
@@ -2004,6 +2009,68 @@ public final class JSRuntime {
         } else {
             return Math.min(start, length);
         }
+    }
+
+    @TruffleBoundary
+    public static long parseSafeInteger(String s) {
+        return parseSafeInteger(s, 0, s.length(), 10);
+    }
+
+    @TruffleBoundary
+    public static long parseSafeInteger(String s, int beginIndex, int endIndex, int radix) {
+        return parseLong(s, beginIndex, endIndex, radix, radix == 10, MAX_SAFE_INTEGER_LONG);
+    }
+
+    /**
+     * Parses the substring as a signed long in the safe integer range in the specified radix.
+     *
+     * @return parsed integer value or {@link #INVALID_SAFE_INTEGER} if the string is not parsable
+     *         or not in the safe integer range.
+     */
+    private static long parseLong(String s, int beginIndex, int endIndex, int radix, boolean parseSign, long limit) {
+        assert beginIndex >= 0 && beginIndex <= endIndex && endIndex <= s.length();
+        assert radix >= Character.MIN_RADIX && radix <= Character.MAX_RADIX;
+        assert limit <= Long.MAX_VALUE / radix - radix;
+
+        boolean negative = false;
+        int i = beginIndex;
+        if (i >= endIndex) { // ""
+            return INVALID_SAFE_INTEGER;
+        }
+        if (parseSign) {
+            char firstChar = s.charAt(i);
+            if (firstChar < '0') {
+                if (firstChar == '-') {
+                    negative = true;
+                } else if (firstChar != '+') {
+                    return INVALID_SAFE_INTEGER;
+                }
+                i++;
+            }
+            if (i >= endIndex) { // "-", "+"
+                return INVALID_SAFE_INTEGER;
+            }
+        }
+
+        long result = 0;
+        while (i < endIndex) {
+            char c = s.charAt(i);
+            int digit = JSRuntime.valueInRadix(c, radix);
+            if (digit < 0) {
+                return INVALID_SAFE_INTEGER;
+            }
+            result *= radix;
+            result += digit;
+            if (result > limit) {
+                return INVALID_SAFE_INTEGER;
+            }
+            i++;
+        }
+        assert result >= 0;
+        if (negative && result == 0) { // "-0"
+            return INVALID_SAFE_INTEGER;
+        }
+        return negative ? -result : result;
     }
 
     /**
