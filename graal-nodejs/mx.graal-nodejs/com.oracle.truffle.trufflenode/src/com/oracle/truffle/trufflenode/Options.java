@@ -120,6 +120,7 @@ public final class Options {
                         "expose-debug-as",
                         "expose-natives-as",
                         "harmony",
+                        "harmony-bigint",
                         "harmony-default-parameters",
                         "harmony-dynamic-import",
                         "harmony-import-meta",
