@@ -579,6 +579,10 @@ public final class GraalJSAccess {
         return JSFunction.isJSFunction(object) ? JSFunction.getFunctionData((DynamicObject) object).isGenerator() : false;
     }
 
+    public boolean valueIsGeneratorObject(Object object) {
+        return (object instanceof DynamicObject) && ((DynamicObject) object).containsKey(JSFunction.GENERATOR_STATE_ID);
+    }
+
     public boolean valueEquals(Object left, Object right) {
         return JSRuntime.equal(left, right);
     }

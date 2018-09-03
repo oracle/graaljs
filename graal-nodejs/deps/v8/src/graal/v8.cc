@@ -2763,8 +2763,7 @@ namespace v8 {
     }
 
     bool Value::IsGeneratorObject() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalValue*> (this)->IsGeneratorObject();
     }
 
     bool Value::IsModuleNamespaceObject() const {

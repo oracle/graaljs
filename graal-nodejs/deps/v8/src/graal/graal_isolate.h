@@ -108,6 +108,7 @@ enum GraalAccessMethod {
     value_is_weak_set,
     value_is_async_function,
     value_is_generator_function,
+    value_is_generator_object,
     value_equals,
     value_strict_equals,
     value_instance_of,

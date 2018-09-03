@@ -263,6 +263,11 @@ bool GraalValue::IsGeneratorFunction() const {
     return result;
 }
 
+bool GraalValue::IsGeneratorObject() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_generator_object, Boolean, GetJavaObject());
+    return result;
+}
+
 int32_t GraalValue::Int32Value() const {
     JNI_CALL(jint, result, Isolate(), GraalAccessMethod::value_int32_value, Int, GetJavaObject());
     return result;
