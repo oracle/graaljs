@@ -46,6 +46,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.DoWithNode;
 import com.oracle.truffle.js.nodes.access.GlobalConstantNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
@@ -84,6 +85,8 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
             return new MaterializedTargetablePropertyNode((PropertyNode) target);
         } else if (target instanceof ReadElementNode) {
             return new MaterializedTargetableReadElementNode((ReadElementNode) target);
+        } else if (target instanceof DoWithNode) {
+            return new MaterializedTargetableDoWithNode((DoWithNode) target);
         } else if (target instanceof GlobalConstantNode) {
             return target;
         } else {
@@ -222,6 +225,65 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
         @Override
         protected JavaScriptNode copyUninitialized() {
             return new MaterializedTargetablePropertyNode(getContext(), cloneUninitialized(echo), getPropertyKey());
+        }
+    }
+
+    /**
+     * Materialized version of <code>DoWithNode</code> to be used as a target node by
+     * <code>MaterializedInvokeNode</code>.
+     *
+     */
+    private static class MaterializedTargetableDoWithNode extends DoWithNode implements MaterializedTargetableNode {
+
+        @Child private JSTargetableNode echo;
+
+        protected MaterializedTargetableDoWithNode(JSContext context, String propertyName, JavaScriptNode withFrameSlot, JSTargetableNode defaultDelegate, JavaScriptNode globalDelegate) {
+            super(context, propertyName, withFrameSlot, defaultDelegate, globalDelegate);
+        }
+
+        protected MaterializedTargetableDoWithNode(JSContext context, String propertyName, JavaScriptNode withFrameSlot, JSTargetableNode defaultDelegate, JavaScriptNode globalDelegate,
+                        JSTargetableNode echo) {
+            super(context, propertyName, withFrameSlot, defaultDelegate, globalDelegate);
+            this.echo = echo;
+        }
+
+        MaterializedTargetableDoWithNode(DoWithNode from) {
+            this(from.getContext(), from.getPropertyKey(), from.getWithFrameSlot(), from.getDefaultDelegate(), from.getGlobalDelegate());
+            this.echo = new EchoTargetValueNode();
+        }
+
+        @Override
+        public Object executeWithTarget(VirtualFrame frame, Object targetValue) {
+            echo.executeWithTarget(frame, targetValue);
+            return super.executeWithTarget(frame, targetValue);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw Errors.shouldNotReachHere("Must use executeWithTarget()");
+        }
+
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            if (tag == InputNodeTag.class) {
+                return true;
+            }
+            return super.hasTag(tag);
+        }
+
+        @Override
+        public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+            return this;
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized() {
+            return new MaterializedTargetableDoWithNode(getContext(), getPropertyKey(), getWithFrameSlot(), getDefaultDelegate(), getGlobalDelegate(), cloneUninitialized(echo));
         }
     }
 

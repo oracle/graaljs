@@ -54,7 +54,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class DoWithNode extends JSTargetableNode implements ReadNode, WriteNode {
+public class DoWithNode extends JSTargetableNode implements ReadNode, WriteNode {
 
     @Child private JSTargetableNode defaultDelegate;
     @Child private JavaScriptNode globalDelegate;
@@ -210,5 +210,25 @@ public final class DoWithNode extends JSTargetableNode implements ReadNode, Writ
     @Override
     public JavaScriptNode getRhs() {
         return ((WriteNode) globalDelegate).getRhs();
+    }
+
+    public JSContext getContext() {
+        return getTarget().context;
+    }
+
+    public String getPropertyKey() {
+        return (String) getTarget().withObjectHasProperty.getKey();
+    }
+
+    public JavaScriptNode getWithFrameSlot() {
+        return getTarget().withVariable;
+    }
+
+    public JSTargetableNode getDefaultDelegate() {
+        return defaultDelegate;
+    }
+
+    public JavaScriptNode getGlobalDelegate() {
+        return globalDelegate;
     }
 }

@@ -539,4 +539,27 @@ public class CallAccessTest extends FineGrainedAccessTest {
         }
     }
 
+    @Test
+    public void doWith() {
+        evalWithTag("function bar() {" +
+                        "  var obj = {" +
+                        "    foo: function(){}" +
+                        "  };" +
+                        "  with(obj)" +
+                        "    return foo('str', 42);" +
+                        "}" +
+                        "bar();", FunctionCallExpressionTag.class);
+
+        enter(FunctionCallExpressionTag.class, (e, barCall) -> {
+            barCall.input(assertUndefinedInput);
+            barCall.input(assertJSFunctionInput("bar"));
+            enter(FunctionCallExpressionTag.class, (e2, fooCall) -> {
+                fooCall.input(assertJSObjectInput);
+                fooCall.input(assertJSFunctionInput("foo"));
+                fooCall.input("str");
+                fooCall.input(42);
+            }).exit();
+        }).exit();
+    }
+
 }
