@@ -63,9 +63,7 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object value);
 
-    public final double executeDouble(Object value) {
-        return (double) execute(value);
-    }
+    public abstract double executeDouble(Object value);
 
     public static JSToDoubleNode create() {
         return JSToDoubleNodeGen.create();
@@ -87,7 +85,7 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static void doBigInt(@SuppressWarnings("unused") BigInt value) {
+    protected static double doBigInt(@SuppressWarnings("unused") BigInt value) {
         throw Errors.createTypeErrorCanNotConvertBigIntToNumber();
     }
 
@@ -114,7 +112,7 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected final Number doSymbol(@SuppressWarnings("unused") Symbol value) {
+    protected final double doSymbol(@SuppressWarnings("unused") Symbol value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
     }
 
