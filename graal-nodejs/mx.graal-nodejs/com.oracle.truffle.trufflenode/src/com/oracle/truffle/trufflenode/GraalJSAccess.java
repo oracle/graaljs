@@ -571,6 +571,10 @@ public final class GraalJSAccess {
         return JSWeakSet.isJSWeakSet(object);
     }
 
+    public boolean valueIsAsyncFunction(Object object) {
+        return JSFunction.isJSFunction(object) ? JSFunction.getFunctionData((DynamicObject) object).isAsync() : false;
+    }
+
     public boolean valueEquals(Object left, Object right) {
         return JSRuntime.equal(left, right);
     }

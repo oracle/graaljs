@@ -2051,8 +2051,7 @@ namespace v8 {
     }
 
     bool Value::IsAsyncFunction() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalValue*> (this)->IsAsyncFunction();
     }
 
     Maybe<bool> Value::InstanceOf(Local<Context> context, Local<Object> object) {
