@@ -2783,8 +2783,7 @@ namespace v8 {
     }
 
     bool Value::IsNumberObject() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalValue*> (this)->IsNumberObject();
     }
 
     bool Value::IsStringObject() const {
