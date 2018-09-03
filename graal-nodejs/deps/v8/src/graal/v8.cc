@@ -2767,8 +2767,7 @@ namespace v8 {
     }
 
     bool Value::IsModuleNamespaceObject() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalValue*> (this)->IsModuleNamespaceObject();
     }
 
     bool Value::IsWeakMap() const {

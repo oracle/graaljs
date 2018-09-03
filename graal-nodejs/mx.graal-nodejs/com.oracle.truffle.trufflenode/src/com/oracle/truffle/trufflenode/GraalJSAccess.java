@@ -159,6 +159,7 @@ import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSON;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
@@ -581,6 +582,10 @@ public final class GraalJSAccess {
 
     public boolean valueIsGeneratorObject(Object object) {
         return (object instanceof DynamicObject) && ((DynamicObject) object).containsKey(JSFunction.GENERATOR_STATE_ID);
+    }
+
+    public boolean valueIsModuleNamespaceObject(Object object) {
+        return JSModuleNamespace.isJSModuleNamespace(object);
     }
 
     public boolean valueEquals(Object left, Object right) {

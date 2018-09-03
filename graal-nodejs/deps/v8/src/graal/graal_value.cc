@@ -268,6 +268,11 @@ bool GraalValue::IsGeneratorObject() const {
     return result;
 }
 
+bool GraalValue::IsModuleNamespaceObject() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_module_namespace_object, Boolean, GetJavaObject());
+    return result;
+}
+
 int32_t GraalValue::Int32Value() const {
     JNI_CALL(jint, result, Isolate(), GraalAccessMethod::value_int32_value, Int, GetJavaObject());
     return result;

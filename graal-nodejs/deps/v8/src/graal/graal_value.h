@@ -99,6 +99,7 @@ public:
     bool IsAsyncFunction() const;
     bool IsGeneratorFunction() const;
     bool IsGeneratorObject() const;
+    bool IsModuleNamespaceObject() const;
     int32_t Int32Value() const;
     uint32_t Uint32Value() const;
     int64_t IntegerValue() const;
