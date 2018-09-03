@@ -166,6 +166,7 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -551,6 +552,10 @@ public final class GraalJSAccess {
 
     public boolean valueIsStringObject(Object object) {
         return JSString.isJSString(object);
+    }
+
+    public boolean valueIsSymbolObject(Object object) {
+        return JSSymbol.isJSSymbol(object);
     }
 
     public boolean valueIsWeakMap(Object object) {
