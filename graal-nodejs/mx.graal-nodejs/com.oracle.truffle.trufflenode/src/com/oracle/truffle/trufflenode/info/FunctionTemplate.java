@@ -62,10 +62,10 @@ public final class FunctionTemplate {
     private String className = "";
     private DynamicObject functionObj;
 
-    public FunctionTemplate(int id, long functionPointer, Object additionalData, FunctionTemplate signature) {
+    public FunctionTemplate(int id, long functionPointer, Object additionalData, FunctionTemplate signature, boolean isConstructor) {
         functionObjectTemplate = new ObjectTemplate();
         instanceTemplate = new ObjectTemplate();
-        prototypeTemplate = new ObjectTemplate();
+        prototypeTemplate = isConstructor ? new ObjectTemplate() : null;
         this.id = id;
         this.functionPointer = functionPointer;
         this.additionalData = additionalData;

@@ -295,7 +295,7 @@ namespace v8 {
             Isolate* isolate, FunctionCallback callback,
             Local<Value> data, Local<Signature> signature, int length,
             ConstructorBehavior behavior, SideEffectType side_effect_type) {
-        return GraalFunctionTemplate::New(isolate, callback, data, signature, length);
+        return GraalFunctionTemplate::New(isolate, callback, data, signature, length, behavior);
     }
 
     Local<ObjectTemplate> FunctionTemplate::PrototypeTemplate() {

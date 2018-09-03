@@ -611,7 +611,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::function_resource_name, "functionResourceName", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::function_get_script_line_number, "functionGetScriptLineNumber", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::function_get_script_column_number, "functionGetScriptColumnNumber", "(Ljava/lang/Object;)I")
-    ACCESS_METHOD(GraalAccessMethod::function_template_new, "functionTemplateNew", "(IJLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::function_template_new, "functionTemplateNew", "(IJLjava/lang/Object;Ljava/lang/Object;Z)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::function_template_set_class_name, "functionTemplateSetClassName", "(Ljava/lang/Object;Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::function_template_instance_template, "functionTemplateInstanceTemplate", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::function_template_prototype_template, "functionTemplatePrototypeTemplate", "(Ljava/lang/Object;)Ljava/lang/Object;")

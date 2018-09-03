@@ -1214,8 +1214,8 @@ public final class GraalJSAccess {
         templateSet(templateObj, name, new Pair<>(getter, setter), attributes);
     }
 
-    public Object functionTemplateNew(int id, long pointer, Object additionalData, Object signature) {
-        FunctionTemplate template = new FunctionTemplate(id, pointer, additionalData, (FunctionTemplate) signature);
+    public Object functionTemplateNew(int id, long pointer, Object additionalData, Object signature, boolean isConstructor) {
+        FunctionTemplate template = new FunctionTemplate(id, pointer, additionalData, (FunctionTemplate) signature, isConstructor);
         template.getInstanceTemplate().setParentFunctionTemplate(template);
         while (functionTemplates.size() <= id) {
             functionTemplates.add(null);
@@ -1262,16 +1262,19 @@ public final class GraalJSAccess {
             DynamicObject obj = functionTemplateCreateCallback(jsContext, jsRealm, template);
             objectTemplateInstantiate(jsRealm, template.getFunctionObjectTemplate(), obj);
 
-            DynamicObject proto = JSUserObject.create(jsContext);
-            objectTemplateInstantiate(jsRealm, template.getPrototypeTemplate(), proto);
-            JSObjectUtil.putConstructorProperty(jsContext, proto, obj);
-            JSObject.set(obj, JSObject.PROTOTYPE, proto);
+            ObjectTemplate prototypeTemplate = template.getPrototypeTemplate();
+            if (prototypeTemplate != null) {
+                DynamicObject proto = JSUserObject.create(jsContext);
+                objectTemplateInstantiate(jsRealm, prototypeTemplate, proto);
+                JSObjectUtil.putConstructorProperty(jsContext, proto, obj);
+                JSObject.set(obj, JSObject.PROTOTYPE, proto);
 
-            FunctionTemplate parentTemplate = template.getParent();
-            if (parentTemplate != null) {
-                DynamicObject parentFunction = (DynamicObject) functionTemplateGetFunction(realm, parentTemplate);
-                DynamicObject parentProto = (DynamicObject) JSObject.get(parentFunction, JSObject.PROTOTYPE);
-                JSObject.setPrototype(proto, parentProto);
+                FunctionTemplate parentTemplate = template.getParent();
+                if (parentTemplate != null) {
+                    DynamicObject parentFunction = (DynamicObject) functionTemplateGetFunction(realm, parentTemplate);
+                    DynamicObject parentProto = (DynamicObject) JSObject.get(parentFunction, JSObject.PROTOTYPE);
+                    JSObject.setPrototype(proto, parentProto);
+                }
             }
         }
 
@@ -1291,7 +1294,7 @@ public final class GraalJSAccess {
 
     private DynamicObject functionTemplateCreateCallback(JSContext context, JSRealm realm, FunctionTemplate template) {
         CompilerAsserts.neverPartOfCompilation("do not create function template in compiled code");
-        JSFunctionData functionData = JSFunctionData.create(context, 0, template.getClassName(), true, false, false, false);
+        JSFunctionData functionData = JSFunctionData.create(context, 0, template.getClassName(), template.getPrototypeTemplate() != null, false, false, false);
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, false, false));
         CallTarget newCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, false));
         CallTarget newTargetCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, true));
@@ -1508,7 +1511,7 @@ public final class GraalJSAccess {
 
     public void objectTemplateSetCallAsFunctionHandler(Object templateObj, int id, long functionPointer, Object additionalData) {
         ObjectTemplate template = (ObjectTemplate) templateObj;
-        FunctionTemplate functionHandler = (FunctionTemplate) functionTemplateNew(id, functionPointer, additionalData, null);
+        FunctionTemplate functionHandler = (FunctionTemplate) functionTemplateNew(id, functionPointer, additionalData, null, true);
         template.setFunctionHandler(functionHandler);
     }
 

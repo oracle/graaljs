@@ -62,7 +62,8 @@ v8::Local<v8::FunctionTemplate> GraalFunctionTemplate::New(
         v8::Isolate* isolate, v8::FunctionCallback callback,
         v8::Local<v8::Value> data,
         v8::Local<v8::Signature> signature,
-        int length) {
+        int length,
+        v8::ConstructorBehavior behavior) {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     jint id = graal_isolate->NextFunctionTemplateID();
     jlong callback_ptr = (jlong) callback;
@@ -74,9 +75,10 @@ v8::Local<v8::FunctionTemplate> GraalFunctionTemplate::New(
         graal_data->MakeWeak();
     }
     jobject java_data = graal_data->GetJavaObject();
+    jboolean is_constructor = behavior == v8::ConstructorBehavior::kAllow;
     GraalFunctionTemplate* graal_signature = reinterpret_cast<GraalFunctionTemplate*> (*signature);
     jobject java_signature = (graal_signature == nullptr) ? NULL : graal_signature->GetJavaObject();
-    JNI_CALL(jobject, java_object, isolate, GraalAccessMethod::function_template_new, Object, id, callback_ptr, java_data, java_signature);
+    JNI_CALL(jobject, java_object, isolate, GraalAccessMethod::function_template_new, Object, id, callback_ptr, java_data, java_signature, is_constructor);
     GraalFunctionTemplate* graal_function_template = new GraalFunctionTemplate(graal_isolate, java_object, id);
     graal_isolate->SetFunctionTemplateData(id, graal_data);
     graal_isolate->SetFunctionTemplateCallback(id, callback);
