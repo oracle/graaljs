@@ -575,6 +575,10 @@ public final class GraalJSAccess {
         return JSFunction.isJSFunction(object) ? JSFunction.getFunctionData((DynamicObject) object).isAsync() : false;
     }
 
+    public boolean valueIsGeneratorFunction(Object object) {
+        return JSFunction.isJSFunction(object) ? JSFunction.getFunctionData((DynamicObject) object).isGenerator() : false;
+    }
+
     public boolean valueEquals(Object left, Object right) {
         return JSRuntime.equal(left, right);
     }

@@ -2759,8 +2759,7 @@ namespace v8 {
     }
 
     bool Value::IsGeneratorFunction() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalValue*> (this)->IsGeneratorFunction();
     }
 
     bool Value::IsGeneratorObject() const {
