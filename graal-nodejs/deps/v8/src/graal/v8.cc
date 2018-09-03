@@ -2798,8 +2798,7 @@ namespace v8 {
     }
 
     bool Value::IsBooleanObject() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalValue*> (this)->IsBooleanObject();
     }
 
     bool Value::IsBigIntObject() const {

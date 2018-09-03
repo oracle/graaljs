@@ -218,6 +218,11 @@ bool GraalValue::IsArgumentsObject() const {
     return result;
 }
 
+bool GraalValue::IsBooleanObject() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_boolean_object, Boolean, GetJavaObject());
+    return result;
+}
+
 bool GraalValue::IsWeakMap() const {
     JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_weak_map, Boolean, GetJavaObject());
     return result;

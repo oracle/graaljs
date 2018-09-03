@@ -541,6 +541,10 @@ public final class GraalJSAccess {
         return JSArgumentsObject.isJSArgumentsObject(object);
     }
 
+    public boolean valueIsBooleanObject(Object object) {
+        return JSBoolean.isJSBoolean(object);
+    }
+
     public boolean valueIsWeakMap(Object object) {
         return JSWeakMap.isJSWeakMap(object);
     }
