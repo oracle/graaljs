@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -64,12 +65,12 @@ public abstract class CeilNode extends MathOperation {
     protected int ceilMightReturnInt(Object a) throws SlowPathException {
         double d = toDouble(a);
         if (Double.isNaN(d) || JSRuntime.isNegativeZero(d) || d < Integer.MIN_VALUE || d > Integer.MAX_VALUE) {
-            throw new SlowPathException();
+            throw JSNodeUtil.slowPathException();
         }
         int i = (int) d;
         int result = d > i ? i + 1 : i;
         if (result == 0 && d < 0) {
-            throw new SlowPathException(); // special-case: return -0.0
+            throw JSNodeUtil.slowPathException(); // special-case: return -0.0
         }
         return result;
     }

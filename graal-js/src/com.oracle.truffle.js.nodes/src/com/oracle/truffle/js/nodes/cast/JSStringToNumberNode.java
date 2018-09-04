@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
@@ -221,8 +222,7 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
     protected double doInteger(String input) throws SlowPathException {
         long result = JSRuntime.parseSafeInteger(input);
         if (result == JSRuntime.INVALID_SAFE_INTEGER) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new SlowPathException();
+            throw JSNodeUtil.slowPathException();
         }
         assert checkLongResult(result, input);
         return result;

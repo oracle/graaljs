@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNodeGen.JSToNumberWrapperNodeGen;
@@ -109,7 +110,7 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     protected int doStringInt(String value) throws SlowPathException {
         double doubleValue = stringToNumber(value);
         if (!JSRuntime.doubleIsRepresentableAsInt(doubleValue)) {
-            throw new SlowPathException();
+            throw JSNodeUtil.slowPathException();
         }
         return (int) doubleValue;
     }
