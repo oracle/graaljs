@@ -26,37 +26,43 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import mx, mx_graal_nodejs
-from mx_benchmark import GuestVm, java_vm_registry
+import mx, mx_benchmark, mx_graal_nodejs
+from mx_benchmark import GuestVm
 
-class GraalNodejsVm(GuestVm):
+class GraalNodeJsVm(GuestVm):
     def __init__(self, config_name, options, host_vm=None):
-        super(GraalNodejsVm, self).__init__(host_vm=host_vm)
+        super(GraalNodeJsVm, self).__init__(host_vm=host_vm)
         self._config_name = config_name
         self._options = options
 
     def name(self):
-        return 'graal-nodejs'
+        return 'graal-js'
 
     def config_name(self):
         return self._config_name
 
     def hosting_registry(self):
-        return java_vm_registry
+        return mx_benchmark.java_vm_registry
 
     def with_host_vm(self, host_vm):
         return self.__class__(self.config_name(), self._options, host_vm)
 
     def run(self, cwd, args):
         args += self._options
-        code, out, dims = self.host_vm().run(cwd, mx_graal_nodejs.node(args))
-        dims.update({'config.name': self.config_name()})
-        return code, out, dims
+        if hasattr(self.host_vm(), 'run_lang'):
+            return self.host_vm().run_lang('node', args + self._options, cwd)
+        else:
+            out = mx.TeeOutputCapture(mx.OutputCapture())
+            args = self.host_vm().post_process_command_line_args(args)
+            mx.log("Running {} with args: {}".format(self.name(), args))
+            code = mx_graal_nodejs.node(args, add_graal_vm_args=False, nonZeroIsFatal=False, out=out, err=out, cwd=cwd)
+            out = out.underlying.data
+            dims = self.host_vm().dimensions(cwd, args, code, out)
+            return code, out, dims
 
-try:
-    import mx_nodejs_benchmarks
-    _suite = mx.suite('graal-nodejs')
-    mx_nodejs_benchmarks.add_vm(GraalNodejsVm('default', []), _suite, 10)
-except ImportError:
-    print('xxx')
-    pass
+
+def register_nodejs_vms():
+    if mx.suite('nodejs-benchmarks', fatalIfMissing=False):
+        import mx_nodejs_benchmarks
+        _suite = mx.suite('graal-nodejs')
+        mx_nodejs_benchmarks.add_vm(GraalNodeJsVm('default', []), _suite, 10)

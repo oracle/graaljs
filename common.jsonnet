@@ -4,14 +4,14 @@
   local oraclejdk11 = {name : 'oraclejdk', version : "11+20", platformspecific: true},
 
   jdk8: {
-    downloads: {
+    downloads+: {
       JAVA_HOME: labsjdk8,
       JDT: {name: 'ecj', version: '4.5.1', platformspecific: false},
     },
   },
 
   jdk11: {
-    downloads: {
+    downloads+: {
       EXTRA_JAVA_HOMES: labsjdk8,
       JAVA_HOME: oraclejdk11,
     },
@@ -21,16 +21,13 @@
   gate:      {targets: ['gate']},
   postMerge: {targets: ['post-merge']},
   bench:     {targets: ['bench', 'post-merge']},
+  daily:     {targets: ['daily']},
+  weekly:    {targets: ['weekly']},
 
   local common = {
-    packages: {
-      'apache/ab': '==2.3',
-      binutils: '>=2.23',
-      gcc: '==4.9.1',
+    packages+: {
       git: '>=1.8.3',
       maven: '==3.3.9',
-      mercurial: '>=3.2.4',
-      valgrind: '>=3.9.0',
       'pip:astroid': '==1.1.0',
       'pip:pylint': '==1.1.0',
     },
@@ -41,15 +38,21 @@
   },
 
   linux: common + {
-    capabilities: ['linux', 'amd64'],
+    packages+: {
+      'apache/ab': '==2.3',
+      binutils: '==2.23.2',
+      gcc: '==4.9.1',
+      valgrind: '>=3.9.0',
+    },
+    capabilities+: ['linux', 'amd64'],
   },
 
-  ol65: common + {
-    capabilities: ['ol65', 'linux', 'amd64'],
+  ol65: self.linux + {
+    capabilities+: ['ol65'],
   },
 
-  x52: common + {
-    capabilities: ['no_frequency_scaling', 'tmpfs25g', 'x52', 'linux', 'amd64'],
+  x52: self.linux + {
+    capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
 
   sparc: common + {
@@ -57,13 +60,7 @@
   },
 
   darwin: common + {
-    packages: {
-      'pip:astroid': '==1.1.0',
-      'pip:pylint': '==1.1.0',
-    },
     environment+: {
-      HTTP_PROXY: "${http_proxy}",
-      HTTPS_PROXY: "${https_proxy}",
       // for compatibility with macOS El Capitan
       MACOSX_DEPLOYMENT_TARGET: '10.11',
     },
