@@ -49,7 +49,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSStringToNumberNodeGen.JSStringToNumberWithTrimNodeGen;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
 /**
@@ -67,7 +66,21 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
     static final int MAX_SAFE_INTEGER_LENGTH = 17;
     static final int SMALL_INT_LENGTH = 9;
 
-    public abstract double execute(String operand);
+    @Child private JSTrimWhitespaceNode trimWhitespaceNode;
+
+    public final double executeString(String input) {
+        if (trimWhitespaceNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            trimWhitespaceNode = insert(JSTrimWhitespaceNode.create());
+        }
+        return executeNoTrim(trimWhitespaceNode.executeString(input));
+    }
+
+    protected abstract double executeNoTrim(String input);
+
+    public static JSStringToNumberNode create() {
+        return JSStringToNumberNodeGen.create();
+    }
 
     protected static final boolean startsWithI(String input) {
         return input.length() >= JSRuntime.INFINITY_STRING.length() && input.length() <= (JSRuntime.INFINITY_STRING.length() + 1) && (input.charAt(0) == 'I' || input.charAt(1) == 'I');
@@ -232,28 +245,5 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
     @TruffleBoundary
     private static boolean checkLongResult(long result, String input) {
         return Double.compare(result, JSRuntime.parseDoubleOrNaN(input)) == 0;
-    }
-
-    public abstract static class JSStringToNumberWithTrimNode extends JavaScriptBaseNode {
-
-        @Child private JSStringToNumberNode stringToNumberNode;
-        @Child private JSTrimWhitespaceNode trimWhitespaceNode;
-
-        public static JSStringToNumberWithTrimNode create() {
-            return JSStringToNumberWithTrimNodeGen.create();
-        }
-
-        public abstract double executeString(String operand);
-
-        @Specialization
-        protected double stringToNumber(String input) {
-            if (stringToNumberNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                stringToNumberNode = insert(JSStringToNumberNodeGen.create());
-                trimWhitespaceNode = insert(JSTrimWhitespaceNode.create());
-            }
-            return stringToNumberNode.execute(trimWhitespaceNode.executeString(input));
-        }
-
     }
 }

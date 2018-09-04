@@ -50,7 +50,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
-import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode.JSStringToNumberWithTrimNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
@@ -176,7 +175,7 @@ public abstract class JSToInt32Node extends JSUnaryNode {
 
     @Specialization
     protected int doString(String value,
-                    @Cached("create()") JSStringToNumberWithTrimNode stringToNumberNode) {
+                    @Cached("create()") JSStringToNumberNode stringToNumberNode) {
         return doubleToInt32(stringToNumberNode.executeString(value));
     }
 

@@ -54,7 +54,6 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNullNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantStringNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
-import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode.JSStringToNumberWithTrimNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32NodeGen.JSToUInt32WrapperNodeGen;
 import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
@@ -131,7 +130,7 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
 
     @Specialization
     protected double doString(String value,
-                    @Cached("create()") JSStringToNumberWithTrimNode stringToNumberNode) {
+                    @Cached("create()") JSStringToNumberNode stringToNumberNode) {
         return JSRuntime.toUInt32(stringToNumberNode.executeString(value));
     }
 
