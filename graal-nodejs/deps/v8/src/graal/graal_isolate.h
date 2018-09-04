@@ -228,6 +228,7 @@ enum GraalAccessMethod {
     unbound_script_compile,
     unbound_script_bind_to_context,
     unbound_script_get_id,
+    unbound_script_get_content,
     context_global,
     context_set_pointer_in_embedder_data,
     context_get_pointer_in_embedder_data,

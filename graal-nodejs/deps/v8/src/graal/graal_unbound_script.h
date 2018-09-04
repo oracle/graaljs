@@ -51,6 +51,7 @@ public:
     static v8::Local<v8::UnboundScript> Compile(v8::Local<v8::String> source, v8::Local<v8::String> file_name);
     v8::Local<v8::Script> BindToCurrentContext();
     int GetId();
+    v8::Local<v8::String> GetContent();
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };

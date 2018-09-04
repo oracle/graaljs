@@ -2811,8 +2811,11 @@ namespace v8 {
     }
 
     ScriptCompiler::CachedData* ScriptCompiler::CreateCodeCache(Local<UnboundScript> unbound_script) {
-        TRACE
-        return nullptr;
+        GraalUnboundScript* graal_script = reinterpret_cast<GraalUnboundScript*> (*unbound_script);
+        String::Utf8Value text(graal_script->GetContent());
+        uint8_t* copy = new uint8_t[text.length()];
+        memcpy(copy, *text, text.length());
+        return new ScriptCompiler::CachedData((const uint8_t*) copy, text.length());
     }
 
     bool ArrayBuffer::IsNeuterable() const {

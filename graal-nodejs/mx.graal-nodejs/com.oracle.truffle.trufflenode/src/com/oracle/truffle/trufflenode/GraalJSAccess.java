@@ -1689,6 +1689,10 @@ public final class GraalJSAccess {
         return new Script(scriptNode, parseResult, jsRealm, unboundScript.getId());
     }
 
+    public String unboundScriptGetContent(Object script) {
+        return ((UnboundScript) script).getSource().getCharacters().toString();
+    }
+
     private String internSourceCode(String sourceCode) {
         Reference<String> cacheEntry = sourceCodeCache.get(sourceCode);
         String entry = null;

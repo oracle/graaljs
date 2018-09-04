@@ -635,6 +635,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::unbound_script_compile, "unboundScriptCompile", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::unbound_script_bind_to_context, "unboundScriptBindToContext", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::unbound_script_get_id, "unboundScriptGetId", "(Ljava/lang/Object;)I")
+    ACCESS_METHOD(GraalAccessMethod::unbound_script_get_content, "unboundScriptGetContent", "(Ljava/lang/Object;)Ljava/lang/String;")
     ACCESS_METHOD(GraalAccessMethod::context_global, "contextGlobal", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::context_set_pointer_in_embedder_data, "contextSetPointerInEmbedderData", "(Ljava/lang/Object;IJ)V")
     ACCESS_METHOD(GraalAccessMethod::context_get_pointer_in_embedder_data, "contextGetPointerInEmbedderData", "(Ljava/lang/Object;I)J")
