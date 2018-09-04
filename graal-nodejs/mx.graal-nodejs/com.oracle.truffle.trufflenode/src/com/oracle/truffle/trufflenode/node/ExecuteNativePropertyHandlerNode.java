@@ -174,6 +174,10 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         } else {
             JSObject.set((DynamicObject) arguments[2], key, arguments[4]);
         }
+        PropertyDescriptor targetDesc = JSObject.getOwnProperty((DynamicObject) arguments[2], key);
+        if (targetDesc != null && targetDesc.isDataDescriptor() && !targetDesc.getConfigurable() && !targetDesc.getWritable() && !JSRuntime.isSameValue(arguments[4], targetDesc.getValue())) {
+            return Boolean.FALSE;
+        }
         return Boolean.TRUE;
     }
 
