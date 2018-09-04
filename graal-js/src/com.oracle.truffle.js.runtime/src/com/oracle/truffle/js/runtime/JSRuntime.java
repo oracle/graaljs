@@ -510,6 +510,25 @@ public final class JSRuntime {
     }
 
     /**
+     * Like {@link Double#parseDouble(String)}, but does not allow trailing {@code d} or {@code f}.
+     *
+     * @return double value or {@link Double#NaN} if not parsable.
+     */
+    @TruffleBoundary
+    public static double parseDoubleOrNaN(String input) {
+        // A valid JS number must end with either a digit or '.'.
+        // Double.parseDouble also accepts a trailing 'd', 'D', 'f', 'F'.
+        if (input.isEmpty() || input.charAt(input.length() - 1) > '9') {
+            return Double.NaN;
+        }
+        try {
+            return Double.parseDouble(input);
+        } catch (NumberFormatException e) {
+            return Double.NaN;
+        }
+    }
+
+    /**
      * Returns the first index of a String that contains either 'e' or 'E'.
      */
     @TruffleBoundary

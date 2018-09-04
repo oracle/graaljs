@@ -168,14 +168,9 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization(guards = {"input.length() > 0", "!containsInfinity(input)", "firstCharValid(input)", "!isSci(input)", "!isLong(input)", "!isHex(input)"})
-    @TruffleBoundary
+    @Specialization(guards = {"input.length() > 0", "!containsInfinity(input)", "firstCharValid(input)", "!isHex(input)", "!isOctal(input)", "!isBinary(input)", "!isSci(input)"})
     protected double doDouble(String input) {
-        try {
-            return Double.parseDouble(input);
-        } catch (NumberFormatException ex) {
-            return Double.NaN;
-        }
+        return JSRuntime.parseDoubleOrNaN(input);
     }
 
     public abstract static class JSStringToNumberWithTrimNode extends JavaScriptBaseNode {
