@@ -443,7 +443,7 @@ public final class JSRuntime {
             return 0;
         }
         char firstChar = strCamel.charAt(0);
-        if (strCamel.length() >= INFINITY_STRING.length() && strCamel.contains(INFINITY_STRING)) {
+        if (strCamel.length() >= INFINITY_STRING.length() && strCamel.length() <= INFINITY_STRING.length() + 1 && strCamel.endsWith(INFINITY_STRING)) {
             return identifyInfinity(strCamel, firstChar);
         }
         if (!(JSRuntime.isAsciiDigit(firstChar) || firstChar == '-' || firstChar == '.' || firstChar == '+')) {

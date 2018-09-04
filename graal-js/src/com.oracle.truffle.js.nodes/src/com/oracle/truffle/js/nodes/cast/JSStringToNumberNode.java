@@ -44,6 +44,7 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -66,30 +67,15 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
     static final int MAX_SAFE_INTEGER_LENGTH = 17;
     static final int SMALL_INT_LENGTH = 9;
 
-    private final ConditionProfile potentiallySeenInfinity = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile potentiallySeenInfinitySigned = ConditionProfile.createBinaryProfile();
+    public abstract double execute(String operand);
 
-    public abstract double execute(Object operand);
-
-    protected final boolean containsInfinity(String input) {
-        if (input.length() >= JSRuntime.INFINITY_STRING.length() && input.length() <= (JSRuntime.INFINITY_STRING.length() + 1)) {
-            if (potentiallySeenInfinity.profile(input.charAt(0) == 'I')) {
-                return input.equals(JSRuntime.INFINITY_STRING);
-            } else if (potentiallySeenInfinitySigned.profile(input.charAt(1) == 'I')) {
-                return input.endsWith(JSRuntime.INFINITY_STRING);
-            }
-        }
-        return false;
-    }
-
-    protected static final boolean firstCharValid(String input) {
-        char firstChar = input.charAt(0);
-        return JSRuntime.isAsciiDigit(firstChar) || firstChar == '-' || firstChar == '.' || firstChar == '+';
+    protected static final boolean startsWithI(String input) {
+        return input.length() >= JSRuntime.INFINITY_STRING.length() && input.length() <= (JSRuntime.INFINITY_STRING.length() + 1) && (input.charAt(0) == 'I' || input.charAt(1) == 'I');
     }
 
     /**
      * First two chars are valid finite double. Implies
-     * {@code firstCharValid && !containsInfinity && !isHex && !isOctal && !isBinary}.
+     * {@code !startsWithI && !isHex && !isOctal && !isBinary}.
      */
     protected static final boolean startsWithValidDouble(String input) {
         char firstChar = input.charAt(0);
@@ -139,12 +125,17 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
         return 0;
     }
 
-    @Specialization(guards = "containsInfinity(input)")
-    protected double doInfinity(String input) {
-        return JSRuntime.identifyInfinity(input, input.charAt(0));
+    @Specialization(guards = "startsWithI(input)")
+    protected double doInfinity(String input,
+                    @Cached("createBinaryProfile()") ConditionProfile endsWithInfinity) {
+        if (endsWithInfinity.profile(input.endsWith(JSRuntime.INFINITY_STRING))) {
+            return JSRuntime.identifyInfinity(input, input.charAt(0));
+        } else {
+            return Double.NaN;
+        }
     }
 
-    @Specialization(guards = {"input.length() > 0", "!containsInfinity(input)", "!startsWithValidDouble(input)", "!isHex(input)", "!isOctal(input)", "!isBinary(input)"})
+    @Specialization(guards = {"input.length() > 0", "!startsWithI(input)", "!startsWithValidDouble(input)", "!isHex(input)", "!isOctal(input)", "!isBinary(input)"})
     protected double doNaN(@SuppressWarnings("unused") String input) {
         return Double.NaN;
     }
