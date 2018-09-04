@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import java.math.BigDecimal;
-import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -460,9 +458,7 @@ public final class JSRuntime {
         int eIndex = firstExpIndexInString(str);
         boolean sci = !hex && (0 <= eIndex && eIndex < str.length() - 1);
         try {
-            if (sci) {
-                return stringToNumberSci(str);
-            } else if (str.length() <= 18 && str.indexOf('.') == -1) {
+            if (!sci && str.length() <= 18 && str.indexOf('.') == -1) {
                 // 18 digits always fit into long
                 if (hex) {
                     return Long.valueOf(str.substring(2), 16);
@@ -470,15 +466,14 @@ public final class JSRuntime {
                     return stringToNumberLong(str);
                 }
             } else {
-                return Double.valueOf(str);
+                return parseDoubleOrNaN(str);
             }
         } catch (NumberFormatException e) {
-            return Double.valueOf(Double.NaN);
+            return Double.NaN;
         }
     }
 
-    @TruffleBoundary
-    public static Number stringToNumberLong(String strLower) throws NumberFormatException {
+    private static Number stringToNumberLong(String strLower) throws NumberFormatException {
         assert strLower.length() > 0;
         long num = Long.parseLong(strLower);
         if (longIsRepresentableAsInt(num)) {
@@ -488,29 +483,6 @@ public final class JSRuntime {
             return (int) num;
         } else {
             return (double) num;
-        }
-    }
-
-    @TruffleBoundary
-    public static double stringToNumberSci(String str) {
-        int firstIdx = firstExpIndexInString(str);
-        if (firstIdx < 0) {
-            return Double.NaN; // no 'e' found
-        }
-        String part1 = str.substring(0, firstIdx);
-        if ("-0".equals(part1)) {
-            return -0.0;
-        }
-        String part2 = str.substring(firstIdx + 1);
-        try {
-            int exponent = Integer.parseInt(part2);
-            if (exponent <= -324 || exponent >= 324 || part1.indexOf('.') != -1) {
-                return stringToNumberSciBigExponent(part1, exponent);
-            } else {
-                return movePointRight(part1, exponent).doubleValue();
-            }
-        } catch (NumberFormatException e) {
-            return Double.NaN;
         }
     }
 
@@ -543,32 +515,6 @@ public final class JSRuntime {
             return firstIdx;
         }
         return str.indexOf('E', 0);
-    }
-
-    private static double stringToNumberSciBigExponent(String number, int exponent) {
-        BigDecimal result = movePointRight(number, exponent);
-        BigDecimal resultAbs = result.abs();
-        if ((resultAbs.compareTo(BigDecimal.valueOf(Double.MAX_VALUE)) > 0)) {
-            if (result.signum() > 0) {
-                return Double.POSITIVE_INFINITY;
-            } else {
-                return Double.NEGATIVE_INFINITY;
-            }
-        }
-        if ((resultAbs.compareTo(BigDecimal.valueOf(Double.MIN_VALUE)) < 0)) {
-            if (result.signum() < 0) {
-                return -0.0;
-            } else {
-                return 0;
-            }
-        }
-        return result.doubleValue();
-    }
-
-    private static BigDecimal movePointRight(String number, int exponent) {
-        // we won't be accurate if we do the decimalization twice
-        BigDecimal exp = BigDecimal.TEN.pow(exponent, MathContext.DECIMAL128);
-        return new BigDecimal(number).multiply(exp);
     }
 
     public static double identifyInfinity(String str, char firstChar) {

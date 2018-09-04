@@ -122,12 +122,6 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
         return false;
     }
 
-    @TruffleBoundary
-    protected static final boolean isSci(String input) {
-        int index = JSRuntime.firstExpIndexInString(input);
-        return 0 <= index && index < (input.length() - 1);
-    }
-
     protected static final boolean isHex(String input) {
         return input.length() >= 2 && input.charAt(0) == '0' && (input.charAt(1) == 'x' || input.charAt(1) == 'X');
     }
@@ -233,9 +227,6 @@ public abstract class JSStringToNumberNode extends JavaScriptBaseNode {
     @TruffleBoundary
     @Specialization(guards = {"input.length() > 0", "startsWithValidDouble(input)"}, replaces = "doInteger")
     protected double doDouble(String input) {
-        if (isSci(input)) {
-            return JSRuntime.stringToNumberSci(input);
-        }
         return JSRuntime.parseDoubleOrNaN(input);
     }
 
