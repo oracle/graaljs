@@ -901,7 +901,7 @@ public class JSRealm {
     }
 
     private void putGraalObject(DynamicObject global) {
-        DynamicObject graalObject = JSUserObject.create(context);
+        DynamicObject graalObject = JSUserObject.create(context, this);
         int flags = JSAttributes.notConfigurableEnumerableNotWritable();
         JSObjectUtil.putDataProperty(context, graalObject, "language", AbstractJavaScriptLanguage.NAME, flags);
         JSObjectUtil.putDataProperty(context, graalObject, "versionJS", AbstractJavaScriptLanguage.VERSION_NUMBER, flags);
@@ -1111,10 +1111,10 @@ public class JSRealm {
 
         // $OPTIONS
         String timezone = context.getLocalTimeZoneId().getId();
-        DynamicObject timezoneObj = JSUserObject.create(context);
+        DynamicObject timezoneObj = JSUserObject.create(context, this);
         JSObjectUtil.putDataProperty(context, timezoneObj, "ID", timezone, JSAttributes.configurableEnumerableWritable());
 
-        DynamicObject optionsObj = JSUserObject.create(context);
+        DynamicObject optionsObj = JSUserObject.create(context, this);
         JSObjectUtil.putDataProperty(context, optionsObj, "_timezone", timezoneObj, JSAttributes.configurableEnumerableWritable());
         JSObjectUtil.putDataProperty(context, optionsObj, "_scripting", true, JSAttributes.configurableEnumerableWritable());
         JSObjectUtil.putDataProperty(context, optionsObj, "_compile_only", false, JSAttributes.configurableEnumerableWritable());
@@ -1126,7 +1126,7 @@ public class JSRealm {
         JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ARG", argObj, JSAttributes.configurableNotEnumerableWritable());
 
         // $ENV
-        DynamicObject envObj = JSUserObject.create(context);
+        DynamicObject envObj = JSUserObject.create(context, this);
         Map<String, String> sysenv = System.getenv();
         for (Map.Entry<String, String> entry : sysenv.entrySet()) {
             JSObjectUtil.putDataProperty(context, envObj, entry.getKey(), entry.getValue(), JSAttributes.configurableEnumerableWritable());

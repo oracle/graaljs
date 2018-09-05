@@ -339,9 +339,11 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         JSContext context = realm.getContext();
         DynamicObject prototype = JSObject.create(realm, taPrototype, context.getEcmaScriptVersion() < 6 ? INSTANCE : JSUserObject.INSTANCE);
         if (context.getEcmaScriptVersion() < 6) {
-            JSObjectUtil.putHiddenProperty(prototype, BYTE_ARRAY_PROPERTY, new byte[0]);
-            JSObjectUtil.putHiddenProperty(prototype, ARRAY_TYPE_PROPERTY, factory.createArrayType(context.isOptionDirectByteBuffer(), false));
-            JSObjectUtil.putHiddenProperty(prototype, ARRAY_BUFFER_PROPERTY, JSArrayBuffer.createArrayBuffer(context, 0));
+            byte[] byteArray = new byte[0];
+            DynamicObject arrayBuffer = JSObject.createWithRealm(context, context.getArrayBufferFactory(), realm, byteArray);
+            JSObjectUtil.putHiddenProperty(prototype, BYTE_ARRAY_PROPERTY, byteArray);
+            JSObjectUtil.putHiddenProperty(prototype, ARRAY_TYPE_PROPERTY, factory.createArrayType(false, false));
+            JSObjectUtil.putHiddenProperty(prototype, ARRAY_BUFFER_PROPERTY, arrayBuffer);
             JSObjectUtil.putHiddenProperty(prototype, ARRAY_LENGTH_PROPERTY, 0);
             JSObjectUtil.putHiddenProperty(prototype, ARRAY_OFFSET_PROPERTY, 0);
             JSObjectUtil.putHiddenProperty(prototype, ARRAY_SHAREABLE, false);

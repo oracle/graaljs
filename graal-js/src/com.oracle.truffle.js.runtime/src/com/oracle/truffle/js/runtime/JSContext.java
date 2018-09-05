@@ -719,9 +719,7 @@ public class JSContext implements ShapeContext {
      */
     public JSRealm getRealm() {
         if (CompilerDirectives.inInterpreter() && !isRealmInitialized) {
-            // Realm is being initialized, cannot use ContextReference yet
-            // TODO avoid calling getRealm() during initialization
-            return lastRealm;
+            throw Errors.shouldNotReachHere("getRealm() while initializing Realm");
         }
         if (contextRef == null) {
             return lastRealm;
