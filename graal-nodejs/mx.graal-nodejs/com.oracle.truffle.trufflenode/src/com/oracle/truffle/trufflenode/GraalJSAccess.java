@@ -2672,10 +2672,16 @@ public final class GraalJSAccess {
         JSRealm jsRealm = (JSRealm) context;
         JSContext jsContext = jsRealm.getContext();
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
+        if (moduleRecord.isEvaluated()) {
+            Object errorObject = moduleErrorMap.get(moduleRecord);
+            if (errorObject != null) {
+                throw exceptionObjectToException(errorObject);
+            }
+        }
         try {
             return jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
         } catch (GraalJSException ex) {
-            moduleErrorMap.put((JSModuleRecord) module, ex.getErrorObjectEager(jsContext));
+            moduleErrorMap.put(moduleRecord, ex.getErrorObjectEager(jsContext));
             throw ex;
         }
     }
