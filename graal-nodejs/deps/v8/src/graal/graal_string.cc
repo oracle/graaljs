@@ -111,7 +111,12 @@ int GraalString::Utf16Length(const unsigned char* input, int length) {
                                 if (position != length) {
                                     const unsigned char c3 = input[position];
                                     if (IsContinuationByte(c3)) {
-                                        position++;
+                                        // if (!overlong encoding && !code point for a surrogate) {
+                                        if (((c & 0x0F) | (c2 & 0x20)) != 0 && ((c & 0x0F) != 0x0D || (c2 & 0x20) == 0)) {
+                                            position++;
+                                        } else {
+                                            position--;
+                                        }
                                     }
                                 }
                             }
@@ -180,11 +185,13 @@ void GraalString::Utf16Write(const unsigned char* input, jchar* output, int leng
                                 if (position != length) {
                                     const unsigned char c3 = input[position];
                                     if (IsContinuationByte(c3)) {
-                                        position++;
                                         // if (!overlong encoding && !code point for a surrogate) {
                                         if (((c & 0x0F) | (c2 & 0x20)) != 0 && ((c & 0x0F) != 0x0D || (c2 & 0x20) == 0)) {
                                             *output++ = ((c & 0x0F) << 12) | ((c2 & 0x3F) << 6) | (c3 & 0x3F);
                                             invalid = false;
+                                            position++;
+                                        } else {
+                                            position--;
                                         }
                                     }
                                 }
