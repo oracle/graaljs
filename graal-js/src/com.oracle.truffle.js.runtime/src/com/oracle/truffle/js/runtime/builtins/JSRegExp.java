@@ -47,6 +47,8 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -64,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
+import com.oracle.truffle.js.runtime.joni.JoniRegexCompiler;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -75,6 +78,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
+import com.oracle.truffle.regex.RegexEngine;
 
 public final class JSRegExp extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
 
@@ -276,7 +280,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), ctx.getEcmaScriptVersion() < 6 ? JSRegExp.INSTANCE : JSUserObject.INSTANCE);
 
         if (ctx.getEcmaScriptVersion() < 6) {
-            JSObjectUtil.putHiddenProperty(prototype, COMPILED_REGEX_PROPERTY, RegexCompilerInterface.compile("", "", ctx));
+            JSObjectUtil.putHiddenProperty(prototype, COMPILED_REGEX_PROPERTY, compileEarly("", ""));
             JSObjectUtil.putDataProperty(ctx, prototype, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
         }
         JSObjectUtil.putConstantAccessorProperty(ctx, prototype, FLAGS, realm.lookupFunction(PROTOTYPE_GETTER_NAME, "get " + FLAGS), Undefined.instance);
@@ -306,6 +310,16 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
 
         return prototype;
+    }
+
+    private static Object compileEarly(String pattern, String flags) {
+        // avoid getRealm() in context.getRegexEngine()
+        TruffleObject tempEngine = new RegexEngine(new JoniRegexCompiler(null), false);
+        try {
+            return ForeignAccess.sendExecute(RegexCompilerInterface.createExecuteCompilerNode(), tempEngine, pattern, flags);
+        } catch (InteropException ex) {
+            throw ex.raise();
+        }
     }
 
     @Override
