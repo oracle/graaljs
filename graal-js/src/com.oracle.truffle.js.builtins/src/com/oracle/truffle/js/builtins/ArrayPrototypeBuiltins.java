@@ -92,6 +92,7 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayUnshi
 import com.oracle.truffle.js.builtins.DebugBuiltins.DebugIsHolesArrayNode;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugIsHolesArrayNodeGen;
 import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
@@ -758,7 +759,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             assert JSArray.isJSArray(thisObject);
             long len = getLength(thisObject);
             if (len >= Integer.MAX_VALUE) {
-                throw new SlowPathException();
+                throw JSNodeUtil.slowPathException();
             }
             int iLen = (int) len;
             write(thisObject, iLen, args[0]);
@@ -783,7 +784,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             assert JSArray.isJSArray(thisObject);
             long len = getLength(thisObject);
             if (len + args.length >= Integer.MAX_VALUE) {
-                throw new SlowPathException();
+                throw JSNodeUtil.slowPathException();
             }
             int ilen = (int) len;
             for (int i = 0; i < args.length; i++) {
