@@ -74,12 +74,6 @@ import com.oracle.truffle.js.runtime.JSContext;
  *
  */
 public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNode {
-
-    public interface MaterializedTargetableNode {
-
-        Object getPropertyKey();
-    }
-
     public static JSTargetableNode createFor(JSTargetableNode target) {
         if (target instanceof PropertyNode) {
             return new MaterializedTargetablePropertyNode((PropertyNode) target);
@@ -100,49 +94,24 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
      * <code>MaterializedInvokeNode</code>.
      *
      */
-    private static class MaterializedTargetableReadElementNode extends ReadElementNode implements MaterializedTargetableNode {
-
-        // node declaration order is used by the instrumentation framework to derive the index order
-        // for each instrumented data event. We must re-declare nodes and keep null ref in parent
-        // class to expose instrumentation events with the correct order.
-        @Child private JSTargetableNode echo;
-        @Child private JavaScriptNode index;
-
+    private static class MaterializedTargetableReadElementNode extends ReadElementNode {
         protected MaterializedTargetableReadElementNode(JavaScriptNode targetNode, JavaScriptNode indexNode, JSContext context) {
             super(targetNode, indexNode, context);
         }
 
-        protected MaterializedTargetableReadElementNode(JavaScriptNode index, JSTargetableNode echo, JSContext context) {
-            super(null, null, context);
-            this.index = index;
-            this.echo = echo;
-        }
-
         MaterializedTargetableReadElementNode(ReadElementNode from) {
-            this(null, null, from.getContext());
-            this.index = from.getElement();
-            this.echo = new EchoTargetValueNode();
+            this(new EchoTargetValueNode(), from.getElement(), from.getContext());
         }
 
         @Override
         public Object executeWithTarget(VirtualFrame frame, Object targetValue) {
-            echo.executeWithTarget(frame, targetValue);
+            ((JSTargetableNode) getTarget()).executeWithTarget(frame, targetValue);
             return super.executeWithTarget(frame, targetValue);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             throw Errors.shouldNotReachHere("Must use executeWithTarget()");
-        }
-
-        @Override
-        public JavaScriptNode getIndexNode() {
-            return index;
-        }
-
-        @Override
-        public Object getPropertyKey() {
-            return null;
         }
 
         @Override
@@ -165,7 +134,7 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
 
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return new MaterializedTargetableReadElementNode(cloneUninitialized(index), cloneUninitialized(echo), context);
+            return new MaterializedTargetableReadElementNode(cloneUninitialized(getTarget()), cloneUninitialized(getIndexNode()), context);
         }
     }
 
@@ -174,28 +143,19 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
      * <code>MaterializedInvokeNode</code>.
      *
      */
-    private static class MaterializedTargetablePropertyNode extends PropertyNode implements MaterializedTargetableNode {
-
-        @Child private JSTargetableNode echo;
-
-        protected MaterializedTargetablePropertyNode(JSContext context, Object propertyKey) {
-            super(context, null, propertyKey);
-        }
-
-        protected MaterializedTargetablePropertyNode(JSContext context, JSTargetableNode echo, Object propertyKey) {
-            this(context, propertyKey);
-            this.echo = echo;
+    private static class MaterializedTargetablePropertyNode extends PropertyNode {
+        protected MaterializedTargetablePropertyNode(JSContext context, JavaScriptNode target, Object propertyKey) {
+            super(context, target, propertyKey);
+            this.setMethod();
         }
 
         MaterializedTargetablePropertyNode(PropertyNode target) {
-            this(target.getContext(), target.getPropertyKey());
-            this.echo = new EchoTargetValueNode();
-            this.setMethod();
+            this(target.getContext(), new EchoTargetValueNode(), target.getPropertyKey());
         }
 
         @Override
         public Object executeWithTarget(VirtualFrame frame, Object targetValue) {
-            echo.executeWithTarget(frame, targetValue);
+            ((JSTargetableNode) getTarget()).executeWithTarget(frame, targetValue);
             return super.executeWithTarget(frame, targetValue);
         }
 
@@ -224,7 +184,7 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
 
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return new MaterializedTargetablePropertyNode(getContext(), cloneUninitialized(echo), getPropertyKey());
+            return new MaterializedTargetablePropertyNode(getContext(), cloneUninitialized(getTarget()), getPropertyKey());
         }
     }
 
@@ -233,7 +193,7 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
      * <code>MaterializedInvokeNode</code>.
      *
      */
-    private static class MaterializedTargetableDoWithNode extends DoWithNode implements MaterializedTargetableNode {
+    private static class MaterializedTargetableDoWithNode extends DoWithNode {
 
         @Child private JSTargetableNode echo;
 
