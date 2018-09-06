@@ -46,7 +46,6 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
 
 public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
 
@@ -84,10 +83,6 @@ public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
         if (Double.isInfinite(d) || Double.isNaN(d)) {
             return false;
         }
-        long l = (long) d;
-        if (l != d) {
-            return false;
-        }
-        return JSRuntime.MIN_SAFE_INTEGER <= l && l <= JSRuntime.MAX_SAFE_INTEGER;
+        return (long) d == d;
     }
 }

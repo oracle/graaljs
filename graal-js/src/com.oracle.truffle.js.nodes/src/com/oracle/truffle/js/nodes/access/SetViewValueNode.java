@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -97,7 +98,7 @@ public abstract class SetViewValueNode extends JavaScriptNode {
         DynamicObject buffer = JSDataView.getArrayBuffer(dataView);
 
         long getIndex = toIndexNode.executeLong(requestIndex);
-        Number numberValue = valueToNumberNode.executeNumber(value);
+        Object numberValue = isBigIntView() ? JSRuntime.toBigInt(value) : valueToNumberNode.executeNumber(value);
         boolean isLittleEndian = factory.bytesPerElement() == 1 ? true : toBooleanNode.executeBoolean(littleEndian);
 
         if (!context.getTypedArrayNotDetachedAssumption().isValid()) {
@@ -119,6 +120,10 @@ public abstract class SetViewValueNode extends JavaScriptNode {
         TypedArray strategy = typeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true));
         strategy.setBufferElement(buffer, bufferIndex, isLittleEndian, JSDataView.isJSDataView(view), numberValue);
         return Undefined.instance;
+    }
+
+    private boolean isBigIntView() {
+        return factory == TypedArrayFactory.BigInt64Array || factory == TypedArrayFactory.BigUint64Array;
     }
 
     public static SetViewValueNode create(JSContext context, String type, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian, JavaScriptNode value) {
