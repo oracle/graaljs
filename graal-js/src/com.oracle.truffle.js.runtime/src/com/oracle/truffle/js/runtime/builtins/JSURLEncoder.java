@@ -177,46 +177,37 @@ public final class JSURLEncoder {
 
     @TruffleBoundary(transferToInterpreterOnException = false)
     public String encode(String s) {
+        int length = s.length();
         StringBuilder buffer = null;
         CharsetEncoder encoder = null;
 
         int i = 0;
-        while (i < s.length()) {
+        while (i < length) {
             int c = s.charAt(i);
             if (needsNoEncoding(c)) {
-                if (c == ' ') {
-                    c = '+';
-                    buffer = initBuffer(buffer, s, i);
-                }
                 if (buffer != null) {
                     buffer.append((char) c);
                 }
                 i++;
             } else {
-                buffer = initBuffer(buffer, s, i);
+                if (buffer == null) {
+                    buffer = allocBuffer(s, i, length + 16);
+                }
                 if (encoder == null) {
                     encoder = charset.newEncoder();
                 }
                 i = encodeConvert(s, i, c, buffer, encoder);
             }
         }
-        String returnString = (buffer != null ? buffer.toString() : s);
-        return returnString;
+        return buffer != null ? buffer.toString() : s;
     }
 
-    /**
-     * Initialize the buffer lazily, only when needed.
-     */
-    private static StringBuilder initBuffer(StringBuilder buffer, String s, int i) {
-        if (buffer != null) {
-            return buffer;
-        } else {
-            StringBuilder newBuffer = new StringBuilder(s.length() + 20);
-            if (i >= 1) {
-                newBuffer.append(s, 0, i);
-            }
-            return newBuffer;
+    static StringBuilder allocBuffer(String s, int i, int estimatedLength) {
+        StringBuilder newBuffer = new StringBuilder(estimatedLength);
+        if (i > 0) {
+            newBuffer.append(s, 0, i);
         }
+        return newBuffer;
     }
 
     private int encodeConvert(String s, int iParam, int cParam, StringBuilder buffer, CharsetEncoder encoder) {
