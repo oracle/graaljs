@@ -58,20 +58,21 @@ public abstract class JSFunctionFactory {
     }
 
     static JSFunctionFactory createIntrinsic(JSContext context, CompilableFunction<JSRealm, DynamicObject> intrinsicDefaultProto,
-                    boolean isStrict, boolean isAnonymous, boolean isConstructor, boolean isGenerator, boolean isBound, int slot) {
+                    boolean isStrict, boolean isAnonymous, boolean isConstructor, boolean isGenerator, boolean isBound, boolean isAsync, int slot) {
         if (context.isMultiContext()) {
-            return new JSFunctionFactory.IntrinsicMulti(context, intrinsicDefaultProto, isStrict, isAnonymous, isConstructor, isGenerator, isBound);
+            return new JSFunctionFactory.IntrinsicMulti(context, intrinsicDefaultProto, isStrict, isAnonymous, isConstructor, isGenerator, isBound, isAsync);
         } else {
-            return new JSFunctionFactory.IntrinsicRealm(context, intrinsicDefaultProto, isStrict, isAnonymous, isConstructor, isGenerator, isBound, slot);
+            return new JSFunctionFactory.IntrinsicRealm(context, intrinsicDefaultProto, isStrict, isAnonymous, isConstructor, isGenerator, isBound, isAsync, slot);
         }
     }
 
-    static DynamicObjectFactory makeFactory(JSContext context, DynamicObject prototype, boolean isStrict, boolean isAnonymous, boolean isConstructor, boolean isGenerator, boolean isBound) {
+    static DynamicObjectFactory makeFactory(JSContext context, DynamicObject prototype,
+                    boolean isStrict, boolean isAnonymous, boolean isConstructor, boolean isGenerator, boolean isBound, boolean isAsync) {
         Shape initialShape;
         if (isBound) {
             initialShape = JSFunction.makeInitialBoundFunctionShape(context, prototype, isAnonymous);
         } else if (isGenerator) {
-            initialShape = JSFunction.makeInitialGeneratorFunctionShape(context, prototype, isAnonymous);
+            initialShape = JSFunction.makeInitialGeneratorFunctionShape(context, prototype, isAsync, isAnonymous);
         } else if (isConstructor) {
             initialShape = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(context, prototype, isStrict, isAnonymous));
         } else {
@@ -168,9 +169,9 @@ public abstract class JSFunctionFactory {
         private final DynamicObjectFactory factory;
 
         protected IntrinsicMulti(JSContext context, CompilableFunction<JSRealm, DynamicObject> getProto, boolean isStrict, boolean isAnonymous, boolean isConstructor, boolean isGenerator,
-                        boolean isBound) {
+                        boolean isBound, boolean isAsync) {
             super(context);
-            this.factory = makeFactory(context, null, isStrict, isAnonymous, isConstructor, isGenerator, isBound);
+            this.factory = makeFactory(context, null, isStrict, isAnonymous, isConstructor, isGenerator, isBound, isAsync);
             this.getProto = getProto;
         }
 
@@ -192,10 +193,11 @@ public abstract class JSFunctionFactory {
         private final boolean isConstructor;
         private final boolean isGenerator;
         private final boolean isBound;
+        private final boolean isAsync;
         private final int slot;
 
         protected IntrinsicRealm(JSContext context, CompilableFunction<JSRealm, DynamicObject> getProto, boolean isStrict, boolean isAnonymous, boolean isConstructor, boolean isGenerator,
-                        boolean isBound, int slot) {
+                        boolean isBound, boolean isAsync, int slot) {
             super(context);
             this.getProto = getProto;
             this.isStrict = isStrict;
@@ -203,6 +205,7 @@ public abstract class JSFunctionFactory {
             this.isConstructor = isConstructor;
             this.isGenerator = isGenerator;
             this.isBound = isBound;
+            this.isAsync = isAsync;
             this.slot = slot;
         }
 
@@ -216,7 +219,7 @@ public abstract class JSFunctionFactory {
             DynamicObjectFactory realmFactory = realm.getObjectFactories().factories[slot];
             if (realmFactory == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                DynamicObjectFactory newFactory = makeFactory(context, prototype, isStrict, isAnonymous, isConstructor, isGenerator, isBound);
+                DynamicObjectFactory newFactory = makeFactory(context, prototype, isStrict, isAnonymous, isConstructor, isGenerator, isBound, isAsync);
                 realmFactory = realm.getObjectFactories().factories[slot] = newFactory;
             }
             return realmFactory;

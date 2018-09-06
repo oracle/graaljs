@@ -189,6 +189,8 @@ public final class JSFunction extends JSBuiltinObject {
     /** Marker property to ensure generator function shapes are distinct from normal functions. */
     private static final Property GENERATOR_FUNCTION_MARKER_PROPERTY;
     private static final HiddenKey GENERATOR_FUNCTION_MARKER_ID = new HiddenKey("generator function");
+    private static final Property ASYNC_GENERATOR_FUNCTION_MARKER_PROPERTY;
+    private static final HiddenKey ASYNC_GENERATOR_FUNCTION_MARKER_ID = new HiddenKey("async generator function");
 
     /** Internal Slots of Exotic Bound Function Objects. **/
     private static final HiddenKey BOUND_ARGUMENTS = new HiddenKey("BoundArguments");
@@ -231,6 +233,7 @@ public final class JSFunction extends JSBuiltinObject {
         NAME_PROPERTY = JSObjectUtil.makeProxyProperty(NAME, NAME_PROXY, JSAttributes.configurableNotEnumerableNotWritable());
 
         GENERATOR_FUNCTION_MARKER_PROPERTY = JSObjectUtil.makeHiddenProperty(GENERATOR_FUNCTION_MARKER_ID, allocator.constantLocation(null));
+        ASYNC_GENERATOR_FUNCTION_MARKER_PROPERTY = JSObjectUtil.makeHiddenProperty(ASYNC_GENERATOR_FUNCTION_MARKER_ID, allocator.constantLocation(null));
     }
 
     private JSFunction() {
@@ -851,9 +854,9 @@ public final class JSFunction extends JSBuiltinObject {
         return new JSConstructor(constructor, prototype);
     }
 
-    static Shape makeInitialGeneratorFunctionShape(JSContext context, DynamicObject prototype, boolean isAnonymous) {
+    static Shape makeInitialGeneratorFunctionShape(JSContext context, DynamicObject prototype, boolean isAsync, boolean isAnonymous) {
         Shape initialShape = makeBaseFunctionShape(context, prototype, true);
-        initialShape = initialShape.addProperty(GENERATOR_FUNCTION_MARKER_PROPERTY);
+        initialShape = initialShape.addProperty(isAsync ? ASYNC_GENERATOR_FUNCTION_MARKER_PROPERTY : GENERATOR_FUNCTION_MARKER_PROPERTY);
         initialShape = addLengthAndNameProxyProperties(initialShape, context, isAnonymous);
         initialShape = makeConstructorShape(initialShape);
         return initialShape;

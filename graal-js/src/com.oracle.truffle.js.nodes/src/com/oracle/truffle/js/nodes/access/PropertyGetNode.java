@@ -102,6 +102,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
@@ -1562,9 +1563,14 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
         @CompilationFinal private DynamicObject constantFunction = Undefined.instance;
         @Child private CreateMethodPropertyNode setConstructor;
-        @CompilationFinal private Boolean generatorFunction;
+        @CompilationFinal private int kind;
         private final JSContext context;
         private final ConditionProfile prototypeInitializedProfile = ConditionProfile.createCountingProfile();
+
+        private static final int UNKNOWN = 0;
+        private static final int CONSTRUCTOR = 1;
+        private static final int GENERATOR = 2;
+        private static final int ASYNC_GENERATOR = 3;
 
         public ClassPrototypePropertyGetNode(Property property, ReceiverCheckNode receiverCheck, JSContext context) {
             super(property.getKey(), receiverCheck);
@@ -1599,24 +1605,36 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
 
         private Object getPrototypeNotInitialized(DynamicObject functionObj) {
-            if (generatorFunction == null) {
+            if (kind == UNKNOWN) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                generatorFunction = JSFunction.isGenerator(functionObj);
+                JSFunctionData functionData = JSFunction.getFunctionData(functionObj);
+                if (functionData.isAsyncGenerator()) {
+                    kind = ASYNC_GENERATOR;
+                } else if (functionData.isGenerator()) {
+                    kind = GENERATOR;
+                } else {
+                    kind = CONSTRUCTOR;
+                }
             }
-            // Guaranteed by shape check, see JSFunction
-            assert generatorFunction == JSFunction.isGenerator(functionObj);
-            if (generatorFunction) {
-                JSRealm realm = JSFunction.getRealm(functionObj);
-                return JSObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
-            } else {
+            JSRealm realm = JSFunction.getRealm(functionObj);
+            // Function kind guaranteed by shape check, see JSFunction
+            if (kind == CONSTRUCTOR) {
+                assert JSFunction.getFunctionData(functionObj).isConstructor();
                 if (setConstructor == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setConstructor = insert(CreateMethodPropertyNode.create(context, JSObject.CONSTRUCTOR));
                 }
-                DynamicObject prototype = JSUserObject.create(context);
+                DynamicObject prototype = JSUserObject.create(context, realm);
                 setConstructor.executeVoid(prototype, functionObj);
                 JSFunction.setClassPrototype(functionObj, prototype);
                 return prototype;
+            } else if (kind == GENERATOR) {
+                assert JSFunction.getFunctionData(functionObj).isGenerator();
+                return JSObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
+            } else {
+                assert kind == ASYNC_GENERATOR;
+                assert JSFunction.getFunctionData(functionObj).isAsyncGenerator();
+                return JSObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
             }
         }
     }

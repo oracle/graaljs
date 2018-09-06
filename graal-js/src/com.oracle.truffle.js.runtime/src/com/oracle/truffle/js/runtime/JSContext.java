@@ -429,24 +429,24 @@ public class JSContext implements ShapeContext {
         CompilableBiFunction<JSContext, DynamicObject, Shape> ordinaryObjectShapeSupplier = JSUserObject.INSTANCE::makeInitialShape;
         JSObjectFactory.IntrinsicBuilder builder = new JSObjectFactory.IntrinsicBuilder(this);
 
-        this.functionFactoryNamed = builder.function(functionPrototypeSupplier, false, false, false, false, false);
-        this.functionFactoryAnonymous = builder.function(functionPrototypeSupplier, false, true, false, false, false);
-        this.constructorFactoryNamed = builder.function(functionPrototypeSupplier, false, false, true, false, false);
-        this.constructorFactoryAnonymous = builder.function(functionPrototypeSupplier, false, true, true, false, false);
-        this.strictFunctionFactoryNamed = builder.function(functionPrototypeSupplier, true, false, false, false, false);
-        this.strictFunctionFactoryAnonymous = builder.function(functionPrototypeSupplier, true, true, false, false, false);
-        this.strictConstructorFactoryNamed = builder.function(functionPrototypeSupplier, true, false, true, false, false);
-        this.strictConstructorFactoryAnonymous = builder.function(functionPrototypeSupplier, true, true, true, false, false);
+        this.functionFactoryNamed = builder.function(functionPrototypeSupplier, false, false, false, false, false, false);
+        this.functionFactoryAnonymous = builder.function(functionPrototypeSupplier, false, true, false, false, false, false);
+        this.constructorFactoryNamed = builder.function(functionPrototypeSupplier, false, false, true, false, false, false);
+        this.constructorFactoryAnonymous = builder.function(functionPrototypeSupplier, false, true, true, false, false, false);
+        this.strictFunctionFactoryNamed = builder.function(functionPrototypeSupplier, true, false, false, false, false, false);
+        this.strictFunctionFactoryAnonymous = builder.function(functionPrototypeSupplier, true, true, false, false, false, false);
+        this.strictConstructorFactoryNamed = builder.function(functionPrototypeSupplier, true, false, true, false, false, false);
+        this.strictConstructorFactoryAnonymous = builder.function(functionPrototypeSupplier, true, true, true, false, false, false);
 
-        this.asyncFunctionFactoryNamed = builder.function(asyncFunctionPrototypeSupplier, true, false, false, false, false);
-        this.asyncFunctionFactoryAnonymous = builder.function(asyncFunctionPrototypeSupplier, true, true, false, false, false);
-        this.generatorFunctionFactoryNamed = builder.function(generatorFunctionPrototypeSupplier, true, false, false, true, false);
-        this.generatorFunctionFactoryAnonymous = builder.function(generatorFunctionPrototypeSupplier, true, true, false, true, false);
-        this.asyncGeneratorFunctionFactoryNamed = builder.function(asyncGeneratorFunctionPrototypeSupplier, true, false, false, true, false);
-        this.asyncGeneratorFunctionFactoryAnonymous = builder.function(asyncGeneratorFunctionPrototypeSupplier, true, true, false, true, false);
+        this.asyncFunctionFactoryNamed = builder.function(asyncFunctionPrototypeSupplier, true, false, false, false, false, true);
+        this.asyncFunctionFactoryAnonymous = builder.function(asyncFunctionPrototypeSupplier, true, true, false, false, false, true);
+        this.generatorFunctionFactoryNamed = builder.function(generatorFunctionPrototypeSupplier, true, false, false, true, false, false);
+        this.generatorFunctionFactoryAnonymous = builder.function(generatorFunctionPrototypeSupplier, true, true, false, true, false, false);
+        this.asyncGeneratorFunctionFactoryNamed = builder.function(asyncGeneratorFunctionPrototypeSupplier, true, false, false, true, false, true);
+        this.asyncGeneratorFunctionFactoryAnonymous = builder.function(asyncGeneratorFunctionPrototypeSupplier, true, true, false, true, false, true);
 
-        this.boundFunctionFactoryNamed = builder.function(functionPrototypeSupplier, true, false, false, false, true);
-        this.boundFunctionFactoryAnonymous = builder.function(functionPrototypeSupplier, true, true, false, false, true);
+        this.boundFunctionFactoryNamed = builder.function(functionPrototypeSupplier, true, false, false, false, true, false);
+        this.boundFunctionFactoryAnonymous = builder.function(functionPrototypeSupplier, true, true, false, false, true, false);
 
         this.arrayFactory = builder.create(JSArray.INSTANCE);
         this.lazyRegexArrayFactory = builder.create(JSArray.INSTANCE, JSRegExp::makeLazyRegexArrayShape);
