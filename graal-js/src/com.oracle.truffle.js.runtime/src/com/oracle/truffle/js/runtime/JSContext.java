@@ -133,6 +133,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.JSShapeData;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 import com.oracle.truffle.js.runtime.util.CompilableFunction;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
@@ -349,6 +350,8 @@ public class JSContext implements ShapeContext {
     @CompilationFinal(dimensions = 1) private final JSObjectFactory[] directTypedArrayFactories;
 
     private final JSObjectFactory enumerateIteratorFactory;
+    private final JSObjectFactory generatorObjectFactory;
+    private final JSObjectFactory asyncGeneratorObjectFactory;
     private final JSObjectFactory asyncFromSyncIteratorFactory;
 
     private final JSObjectFactory collatorFactory;
@@ -423,6 +426,7 @@ public class JSContext implements ShapeContext {
 
         // shapes and factories
         PrototypeSupplier objectPrototypeSupplier = JSUserObject.INSTANCE;
+        CompilableBiFunction<JSContext, DynamicObject, Shape> ordinaryObjectShapeSupplier = JSUserObject.INSTANCE::makeInitialShape;
         JSObjectFactory.IntrinsicBuilder builder = new JSObjectFactory.IntrinsicBuilder(this);
 
         this.functionFactoryNamed = builder.function(functionPrototypeSupplier, false, false, false, false, false);
@@ -482,7 +486,10 @@ public class JSContext implements ShapeContext {
         this.nonStrictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialNonStrictArgumentsShape);
         this.strictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialStrictArgumentsShape);
         this.enumerateIteratorFactory = builder.create(JSRealm::getEnumerateIteratorPrototype, JSFunction::makeInitialEnumerateIteratorShape);
-        this.asyncFromSyncIteratorFactory = builder.create(JSRealm::getAsyncFromSyncIteratorPrototype, JSUserObject.INSTANCE::makeInitialShape);
+
+        this.generatorObjectFactory = builder.create(JSRealm::getGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
+        this.asyncGeneratorObjectFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
+        this.asyncFromSyncIteratorFactory = builder.create(JSRealm::getAsyncFromSyncIteratorPrototype, ordinaryObjectShapeSupplier);
 
         this.collatorFactory = builder.create(JSCollator.INSTANCE);
         this.numberFormatFactory = builder.create(JSNumberFormat.INSTANCE);
@@ -877,6 +884,14 @@ public class JSContext implements ShapeContext {
 
     public final JSObjectFactory.BoundProto getModuleNamespaceFactory() {
         return moduleNamespaceFactory;
+    }
+
+    public final JSObjectFactory getGeneratorObjectFactory() {
+        return generatorObjectFactory;
+    }
+
+    public final JSObjectFactory getAsyncGeneratorObjectFactory() {
+        return asyncGeneratorObjectFactory;
     }
 
     public final JSObjectFactory getAsyncFromSyncIteratorFactory() {

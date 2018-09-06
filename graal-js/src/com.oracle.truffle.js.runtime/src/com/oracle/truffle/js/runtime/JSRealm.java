@@ -205,14 +205,14 @@ public class JSRealm {
     @CompilationFinal(dimensions = 1) private final JSObjectFactory[] simdTypeFactories;
 
     private final JSConstructor generatorFunctionConstructor;
-    private final Shape initialGeneratorObjectShape;
+    private final DynamicObject generatorObjectPrototype;
 
     private final JSConstructor asyncFunctionConstructor;
 
     private final DynamicObject asyncIteratorPrototype;
     private final DynamicObject asyncFromSyncIteratorPrototype;
+    private final DynamicObject asyncGeneratorObjectPrototype;
     private final JSConstructor asyncGeneratorFunctionConstructor;
-    private final Shape initialAsyncGeneratorObjectShape;
 
     private final DynamicObject throwerFunction;
     private final Accessor throwerAccessor;
@@ -378,7 +378,7 @@ public class JSRealm {
         this.regExpStringIteratorPrototype = JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
 
         this.generatorFunctionConstructor = es6 ? JSFunction.createGeneratorFunctionConstructor(this) : null;
-        this.initialGeneratorObjectShape = es6 ? JSFunction.makeInitialGeneratorObjectShape(this) : null;
+        this.generatorObjectPrototype = es6 ? (DynamicObject) generatorFunctionConstructor.getPrototype().get(JSObject.PROTOTYPE, null) : null;
         this.enumerateIteratorPrototype = JSFunction.createEnumerateIteratorPrototype(this);
 
         if (context.isOptionSharedArrayBuffer()) {
@@ -402,7 +402,7 @@ public class JSRealm {
         this.asyncIteratorPrototype = es9 ? JSFunction.createAsyncIteratorPrototype(this) : null;
         this.asyncFromSyncIteratorPrototype = es9 ? JSFunction.createAsyncFromSyncIteratorPrototype(this) : null;
         this.asyncGeneratorFunctionConstructor = es9 ? JSFunction.createAsyncGeneratorFunctionConstructor(this) : null;
-        this.initialAsyncGeneratorObjectShape = es9 ? JSFunction.makeInitialAsyncGeneratorObjectShape(this) : null;
+        this.asyncGeneratorObjectPrototype = es9 ? (DynamicObject) asyncGeneratorFunctionConstructor.getPrototype().get(JSObject.PROTOTYPE, null) : null;
 
         this.javaInteropWorkerConstructor = isJavaInteropAvailable() ? JSJavaWorkerBuiltin.createWorkerConstructor(this) : null;
 
@@ -556,14 +556,6 @@ public class JSRealm {
         return initialUserObjectShape;
     }
 
-    public final Shape getInitialGeneratorObjectShape() {
-        return initialGeneratorObjectShape;
-    }
-
-    public final Shape getInitialAsyncGeneratorObjectShape() {
-        return initialAsyncGeneratorObjectShape;
-    }
-
     public final JSConstructor getArrayBufferConstructor() {
         return arrayBufferConstructor;
     }
@@ -611,6 +603,14 @@ public class JSRealm {
 
     public final DynamicObject getEnumerateIteratorPrototype() {
         return enumerateIteratorPrototype;
+    }
+
+    public final DynamicObject getGeneratorObjectPrototype() {
+        return generatorObjectPrototype;
+    }
+
+    public final DynamicObject getAsyncGeneratorObjectPrototype() {
+        return asyncGeneratorObjectPrototype;
     }
 
     public final JSConstructor getJavaImporterConstructor() {

@@ -169,7 +169,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
     private GeneratorBodyNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode) {
         this.context = context;
         JavaScriptNode functionObject = AccessFunctionNode.create();
-        this.createGeneratorObject = SpecializedNewObjectNode.create(context, false, true, true, functionObject);
+        this.createGeneratorObject = SpecializedNewObjectNode.create(context, false, true, true, false, functionObject);
         this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
         this.setGeneratorContext = PropertySetNode.createSetHidden(JSFunction.GENERATOR_CONTEXT_ID, context);
         this.setGeneratorTarget = PropertySetNode.createSetHidden(JSFunction.GENERATOR_TARGET_ID, context);

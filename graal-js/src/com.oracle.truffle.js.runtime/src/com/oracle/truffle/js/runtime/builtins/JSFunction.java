@@ -510,7 +510,7 @@ public final class JSFunction extends JSBuiltinObject {
             JSObjectUtil.putConstructorProperty(context, prototype, constructor);
             return prototype;
         } else {
-            return JSObject.create(context, functionData.isAsync() ? realm.getInitialAsyncGeneratorObjectShape() : realm.getInitialGeneratorObjectShape());
+            return JSObject.createWithRealm(context, functionData.isAsync() ? context.getAsyncGeneratorObjectFactory() : context.getGeneratorObjectFactory(), realm);
         }
     }
 
@@ -857,16 +857,6 @@ public final class JSFunction extends JSBuiltinObject {
         initialShape = addLengthAndNameProxyProperties(initialShape, context, isAnonymous);
         initialShape = makeConstructorShape(initialShape);
         return initialShape;
-    }
-
-    public static Shape makeInitialGeneratorObjectShape(JSRealm realm) {
-        DynamicObject generatorObjectPrototype = (DynamicObject) realm.getGeneratorFunctionConstructor().getPrototype().get(JSObject.PROTOTYPE, null);
-        return JSObjectUtil.getProtoChildShape(generatorObjectPrototype, JSUserObject.INSTANCE, realm.getContext());
-    }
-
-    public static Shape makeInitialAsyncGeneratorObjectShape(JSRealm realm) {
-        DynamicObject asyncGeneratorObjectPrototype = (DynamicObject) realm.getAsyncGeneratorFunctionConstructor().getPrototype().get(JSObject.PROTOTYPE, null);
-        return JSObjectUtil.getProtoChildShape(asyncGeneratorObjectPrototype, JSUserObject.INSTANCE, realm.getContext());
     }
 
     // ##### Async functions

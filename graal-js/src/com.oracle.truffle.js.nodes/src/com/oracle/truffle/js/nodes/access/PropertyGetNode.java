@@ -93,6 +93,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSNoSuchMethodAdapter;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -1561,7 +1562,6 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
         @CompilationFinal private DynamicObject constantFunction = Undefined.instance;
         @Child private CreateMethodPropertyNode setConstructor;
-        @CompilationFinal private Shape generatorObjectShape;
         @CompilationFinal private Boolean generatorFunction;
         private final JSContext context;
         private final ConditionProfile prototypeInitializedProfile = ConditionProfile.createCountingProfile();
@@ -1606,11 +1606,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             // Guaranteed by shape check, see JSFunction
             assert generatorFunction == JSFunction.isGenerator(functionObj);
             if (generatorFunction) {
-                if (generatorObjectShape == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    generatorObjectShape = JSFunction.getRealm(functionObj).getInitialGeneratorObjectShape();
-                }
-                return JSObject.create(context, generatorObjectShape);
+                JSRealm realm = JSFunction.getRealm(functionObj);
+                return JSObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
             } else {
                 if (setConstructor == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();

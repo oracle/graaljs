@@ -83,6 +83,7 @@ import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.interop.JavaAccess;
@@ -319,21 +320,27 @@ public abstract class JSNewNode extends JavaScriptNode {
         protected final boolean isBuiltin;
         protected final boolean isConstructor;
         protected final boolean isGenerator;
+        protected final boolean isAsyncGenerator;
 
         @Child @Executed protected JavaScriptNode targetNode;
         @Child @Executed(with = "targetNode") protected CachedPrototypeShapeNode cachedShapeNode;
 
-        public SpecializedNewObjectNode(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, JavaScriptNode targetNode) {
+        public SpecializedNewObjectNode(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, boolean isAsyncGenerator, JavaScriptNode targetNode) {
             this.context = context;
             this.isBuiltin = isBuiltin;
             this.isConstructor = isConstructor;
             this.isGenerator = isGenerator;
+            this.isAsyncGenerator = isAsyncGenerator;
             this.targetNode = targetNode;
             this.cachedShapeNode = CachedPrototypeShapeNode.create(context);
         }
 
-        public static SpecializedNewObjectNode create(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, JavaScriptNode target) {
-            return SpecializedNewObjectNodeGen.create(context, isBuiltin, isConstructor, isGenerator, target);
+        public static SpecializedNewObjectNode create(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, boolean isAsyncGenerator, JavaScriptNode target) {
+            return SpecializedNewObjectNodeGen.create(context, isBuiltin, isConstructor, isGenerator, isAsyncGenerator, target);
+        }
+
+        public static SpecializedNewObjectNode create(JSFunctionData functionData, JavaScriptNode target) {
+            return create(functionData.getContext(), functionData.isBuiltin(), functionData.isConstructor(), functionData.isGenerator(), functionData.isAsyncGenerator(), target);
         }
 
         @Override
@@ -361,7 +368,12 @@ public abstract class JSNewNode extends JavaScriptNode {
             assert shape == Undefined.instance;
             // user-provided prototype is not an object
             JSRealm realm = JSRuntime.getFunctionRealm(target, context.getRealm());
-            return createUserObject(target, isGenerator ? realm.getInitialGeneratorObjectShape() : realm.getInitialUserObjectShape());
+            if (isAsyncGenerator) {
+                return JSObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
+            } else if (isGenerator) {
+                return JSObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
+            }
+            return JSUserObject.create(context, realm);
         }
 
         @Specialization(guards = {"isBuiltin", "isConstructor"})
@@ -377,7 +389,7 @@ public abstract class JSNewNode extends JavaScriptNode {
 
         @Override
         protected JavaScriptNode copyUninitialized() {
-            return create(context, isBuiltin, isConstructor, isGenerator, cloneUninitialized(targetNode));
+            return create(context, isBuiltin, isConstructor, isGenerator, isAsyncGenerator, cloneUninitialized(targetNode));
         }
     }
 
