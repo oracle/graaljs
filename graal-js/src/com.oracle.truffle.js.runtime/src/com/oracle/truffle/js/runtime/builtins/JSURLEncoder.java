@@ -97,7 +97,6 @@ public final class JSURLEncoder {
 
     static final BitSet unreservedURISet;
     static final BitSet reservedURISet;
-    private static final int caseDiff = ('a' - 'A');
 
     private final boolean isSpecial;
     private final Charset charset;
@@ -215,7 +214,6 @@ public final class JSURLEncoder {
     private int encodeConvert(String s, int iParam, int cParam, StringBuilder buffer) {
         int i = iParam;
         int c = cParam;
-        // convert to external encoding before hex conversion
         int startPos = i;
         do {
             if (0xDC00 <= c && c <= 0xDFFF) {
@@ -239,20 +237,23 @@ public final class JSURLEncoder {
         byte[] ba = s.substring(startPos, i).getBytes(charset);
         for (int j = 0; j < ba.length; j++) {
             buffer.append('%');
-            char ch = Character.forDigit((ba[j] >> 4) & 0xF, 16);
-            // converting to use uppercase letter as part of
-            // the hex value if ch is a letter.
-            if (Character.isLetter(ch)) {
-                ch -= caseDiff;
-            }
+            char ch = charForDigit((ba[j] >> 4) & 0xF, 16);
             buffer.append(ch);
-            ch = Character.forDigit(ba[j] & 0xF, 16);
-            if (Character.isLetter(ch)) {
-                ch -= caseDiff;
-            }
+            ch = charForDigit(ba[j] & 0xF, 16);
             buffer.append(ch);
         }
         return i;
+    }
+
+    /**
+     * Like {@link Character#forDigit}, but returns uppercase letters.
+     */
+    public static char charForDigit(int digit, int radix) {
+        assert digit >= 0 && digit < radix && radix >= Character.MIN_RADIX && radix <= Character.MAX_RADIX;
+        if (digit < 10) {
+            return (char) ('0' + digit);
+        }
+        return (char) ('A' - 10 + digit);
     }
 
     private static JSException cannotEscapeError() {
