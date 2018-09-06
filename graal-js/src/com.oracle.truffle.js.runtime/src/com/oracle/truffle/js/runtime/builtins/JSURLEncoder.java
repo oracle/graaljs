@@ -65,7 +65,11 @@
 
 package com.oracle.truffle.js.runtime.builtins;
 
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
 
@@ -174,6 +178,7 @@ public final class JSURLEncoder {
     @TruffleBoundary(transferToInterpreterOnException = false)
     public String encode(String s) {
         StringBuilder buffer = null;
+        CharsetEncoder encoder = null;
 
         int i = 0;
         while (i < s.length()) {
@@ -189,7 +194,10 @@ public final class JSURLEncoder {
                 i++;
             } else {
                 buffer = initBuffer(buffer, s, i);
-                i = encodeConvert(s, i, c, buffer);
+                if (encoder == null) {
+                    encoder = charset.newEncoder();
+                }
+                i = encodeConvert(s, i, c, buffer, encoder);
             }
         }
         String returnString = (buffer != null ? buffer.toString() : s);
@@ -211,7 +219,7 @@ public final class JSURLEncoder {
         }
     }
 
-    private int encodeConvert(String s, int iParam, int cParam, StringBuilder buffer) {
+    private int encodeConvert(String s, int iParam, int cParam, StringBuilder buffer, CharsetEncoder encoder) {
         int i = iParam;
         int c = cParam;
         int startPos = i;
@@ -234,8 +242,11 @@ public final class JSURLEncoder {
             i++;
         } while (i < s.length() && !needsNoEncoding(c = s.charAt(i)));
 
-        byte[] ba = s.substring(startPos, i).getBytes(charset);
-        for (int j = 0; j < ba.length; j++) {
+        ByteBuffer bb = encodeSubstring(s, startPos, i, encoder);
+        byte[] ba = bb.array();
+        assert bb.arrayOffset() + bb.position() == 0;
+        int length = bb.limit();
+        for (int j = 0; j < length; j++) {
             buffer.append('%');
             char ch = charForDigit((ba[j] >> 4) & 0xF, 16);
             buffer.append(ch);
@@ -258,6 +269,15 @@ public final class JSURLEncoder {
 
     private static JSException cannotEscapeError() {
         throw Errors.createURIError("cannot escape");
+    }
+
+    private static ByteBuffer encodeSubstring(String s, int off, int len, CharsetEncoder encoder) {
+        CharBuffer cb = CharBuffer.wrap(s, off, len);
+        try {
+            return encoder.encode(cb);
+        } catch (CharacterCodingException ex) {
+            throw cannotEscapeError();
+        }
     }
 
     private boolean needsNoEncoding(int c) {
