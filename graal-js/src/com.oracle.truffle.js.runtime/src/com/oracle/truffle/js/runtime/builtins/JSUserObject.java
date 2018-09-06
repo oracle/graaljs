@@ -50,6 +50,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 public final class JSUserObject extends JSBuiltinObject implements PrototypeSupplier {
@@ -129,6 +130,11 @@ public final class JSUserObject extends JSBuiltinObject implements PrototypeSupp
     @Override
     public boolean hasOnlyShapeProperties(DynamicObject obj) {
         return true;
+    }
+
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+        return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
     }
 
     @Override

@@ -349,6 +349,7 @@ public class JSContext implements ShapeContext {
     @CompilationFinal(dimensions = 1) private final JSObjectFactory[] directTypedArrayFactories;
 
     private final JSObjectFactory enumerateIteratorFactory;
+    private final JSObjectFactory asyncFromSyncIteratorFactory;
 
     private final JSObjectFactory collatorFactory;
     private final JSObjectFactory numberFormatFactory;
@@ -481,6 +482,7 @@ public class JSContext implements ShapeContext {
         this.nonStrictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialNonStrictArgumentsShape);
         this.strictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialStrictArgumentsShape);
         this.enumerateIteratorFactory = builder.create(JSRealm::getEnumerateIteratorPrototype, JSFunction::makeInitialEnumerateIteratorShape);
+        this.asyncFromSyncIteratorFactory = builder.create(JSRealm::getAsyncFromSyncIteratorPrototype, JSUserObject.INSTANCE::makeInitialShape);
 
         this.collatorFactory = builder.create(JSCollator.INSTANCE);
         this.numberFormatFactory = builder.create(JSNumberFormat.INSTANCE);
@@ -875,6 +877,10 @@ public class JSContext implements ShapeContext {
 
     public final JSObjectFactory.BoundProto getModuleNamespaceFactory() {
         return moduleNamespaceFactory;
+    }
+
+    public final JSObjectFactory getAsyncFromSyncIteratorFactory() {
+        return asyncFromSyncIteratorFactory;
     }
 
     @Override
