@@ -174,7 +174,7 @@ public class JSURLDecoder {
             j++;
         }
         ByteBuffer bb = ByteBuffer.wrap(octetsB);
-        CharBuffer cb = CharBuffer.wrap(new char[10]);
+        CharBuffer cb = CharBuffer.wrap(new char[2]);
         decoder.reset();
         cb.rewind();
         CoderResult coderResult = decoder.decode(bb, cb, true);
