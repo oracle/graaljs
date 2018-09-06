@@ -65,122 +65,102 @@
 
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.net.*;
-import java.nio.charset.*;
-import java.util.*;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.js.runtime.*;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSException;
 
 /**
- * Utility class for HTML form encoding. This class contains static methods for converting a String
- * to the <CODE>application/x-www-form-urlencoded</CODE> MIME format. For more information about
- * HTML form encoding, consult the HTML <A HREF="http://www.w3.org/TR/html4/">specification</A>.
+ * Utility class for {@code encodeURI} and {@code encodeURIComponent}.
  *
  * <p>
  * When encoding a String, the following rules apply:
- *
- * <p>
  * <ul>
  * <li>The alphanumeric characters &quot;<code>a</code>&quot; through &quot;<code>z</code>&quot;,
  * &quot;<code>A</code>&quot; through &quot;<code>Z</code>&quot; and &quot;<code>0</code>&quot;
  * through &quot;<code>9</code>&quot; remain the same.
- * <li>The special characters &quot;<code>.</code>&quot;, &quot;<code>-</code>&quot;, &quot;
- * <code>*</code>&quot;, and &quot;<code>_</code>&quot; remain the same.
+ * <li>The special characters in the {@code mark} set in the case of {@code encodeURIComponent}, and
+ * additionally those in the {@code reserved} set plus &quot;{@code #}&quot in the case of
+ * {@code encodeURI}; remain the same.
  * <li>The space character &quot;<code>&nbsp;</code>&quot; is converted into a plus sign &quot;
  * <code>+</code>&quot;.
  * <li>All other characters are unsafe and are first converted into one or more bytes using some
  * encoding scheme. Then each byte is represented by the 3-character string &quot;
  * <code>%<i>xy</i></code>&quot;, where <i>xy</i> is the two-digit hexadecimal representation of the
- * byte. The recommended encoding scheme to use is UTF-8. However, for compatibility reasons, if an
- * encoding is not specified, then the default encoding of the platform is used.
+ * byte. The default encoding scheme is UTF-8.
  * </ul>
- *
- * <p>
- * For example using UTF-8 as the encoding scheme the string &quot;The string &#252;@foo-bar&quot;
- * would get converted to &quot;The+string+%C3%BC%40foo-bar&quot; because in UTF-8 the character
- * &#252; is encoded as two bytes C3 (hex) and BC (hex), and the character @ is encoded as one byte
- * 40 (hex).
- *
- * @author Herb Jellinek
- * @since JDK1.0
  */
 public final class JSURLEncoder {
 
-    private static BitSet dontNeedEncoding;
-    private static BitSet dontNeedEncodingSpecial;
+    static final BitSet unreservedURISet;
+    static final BitSet reservedURISet;
     private static final int caseDiff = ('a' - 'A');
 
     private final boolean isSpecial;
     private final Charset charset;
 
-    private static synchronized void init() {
-        if (dontNeedEncoding == null) {
-            /*
-             * The list of characters that are not encoded has been determined as follows:
-             *
-             * RFC 2396 states: ----- Data characters that are allowed in a URI but do not have a
-             * reserved purpose are called unreserved. These include upper and lower case letters,
-             * decimal digits, and a limited set of punctuation marks and symbols.
-             *
-             * unreserved = alphanum | mark
-             *
-             * mark = "-" | "_" | "." | "!" | "~" | "*" | "'" | "(" | ")"
-             *
-             * Unreserved characters can be escaped without changing the semantics of the URI, but
-             * this should not be done unless the URI is being used in a context that does not allow
-             * the unescaped character to appear. -----
-             *
-             * It appears that both Netscape and Internet Explorer escape all special characters
-             * from this list with the exception of "-", "_", ".", "*". While it is not clear why
-             * they are escaping the other characters, perhaps it is safest to assume that there
-             * might be contexts in which the others are unsafe if not escaped. Therefore, we will
-             * use the same list. It is also noteworthy that this is consistent with O'Reilly's
-             * "HTML: The Definitive Guide" (page 164).
-             *
-             * As a last note, Intenet Explorer does not encode the "@" character which is clearly
-             * not unreserved according to the RFC. We are being consistent with the RFC in this
-             * matter, as is Netscape.
-             */
+    static {
+        /*
+         * RFC 2396 states:
+         *
+         * Data characters that are allowed in a URI but do not have a reserved purpose are called
+         * unreserved. These include upper and lower case letters, decimal digits, and a limited set
+         * of punctuation marks and symbols.
+         *
+         * unreserved = alphanum | mark
+         *
+         * mark = "-" | "_" | "." | "!" | "~" | "*" | "'" | "(" | ")"
+         *
+         * Unreserved characters can be escaped without changing the semantics of the URI, but this
+         * should not be done unless the URI is being used in a context that does not allow the
+         * unescaped character to appear.
+         *
+         * -----
+         *
+         * Many URI include components consisting of or delimited by, certain special characters.
+         * These characters are called "reserved", since their usage within the URI component is
+         * limited to their reserved purpose. If the data for a URI component would conflict with
+         * the reserved purpose, then the conflicting data must be escaped before forming the URI.
+         *
+         * reserved = ";" | "/" | "?" | ":" | "@" | "&" | "=" | "+" | "$" | ","
+         */
 
-            dontNeedEncoding = new BitSet(256);
-            int i;
-            for (i = 'a'; i <= 'z'; i++) {
-                dontNeedEncoding.set(i);
-            }
-            for (i = 'A'; i <= 'Z'; i++) {
-                dontNeedEncoding.set(i);
-            }
-            for (i = '0'; i <= '9'; i++) {
-                dontNeedEncoding.set(i);
-            }
+        BitSet unreserved = new BitSet(128);
+        unreserved.set('a', 'z' + 1);
+        unreserved.set('A', 'Z' + 1);
+        unreserved.set('0', '9' + 1);
 
-            dontNeedEncoding.set('-');
-            dontNeedEncoding.set('_');
-            dontNeedEncoding.set('.');
-            dontNeedEncoding.set('*');
+        unreserved.set('-');
+        unreserved.set('_');
+        unreserved.set('.');
+        unreserved.set('*');
 
-            // added for Javascript:
-            dontNeedEncoding.set('!');
-            dontNeedEncoding.set('~');
-            dontNeedEncoding.set('\'');
-            dontNeedEncoding.set('(');
-            dontNeedEncoding.set(')');
+        unreserved.set('!');
+        unreserved.set('~');
+        unreserved.set('\'');
+        unreserved.set('(');
+        unreserved.set(')');
 
-            dontNeedEncodingSpecial = new BitSet(256);
-            // ; / ? : @ & = + $ ,
-            dontNeedEncodingSpecial.set(';');
-            dontNeedEncodingSpecial.set('/');
-            dontNeedEncodingSpecial.set('?');
-            dontNeedEncodingSpecial.set(':');
-            dontNeedEncodingSpecial.set('@');
-            dontNeedEncodingSpecial.set('&');
-            dontNeedEncodingSpecial.set('=');
-            dontNeedEncodingSpecial.set('+');
-            dontNeedEncodingSpecial.set('$');
-            dontNeedEncodingSpecial.set(',');
-            dontNeedEncodingSpecial.set('#');
-        }
+        // reserved plus "#"
+        BitSet reserved = new BitSet(128);
+        reserved.set(';');
+        reserved.set('/');
+        reserved.set('?');
+        reserved.set(':');
+        reserved.set('@');
+        reserved.set('&');
+        reserved.set('=');
+        reserved.set('+');
+        reserved.set('$');
+        reserved.set(',');
+
+        reserved.set('#');
+
+        unreservedURISet = unreserved;
+        reservedURISet = reserved;
     }
 
     public JSURLEncoder(boolean isSpecial) {
@@ -192,25 +172,9 @@ public final class JSURLEncoder {
         this.isSpecial = isSpecial;
     }
 
-    /**
-     * Translates a string into <code>application/x-www-form-urlencoded</code> format using a
-     * specific encoding scheme. This method uses the supplied encoding scheme to obtain the bytes
-     * for unsafe characters.
-     * <p>
-     * <em><strong>Note:</strong> The
-     * <a href= "http://www.w3.org/TR/html40/appendix/notes.html#non-ascii-chars"> World Wide Web
-     * Consortium Recommendation</a> states that UTF-8 should be used. Not doing so may introduce
-     * incompatibilites.</em>
-     *
-     * @param s <code>String</code> to be translated.
-     * @return the translated <code>String</code>.
-     * @see URLDecoder#decode(java.lang.String, java.lang.String)
-     * @since 1.4
-     */
     @TruffleBoundary(transferToInterpreterOnException = false)
     public String encode(String s) {
         StringBuilder buffer = null;
-        init();
 
         int i = 0;
         while (i < s.length()) {
@@ -297,9 +261,9 @@ public final class JSURLEncoder {
 
     private boolean needsNoEncoding(int c) {
         if (isSpecial) {
-            return dontNeedEncoding.get(c) || dontNeedEncodingSpecial.get(c);
+            return unreservedURISet.get(c) || reservedURISet.get(c);
         } else {
-            return dontNeedEncoding.get(c);
+            return unreservedURISet.get(c);
         }
     }
 }

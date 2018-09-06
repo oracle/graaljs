@@ -212,20 +212,7 @@ public class JSURLDecoder {
 
     private boolean needsDecoding(char c) {
         if (isSpecial) {
-            switch (c) {
-                case ';':
-                case '/':
-                case '?':
-                case ':':
-                case '@':
-                case '&':
-                case '=':
-                case '+':
-                case '$':
-                case ',':
-                case '#':
-                    return false;
-            }
+            return !JSURLEncoder.reservedURISet.get(c);
         }
         return true;
     }
