@@ -198,7 +198,7 @@ public class JSURLDecoder {
         if (needsDecoding(c)) {
             buffer.append(c);
         } else {
-            buffer.append(string.substring(start, k + 1));
+            buffer.append(string, start, k + 1);
         }
     }
 
