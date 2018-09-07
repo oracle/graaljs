@@ -56,6 +56,7 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -132,7 +133,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
         DynamicObject thisObject = (DynamicObject) arguments[0];
-        JSRealm realm = context.getRealm();
+        JSRealm realm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
         if (isNew) {
             objectTemplateInstantiate(frame, thisObject, realm);
             if (hasPropertyHandler) {
