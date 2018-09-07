@@ -565,6 +565,7 @@
         '../src/graal/graal_array.cc',
         '../src/graal/graal_array_buffer.cc',
         '../src/graal/graal_array_buffer_view.cc',
+        '../src/graal/graal_big_int.cc',
         '../src/graal/graal_boolean.cc',
         '../src/graal/graal_context.cc',
         '../src/graal/graal_data.cc',

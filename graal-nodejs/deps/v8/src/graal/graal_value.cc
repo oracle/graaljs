@@ -42,12 +42,14 @@
 #include "graal_array.h"
 #include "graal_array_buffer.h"
 #include "graal_array_buffer_view.h"
+#include "graal_big_int.h"
 #include "graal_boolean.h"
 #include "graal_date.h"
 #include "graal_external.h"
 #include "graal_function.h"
 #include "graal_isolate.h"
 #include "graal_map.h"
+#include "graal_missing_primitive.h"
 #include "graal_number.h"
 #include "graal_object.h"
 #include "graal_promise.h"
@@ -57,7 +59,6 @@
 #include "graal_string.h"
 #include "graal_symbol.h"
 #include "graal_value.h"
-#include "graal_missing_primitive.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -190,6 +191,10 @@ bool GraalValue::IsFalse() const {
 }
 
 bool GraalValue::IsDataView() const {
+    return false;
+}
+
+bool GraalValue::IsBigInt() const {
     return false;
 }
 
@@ -657,6 +662,13 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
                 result = new(placement) GraalProxy(isolate, java_object);
             } else {
                 result = new GraalProxy(isolate, java_object);
+            }
+            break;
+        case 31:
+            if (placement) {
+                result = new(placement) GraalBigInt(isolate, java_object);
+            } else {
+                result = new GraalBigInt(isolate, java_object);
             }
             break;
         default:

@@ -43,6 +43,7 @@ package com.oracle.truffle.trufflenode.node;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.BIG_INT_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_FALSE;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_TRUE;
 import static com.oracle.truffle.trufflenode.ValueType.DATE_OBJECT;
@@ -83,6 +84,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -313,6 +315,11 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     @Specialization
     protected static int doSymbol(Symbol value) {
         return SYMBOL_VALUE;
+    }
+
+    @Specialization
+    protected static int doBigInt(BigInt value) {
+        return BIG_INT_VALUE;
     }
 
     @Specialization(guards = "isForeignObject(value)")

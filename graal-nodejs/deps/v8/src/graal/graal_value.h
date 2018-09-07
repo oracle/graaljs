@@ -84,6 +84,7 @@ public:
     virtual bool IsTrue() const;
     virtual bool IsFalse() const;
     virtual bool IsDataView() const;
+    virtual bool IsBigInt() const;
     bool IsNativeError() const;
     bool IsMapIterator() const;
     bool IsSetIterator() const;

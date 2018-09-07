@@ -43,6 +43,7 @@ package com.oracle.truffle.trufflenode;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.BIG_INT_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_FALSE;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_TRUE;
 import static com.oracle.truffle.trufflenode.ValueType.DATA_VIEW_OBJECT;
@@ -126,6 +127,7 @@ import com.oracle.truffle.js.parser.JSParser;
 import com.oracle.truffle.js.parser.JavaScriptLanguage;
 import com.oracle.truffle.js.parser.JavaScriptTranslator;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.GraalJSException;
@@ -351,6 +353,8 @@ public final class GraalJSAccess {
             return LAZY_STRING_VALUE;
         } else if (value instanceof Symbol) {
             return SYMBOL_VALUE;
+        } else if (value instanceof BigInt) {
+            return BIG_INT_VALUE;
         }
         if (JSTruffleOptions.NashornJavaInterop) {
             return ORDINARY_OBJECT;

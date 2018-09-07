@@ -2744,8 +2744,7 @@ namespace v8 {
     }
 
     bool Value::IsBigInt() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalValue*> (this)->IsBigInt();
     }
 
     bool Value::IsBigInt64Array() const {
