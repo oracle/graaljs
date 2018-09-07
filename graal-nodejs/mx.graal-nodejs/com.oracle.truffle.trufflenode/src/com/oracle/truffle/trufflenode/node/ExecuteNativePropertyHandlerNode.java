@@ -297,7 +297,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
         Object attributes = null;
         if (handler.getQuery() != 0) {
-            NativeAccess.executePropertyHandlerQuery(handler.getQuery(), holder, nativeCallArgs, handlerData, named);
+            attributes = NativeAccess.executePropertyHandlerQuery(handler.getQuery(), holder, nativeCallArgs, handlerData, named);
             attributes = graalAccess.correctReturnValue(attributes);
         }
         if (attributes == null && handler.getEnumerator() != 0) {
