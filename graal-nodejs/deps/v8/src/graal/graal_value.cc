@@ -286,8 +286,15 @@ uint32_t GraalValue::Uint32Value() const {
 int64_t GraalValue::IntegerValue() const {
     if (IsNumber()) {
         const GraalNumber* graal_number = reinterpret_cast<const GraalNumber*> (this);
-        double value = graal_number->Value();
-        return std::isfinite(value) ? value : std::numeric_limits<int64_t>::min();
+        double d = graal_number->Value();
+        if (std::isnan(d)) return 0;
+        if (d >= static_cast<double> (std::numeric_limits<int64_t>::max())) {
+            return std::numeric_limits<int64_t>::max();
+        }
+        if (d <= static_cast<double> (std::numeric_limits<int64_t>::min())) {
+            return std::numeric_limits<int64_t>::min();
+        }
+        return static_cast<int64_t> (d);
     } else {
         JNI_CALL(jlong, result, Isolate(), GraalAccessMethod::value_integer_value, Long, GetJavaObject());
         return result;
