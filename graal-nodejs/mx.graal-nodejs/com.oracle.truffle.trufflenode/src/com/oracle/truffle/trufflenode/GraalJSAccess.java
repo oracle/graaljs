@@ -872,9 +872,8 @@ public final class GraalJSAccess {
             if (JSProxy.isProxy(currentDO)) {
                 current = JSProxy.getTarget(currentDO);
             } else {
-                PropertyDescriptor descriptor = JSObject.getOwnProperty(currentDO, propertyKey);
-                if (descriptor != null) {
-                    return descriptor.isAccessorDescriptor() ? null : objectGet(currentDO, propertyKey);
+                if (JSObject.hasOwnProperty(currentDO, propertyKey)) {
+                    return JSObject.get(currentDO, propertyKey);
                 }
                 current = JSObject.getPrototype(currentDO);
             }
@@ -892,21 +891,17 @@ public final class GraalJSAccess {
             } else {
                 PropertyDescriptor descriptor = JSObject.getOwnProperty(currentDO, propertyKey);
                 if (descriptor != null) {
-                    if (descriptor.isAccessorDescriptor()) {
-                        return -1;
-                    } else {
-                        int attributes = 0;
-                        if (!descriptor.getWritable()) {
-                            attributes |= 1; /* v8::PropertyAttribute::ReadOnly */
-                        }
-                        if (!descriptor.getEnumerable()) {
-                            attributes |= 2; /* v8::PropertyAttribute::DontEnum */
-                        }
-                        if (!descriptor.getConfigurable()) {
-                            attributes |= 4; /* v8::PropertyAttribute::DontDelete */
-                        }
-                        return attributes;
+                    int attributes = 0;
+                    if (!descriptor.getWritable()) {
+                        attributes |= 1; /* v8::PropertyAttribute::ReadOnly */
                     }
+                    if (!descriptor.getEnumerable()) {
+                        attributes |= 2; /* v8::PropertyAttribute::DontEnum */
+                    }
+                    if (!descriptor.getConfigurable()) {
+                        attributes |= 4; /* v8::PropertyAttribute::DontDelete */
+                    }
+                    return attributes;
                 }
                 current = JSObject.getPrototype(currentDO);
             }
