@@ -1130,12 +1130,22 @@ public class JSRealm implements ShapeContext {
         if (GRAALVM_VERSION != null) {
             JSObjectUtil.putDataProperty(context, graalObject, "versionGraalVM", GRAALVM_VERSION, flags);
         }
-        JSObjectUtil.putDataProperty(context, graalObject, "isGraalRuntime", isGraalRuntime(), flags);
+        JSObjectUtil.putDataProperty(context, graalObject, "isGraalRuntime", JSFunction.create(this, isGraalRuntimeFunction(context)), flags);
         putGlobalProperty(global, "Graal", graalObject);
     }
 
-    private static Object isGraalRuntime() {
-        return Truffle.getRuntime().getName().contains("Graal");
+    private static JSFunctionData isGraalRuntimeFunction(JSContext context) {
+        return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return isGraalRuntime();
+            }
+
+            @TruffleBoundary
+            private boolean isGraalRuntime() {
+                return Truffle.getRuntime().getName().contains("Graal");
+            }
+        }), 0, "isGraalRuntime");
     }
 
     private JSConstructor getSIMDTypeConstructor(SIMDTypeFactory<? extends SIMDType> factory) {
