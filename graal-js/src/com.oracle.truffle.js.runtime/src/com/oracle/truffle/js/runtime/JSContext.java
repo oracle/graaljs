@@ -245,6 +245,10 @@ public class JSContext {
     private volatile JSFunctionData boundFunctionData;
     private volatile JSFunctionData boundConstructorFunctionData;
 
+    final JSFunctionData throwerFunctionData;
+    final JSFunctionData protoGetterFunctionData;
+    final JSFunctionData protoSetterFunctionData;
+
     private volatile Map<Shape, JSShapeData> shapeDataMap;
 
     private List<JSRealm> realmList;
@@ -421,6 +425,11 @@ public class JSContext {
         if (contextOptions.isV8RealmBuiltin()) {
             this.realmList = new ArrayList<>();
         }
+
+        this.throwerFunctionData = throwTypeErrorFunction();
+        boolean annexB = isOptionAnnexB();
+        this.protoGetterFunctionData = annexB ? protoGetterFunction() : null;
+        this.protoSetterFunctionData = annexB ? protoSetterFunction() : null;
 
         this.isMultiContext = lang != null && lang.isMultiContext();
 
@@ -1516,5 +1525,67 @@ public class JSContext {
         } else {
             return new JSObjectFactory.RealmData(factoryCount);
         }
+    }
+
+    private JSFunctionData throwTypeErrorFunction() {
+        CallTarget throwTypeErrorCallTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getLanguage(), null, null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                throw Errors.createTypeError("[[ThrowTypeError]] defined by ECMAScript");
+            }
+        });
+        return JSFunctionData.create(this, throwTypeErrorCallTarget, throwTypeErrorCallTarget, 0, "", false, false, false, false);
+    }
+
+    private JSFunctionData protoSetterFunction() {
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getLanguage(), null, null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object[] arguments = frame.getArguments();
+                DynamicObject thisObj = JSRuntime.toObject(JSContext.this, JSArguments.getThisObject(arguments));
+                if (JSArguments.getUserArgumentCount(arguments) < 1) {
+                    return Undefined.instance;
+                }
+                Object value = JSArguments.getUserArgument(arguments, 0);
+
+                DynamicObject current = JSObject.getPrototype(thisObj);
+                if (current == value) {
+                    return Undefined.instance; // true in OrdinarySetPrototype
+                }
+                if (!JSObject.isExtensible(thisObj)) {
+                    throwCannotSetNonExtensibleProtoError(thisObj);
+                }
+
+                if (!(JSObject.isDynamicObject(value)) || value == Undefined.instance) {
+                    return Undefined.instance;
+                }
+                if (!JSObject.setPrototype(thisObj, (DynamicObject) value)) {
+                    throwCannotSetProtoError(thisObj);
+                }
+                return Undefined.instance;
+            }
+
+            @TruffleBoundary
+            private void throwCannotSetNonExtensibleProtoError(DynamicObject thisObj) {
+                throw Errors.createTypeError("Cannot set __proto__ of non-extensible " + JSObject.defaultToString(thisObj));
+            }
+
+            @TruffleBoundary
+            private void throwCannotSetProtoError(DynamicObject thisObj) {
+                throw Errors.createTypeError("Cannot set __proto__ of " + JSObject.defaultToString(thisObj));
+            }
+        });
+        return JSFunctionData.createCallOnly(this, callTarget, 0, "set " + JSObject.PROTO);
+    }
+
+    private JSFunctionData protoGetterFunction() {
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getLanguage(), null, null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object obj = JSArguments.getThisObject(frame.getArguments());
+                return JSObject.getPrototype(JSRuntime.toObject(JSContext.this, obj));
+            }
+        });
+        return JSFunctionData.createCallOnly(this, callTarget, 0, "get " + JSObject.PROTO);
     }
 }

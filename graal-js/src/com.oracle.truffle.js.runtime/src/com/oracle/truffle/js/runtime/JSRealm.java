@@ -51,7 +51,6 @@ import java.util.SplittableRandom;
 
 import org.graalvm.options.OptionValues;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -652,50 +651,8 @@ public class JSRealm {
 
     private static void putProtoAccessorProperty(final JSRealm realm) {
         JSContext context = realm.getContext();
-        DynamicObject getProto = JSFunction.create(realm, JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object obj = JSArguments.getThisObject(frame.getArguments());
-                return JSObject.getPrototype(JSRuntime.toObject(context, obj));
-            }
-        }), 0, "get " + JSObject.PROTO));
-        DynamicObject setProto = JSFunction.create(realm, JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object[] arguments = frame.getArguments();
-                DynamicObject thisObj = JSRuntime.toObject(context, JSArguments.getThisObject(arguments));
-                if (JSArguments.getUserArgumentCount(arguments) < 1) {
-                    return Undefined.instance;
-                }
-                Object value = JSArguments.getUserArgument(arguments, 0);
-
-                DynamicObject current = JSObject.getPrototype(thisObj);
-                if (current == value) {
-                    return Undefined.instance; // true in OrdinarySetPrototype
-                }
-                if (!JSObject.isExtensible(thisObj)) {
-                    throwCannotSetNonExtensibleProtoError(thisObj);
-                }
-
-                if (!(JSObject.isDynamicObject(value)) || value == Undefined.instance) {
-                    return Undefined.instance;
-                }
-                if (!JSObject.setPrototype(thisObj, (DynamicObject) value)) {
-                    throwCannotSetProtoError(thisObj);
-                }
-                return Undefined.instance;
-            }
-
-            @TruffleBoundary
-            private void throwCannotSetNonExtensibleProtoError(DynamicObject thisObj) {
-                throw Errors.createTypeError("Cannot set __proto__ of non-extensible " + JSObject.defaultToString(thisObj));
-            }
-
-            @TruffleBoundary
-            private void throwCannotSetProtoError(DynamicObject thisObj) {
-                throw Errors.createTypeError("Cannot set __proto__ of " + JSObject.defaultToString(thisObj));
-            }
-        }), 0, "set " + JSObject.PROTO));
+        DynamicObject getProto = JSFunction.create(realm, context.protoGetterFunctionData);
+        DynamicObject setProto = JSFunction.create(realm, context.protoSetterFunctionData);
 
         // ES6 draft annex, B.2.2 Additional Properties of the Object.prototype Object
         JSObjectUtil.putConstantAccessorProperty(context, realm.getObjectPrototype(), JSObject.PROTO, getProto, setProto);
@@ -750,14 +707,7 @@ public class JSRealm {
      *
      */
     private DynamicObject createThrowerFunction() {
-        CallTarget throwTypeErrorCallTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                throw Errors.createTypeError("[[ThrowTypeError]] defined by ECMAScript");
-            }
-        });
-        DynamicObject thrower = JSFunction.create(this, JSFunctionData.create(context, throwTypeErrorCallTarget, throwTypeErrorCallTarget, 0, "", false, false, false, false));
+        DynamicObject thrower = JSFunction.create(this, context.throwerFunctionData);
         JSObject.preventExtensions(thrower);
         JSObject.setIntegrityLevel(thrower, true);
         return thrower;
