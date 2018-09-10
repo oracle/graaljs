@@ -141,7 +141,7 @@ import com.oracle.truffle.regex.CachingRegexEngine;
 import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexLanguage;
 
-public class JSContext implements ShapeContext {
+public class JSContext {
     private final Evaluator evaluator;
     private final JSFunctionLookup functionLookup;
 
@@ -754,107 +754,86 @@ public class JSContext implements ShapeContext {
         return globalScopeShape;
     }
 
-    @Override
     public final JSObjectFactory getArrayFactory() {
         return arrayFactory;
     }
 
-    @Override
     public final JSObjectFactory getLazyRegexArrayFactory() {
         return lazyRegexArrayFactory;
     }
 
-    @Override
     public final JSObjectFactory getStringFactory() {
         return stringFactory;
     }
 
-    @Override
     public final JSObjectFactory getBooleanFactory() {
         return booleanFactory;
     }
 
-    @Override
     public final JSObjectFactory getNumberFactory() {
         return numberFactory;
     }
 
-    @Override
     public final JSObjectFactory getBigIntFactory() {
         return bigIntFactory;
     }
 
-    @Override
     public final JSObjectFactory getSymbolFactory() {
         return symbolFactory;
     }
 
-    @Override
     public final JSObjectFactory getArrayBufferViewFactory(TypedArrayFactory factory) {
         return typedArrayFactories[factory.getFactoryIndex()];
     }
 
-    @Override
     public final JSObjectFactory getArrayBufferFactory() {
         return arrayBufferFactory;
     }
 
-    @Override
     public final JSObjectFactory getDirectArrayBufferViewFactory(TypedArrayFactory factory) {
         return directTypedArrayFactories[factory.getFactoryIndex()];
     }
 
-    @Override
     public final JSObjectFactory getDirectArrayBufferFactory() {
         return directArrayBufferFactory;
     }
 
-    @Override
     public final JSObjectFactory getRegExpFactory() {
         return regExpFactory;
     }
 
-    @Override
     public final JSObjectFactory getDateFactory() {
         return dateFactory;
     }
 
-    @Override
     public final JSObjectFactory getEnumerateIteratorFactory() {
         return enumerateIteratorFactory;
     }
 
-    @Override
     public final JSObjectFactory getMapFactory() {
         return mapFactory;
     }
 
-    @Override
     public final JSObjectFactory getWeakMapFactory() {
         return weakMapFactory;
     }
 
-    @Override
     public final JSObjectFactory getSetFactory() {
         return setFactory;
     }
 
-    @Override
     public final JSObjectFactory getWeakSetFactory() {
         return weakSetFactory;
     }
 
-    @Override
     public final JSObjectFactory getDataViewFactory() {
         return dataViewFactory;
     }
 
-    @Override
     public final JSObjectFactory getProxyFactory() {
         return proxyFactory;
     }
 
-    @Override
     public final JSObjectFactory getSharedArrayBufferFactory() {
         assert isOptionSharedArrayBuffer();
         return sharedArrayBufferFactory;
@@ -872,12 +851,10 @@ public class JSContext implements ShapeContext {
         return callSiteFactory;
     }
 
-    @Override
     public final JSObjectFactory getErrorFactory(JSErrorType type, boolean withMessage) {
         return (withMessage ? errorWithMessageObjectFactories : errorObjectFactories)[type.ordinal()];
     }
 
-    @Override
     public final JSObjectFactory getPromiseFactory() {
         return promiseFactory;
     }
@@ -898,32 +875,26 @@ public class JSContext implements ShapeContext {
         return asyncFromSyncIteratorFactory;
     }
 
-    @Override
     public final JSObjectFactory getCollatorFactory() {
         return collatorFactory;
     }
 
-    @Override
     public final JSObjectFactory getNumberFormatFactory() {
         return numberFormatFactory;
     }
 
-    @Override
     public final JSObjectFactory getPluralRulesFactory() {
         return pluralRulesFactory;
     }
 
-    @Override
     public final JSObjectFactory getDateTimeFormatFactory() {
         return dateTimeFormatFactory;
     }
 
-    @Override
     public final JSObjectFactory getJavaImporterFactory() {
         return javaImporterFactory;
     }
 
-    @Override
     public final JSObjectFactory getJSAdapterFactory() {
         return jsAdapterFactory;
     }
@@ -936,7 +907,6 @@ public class JSContext implements ShapeContext {
         return javaWrapperFactory;
     }
 
-    @Override
     public JSObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
         return getRealm().getSIMDTypeFactory(factory);
     }
