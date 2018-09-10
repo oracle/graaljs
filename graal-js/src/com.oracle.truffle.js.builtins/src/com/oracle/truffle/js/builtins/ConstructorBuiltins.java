@@ -139,6 +139,7 @@ import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.control.TryCatchNode.InitErrorObjectNode;
+import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -152,6 +153,7 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -1358,7 +1360,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         protected final ScriptNode parseFunction(String paramList, String body) {
             CompilerAsserts.neverPartOfCompilation();
-            return ((NodeEvaluator) context.getEvaluator()).parseFunction(context, this, paramList, body, generatorFunction, asyncFunction);
+            String sourceName = null;
+            if (context.isOptionV8CompatibilityMode()) {
+                sourceName = EvalNode.findAndFormatEvalOrigin(null);
+            }
+            if (sourceName == null) {
+                sourceName = Evaluator.FUNCTION_SOURCE_NAME;
+            }
+            return ((NodeEvaluator) context.getEvaluator()).parseFunction(context, paramList, body, generatorFunction, asyncFunction, sourceName);
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
