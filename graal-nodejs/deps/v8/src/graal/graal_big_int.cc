@@ -49,6 +49,40 @@ GraalHandleContent* GraalBigInt::CopyImpl(jobject java_object_copy) {
     return new GraalBigInt(Isolate(), java_object_copy);
 }
 
+v8::Local<v8::BigInt> GraalBigInt::New(v8::Isolate* isolate, int64_t value) {
+    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+    JNI_CALL(jobject, java_big_int, graal_isolate, GraalAccessMethod::big_int_new, Object, (jlong) value);
+    GraalBigInt* graal_big_int = new GraalBigInt(graal_isolate, java_big_int);
+    return reinterpret_cast<v8::BigInt*> (graal_big_int);
+}
+
+v8::Local<v8::BigInt> GraalBigInt::NewFromUnsigned(v8::Isolate* isolate, uint64_t value) {
+    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+    JNI_CALL(jobject, java_big_int, graal_isolate, GraalAccessMethod::big_int_new_from_unsigned, Object, (jlong) value);
+    GraalBigInt* graal_big_int = new GraalBigInt(graal_isolate, java_big_int);
+    return reinterpret_cast<v8::BigInt*> (graal_big_int);
+}
+
 bool GraalBigInt::IsBigInt() const {
     return true;
+}
+
+uint64_t GraalBigInt::Uint64Value(bool* lossless) const {
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jlong, result, graal_isolate, GraalAccessMethod::big_int_uint64_value, Long, GetJavaObject());
+    if (lossless) {
+        graal_isolate->ResetSharedBuffer();
+        *lossless = graal_isolate->ReadInt32FromSharedBuffer() != 0;
+    }
+    return result;
+}
+
+int64_t GraalBigInt::Int64Value(bool* lossless) const {
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jlong, result, graal_isolate, GraalAccessMethod::big_int_int64_value, Long, GetJavaObject());
+    if (lossless) {
+        graal_isolate->ResetSharedBuffer();
+        *lossless = graal_isolate->ReadInt32FromSharedBuffer() != 0;
+    }
+    return result;
 }

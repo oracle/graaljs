@@ -78,6 +78,7 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
+import java.math.BigInteger;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -2814,6 +2815,32 @@ public final class GraalJSAccess {
     public void mapSet(Object set, Object key, Object value) {
         DynamicObject object = (DynamicObject) set;
         JSMap.getInternalMap(object).put(JSSet.normalize(key), value);
+    }
+
+    public long bigIntInt64Value(Object value) {
+        BigInteger bigInt = ((BigInt) value).bigIntegerValue();
+        resetSharedBuffer();
+        sharedBuffer.putInt(bigInt.bitLength() <= 63 ? 1 : 0); // lossless
+        return bigInt.longValue();
+    }
+
+    public long bigIntUint64Value(Object value) {
+        BigInteger bigInt = ((BigInt) value).bigIntegerValue();
+        resetSharedBuffer();
+        sharedBuffer.putInt((bigInt.signum() != -1 && bigInt.bitLength() <= 64) ? 1 : 0); // lossless
+        return bigInt.longValue();
+    }
+
+    public Object bigIntNew(long value) {
+        return BigInt.valueOf(value);
+    }
+
+    public Object bigIntNewFromUnsigned(long value) {
+        BigInteger bigInt = BigInteger.valueOf(value & 0x7FFFFFFFFFFFFFFFL);
+        if (value < 0) {
+            bigInt = bigInt.setBit(63);
+        }
+        return new BigInt(bigInt);
     }
 
     private static class WeakCallback extends WeakReference<Object> {

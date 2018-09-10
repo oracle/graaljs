@@ -305,6 +305,10 @@ enum GraalAccessMethod {
     value_deserializer_read_raw_bytes,
     value_deserializer_transfer_array_buffer,
     value_deserializer_get_wire_format_version,
+    big_int_int64_value,
+    big_int_uint64_value,
+    big_int_new,
+    big_int_new_from_unsigned,
     map_new,
     map_set,
 

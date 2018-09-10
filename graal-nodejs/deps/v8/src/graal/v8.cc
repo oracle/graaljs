@@ -42,6 +42,7 @@
 #include "graal_array.h"
 #include "graal_array_buffer.h"
 #include "graal_array_buffer_view.h"
+#include "graal_big_int.h"
 #include "graal_boolean.h"
 #include "graal_context.h"
 #include "graal_date.h"
@@ -2710,13 +2711,11 @@ namespace v8 {
     }
 
     Local<BigInt> BigInt::New(Isolate* isolate, int64_t value) {
-        TRACE
-        return Local<BigInt>();
+        return GraalBigInt::New(isolate, value);
     }
 
     Local<BigInt> BigInt::NewFromUnsigned(Isolate* isolate, uint64_t value) {
-        TRACE
-        return Local<BigInt>();
+        return GraalBigInt::NewFromUnsigned(isolate, value);
     }
 
     MaybeLocal<BigInt> BigInt::NewFromWords(Local<Context> context, int sign_bit, int word_count, const uint64_t* words) {
@@ -2725,13 +2724,11 @@ namespace v8 {
     }
 
     uint64_t BigInt::Uint64Value(bool* lossless) const {
-        TRACE
-        return 0;
+        return reinterpret_cast<const GraalBigInt*> (this)->Uint64Value(lossless);
     }
 
     int64_t BigInt::Int64Value(bool* lossless) const {
-        TRACE
-        return 0;
+        return reinterpret_cast<const GraalBigInt*> (this)->Int64Value(lossless);
     }
 
     int BigInt::WordCount() const {

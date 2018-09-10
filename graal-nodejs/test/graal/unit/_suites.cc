@@ -41,6 +41,7 @@
 
 #include "arguments.cc"
 #include "array.cc"
+#include "bigint.cc"
 #include "boolean.cc"
 #include "bootstrap.cc"
 #include "cast.cc"

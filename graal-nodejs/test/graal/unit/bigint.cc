@@ -39,21 +39,60 @@
  * SOFTWARE.
  */
 
-#ifndef GRAAL_BIG_INT_H_
-#define GRAAL_BIG_INT_H_
+#define SUITE BigInt
 
-#include "graal_primitive.h"
+#include <limits>
 
-class GraalBigInt : public GraalPrimitive {
-public:
-    GraalBigInt(GraalIsolate* isolate, jobject java_big_int);
-    static v8::Local<v8::BigInt> New(v8::Isolate* isolate, int64_t value);
-    static v8::Local<v8::BigInt> NewFromUnsigned(v8::Isolate* isolate, uint64_t value);
-    bool IsBigInt() const override;
-    uint64_t Uint64Value(bool* lossless) const;
-    int64_t Int64Value(bool* lossless) const;
-protected:
-    GraalHandleContent* CopyImpl(jobject java_object_copy) override;
-};
+// BigInt::New
 
-#endif /* GRAAL_BIG_INT_H_ */
+EXPORT_TO_JS(NewMinValue) {
+    Local<BigInt> bigInt = BigInt::New(args.GetIsolate(), std::numeric_limits<int64_t>::min());
+    args.GetReturnValue().Set(bigInt);
+}
+
+EXPORT_TO_JS(NewMaxValue) {
+    Local<BigInt> bigInt = BigInt::New(args.GetIsolate(), std::numeric_limits<int64_t>::max());
+    args.GetReturnValue().Set(bigInt);
+}
+
+// BigInt::NewFromUnsigned
+
+EXPORT_TO_JS(NewFromUnsignedMinValue) {
+    Local<BigInt> bigInt = BigInt::NewFromUnsigned(args.GetIsolate(), std::numeric_limits<uint64_t>::min());
+    args.GetReturnValue().Set(bigInt);
+}
+
+EXPORT_TO_JS(NewFromUnsignedMaxValue) {
+    Local<BigInt> bigInt = BigInt::NewFromUnsigned(args.GetIsolate(), std::numeric_limits<uint64_t>::max());
+    args.GetReturnValue().Set(bigInt);
+}
+
+// BigInt::Int64Value
+
+EXPORT_TO_JS(Int64Value) {
+    int64_t int64Value = args[0].As<BigInt>()->Int64Value();
+    Local<BigInt> bigInt = BigInt::New(args.GetIsolate(), int64Value);
+    args.GetReturnValue().Set(bigInt);
+}
+
+EXPORT_TO_JS(Int64ValueLossLess) {
+    bool lossless;
+    args[0].As<BigInt>()->Int64Value(&lossless);
+    args.GetReturnValue().Set(lossless);
+}
+
+// BigInt::Uint64Value
+
+EXPORT_TO_JS(Uint64Value) {
+    uint64_t uint64Value = args[0].As<BigInt>()->Uint64Value();
+    Local<BigInt> bigInt = BigInt::NewFromUnsigned(args.GetIsolate(), uint64Value);
+    args.GetReturnValue().Set(bigInt);
+}
+
+EXPORT_TO_JS(Uint64ValueLossLess) {
+    bool lossless;
+    args[0].As<BigInt>()->Uint64Value(&lossless);
+    args.GetReturnValue().Set(lossless);
+}
+
+#undef SUITE
