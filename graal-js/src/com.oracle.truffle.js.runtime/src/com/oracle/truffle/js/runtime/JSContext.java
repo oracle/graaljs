@@ -742,7 +742,7 @@ public class JSContext {
         return currentRealm;
     }
 
-    public final Shape getEmptyShape() {
+    public final Shape getEmptyShapeNullPrototype() {
         return emptyShape;
     }
 

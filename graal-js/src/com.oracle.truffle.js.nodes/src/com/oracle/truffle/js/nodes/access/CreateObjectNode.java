@@ -49,6 +49,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
@@ -129,9 +130,6 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         public final DynamicObject executeDynamicObject(VirtualFrame frame) {
             Object prototype = prototypeExpression.execute(frame);
             if (isNormalPrototype.profile(JSObject.isDynamicObject(prototype) && prototype != Undefined.instance)) {
-                if (prototype == Null.instance) {
-                    prototype = null;
-                }
                 return executeDynamicObject(frame, (DynamicObject) prototype);
             } else {
                 return JSUserObject.create(context);
@@ -160,10 +158,11 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Override
         public DynamicObject executeDynamicObject(VirtualFrame frame, DynamicObject prototype) {
+            assert prototype == Null.instance || JSRuntime.isObject(prototype);
             if (cachedPrototype == null || protoChildShape == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 cachedPrototype = prototype;
-                protoChildShape = prototype == null ? context.getEmptyShape() : JSObjectUtil.getProtoChildShape(prototype, jsclass, context);
+                protoChildShape = prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, jsclass, context);
             }
             if (cachedPrototype == prototype) {
                 return JSObject.create(context, protoChildShape);

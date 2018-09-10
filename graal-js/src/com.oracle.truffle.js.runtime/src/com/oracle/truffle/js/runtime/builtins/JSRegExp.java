@@ -237,7 +237,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     @TruffleBoundary
     public static JSObjectFactory buildGroupsFactory(JSContext ctx, TruffleObject namedCaptureGroups) {
-        Shape groupsShape = ctx.getEmptyShape();
+        Shape groupsShape = ctx.getEmptyShapeNullPrototype();
         groupsShape = groupsShape.addProperty(GROUPS_RESULT_PROPERTY);
         for (Object key : JSInteropNodeUtil.keys(namedCaptureGroups)) {
             String groupName = (String) key;

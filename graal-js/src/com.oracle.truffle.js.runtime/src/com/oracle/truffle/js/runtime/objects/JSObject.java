@@ -179,7 +179,7 @@ public final class JSObject {
         if (context.isMultiContext() && builtinObject == JSUserObject.INSTANCE) {
             return JSUserObject.createWithPrototypeInObject(prototype, context);
         }
-        return create(context, prototype == Null.instance ? context.getEmptyShape() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
+        return create(context, prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
     }
 
     @TruffleBoundary
@@ -192,7 +192,7 @@ public final class JSObject {
             protoProperty.setSafe(obj, prototype, shape);
             return obj;
         }
-        return create(context, prototype == Null.instance ? context.getEmptyShape() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
+        return create(context, prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
     }
 
     /**

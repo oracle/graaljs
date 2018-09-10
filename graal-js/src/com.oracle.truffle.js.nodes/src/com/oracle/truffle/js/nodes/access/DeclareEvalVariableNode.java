@@ -72,7 +72,7 @@ public class DeclareEvalVariableNode extends StatementNode {
         DynamicObject dynamicScope = (DynamicObject) dynamicScopeNode.execute(frame);
         if (dynamicScope == Undefined.instance) {
             // NB: dynamic scope object must not have a prototype (visible to user code)
-            Shape shape = context.getEmptyShape();
+            Shape shape = context.getEmptyShapeNullPrototype();
             dynamicScope = JSObject.create(context, shape);
             // (GR-2060) consider eager initialization of dynamic scope object when
             // the function/block owning it is entered instead of at use (here).
