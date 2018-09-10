@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.Assumption;
@@ -257,7 +258,10 @@ public class JSContext {
     final Assumption singleRealmAssumption;
     final boolean isMultiContext;
 
-    private volatile boolean isRealmInitialized;
+    private final AtomicInteger realmInit = new AtomicInteger();
+    private static final int REALM_UNINITIALIZED = 0;
+    private static final int REALM_INITIALIZING = 1;
+    private static final int REALM_INITIALIZED = 2;
 
     /**
      * According to ECMA2017 8.4 the queue of pending jobs (promises reactions) must be processed
@@ -267,11 +271,6 @@ public class JSContext {
      * This flag is used to implement this semantics.
      */
     private int interopCallStackDepth = 0;
-
-    /**
-     * Temporary field until transition is complete.
-     */
-    @CompilationFinal private JSRealm lastRealm;
 
     private final ContextReference<JSRealm> contextRef;
     @CompilationFinal private AllocationReporter allocationReporter;
@@ -380,7 +379,7 @@ public class JSContext {
         }
 
         this.language = lang;
-        this.contextRef = lang == null ? null : lang.getContextReference();
+        this.contextRef = lang.getContextReference();
 
         this.emptyShape = createEmptyShape();
         this.emptyShapePrototypeInObject = createEmptyShapePrototypeInObject();
@@ -573,9 +572,10 @@ public class JSContext {
 
     public JSRealm createRealm(TruffleLanguage.Env env) {
         boolean isTop = env == null || env.getContext().getParent() == null;
-        if (isRealmInitialized) {
+        if (realmInit.get() != REALM_UNINITIALIZED || !realmInit.compareAndSet(REALM_UNINITIALIZED, REALM_INITIALIZING)) {
             singleRealmAssumption.invalidate("single realm assumption");
         }
+
         JSRealm newRealm = new JSRealm(this, env);
         newRealm.setupGlobals();
         if (realmList != null) {
@@ -584,7 +584,8 @@ public class JSContext {
         if (isTop) {
             newRealm.initRealmBuiltinObject();
         }
-        setRealmInitialized(true);
+
+        realmInit.set(REALM_INITIALIZED);
         return newRealm;
     }
 
@@ -736,16 +737,7 @@ public class JSContext {
      * Get the current Realm using {@link ContextReference}.
      */
     public JSRealm getRealm() {
-        if (CompilerDirectives.inInterpreter() && !isRealmInitialized) {
-            throw Errors.shouldNotReachHere("getRealm() while initializing Realm");
-        }
-        if (contextRef == null) {
-            return lastRealm;
-        }
-        if (isSingleRealm()) {
-            assert lastRealm == contextRef.get();
-            return lastRealm;
-        }
+        assert realmInit.get() == REALM_INITIALIZED : "getRealm() while initializing Realm";
         JSRealm currentRealm = contextRef.get();
         assert currentRealm != null;
         return currentRealm;
@@ -918,10 +910,6 @@ public class JSContext {
 
     public JSObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
         return getRealm().getSIMDTypeFactory(factory);
-    }
-
-    void setRealm(JSRealm realm) {
-        this.lastRealm = realm;
     }
 
     private static String createRegexEngineOptions() {
@@ -1449,10 +1437,6 @@ public class JSContext {
 
     public final void assumeSingleRealm() throws InvalidAssumptionException {
         singleRealmAssumption.check();
-    }
-
-    void setRealmInitialized(boolean initialized) {
-        this.isRealmInitialized = initialized;
     }
 
     public JSContextOptions getContextOptions() {

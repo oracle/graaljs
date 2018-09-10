@@ -270,14 +270,6 @@ public class JSRealm {
         this.context = context;
         this.truffleLanguageEnv = env; // can be null
 
-        /*
-         * TODO Drop reference from context to realm (GR-1992).
-         *
-         * FIXME Temporarily set not initialized, so initialization code can get the right Realm.
-         */
-        context.setRealm(this);
-        context.setRealmInitialized(false);
-
         if (env != null && isChildRealm()) {
             context.noChildRealmsAssumption.invalidate("no child realms");
         }
