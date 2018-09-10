@@ -69,7 +69,6 @@ import com.oracle.truffle.js.nodes.function.JSNewNodeGen.CachedPrototypeShapeNod
 import com.oracle.truffle.js.nodes.function.JSNewNodeGen.SpecializedNewObjectNodeGen;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
@@ -119,8 +118,6 @@ public abstract class JSNewNode extends JavaScriptNode {
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == ObjectAllocationExpressionTag.class) {
-            return true;
-        } else if (tag == FunctionCallExpressionTag.class) {
             return true;
         }
         return super.hasTag(tag);
