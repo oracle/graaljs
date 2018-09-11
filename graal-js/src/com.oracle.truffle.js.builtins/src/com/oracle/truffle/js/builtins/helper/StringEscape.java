@@ -52,29 +52,21 @@ import com.oracle.truffle.js.runtime.JSRuntime;
  */
 public class StringEscape {
 
-    private static BitSet dontEncodeSet;
+    private static final BitSet dontEscapeSet;
 
-    private static synchronized void init() {
-        if (dontEncodeSet == null) {
-            dontEncodeSet = new BitSet(256);
-            int i;
-            for (i = 'a'; i <= 'z'; i++) {
-                dontEncodeSet.set(i);
-            }
-            for (i = 'A'; i <= 'Z'; i++) {
-                dontEncodeSet.set(i);
-            }
-            for (i = '0'; i <= '9'; i++) {
-                dontEncodeSet.set(i);
-            }
-            dontEncodeSet.set('@');
-            dontEncodeSet.set('*');
-            dontEncodeSet.set('_');
-            dontEncodeSet.set('+');
-            dontEncodeSet.set('-');
-            dontEncodeSet.set('.');
-            dontEncodeSet.set('/');
-        }
+    static {
+        BitSet unescaped = new BitSet(128);
+        unescaped.set('a', 'z' + 1);
+        unescaped.set('A', 'Z' + 1);
+        unescaped.set('0', '9' + 1);
+        unescaped.set('@');
+        unescaped.set('*');
+        unescaped.set('_');
+        unescaped.set('+');
+        unescaped.set('-');
+        unescaped.set('.');
+        unescaped.set('/');
+        dontEscapeSet = unescaped;
     }
 
     @TruffleBoundary
@@ -82,10 +74,9 @@ public class StringEscape {
         boolean didEscape = false;
         StringBuffer out = new StringBuffer(s.length());
 
-        init();
         for (int i = 0; i < s.length(); i++) {
             int c = s.charAt(i);
-            if (dontEncodeSet.get(c)) {
+            if (dontEscapeSet.get(c)) {
                 out.append((char) c);
             } else {
                 didEscape = true;
