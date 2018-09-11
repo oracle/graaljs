@@ -82,7 +82,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSIntl;
-import com.oracle.truffle.js.runtime.builtins.JSJava;
 import com.oracle.truffle.js.runtime.builtins.JSJavaWorkerBuiltin;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSMath;
@@ -131,6 +130,9 @@ public class JSRealm {
     public static final String ATOMICS_CLASS_NAME = "Atomics";
     public static final String REALM_BUILTIN_CLASS_NAME = "Realm";
     public static final String ARGUMENTS_NAME = "arguments";
+    public static final String JAVA_CLASS_NAME = "Java";
+    public static final String JAVA_CLASS_NAME_NASHORN_COMPAT = "JavaNashornCompat";
+    private static final String JAVA_WORKER_PROPERTY_NAME = "Worker";
 
     private static final String ALT_GRAALVM_VERSION_PROPERTY = "graalvm.version";
     private static final String GRAALVM_VERSION_PROPERTY = "org.graalvm.version";
@@ -903,12 +905,14 @@ public class JSRealm {
         if (!isJavaInteropAvailable()) {
             return;
         }
-        DynamicObject java = JSJava.create(this);
-        JSObjectUtil.putFunctionsFromContainer(this, java, JSJava.CLASS_NAME);
-        putGlobalProperty(global, JSJava.CLASS_NAME, java);
-        if (context.isOptionNashornCompatibilityMode() && !JSTruffleOptions.NashornJavaInterop) {
-            JSObjectUtil.putFunctionsFromContainer(this, java, JSJava.CLASS_NAME_NASHORN_COMPAT);
+        DynamicObject java = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        JSObjectUtil.putDataProperty(context, java, Symbol.SYMBOL_TO_STRING_TAG, JAVA_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putFunctionsFromContainer(this, java, JAVA_CLASS_NAME);
+        if (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop) {
+            JSObjectUtil.putFunctionsFromContainer(this, java, JAVA_CLASS_NAME_NASHORN_COMPAT);
         }
+        JSObjectUtil.putDataProperty(context, java, JAVA_WORKER_PROPERTY_NAME, getJavaInteropWorkerConstructor().getFunctionObject(), JSAttributes.getDefaultNotEnumerable());
+        putGlobalProperty(global, JAVA_CLASS_NAME, java);
 
         if (getEnv() != null && getEnv().isHostLookupAllowed()) {
             if (JSContextOptions.JAVA_PACKAGE_GLOBALS.getValue(getEnv().getOptions())) {
