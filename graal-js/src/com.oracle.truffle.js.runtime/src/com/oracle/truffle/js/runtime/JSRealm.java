@@ -222,7 +222,7 @@ public class JSRealm {
 
     private final JSConstructor javaInteropWorkerConstructor;
 
-    @CompilationFinal private DynamicObject arrayProtoValuesIterator;
+    private final DynamicObject arrayProtoValuesIterator;
     @CompilationFinal private DynamicObject typedArrayConstructor;
     @CompilationFinal private DynamicObject typedArrayPrototype;
 
@@ -235,12 +235,6 @@ public class JSRealm {
     private final DynamicObject globalScope;
 
     private TruffleLanguage.Env truffleLanguageEnv;
-
-    /**
-     * Built-in runtime support for ECMA2017's async.
-     */
-    @CompilationFinal private Object performPromiseThen;
-    @CompilationFinal private Object asyncFunctionPromiseCapabilityConstructor;
 
     /**
      * True while calling Error.prepareStackTrace via the stack property of an error object.
@@ -371,6 +365,7 @@ public class JSRealm {
         this.generatorFunctionConstructor = es6 ? JSFunction.createGeneratorFunctionConstructor(this) : null;
         this.generatorObjectPrototype = es6 ? (DynamicObject) generatorFunctionConstructor.getPrototype().get(JSObject.PROTOTYPE, null) : null;
         this.enumerateIteratorPrototype = JSFunction.createEnumerateIteratorPrototype(this);
+        this.arrayProtoValuesIterator = (DynamicObject) getArrayConstructor().getPrototype().get(Symbol.SYMBOL_ITERATOR, Undefined.instance);
 
         if (context.isOptionSharedArrayBuffer()) {
             this.sharedArrayBufferConstructor = JSSharedArrayBuffer.createConstructor(this);
@@ -379,10 +374,6 @@ public class JSRealm {
         }
 
         this.mathObject = JSMath.create(this);
-
-        if (JSTruffleOptions.Stage3 && !context.isOptionV8CompatibilityMode()) {
-            JSObjectUtil.putDataProperty(context, this.globalObject, "global", this.globalObject, JSAttributes.getDefaultNotEnumerable());
-        }
 
         this.dictionaryShapeObjectPrototype = JSTruffleOptions.DictionaryObject ? JSDictionaryObject.makeDictionaryShape(context, objectPrototype) : null;
 
@@ -816,6 +807,9 @@ public class JSRealm {
         if (context.isOptionAtomics()) {
             putGlobalProperty(global, ATOMICS_CLASS_NAME, createAtomics());
         }
+        if (JSTruffleOptions.Stage3 && !context.isOptionV8CompatibilityMode()) {
+            putGlobalProperty(global, "global", global);
+        }
         if (JSTruffleOptions.GraalBuiltin) {
             putGraalObject(global);
         }
@@ -826,8 +820,6 @@ public class JSRealm {
         if (JSTruffleOptions.ProfileTime) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
         }
-
-        arrayProtoValuesIterator = (DynamicObject) getArrayConstructor().getPrototype().get(Symbol.SYMBOL_ITERATOR, Undefined.instance);
     }
 
     private void initGlobalNashornExtensions(DynamicObject global) {
@@ -1015,7 +1007,6 @@ public class JSRealm {
     }
 
     public DynamicObject getArrayProtoValuesIterator() {
-        assert arrayProtoValuesIterator != null;
         return arrayProtoValuesIterator;
     }
 
