@@ -88,4 +88,23 @@ describe('BigInt', function () {
             assert.strictEqual(module.BigInt_Uint64ValueLossLess(maxUint64+1n), false);
         });
     });
+    describe('WordCount', function () {
+        it('should return correct value for zero', function () {
+            assert.strictEqual(module.BigInt_WordCount(0n), 0);
+        });
+        it('should return correct value for positive numbers', function () {
+            var value = 1n;
+            for (var i = 1; i <= 1000; i++) {
+                assert.strictEqual(module.BigInt_WordCount(value), Math.ceil(i/64));
+                value <<= 1n;
+            }
+        });
+        it('should return correct value for negative numbers', function () {
+            var value = -1n;
+            for (var i = 1; i <= 1000; i++) {
+                assert.strictEqual(module.BigInt_WordCount(value), Math.ceil(i/64));
+                value <<= 1n;
+            }
+        });
+    });
 });

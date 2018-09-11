@@ -95,4 +95,10 @@ EXPORT_TO_JS(Uint64ValueLossLess) {
     args.GetReturnValue().Set(lossless);
 }
 
+// BigInt::WordCount
+
+EXPORT_TO_JS(WordCount) {
+    args.GetReturnValue().Set(args[0].As<BigInt>()->WordCount());
+}
+
 #undef SUITE

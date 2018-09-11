@@ -2719,8 +2719,7 @@ namespace v8 {
     }
 
     MaybeLocal<BigInt> BigInt::NewFromWords(Local<Context> context, int sign_bit, int word_count, const uint64_t* words) {
-        TRACE
-        return MaybeLocal<BigInt>();
+        return GraalBigInt::NewFromWords(context, sign_bit, word_count, words);
     }
 
     uint64_t BigInt::Uint64Value(bool* lossless) const {
@@ -2732,12 +2731,11 @@ namespace v8 {
     }
 
     int BigInt::WordCount() const {
-        TRACE
-        return 0;
+        return reinterpret_cast<const GraalBigInt*> (this)->WordCount();
     }
 
     void BigInt::ToWordsArray(int* sign_bit, int* word_count, uint64_t* words) const {
-        TRACE
+        return reinterpret_cast<const GraalBigInt*> (this)->ToWordsArray(sign_bit, word_count, words);
     }
 
     bool Value::IsBigInt() const {

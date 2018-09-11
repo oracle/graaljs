@@ -63,6 +63,20 @@ v8::Local<v8::BigInt> GraalBigInt::NewFromUnsigned(v8::Isolate* isolate, uint64_
     return reinterpret_cast<v8::BigInt*> (graal_big_int);
 }
 
+v8::MaybeLocal<v8::BigInt> GraalBigInt::NewFromWords(v8::Local<v8::Context> context, int sign_bit, int word_count, const uint64_t* words) {
+    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (context->GetIsolate());
+    graal_isolate->ResetSharedBuffer();
+    graal_isolate->WriteInt32ToSharedBuffer(sign_bit);
+    graal_isolate->WriteInt32ToSharedBuffer(word_count);
+    for (int i = 0; i < word_count; i++) {
+        graal_isolate->WriteInt64ToSharedBuffer(static_cast<int64_t> (words[i]));
+    }
+    JNI_CALL(jobject, java_big_int, graal_isolate, GraalAccessMethod::big_int_new_from_words, Object);
+    GraalBigInt* graal_big_int = new GraalBigInt(graal_isolate, java_big_int);
+    v8::Local<v8::BigInt> v8_big_int = reinterpret_cast<v8::BigInt*> (graal_big_int);
+    return v8_big_int;
+}
+
 bool GraalBigInt::IsBigInt() const {
     return true;
 }
@@ -85,4 +99,21 @@ int64_t GraalBigInt::Int64Value(bool* lossless) const {
         *lossless = graal_isolate->ReadInt32FromSharedBuffer() != 0;
     }
     return result;
+}
+
+int GraalBigInt::WordCount() const {
+    JNI_CALL(jint, result, Isolate(), GraalAccessMethod::big_int_word_count, Int, GetJavaObject());
+    return result;
+}
+
+void GraalBigInt::ToWordsArray(int* sign_bit, int* word_count, uint64_t* words) const {
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL_VOID(graal_isolate, GraalAccessMethod::big_int_to_words_array, GetJavaObject());
+    graal_isolate->ResetSharedBuffer();
+    int count = graal_isolate->ReadInt32FromSharedBuffer();
+    *word_count = count;
+    *sign_bit = graal_isolate->ReadInt32FromSharedBuffer();
+    for (int i = 0; i < count; i++) {
+        words[i] = static_cast<uint64_t> (graal_isolate->ReadInt64FromSharedBuffer());
+    }
 }

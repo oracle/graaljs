@@ -49,9 +49,12 @@ public:
     GraalBigInt(GraalIsolate* isolate, jobject java_big_int);
     static v8::Local<v8::BigInt> New(v8::Isolate* isolate, int64_t value);
     static v8::Local<v8::BigInt> NewFromUnsigned(v8::Isolate* isolate, uint64_t value);
+    static v8::MaybeLocal<v8::BigInt> NewFromWords(v8::Local<v8::Context> context, int sign_bit, int word_count, const uint64_t* words);
     bool IsBigInt() const override;
     uint64_t Uint64Value(bool* lossless) const;
     int64_t Int64Value(bool* lossless) const;
+    int WordCount() const;
+    void ToWordsArray(int* sign_bit, int* word_count, uint64_t* words) const;
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };

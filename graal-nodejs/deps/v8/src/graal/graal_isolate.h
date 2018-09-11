@@ -309,6 +309,9 @@ enum GraalAccessMethod {
     big_int_uint64_value,
     big_int_new,
     big_int_new_from_unsigned,
+    big_int_new_from_words,
+    big_int_word_count,
+    big_int_to_words_array,
     map_new,
     map_set,
 

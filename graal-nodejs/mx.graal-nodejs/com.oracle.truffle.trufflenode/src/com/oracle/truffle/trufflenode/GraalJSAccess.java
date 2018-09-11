@@ -2843,6 +2843,51 @@ public final class GraalJSAccess {
         return new BigInt(bigInt);
     }
 
+    public Object bigIntNewFromWords() { // all arguments are in sharedBuffer
+        resetSharedBuffer();
+        int sign = sharedBuffer.getInt();
+        int count = sharedBuffer.getInt();
+        BigInteger result = BigInteger.ZERO;
+        for (int wordIdx = 0; wordIdx < count; wordIdx++) {
+            long word = sharedBuffer.getLong();
+            for (int bit = 0; bit < 63; bit++) {
+                if ((word & (1L << bit)) != 0) {
+                    result = result.setBit(bit + 64 * wordIdx);
+                }
+            }
+        }
+        if (sign != 0) {
+            result = result.negate();
+        }
+        return new BigInt(result);
+    }
+
+    public int bigIntWordCount(Object value) {
+        BigInteger bigInt = ((BigInt) value).bigIntegerValue();
+        return (bigInt.bitLength() + ((bigInt.signum() == -1) ? 1 : 0) + 63) / 64;
+    }
+
+    public void bigIntToWordsArray(Object value) {
+        BigInteger bigInt = ((BigInt) value).bigIntegerValue();
+        resetSharedBuffer();
+        int count = bigIntWordCount(value);
+        sharedBuffer.putInt(count);
+        sharedBuffer.putInt(bigInt.signum() == -1 ? 1 : 0);
+        if (bigInt.signum() == -1) {
+            bigInt = bigInt.negate();
+        }
+        for (int wordIdx = 0; wordIdx < count; wordIdx++) {
+            long word = 0;
+            for (int bit = 63; bit >= 0; bit--) {
+                word <<= 1;
+                if (bigInt.testBit(bit + 64 * wordIdx)) {
+                    word++;
+                }
+            }
+            sharedBuffer.putLong(word);
+        }
+    }
+
     private static class WeakCallback extends WeakReference<Object> {
 
         long data;
