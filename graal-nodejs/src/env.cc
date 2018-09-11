@@ -103,10 +103,10 @@ void InitThreadLocalOnce() {
 
 Environment::Environment(IsolateData* isolate_data,
                          Local<Context> context,
-                         tracing::Agent* tracing_agent)
+                         tracing::AgentWriterHandle* tracing_agent_writer)
     : isolate_(context->GetIsolate()),
       isolate_data_(isolate_data),
-      tracing_agent_(tracing_agent),
+      tracing_agent_writer_(tracing_agent_writer),
       immediate_info_(context->GetIsolate()),
       tick_info_(context->GetIsolate()),
       timer_base_(uv_now(isolate_data->event_loop())),
@@ -536,7 +536,7 @@ Local<Value> Environment::GetNow() {
   CHECK_GE(now, timer_base());
   now -= timer_base();
   if (now <= 0xffffffff)
-    return Integer::New(isolate(), static_cast<uint32_t>(now));
+    return Integer::NewFromUnsigned(isolate(), static_cast<uint32_t>(now));
   else
     return Number::New(isolate(), static_cast<double>(now));
 }

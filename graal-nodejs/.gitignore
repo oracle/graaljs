@@ -4,6 +4,7 @@
 !test/fixtures/**/.*
 !tools/node_modules/**/.*
 !tools/doc/node_modules/**/.*
+!.clang-format
 !.editorconfig
 !.eslintignore
 !.eslintrc.js
@@ -110,8 +111,10 @@ deps/npm/node_modules/.bin/
 /*.pkg
 /SHASUMS*.txt*
 
+# api docs artifacts
+tools/doc/node_modules
+
 # test artifacts
-tools/faketime
 tools/remark-cli/node_modules
 tools/remark-preset-lint-node/node_modules
 icu_config.gypi

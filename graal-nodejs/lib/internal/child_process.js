@@ -14,6 +14,7 @@ const {
     ERR_MISSING_ARGS
   }
 } = require('internal/errors');
+const { validateString } = require('internal/validators');
 const EventEmitter = require('events');
 const net = require('net');
 const dgram = require('dgram');
@@ -332,9 +333,7 @@ ChildProcess.prototype.spawn = function(options) {
     this._handle.onexit = oldHandle.onexit;
   }
 
-  if (typeof options.file !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE('options.file', 'string', options.file);
-  }
+  validateString(options.file, 'options.file');
   this.spawnfile = options.file;
 
   if (Array.isArray(options.args))

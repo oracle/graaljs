@@ -30,10 +30,6 @@ test-timers-blocking-callback : SKIP
 ### Graal-specific end ###
 
 [$system==win32]
-test-inspector-async-call-stack          : PASS, FLAKY
-test-inspector-async-hook-setup-at-signal:  PASS, FLAKY
-test-inspector-bindings                  : PASS, FLAKY
-test-inspector-debug-end                 : PASS, FLAKY
 
 [$system==linux]
 

@@ -29,11 +29,13 @@ const visit = require('unist-util-visit');
 const markdown = require('remark-parse');
 const remark2rehype = require('remark-rehype');
 const raw = require('rehype-raw');
-const html = require('rehype-stringify');
+const htmlStringify = require('rehype-stringify');
 const path = require('path');
 const typeParser = require('./type-parser.js');
 
-module.exports = toHTML;
+module.exports = {
+  toHTML, firstHeader, preprocessText, preprocessElements, buildToc
+};
 
 const docPath = path.resolve(__dirname, '..', '..', 'doc');
 
@@ -54,25 +56,14 @@ const gtocHTML = unified()
   .use(remark2rehype, { allowDangerousHTML: true })
   .use(raw)
   .use(navClasses)
-  .use(html)
+  .use(htmlStringify)
   .processSync(gtocMD).toString();
 
 const templatePath = path.join(docPath, 'template.html');
 const template = fs.readFileSync(templatePath, 'utf8');
 
-function toHTML({ input, filename, nodeVersion, analytics }, cb) {
+function toHTML({ input, content, filename, nodeVersion, analytics }, cb) {
   filename = path.basename(filename, '.md');
-
-  const content = unified()
-    .use(markdown)
-    .use(firstHeader)
-    .use(preprocessText)
-    .use(preprocessElements, { filename })
-    .use(buildToc, { filename })
-    .use(remark2rehype, { allowDangerousHTML: true })
-    .use(raw)
-    .use(html)
-    .processSync(input);
 
   const id = filename.replace(/\W+/g, '-');
 
@@ -207,7 +198,10 @@ function preprocessElements({ filename }) {
           heading.children = [{
             type: 'text',
             value: file.contents.slice(
-              position.start.offset, position.end.offset),
+              position.start.offset, position.end.offset)
+              .replace('&lt;', '<')
+              .replace('&gt;', '>')
+              .replace(/\\(.{1})/g, '$1'),
             position
           }];
         }
@@ -235,8 +229,8 @@ function preprocessElements({ filename }) {
           }
 
           // Do not link to the section we are already in.
-          const noLinking = filename === 'documentation' &&
-            heading !== null && heading.value === 'Stability Index';
+          const noLinking = filename.includes('documentation') &&
+            heading !== null && heading.children[0].value === 'Stability Index';
 
           // collapse blockquote and paragraph into a single node
           node.type = 'paragraph';
@@ -296,7 +290,7 @@ function parseYAML(text) {
         .use(markdown)
         .use(remark2rehype, { allowDangerousHTML: true })
         .use(raw)
-        .use(html)
+        .use(htmlStringify)
         .processSync(change.description).toString();
 
       result += `<tr><td>${change.version}</td>\n` +
@@ -381,7 +375,7 @@ function buildToc({ filename }) {
       .use(markdown)
       .use(remark2rehype, { allowDangerousHTML: true })
       .use(raw)
-      .use(html)
+      .use(htmlStringify)
       .processSync(toc).toString();
   };
 }

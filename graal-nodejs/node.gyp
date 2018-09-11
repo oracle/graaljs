@@ -151,6 +151,7 @@
       'lib/internal/readline.js',
       'lib/internal/repl.js',
       'lib/internal/repl/await.js',
+      'lib/internal/repl/recoverable.js',
       'lib/internal/socket_list.js',
       'lib/internal/test/binding.js',
       'lib/internal/test/heap.js',
@@ -1106,7 +1107,7 @@
     }], # end aix section
     [ 'v8_enable_inspector==1', {
       'variables': {
-        'protocol_path': 'deps/v8/third_party/inspector_protocol',
+        'protocol_path': 'tools/inspector_protocol',
         'node_inspector_path': 'src/inspector',
         'node_inspector_generated_sources': [
           '<(SHARED_INTERMEDIATE_DIR)/src/node/inspector/protocol/Forward.h',
@@ -1166,7 +1167,7 @@
               ],
               'action': [
                 'python',
-                'deps/v8/third_party/inspector_protocol/ConvertProtocolToJSON.py',
+                'tools/inspector_protocol/ConvertProtocolToJSON.py',
                 '<@(_inputs)',
                 '<@(_outputs)',
               ],
@@ -1221,7 +1222,7 @@
               ],
               'action': [
                 'python',
-                'deps/v8/third_party/inspector_protocol/ConvertProtocolToJSON.py',
+                'tools/inspector_protocol/ConvertProtocolToJSON.py',
                 '<@(_inputs)',
                 '<@(_outputs)',
               ],
@@ -1237,7 +1238,7 @@
               ],
               'action': [
                 'python',
-                'deps/v8/third_party/inspector_protocol/ConcatenateProtocols.py',
+                'tools/inspector_protocol/ConcatenateProtocols.py',
                 '<@(_inputs)',
                 '<@(_outputs)',
               ],

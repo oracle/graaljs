@@ -956,6 +956,12 @@ required to send an acknowledgment that it has received and applied the new
 be sent at any given time. This error code is used when that limit has been
 reached.
 
+<a id="ERR_HTTP2_NESTED_PUSH"></a>
+### ERR_HTTP2_NESTED_PUSH
+
+An attempt was made to initiate a new push stream from within a push stream.
+Nested push streams are not permitted.
+
 <a id="ERR_HTTP2_NO_SOCKET_MANIPULATION"></a>
 ### ERR_HTTP2_NO_SOCKET_MANIPULATION
 
@@ -1569,12 +1575,6 @@ or a pipeline ends non gracefully with no explicit error.
 An attempt was made to call [`stream.push()`][] after a `null`(EOF) had been
 pushed to the stream.
 
-<a id="ERR_STREAM_READ_NOT_IMPLEMENTED"></a>
-### ERR_STREAM_READ_NOT_IMPLEMENTED
-
-An attempt was made to use a readable stream that did not implement
-[`readable._read()`][].
-
 <a id="ERR_STREAM_UNSHIFT_AFTER_END_EVENT"></a>
 ### ERR_STREAM_UNSHIFT_AFTER_END_EVENT
 
@@ -1777,11 +1777,6 @@ The V8 `BreakIterator` API was used but the full ICU data set is not installed.
 While using the Performance Timing API (`perf_hooks`), no valid performance
 entry types were found.
 
-<a id="ERR_VALUE_OUT_OF_RANGE"></a>
-### ERR_VALUE_OUT_OF_RANGE
-
-Superseded by `ERR_OUT_OF_RANGE`.
-
 <a id="ERR_VM_MODULE_ALREADY_LINKED"></a>
 ### ERR_VM_MODULE_ALREADY_LINKED
 
@@ -1874,7 +1869,6 @@ A module file could not be resolved while attempting a [`require()`][] or
 [`new URLSearchParams(iterable)`]: url.html#url_constructor_new_urlsearchparams_iterable
 [`process.send()`]: process.html#process_process_send_message_sendhandle_options_callback
 [`process.setUncaughtExceptionCaptureCallback()`]: process.html#process_process_setuncaughtexceptioncapturecallback_fn
-[`readable._read()`]: stream.html#stream_readable_read_size_1
 [`require()`]: modules.html#modules_require
 [`require('crypto').setEngine()`]: crypto.html#crypto_crypto_setengine_engine_flags
 [`server.listen()`]: net.html#net_server_listen
