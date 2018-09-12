@@ -499,10 +499,11 @@ public class JSContext {
         this.asyncGeneratorObjectFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
         this.asyncFromSyncIteratorFactory = builder.create(JSRealm::getAsyncFromSyncIteratorPrototype, ordinaryObjectShapeSupplier);
 
-        this.collatorFactory = builder.create(JSCollator.INSTANCE);
-        this.numberFormatFactory = builder.create(JSNumberFormat.INSTANCE);
-        this.dateTimeFormatFactory = builder.create(JSDateTimeFormat.INSTANCE);
-        this.pluralRulesFactory = builder.create(JSPluralRules.INSTANCE);
+        boolean intl402 = isOptionIntl402();
+        this.collatorFactory = intl402 ? builder.create(JSCollator.INSTANCE) : null;
+        this.numberFormatFactory = intl402 ? builder.create(JSNumberFormat.INSTANCE) : null;
+        this.dateTimeFormatFactory = intl402 ? builder.create(JSDateTimeFormat.INSTANCE) : null;
+        this.pluralRulesFactory = intl402 ? builder.create(JSPluralRules.INSTANCE) : null;
 
         boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
         boolean nashornJavaInterop = JSRealm.isJavaInteropAvailable() && (isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop);
