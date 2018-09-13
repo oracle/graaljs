@@ -98,7 +98,7 @@ public abstract class Environment {
     }
 
     public VarRef findThisVar() {
-        return findInternalSlot(FunctionEnvironment.THIS_SLOT_IDENTIFIER);
+        return findInternalSlot(FunctionEnvironment.THIS_SLOT_IDENTIFIER, true);
     }
 
     public VarRef findSuperVar() {
@@ -148,19 +148,27 @@ public abstract class Environment {
     }
 
     protected final VarRef findInternalSlot(String name) {
+        return findInternalSlot(name, false);
+    }
+
+    protected final VarRef findInternalSlot(String name, boolean allowDebug) {
         Environment current = this;
         int frameLevel = 0;
         int scopeLevel = 0;
         do {
             FrameSlot slot = current.findBlockFrameSlot(name);
             if (slot != null) {
-                return new FrameSlotVarRef(slot, scopeLevel, frameLevel, name, current);
+                return newFrameSlotVarRef(slot, scopeLevel, frameLevel, name, current);
             }
             if (current instanceof FunctionEnvironment) {
                 frameLevel++;
                 scopeLevel = 0;
             } else if (current instanceof BlockEnvironment) {
                 scopeLevel++;
+            } else if (current instanceof DebugEnvironment) {
+                if (!allowDebug) {
+                    break;
+                }
             }
             current = current.getParent();
         } while (current != null);
@@ -221,9 +229,7 @@ public abstract class Environment {
                 FrameSlot slot = current.findBlockFrameSlot(name);
                 if (slot != null) {
                     if (!skipBlockScoped || !(JSFrameUtil.isConst(slot) || JSFrameUtil.isLet(slot))) {
-                        return wrapIn(wrapClosure, wrapFrameLevel, current instanceof DebugEnvironment
-                                        ? new LazyFrameSlotVarRef(slot, scopeLevel, frameLevel, name, current)
-                                        : new FrameSlotVarRef(slot, scopeLevel, frameLevel, name, current));
+                        return wrapIn(wrapClosure, wrapFrameLevel, newFrameSlotVarRef(slot, scopeLevel, frameLevel, name, current));
                     }
                 }
                 if (current instanceof FunctionEnvironment) {
@@ -365,6 +371,14 @@ public abstract class Environment {
 
     public FrameDescriptor getBlockFrameDescriptor() {
         return getFunctionFrameDescriptor();
+    }
+
+    private VarRef newFrameSlotVarRef(FrameSlot slot, int scopeLevel, int frameLevel, String name, Environment current) {
+        if (current instanceof DebugEnvironment) {
+            return new LazyFrameSlotVarRef(slot, scopeLevel, frameLevel, name, current);
+        } else {
+            return new FrameSlotVarRef(slot, scopeLevel, frameLevel, name, current);
+        }
     }
 
     private JavaScriptNode findLocalVarNodeForArguments(Environment current, int frameLevel, int scopeLevel) {
