@@ -83,8 +83,10 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -2418,6 +2420,26 @@ public final class GraalJSAccess {
                 NativeAccess.polyglotEngineEntered(callback, isolate, param1, param2, argc, argv, execArgc, execArgv);
             }
         }));
+    }
+
+    private static final ThreadLocal<Deque<Pair<Long, Object>>> isolateStack = new ThreadLocal<>();
+
+    public void isolateEnter(long isolate) {
+        Deque<Pair<Long, Object>> list = isolateStack.get();
+        if (list == null) {
+            list = new LinkedList<>();
+            isolateStack.set(list);
+        }
+        Object previous = mainJSContext.getRealm().getTruffleContext().enter();
+        list.push(new Pair<>(isolate, previous));
+    }
+
+    public long isolateExit(long isolate) {
+        Deque<Pair<Long, Object>> list = isolateStack.get();
+        Pair<Long, Object> pair = list.pop();
+        assert pair.getFirst() == isolate;
+        mainJSContext.getRealm().getTruffleContext().leave(pair.getSecond());
+        return list.isEmpty() ? 0 : list.peekLast().getFirst();
     }
 
     public Object correctReturnValue(Object value) {

@@ -372,11 +372,11 @@ namespace v8 {
     }
 
     void Isolate::Enter() {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->Enter();
     }
 
     void Isolate::Exit() {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->Exit();
     }
 
     CpuProfiler* Isolate::GetCpuProfiler() {

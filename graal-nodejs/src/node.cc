@@ -1235,8 +1235,11 @@ static void Exit(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   WaitForInspectorDisconnect(env);
   v8_platform.StopTracingAgent();
-//  env->Exit(args[0]->Int32Value());
-  args.GetIsolate()->Dispose(true, args[0]->Int32Value());
+  if (env->is_main_thread()) {
+      args.GetIsolate()->Dispose(true, args[0]->Int32Value());
+  } else {
+      env->Exit(args[0]->Int32Value());
+  }
 }
 
 extern "C" void node_module_register(void* m) {

@@ -197,22 +197,27 @@ jobject GraalFunction::CallResult(jobject java_object) {
         if (!graal_isolate->TryCatchExists()) {
             jthrowable java_exception = env->ExceptionOccurred();
             env->ExceptionClear();
-            jobject java_context = graal_isolate->CurrentJavaContext();
-            JNI_CALL(jobject, exception_object, graal_isolate, GraalAccessMethod::try_catch_exception, Object, java_context, java_exception);
-            GraalValue* graal_exception = GraalValue::FromJavaObject(graal_isolate, exception_object);
-            v8::Value* exception = reinterpret_cast<v8::Value*> (graal_exception);
-            v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
-            graal_isolate->SendMessage(v8::Exception::CreateMessage(v8_isolate, exception), exception, java_exception);
-            if (graal_isolate->error_to_ignore_ != nullptr) {
-                env->DeleteGlobalRef(graal_isolate->error_to_ignore_);
-                graal_isolate->error_to_ignore_ = nullptr;
-            }
-            if (graal_isolate->calls_on_stack_ != 0) {
-                // If the process was not terminated then we have to ensure that
-                // the rest of the script is not executed => we re-throw
-                // the exception but remember that we should not report it again.
-                graal_isolate->error_to_ignore_ = env->NewGlobalRef(java_exception);
+            JNI_CALL(jboolean, termination_exception, graal_isolate, GraalAccessMethod::try_catch_has_terminated, Boolean, java_exception);
+            if (termination_exception) {
                 env->Throw(java_exception);
+            } else {
+                jobject java_context = graal_isolate->CurrentJavaContext();
+                JNI_CALL(jobject, exception_object, graal_isolate, GraalAccessMethod::try_catch_exception, Object, java_context, java_exception);
+                GraalValue* graal_exception = GraalValue::FromJavaObject(graal_isolate, exception_object);
+                v8::Value* exception = reinterpret_cast<v8::Value*> (graal_exception);
+                v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+                graal_isolate->SendMessage(v8::Exception::CreateMessage(v8_isolate, exception), exception, java_exception);
+                if (graal_isolate->error_to_ignore_ != nullptr) {
+                    env->DeleteGlobalRef(graal_isolate->error_to_ignore_);
+                    graal_isolate->error_to_ignore_ = nullptr;
+                }
+                if (graal_isolate->calls_on_stack_ != 0) {
+                    // If the process was not terminated then we have to ensure that
+                    // the rest of the script is not executed => we re-throw
+                    // the exception but remember that we should not report it again.
+                    graal_isolate->error_to_ignore_ = env->NewGlobalRef(java_exception);
+                    env->Throw(java_exception);
+                }
             }
         }
     }

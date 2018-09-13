@@ -188,6 +188,8 @@ enum GraalAccessMethod {
     isolate_get_debug_context,
     isolate_enable_promise_hook,
     isolate_enable_promise_reject_callback,
+    isolate_enter,
+    isolate_exit,
     template_set,
     template_set_accessor_property,
     object_template_new,
@@ -351,6 +353,8 @@ public:
     void NotifyPromiseRejectCallback(v8::PromiseRejectMessage message);
     void EnqueueMicrotask(v8::MicrotaskCallback microtask, void* data);
     void RunMicrotasks();
+    void Enter();
+    void Exit();
 
     enum GCCallbackType {
         kIsolateGCCallbackType = 0,

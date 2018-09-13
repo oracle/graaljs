@@ -428,14 +428,14 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
         }
         uv_key_create(&current_isolate_key);
     } else {
-        // As the JVM already exists, attach to it
-        jvm->AttachCurrentThread(reinterpret_cast<void**> (&env), nullptr);
+        if (jvm->GetEnv(reinterpret_cast<void**> (&env), JNI_VERSION_1_8) == JNI_EDETACHED) {
+            jvm->AttachCurrentThread(reinterpret_cast<void**> (&env), nullptr);
+        }
     }
 
     internal_error_check_ = !getstdenv("NODE_INTERNAL_ERROR_CHECK").empty();
 
     GraalIsolate* isolate = new GraalIsolate(jvm, env);
-    uv_key_set(&current_isolate_key, isolate);
 
     isolate->main_ = spawn_jvm;
     if (spawn_jvm) {
@@ -595,6 +595,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::isolate_get_debug_context, "isolateGetDebugContext", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_promise_hook, "isolateEnablePromiseHook", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_promise_reject_callback, "isolateEnablePromiseRejectCallback", "(Z)V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_enter, "isolateEnter", "(J)V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_exit, "isolateExit", "(J)J")
     ACCESS_METHOD(GraalAccessMethod::template_set, "templateSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::template_set_accessor_property, "templateSetAccessorProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "()Ljava/lang/Object;")
@@ -917,7 +919,6 @@ void GraalIsolate::Dispose(bool exit, int status) {
     // this is executed when exit is false only
     env->ExceptionClear();
     jvm_->DetachCurrentThread();
-    uv_key_set(&current_isolate_key, nullptr);
 }
 
 double GraalIsolate::ReadDoubleFromSharedBuffer() {
@@ -1217,4 +1218,17 @@ void GraalIsolate::RunMicrotasks() {
 
     // Exit "dummy TryCatch"
     TryCatchExit();
+}
+
+void GraalIsolate::Enter() {
+    if (jvm_->GetEnv(reinterpret_cast<void**> (&jni_env_), JNI_VERSION_1_8) == JNI_EDETACHED) {
+        jvm_->AttachCurrentThread(reinterpret_cast<void**> (&jni_env_), nullptr);
+    }
+    uv_key_set(&current_isolate_key, this);
+    JNI_CALL_VOID(this, GraalAccessMethod::isolate_enter, (jlong) this);
+}
+
+void GraalIsolate::Exit() {
+    JNI_CALL(jlong, previous, this, GraalAccessMethod::isolate_exit, Long, (jlong) this);
+    uv_key_set(&current_isolate_key, reinterpret_cast<void*> (previous));
 }
