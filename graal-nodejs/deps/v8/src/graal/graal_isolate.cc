@@ -916,6 +916,24 @@ void GraalIsolate::Dispose(bool exit, int status) {
     jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_dispose);
     env->functions->CallVoidMethod(env, access_, method_id, exit, status);
 
+    // Release global references
+    env->DeleteGlobalRef(access_);
+    env->DeleteGlobalRef(boolean_true_);
+    env->DeleteGlobalRef(boolean_false_);
+    env->DeleteGlobalRef(int32_placeholder_);
+    env->DeleteGlobalRef(uint32_placeholder_);
+    env->DeleteGlobalRef(double_placeholder_);
+    access_ = nullptr;
+    boolean_true_ = nullptr;
+    boolean_false_ = nullptr;
+    int32_placeholder_ = nullptr;
+    uint32_placeholder_ = nullptr;
+    double_placeholder_ = nullptr;
+    if (error_to_ignore_ != nullptr) {
+        env->DeleteGlobalRef(error_to_ignore_);
+        error_to_ignore_ = nullptr;
+    }
+
     // this is executed when exit is false only
     env->ExceptionClear();
     jvm_->DetachCurrentThread();
