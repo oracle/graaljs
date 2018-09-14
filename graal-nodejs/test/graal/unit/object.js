@@ -353,5 +353,12 @@ describe('Object', function () {
             assert.strictEqual(o.mySetValue, 1000);
             assert.strictEqual(o.hasOwnProperty("mySetValue"), true);
         });
+        it('should create a getter with a no-op setter (when setter is not provided)', function () {
+            "use strict";
+            var o = {mySetValue : 42};
+            assert.strictEqual(module.Object_SetAccessorNoSetter(o, "myAccess"), true);
+            o.myAccess = 211; // No TypeError here
+            assert.strictEqual(o.mySetValue, 42);
+        });
     });
 });

@@ -195,4 +195,14 @@ EXPORT_TO_JS(SetAccessor) {
     args.GetReturnValue().Set(true);
 }
 
+EXPORT_TO_JS(SetAccessorNoSetter) {
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
+    Local<Object> obj = args[0].As<Object>();
+    Local<String> key = args[1].As<String>();
+
+    obj->SetAccessor(context, key, SimpleAccessorGetter);
+
+    args.GetReturnValue().Set(true);
+}
+
 #undef SUITE

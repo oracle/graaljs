@@ -98,7 +98,7 @@ public class Accessor {
 
     private Pair<JSFunctionData, JSFunctionData> createFunctions(JSContext context) {
         JSFunctionData getter = (getterPtr == 0) ? null : createFunction(context, true);
-        JSFunctionData setter = (setterPtr == 0) ? null : createFunction(context, false);
+        JSFunctionData setter = createFunction(context, false);
         return new Pair<>(getter, setter);
     }
 

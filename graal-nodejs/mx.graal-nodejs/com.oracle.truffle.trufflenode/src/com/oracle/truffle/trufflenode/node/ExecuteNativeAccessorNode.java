@@ -96,6 +96,10 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
             }
         }
         long functionPointer = getter ? accessor.getGetterPtr() : accessor.getSetterPtr();
+        if (functionPointer == 0) {
+            assert !getter;
+            return false;
+        }
         Object holder = holderPropertyGetNode.getValue(arguments[1]);
         return executeAccessorMethod(functionPointer, holder, arguments);
     }
