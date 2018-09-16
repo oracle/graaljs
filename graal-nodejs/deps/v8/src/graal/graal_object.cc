@@ -89,14 +89,16 @@ bool GraalObject::ForceSet(v8::Local<v8::Value> key, v8::Local<v8::Value> value,
 }
 
 v8::Local<v8::Value> GraalObject::Get(v8::Local<v8::Value> key) {
+    GraalIsolate* graal_isolate = Isolate();
     jobject java_key = reinterpret_cast<GraalValue*> (*key)->GetJavaObject();
-    JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::object_get, Object, GetJavaObject(), java_key);
+    JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::object_get, Object, GetJavaObject(), java_key);
     if (java_object == NULL) {
+        graal_isolate->HandleEmptyCallResult();
         return v8::Local<v8::Value>();
     } else {
-        Isolate()->ResetSharedBuffer();
-        int32_t value_t = Isolate()->ReadInt32FromSharedBuffer();
-        GraalValue* graal_value = GraalValue::FromJavaObject(Isolate(), java_object, value_t, true);
+        graal_isolate->ResetSharedBuffer();
+        int32_t value_t = graal_isolate->ReadInt32FromSharedBuffer();
+        GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_object, value_t, true);
         return reinterpret_cast<v8::Value*> (graal_value);
     }
 }

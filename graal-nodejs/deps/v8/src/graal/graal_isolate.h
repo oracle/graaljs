@@ -355,6 +355,7 @@ public:
     void RunMicrotasks();
     void Enter();
     void Exit();
+    void HandleEmptyCallResult();
 
     enum GCCallbackType {
         kIsolateGCCallbackType = 0,
