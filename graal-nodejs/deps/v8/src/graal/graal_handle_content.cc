@@ -149,3 +149,7 @@ bool GraalHandleContent::SameData(GraalHandleContent* this_content, GraalHandleC
 jobject GraalHandleContent::ToNewLocalJavaObject() {
     return isolate_->GetJNIEnv()->NewLocalRef(java_object_);
 }
+
+bool GraalHandleContent::IsWeakCollected() const {
+    return isolate_->GetJNIEnv()->IsSameObject(java_object_, NULL);
+}
