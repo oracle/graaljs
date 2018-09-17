@@ -54,6 +54,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 
 public abstract class NIOBufferAccessNode extends JSBuiltinNode {
 
@@ -69,8 +70,17 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
     protected static DynamicObject getArrayBuffer(DynamicObject target) {
         assert JSArrayBufferView.isJSArrayBufferView(target) : "Target object must be a JSArrayBufferView";
         DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
-        assert JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer) : "Target buffer must be a DirectArrayBuffer";
+        assert JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer) || JSSharedArrayBuffer.isJSSharedArrayBuffer(arrayBuffer) : "Target buffer must be a DirectArrayBuffer";
         return arrayBuffer;
+    }
+
+    protected static ByteBuffer getDirectByteBuffer(DynamicObject arrayBuffer) {
+        if (JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer)) {
+            return JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
+        } else {
+            assert JSSharedArrayBuffer.isJSSharedArrayBuffer(arrayBuffer);
+            return JSSharedArrayBuffer.getDirectByteBuffer(arrayBuffer);
+        }
     }
 
     protected int getOffset(DynamicObject target) {
