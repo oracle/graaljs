@@ -958,7 +958,9 @@ public final class GraalJSAccess {
         if (pointer != 0) {
             deallocator.register(byteBuffer, pointer);
         }
-        return JSArrayBuffer.createDirectArrayBuffer(((JSRealm) context).getContext(), byteBuffer);
+        DynamicObject arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(((JSRealm) context).getContext(), byteBuffer);
+        arrayBuffer.define(EXTERNALIZED_KEY, pointer == 0);
+        return arrayBuffer;
     }
 
     public Object arrayBufferNew(Object context, int byteLength) {
@@ -981,6 +983,20 @@ public final class GraalJSAccess {
     public int arrayBufferViewByteLength(Object arrayBufferView) {
         DynamicObject dynamicObject = (DynamicObject) arrayBufferView;
         return arrayBufferViewByteLength(JSObject.getJSContext(dynamicObject), dynamicObject);
+    }
+
+    public boolean arrayBufferIsExternal(Object arrayBuffer) {
+        return ((DynamicObject) arrayBuffer).get(EXTERNALIZED_KEY) == Boolean.TRUE;
+    }
+
+    public void arrayBufferExternalize(Object arrayBuffer, Object content) {
+        DynamicObject dynamicObject = (DynamicObject) arrayBuffer;
+        JSArrayBuffer.setDirectByteBuffer(dynamicObject, (ByteBuffer) content);
+        dynamicObject.define(EXTERNALIZED_KEY, true);
+    }
+
+    public void arrayBufferNeuter(Object arrayBuffer) {
+        JSArrayBuffer.setDirectByteBuffer((DynamicObject) arrayBuffer, ByteBuffer.allocateDirect(0));
     }
 
     public static int arrayBufferViewByteLength(JSContext context, DynamicObject arrayBufferView) {

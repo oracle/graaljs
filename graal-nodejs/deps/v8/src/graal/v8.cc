@@ -103,7 +103,7 @@ namespace v8 {
     }
 
     void ArrayBuffer::Neuter() {
-        TRACE
+        reinterpret_cast<GraalArrayBuffer*> (this)->Neuter();
     }
 
     Local<ArrayBuffer> ArrayBuffer::New(Isolate* isolate, size_t byte_length) {
@@ -2813,18 +2813,31 @@ namespace v8 {
     }
 
     bool ArrayBuffer::IsNeuterable() const {
-        TRACE
-        return false;
+        return true;
     }
 
     bool ArrayBuffer::IsExternal() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalArrayBuffer*> (this)->IsExternal();
     }
 
     ArrayBuffer::Contents ArrayBuffer::Externalize() {
-        TRACE
-        return Contents();
+        GraalArrayBuffer* graal_array_buffer = reinterpret_cast<GraalArrayBuffer*> (this);
+        GraalIsolate* graal_isolate = graal_array_buffer->Isolate();
+        jobject java_array_buffer = graal_array_buffer->GetJavaObject();
+        jobject java_buffer = graal_isolate->JNIGetObjectFieldOrCall(java_array_buffer, GraalAccessField::array_buffer_byte_buffer, GraalAccessMethod::array_buffer_get_contents);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        void* original = env->GetDirectBufferAddress(java_buffer);
+        jlong size = env->GetDirectBufferCapacity(java_buffer);
+        env->DeleteLocalRef(java_buffer);
+        void* copy = malloc(size);
+        memcpy(copy, original, size);
+        java_buffer = env->NewDirectByteBuffer(copy, size);
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::array_buffer_externalize, java_array_buffer, java_buffer);
+        env->DeleteLocalRef(java_buffer);
+        ArrayBuffer::Contents contents;
+        contents.data_ = copy;
+        contents.byte_length_ = size;
+        return contents;        
     }
 
     bool SharedArrayBuffer::IsExternal() const {

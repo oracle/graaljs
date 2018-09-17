@@ -100,6 +100,12 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return DirectByteBufferHelper.cast((ByteBuffer) BYTE_BUFFER_PROPERTY.get(thisObj, condition));
     }
 
+    public static void setDirectByteBuffer(DynamicObject arrayBuffer, ByteBuffer buffer) {
+        assert isJSDirectArrayBuffer(arrayBuffer);
+        assert buffer != null;
+        BYTE_BUFFER_PROPERTY.setSafe(arrayBuffer, buffer, null);
+    }
+
     public static DynamicObject createDirectArrayBuffer(JSContext context, int length) {
         return createDirectArrayBuffer(context, DirectByteBufferHelper.allocateDirect(length));
     }
