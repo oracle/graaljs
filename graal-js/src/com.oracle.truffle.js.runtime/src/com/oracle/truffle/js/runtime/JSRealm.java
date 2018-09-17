@@ -809,7 +809,7 @@ public class JSRealm {
         if (context.isOptionAtomics()) {
             putGlobalProperty(global, ATOMICS_CLASS_NAME, createAtomics());
         }
-        if (JSTruffleOptions.Stage3 && !context.isOptionV8CompatibilityMode()) {
+        if (getEnv() != null && JSContextOptions.GLOBAL_THIS.getValue(getEnv().getOptions()) && !context.isOptionV8CompatibilityMode()) {
             putGlobalProperty(global, "global", global);
         }
         if (JSTruffleOptions.GraalBuiltin) {
