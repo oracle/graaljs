@@ -11,9 +11,6 @@ test-fs-readfile-tostring-fail: PASS, FLAKY
 
 ### Graal-specific start ###
 
-# missing multiline support in REPL
-test-repl-timeout-throw     : FAIL
-
 # Unstable, timing sensitive (fails randomly)
 test-readline-interface     : SKIP
 
