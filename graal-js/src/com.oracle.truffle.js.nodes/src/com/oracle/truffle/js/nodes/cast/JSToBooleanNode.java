@@ -90,21 +90,27 @@ public abstract class JSToBooleanNode extends JSUnaryNode {
     }
 
     public static JavaScriptNode create(JavaScriptNode child) {
+        JSConstantNode replacement = null;
         if (child.isResultAlwaysOfType(boolean.class)) {
             return child;
         } else if (child instanceof JSConstantIntegerNode) {
             int value = ((JSConstantIntegerNode) child).executeInt(null);
-            return JSConstantNode.createBoolean(value != 0);
+            replacement = JSConstantNode.createBoolean(value != 0);
         } else if (child instanceof JSConstantBigIntNode) {
             BigInt value = ((JSConstantBigIntNode) child).executeBigInt(null);
-            return JSConstantNode.createBoolean(value.compareTo(BigInt.ZERO) != 0);
+            replacement = JSConstantNode.createBoolean(value.compareTo(BigInt.ZERO) != 0);
         } else if (child instanceof JSConstantNode) {
             Object constantOperand = ((JSConstantNode) child).getValue();
             if (constantOperand != null && JSRuntime.isJSPrimitive(constantOperand)) {
-                return JSConstantNode.createBoolean(JSRuntime.toBoolean(constantOperand));
+                replacement = JSConstantNode.createBoolean(JSRuntime.toBoolean(constantOperand));
             }
         }
-        return JSToBooleanNodeGen.create(child);
+        if (replacement == null) {
+            return JSToBooleanNodeGen.create(child);
+        } else {
+            transferSourceSectionAndTags(child, replacement);
+            return replacement;
+        }
     }
 
     @Specialization
