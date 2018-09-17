@@ -158,4 +158,6 @@ public final class NativeAccess {
 
     public static native int getSharedArrayBufferId(long delegate, Object sharedArrayBuffer);
 
+    public static native Object getSharedArrayBufferFromId(long delegate, int id);
+
 }

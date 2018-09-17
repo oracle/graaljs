@@ -723,6 +723,10 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::big_int_new_from_words, "bigIntNewFromWords", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::big_int_word_count, "bigIntWordCount", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::big_int_to_words_array, "bigIntToWordsArray", "(Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_new, "sharedArrayBufferNew", "(Ljava/lang/Object;Ljava/lang/Object;J)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_is_external, "sharedArrayBufferIsExternal", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_get_contents, "sharedArrayBufferGetContents", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_externalize, "sharedArrayBufferExternalize", "(Ljava/lang/Object;Ljava/lang/Object;)V")
 
     int root_offset = v8::internal::Internals::kIsolateRootsOffset / v8::internal::kApiPointerSize;
     slot[v8::internal::Internals::kExternalMemoryOffset / v8::internal::kApiPointerSize] = (void*) 0;

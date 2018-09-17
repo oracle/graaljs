@@ -2828,13 +2828,31 @@ namespace v8 {
     }
 
     bool SharedArrayBuffer::IsExternal() const {
-        TRACE
-        return false;
+        const GraalObject* graal_object = reinterpret_cast<const GraalObject*> (this);
+        GraalIsolate* graal_isolate = graal_object->Isolate();
+        jobject java_object = graal_object->GetJavaObject();
+        JNI_CALL(jboolean, result, graal_isolate, GraalAccessMethod::shared_array_buffer_is_external, Boolean, java_object);
+        return result;
     }
 
     SharedArrayBuffer::Contents SharedArrayBuffer::Externalize() {
-        TRACE
-        return Contents();
+        GraalObject* graal_object = reinterpret_cast<GraalObject*> (this);
+        GraalIsolate* graal_isolate = graal_object->Isolate();
+        jobject java_object = graal_object->GetJavaObject();
+        JNI_CALL(jobject, java_buffer, graal_isolate, GraalAccessMethod::shared_array_buffer_get_contents, Object, java_object);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        void* original = env->GetDirectBufferAddress(java_buffer);
+        jlong size = env->GetDirectBufferCapacity(java_buffer);
+        env->DeleteLocalRef(java_buffer);
+        void* copy = malloc(size);
+        memcpy(copy, original, size);
+        java_buffer = env->NewDirectByteBuffer(copy, size);
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::shared_array_buffer_externalize, java_object, java_buffer);
+        env->DeleteLocalRef(java_buffer);
+        SharedArrayBuffer::Contents contents;
+        contents.data_ = copy;
+        contents.byte_length_ = size;
+        return contents;
     }
 
     Local<SharedArrayBuffer> SharedArrayBuffer::New(
@@ -2842,8 +2860,13 @@ namespace v8 {
             void* data,
             size_t byte_length,
             ArrayBufferCreationMode mode) {
-        TRACE
-        return Local<SharedArrayBuffer>();
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+        jobject java_byte_buffer = graal_isolate->GetJNIEnv()->NewDirectByteBuffer(data, byte_length);
+        jlong pointer = (mode == v8::ArrayBufferCreationMode::kInternalized) ? (jlong) data : 0;
+        jobject java_context = graal_isolate->CurrentJavaContext();
+        JNI_CALL(jobject, java_array_buffer, graal_isolate, GraalAccessMethod::shared_array_buffer_new, Object, java_context, java_byte_buffer, pointer);
+        graal_isolate->GetJNIEnv()->DeleteLocalRef(java_byte_buffer);
+        return reinterpret_cast<v8::SharedArrayBuffer*> (new GraalObject(graal_isolate, java_array_buffer));
     }
 
     double Platform::SystemClockTimeMillis() {

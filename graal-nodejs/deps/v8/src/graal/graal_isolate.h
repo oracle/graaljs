@@ -316,6 +316,10 @@ enum GraalAccessMethod {
     big_int_to_words_array,
     map_new,
     map_set,
+    shared_array_buffer_new,
+    shared_array_buffer_is_external,
+    shared_array_buffer_get_contents,
+    shared_array_buffer_externalize,
 
     count // Should be the last item of GraalAccessMethod
 };

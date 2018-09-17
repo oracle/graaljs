@@ -230,6 +230,8 @@ public final class GraalJSAccess {
 
     public static final HiddenKey HOLDER_KEY = new HiddenKey("Holder");
 
+    public static final HiddenKey EXTERNALIZED_KEY = new HiddenKey("Externalized");
+
     // Placeholders returned by a native function when a primitive value
     // written into a shared buffer should be returned instead
     private static final Object INT_PLACEHOLDER = new Object();
@@ -1000,6 +1002,30 @@ public final class GraalJSAccess {
         } else {
             return JSArrayBufferView.getByteOffset(arrayBufferView, JSArrayBufferView.isJSArrayBufferView(arrayBufferView), context);
         }
+    }
+
+    public Object sharedArrayBufferNew(Object context, Object buffer, long pointer) {
+        ByteBuffer byteBuffer = (ByteBuffer) buffer;
+        if (pointer != 0) {
+            deallocator.register(byteBuffer, pointer);
+        }
+        DynamicObject sharedArrayBuffer = JSSharedArrayBuffer.createSharedArrayBuffer(((JSRealm) context).getContext(), byteBuffer);
+        sharedArrayBuffer.define(EXTERNALIZED_KEY, pointer == 0);
+        return sharedArrayBuffer;
+    }
+
+    public boolean sharedArrayBufferIsExternal(Object sharedArrayBuffer) {
+        return ((DynamicObject) sharedArrayBuffer).get(EXTERNALIZED_KEY) == Boolean.TRUE;
+    }
+
+    public Object sharedArrayBufferGetContents(Object sharedArrayBuffer) {
+        return JSSharedArrayBuffer.getDirectByteBuffer((DynamicObject) sharedArrayBuffer);
+    }
+
+    public void sharedArrayBufferExternalize(Object sharedArrayBuffer, Object content) {
+        DynamicObject dynamicObject = (DynamicObject) sharedArrayBuffer;
+        JSSharedArrayBuffer.setDirectByteBuffer(dynamicObject, (ByteBuffer) content);
+        dynamicObject.define(EXTERNALIZED_KEY, true);
     }
 
     public int typedArrayLength(Object typedArray) {

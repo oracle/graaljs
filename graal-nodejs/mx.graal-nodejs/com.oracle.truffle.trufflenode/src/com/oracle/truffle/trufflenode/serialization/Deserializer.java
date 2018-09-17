@@ -147,7 +147,7 @@ public class Deserializer {
             case ARRAY_BUFFER_TRANSFER:
                 return readTransferredJSArrayBuffer(context);
             case SHARED_ARRAY_BUFFER:
-                return readTransferredJSArrayBuffer(context);
+                return readSharedArrayBuffer();
             case BEGIN_JS_OBJECT:
                 return readJSObject(context);
             case BEGIN_JS_MAP:
@@ -433,6 +433,11 @@ public class Deserializer {
         }
         assignId(arrayBuffer);
         return (peekTag() == SerializationTag.ARRAY_BUFFER_VIEW) ? readJSArrayBufferView(context, arrayBuffer) : arrayBuffer;
+    }
+
+    public Object readSharedArrayBuffer() {
+        int id = readVarInt();
+        return NativeAccess.getSharedArrayBufferFromId(delegate, id);
     }
 
     public int readBytes(int length) {
