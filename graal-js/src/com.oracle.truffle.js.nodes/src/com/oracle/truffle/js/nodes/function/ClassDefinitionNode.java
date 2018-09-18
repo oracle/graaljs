@@ -106,10 +106,7 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
                 throw Errors.createTypeError("class cannot extend a generator function", this);
             } else {
                 protoParent = getPrototypeNode.getValue(superclass);
-                if (protoParent == Null.instance) {
-                    protoParent = Null.instance;
-                } else if (!JSRuntime.isObject(protoParent)) {
-                    assert protoParent != Null.instance;
+                if (protoParent != Null.instance && !JSRuntime.isObject(protoParent)) {
                     throw Errors.createTypeError("protoParent is neither Object nor Null", this);
                 }
                 constructorParent = superclass;
