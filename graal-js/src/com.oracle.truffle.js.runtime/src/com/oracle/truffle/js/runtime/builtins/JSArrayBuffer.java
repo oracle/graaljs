@@ -62,17 +62,16 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
-public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstructorFactory.Default.WithFunctionsAndSpecies {
+public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
 
     public static final String CLASS_NAME = "ArrayBuffer";
     public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
 
-    private static final JSArrayBuffer HEAP_INSTANCE = new JSArrayBuffer();
-    private static final JSArrayBuffer DIRECT_INSTANCE = new JSArrayBuffer();
+    public static final JSArrayBuffer HEAP_INSTANCE = new JSArrayBuffer();
+    public static final JSArrayBuffer DIRECT_INSTANCE = new JSArrayBuffer();
 
     private JSArrayBuffer() {
     }
@@ -152,14 +151,14 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         });
     }
 
-    public static Shape makeInitialArrayBufferShape(JSContext context, DynamicObject prototype, boolean direct) {
-        if (!direct) {
-            assert JSShape.getProtoChildTree(prototype.getShape(), HEAP_INSTANCE) == null;
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+        if (this == HEAP_INSTANCE) {
             Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, HEAP_INSTANCE, context);
             initialShape = initialShape.addProperty(BYTE_ARRAY_PROPERTY);
             return initialShape;
         } else {
-            assert JSShape.getProtoChildTree(prototype.getShape(), DIRECT_INSTANCE) == null;
+            assert this == DIRECT_INSTANCE;
             Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, DIRECT_INSTANCE, context);
             initialShape = initialShape.addProperty(BYTE_BUFFER_PROPERTY);
             return initialShape;
@@ -232,5 +231,10 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         } else {
             BYTE_ARRAY_PROPERTY.setSafe(arrayBuffer, null, null);
         }
+    }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getArrayBufferConstructor().getPrototype();
     }
 }

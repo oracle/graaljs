@@ -63,11 +63,11 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
-public final class JSAdapter extends AbstractJSClass implements JSConstructorFactory.Default {
+public final class JSAdapter extends AbstractJSClass implements JSConstructorFactory.Default, PrototypeSupplier {
 
     public static final String CLASS_NAME = "JSAdapter";
 
-    private static final JSAdapter INSTANCE = new JSAdapter();
+    public static final JSAdapter INSTANCE = new JSAdapter();
 
     private static final Property ADAPTEE_PROPERTY;
     private static final Property OVERRIDES_PROPERTY;
@@ -109,7 +109,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     public static DynamicObject create(JSContext context, DynamicObject adaptee, DynamicObject overrides, DynamicObject proto) {
-        DynamicObject obj = JSObject.create(context, context.getRealm().getJSAdapterFactory(), adaptee, overrides);
+        DynamicObject obj = JSObject.create(context, context.getJSAdapterFactory(), adaptee, overrides);
         if (proto != null) {
             JSObject.setPrototype(obj, proto);
         }
@@ -330,8 +330,8 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         return prototype;
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype.getShape(), INSTANCE) == null;
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         initialShape = initialShape.addProperty(ADAPTEE_PROPERTY);
         initialShape = initialShape.addProperty(OVERRIDES_PROPERTY);
@@ -380,5 +380,10 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     @Override
     public ForeignAccess getForeignAccessFactory(DynamicObject object) {
         return JSObject.getJSContext(object).getInteropRuntime().getForeignAccessFactory();
+    }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getJSAdapterConstructor().getPrototype();
     }
 }

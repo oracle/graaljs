@@ -64,7 +64,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
-public final class JSDate extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions {
+public final class JSDate extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final String CLASS_NAME = "Date";
     public static final String PROTOTYPE_NAME = "Date.prototype";
@@ -78,7 +78,7 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     private static DateTimeFormatter jsShortTimeFormat;
     private static DateTimeFormatter jsShortTimeLocalFormat;
     private static DateTimeFormatter jsDateToStringFormat;
-    private static final JSDate INSTANCE = new JSDate();
+    public static final JSDate INSTANCE = new JSDate();
 
     private static final HiddenKey TIME_MILLIS_ID = new HiddenKey("timeMillis");
     private static final Property TIME_MILLIS_PROPERTY;
@@ -164,8 +164,8 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         return datePrototype;
     }
 
-    public static Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype.getShape(), INSTANCE) == null;
+    @Override
+    public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
         initialShape = initialShape.addProperty(TIME_MILLIS_PROPERTY);
         return initialShape;
@@ -817,5 +817,10 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     public static long getLocalTZA(ZoneId localTimeZoneId) {
         ZoneOffset localTimeZoneOffset = localTimeZoneId.getRules().getOffset(Instant.ofEpochMilli(0));
         return localTimeZoneOffset.getTotalSeconds() * 1000L;
+    }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getDateConstructor().getPrototype();
     }
 }

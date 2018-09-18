@@ -63,12 +63,12 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class JSDataView extends JSBuiltinObject implements JSConstructorFactory.Default {
+public final class JSDataView extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
 
     public static final String CLASS_NAME = "DataView";
     public static final String PROTOTYPE_NAME = "DataView.prototype";
 
-    private static final JSDataView INSTANCE = new JSDataView();
+    public static final JSDataView INSTANCE = new JSDataView();
 
     private static final String BYTE_LENGTH = "byteLength";
     private static final String BUFFER = "buffer";
@@ -181,8 +181,8 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
         JSObjectUtil.putConstantAccessorProperty(context, prototype, name, getter, Undefined.instance);
     }
 
-    public static Shape makeInitialArrayBufferViewShape(JSContext ctx, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype.getShape(), INSTANCE) == null;
+    @Override
+    public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
         Shape childTree = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
         // hidden properties
         childTree = childTree.addProperty(ARRAY_BUFFER_PROPERTY);
@@ -211,5 +211,10 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
 
     public static boolean isJSDataView(DynamicObject obj) {
         return isInstance(obj, INSTANCE);
+    }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getDataViewConstructor().getPrototype();
     }
 }

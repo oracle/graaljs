@@ -53,7 +53,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
-public final class JSJavaWorkerBuiltin extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctionsAndSpecies {
+public final class JSJavaWorkerBuiltin extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final String CLASS_NAME = "JavaInteropWorker";
     public static final String PROTOTYPE_NAME = "JavaInteropWorker.prototype";
@@ -71,7 +71,8 @@ public final class JSJavaWorkerBuiltin extends JSBuiltinObject implements JSCons
     private JSJavaWorkerBuiltin() {
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSJavaWorkerBuiltin.INSTANCE, context);
         initialShape = initialShape.addProperty(AGENT_PROPERTY);
         return initialShape;
@@ -110,4 +111,8 @@ public final class JSJavaWorkerBuiltin extends JSBuiltinObject implements JSCons
         return CLASS_NAME;
     }
 
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getJavaInteropWorkerConstructor().getPrototype();
+    }
 }

@@ -55,12 +55,13 @@ import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
-public final class JavaImporter extends JSBuiltinObject implements JSConstructorFactory.Default {
+public final class JavaImporter extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
     public static final String CLASS_NAME = "JavaImporter";
 
     private static final HiddenKey PACKAGES_ID = new HiddenKey("packages");
@@ -126,7 +127,7 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
 
     /* In a separate method for Substrate VM support. */
     private static boolean isJavaImporter0(DynamicObject obj) {
-        return isInstance(obj, LazyState.INSTANCE);
+        return isInstance(obj, instance());
     }
 
     @Override
@@ -173,20 +174,30 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
 
     @Override
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
+        JSContext context = realm.getContext();
         DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
-        JSObjectUtil.putDataProperty(realm.getContext(), prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        JSObjectUtil.putConstructorProperty(realm.getContext(), prototype, ctor);
+        JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putConstructorProperty(context, prototype, ctor);
         return prototype;
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype.getShape(), LazyState.INSTANCE) == null;
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, LazyState.INSTANCE, context);
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, instance(), context);
         initialShape = initialShape.addProperty(PACKAGES_PROPERTY);
         return initialShape;
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return LazyState.INSTANCE.createConstructorAndPrototype(realm);
+        return instance().createConstructorAndPrototype(realm);
+    }
+
+    public static JavaImporter instance() {
+        return LazyState.INSTANCE;
+    }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getJavaImporterConstructor().getPrototype();
     }
 }

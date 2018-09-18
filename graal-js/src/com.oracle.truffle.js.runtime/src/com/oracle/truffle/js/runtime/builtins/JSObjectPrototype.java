@@ -49,7 +49,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyPrototypeArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 public final class JSObjectPrototype extends JSBuiltinObject {
@@ -62,7 +61,7 @@ public final class JSObjectPrototype extends JSBuiltinObject {
     }
 
     public static DynamicObject create(JSContext context) {
-        Shape objectPrototypeShape = JSShape.makeEmptyRoot(JSObject.LAYOUT, INSTANCE, context);
+        Shape objectPrototypeShape = context.makeEmptyShapeWithNullPrototype(INSTANCE);
         DynamicObject obj = JSObject.createNoTrack(objectPrototypeShape);
         JSAbstractArray.putArrayProperties(obj, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray());
         return obj;

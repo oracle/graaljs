@@ -146,6 +146,10 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> JAVA_PACKAGE_GLOBALS = new OptionKey<>(true);
     private static final String JAVA_PACKAGE_GLOBALS_HELP = helpWithDefault("provide Java package globals: Packages, java, javafx, javax, com, org, edu.", JAVA_PACKAGE_GLOBALS);
 
+    public static final String GLOBAL_THIS_NAME = JS_OPTION_PREFIX + "global-this";
+    public static final OptionKey<Boolean> GLOBAL_THIS = new OptionKey<>(true);
+    private static final String GLOBAL_THIS_HELP = helpWithDefault("provide 'global' global property.", JAVA_PACKAGE_GLOBALS);
+
     private static final OptionKey<?>[] PREINIT_CONTEXT_OPTION_KEYS = {
                     ECMASCRIPT_VERSION,
                     ANNEX_B,
@@ -162,6 +166,7 @@ public final class JSContextOptions {
                     PARSE_ONLY,
                     TIME_ZONE,
                     JAVA_PACKAGE_GLOBALS,
+                    GLOBAL_THIS,
     };
 
     public JSContextOptions(ParserOptions parserOptions) {
@@ -266,6 +271,7 @@ public final class JSContextOptions {
         options.add(OptionDescriptor.newBuilder(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME).category(OptionCategory.USER).help(TIMER_RESOLUTION_HELP).build());
         options.add(OptionDescriptor.newBuilder(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME).category(OptionCategory.DEBUG).help(AGENT_CAN_BLOCK_HELP).build());
         options.add(OptionDescriptor.newBuilder(JAVA_PACKAGE_GLOBALS, JAVA_PACKAGE_GLOBALS_NAME).category(OptionCategory.USER).help(JAVA_PACKAGE_GLOBALS_HELP).build());
+        options.add(OptionDescriptor.newBuilder(GLOBAL_THIS, GLOBAL_THIS_NAME).category(OptionCategory.USER).help(GLOBAL_THIS_HELP).build());
     }
 
     // check for options that are not on their default value.

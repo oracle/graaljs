@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.array;
 
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectFloat32Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectFloat64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectInt16Array;
@@ -58,8 +60,9 @@ import com.oracle.truffle.js.runtime.array.TypedArray.Uint16Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.Uint32Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.Uint8Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.Uint8ClampedArray;
+import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 
-public enum TypedArrayFactory {
+public enum TypedArrayFactory implements PrototypeSupplier {
     Int8Array(TypedArray.INT8_BYTES_PER_ELEMENT) {
         @Override
         TypedArray instantiateArrayType(boolean direct, boolean offset) {
@@ -195,6 +198,11 @@ public enum TypedArrayFactory {
     }
 
     abstract TypedArray instantiateArrayType(boolean direct, boolean offset);
+
+    @Override
+    public final DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getArrayBufferViewConstructor(this).getPrototype();
+    }
 
     static final TypedArrayFactory[] FACTORIES = TypedArrayFactory.values();
 }

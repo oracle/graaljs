@@ -66,7 +66,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBigIntNodeGen;
@@ -152,6 +151,7 @@ import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.EcmaAgent;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.GraalJSException;
@@ -1811,8 +1811,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected DynamicObject constructWorker() {
             JSContext context = getContext();
-            DynamicObjectFactory factory = context.getRealm().getJavaInteropWorkerFactory();
-            DynamicObject worker = JSObject.create(context, factory, context.getJavaInteropWorkerFactory().createAgent(context.getMainWorker()));
+            EcmaAgent agent = context.getJavaInteropWorkerFactory().createAgent(context.getMainWorker());
+            DynamicObject worker = JSObject.create(context, context.getJavaInteropWorkerObjectFactory(), agent);
             return worker;
         }
     }

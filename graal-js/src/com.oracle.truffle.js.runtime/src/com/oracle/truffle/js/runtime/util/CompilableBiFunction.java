@@ -38,30 +38,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.util;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import java.util.function.BiFunction;
 
 /**
- * See DebugBuiltins.
+ * A functional interface, implementations of which are safe for partial evaluation.
+ *
+ * @see BiFunction
  */
-public final class JSDebug {
-
-    public static final String CLASS_NAME = "Debug";
-
-    private JSDebug() {
-    }
-
-    public static DynamicObject create(JSRealm realm) {
-        JSContext ctx = realm.getContext();
-        DynamicObject obj = JSUserObject.create(ctx, realm);
-        JSObjectUtil.putDataProperty(ctx, obj, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        JSObjectUtil.putFunctionsFromContainer(realm, obj, CLASS_NAME);
-        return obj;
-    }
+@FunctionalInterface
+public interface CompilableBiFunction<T, U, R> extends BiFunction<T, U, R> {
 }

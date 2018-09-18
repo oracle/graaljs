@@ -58,7 +58,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
-public final class JSWeakSet extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions {
+public final class JSWeakSet extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final JSWeakSet INSTANCE = new JSWeakSet();
 
@@ -92,7 +92,8 @@ public final class JSWeakSet extends JSBuiltinObject implements JSConstructorFac
         return prototype;
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSWeakSet.INSTANCE, context);
         initialShape = initialShape.addProperty(WEAKSET_PROPERTY);
         return initialShape;
@@ -128,5 +129,10 @@ public final class JSWeakSet extends JSBuiltinObject implements JSConstructorFac
 
     public static boolean isJSWeakSet(DynamicObject obj) {
         return isInstance(obj, INSTANCE);
+    }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getWeakSetConstructor().getPrototype();
     }
 }

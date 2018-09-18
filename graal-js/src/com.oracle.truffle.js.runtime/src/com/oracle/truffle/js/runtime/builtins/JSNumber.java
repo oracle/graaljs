@@ -104,8 +104,8 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
         return numberPrototype;
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype.getShape(), INSTANCE) == null;
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         initialShape = initialShape.addProperty(VALUE_PROPERTY);
         return initialShape;

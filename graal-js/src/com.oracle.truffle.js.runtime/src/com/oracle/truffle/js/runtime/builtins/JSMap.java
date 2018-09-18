@@ -65,7 +65,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
-public final class JSMap extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctionsAndSpecies {
+public final class JSMap extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
 
     public static final JSMap INSTANCE = new JSMap();
 
@@ -140,7 +140,8 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
         return prototype;
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSMap.INSTANCE, context);
         initialShape = initialShape.addProperty(MAP_PROPERTY);
         return initialShape;
@@ -177,5 +178,10 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
 
     public static boolean isJSMap(DynamicObject obj) {
         return isInstance(obj, INSTANCE);
+    }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getMapConstructor().getPrototype();
     }
 }

@@ -86,7 +86,7 @@ public final class JavaPackage extends JSBuiltinObject {
     }
 
     public static DynamicObject create(JSRealm realm, String packageName) {
-        DynamicObject obj = JSObject.create(realm.getContext(), realm.getJavaPackageFactory(), packageName);
+        DynamicObject obj = JSObject.createWithPrototype(realm.getContext(), realm.getContext().getJavaPackageFactory(), realm, realm.getObjectPrototype(), packageName);
         JSObjectUtil.putDataProperty(obj, Symbol.SYMBOL_TO_PRIMITIVE, realm.getJavaPackageToPrimitiveFunction(), JSAttributes.notConfigurableNotEnumerableNotWritable());
         assert isJavaPackage(obj);
         return obj;
@@ -222,7 +222,8 @@ public final class JavaPackage extends JSBuiltinObject {
         }
     }
 
-    public static Shape createInitialShape(JSRealm realm) {
-        return JSObjectUtil.getProtoChildShape(realm.getObjectPrototype(), INSTANCE, realm.getContext()).addProperty(PACKAGE_PROPERTY);
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject objectPrototype) {
+        return JSObjectUtil.getProtoChildShape(objectPrototype, INSTANCE, context).addProperty(PACKAGE_PROPERTY);
     }
 }

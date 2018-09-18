@@ -767,7 +767,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private boolean isLazyResultArray(DynamicObject result) {
-            return result.getShape() == getContext().getRealm().getLazyRegexArrayFactory().getShape();
+            return result.getShape() == getContext().getRealm().getLazyRegexArrayShape();
         }
 
         @Specialization(guards = "!isJSObject(thisObj)")

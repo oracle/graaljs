@@ -52,7 +52,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
@@ -315,16 +314,16 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             throw Errors.createTypeErrorDetachedBuffer();
         }
-        DynamicObjectFactory objectFactory = arrayType.isDirect() ? context.getDirectArrayBufferViewFactory(arrayType.getFactory()) : context.getArrayBufferViewFactory(arrayType.getFactory());
+        JSObjectFactory objectFactory = arrayType.isDirect() ? context.getDirectArrayBufferViewFactory(arrayType.getFactory()) : context.getArrayBufferViewFactory(arrayType.getFactory());
         return createArrayBufferView(context, objectFactory, arrayBuffer, arrayType, offset, length);
     }
 
-    public static DynamicObject createArrayBufferView(JSContext context, DynamicObjectFactory objectFactory, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
+    public static DynamicObject createArrayBufferView(JSContext context, JSObjectFactory objectFactory, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
         Object backingStorage = arrayType.isDirect() ? JSArrayBuffer.getDirectByteBuffer(arrayBuffer) : JSArrayBuffer.getByteArray(arrayBuffer);
         return createArrayBufferView(context, objectFactory, arrayBuffer, arrayType, offset, length, backingStorage, false);
     }
 
-    private static DynamicObject createArrayBufferView(JSContext context, DynamicObjectFactory objectFactory, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length,
+    private static DynamicObject createArrayBufferView(JSContext context, JSObjectFactory objectFactory, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length,
                     Object backingStorage, boolean shareable) {
         assert offset >= 0 && offset + length * arrayType.bytesPerElement() <= (arrayType.isDirect() ? ((ByteBuffer) backingStorage).limit() : ((byte[]) backingStorage).length);
         assert offset != 0 == arrayType.hasOffset();
@@ -340,9 +339,11 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         JSContext context = realm.getContext();
         DynamicObject prototype = JSObject.create(realm, taPrototype, context.getEcmaScriptVersion() < 6 ? INSTANCE : JSUserObject.INSTANCE);
         if (context.getEcmaScriptVersion() < 6) {
-            JSObjectUtil.putHiddenProperty(prototype, BYTE_ARRAY_PROPERTY, new byte[0]);
-            JSObjectUtil.putHiddenProperty(prototype, ARRAY_TYPE_PROPERTY, factory.createArrayType(context.isOptionDirectByteBuffer(), false));
-            JSObjectUtil.putHiddenProperty(prototype, ARRAY_BUFFER_PROPERTY, JSArrayBuffer.createArrayBuffer(context, 0));
+            byte[] byteArray = new byte[0];
+            DynamicObject arrayBuffer = JSObject.createWithRealm(context, context.getArrayBufferFactory(), realm, byteArray);
+            JSObjectUtil.putHiddenProperty(prototype, BYTE_ARRAY_PROPERTY, byteArray);
+            JSObjectUtil.putHiddenProperty(prototype, ARRAY_TYPE_PROPERTY, factory.createArrayType(false, false));
+            JSObjectUtil.putHiddenProperty(prototype, ARRAY_BUFFER_PROPERTY, arrayBuffer);
             JSObjectUtil.putHiddenProperty(prototype, ARRAY_LENGTH_PROPERTY, 0);
             JSObjectUtil.putHiddenProperty(prototype, ARRAY_OFFSET_PROPERTY, 0);
             JSObjectUtil.putHiddenProperty(prototype, ARRAY_SHAREABLE, false);

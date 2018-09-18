@@ -62,16 +62,15 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
-public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSConstructorFactory.Default.WithFunctionsAndSpecies {
+public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
 
     public static final String CLASS_NAME = "SharedArrayBuffer";
     public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
 
-    private static final JSSharedArrayBuffer INSTANCE = new JSSharedArrayBuffer();
+    public static final JSSharedArrayBuffer INSTANCE = new JSSharedArrayBuffer();
 
     protected static final Property BUFFER_WAIT_LIST;
     protected static final HiddenKey BUFFER_WAIT_LIST_ID = new HiddenKey("waitList");
@@ -122,8 +121,8 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
         });
     }
 
-    public static Shape makeInitialArrayBufferShape(JSContext context, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype.getShape(), INSTANCE) == null;
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         initialShape = initialShape.addProperty(BYTE_BUFFER_PROPERTY);
         initialShape = initialShape.addProperty(BUFFER_WAIT_LIST);
@@ -175,4 +174,8 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
         return (JSAgentWaiterList) BUFFER_WAIT_LIST.get(thisObj, condition);
     }
 
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getSharedArrayBufferConstructor().getPrototype();
+    }
 }

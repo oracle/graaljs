@@ -62,6 +62,12 @@ public final class JSGlobalObject extends JSBuiltinObject {
     public static DynamicObject create(JSRealm realm, DynamicObject objectPrototype) {
         CompilerAsserts.neverPartOfCompilation();
         JSContext context = realm.getContext();
+        if (context.isMultiContext()) {
+            Shape shape = context.makeEmptyShapeWithPrototypeInObject(INSTANCE, JSObject.PROTO_PROPERTY);
+            DynamicObject global = JSObject.createNoTrack(shape);
+            JSObject.PROTO_PROPERTY.setSafe(global, objectPrototype, shape);
+            return global;
+        }
         // keep a separate shape tree for the global object in order not to pollute user objects
         Shape shape = JSShape.makeUniqueRootWithPrototype(JSObject.LAYOUT, INSTANCE, context, objectPrototype);
         return JSObject.createNoTrack(shape);

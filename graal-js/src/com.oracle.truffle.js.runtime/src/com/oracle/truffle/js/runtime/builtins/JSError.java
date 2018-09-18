@@ -87,7 +87,7 @@ public final class JSError extends JSBuiltinObject {
 
     public static final String ANONYMOUS_FUNCTION_NAME_STACK_TRACE = JSTruffleOptions.NashornCompatibilityMode ? "<program>" : "<anonymous>";
 
-    private static final JSError INSTANCE = new JSError();
+    public static final JSError INSTANCE = new JSError();
     private static final Property MESSAGE_PROPERTY;
 
     // CallSite
@@ -143,11 +143,12 @@ public final class JSError extends JSBuiltinObject {
         DynamicObject obj;
         String msg;
         JSContext context = realm.getContext();
+        DynamicObject prototype = realm.getErrorConstructor(errorType).getPrototype();
         if (message == Undefined.instance) {
-            obj = JSObject.create(context, context.getErrorFactory(errorType, false));
+            obj = JSObject.createWithPrototype(context, context.getErrorFactory(errorType, false), realm, prototype);
             msg = null;
         } else {
-            obj = JSObject.create(context, context.getErrorFactory(errorType, true), message);
+            obj = JSObject.createWithPrototype(context, context.getErrorFactory(errorType, true), realm, prototype, message);
             msg = (String) message; // can only be String or undefined
         }
         setException(realm, obj, JSException.createCapture(errorType, msg, obj), false);
@@ -157,7 +158,8 @@ public final class JSError extends JSBuiltinObject {
     public static DynamicObject createFromJSException(JSException exception, JSRealm realm, String message) {
         JSErrorType errorType = exception.getErrorType();
         JSContext context = realm.getContext();
-        DynamicObject obj = JSObject.create(context, context.getErrorFactory(errorType, true), Objects.requireNonNull(message));
+        DynamicObject prototype = realm.getErrorConstructor(errorType).getPrototype();
+        DynamicObject obj = JSObject.createWithPrototype(context, context.getErrorFactory(errorType, true), realm, prototype, Objects.requireNonNull(message));
         setException(realm, obj, exception, JSTruffleOptions.NashornCompatibilityMode);
         return obj;
     }
@@ -197,7 +199,8 @@ public final class JSError extends JSBuiltinObject {
         return new JSConstructor(errorConstructor, classPrototype);
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject errorPrototype) {
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject errorPrototype) {
         return JSObjectUtil.getProtoChildShape(errorPrototype, INSTANCE, context);
     }
 
@@ -304,7 +307,7 @@ public final class JSError extends JSBuiltinObject {
     }
 
     private static Object prepareStackElement(JSRealm realm, JSStackTraceElement stackTraceElement) {
-        return JSObject.create(realm.getContext(), realm.getCallSiteFactory(), stackTraceElement);
+        return JSObject.createWithRealm(realm.getContext(), realm.getContext().getCallSiteFactory(), realm, stackTraceElement);
     }
 
     private static String getMessage(DynamicObject errorObj) {

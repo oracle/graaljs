@@ -117,7 +117,7 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
 
     private void initialize() {
         this.callNode = insert(Truffle.getRuntime().createDirectCallNode(callTarget));
-        this.newObjectNode = insert(SpecializedNewObjectNode.create(functionData.getContext(), functionData.isBuiltin(), functionData.isConstructor(), functionData.isGenerator(), null));
+        this.newObjectNode = insert(SpecializedNewObjectNode.create(functionData, null));
         this.isPrimitiveNode = insert(IsPrimitiveNode.create());
     }
 
