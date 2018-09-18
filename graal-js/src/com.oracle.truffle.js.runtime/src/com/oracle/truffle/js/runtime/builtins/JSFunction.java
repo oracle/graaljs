@@ -983,6 +983,11 @@ public final class JSFunction extends JSBuiltinObject {
         return sourceSection == BUILTIN_SOURCE_SECTION;
     }
 
+    public static boolean isBuiltinThatShouldNotAppearInStackTrace(JSRealm realm, DynamicObject function) {
+        return function == realm.getApplyFunctionObject() || function == realm.getCallFunctionObject() || function == realm.getReflectApplyFunctionObject() ||
+                        function == realm.getReflectConstructFunctionObject();
+    }
+
     private static class ArgumentsProxyProperty implements PropertyProxy {
 
         @Override
@@ -1050,8 +1055,8 @@ public final class JSFunction extends JSBuiltinObject {
                             }
                             if (JSFunction.isBuiltinSourceSection(ss)) {
                                 JSRealm realm = functionData.getContext().getRealm();
-                                if (function == realm.getApplyFunctionObject() || function == realm.getCallFunctionObject()) {
-                                    return null; // skip apply() and call()
+                                if (isBuiltinThatShouldNotAppearInStackTrace(realm, function)) {
+                                    return null;
                                 }
                                 if (functionData.getName().startsWith("[Symbol.")) {
                                     return null;

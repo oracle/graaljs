@@ -184,6 +184,8 @@ public class JSRealm {
     private Object evalFunctionObject;
     private Object applyFunctionObject;
     private Object callFunctionObject;
+    private Object reflectApplyFunctionObject;
+    private Object reflectConstructFunctionObject;
 
     private final JSConstructor arrayBufferConstructor;
     private final JSConstructor sharedArrayBufferConstructor;
@@ -634,6 +636,14 @@ public class JSRealm {
         return callFunctionObject;
     }
 
+    public final Object getReflectApplyFunctionObject() {
+        return reflectApplyFunctionObject;
+    }
+
+    public final Object getReflectConstructFunctionObject() {
+        return reflectConstructFunctionObject;
+    }
+
     private static void putProtoAccessorProperty(final JSRealm realm) {
         JSContext context = realm.getContext();
         DynamicObject getProto = JSFunction.create(realm, context.protoGetterFunctionData);
@@ -798,7 +808,12 @@ public class JSRealm {
             putGlobalProperty(global, JSWeakSet.CLASS_NAME, getWeakSetConstructor().getFunctionObject());
             putGlobalProperty(global, JSSymbol.CLASS_NAME, getSymbolConstructor().getFunctionObject());
             setupPredefinedSymbols(getSymbolConstructor().getFunctionObject());
-            putGlobalProperty(global, REFLECT_CLASS_NAME, createReflect());
+
+            DynamicObject reflectObject = createReflect();
+            putGlobalProperty(global, REFLECT_CLASS_NAME, reflectObject);
+            this.reflectApplyFunctionObject = JSObject.get(reflectObject, "apply");
+            this.reflectConstructFunctionObject = JSObject.get(reflectObject, "construct");
+
             putGlobalProperty(global, JSProxy.CLASS_NAME, getProxyConstructor().getFunctionObject());
             putGlobalProperty(global, JSPromise.CLASS_NAME, getPromiseConstructor());
         }
