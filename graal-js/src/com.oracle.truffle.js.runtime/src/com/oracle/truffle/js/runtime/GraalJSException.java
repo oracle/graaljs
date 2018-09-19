@@ -395,8 +395,8 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         return null;
     }
 
-    private static int correctColumnNumber(int columnNumber, SourceSection callNodeSourceSection, SourceSection targetSourceSection) {
-        int correctNumber = columnNumber;
+    private static int sourceSectionOffset(SourceSection callNodeSourceSection, SourceSection targetSourceSection) {
+        int offset = 0;
         String code = callNodeSourceSection.getCharacters().toString();
 
         // skip code for the target
@@ -405,7 +405,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             int index = code.indexOf(targetCode);
             if (index != -1) {
                 index += targetCode.length();
-                correctNumber += index;
+                offset += index;
                 code = code.substring(index);
             }
         }
@@ -426,9 +426,9 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                 } while (i >= 0 && Character.isJavaIdentifierPart(code.charAt(i)));
                 index = i;
             }
-            correctNumber += index + 1;
+            offset += index + 1;
         }
-        return correctNumber;
+        return offset;
     }
 
     private static String getFileName(Source source) {
@@ -616,7 +616,21 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         // This method is called from nashorn tests via java interop
         @TruffleBoundary
         public int getLineNumber() {
-            return sourceSection != null ? sourceSection.getStartLine() : -1;
+            if (sourceSection == null) {
+                return -1;
+            }
+            int lineNumber = sourceSection.getStartLine();
+            if (!JSTruffleOptions.NashornCompatibilityMode && targetSourceSection != null) {
+                // for V8
+                int offset = sourceSectionOffset(sourceSection, targetSourceSection);
+                CharSequence chars = sourceSection.getCharacters();
+                for (int pos = 0; pos < offset; pos++) {
+                    if (chars.charAt(pos) == '\n') {
+                        lineNumber++;
+                    }
+                }
+            }
+            return lineNumber;
         }
 
         @TruffleBoundary
@@ -636,7 +650,15 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             int columnNumber = sourceSection.getStartColumn();
             if (!JSTruffleOptions.NashornCompatibilityMode && targetSourceSection != null) {
                 // for V8
-                columnNumber = correctColumnNumber(columnNumber, sourceSection, targetSourceSection);
+                int offset = sourceSectionOffset(sourceSection, targetSourceSection);
+                CharSequence chars = sourceSection.getCharacters();
+                for (int pos = 0; pos < offset; pos++) {
+                    if (chars.charAt(pos) == '\n') {
+                        columnNumber = 1;
+                    } else {
+                        columnNumber++;
+                    }
+                }
             }
             return columnNumber;
         }
