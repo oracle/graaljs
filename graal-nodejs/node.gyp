@@ -124,6 +124,7 @@
       'lib/internal/fs/utils.js',
       'lib/internal/fs/watchers.js',
       'lib/internal/graal/buffer.js',
+      'lib/internal/graal/debug.js',
       'lib/internal/http.js',
       'lib/internal/inspector_async_hook.js',
       'lib/internal/linkedlist.js',

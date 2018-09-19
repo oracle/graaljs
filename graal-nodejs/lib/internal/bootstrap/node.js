@@ -40,8 +40,7 @@
     // graal-node.js patch start
     if (process._breakFirstLine) {
       process.binding('inspector').callAndPauseOnStart = function(fn, self, ...args) {
-        const Debug = NativeModule.require('vm').runInDebugContext('Debug');
-        Debug.setBreakPoint(fn, 0, 0, undefined, true);
+        NativeModule.require('internal/graal/debug').setBreakPoint(fn, 0, 0, undefined, true);
         return fn.apply(self, args);
       }
     }

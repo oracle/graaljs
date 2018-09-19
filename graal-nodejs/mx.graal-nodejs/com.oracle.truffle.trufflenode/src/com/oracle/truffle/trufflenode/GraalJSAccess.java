@@ -1656,6 +1656,15 @@ public final class GraalJSAccess {
             System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
             extendedArgs[userArgs.length] = NIOBufferObject.createInitFunction(node);
             return extendedArgs;
+        } else if ("internal/graal/debug.js".equals(moduleName)) {
+            JSContext context = node.getContext();
+            CallTarget setBreakPointCallTarget = Truffle.getRuntime().createCallTarget(new SetBreakPointNode(this));
+            JSFunctionData setBreakPointData = JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
+            DynamicObject setBreakPoint = JSFunction.create(context.getRealm(), setBreakPointData);
+            Object[] extendedArgs = new Object[userArgs.length + 1];
+            System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
+            extendedArgs[userArgs.length] = setBreakPoint;
+            return extendedArgs;
         } else {
             return userArgs;
         }
