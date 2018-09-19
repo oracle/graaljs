@@ -149,6 +149,9 @@ mx.graal-nodejs/com.oracle.truffle.trufflenode.jniboundaryprofiler/build.xml
 mx.graal-nodejs/com.oracle.truffle.trufflenode.jniboundaryprofiler/nbproject/
 mx.graal-nodejs/com.oracle.truffle.trufflenode.jniboundaryprofiler/tests/build/
 /eclipseformat.backup.zip
+/nodejs.so
+/graal_isolate.h
+/graal_isolate_dynamic.h
 
 # libuv book and GitHub template
 deps/uv/.github/
