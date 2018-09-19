@@ -605,7 +605,6 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::isolate_dispose, "isolateDispose", "(ZI)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enter_polyglot_engine, "isolateEnterPolyglotEngine", "(JJJJIJIJ)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_perform_gc, "isolatePerformGC", "()V")
-    ACCESS_METHOD(GraalAccessMethod::isolate_get_debug_context, "isolateGetDebugContext", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_promise_hook, "isolateEnablePromiseHook", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_promise_reject_callback, "isolateEnablePromiseRejectCallback", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enter, "isolateEnter", "(J)V")
@@ -1190,12 +1189,6 @@ jobject GraalIsolate::CorrectReturnValue(GraalValue* value, jobject null_replace
         result = GetJNIEnv()->NewLocalRef(result);
     }
     return result;
-}
-
-v8::Local<v8::Context> GraalIsolate::GetDebugContext() {
-    JNI_CALL(jobject, java_context, this, GraalAccessMethod::isolate_get_debug_context, Object);
-    GraalContext* graal_context = new GraalContext(this, java_context);
-    return reinterpret_cast<v8::Context*> (graal_context);
 }
 
 int GraalIsolate::argc = 0;

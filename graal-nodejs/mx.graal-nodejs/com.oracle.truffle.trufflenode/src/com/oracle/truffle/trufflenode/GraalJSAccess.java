@@ -202,10 +202,6 @@ import com.oracle.truffle.trufflenode.info.Value;
 import com.oracle.truffle.trufflenode.interop.GraalJSJavaInteropMainWorker;
 import com.oracle.truffle.trufflenode.node.ExecuteNativeFunctionNode;
 import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
-import com.oracle.truffle.trufflenode.node.debug.IteratorPreviewNode;
-import com.oracle.truffle.trufflenode.node.debug.MakeMirrorNode;
-import com.oracle.truffle.trufflenode.node.debug.PromiseStatusNode;
-import com.oracle.truffle.trufflenode.node.debug.PromiseValueNode;
 import com.oracle.truffle.trufflenode.node.debug.SetBreakPointNode;
 import com.oracle.truffle.trufflenode.serialization.Deserializer;
 import com.oracle.truffle.trufflenode.serialization.Serializer;
@@ -240,7 +236,6 @@ public final class GraalJSAccess {
 
     private final Context evaluator;
     private final JSContext mainJSContext;
-    private JSRealm debugRealm;
     private final Deallocator deallocator;
     private ESModuleLoader moduleLoader;
 
@@ -2382,43 +2377,6 @@ public final class GraalJSAccess {
         if (exit) {
             exit(status);
         }
-    }
-
-    private void initDebugObject(JSRealm realm) {
-        JSContext context = realm.getContext();
-        DynamicObject debug = JSUserObject.create(context);
-        DynamicObject global = realm.getGlobalObject();
-
-        CallTarget setBreakPointCallTarget = Truffle.getRuntime().createCallTarget(new SetBreakPointNode(this));
-        JSFunctionData setBreakPointData = JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
-        DynamicObject setBreakPoint = JSFunction.create(realm, setBreakPointData);
-        JSObject.set(debug, SetBreakPointNode.NAME, setBreakPoint);
-
-        CallTarget promiseStatusCallTarget = Truffle.getRuntime().createCallTarget(new PromiseStatusNode());
-        JSFunctionData promiseStatusData = JSFunctionData.createCallOnly(context, promiseStatusCallTarget, 0, PromiseStatusNode.NAME);
-
-        CallTarget promiseValueCallTarget = Truffle.getRuntime().createCallTarget(new PromiseValueNode(context));
-        JSFunctionData promiseValueData = JSFunctionData.createCallOnly(context, promiseValueCallTarget, 0, PromiseValueNode.NAME);
-
-        CallTarget iteratorPreviewCallTarget = Truffle.getRuntime().createCallTarget(new IteratorPreviewNode(context));
-        JSFunctionData iteratorPreviewData = JSFunctionData.createCallOnly(context, iteratorPreviewCallTarget, 0, IteratorPreviewNode.NAME);
-
-        CallTarget makeMirrorCallTarget = Truffle.getRuntime().createCallTarget(new MakeMirrorNode(context, promiseStatusData, promiseValueData, iteratorPreviewData));
-        JSFunctionData makeMirrorData = JSFunctionData.createCallOnly(context, makeMirrorCallTarget, 2, MakeMirrorNode.NAME);
-        DynamicObject makeMirror = JSFunction.create(realm, makeMirrorData);
-        JSObject.set(debug, MakeMirrorNode.NAME, makeMirror);
-
-        JSObject.set(global, "Debug", debug);
-    }
-
-    public Object isolateGetDebugContext() {
-        if (debugRealm == null) {
-            JSRealm newDebugRealm = mainJSContext.getRealm().createChildRealm();
-            newDebugRealm.setEmbedderData(new RealmData());
-            initDebugObject(newDebugRealm);
-            debugRealm = newDebugRealm;
-        }
-        return debugRealm;
     }
 
     public void isolateEnablePromiseHook(boolean enable) {

@@ -86,7 +86,6 @@
       { "name": "isolateEnter" },
       { "name": "isolateEnterPolyglotEngine" },
       { "name": "isolateExit" },
-      { "name": "isolateGetDebugContext" },
       { "name": "isolateGetDoublePlaceholder" },
       { "name": "isolateGetHeapStatistics" },
       { "name": "isolateGetIntPlaceholder" },

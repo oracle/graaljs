@@ -188,7 +188,6 @@ enum GraalAccessMethod {
     isolate_dispose,
     isolate_enter_polyglot_engine,
     isolate_perform_gc,
-    isolate_get_debug_context,
     isolate_enable_promise_hook,
     isolate_enable_promise_reject_callback,
     isolate_enter,
@@ -353,7 +352,6 @@ public:
     void WriteDoubleToSharedBuffer(double number);
     void InternalErrorCheck();
     static v8::Isolate* New(v8::Isolate::CreateParams const& params);
-    v8::Local<v8::Context> GetDebugContext();
     void SetPromiseHook(v8::PromiseHook promise_hook);
     void NotifyPromiseHook(v8::PromiseHookType, v8::Local<v8::Promise> promise, v8::Local<v8::Value> parent);
     void SetPromiseRejectCallback(v8::PromiseRejectCallback callback);
