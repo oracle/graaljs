@@ -47,7 +47,6 @@
 GraalFunctionCallbackArguments::GraalFunctionCallbackArguments(
         GraalIsolate* isolate,
         GraalValue* graal_this,
-        GraalValue* graal_callee,
         GraalValue* graal_new_target,
         GraalValue* graal_data,
         GraalValue** argv,

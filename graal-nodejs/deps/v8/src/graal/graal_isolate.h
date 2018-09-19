@@ -222,7 +222,6 @@ enum GraalAccessMethod {
     function_template_instance_template,
     function_template_prototype_template,
     function_template_get_function,
-    function_template_get_function_to_cache,
     function_template_has_instance,
     function_template_set_call_handler,
     function_template_inherit,
@@ -511,19 +510,6 @@ public:
         return ++function_template_count_;
     }
 
-    inline GraalValue* GetFunctionTemplateFunction(unsigned id) {
-        GraalValue* result;
-        if (function_template_functions.size() <= id) {
-            result = nullptr;
-        } else {
-            result = function_template_functions[id];
-        }
-        if (result == nullptr) {
-            result = CacheFunctionTemplateFunction(id);
-        }
-        return result;
-    }
-
     inline GraalValue* GetFunctionTemplateData(unsigned id) {
         return function_template_data[id];
     }
@@ -532,7 +518,6 @@ public:
         return function_template_callbacks[id];
     }
 
-    GraalValue* CacheFunctionTemplateFunction(unsigned id);
     void SetFunctionTemplateFunction(unsigned id, GraalValue* function);
     void SetFunctionTemplateData(unsigned id, GraalValue* data);
     void SetFunctionTemplateCallback(unsigned id, v8::FunctionCallback callback);
@@ -568,7 +553,6 @@ private:
     std::vector<std::tuple<GCCallbackType, void*, void*>> prolog_callbacks;
     std::vector<std::tuple<GCCallbackType, void*, void*>> epilog_callbacks;
     std::vector<std::pair<v8::MicrotaskCallback, void*>> microtasks;
-    std::vector<GraalValue*> function_template_functions;
     std::vector<GraalValue*> function_template_data;
     std::vector<v8::FunctionCallback> function_template_callbacks;
     JavaVM* jvm_;

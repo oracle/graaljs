@@ -257,8 +257,6 @@ public final class GraalJSAccess {
      */
     private final Map<String, Reference<String>> sourceCodeCache = new WeakHashMap<>();
 
-    private final List<Reference<FunctionTemplate>> functionTemplates = new ArrayList<>();
-
     private final boolean exposeGC;
 
     // static accessors to JSRegExp properties (usually via nodes)
@@ -1295,10 +1293,6 @@ public final class GraalJSAccess {
     public Object functionTemplateNew(int id, long pointer, Object additionalData, Object signature, boolean isConstructor) {
         FunctionTemplate template = new FunctionTemplate(id, pointer, additionalData, (FunctionTemplate) signature, isConstructor);
         template.getInstanceTemplate().setParentFunctionTemplate(template);
-        while (functionTemplates.size() <= id) {
-            functionTemplates.add(null);
-        }
-        functionTemplates.set(id, new WeakReference<>(template));
         return template;
     }
 
@@ -1357,17 +1351,6 @@ public final class GraalJSAccess {
         }
 
         return template.getFunctionObject();
-    }
-
-    public Object functionTemplateGetFunction(int id) {
-        FunctionTemplate template = functionTemplates.get(id).get();
-        if (template == null) {
-            // should not happen
-            System.err.println("functionTemplateGetFunction() called for an unknown/GCed template!");
-            return null;
-        } else {
-            return template.getFunctionObject();
-        }
     }
 
     private DynamicObject functionTemplateCreateCallback(JSContext context, JSRealm realm, FunctionTemplate template) {

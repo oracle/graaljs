@@ -102,7 +102,6 @@ v8::Local<v8::Function> GraalFunctionTemplate::GetFunction(v8::Local<v8::Context
     jobject java_context = graal_context->GetJavaObject();
     JNI_CALL(jobject, java_function, Isolate(), GraalAccessMethod::function_template_get_function, Object, java_context, GetJavaObject());
     GraalFunction* graal_function = new GraalFunction(Isolate(), java_function);
-    Isolate()->SetFunctionTemplateFunction(id_, graal_function);
     return reinterpret_cast<v8::Function*> (graal_function);
 }
 

@@ -455,7 +455,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
     return reinterpret_cast<v8::Isolate*> (isolate);
 }
 
-GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functions(), function_template_data(), function_template_callbacks(), jvm_(jvm), jni_env_(env), jni_methods_(), jni_fields_(), message_listener_(nullptr), function_template_count_(0), lock_(PTHREAD_MUTEX_INITIALIZER), promise_hook_(nullptr), promise_reject_callback_(nullptr) {
+GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(), function_template_callbacks(), jvm_(jvm), jni_env_(env), jni_methods_(), jni_fields_(), message_listener_(nullptr), function_template_count_(0), lock_(PTHREAD_MUTEX_INITIALIZER), promise_hook_(nullptr), promise_reject_callback_(nullptr) {
     // Object.class
     jclass object_class = env->FindClass("java/lang/Object");
     object_class_ = (jclass) env->NewGlobalRef(object_class);
@@ -639,7 +639,6 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::function_template_instance_template, "functionTemplateInstanceTemplate", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::function_template_prototype_template, "functionTemplatePrototypeTemplate", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::function_template_get_function, "functionTemplateGetFunction", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::function_template_get_function_to_cache, "functionTemplateGetFunction", "(I)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::function_template_has_instance, "functionTemplateHasInstance", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::function_template_set_call_handler, "functionTemplateSetCallHandler", "(Ljava/lang/Object;JLjava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::function_template_inherit, "functionTemplateInherit", "(Ljava/lang/Object;Ljava/lang/Object;)V")
@@ -1142,21 +1141,6 @@ void GraalIsolate::CancelTerminateExecution() {
     if (current_isolate == nullptr) {
         jvm_->DetachCurrentThread();
     }
-}
-
-GraalValue* GraalIsolate::CacheFunctionTemplateFunction(unsigned id) {
-    JNI_CALL(jobject, java_function, this, GraalAccessMethod::function_template_get_function_to_cache, Object, (jint) id);
-    GraalValue* function = GraalValue::FromJavaObject(this, java_function);
-    SetFunctionTemplateFunction(id, function);
-    return function;
-}
-
-void GraalIsolate::SetFunctionTemplateFunction(unsigned id, GraalValue* function) {
-    while (function_template_functions.size() <= id) function_template_functions.push_back(nullptr);
-    GraalValue* cached_function = reinterpret_cast<GraalValue*> (function->Copy(true));
-    cached_function->MakeWeak();
-    cached_function->ReferenceAdded();
-    function_template_functions[id] = cached_function;
 }
 
 void GraalIsolate::SetFunctionTemplateData(unsigned id, GraalValue* data) {

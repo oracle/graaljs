@@ -51,7 +51,6 @@ public:
     GraalFunctionCallbackArguments(
             GraalIsolate* isolate,
             GraalValue* this_arg,
-            GraalValue* callee,
             GraalValue* new_target,
             GraalValue* data,
             GraalValue** argv,
