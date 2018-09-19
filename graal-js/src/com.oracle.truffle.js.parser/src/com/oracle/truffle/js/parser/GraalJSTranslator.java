@@ -175,8 +175,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     };
 
-    private static final SourceSection unavailableInternalSection = Source.newBuilder("<internal>").name("<internal>").mimeType(
-                    AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).internal().build().createUnavailableSection();
+    private static final SourceSection unavailableInternalSection = Source.newBuilder(AbstractJavaScriptLanguage.ID, "<internal>", "<internal>").mimeType(
+                    AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).internal(true).build().createUnavailableSection();
 
     private Environment environment;
     protected final JSContext context;
@@ -2113,8 +2113,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode[] transformArgs(List<Expression> argList) {
-        JavaScriptNode[] args = javaScriptNodeArray(argList.size());
-        for (int i = 0; i < argList.size(); i++) {
+        int len = argList.size();
+        if (len > JSTruffleOptions.MaxFunctionArgumentsLength) {
+            throw Errors.createSyntaxError("function has too many parameters");
+        }
+        JavaScriptNode[] args = javaScriptNodeArray(len);
+        for (int i = 0; i < len; i++) {
             args[i] = transform(argList.get(i));
         }
         return args;

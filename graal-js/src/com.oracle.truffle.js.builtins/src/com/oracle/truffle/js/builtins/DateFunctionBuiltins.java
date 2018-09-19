@@ -118,8 +118,8 @@ public final class DateFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<D
 
         @Specialization
         @TruffleBoundary
-        protected static double now() {
-            return System.currentTimeMillis();
+        protected double now() {
+            return getContext().getRealm().currentTimeMillis();
         }
     }
 

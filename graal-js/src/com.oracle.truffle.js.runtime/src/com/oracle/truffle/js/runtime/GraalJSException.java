@@ -243,17 +243,21 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             }
         }
 
+        private static RootNode rootNode(TruffleStackTraceElement element) {
+            CallTarget callTarget = element.getTarget();
+            return (callTarget instanceof RootCallTarget) ? ((RootCallTarget) callTarget).getRootNode() : null;
+        }
+
         public boolean visitFrame(TruffleStackTraceElement element) {
             Node callNode = element.getLocation();
             if (first) {
                 first = false;
-                callNode = originatingNode;
+                if (JSRuntime.isJSRootNode(rootNode(element))) {
+                    callNode = originatingNode;
+                }
             }
             if (callNode == null) {
-                CallTarget callTarget = element.getTarget();
-                if (callTarget instanceof RootCallTarget) {
-                    callNode = ((RootCallTarget) callTarget).getRootNode();
-                }
+                callNode = rootNode(element);
             }
             switch (stackFrameType(callNode)) {
                 case STACK_FRAME_JS: {
@@ -272,26 +276,27 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                     Object thisObj = JSArguments.getThisObject(arguments);
                     Object functionObj = JSArguments.getFunctionObject(arguments);
                     if (JSFunction.isJSFunction(functionObj)) {
-                        JSFunctionData functionData = JSFunction.getFunctionData((DynamicObject) functionObj);
+                        DynamicObject function = (DynamicObject) functionObj;
+                        JSFunctionData functionData = JSFunction.getFunctionData(function);
                         if (functionData.isStrict()) {
                             inStrictMode = true;
-                        } else if (functionData.isBuiltin() && JSFunction.isStrictBuiltin((DynamicObject) functionObj)) {
+                        } else if (functionData.isBuiltin() && JSFunction.isStrictBuiltin(function)) {
                             inStrictMode = true;
                         }
-                        if (skippingFrames && functionObj == skipFramesUpTo) {
+                        if (skippingFrames && function == skipFramesUpTo) {
                             skippingFrames = false;
                             return true; // skip this frame as well
                         }
-                        JSRealm realm = JSFunction.getRealm((DynamicObject) functionObj);
-                        if (functionObj == realm.getApplyFunctionObject() || functionObj == realm.getCallFunctionObject()) {
-                            return true; // skip Function.apply and Function.call
+                        JSRealm realm = JSFunction.getRealm(function);
+                        if (JSFunction.isBuiltinThatShouldNotAppearInStackTrace(realm, function)) {
+                            return true;
                         }
                         if (!skippingFrames) {
                             if (functionData.isAsync() && !functionData.isGenerator() && JSRuntime.isJSFunctionRootNode(rootNode)) {
                                 // async function calls produce two frames, skip one
                                 return true;
                             }
-                            stackTrace.add(processJSFrame(rootNode, callNode, thisObj, (DynamicObject) functionObj, inStrictMode));
+                            stackTrace.add(processJSFrame(rootNode, callNode, thisObj, function, inStrictMode));
                         }
                     }
                     break;
@@ -390,8 +395,8 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         return null;
     }
 
-    private static int correctColumnNumber(int columnNumber, SourceSection callNodeSourceSection, SourceSection targetSourceSection) {
-        int correctNumber = columnNumber;
+    private static int sourceSectionOffset(SourceSection callNodeSourceSection, SourceSection targetSourceSection) {
+        int offset = 0;
         String code = callNodeSourceSection.getCharacters().toString();
 
         // skip code for the target
@@ -400,7 +405,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             int index = code.indexOf(targetCode);
             if (index != -1) {
                 index += targetCode.length();
-                correctNumber += index;
+                offset += index;
                 code = code.substring(index);
             }
         }
@@ -421,9 +426,9 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                 } while (i >= 0 && Character.isJavaIdentifierPart(code.charAt(i)));
                 index = i;
             }
-            correctNumber += index + 1;
+            offset += index + 1;
         }
-        return correctNumber;
+        return offset;
     }
 
     private static String getFileName(Source source) {
@@ -611,7 +616,21 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         // This method is called from nashorn tests via java interop
         @TruffleBoundary
         public int getLineNumber() {
-            return sourceSection != null ? sourceSection.getStartLine() : -1;
+            if (sourceSection == null) {
+                return -1;
+            }
+            int lineNumber = sourceSection.getStartLine();
+            if (!JSTruffleOptions.NashornCompatibilityMode && targetSourceSection != null) {
+                // for V8
+                int offset = sourceSectionOffset(sourceSection, targetSourceSection);
+                CharSequence chars = sourceSection.getCharacters();
+                for (int pos = 0; pos < offset; pos++) {
+                    if (chars.charAt(pos) == '\n') {
+                        lineNumber++;
+                    }
+                }
+            }
+            return lineNumber;
         }
 
         @TruffleBoundary
@@ -631,7 +650,15 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             int columnNumber = sourceSection.getStartColumn();
             if (!JSTruffleOptions.NashornCompatibilityMode && targetSourceSection != null) {
                 // for V8
-                columnNumber = correctColumnNumber(columnNumber, sourceSection, targetSourceSection);
+                int offset = sourceSectionOffset(sourceSection, targetSourceSection);
+                CharSequence chars = sourceSection.getCharacters();
+                for (int pos = 0; pos < offset; pos++) {
+                    if (chars.charAt(pos) == '\n') {
+                        columnNumber = 1;
+                    } else {
+                        columnNumber++;
+                    }
+                }
             }
             return columnNumber;
         }

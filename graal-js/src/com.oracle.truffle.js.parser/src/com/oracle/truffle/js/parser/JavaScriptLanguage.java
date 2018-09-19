@@ -158,12 +158,13 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
                 InputNodeTag.class,
 })
 
-@TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, mimeType = {
-                JavaScriptLanguage.APPLICATION_MIME_TYPE, JavaScriptLanguage.TEXT_MIME_TYPE}, contextPolicy = TruffleLanguage.ContextPolicy.REUSE)
+@TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, mimeType = {JavaScriptLanguage.APPLICATION_MIME_TYPE,
+                JavaScriptLanguage.TEXT_MIME_TYPE}, contextPolicy = TruffleLanguage.ContextPolicy.REUSE, dependentLanguages = "regex")
 public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private static final int MAX_TOSTRING_DEPTH = 10;
 
     private volatile JSContext languageContext;
+    private volatile boolean multiContext;
 
     public static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
@@ -270,7 +271,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 code.append("return ");
                 code.append(source.getCharacters());
                 code.append("\n})");
-                Source wrappedSource = Source.newBuilder(code.toString()).name(Evaluator.FUNCTION_SOURCE_NAME).language(ID).build();
+                Source wrappedSource = Source.newBuilder(ID, code.toString(), Evaluator.FUNCTION_SOURCE_NAME).build();
                 Object function = parseInContext(wrappedSource, realm.getContext()).run(realm);
                 return JSRuntime.jsObjectToJavaObject(JSFunction.call(JSArguments.create(Undefined.instance, function, arguments)));
             }
@@ -489,6 +490,16 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected void disposeContext(JSRealm realm) {
+    }
+
+    @Override
+    protected void initializeMultipleContexts() {
+        multiContext = true;
+    }
+
+    @Override
+    public boolean isMultiContext() {
+        return multiContext;
     }
 
     @Override

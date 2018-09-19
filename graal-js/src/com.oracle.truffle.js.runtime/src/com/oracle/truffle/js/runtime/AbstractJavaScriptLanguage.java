@@ -40,11 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import java.io.File;
-import java.io.IOException;
-
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.source.Source;
 
 public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm> {
     public static final String TEXT_MIME_TYPE = "text/javascript";
@@ -57,10 +53,6 @@ public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm
     public static final String NAME = "JavaScript";
     public static final String ID = "js";
 
-    public static Source sourceFromFileName(String fileName) throws IOException {
-        return Source.newBuilder(new File(fileName)).name(fileName).language(ID).build();
-    }
-
     public static JSRealm getCurrentJSRealm() {
         return getCurrentContext(AbstractJavaScriptLanguage.class);
     }
@@ -72,4 +64,6 @@ public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm
     public static TruffleLanguage.Env getCurrentEnv() {
         return getCurrentContext(AbstractJavaScriptLanguage.class).getEnv();
     }
+
+    public abstract boolean isMultiContext();
 }

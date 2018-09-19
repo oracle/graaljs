@@ -58,7 +58,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
-public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions {
+public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final JSWeakMap INSTANCE = new JSWeakMap();
 
@@ -92,7 +92,8 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
         return prototype;
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSWeakMap.INSTANCE, context);
         initialShape = initialShape.addProperty(WEAKMAP_PROPERTY);
         return initialShape;
@@ -128,5 +129,10 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
 
     public static boolean isJSWeakMap(DynamicObject obj) {
         return isInstance(obj, INSTANCE);
+    }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getWeakMapConstructor().getPrototype();
     }
 }

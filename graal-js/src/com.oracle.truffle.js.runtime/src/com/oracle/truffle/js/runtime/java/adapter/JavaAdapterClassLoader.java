@@ -48,9 +48,12 @@ import java.security.CodeSource;
 import java.security.Permissions;
 import java.security.ProtectionDomain;
 import java.security.SecureClassLoader;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 
+import org.graalvm.polyglot.Value;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.util.TraceClassVisitor;
 
@@ -64,7 +67,7 @@ import org.objectweb.asm.util.TraceClassVisitor;
  */
 final class JavaAdapterClassLoader {
     static final ProtectionDomain GENERATED_PROTECTION_DOMAIN = createGeneratedProtectionDomain();
-    static final Collection<String> VISIBLE_INTERNAL_CLASS_NAMES = Collections.singleton(JavaAdapterServices.class.getName());
+    static final Collection<String> VISIBLE_INTERNAL_CLASS_NAMES = Collections.unmodifiableCollection(new HashSet<>(Arrays.asList(JavaAdapterServices.class.getName(), Value.class.getName())));
 
     private final String className;
     private final byte[] classBytes;
@@ -84,7 +87,7 @@ final class JavaAdapterClassLoader {
         try {
             return Class.forName(className, true, createClassLoader(parentLoader));
         } catch (final ClassNotFoundException e) {
-            throw new AssertionError(e); // cannot happen
+            throw new IllegalStateException(e);
         }
     }
 
@@ -104,10 +107,14 @@ final class JavaAdapterClassLoader {
                      * internal classes used by generated adapter classes.
                      */
                     if (VISIBLE_INTERNAL_CLASS_NAMES.contains(name)) {
-                        return myLoader != null ? myLoader.loadClass(name) : Class.forName(name, false, myLoader);
+                        return loadInternalClass(name);
                     }
                     throw se;
                 }
+            }
+
+            private Class<?> loadInternalClass(final String name) throws ClassNotFoundException {
+                return myLoader != null ? myLoader.loadClass(name) : Class.forName(name, false, myLoader);
             }
 
             @Override
@@ -117,6 +124,9 @@ final class JavaAdapterClassLoader {
                         printCode(classBytes);
                     }
                     return defineClass(name, classBytes, 0, classBytes.length, GENERATED_PROTECTION_DOMAIN);
+                }
+                if (VISIBLE_INTERNAL_CLASS_NAMES.contains(name)) {
+                    return loadInternalClass(name);
                 }
                 throw new ClassNotFoundException(name);
             }

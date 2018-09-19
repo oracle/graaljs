@@ -66,7 +66,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBigIntNodeGen;
@@ -139,6 +138,7 @@ import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.control.TryCatchNode.InitErrorObjectNode;
+import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -151,7 +151,9 @@ import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.EcmaAgent;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -705,7 +707,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @TruffleBoundary
         protected String callDate() {
             // called as function ECMAScript 15.9.2.1
-            return JSDate.toString(System.currentTimeMillis(), getContext());
+            return JSDate.toString(getContext().getRealm().currentTimeMillis(), getContext());
         }
     }
 
@@ -764,8 +766,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @TruffleBoundary
-        private static double now() {
-            return System.currentTimeMillis();
+        private double now() {
+            return getContext().getRealm().currentTimeMillis();
         }
 
         @TruffleBoundary
@@ -1336,29 +1338,34 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.context = context;
         }
 
-        protected abstract DynamicObject executeFunction(String paramList, String body);
+        protected final DynamicObject executeFunction(String paramList, String body) {
+            return executeFunction(paramList, body, getSourceName());
+        }
+
+        protected abstract DynamicObject executeFunction(String paramList, String body, String sourceName);
 
         protected static boolean equals(String a, String b) {
             return a.equals(b);
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"equals(cachedParamList, paramList)", "equals(cachedBody, body)"}, limit = "1")
-        protected final DynamicObject doCached(String paramList, String body,
+        @Specialization(guards = {"equals(cachedParamList, paramList)", "equals(cachedBody, body)", "equals(cachedSourceName, sourceName)"}, limit = "1")
+        protected final DynamicObject doCached(String paramList, String body, String sourceName,
                         @Cached("paramList") String cachedParamList,
                         @Cached("body") String cachedBody,
-                        @Cached("parseFunction(paramList, body)") ScriptNode parsedFunction) {
+                        @Cached("sourceName") String cachedSourceName,
+                        @Cached("parseFunction(paramList, body, sourceName)") ScriptNode parsedFunction) {
             return evalParsedFunction(context.getRealm(), parsedFunction);
         }
 
         @Specialization
-        protected final DynamicObject doUncached(String paramList, String body) {
-            return parseAndEvalFunction(context.getRealm(), paramList, body);
+        protected final DynamicObject doUncached(String paramList, String body, String sourceName) {
+            return parseAndEvalFunction(context.getRealm(), paramList, body, sourceName);
         }
 
-        protected final ScriptNode parseFunction(String paramList, String body) {
+        protected final ScriptNode parseFunction(String paramList, String body, String sourceName) {
             CompilerAsserts.neverPartOfCompilation();
-            return ((NodeEvaluator) context.getEvaluator()).parseFunction(context, this, paramList, body, generatorFunction, asyncFunction);
+            return ((NodeEvaluator) context.getEvaluator()).parseFunction(context, paramList, body, generatorFunction, asyncFunction, sourceName);
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
@@ -1367,8 +1374,19 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
-        private DynamicObject parseAndEvalFunction(JSRealm realm, String paramList, String body) {
-            return evalParsedFunction(realm, parseFunction(paramList, body));
+        private DynamicObject parseAndEvalFunction(JSRealm realm, String paramList, String body, String sourceName) {
+            return evalParsedFunction(realm, parseFunction(paramList, body, sourceName));
+        }
+
+        private String getSourceName() {
+            String sourceName = null;
+            if (context.isOptionV8CompatibilityMode()) {
+                sourceName = EvalNode.findAndFormatEvalOrigin(null);
+            }
+            if (sourceName == null) {
+                sourceName = Evaluator.FUNCTION_SOURCE_NAME;
+            }
+            return sourceName;
         }
     }
 
@@ -1793,8 +1811,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected DynamicObject constructWorker() {
             JSContext context = getContext();
-            DynamicObjectFactory factory = context.getRealm().getJavaInteropWorkerFactory();
-            DynamicObject worker = JSObject.create(context, factory, context.getJavaInteropWorkerFactory().createAgent(context.getMainWorker()));
+            EcmaAgent agent = context.getJavaInteropWorkerFactory().createAgent(context.getMainWorker());
+            DynamicObject worker = JSObject.create(context, context.getJavaInteropWorkerObjectFactory(), agent);
             return worker;
         }
     }

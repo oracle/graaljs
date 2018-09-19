@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import java.math.BigDecimal;
-import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -113,6 +111,7 @@ public final class JSRuntime {
     public static final int MAX_SAFE_INTEGER_IN_FLOAT = 1 << 24;
     public static final int MIN_SAFE_INTEGER_IN_FLOAT = -MAX_SAFE_INTEGER_IN_FLOAT;
     public static final long MAX_BIG_INT_EXPONENT = Integer.MAX_VALUE;
+    public static final long INVALID_SAFE_INTEGER = Long.MIN_VALUE;
 
     public static final String TO_STRING = "toString";
     public static final String VALUE_OF = "valueOf";
@@ -444,7 +443,7 @@ public final class JSRuntime {
             return 0;
         }
         char firstChar = strCamel.charAt(0);
-        if (strCamel.length() >= INFINITY_STRING.length() && strCamel.contains(INFINITY_STRING)) {
+        if (strCamel.length() >= INFINITY_STRING.length() && strCamel.length() <= INFINITY_STRING.length() + 1 && strCamel.endsWith(INFINITY_STRING)) {
             return identifyInfinity(strCamel, firstChar);
         }
         if (!(JSRuntime.isAsciiDigit(firstChar) || firstChar == '-' || firstChar == '.' || firstChar == '+')) {
@@ -459,9 +458,7 @@ public final class JSRuntime {
         int eIndex = firstExpIndexInString(str);
         boolean sci = !hex && (0 <= eIndex && eIndex < str.length() - 1);
         try {
-            if (sci) {
-                return stringToNumberSci(str);
-            } else if (str.length() <= 18 && !str.contains(".")) {
+            if (!sci && str.length() <= 18 && str.indexOf('.') == -1) {
                 // 18 digits always fit into long
                 if (hex) {
                     return Long.valueOf(str.substring(2), 16);
@@ -469,15 +466,14 @@ public final class JSRuntime {
                     return stringToNumberLong(str);
                 }
             } else {
-                return Double.valueOf(str);
+                return parseDoubleOrNaN(str);
             }
         } catch (NumberFormatException e) {
-            return Double.valueOf(Double.NaN);
+            return Double.NaN;
         }
     }
 
-    @TruffleBoundary
-    public static Number stringToNumberLong(String strLower) throws NumberFormatException {
+    private static Number stringToNumberLong(String strLower) throws NumberFormatException {
         assert strLower.length() > 0;
         long num = Long.parseLong(strLower);
         if (longIsRepresentableAsInt(num)) {
@@ -490,22 +486,22 @@ public final class JSRuntime {
         }
     }
 
+    /**
+     * Like {@link Double#parseDouble(String)}, but does not allow trailing {@code d} or {@code f}.
+     *
+     * @return double value or {@link Double#NaN} if not parsable.
+     */
     @TruffleBoundary
-    public static double stringToNumberSci(String str) {
-        int firstIdx = firstExpIndexInString(str);
-        if (firstIdx < 0) {
-            return Double.NaN; // no 'e' found
+    public static double parseDoubleOrNaN(String input) {
+        // A valid JS number must end with either a digit or '.'.
+        // Double.parseDouble also accepts a trailing 'd', 'D', 'f', 'F'.
+        if (input.isEmpty() || input.charAt(input.length() - 1) > '9') {
+            return Double.NaN;
         }
-        String part1 = str.substring(0, firstIdx);
-        if ("-0".equals(part1)) {
-            return -0.0;
-        }
-        String part2 = str.substring(firstIdx + 1);
-        int exponent = Integer.parseInt(part2);
-        if (exponent <= -324 || exponent >= 324 || part1.contains(".")) {
-            return stringToNumberSciBigExponent(part1, exponent);
-        } else {
-            return movePointRight(part1, exponent).doubleValue();
+        try {
+            return Double.parseDouble(input);
+        } catch (NumberFormatException e) {
+            return Double.NaN;
         }
     }
 
@@ -519,32 +515,6 @@ public final class JSRuntime {
             return firstIdx;
         }
         return str.indexOf('E', 0);
-    }
-
-    private static double stringToNumberSciBigExponent(String number, int exponent) {
-        BigDecimal result = movePointRight(number, exponent);
-        BigDecimal resultAbs = result.abs();
-        if ((resultAbs.compareTo(BigDecimal.valueOf(Double.MAX_VALUE)) > 0)) {
-            if (result.signum() > 0) {
-                return Double.POSITIVE_INFINITY;
-            } else {
-                return Double.NEGATIVE_INFINITY;
-            }
-        }
-        if ((resultAbs.compareTo(BigDecimal.valueOf(Double.MIN_VALUE)) < 0)) {
-            if (result.signum() < 0) {
-                return -0.0;
-            } else {
-                return 0;
-            }
-        }
-        return result.doubleValue();
-    }
-
-    private static BigDecimal movePointRight(String number, int exponent) {
-        // we won't be accurate if we do the decimalization twice
-        BigDecimal exp = BigDecimal.TEN.pow(exponent, MathContext.DECIMAL128);
-        return new BigDecimal(number).multiply(exp);
     }
 
     public static double identifyInfinity(String str, char firstChar) {
@@ -1987,6 +1957,68 @@ public final class JSRuntime {
         }
     }
 
+    @TruffleBoundary
+    public static long parseSafeInteger(String s) {
+        return parseSafeInteger(s, 0, s.length(), 10);
+    }
+
+    @TruffleBoundary
+    public static long parseSafeInteger(String s, int beginIndex, int endIndex, int radix) {
+        return parseLong(s, beginIndex, endIndex, radix, radix == 10, MAX_SAFE_INTEGER_LONG);
+    }
+
+    /**
+     * Parses the substring as a signed long in the safe integer range in the specified radix.
+     *
+     * @return parsed integer value or {@link #INVALID_SAFE_INTEGER} if the string is not parsable
+     *         or not in the safe integer range.
+     */
+    private static long parseLong(String s, int beginIndex, int endIndex, int radix, boolean parseSign, long limit) {
+        assert beginIndex >= 0 && beginIndex <= endIndex && endIndex <= s.length();
+        assert radix >= Character.MIN_RADIX && radix <= Character.MAX_RADIX;
+        assert limit <= Long.MAX_VALUE / radix - radix;
+
+        boolean negative = false;
+        int i = beginIndex;
+        if (i >= endIndex) { // ""
+            return INVALID_SAFE_INTEGER;
+        }
+        if (parseSign) {
+            char firstChar = s.charAt(i);
+            if (firstChar < '0') {
+                if (firstChar == '-') {
+                    negative = true;
+                } else if (firstChar != '+') {
+                    return INVALID_SAFE_INTEGER;
+                }
+                i++;
+            }
+            if (i >= endIndex) { // "-", "+"
+                return INVALID_SAFE_INTEGER;
+            }
+        }
+
+        long result = 0;
+        while (i < endIndex) {
+            char c = s.charAt(i);
+            int digit = JSRuntime.valueInRadix(c, radix);
+            if (digit < 0) {
+                return INVALID_SAFE_INTEGER;
+            }
+            result *= radix;
+            result += digit;
+            if (result > limit) {
+                return INVALID_SAFE_INTEGER;
+            }
+            i++;
+        }
+        assert result >= 0;
+        if (negative && result == 0) { // "-0"
+            return INVALID_SAFE_INTEGER;
+        }
+        return negative ? -result : result;
+    }
+
     /**
      * Parse a string to a double. Use a long value during parsing, thus you need to ensure the
      * result and intermediate values fit into a long. Returned types are int or double.
@@ -2168,6 +2200,16 @@ public final class JSRuntime {
             return true;
         } else if (JSProxy.isProxy(value)) {
             return isCallableProxy((DynamicObject) value);
+        } else if (value instanceof TruffleObject) {
+            return isCallableForeign((TruffleObject) value);
+        }
+        return false;
+    }
+
+    @TruffleBoundary
+    private static boolean isCallableForeign(TruffleObject value) {
+        if (isForeignObject(value)) {
+            return JSInteropNodeUtil.isExecutable(value);
         }
         return false;
     }

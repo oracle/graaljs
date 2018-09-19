@@ -174,7 +174,9 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
         }
 
         private String getFileName() {
-            return getEncapsulatingSourceSection().getSource().getName();
+            Source source = getEncapsulatingSourceSection().getSource();
+            String path = source.getPath();
+            return (path == null) ? source.getName() : path;
         }
 
         @Override
@@ -203,10 +205,14 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
             if (source.isInternal() || source.isInteractive()) {
                 return "";
             }
-            String path = source.getName();
+            String path = source.getPath();
+            path = (path == null) ? source.getName() : path;
             if (File.separatorChar == '\\' && path.startsWith("/")) {
                 // on Windows, remove first "/" from /c:/test/dir/ style paths
                 path = path.substring(1);
+            }
+            if (path.startsWith("file:")) {
+                path = path.substring("file:".length());
             }
             Path filePath = Paths.get(path).toAbsolutePath();
             String dirPath = filePath.getParent().toString();

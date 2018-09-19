@@ -99,6 +99,10 @@
     "status" : "SKIP",
     "comment" : "Using 'jdk.nashorn.internal.runtime.Source'"
   }, {
+    "filePath" : "basic/hideLocationProperties.js",
+    "status" : "FAIL",
+    "comment" : "Prints the absolute name of the script"
+  }, {
     "filePath" : "basic/java.js",
     "status" : "FAIL",
     "comment" : "Java interop migration"
@@ -459,13 +463,6 @@
     "status" : "SKIP",
     "comment" : "using jdk.nashorn.api.scripting.JSObject"
   }, {
-    "filePath" : "basic/JDK-8067139.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
-  }, {
-    "filePath" : "basic/JDK-8068573.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "basic/JDK-8068580.js",
     "status" : "FAIL"
   }, {
@@ -562,10 +559,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "basic/JDK-8144131.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
-  }, {
-    "filePath" : "basic/JDK-8146147.js",
     "status" : "FAIL",
     "comment" : "Java interop migration"
   }, {

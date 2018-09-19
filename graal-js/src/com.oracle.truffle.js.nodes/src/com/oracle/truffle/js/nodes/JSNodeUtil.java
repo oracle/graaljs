@@ -45,20 +45,29 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
 
 public final class JSNodeUtil {
-    public static final DebugCounter NODE_CREATE_COUNT = DebugCounter.create("NodeCreateCount");
-    public static final DebugCounter NODE_REPLACE_COUNT = DebugCounter.create("NodeReplaceCount");
+    static final DebugCounter NODE_CREATE_COUNT = DebugCounter.create("NodeCreateCount");
+    static final DebugCounter NODE_REPLACE_COUNT = DebugCounter.create("NodeReplaceCount");
+
+    private static final SlowPathException SLOW_PATH_EXCEPTION = new SlowPathException();
 
     private JSNodeUtil() {
         // this class should not be instantiated
+    }
+
+    public static SlowPathException slowPathException() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        return SLOW_PATH_EXCEPTION;
     }
 
     static String formatTags(JavaScriptNode node) {

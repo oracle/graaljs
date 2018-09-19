@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNodeFactory.BuildGroupsObjectNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -61,6 +60,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -172,7 +172,7 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                         @SuppressWarnings("unused") DynamicObject regExp,
                         TruffleObject regexResult,
                         @Cached("getCompiledRegex(regExp)") @SuppressWarnings("unused") TruffleObject cachedCompiledRegex,
-                        @Cached("getGroupsFactory(regExp)") DynamicObjectFactory cachedGroupsFactory) {
+                        @Cached("getGroupsFactory(regExp)") JSObjectFactory cachedGroupsFactory) {
             return doIt(context, cachedGroupsFactory, regexResult);
         }
 
@@ -182,7 +182,7 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             return doIt(context, JSRegExp.getGroupsFactory(regExp), regexResult);
         }
 
-        private static DynamicObject doIt(JSContext context, DynamicObjectFactory groupsFactory, TruffleObject regexResult) {
+        private static DynamicObject doIt(JSContext context, JSObjectFactory groupsFactory, TruffleObject regexResult) {
             if (groupsFactory == null) {
                 return Undefined.instance;
             } else {

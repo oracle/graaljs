@@ -58,7 +58,6 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.AbstractJSClass;
@@ -67,7 +66,6 @@ import com.oracle.truffle.js.runtime.java.adapter.JavaSuperAdapter;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
-import com.oracle.truffle.js.runtime.objects.Null;
 
 public final class JSJavaWrapper extends AbstractJSClass {
     public static final String CLASS_NAME = "JSJavaWrapper";
@@ -113,7 +111,7 @@ public final class JSJavaWrapper extends AbstractJSClass {
     /* In a separate method for Substrate VM support. */
     private static DynamicObject doCreate(JSContext context, Object value) {
         assert !(value instanceof TruffleObject);
-        DynamicObject obj = JSObject.create(context, context.getJavaWrapperFactory(), value);
+        DynamicObject obj = JSObject.createWithBoundPrototype(context, context.getJavaWrapperFactory(), value);
         assert isJSJavaWrapper(obj);
         return obj;
     }
@@ -404,11 +402,6 @@ public final class JSJavaWrapper extends AbstractJSClass {
     @Override
     public boolean testIntegrityLevel(DynamicObject obj, boolean frozen) {
         return false;
-    }
-
-    @Override
-    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return Null.instance;
     }
 
     public static Shape makeShape(JSContext context) {

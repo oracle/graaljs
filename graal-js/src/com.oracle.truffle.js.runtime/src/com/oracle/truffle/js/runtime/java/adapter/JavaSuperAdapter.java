@@ -56,7 +56,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 @MessageResolution(receiverType = JavaSuperAdapter.class)
 public final class JavaSuperAdapter implements TruffleObject {
@@ -120,7 +119,7 @@ public final class JavaSuperAdapter implements TruffleObject {
 
     @Resolve(message = "INVOKE")
     abstract static class InvokeNode extends Node {
-        @Child private Node invokeNode = JSInteropUtil.INVOKE.createNode();
+        @Child private Node invokeNode = Message.INVOKE.createNode();
         private final NameCache cache = new NameCache();
 
         Object access(JavaSuperAdapter superAdapter, String name, Object[] args) {

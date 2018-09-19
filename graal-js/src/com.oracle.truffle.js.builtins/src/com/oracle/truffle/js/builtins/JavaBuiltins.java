@@ -45,7 +45,6 @@ import java.util.AbstractList;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
 import java.util.Deque;
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -113,7 +112,6 @@ import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSJava;
 import com.oracle.truffle.js.runtime.interop.Converters;
 import com.oracle.truffle.js.runtime.interop.JavaAccess;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
@@ -125,7 +123,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuiltins.Java> {
     protected JavaBuiltins() {
-        super(JSJava.CLASS_NAME, Java.class);
+        super(JSRealm.JAVA_CLASS_NAME, Java.class);
     }
 
     public enum Java implements BuiltinEnum<Java> {
@@ -137,17 +135,11 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         typeName(1),
         synchronized_(2),
 
-        // Nashorn compatibility
         extend(1),
         super_(1),
-        // Nashorn Java Interop only
-        asJSONCompatible(1),
 
-        // (old) Nashorn Java Interop and --nashorn-compat
-        isJavaMethod(1),
-        isJavaFunction(1),
-        isScriptFunction(1),
-        isScriptObject(1);
+        // Nashorn Java Interop only
+        asJSONCompatible(1);
 
         private final int length;
 
@@ -165,7 +157,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             if (JSTruffleOptions.NashornJavaInterop) {
                 return true;
             }
-            return EnumSet.of(type, from, to, isJavaObject, isType, typeName, synchronized_, extend, super_).contains(this);
+            return asJSONCompatible != this;
         }
     }
 
@@ -188,14 +180,6 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 return JavaIsTypeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case isJavaObject:
                 return JavaIsJavaObjectNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case isJavaMethod:
-                return JavaIsJavaMethodNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case isJavaFunction:
-                return JavaIsJavaFunctionNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case isScriptFunction:
-                return JavaIsScriptFunctionNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case isScriptObject:
-                return JavaIsScriptObjectNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case synchronized_:
                 return JavaSynchronizedNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case asJSONCompatible:
@@ -206,7 +190,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
     public static final class JavaNashornCompatBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaNashornCompatBuiltins.JavaNashornCompat> {
         protected JavaNashornCompatBuiltins() {
-            super(JSJava.CLASS_NAME_NASHORN_COMPAT, JavaNashornCompat.class);
+            super(JSRealm.JAVA_CLASS_NAME_NASHORN_COMPAT, JavaNashornCompat.class);
         }
 
         public enum JavaNashornCompat implements BuiltinEnum<JavaNashornCompat> {
@@ -644,7 +628,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
             if (newNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                newNode = insert(Message.createNew(1).createNode());
+                newNode = insert(Message.NEW.createNode());
             }
             if (writeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();

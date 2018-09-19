@@ -131,10 +131,11 @@ public final class JSContextOptions {
     public static final OptionKey<String> TIME_ZONE = new OptionKey<>("");
     private static final String TIME_ZONE_HELP = helpWithDefault("Set custom timezone.", TIME_ZONE);
 
-    public static final String PRECISE_TIME_NAME = JS_OPTION_PREFIX + "precise-time";
-    private static final OptionKey<Boolean> PRECISE_TIME = new OptionKey<>(false);
-    private static final String PRECISE_TIME_HELP = helpWithDefault("High-resolution timestamps via performance.now()", PRECISE_TIME);
-    @CompilationFinal private boolean preciseTime;
+    public static final String TIMER_RESOLUTION_NAME = JS_OPTION_PREFIX + "timer-resolution";
+    private static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
+    private static final String TIMER_RESOLUTION_HELP = helpWithDefault("Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.",
+                    TIMER_RESOLUTION);
+    @CompilationFinal private long timerResolution;
 
     public static final String AGENT_CAN_BLOCK_NAME = JS_OPTION_PREFIX + "agent-can-block";
     public static final OptionKey<Boolean> AGENT_CAN_BLOCK = new OptionKey<>(true);
@@ -144,6 +145,10 @@ public final class JSContextOptions {
     public static final String JAVA_PACKAGE_GLOBALS_NAME = JS_OPTION_PREFIX + "java-package-globals";
     public static final OptionKey<Boolean> JAVA_PACKAGE_GLOBALS = new OptionKey<>(true);
     private static final String JAVA_PACKAGE_GLOBALS_HELP = helpWithDefault("provide Java package globals: Packages, java, javafx, javax, com, org, edu.", JAVA_PACKAGE_GLOBALS);
+
+    public static final String GLOBAL_THIS_NAME = JS_OPTION_PREFIX + "global-this";
+    public static final OptionKey<Boolean> GLOBAL_THIS = new OptionKey<>(true);
+    private static final String GLOBAL_THIS_HELP = helpWithDefault("provide 'global' global property.", JAVA_PACKAGE_GLOBALS);
 
     private static final OptionKey<?>[] PREINIT_CONTEXT_OPTION_KEYS = {
                     ECMASCRIPT_VERSION,
@@ -161,6 +166,7 @@ public final class JSContextOptions {
                     PARSE_ONLY,
                     TIME_ZONE,
                     JAVA_PACKAGE_GLOBALS,
+                    GLOBAL_THIS,
     };
 
     public JSContextOptions(ParserOptions parserOptions) {
@@ -198,7 +204,7 @@ public final class JSContextOptions {
         this.directByteBuffer = readBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME);
         this.parseOnly = readBooleanOption(PARSE_ONLY, PARSE_ONLY_NAME);
         this.debug = readBooleanOption(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME);
-        this.preciseTime = readBooleanOption(PRECISE_TIME, PRECISE_TIME_NAME);
+        this.timerResolution = readLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME);
         this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME);
     }
 
@@ -230,6 +236,18 @@ public final class JSContextOptions {
         return Integer.getInteger("polyglot." + name, key.getDefaultValue());
     }
 
+    private long readLongOption(OptionKey<Long> key, String name) {
+        if (optionValues == null) {
+            return readLongFromSystemProperty(key, name);
+        } else {
+            return key.getValue(optionValues);
+        }
+    }
+
+    private static long readLongFromSystemProperty(OptionKey<Long> key, String name) {
+        return Long.getLong("polyglot." + name, key.getDefaultValue());
+    }
+
     public static String helpWithDefault(String helpMessage, OptionKey<? extends Object> key) {
         return helpMessage + " (default:" + key.getDefaultValue() + ")";
     }
@@ -250,9 +268,10 @@ public final class JSContextOptions {
         options.add(OptionDescriptor.newBuilder(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME).category(OptionCategory.USER).help(DIRECT_BYTE_BUFFER_HELP).build());
         options.add(OptionDescriptor.newBuilder(PARSE_ONLY, PARSE_ONLY_NAME).category(OptionCategory.USER).help(PARSE_ONLY_HELP).build());
         options.add(OptionDescriptor.newBuilder(TIME_ZONE, TIME_ZONE_NAME).category(OptionCategory.USER).help(TIME_ZONE_HELP).build());
-        options.add(OptionDescriptor.newBuilder(PRECISE_TIME, PRECISE_TIME_NAME).category(OptionCategory.USER).help(PRECISE_TIME_HELP).build());
+        options.add(OptionDescriptor.newBuilder(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME).category(OptionCategory.USER).help(TIMER_RESOLUTION_HELP).build());
         options.add(OptionDescriptor.newBuilder(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME).category(OptionCategory.DEBUG).help(AGENT_CAN_BLOCK_HELP).build());
         options.add(OptionDescriptor.newBuilder(JAVA_PACKAGE_GLOBALS, JAVA_PACKAGE_GLOBALS_NAME).category(OptionCategory.USER).help(JAVA_PACKAGE_GLOBALS_HELP).build());
+        options.add(OptionDescriptor.newBuilder(GLOBAL_THIS, GLOBAL_THIS_NAME).category(OptionCategory.USER).help(GLOBAL_THIS_HELP).build());
     }
 
     // check for options that are not on their default value.
@@ -323,8 +342,8 @@ public final class JSContextOptions {
         return parseOnly;
     }
 
-    public boolean isPreciseTime() {
-        return preciseTime;
+    public long getTimerResolution() {
+        return timerResolution;
     }
 
     public boolean isV8RealmBuiltin() {
@@ -352,7 +371,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.debug ? 1 : 0);
         hash = 53 * hash + (this.directByteBuffer ? 1 : 0);
         hash = 53 * hash + (this.parseOnly ? 1 : 0);
-        hash = 53 * hash + (this.preciseTime ? 1 : 0);
+        hash = 53 * hash + (int) this.timerResolution;
         hash = 53 * hash + (this.agentCanBlock ? 1 : 0);
         return hash;
     }
@@ -408,7 +427,7 @@ public final class JSContextOptions {
         if (this.parseOnly != other.parseOnly) {
             return false;
         }
-        if (this.preciseTime != other.preciseTime) {
+        if (this.timerResolution != other.timerResolution) {
             return false;
         }
         if (this.agentCanBlock != other.agentCanBlock) {

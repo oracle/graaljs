@@ -43,7 +43,7 @@ package com.oracle.truffle.js.nodes.binary;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode.JSStringToNumberWithTrimNode;
+import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
 
 public abstract class JSCompareNode extends JSBinaryNode {
 
@@ -51,7 +51,7 @@ public abstract class JSCompareNode extends JSBinaryNode {
         super(left, right);
     }
 
-    @Child private JSStringToNumberWithTrimNode stringToNumberNode;
+    @Child private JSStringToNumberNode stringToNumberNode;
 
     @Override
     public final Object execute(VirtualFrame frame) {
@@ -64,7 +64,7 @@ public abstract class JSCompareNode extends JSBinaryNode {
     protected double stringToDouble(String value) {
         if (stringToNumberNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            stringToNumberNode = insert(JSStringToNumberWithTrimNode.create());
+            stringToNumberNode = insert(JSStringToNumberNode.create());
         }
         return stringToNumberNode.executeString(value);
     }

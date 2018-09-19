@@ -82,7 +82,7 @@ assert.ok(!arg);
     console.log(stderr);
     child.kill('SIGKILL');
     process.exit(1);
-  }, 15 * 1000);
+  }, 30 * 1000);
   tO.unref();
 
   child.on('close', (code, signal) => {

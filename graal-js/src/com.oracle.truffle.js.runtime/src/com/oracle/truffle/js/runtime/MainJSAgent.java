@@ -40,79 +40,33 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import com.oracle.truffle.api.object.DynamicObjectFactory;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
-import com.oracle.truffle.js.runtime.builtins.SIMDType;
-import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
-
 /**
- * Temporary interface for shape access.
+ * Default class implementing a dummy ECMA2017 8.7 Agent for the JS main thread.
  */
-public interface ShapeContext {
-    Shape getInitialUserObjectShape();
+public final class MainJSAgent extends JSAgent {
 
-    Shape getEmptyShape();
+    public MainJSAgent() {
+        super(false);
+    }
 
-    Shape getEmptyShapePrototypeInObject();
+    @Override
+    public void execute(EcmaAgent owner, Runnable task) {
+        throw Errors.unsupported("Multithreading not supported");
+    }
 
-    DynamicObjectFactory getArrayFactory();
+    @Override
+    public boolean isTerminated() {
+        return false;
+    }
 
-    DynamicObjectFactory getStringFactory();
+    @Override
+    public void terminate(int timeout) {
+        // No-op
+    }
 
-    DynamicObjectFactory getBooleanFactory();
+    @Override
+    public void wakeAgent(int w) {
+        // No-op
+    }
 
-    DynamicObjectFactory getNumberFactory();
-
-    DynamicObjectFactory getBigIntFactory();
-
-    DynamicObjectFactory getSymbolFactory();
-
-    DynamicObjectFactory getArrayBufferViewFactory(TypedArrayFactory factory);
-
-    DynamicObjectFactory getArrayBufferFactory();
-
-    DynamicObjectFactory getDirectArrayBufferViewFactory(TypedArrayFactory factory);
-
-    DynamicObjectFactory getDirectArrayBufferFactory();
-
-    DynamicObjectFactory getRegExpFactory();
-
-    DynamicObjectFactory getDateFactory();
-
-    DynamicObjectFactory getModuleNamespaceFactory();
-
-    DynamicObjectFactory getEnumerateIteratorFactory();
-
-    DynamicObjectFactory getMapFactory();
-
-    DynamicObjectFactory getWeakMapFactory();
-
-    DynamicObjectFactory getSetFactory();
-
-    DynamicObjectFactory getCollatorFactory();
-
-    DynamicObjectFactory getNumberFormatFactory();
-
-    DynamicObjectFactory getPluralRulesFactory();
-
-    DynamicObjectFactory getDateTimeFormatFactory();
-
-    DynamicObjectFactory getWeakSetFactory();
-
-    DynamicObjectFactory getDataViewFactory();
-
-    DynamicObjectFactory getProxyFactory();
-
-    DynamicObjectFactory getSharedArrayBufferFactory();
-
-    DynamicObjectFactory getJavaImporterFactory();
-
-    DynamicObjectFactory getJSAdapterFactory();
-
-    DynamicObjectFactory getErrorFactory(JSErrorType type, boolean withMessage);
-
-    DynamicObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory);
-
-    DynamicObjectFactory getPromiseFactory();
 }

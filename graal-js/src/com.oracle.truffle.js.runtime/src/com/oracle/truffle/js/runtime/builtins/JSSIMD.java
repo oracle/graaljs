@@ -46,7 +46,6 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
@@ -154,10 +153,10 @@ public final class JSSIMD extends JSBuiltinObject {
     }
 
     public static DynamicObject createSIMD(JSContext context, SIMDType simdType) {
-        DynamicObjectFactory objectFactory = context.getSIMDTypeFactory(simdType.getFactory());
         Object[] values = new Object[simdType.getNumberOfElements()];
         Arrays.fill(values, Null.instance);
-        DynamicObject simdObject = JSObject.create(context, objectFactory, simdType, values);
+        SIMDTypeFactory<? extends SIMDType> factory = simdType.getFactory();
+        DynamicObject simdObject = JSObject.create(context, context.getSIMDTypeFactory(factory), simdType, values);
         return simdObject;
     }
 

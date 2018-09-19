@@ -4,7 +4,11 @@ This changelog summarizes major changes between GraalVM versions of the Graal Ja
 The main focus is on user-observable behavior of the engine.
 
 ## Version 1.0.0 RC6
-* Serialization API of v8/Node.js implemented
+* Serialization API of v8/Node.js implemented.
+* Update version of Unicode to 11 in RegExp and Intl.
+* Implement Truffle file virtualization for JavaScript.
+* Support polyglot Truffle objects in Array.prototype.map et al and Array.prototype.sort.
+* Support for fuzzy time in performance.now() and Date.
 
 ## Version 1.0.0 RC5
 * Add support for `Symbol.prototype.description`, a Stage 3 proposal.

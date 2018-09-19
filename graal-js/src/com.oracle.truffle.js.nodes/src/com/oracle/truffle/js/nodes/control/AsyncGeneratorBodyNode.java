@@ -184,7 +184,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
     public AsyncGeneratorBodyNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, JSWriteFrameSlotNode writeAsyncContext) {
         this.writeAsyncContext = writeAsyncContext;
         JavaScriptNode functionObject = AccessFunctionNode.create();
-        this.createAsyncGeneratorObject = SpecializedNewObjectNode.create(context, false, true, true, functionObject);
+        this.createAsyncGeneratorObject = SpecializedNewObjectNode.create(context, false, true, true, true, functionObject);
 
         this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
         this.setGeneratorContext = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_CONTEXT_ID, context);

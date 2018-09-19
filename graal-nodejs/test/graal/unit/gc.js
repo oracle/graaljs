@@ -43,7 +43,7 @@ var assert = require('assert');
 var module = require('./_unit');
 
 describe('GC', function () {
-    this.timeout(5000);
+    this.timeout(10000);
     it('callbacks registered by AddGCPrologueCallback should be triggered by gc()', function () {
         assert.strictEqual(module.GC_AddGCPrologueCallbackTest(), true);
     });

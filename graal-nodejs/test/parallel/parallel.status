@@ -157,6 +157,9 @@ test-vm-syntax-error-stderr                                        : FAIL
 # fails randomly
 test-http2-server-rst-stream                                       : SKIP
 
+# expired certificates (CRL) in currently imported version of test
+test-tls-server-verify                                             : FAIL
+
 [$system==solaris]
 test-http2-respond-file-fd-invalid : FAIL
 

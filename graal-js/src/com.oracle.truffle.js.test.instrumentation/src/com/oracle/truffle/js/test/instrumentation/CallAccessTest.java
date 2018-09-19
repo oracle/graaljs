@@ -46,6 +46,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
@@ -257,9 +258,9 @@ public class CallAccessTest extends FineGrainedAccessTest {
 
     @Test
     public void newTest() {
-        evalWithTag("function A() {}; var a = {x:function(){return 1;}}; new A(a.x(), a.x());", FunctionCallExpressionTag.class);
+        evalWithTags("function A() {}; var a = {x:function(){return 1;}}; new A(a.x(), a.x());", new Class<?>[]{ObjectAllocationExpressionTag.class, FunctionCallExpressionTag.class});
 
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(ObjectAllocationExpressionTag.class, (e, call) -> {
             call.input(assertJSFunctionInput);
             enter(FunctionCallExpressionTag.class).input().input().exit();
             call.input(1);
@@ -287,11 +288,11 @@ public class CallAccessTest extends FineGrainedAccessTest {
                         " t.f = bar;" +
                         " t.r();" +
                         "}";
-        evalWithTag(src, FunctionCallExpressionTag.class);
+        evalWithTags(src, new Class<?>[]{ObjectAllocationExpressionTag.class, FunctionCallExpressionTag.class});
 
         // Invoke operations perform the two read operations independently.
         // 1. read the target object
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(ObjectAllocationExpressionTag.class, (e, call) -> {
             call.input(assertJSFunctionInput);
         }).exit();
         enter(FunctionCallExpressionTag.class, (e, call) -> {
@@ -310,7 +311,7 @@ public class CallAccessTest extends FineGrainedAccessTest {
                 call2.input(assertJSFunctionInput);
             }).exit();
         }).exit();
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(ObjectAllocationExpressionTag.class, (e, call) -> {
             call.input(assertJSFunctionInput);
         }).exit();
         enter(FunctionCallExpressionTag.class, (e, call) -> {
@@ -370,9 +371,9 @@ public class CallAccessTest extends FineGrainedAccessTest {
                         "  arr.push(\"\");\n" +
                         "}";
 
-        evalWithTag(src, FunctionCallExpressionTag.class);
+        evalWithTags(src, new Class<?>[]{ObjectAllocationExpressionTag.class, FunctionCallExpressionTag.class});
 
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(ObjectAllocationExpressionTag.class, (e, call) -> {
             call.input(assertJSFunctionInput);
         }).exit();
         for (int i = 0; i < 100; i++) {
@@ -436,7 +437,7 @@ public class CallAccessTest extends FineGrainedAccessTest {
 
     @Test
     public void supeCallTest() {
-        evalWithTag("class Base {" +
+        evalWithTags("class Base {" +
                         "  constructor() {" +
                         "    this.someObj = {};" +
                         "  };" +
@@ -450,9 +451,9 @@ public class CallAccessTest extends FineGrainedAccessTest {
                         "  };" +
                         "};" +
                         "var bar = new Bar();" +
-                        "bar.use();", FunctionCallExpressionTag.class);
+                        "bar.use();", new Class<?>[]{ObjectAllocationExpressionTag.class, FunctionCallExpressionTag.class});
 
-        enter(FunctionCallExpressionTag.class, (e, newCall) -> {
+        enter(ObjectAllocationExpressionTag.class, (e, newCall) -> {
             newCall.input(assertJSFunctionInput("Bar"));
         }).exit(assertJSObjectReturn);
 
@@ -468,14 +469,14 @@ public class CallAccessTest extends FineGrainedAccessTest {
 
     @Test
     public void splitMaterializedCallTest() {
-        evalWithTag("function setKey(obj, keys) {" +
+        evalWithTags("function setKey(obj, keys) {" +
                         "  obj.a;" +
                         "  keys.slice(0, -1).forEach(function(key) {});" +
                         "};" +
                         "setKey({}, ['a']);" +
                         "for(var i =0; i<2; i++) {" +
                         "  setKey({a:1}, ['a']);" +
-                        "};", FunctionCallExpressionTag.class);
+                        "};", new Class<?>[]{ObjectAllocationExpressionTag.class, FunctionCallExpressionTag.class});
 
         for (int i = 0; i < 3; i++) {
             enter(FunctionCallExpressionTag.class, (e, call) -> {
@@ -503,7 +504,7 @@ public class CallAccessTest extends FineGrainedAccessTest {
     @Test
     public void splitMaterializedElementCallTest() {
         evalWithTag("function setKey(obj, keys) {" +
-                        "  obj.a;\n" +
+                        "  obj.a;" +
                         "  keys.slice[0][1][2](0, -1).forEach(function(key) {});" +
                         "};" +
                         "const callable = {" +
@@ -537,6 +538,29 @@ public class CallAccessTest extends FineGrainedAccessTest {
                 }).exit();
             }).exit();
         }
+    }
+
+    @Test
+    public void doWith() {
+        evalWithTag("function bar() {" +
+                        "  var obj = {" +
+                        "    foo: function(){}" +
+                        "  };" +
+                        "  with(obj)" +
+                        "    return foo('str', 42);" +
+                        "}" +
+                        "bar();", FunctionCallExpressionTag.class);
+
+        enter(FunctionCallExpressionTag.class, (e, barCall) -> {
+            barCall.input(assertUndefinedInput);
+            barCall.input(assertJSFunctionInput("bar"));
+            enter(FunctionCallExpressionTag.class, (e2, fooCall) -> {
+                fooCall.input(assertJSObjectInput);
+                fooCall.input(assertJSFunctionInput("foo"));
+                fooCall.input("str");
+                fooCall.input(42);
+            }).exit();
+        }).exit();
     }
 
 }

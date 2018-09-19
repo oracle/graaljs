@@ -259,7 +259,7 @@ public final class TRegexUtil {
         private Node getExecExecMethodNode() {
             if (execExecMethodNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                execExecMethodNode = insert(Message.createExecute(2).createNode());
+                execExecMethodNode = insert(Message.EXECUTE.createNode());
             }
             return execExecMethodNode;
         }

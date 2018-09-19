@@ -46,11 +46,13 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.LocationModifier;
+import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -64,7 +66,9 @@ import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
+import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
@@ -83,6 +87,9 @@ public final class JSObject {
 
     public static final String NO_SUCH_PROPERTY_NAME = "__noSuchProperty__";
     public static final String NO_SUCH_METHOD_NAME = "__noSuchMethod__";
+
+    public static final Property PROTO_PROPERTY = JSObjectUtil.makeHiddenProperty(JSObject.HIDDEN_PROTO,
+                    JSObject.LAYOUT.createAllocator().locationForType(JSObject.CLASS, EnumSet.noneOf(LocationModifier.class)));
 
     private JSObject() {
         // use factory methods to create this class
@@ -109,26 +116,83 @@ public final class JSObject {
     }
 
     public static DynamicObject create(JSContext context, Shape shape) {
-        return context.allocateObject(shape);
+        AllocationReporter reporter = context.getAllocationReporter();
+        if (reporter != null) {
+            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        DynamicObject object = shape.newInstance();
+        if (reporter != null) {
+            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        return object;
     }
 
-    public static DynamicObject create(JSContext context, DynamicObjectFactory factory, Object... initialValues) {
-        return context.allocateObject(factory, initialValues);
+    public static DynamicObject create(JSContext context, JSObjectFactory factory, Object... initialValues) {
+        return createWithRealm(context, factory, context.getRealm(), initialValues);
+    }
+
+    public static DynamicObject createWithRealm(JSContext context, JSObjectFactory factory, JSRealm realm, Object... initialValues) {
+        AllocationReporter reporter = context.getAllocationReporter();
+        if (reporter != null) {
+            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        DynamicObject object = factory.createWithRealm(realm, initialValues);
+        if (reporter != null) {
+            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        return object;
+    }
+
+    public static DynamicObject createWithPrototype(JSContext context, JSObjectFactory factory, JSRealm realm, DynamicObject proto, Object... initialValues) {
+        AllocationReporter reporter = context.getAllocationReporter();
+        if (reporter != null) {
+            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        DynamicObject object = factory.createWithPrototype(realm, proto, initialValues);
+        if (reporter != null) {
+            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        return object;
+    }
+
+    public static DynamicObject createWithBoundPrototype(JSContext context, JSObjectFactory.BoundProto factory, Object... initialValues) {
+        AllocationReporter reporter = context.getAllocationReporter();
+        if (reporter != null) {
+            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        DynamicObject object = factory.createBound(initialValues);
+        if (reporter != null) {
+            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        return object;
     }
 
     @TruffleBoundary
     public static DynamicObject create(JSRealm realm, DynamicObject prototype, JSClass builtinObject) {
-        // slow; only use for initialization
-        assert prototype == null || JSRuntime.isObject(prototype);
-        JSContext context = realm.getContext();
-        return create(context, prototype == null ? realm.getEmptyShape() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
+        return create(realm.getContext(), prototype, builtinObject);
     }
 
     @TruffleBoundary
     public static DynamicObject create(JSContext context, DynamicObject prototype, JSClass builtinObject) {
         // slow; only use for initialization
-        assert prototype == null || JSRuntime.isObject(prototype);
-        return create(context, prototype == null ? context.getEmptyShape() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
+        assert prototype == Null.instance || JSRuntime.isObject(prototype);
+        if (context.isMultiContext() && builtinObject == JSUserObject.INSTANCE) {
+            return JSUserObject.createWithPrototypeInObject(prototype, context);
+        }
+        return create(context, prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
+    }
+
+    @TruffleBoundary
+    public static DynamicObject create(JSContext context, DynamicObject prototype, JSClass builtinObject, Property protoProperty) {
+        // slow; only use for initialization
+        assert prototype == Null.instance || JSRuntime.isObject(prototype);
+        if (context.isMultiContext()) {
+            Shape shape = context.makeEmptyShapeWithPrototypeInObject(builtinObject, protoProperty);
+            DynamicObject obj = JSObject.create(context, shape);
+            protoProperty.setSafe(obj, prototype, shape);
+            return obj;
+        }
+        return create(context, prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
     }
 
     /**
@@ -196,6 +260,15 @@ public final class JSObject {
             return get((DynamicObject) obj, key);
         } else {
             return JSInteropNodeUtil.read(obj, key);
+        }
+    }
+
+    @TruffleBoundary
+    public static Object get(TruffleObject obj, long index) {
+        if (isJSObject(obj)) {
+            return get((DynamicObject) obj, index);
+        } else {
+            return JSInteropNodeUtil.read(obj, index);
         }
     }
 

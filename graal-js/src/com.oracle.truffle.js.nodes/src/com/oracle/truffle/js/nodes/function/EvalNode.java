@@ -48,7 +48,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -66,7 +65,6 @@ public abstract class EvalNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode sourceNode;
     @Child private JavaScriptNode thisObject;
     @Child private AbstractFunctionArgumentsNode otherArguments;
-    private final BranchProfile hasOtherArguments = BranchProfile.create();
 
     protected EvalNode(JSContext context, Object currEnv, JavaScriptNode function, JavaScriptNode source, JavaScriptNode thisObject, AbstractFunctionArgumentsNode otherArguments) {
         assert currEnv != null;
@@ -104,7 +102,7 @@ public abstract class EvalNode extends JavaScriptNode {
         if (evalSourceName == null) {
             evalSourceName = Evaluator.EVAL_SOURCE_NAME;
         }
-        return Source.newBuilder(sourceCode.toString()).name(evalSourceName).language(AbstractJavaScriptLanguage.ID).build();
+        return Source.newBuilder(AbstractJavaScriptLanguage.ID, sourceCode.toString(), evalSourceName).build();
     }
 
     @TruffleBoundary
@@ -140,12 +138,15 @@ public abstract class EvalNode extends JavaScriptNode {
     @Specialization(guards = {"isEvalOverridden(evalFunction)"})
     protected Object directEvalOverridden(VirtualFrame frame, Object evalFunction, Object arg0,
                     @Cached("createCall()") JSFunctionCallNode redirectCall) {
-
-        Object[] evaluatedArgs = new Object[1 + otherArguments.getCount(frame)];
-        evaluatedArgs[0] = arg0;
-        evaluatedArgs = otherArguments.executeFillObjectArray(frame, evaluatedArgs, 1);
         Object thisObj = Undefined.instance;
-
+        Object[] evaluatedArgs;
+        if (otherArguments == null) {
+            evaluatedArgs = new Object[]{arg0};
+        } else {
+            evaluatedArgs = new Object[1 + otherArguments.getCount(frame)];
+            evaluatedArgs[0] = arg0;
+            evaluatedArgs = otherArguments.executeFillObjectArray(frame, evaluatedArgs, 1);
+        }
         return redirectCall.executeCall(JSArguments.create(thisObj, evalFunction, evaluatedArgs));
     }
 
@@ -157,8 +158,7 @@ public abstract class EvalNode extends JavaScriptNode {
      * Execute surplus arguments for the sake of side-effects.
      */
     private void evalOtherArgs(VirtualFrame frame) {
-        if (otherArguments.getCount(frame) > 0) {
-            hasOtherArguments.enter();
+        if (otherArguments != null) {
             Object[] evaluatedArgs = new Object[otherArguments.getCount(frame)];
             otherArguments.executeFillObjectArray(frame, evaluatedArgs, 0);
         }
@@ -168,8 +168,8 @@ public abstract class EvalNode extends JavaScriptNode {
      * In case of multiple arguments, only the first one is used. The others are ignored, but have
      * to be evaluated for the sake of side-effects.
      */
-    public static EvalNode create(JSContext context, Object env, JavaScriptNode sourceArg, JavaScriptNode[] args, JavaScriptNode functionNode, JavaScriptNode thisObject) {
-        return EvalNodeGen.create(context, env, functionNode, sourceArg, thisObject, JSFunctionArgumentsNode.create(args));
+    public static EvalNode create(JSContext context, Object env, JavaScriptNode sourceArg, JavaScriptNode[] otherArgs, JavaScriptNode functionNode, JavaScriptNode thisObject) {
+        return EvalNodeGen.create(context, env, functionNode, sourceArg, thisObject, otherArgs.length > 0 ? JSFunctionArgumentsNode.create(otherArgs) : null);
     }
 
     @Override

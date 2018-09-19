@@ -99,6 +99,11 @@ public final class JSInteropNodeUtil {
         return JSInteropUtil.createIsBoxed();
     }
 
+    static Node getIsExecutableNode() {
+        CompilerAsserts.neverPartOfCompilation();
+        return JSInteropUtil.createIsExecutable();
+    }
+
     static Node getUnboxNode() {
         CompilerAsserts.neverPartOfCompilation();
         return JSInteropUtil.createUnbox();
@@ -243,7 +248,7 @@ public final class JSInteropNodeUtil {
         try {
             return ForeignAccess.sendExecute(callNode, function, args);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(function, e, JSInteropUtil.EXECUTE, null);
+            throw Errors.createTypeErrorInteropException(function, e, Message.EXECUTE, null);
         }
     }
 
@@ -260,7 +265,7 @@ public final class JSInteropNodeUtil {
         try {
             return ForeignAccess.sendInvoke(callNode, receiver, functionName, args);
         } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(receiver, e, JSInteropUtil.INVOKE, null);
+            throw Errors.createTypeErrorInteropException(receiver, e, Message.INVOKE, null);
         }
     }
 
@@ -273,7 +278,7 @@ public final class JSInteropNodeUtil {
         try {
             return ForeignAccess.sendNew(newNode, target, args);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(target, e, JSInteropUtil.NEW, parentNode);
+            throw Errors.createTypeErrorInteropException(target, e, Message.NEW, parentNode);
         }
     }
 
@@ -312,5 +317,15 @@ public final class JSInteropNodeUtil {
     @TruffleBoundary
     public static boolean isNull(TruffleObject obj) {
         return ForeignAccess.sendIsNull(getIsNullNode(), obj);
+    }
+
+    @TruffleBoundary
+    public static boolean isExecutable(TruffleObject obj) {
+        return ForeignAccess.sendIsExecutable(getIsExecutableNode(), obj);
+    }
+
+    @TruffleBoundary
+    public static boolean isExecutable(TruffleObject obj, Node isExecutableNode) {
+        return ForeignAccess.sendIsExecutable(isExecutableNode, obj);
     }
 }

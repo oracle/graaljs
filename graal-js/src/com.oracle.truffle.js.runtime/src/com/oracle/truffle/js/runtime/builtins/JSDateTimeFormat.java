@@ -40,37 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.LocationModifier;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSException;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
-import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.IntlUtil;
-
-import com.ibm.icu.text.DateFormat;
-import com.ibm.icu.text.DateTimePatternGenerator;
-import com.ibm.icu.text.SimpleDateFormat;
-import com.ibm.icu.util.GregorianCalendar;
-import com.ibm.icu.util.TimeZone;
-
 import java.text.AttributedCharacterIterator;
-
 import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumSet;
@@ -81,7 +51,35 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions {
+import com.ibm.icu.text.DateFormat;
+import com.ibm.icu.text.DateTimePatternGenerator;
+import com.ibm.icu.text.SimpleDateFormat;
+import com.ibm.icu.util.GregorianCalendar;
+import com.ibm.icu.util.TimeZone;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.object.LocationModifier;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
+
+public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final String CLASS_NAME = "DateTimeFormat";
     public static final String PROTOTYPE_NAME = "DateTimeFormat.prototype";
@@ -89,7 +87,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     private static final HiddenKey INTERNAL_STATE_ID = new HiddenKey("_internalState");
     private static final Property INTERNAL_STATE_PROPERTY;
 
-    private static final JSDateTimeFormat INSTANCE = new JSDateTimeFormat();
+    public static final JSDateTimeFormat INSTANCE = new JSDateTimeFormat();
 
     /**
      * Maps the upper-case version of a supported time zone to the corresponding case-regularized
@@ -138,8 +136,8 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         return numberFormatPrototype;
     }
 
-    public static Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype.getShape(), INSTANCE) == null;
+    @Override
+    public Shape makeInitialShape(JSContext ctx, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
         initialShape = initialShape.addProperty(INTERNAL_STATE_PROPERTY);
         return initialShape;
@@ -476,16 +474,16 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     }
 
     @TruffleBoundary
-    public static String format(DynamicObject numberFormatObj, Object n) {
+    public static String format(JSContext context, DynamicObject numberFormatObj, Object n) {
         ensureIsDateTimeFormat(numberFormatObj);
         DateFormat dateFormat = getDateFormatProperty(numberFormatObj);
-        return dateFormat.format(timeClip(n));
+        return dateFormat.format(timeClip(context, n));
     }
 
-    private static double timeClip(Object n) {
+    private static double timeClip(JSContext context, Object n) {
         double x;
         if (n == Undefined.instance) {
-            x = getDateNow();
+            x = context.getRealm().currentTimeMillis();
         } else {
             x = JSDate.timeClip(JSRuntime.toDouble(n));
             if (Double.isNaN(x)) {
@@ -493,10 +491,6 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             }
         }
         return x;
-    }
-
-    private static double getDateNow() {
-        return System.currentTimeMillis();
     }
 
     private static void throwDateOutOfRange() throws JSException {
@@ -527,7 +521,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         ensureIsDateTimeFormat(numberFormatObj);
         DateFormat dateFormat = getDateFormatProperty(numberFormatObj);
 
-        double x = timeClip(n);
+        double x = timeClip(context, n);
 
         List<Object> resultParts = new LinkedList<>();
         AttributedCharacterIterator fit = dateFormat.formatToCharacterIterator(x);
@@ -694,7 +688,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                 Object[] arguments = frame.getArguments();
                 DynamicObject thisObj = JSRuntime.toObject(context, JSArguments.getThisObject(arguments));
                 Object n = JSArguments.getUserArgumentCount(arguments) > 0 ? JSArguments.getUserArgument(arguments, 0) : Undefined.instance;
-                return format(thisObj, n);
+                return format(context, thisObj, n);
             }
         }), 1, "format");
     }
@@ -704,5 +698,10 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         JSFunctionData fd = JSFunctionData.create(context, ct, ct, 0, "get format", false, false, false, true);
         DynamicObject compareFunction = JSFunction.create(realm, fd);
         return compareFunction;
+    }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getDateTimeFormatConstructor().getPrototype();
     }
 }
