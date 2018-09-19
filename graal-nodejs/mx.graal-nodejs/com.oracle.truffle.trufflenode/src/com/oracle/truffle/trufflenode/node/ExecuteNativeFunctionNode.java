@@ -121,7 +121,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     private static int sourceSectionCounter;
 
     private static SourceSection createSourceSection() {
-        return Source.newBuilder("").name("<native$" + ++sourceSectionCounter + ">").language(AbstractJavaScriptLanguage.ID).build().createUnavailableSection();
+        return Source.newBuilder(AbstractJavaScriptLanguage.ID, "", "<native$" + ++sourceSectionCounter + ">").build().createUnavailableSection();
     }
 
     @Override

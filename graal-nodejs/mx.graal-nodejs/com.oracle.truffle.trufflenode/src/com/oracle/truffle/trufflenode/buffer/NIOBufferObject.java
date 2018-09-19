@@ -69,7 +69,7 @@ public final class NIOBufferObject extends JSBuiltinObject {
 
     @TruffleBoundary
     private static DynamicObject create(JSContext context) {
-        DynamicObject obj = context.getEmptyShape().newInstance();
+        DynamicObject obj = context.getEmptyShapeNullPrototype().newInstance();
         ((JSBuiltinLookup) context.getFunctionLookup()).defineBuiltins(NIO_BUFFER_BUILTINS);
         JSObjectUtil.putFunctionsFromContainer(context.getRealm(), obj, NIO_BUFFER_BUILTINS.getName());
         return obj;
