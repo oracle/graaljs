@@ -173,6 +173,9 @@ jclass findClassExtra(JNIEnv* env, const char* name) {
     return loadedClass;
 }
 
+// Workaround for a bug in SVM's JNI_GetCreatedJavaVMs
+static JavaVM* existing_jvm = nullptr;
+
 v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
     JavaVM *jvm;
     JNIEnv *env;
@@ -243,6 +246,12 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
     jsize existingJVMs;
     createdJVMs(&jvm, 1, &existingJVMs);
     bool spawn_jvm = (existingJVMs == 0);
+
+    if (spawn_jvm && existing_jvm) {
+        // Workaround for a bug in SVM's JNI_GetCreatedJavaVMs
+        jvm = existing_jvm;
+        spawn_jvm = false;
+    }
 
     if (spawn_jvm) {
         std::vector<JavaVMOption> options;
@@ -421,6 +430,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
             fprintf(stderr, "Creation of the JVM failed!\n");
             exit(1);
         }
+        existing_jvm = jvm;
 
         jclass callback_class = findClassExtra(env, "com/oracle/truffle/trufflenode/NativeAccess");
         if (!RegisterCallbacks(env, callback_class)) {
