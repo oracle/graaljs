@@ -8,9 +8,6 @@ prefix parallel
 
 ### Graal.js-specific ###
 
-# debugging
-test-vm-debug-context                                              : SKIP
-
 # uses V8 internal methods (%HaveSameMap, %CollectGarbage, %DebugPrint)
 test-http-same-map                                                 : FAIL
 test-v8-flags                                                      : FAIL
@@ -21,6 +18,8 @@ test-vm-context                                                    : FAIL
 # non-configurable properties of sandbox are not supported
 # (due to subtleties of their handling by Proxy - which is used
 # to implement the global object of the corresponding context)
+test-vm-getters                                                    : FAIL
+test-vm-global-property-interceptors                               : FAIL
 test-vm-preserves-property                                         : FAIL
 
 # process.memoryUsage() does not report memory used by direct
@@ -53,25 +52,78 @@ test-performance-function                                          : FAIL
 test-buffer-bindingobj-no-zerofill                                 : SKIP
 
 # tracing is not supported
+test-benchmark-misc                                                : SKIP
+test-trace-event-promises                                          : SKIP
 test-trace-events-all                                              : SKIP
 test-trace-events-async-hooks                                      : SKIP
 test-trace-events-binding                                          : SKIP
+test-trace-events-bootstrap                                        : SKIP
 test-trace-events-category-used                                    : SKIP
+test-trace-events-file-pattern                                     : SKIP
+test-trace-events-fs-sync                                          : SKIP
+test-trace-events-metadata                                         : SKIP
+test-trace-events-none                                             : SKIP
+test-trace-events-perf                                             : SKIP
 test-trace-events-process-exit                                     : SKIP
 test-trace-events-v8                                               : SKIP
+test-trace-events-vm                                               : SKIP
+test-trace-events-worker-metadata                                  : SKIP
+test-tracing-no-crash                                              : SKIP
+
+# heapdump/EmbedderGraph is not supported
+test-heapdump-dns                                                  : FAIL
+test-heapdump-fs-promise                                           : FAIL
+test-heapdump-http2                                                : FAIL
+test-heapdump-tls                                                  : FAIL
+test-heapdump-worker                                               : FAIL
+test-heapdump-zlib                                                 : FAIL
 
 # WebAssembly is not supported
+test-util-types                                                    : FAIL
+test-vm-codegen                                                    : FAIL
 test-wasm-simple                                                   : FAIL
+
+# dynamic import is not supported
+test-vm-module-dynamic-import                                      : FAIL
+
+# import.meta is not supported
+test-vm-module-import-meta                                         : FAIL
+
+# some issue with instrumentation - works when while(1); is replaced by while(true);
+test-worker-nexttick-terminate                                     : SKIP
+
+# BigUint64Array is not implemented yet
+test-fs-stat-bigint                                                : FAIL
+test-fs-watchfile-bigint                                           : FAIL
+test-process-hrtime-bigint                                         : FAIL
+
+# Larger stack (~7m) needed
+test-async-hooks-recursive-stack-runInAsyncScope                   : FAIL
+
+# Graal.js is unable to preview WeakMap and WeakSet entries
+test-util-inspect                                                  : FAIL
+
+# Tests the content of Node.js original help (--help option).
+# We print a different help message.
+test-cli-node-print-help                                           : FAIL
 
 # Tests some V8 options
 test-cli-node-options                                              : FAIL
+test-v8-untrusted-code-mitigations                                 : FAIL
 
 # Unstable test - triggers stack-overflow that is not handled well
 # by graal.js/truffle sometimes
 test-async-wrap-pop-id-during-load                                 : SKIP
 
+# No JSAgent set
+test-atomics-notify                                                : FAIL
+
+# Uses v8 extension (--expose_externalize_string flag that exposes two additional functions)
+test-fs-write                                                      : FAIL
+
 # unclassified
 test-async-hooks-recursive-stack                                   : SKIP
+test-common-gc                                                     : FAIL
 test-crypto-fips                                                   : FAIL
 test-domain-no-error-handler-abort-on-uncaught-0                   : FAIL
 test-domain-no-error-handler-abort-on-uncaught-1                   : FAIL
@@ -84,13 +136,20 @@ test-domain-no-error-handler-abort-on-uncaught-7                   : FAIL
 test-domain-no-error-handler-abort-on-uncaught-8                   : FAIL
 test-domain-no-error-handler-abort-on-uncaught-9                   : FAIL
 test-domain-throw-error-then-throw-from-uncaught-exception-handler : FAIL
-test-http2-response-splitting                                      : FAIL
+test-domain-with-abort-on-uncaught-exception                       : FAIL
+test-gc-http-client                                                : SKIP
+test-gc-http-client-connaborted                                    : SKIP
+test-gc-http-client-onerror                                        : SKIP
+test-gc-http-client-timeout                                        : SKIP
+test-gc-net-timeout                                                : SKIP
+test-net-connect-memleak                                           : FAIL
 test-repl                                                          : FAIL
+test-repl-context                                                  : FAIL
 test-repl-tab-complete                                             : FAIL
+test-repl-top-level-await                                          : FAIL
 test-repl-underscore                                               : FAIL
-test-repl-unexpected-token-recoverable                             : FAIL
+test-tls-connect-memleak                                           : FAIL
 test-vm-create-context-accessors                                   : FAIL
-test-vm-global-define-property                                     : FAIL
 test-vm-low-stack-space                                            : SKIP
 test-vm-new-script-new-context                                     : FAIL
 test-vm-syntax-error-stderr                                        : FAIL
@@ -110,7 +169,6 @@ test-https-pfx                  : FAIL
 test-tls-multi-pfx              : FAIL
 test-tls-ocsp-callback          : FAIL
 test-tls-passphrase             : FAIL
-test-tls-pfx-gh-5100-regr       : FAIL
 
 [$system==win32]
 
