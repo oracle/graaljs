@@ -276,26 +276,27 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                     Object thisObj = JSArguments.getThisObject(arguments);
                     Object functionObj = JSArguments.getFunctionObject(arguments);
                     if (JSFunction.isJSFunction(functionObj)) {
-                        JSFunctionData functionData = JSFunction.getFunctionData((DynamicObject) functionObj);
+                        DynamicObject function = (DynamicObject) functionObj;
+                        JSFunctionData functionData = JSFunction.getFunctionData(function);
                         if (functionData.isStrict()) {
                             inStrictMode = true;
-                        } else if (functionData.isBuiltin() && JSFunction.isStrictBuiltin((DynamicObject) functionObj)) {
+                        } else if (functionData.isBuiltin() && JSFunction.isStrictBuiltin(function)) {
                             inStrictMode = true;
                         }
-                        if (skippingFrames && functionObj == skipFramesUpTo) {
+                        if (skippingFrames && function == skipFramesUpTo) {
                             skippingFrames = false;
                             return true; // skip this frame as well
                         }
-                        JSRealm realm = JSFunction.getRealm((DynamicObject) functionObj);
-                        if (functionObj == realm.getApplyFunctionObject() || functionObj == realm.getCallFunctionObject()) {
-                            return true; // skip Function.apply and Function.call
+                        JSRealm realm = JSFunction.getRealm(function);
+                        if (JSFunction.isBuiltinThatShouldNotAppearInStackTrace(realm, function)) {
+                            return true;
                         }
                         if (!skippingFrames) {
                             if (functionData.isAsync() && !functionData.isGenerator() && JSRuntime.isJSFunctionRootNode(rootNode)) {
                                 // async function calls produce two frames, skip one
                                 return true;
                             }
-                            stackTrace.add(processJSFrame(rootNode, callNode, thisObj, (DynamicObject) functionObj, inStrictMode));
+                            stackTrace.add(processJSFrame(rootNode, callNode, thisObj, function, inStrictMode));
                         }
                     }
                     break;
