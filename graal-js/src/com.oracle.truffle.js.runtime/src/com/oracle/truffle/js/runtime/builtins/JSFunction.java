@@ -357,7 +357,7 @@ public final class JSFunction extends JSBuiltinObject {
         assert JSFunction.isJSFunction(thisFnObj);
         JSContext context = realm.getContext();
         DynamicObject proto = JSObject.getPrototype(thisFnObj);
-        DynamicObject boundFunction = boundFunctionCreate(context, realm, thisFnObj, thisArg, boundArguments, proto, false);
+        DynamicObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto, false);
 
         int length = 0;
         boolean targetHasLength = JSObject.hasOwnProperty(thisFnObj, JSFunction.LENGTH);
@@ -383,8 +383,7 @@ public final class JSFunction extends JSBuiltinObject {
         return boundFunction;
     }
 
-    public static DynamicObject boundFunctionCreate(JSContext context, JSRealm realm, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments, DynamicObject proto,
-                    boolean isAnonymous) {
+    public static DynamicObject boundFunctionCreate(JSContext context, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments, DynamicObject proto, boolean isAnonymous) {
         assert JSFunction.isJSFunction(boundTargetFunction);
         CompilerAsserts.partialEvaluationConstant(context);
 
@@ -395,8 +394,16 @@ public final class JSFunction extends JSBuiltinObject {
             int length = Math.max(0, JSFunction.getLength(boundTargetFunction) - boundArguments.length);
             functionData = makeBoundFunctionData(context, length, constructor, isAsync);
         }
+        JSRealm realm;
+        if (context.isSingleRealm()) {
+            realm = context.getRealm();
+            assert realm == JSFunction.getRealm(boundTargetFunction);
+            CompilerAsserts.partialEvaluationConstant(realm);
+        } else {
+            realm = JSFunction.getRealm(boundTargetFunction);
+        }
         DynamicObject boundFunction = JSFunction.createBound(context, realm, functionData, boundTargetFunction, boundThis, boundArguments, isAnonymous);
-        if (proto != context.getRealm().getFunctionPrototype()) {
+        if (proto != realm.getFunctionPrototype()) {
             JSObject.setPrototype(boundFunction, proto);
         }
         assert JSObject.getPrototype(boundFunction) == proto;
