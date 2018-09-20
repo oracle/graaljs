@@ -195,12 +195,22 @@ EXPORT_TO_JS(SetAccessor) {
     args.GetReturnValue().Set(true);
 }
 
-EXPORT_TO_JS(SetAccessorNoSetter) {
+EXPORT_TO_JS(SetAccessorNoSetterWritable) {
     Local<Context> context = args.GetIsolate()->GetCurrentContext();
     Local<Object> obj = args[0].As<Object>();
     Local<String> key = args[1].As<String>();
 
     obj->SetAccessor(context, key, SimpleAccessorGetter);
+
+    args.GetReturnValue().Set(true);
+}
+
+EXPORT_TO_JS(SetAccessorNoSetterReadOnly) {
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
+    Local<Object> obj = args[0].As<Object>();
+    Local<String> key = args[1].As<String>();
+
+    obj->SetAccessor(context, key, SimpleAccessorGetter, nullptr, MaybeLocal<Value>(), AccessControl::DEFAULT, PropertyAttribute::ReadOnly);
 
     args.GetReturnValue().Set(true);
 }

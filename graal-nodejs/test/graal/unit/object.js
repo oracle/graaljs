@@ -353,11 +353,18 @@ describe('Object', function () {
             assert.strictEqual(o.mySetValue, 1000);
             assert.strictEqual(o.hasOwnProperty("mySetValue"), true);
         });
-        it('should create a getter with a no-op setter (when setter is not provided)', function () {
+        it('should create a getter with a no-op setter (when setter is not provided and the property is writable)', function () {
             "use strict";
             var o = {mySetValue : 42};
-            assert.strictEqual(module.Object_SetAccessorNoSetter(o, "myAccess"), true);
+            assert.strictEqual(module.Object_SetAccessorNoSetterWritable(o, "myAccess"), true);
             o.myAccess = 211; // No TypeError here
+            assert.strictEqual(o.mySetValue, 42);
+        });
+        it('should create a getter with no setter (when setter is not provided and the property is read-only)', function () {
+            "use strict";
+            var o = {mySetValue : 42};
+            assert.strictEqual(module.Object_SetAccessorNoSetterReadOnly(o, "myAccess"), true);
+            assert.throws(function() { o.myAccess = 211; }, TypeError);
             assert.strictEqual(o.mySetValue, 42);
         });
     });

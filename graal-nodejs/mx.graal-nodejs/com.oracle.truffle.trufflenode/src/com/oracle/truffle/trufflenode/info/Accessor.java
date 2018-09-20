@@ -42,6 +42,7 @@ package com.oracle.truffle.trufflenode.info;
 
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.trufflenode.ContextData;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -98,7 +99,7 @@ public class Accessor {
 
     private Pair<JSFunctionData, JSFunctionData> createFunctions(JSContext context) {
         JSFunctionData getter = (getterPtr == 0) ? null : createFunction(context, true);
-        JSFunctionData setter = createFunction(context, false);
+        JSFunctionData setter = JSAttributes.isWritable(attributes) ? createFunction(context, false) : null;
         return new Pair<>(getter, setter);
     }
 
