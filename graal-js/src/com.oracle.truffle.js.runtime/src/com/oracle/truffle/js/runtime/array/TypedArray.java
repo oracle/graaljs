@@ -51,7 +51,6 @@ import java.nio.ByteOrder;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -245,13 +244,9 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     protected static ByteBuffer getByteBufferFromBuffer(DynamicObject buffer, boolean littleEndian, boolean condition) {
-        ByteBuffer byteBuffer = getByteBufferFromBuffer(buffer, condition);
-        return byteBuffer.order(littleEndian ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
-    }
-
-    protected static ByteBuffer getByteBufferFromBuffer(DynamicObject buffer, boolean condition) {
         ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(buffer, condition);
-        return byteBuffer.duplicate();
+        ByteOrder byteOrder = littleEndian ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
+        return byteBuffer.duplicate().order(byteOrder);
     }
 
     public abstract Object getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition);
@@ -826,25 +821,22 @@ public abstract class TypedArray extends ScriptArray {
 
         @Override
         public BigInt getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return getBufferAccess(littleEndian).getBigInt64(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, false);
+            return BigInt.valueOf(getBufferAccess(littleEndian).getInt64(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1));
         }
 
         @Override
         public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getBufferAccess(littleEndian).putBigInt64(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, JSRuntime.toBigInt(value));
+            getBufferAccess(littleEndian).putInt64(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, JSRuntime.toBigInt(value).longValue());
         }
 
         @Override
         public BigInt getBigIntImpl(byte[] buffer, int offset, int index) {
-            byte[] b = new byte[BIGINT64_BYTES_PER_ELEMENT];
-            System.arraycopy(buffer, offset + index * BIGINT64_BYTES_PER_ELEMENT, b, 0, BIGINT64_BYTES_PER_ELEMENT);
-            return BigInt.valueOf(b, false, false);
+            return BigInt.valueOf(NATIVE_ORDER.getInt64(buffer, offset, index, BIGINT64_BYTES_PER_ELEMENT));
         }
 
         @Override
         public void setBigIntImpl(byte[] buffer, int offset, int index, BigInt value) {
-            byte[] b = value.toByteArray(BIGINT64_BYTES_PER_ELEMENT, false);
-            System.arraycopy(b, 0, buffer, offset + index * BIGINT64_BYTES_PER_ELEMENT, BIGINT64_BYTES_PER_ELEMENT);
+            NATIVE_ORDER.putInt64(buffer, offset, index, BIGINT64_BYTES_PER_ELEMENT, value.longValue());
         }
     }
 
@@ -860,35 +852,22 @@ public abstract class TypedArray extends ScriptArray {
 
         @Override
         public BigInt getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            ByteBuffer bb = getByteBufferFromBuffer(buffer, condition);
-            byte[] b = new byte[BIGINT64_BYTES_PER_ELEMENT];
-            bb.position(index);
-            bb.get(b);
-            return BigInt.valueOf(b, false, littleEndian);
+            return BigInt.valueOf(getByteBufferFromBuffer(buffer, littleEndian, condition).getLong(index));
         }
 
         @Override
         public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            ByteBuffer bb = getByteBufferFromBuffer(buffer, littleEndian, condition);
-            bb.position(index);
-            byte[] d = JSRuntime.toBigInt(value).toByteArray(BIGINT64_BYTES_PER_ELEMENT, littleEndian);
-            bb.put(d, 0, BIGINT64_BYTES_PER_ELEMENT);
+            getByteBufferFromBuffer(buffer, littleEndian, condition).putLong(index, JSRuntime.toBigInt(value).longValue());
         }
 
         @Override
         public BigInt getBigIntImpl(ByteBuffer buffer, int offset, int index) {
-            ByteBuffer bb = withNativeOrder(buffer);
-            byte[] b = new byte[BIGINT64_BYTES_PER_ELEMENT];
-            bb.position(offset + index * BIGINT64_BYTES_PER_ELEMENT);
-            bb.get(b);
-            return BigInt.valueOf(b, false, false);
+            return BigInt.valueOf(withNativeOrder(buffer).getLong(offset + index * BIGINT64_BYTES_PER_ELEMENT));
         }
 
         @Override
         public void setBigIntImpl(ByteBuffer buffer, int offset, int index, BigInt value) {
-            ByteBuffer bb = withNativeOrder(buffer);
-            bb.position(offset + index * BIGINT64_BYTES_PER_ELEMENT);
-            bb.put(value.toByteArray(BIGINT64_BYTES_PER_ELEMENT, false), 0, BIGINT64_BYTES_PER_ELEMENT);
+            withNativeOrder(buffer).putLong(offset + index * BIGINT64_BYTES_PER_ELEMENT, value.longValue());
         }
     }
 
@@ -901,26 +880,24 @@ public abstract class TypedArray extends ScriptArray {
 
         @Override
         public BigInt getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            return getBufferAccess(littleEndian).getBigInt64(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, true);
+            return BigInt.valueOfUnsigned(getBufferAccess(littleEndian).getInt64(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1));
         }
 
         @Override
         public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            getBufferAccess(littleEndian).putBigInt64(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, JSRuntime.toBigInt(value));
+            getBufferAccess(littleEndian).putInt64(JSArrayBuffer.getByteArray(buffer, condition), 0, index, 1, JSRuntime.toBigInt(value).longValue());
         }
 
         @Override
         public BigInt getBigIntImpl(byte[] buffer, int offset, int index) {
-            byte[] b = new byte[BIGUINT64_BYTES_PER_ELEMENT];
-            System.arraycopy(buffer, offset + index * BIGUINT64_BYTES_PER_ELEMENT, b, 0, BIGUINT64_BYTES_PER_ELEMENT);
-            return BigInt.valueOf(b, true, false);
+            return BigInt.valueOfUnsigned(NATIVE_ORDER.getInt64(buffer, offset, index, BIGINT64_BYTES_PER_ELEMENT));
         }
 
         @Override
         public void setBigIntImpl(byte[] buffer, int offset, int index, BigInt value) {
-            byte[] b = value.toByteArray(BIGUINT64_BYTES_PER_ELEMENT, false);
-            System.arraycopy(b, 0, buffer, offset + index * BIGUINT64_BYTES_PER_ELEMENT, BIGUINT64_BYTES_PER_ELEMENT);
+            NATIVE_ORDER.putInt64(buffer, offset, index, BIGINT64_BYTES_PER_ELEMENT, value.longValue());
         }
+
     }
 
     public static final class DirectBigUint64Array extends TypedBigIntArray<ByteBuffer> {
@@ -935,34 +912,22 @@ public abstract class TypedArray extends ScriptArray {
 
         @Override
         public BigInt getBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition) {
-            ByteBuffer bb = getByteBufferFromBuffer(buffer, littleEndian, condition);
-            byte[] b = new byte[BIGUINT64_BYTES_PER_ELEMENT];
-            bb.position(index);
-            bb.get(b);
-            return BigInt.valueOf(b, true, littleEndian);
+            return BigInt.valueOfUnsigned(getByteBufferFromBuffer(buffer, littleEndian, condition).getLong(index));
         }
 
         @Override
         public void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value) {
-            ByteBuffer bb = getByteBufferFromBuffer(buffer, littleEndian, condition);
-            bb.position(index);
-            bb.put(JSRuntime.toBigInt(value).toByteArray(BIGUINT64_BYTES_PER_ELEMENT, littleEndian), 0, BIGUINT64_BYTES_PER_ELEMENT);
+            getByteBufferFromBuffer(buffer, littleEndian, condition).putLong(index, JSRuntime.toBigInt(value).longValue());
         }
 
         @Override
         public BigInt getBigIntImpl(ByteBuffer buffer, int offset, int index) {
-            ByteBuffer bb = withNativeOrder(buffer);
-            byte[] b = new byte[BIGUINT64_BYTES_PER_ELEMENT];
-            bb.position(offset + index * BIGUINT64_BYTES_PER_ELEMENT);
-            bb.get(b);
-            return BigInt.valueOf(b, true, false);
+            return BigInt.valueOfUnsigned(withNativeOrder(buffer).getLong(offset + index * BIGINT64_BYTES_PER_ELEMENT));
         }
 
         @Override
         public void setBigIntImpl(ByteBuffer buffer, int offset, int index, BigInt value) {
-            ByteBuffer bb = withNativeOrder(buffer);
-            bb.position(offset + index * BIGUINT64_BYTES_PER_ELEMENT);
-            bb.put(value.toByteArray(BIGUINT64_BYTES_PER_ELEMENT, false), 0, BIGUINT64_BYTES_PER_ELEMENT);
+            withNativeOrder(buffer).putLong(offset + index * BIGINT64_BYTES_PER_ELEMENT, value.longValue());
         }
     }
 
@@ -1153,7 +1118,7 @@ public abstract class TypedArray extends ScriptArray {
 
         public abstract double getDouble(byte[] buffer, int offset, int index, int bytesPerElement);
 
-        public abstract BigInt getBigInt64(byte[] buffer, int offset, int index, int bytesPerElement, boolean unsigned);
+        public abstract long getInt64(byte[] buffer, int offset, int index, int bytesPerElement);
 
         public abstract void putInt8(byte[] buffer, int offset, int index, int bytesPerElement, int value);
 
@@ -1165,7 +1130,7 @@ public abstract class TypedArray extends ScriptArray {
 
         public abstract void putDouble(byte[] buffer, int offset, int index, int bytesPerElement, double value);
 
-        public abstract void putBigInt64(byte[] buffer, int offset, int index, int bytesPerElement, BigInt value);
+        public abstract void putInt64(byte[] buffer, int offset, int index, int bytesPerElement, long value);
     }
 
     protected abstract static class NormalBufferAccess extends BufferAccess {
@@ -1212,15 +1177,11 @@ public abstract class TypedArray extends ScriptArray {
                             buffer[byteIndex + b(5, 8)], buffer[byteIndex + b(6, 8)], buffer[byteIndex + b(7, 8)]));
         }
 
-        @TruffleBoundary
         @Override
-        public BigInt getBigInt64(byte[] buffer, int offset, int index, int bytesPerElement, boolean unsigned) {
-            byte[] b = new byte[8];
+        public long getInt64(byte[] buffer, int offset, int index, int bytesPerElement) {
             int byteIndex = offset + index * bytesPerElement;
-            for (int i = 0; i < 8; i++) {
-                b[7 - i] = buffer[byteIndex + b(i, 8)];
-            }
-            return BigInt.valueOf(b, unsigned, false);
+            return makeInt64(buffer[byteIndex + b(0, 8)], buffer[byteIndex + b(1, 8)], buffer[byteIndex + b(2, 8)], buffer[byteIndex + b(3, 8)], buffer[byteIndex + b(4, 8)],
+                            buffer[byteIndex + b(5, 8)], buffer[byteIndex + b(6, 8)], buffer[byteIndex + b(7, 8)]);
         }
 
         @Override
@@ -1245,7 +1206,8 @@ public abstract class TypedArray extends ScriptArray {
             buffer[byteIndex + b(3, 4)] = (byte) (value >> 24);
         }
 
-        private void putInt64(byte[] buffer, int offset, int index, int bytesPerElement, long value) {
+        @Override
+        public final void putInt64(byte[] buffer, int offset, int index, int bytesPerElement, long value) {
             int byteIndex = offset + index * bytesPerElement;
             buffer[byteIndex + b(0, 8)] = (byte) (value);
             buffer[byteIndex + b(1, 8)] = (byte) (value >> 8);
@@ -1255,16 +1217,6 @@ public abstract class TypedArray extends ScriptArray {
             buffer[byteIndex + b(5, 8)] = (byte) (value >> 40);
             buffer[byteIndex + b(6, 8)] = (byte) (value >> 48);
             buffer[byteIndex + b(7, 8)] = (byte) (value >> 56);
-        }
-
-        @TruffleBoundary
-        @Override
-        public void putBigInt64(byte[] buffer, int offset, int index, int bytesPerElement, BigInt value) {
-            byte[] b = value.toByteArray(8, false);
-            int byteIndex = offset + index * bytesPerElement;
-            for (int i = 0; i < 8; i++) {
-                buffer[byteIndex + b(i, 8)] = b[7 - i];
-            }
         }
 
         @Override
@@ -1317,6 +1269,11 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
+        public long getInt64(byte[] buffer, int offset, int index, int bytesPerElement) {
+            return UNSAFE.getLong(buffer, offset(offset, index, bytesPerElement));
+        }
+
+        @Override
         public float getFloat(byte[] buffer, int offset, int index, int bytesPerElement) {
             return UNSAFE.getFloat(buffer, offset(offset, index, bytesPerElement));
         }
@@ -1324,14 +1281,6 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public double getDouble(byte[] buffer, int offset, int index, int bytesPerElement) {
             return UNSAFE.getDouble(buffer, offset(offset, index, bytesPerElement));
-        }
-
-        @Override
-        @TruffleBoundary
-        public BigInt getBigInt64(byte[] buffer, int offset, int index, int bytesPerElement, boolean unsigned) {
-            byte[] b = new byte[8];
-            System.arraycopy(buffer, offset + index * bytesPerElement, b, 0, bytesPerElement);
-            return BigInt.valueOf(b, unsigned, false);
         }
 
         @Override
@@ -1350,6 +1299,11 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
+        public void putInt64(byte[] buffer, int offset, int index, int bytesPerElement, long value) {
+            UNSAFE.putLong(buffer, offset(offset, index, bytesPerElement), value);
+        }
+
+        @Override
         public void putFloat(byte[] buffer, int offset, int index, int bytesPerElement, float value) {
             UNSAFE.putFloat(buffer, offset(offset, index, bytesPerElement), value);
         }
@@ -1357,14 +1311,6 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void putDouble(byte[] buffer, int offset, int index, int bytesPerElement, double value) {
             UNSAFE.putDouble(buffer, offset(offset, index, bytesPerElement), value);
-        }
-
-        @TruffleBoundary
-        @Override
-        public void putBigInt64(byte[] buffer, int offset, int index, int bytesPerElement, BigInt value) {
-            byte[] b = value.toByteArray(bytesPerElement, false);
-            System.arraycopy(b, 0, buffer, offset + index * bytesPerElement, bytesPerElement);
-
         }
 
         private static long offset(int offset, int index, int bytesPerElement) {
@@ -1417,9 +1363,8 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public BigInt getBigInt64(byte[] buffer, int offset, int index, int bytesPerElement, boolean unsigned) {
-            // TODO: fixme
-            return BigInt.valueOf(ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getLong(byteIndex(offset, index, bytesPerElement)));
+        public long getInt64(byte[] buffer, int offset, int index, int bytesPerElement) {
+            return ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getLong(byteIndex(offset, index, bytesPerElement));
         }
 
         @Override
@@ -1448,9 +1393,8 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         @Override
-        public void putBigInt64(byte[] buffer, int offset, int index, int bytesPerElement, BigInt value) {
-            // TODO: fixme
-            ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).putLong(byteIndex(offset, index, bytesPerElement), value.longValueExact());
+        public void putInt64(byte[] buffer, int offset, int index, int bytesPerElement, long value) {
+            ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).putLong(byteIndex(offset, index, bytesPerElement), value);
         }
 
         private static int byteIndex(int offset, int index, int bytesPerElement) {

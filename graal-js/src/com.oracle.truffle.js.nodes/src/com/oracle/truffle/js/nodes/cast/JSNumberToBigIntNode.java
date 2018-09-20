@@ -83,6 +83,6 @@ public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
         if (Double.isInfinite(d) || Double.isNaN(d)) {
             return false;
         }
-        return (long) d == d;
+        return Math.floor(Math.abs(d)) == Math.abs(d);
     }
 }

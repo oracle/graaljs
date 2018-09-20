@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
@@ -65,7 +64,6 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     public static final BigInt MIN_INT = new BigInt(BigInteger.valueOf(Integer.MIN_VALUE));
 
     private static final BigInteger TWO64 = BigInteger.ONE.shiftLeft(64);
-    private static final BigInteger TWO63 = BigInteger.ONE.shiftLeft(63);
 
     public BigInt(String s, int r) {
         this.value = new BigInteger(s, r);
@@ -86,22 +84,11 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     }
 
     @TruffleBoundary
-    public static BigInt valueOf(byte[] b, boolean unsigned, boolean littleEndian) {
-        if (!unsigned && !littleEndian) {
-            return new BigInt(new BigInteger(b));
+    public static BigInt valueOfUnsigned(long i) {
+        if (i >= 0) {
+            return new BigInt(BigInteger.valueOf(i));
         } else {
-            int signIndex = littleEndian ? b.length - 1 : 0;
-            boolean negativeInputRepresentation = b[signIndex] < 0;
-            int plusSignOffset = unsigned && negativeInputRepresentation ? 1 : 0;
-            byte[] bigEndianRepresentation = new byte[b.length + plusSignOffset];
-            if (littleEndian) {
-                for (int i = 0; i < b.length; i++) {
-                    bigEndianRepresentation[i + plusSignOffset] = b[b.length - 1 - i];
-                }
-            } else {
-                System.arraycopy(b, 0, bigEndianRepresentation, plusSignOffset, b.length);
-            }
-            return new BigInt(new BigInteger(bigEndianRepresentation));
+            return new BigInt(BigInteger.valueOf(i).mod(TWO64));
         }
     }
 
@@ -291,67 +278,15 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         return value.longValueExact();
     }
 
+    @TruffleBoundary
+    public long longValue() {
+        return value.longValue();
+    }
+
     @Override
     @TruffleBoundary
     public String toString() {
         return value.toString(10);
-    }
-
-    @TruffleBoundary
-    public BigInt toBigInt64() {
-        BigInteger int64bit = value.mod(TWO64);
-        return (int64bit.compareTo(TWO63) >= 0) ? new BigInt(int64bit.subtract(TWO64)) : new BigInt(int64bit);
-    }
-
-    @TruffleBoundary
-    public BigInt toBigUInt64() {
-        return new BigInt(value.mod(TWO64));
-    }
-
-    /**
-     * Provide byte array representation of the internal BigInt value. The length of the result
-     * array will be exactly as specified by the provided length parameter. In such a case that the
-     * internal representation does not fit into requested number of bytes, the most significant
-     * bytes will be trimmed.
-     *
-     * @param length number of bytes to return.
-     * @param littleEndian set to true if the most significant byte should go last.
-     * @return byte array including the big-endian representation of the internal value (the most
-     *         significant byte comes first).
-     */
-    @TruffleBoundary
-    public byte[] toByteArray(int length, boolean littleEndian) {
-        byte[] bytes = value.toByteArray();
-        if (bytes.length < length) {
-            byte[] result = new byte[length];
-            if (littleEndian) {
-                if (value.signum() < 0) {
-                    Arrays.fill(result, bytes.length, length, (byte) 0xFF);
-                }
-                for (int i = 0; i < bytes.length; i++) {
-                    result[i] = bytes[bytes.length - 1 - i];
-                }
-            } else {
-                int resultOffset = length - bytes.length;
-                if (value.signum() < 0) {
-                    Arrays.fill(result, 0, resultOffset, (byte) 0xFF);
-                }
-                System.arraycopy(bytes, 0, result, resultOffset, bytes.length);
-            }
-            return result;
-        } else if (bytes.length > length) {
-            int offset = bytes.length - length;
-            if (littleEndian) {
-                byte[] result = new byte[length];
-                for (int i = 0; i < length; i++) {
-                    result[i] = bytes[bytes.length - 1 - offset - i];
-                }
-                return result;
-            } else {
-                return Arrays.copyOfRange(bytes, offset, bytes.length);
-            }
-        }
-        return bytes;
     }
 
     public static boolean isInstance(TruffleObject object) {
