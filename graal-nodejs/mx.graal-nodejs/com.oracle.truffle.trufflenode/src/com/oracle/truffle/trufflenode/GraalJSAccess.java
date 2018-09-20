@@ -990,7 +990,9 @@ public final class GraalJSAccess {
     }
 
     public void arrayBufferNeuter(Object arrayBuffer) {
-        JSArrayBuffer.setDirectByteBuffer((DynamicObject) arrayBuffer, ByteBuffer.allocateDirect(0));
+        if (JSArrayBuffer.getDirectByteLength((DynamicObject) arrayBuffer) != 0) {
+            JSArrayBuffer.setDirectByteBuffer((DynamicObject) arrayBuffer, ByteBuffer.allocateDirect(0));
+        }
     }
 
     public static int arrayBufferViewByteLength(JSContext context, DynamicObject arrayBufferView) {
