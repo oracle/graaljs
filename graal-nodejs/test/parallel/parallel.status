@@ -115,9 +115,6 @@ test-v8-untrusted-code-mitigations                                 : FAIL
 # by graal.js/truffle sometimes
 test-async-wrap-pop-id-during-load                                 : SKIP
 
-# No JSAgent set
-test-atomics-notify                                                : FAIL
-
 # Uses v8 extension (--expose_externalize_string flag that exposes two additional functions)
 test-fs-write                                                      : FAIL
 
@@ -156,9 +153,6 @@ test-vm-syntax-error-stderr                                        : FAIL
 
 # fails randomly
 test-http2-server-rst-stream                                       : SKIP
-
-# expired certificates (CRL) in currently imported version of test
-test-tls-server-verify                                             : FAIL
 
 [$system==solaris]
 test-http2-respond-file-fd-invalid : FAIL
