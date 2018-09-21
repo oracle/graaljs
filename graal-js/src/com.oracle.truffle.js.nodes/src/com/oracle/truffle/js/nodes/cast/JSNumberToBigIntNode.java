@@ -69,7 +69,7 @@ public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
     protected BigInt doDouble(double value,
                     @Cached("createBinaryProfile()") ConditionProfile isNotInteger) {
 
-        if (isNotInteger.profile(!isInteger(value))) {
+        if (isNotInteger.profile(!JSRuntime.isInteger(value))) {
             throw Errors.createRangeError("BigInt out of range");
         }
         return BigInt.valueOf((long) value);
@@ -78,16 +78,5 @@ public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
     @Specialization(guards = "isJSNull(value)")
     protected static BigInt doNull(@SuppressWarnings("unused") Object value) {
         return BigInt.ZERO;
-    }
-
-    public static boolean isInteger(double d) {
-        if (Double.isInfinite(d) || Double.isNaN(d)) {
-            return false;
-        }
-        long l = (long) d;
-        if (l != d) {
-            return false;
-        }
-        return JSRuntime.MIN_SAFE_INTEGER <= l && l <= JSRuntime.MAX_SAFE_INTEGER;
     }
 }

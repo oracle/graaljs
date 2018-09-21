@@ -486,6 +486,10 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         return isInstance(obj, INSTANCE);
     }
 
+    public static boolean isBigIntArrayBufferView(DynamicObject obj) {
+        return typedArrayGetArrayType(obj) instanceof TypedArray.TypedBigIntArray;
+    }
+
     public static boolean hasDetachedBuffer(DynamicObject obj, JSContext ctx) {
         assert isJSArrayBufferView(obj);
         if (ctx.getTypedArrayNotDetachedAssumption().isValid()) {

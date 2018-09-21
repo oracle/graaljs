@@ -189,7 +189,8 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         public static boolean isNotIntSharedBufferView(DynamicObject object) {
             TypedArray typed = JSArrayBufferView.typedArrayGetArrayType(object);
             return isSharedBufferView(object) &&
-                            (typed instanceof TypedArray.DirectUint8ClampedArray || typed instanceof TypedArray.DirectFloat32Array || typed instanceof TypedArray.DirectFloat64Array);
+                            (typed instanceof TypedArray.DirectUint8ClampedArray || typed instanceof TypedArray.DirectFloat32Array || typed instanceof TypedArray.DirectFloat64Array ||
+                                            typed instanceof TypedArray.DirectBigInt64Array || typed instanceof TypedArray.DirectBigUint64Array);
         }
 
         /* ES8 24.4.1.2 ValidateAtomicAccess */

@@ -421,6 +421,24 @@ public final class JSRuntime {
         return value instanceof Integer || value instanceof Double || value instanceof Long || value instanceof LargeInteger;
     }
 
+    @TruffleBoundary
+    public static BigInt toBigInt(Object value) {
+        Object primitive = toPrimitive(value, HINT_NUMBER);
+        if (primitive instanceof String) {
+            try {
+                return BigInt.valueOf((String) primitive);
+            } catch (NumberFormatException e) {
+                throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.SyntaxError, primitive);
+            }
+        } else if (primitive instanceof BigInt) {
+            return (BigInt) primitive;
+        } else if (primitive instanceof Boolean) {
+            return (Boolean) primitive ? BigInt.ONE : BigInt.ZERO;
+        } else {
+            throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, primitive);
+        }
+    }
+
     public static boolean isBigInt(Object value) {
         return value instanceof BigInt;
     }
@@ -2345,7 +2363,7 @@ public final class JSRuntime {
         if (Double.isInfinite(d) || Double.isNaN(d)) {
             return false;
         }
-        return JSRuntime.doubleIsRepresentableAsLong(d);
+        return Math.floor(Math.abs(d)) == Math.abs(d);
     }
 
     /**
@@ -2356,7 +2374,7 @@ public final class JSRuntime {
         assert JSRuntime.isNumber(indexObj);
         assert JSArrayBufferView.isJSArrayBufferView(thisObj);
         Number index = (Number) indexObj;
-        Number numValue = JSRuntime.toNumber(value);
+        Object numValue = JSArrayBufferView.isBigIntArrayBufferView(thisObj) ? JSRuntime.toBigInt(value) : JSRuntime.toNumber(value);
         DynamicObject buffer = JSArrayBufferView.getArrayBuffer(thisObj);
         if (JSArrayBuffer.isDetachedBuffer(buffer)) {
             throw Errors.createTypeErrorDetachedBuffer();
@@ -2382,7 +2400,7 @@ public final class JSRuntime {
     @TruffleBoundary
     public static boolean integerIndexedElementSet(DynamicObject thisObj, int numIndex, Object value) {
         assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-        Number numValue = JSRuntime.toNumber(value);
+        Object numValue = JSArrayBufferView.isBigIntArrayBufferView(thisObj) ? JSRuntime.toBigInt(value) : JSRuntime.toNumber(value);
         DynamicObject buffer = JSArrayBufferView.getArrayBuffer(thisObj);
         if (JSArrayBuffer.isDetachedBuffer(buffer)) {
             throw Errors.createTypeErrorDetachedBuffer();

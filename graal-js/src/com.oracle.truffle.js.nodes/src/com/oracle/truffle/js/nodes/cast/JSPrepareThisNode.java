@@ -49,9 +49,11 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -118,6 +120,11 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
         return JSNumber.create(context, value);
     }
 
+    @Specialization
+    protected DynamicObject doBigInt(BigInt value) {
+        return JSBigInt.create(context, value);
+    }
+
     @Specialization(guards = "isJavaNumber(value)")
     protected DynamicObject doNumber(Object value) {
         return JSNumber.create(context, (Number) value);
@@ -143,7 +150,7 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
         return doJavaGeneric(cachedClass.cast(object));
     }
 
-    @Specialization(guards = {"!isBoolean(object)", "!isNumber(object)", "!isString(object)", "!isSymbol(object)", "!isJSObject(object)"}, replaces = "doJavaObject")
+    @Specialization(guards = {"!isBoolean(object)", "!isNumber(object)", "!isString(object)", "!isSymbol(object)", "!isBigInt(object)", "!isJSObject(object)"}, replaces = "doJavaObject")
     protected Object doJavaGeneric(Object object) {
         assert JSRuntime.isJavaObject(object) || JSRuntime.isForeignObject(object);
         return object;
