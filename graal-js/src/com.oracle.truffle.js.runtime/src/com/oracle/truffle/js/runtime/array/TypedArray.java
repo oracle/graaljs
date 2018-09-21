@@ -890,12 +890,12 @@ public abstract class TypedArray extends ScriptArray {
 
         @Override
         public BigInt getBigIntImpl(byte[] buffer, int offset, int index) {
-            return BigInt.valueOfUnsigned(NATIVE_ORDER.getInt64(buffer, offset, index, BIGINT64_BYTES_PER_ELEMENT));
+            return BigInt.valueOfUnsigned(NATIVE_ORDER.getInt64(buffer, offset, index, BIGUINT64_BYTES_PER_ELEMENT));
         }
 
         @Override
         public void setBigIntImpl(byte[] buffer, int offset, int index, BigInt value) {
-            NATIVE_ORDER.putInt64(buffer, offset, index, BIGINT64_BYTES_PER_ELEMENT, value.longValue());
+            NATIVE_ORDER.putInt64(buffer, offset, index, BIGUINT64_BYTES_PER_ELEMENT, value.longValue());
         }
 
     }
@@ -922,12 +922,12 @@ public abstract class TypedArray extends ScriptArray {
 
         @Override
         public BigInt getBigIntImpl(ByteBuffer buffer, int offset, int index) {
-            return BigInt.valueOfUnsigned(withNativeOrder(buffer).getLong(offset + index * BIGINT64_BYTES_PER_ELEMENT));
+            return BigInt.valueOfUnsigned(withNativeOrder(buffer).getLong(offset + index * BIGUINT64_BYTES_PER_ELEMENT));
         }
 
         @Override
         public void setBigIntImpl(ByteBuffer buffer, int offset, int index, BigInt value) {
-            withNativeOrder(buffer).putLong(offset + index * BIGINT64_BYTES_PER_ELEMENT, value.longValue());
+            withNativeOrder(buffer).putLong(offset + index * BIGUINT64_BYTES_PER_ELEMENT, value.longValue());
         }
     }
 
