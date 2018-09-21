@@ -2363,7 +2363,7 @@ public final class JSRuntime {
         if (Double.isInfinite(d) || Double.isNaN(d)) {
             return false;
         }
-        return JSRuntime.doubleIsRepresentableAsLong(d);
+        return Math.floor(Math.abs(d)) == Math.abs(d);
     }
 
     /**

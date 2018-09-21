@@ -46,6 +46,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
 public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
 
@@ -68,7 +69,7 @@ public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
     protected BigInt doDouble(double value,
                     @Cached("createBinaryProfile()") ConditionProfile isNotInteger) {
 
-        if (isNotInteger.profile(!isInteger(value))) {
+        if (isNotInteger.profile(!JSRuntime.isInteger(value))) {
             throw Errors.createRangeError("BigInt out of range");
         }
         return BigInt.valueOf((long) value);
@@ -77,12 +78,5 @@ public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
     @Specialization(guards = "isJSNull(value)")
     protected static BigInt doNull(@SuppressWarnings("unused") Object value) {
         return BigInt.ZERO;
-    }
-
-    public static boolean isInteger(double d) {
-        if (Double.isInfinite(d) || Double.isNaN(d)) {
-            return false;
-        }
-        return Math.floor(Math.abs(d)) == Math.abs(d);
     }
 }
