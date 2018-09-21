@@ -241,6 +241,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Uint32Array(3),
         Float32Array(3),
         Float64Array(3),
+        BigInt64Array(3),
+        BigUint64Array(3),
         DataView(1),
 
         Map(0),
@@ -405,6 +407,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             case Uint32Array:
             case Float32Array:
             case Float64Array:
+            case BigInt64Array:
+            case BigUint64Array:
                 if (construct) {
                     if (newTarget) {
                         return JSConstructTypedArrayNodeGen.create(context, builtin, args().newTarget().fixedArgs(3).createArgumentNodes(context));

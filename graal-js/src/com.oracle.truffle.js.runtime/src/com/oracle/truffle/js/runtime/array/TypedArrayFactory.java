@@ -42,6 +42,10 @@ package com.oracle.truffle.js.runtime.array;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.array.TypedArray.BigInt64Array;
+import com.oracle.truffle.js.runtime.array.TypedArray.BigUint64Array;
+import com.oracle.truffle.js.runtime.array.TypedArray.DirectBigInt64Array;
+import com.oracle.truffle.js.runtime.array.TypedArray.DirectBigUint64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectFloat32Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectFloat64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectInt16Array;
@@ -150,6 +154,26 @@ public enum TypedArrayFactory implements PrototypeSupplier {
                 return new DirectFloat64Array(this, offset);
             } else {
                 return new Float64Array(this, offset);
+            }
+        }
+    },
+    BigInt64Array(TypedArray.BIGINT64_BYTES_PER_ELEMENT) {
+        @Override
+        TypedArray instantiateArrayType(boolean direct, boolean offset) {
+            if (direct) {
+                return new DirectBigInt64Array(this, offset);
+            } else {
+                return new BigInt64Array(this, offset);
+            }
+        }
+    },
+    BigUint64Array(TypedArray.BIGUINT64_BYTES_PER_ELEMENT) {
+        @Override
+        TypedArray instantiateArrayType(boolean direct, boolean offset) {
+            if (direct) {
+                return new DirectBigUint64Array(this, offset);
+            } else {
+                return new BigUint64Array(this, offset);
             }
         }
     };
