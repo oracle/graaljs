@@ -428,7 +428,7 @@ public final class JSRuntime {
             try {
                 return BigInt.valueOf((String) primitive);
             } catch (NumberFormatException e) {
-                throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.SyntaxError, value);
+                throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.SyntaxError, primitive);
             }
         } else if (primitive instanceof BigInt) {
             return (BigInt) primitive;
