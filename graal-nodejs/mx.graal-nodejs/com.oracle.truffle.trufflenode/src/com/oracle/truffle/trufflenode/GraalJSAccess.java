@@ -44,6 +44,8 @@ import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.BIG_INT_VALUE;
+import static com.oracle.truffle.trufflenode.ValueType.BIGINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.BIGUINT64ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_FALSE;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_TRUE;
 import static com.oracle.truffle.trufflenode.ValueType.DATA_VIEW_OBJECT;
@@ -429,6 +431,10 @@ public final class GraalJSAccess {
             return FLOAT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectFloat64Array) {
             return FLOAT64ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.DirectBigInt64Array) {
+            return BIGINT64ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.DirectBigUint64Array) {
+            return BIGUINT64ARRAY_OBJECT;
         } else {
             return ARRAY_BUFFER_VIEW_OBJECT;
         }
@@ -1085,6 +1091,14 @@ public final class GraalJSAccess {
 
     public Object float64ArrayNew(Object arrayBuffer, int offset, int length) {
         return typedArrayNew(arrayBuffer, offset, length, TypedArrayFactory.Float64Array);
+    }
+
+    public Object bigInt64ArrayNew(Object arrayBuffer, int offset, int length) {
+        return typedArrayNew(arrayBuffer, offset, length, TypedArrayFactory.BigInt64Array);
+    }
+
+    public Object bigUint64ArrayNew(Object arrayBuffer, int offset, int length) {
+        return typedArrayNew(arrayBuffer, offset, length, TypedArrayFactory.BigUint64Array);
     }
 
     public Object dataViewNew(Object arrayBuffer, int offset, int length) {

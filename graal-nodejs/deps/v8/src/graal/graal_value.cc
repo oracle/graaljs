@@ -150,6 +150,14 @@ bool GraalValue::IsFloat64Array() const {
     return false;
 }
 
+bool GraalValue::IsBigInt64Array() const {
+    return false;
+}
+
+bool GraalValue::IsBigUint64Array() const {
+    return false;
+}
+
 bool GraalValue::IsMap() const {
     return false;
 }
@@ -621,6 +629,12 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             break;
         case 30:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kDataView, use_shared_buffer, placement);
+            break;
+        case 32:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kBigInt64Array, use_shared_buffer, placement);
+            break;
+        case 33:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kBigUint64Array, use_shared_buffer, placement);
             break;
         case 15:
             if (placement) {

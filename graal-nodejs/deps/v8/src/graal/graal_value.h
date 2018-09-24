@@ -73,6 +73,8 @@ public:
     virtual bool IsInt32Array() const;
     virtual bool IsFloat32Array() const;
     virtual bool IsFloat64Array() const;
+    virtual bool IsBigInt64Array() const;
+    virtual bool IsBigUint64Array() const;
     virtual bool IsMap() const;
     virtual bool IsSet() const;
     virtual bool IsPromise() const;

@@ -72,6 +72,8 @@ public interface ValueType {
     int PROXY_OBJECT = 29;
     int DATA_VIEW_OBJECT = 30;
     int BIG_INT_VALUE = 31;
+    int BIGINT64ARRAY_OBJECT = 32;
+    int BIGUINT64ARRAY_OBJECT = 33;
 
     int UNKNOWN_TYPE = -1;
 }

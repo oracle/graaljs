@@ -1003,6 +1003,8 @@ namespace v8 {
     ArrayBufferViewNew(Float32Array, kFloat32Array, float32_array_new)
     ArrayBufferViewNew(Float64Array, kFloat64Array, float64_array_new)
     ArrayBufferViewNew(DataView, kDataView, data_view_new)
+    ArrayBufferViewNew(BigInt64Array, kBigInt64Array, big_int64_array_new)
+    ArrayBufferViewNew(BigUint64Array, kBigUint64Array, big_uint64_array_new)
 
     size_t TypedArray::Length() {
         GraalArrayBufferView* graal_typed_array = reinterpret_cast<GraalArrayBufferView*> (this);
@@ -1585,6 +1587,14 @@ namespace v8 {
         return reinterpret_cast<const GraalValue*> (this)->IsFloat64Array();
     }
 
+    bool Value::IsBigInt64Array() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsBigInt64Array();
+    }
+
+    bool Value::IsBigUint64Array() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsBigUint64Array();
+    }
+
     bool Value::StrictEquals(Local<Value> that) const {
         return reinterpret_cast<const GraalValue*> (this)->StrictEquals(that);
     }
@@ -1847,7 +1857,9 @@ namespace v8 {
                 IsUint32Array() ||
                 IsInt32Array() ||
                 IsFloat32Array() ||
-                IsFloat64Array();
+                IsFloat64Array() ||
+                IsBigInt64Array() ||
+                IsBigUint64Array();
     }
 
     bool Value::IsMap() const {
@@ -2664,16 +2676,6 @@ namespace v8 {
         TRACE
     }
 
-    Local<BigInt64Array> BigInt64Array::New(Local<ArrayBuffer> array_buffer, size_t byte_offset, size_t length) {
-        TRACE
-        return Local<BigInt64Array>();
-    }
-
-    Local<BigUint64Array> BigUint64Array::New(Local<ArrayBuffer> array_buffer, size_t byte_offset, size_t length) {
-        TRACE
-        return reinterpret_cast<BigUint64Array*> (CurrentIsolate()->GetUndefined());
-    }
-
     void Isolate::SetIdle(bool is_idle) {
         TRACE
     }
@@ -2740,16 +2742,6 @@ namespace v8 {
 
     bool Value::IsBigInt() const {
         return reinterpret_cast<const GraalValue*> (this)->IsBigInt();
-    }
-
-    bool Value::IsBigInt64Array() const {
-        TRACE
-        return false;
-    }
-
-    bool Value::IsBigUint64Array() const {
-        TRACE
-        return false;
     }
 
     bool Value::IsGeneratorFunction() const {
@@ -2928,6 +2920,7 @@ namespace v8 {
     void RegExp::CheckCast(v8::Value* that) {}
     void External::CheckCast(v8::Value* that) {}
     void BigInt::CheckCast(v8::Value* that) {}
+    void BigInt64Array::CheckCast(v8::Value* that) {}
     void BigUint64Array::CheckCast(v8::Value* that) {}
 
 }

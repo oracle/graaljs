@@ -578,6 +578,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::int32_array_new, "int32ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::float32_array_new, "float32ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::float64_array_new, "float64ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::big_int64_array_new, "bigInt64ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::big_uint64_array_new, "bigUint64ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::data_view_new, "dataViewNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::external_new, "externalNew", "(Ljava/lang/Object;J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::integer_new, "integerNew", "(J)Ljava/lang/Object;")

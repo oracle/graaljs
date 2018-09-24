@@ -425,7 +425,9 @@ describe('Value - Is*()', function () {
         'Uint32Array',
         'Int32Array',
         'Float32Array',
-        'Float64Array'
+        'Float64Array',
+        'BigInt64Array',
+        'BigUint64Array'
     ];
     typedArrays.forEach(function (type) {
         describe('Is' + type, function () {

@@ -221,6 +221,18 @@ EXPORT_TO_JS(IsFloat64Array) {
     args.GetReturnValue().Set(args[0]->IsFloat64Array());
 }
 
+// Value::IsBigInt64Array
+
+EXPORT_TO_JS(IsBigInt64Array) {
+    args.GetReturnValue().Set(args[0]->IsBigInt64Array());
+}
+
+// Value::IsBigUint64Array
+
+EXPORT_TO_JS(IsBigUint64Array) {
+    args.GetReturnValue().Set(args[0]->IsBigUint64Array());
+}
+
 // Value::IsExternal
 
 EXPORT_TO_JS(IsExternal) {

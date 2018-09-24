@@ -92,11 +92,6 @@ test-vm-module-import-meta                                         : FAIL
 # some issue with instrumentation - works when while(1); is replaced by while(true);
 test-worker-nexttick-terminate                                     : SKIP
 
-# BigUint64Array is not implemented yet
-test-fs-stat-bigint                                                : FAIL
-test-fs-watchfile-bigint                                           : FAIL
-test-process-hrtime-bigint                                         : FAIL
-
 # Larger stack (~7m) needed
 test-async-hooks-recursive-stack-runInAsyncScope                   : FAIL
 

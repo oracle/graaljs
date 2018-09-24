@@ -161,6 +161,8 @@ enum GraalAccessMethod {
     int32_array_new,
     float32_array_new,
     float64_array_new,
+    big_int64_array_new,
+    big_uint64_array_new,
     data_view_new,
     external_new,
     integer_new,
