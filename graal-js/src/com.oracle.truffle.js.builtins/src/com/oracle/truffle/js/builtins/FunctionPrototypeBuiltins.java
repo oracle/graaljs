@@ -65,7 +65,6 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.SuppressFBWarnings;
@@ -194,10 +193,9 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "fast path")
         @Specialization(guards = "isJSFunction(thisFnObj)")
         protected DynamicObject bind(DynamicObject thisFnObj, Object thisArg, Object[] args) {
-            JSRealm realm = JSFunction.getRealm(thisFnObj);
             DynamicObject proto = getPrototypeNode.executeJSObject(thisFnObj);
 
-            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), realm, thisFnObj, thisArg, args, proto, false);
+            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto, false);
 
             int length = 0;
             boolean mustSetLength = true;
@@ -255,8 +253,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
             assert JSFunction.isJSFunction(innerFunction);
 
-            JSRealm realm = JSFunction.getRealm((DynamicObject) innerFunction);
-            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), realm, (DynamicObject) innerFunction, thisArg, args, proto, false);
+            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), (DynamicObject) innerFunction, thisArg, args, proto, false);
 
             int length = 0;
             boolean targetHasLength = JSObject.hasOwnProperty(thisObj, JSFunction.LENGTH);
