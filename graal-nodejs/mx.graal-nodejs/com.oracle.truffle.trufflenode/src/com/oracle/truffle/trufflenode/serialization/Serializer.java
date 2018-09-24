@@ -41,6 +41,7 @@
 package com.oracle.truffle.trufflenode.serialization;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.TypedArray;
@@ -48,6 +49,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -66,6 +68,7 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.IdentityHashMap;
@@ -153,6 +156,9 @@ public class Serializer {
             writeIntOrDouble(doubleValue);
         } else if (JSRuntime.isString(value)) {
             writeString(JSRuntime.toString(value));
+        } else if (JSRuntime.isBigInt(value)) {
+            writeTag(SerializationTag.BIG_INT);
+            writeBigIntContents((BigInt) value);
         } else {
             writeObject(value);
         }
@@ -182,6 +188,9 @@ public class Serializer {
             writeJSBoolean((DynamicObject) object);
         } else if (JSNumber.isJSNumber(object)) {
             writeJSNumber((DynamicObject) object);
+        } else if (JSBigInt.isJSBigInt(object)) {
+            writeTag(SerializationTag.BIG_INT_OBJECT);
+            writeBigIntContents(JSBigInt.valueOf((DynamicObject) object));
         } else if (JSString.isJSString(object)) {
             writeJSString((DynamicObject) object);
         } else if (JSRegExp.isJSRegExp(object)) {
@@ -461,6 +470,33 @@ public class Serializer {
         writeTag(tag);
         writeVarInt(offset);
         writeVarInt(length);
+    }
+
+    private void writeBigIntContents(BigInt value) {
+        BigInteger bigInteger = value.bigIntegerValue();
+        boolean negative = bigInteger.signum() == -1;
+        if (negative) {
+            bigInteger = bigInteger.negate();
+        }
+        int bitLength = bigInteger.bitLength();
+        int digits = (bitLength + 63) / 64;
+        int bytes = digits * 8;
+        int bitfield = bytes;
+        bitfield <<= 1;
+        if (negative) {
+            bitfield++;
+        }
+        writeVarInt(bitfield);
+        for (int i = 0; i < bytes; i++) {
+            byte b = 0;
+            for (int bit = 8 * (i + 1) - 1; bit >= 8 * i; bit--) {
+                b <<= 1;
+                if (bigInteger.testBit(bit)) {
+                    b++;
+                }
+            }
+            writeByte(b);
+        }
     }
 
     private void writeHostObject(Object object) {

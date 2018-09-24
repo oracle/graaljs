@@ -51,6 +51,7 @@ public enum SerializationTag {
     INT32('I'), // kInt32
     UINT32('U'), // kUint32
     DOUBLE('N'), // kDouble
+    BIG_INT('Z'), // kBigInt
     UTF8_STRING('S'), // kUtf8String
     ONE_BYTE_STRING('"'), // kOneByteString
     TWO_BYTE_STRING('c'), // kTwoByteString
@@ -59,6 +60,7 @@ public enum SerializationTag {
     TRUE_OBJECT('y'), // kTrueObject
     FALSE_OBJECT('x'), // kFalseObject
     NUMBER_OBJECT('n'), // kNumberObject
+    BIG_INT_OBJECT('z'), // kBigIntObject
     STRING_OBJECT('s'), // kStringObject
     REGEXP('R'), // kRegExp
     ARRAY_BUFFER('B'), // kArrayBuffer

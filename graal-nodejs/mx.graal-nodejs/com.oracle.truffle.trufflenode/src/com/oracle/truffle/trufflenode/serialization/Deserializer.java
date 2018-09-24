@@ -41,6 +41,7 @@
 package com.oracle.truffle.trufflenode.serialization;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -49,6 +50,7 @@ import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -65,6 +67,7 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -124,6 +127,8 @@ public class Deserializer {
                 return readVarInt();
             case DOUBLE:
                 return readDouble();
+            case BIG_INT:
+                return readBigInt();
             case ONE_BYTE_STRING:
                 return readOneByteString();
             case TWO_BYTE_STRING:
@@ -138,6 +143,8 @@ public class Deserializer {
                 return assignId(JSBoolean.create(context, false));
             case NUMBER_OBJECT:
                 return readJSNumber(context);
+            case BIG_INT_OBJECT:
+                return readJSBigInt(context);
             case STRING_OBJECT:
                 return readJSString(context);
             case REGEXP:
@@ -223,6 +230,26 @@ public class Deserializer {
         }
     }
 
+    private BigInt readBigInt() {
+        int bitField = readVarInt();
+        boolean negative = (bitField & 1) != 0;
+        bitField >>= 1;
+        BigInteger bigInteger = BigInteger.ZERO;
+        for (int i = 0; i < bitField; i++) {
+            byte b = buffer.get();
+            for (int bit = 8 * i; bit < 8 * (i + 1); bit++) {
+                if ((b & 1) != 0) {
+                    bigInteger = bigInteger.setBit(bit);
+                }
+                b >>>= 1;
+            }
+        }
+        if (negative) {
+            bigInteger = bigInteger.negate();
+        }
+        return new BigInt(bigInteger);
+    }
+
     private String readOneByteString() {
         int charCount = readVarInt();
         char[] chars = new char[charCount];
@@ -260,6 +287,11 @@ public class Deserializer {
     private DynamicObject readJSNumber(JSContext context) {
         double value = readDouble();
         return assignId(JSNumber.create(context, value));
+    }
+
+    private DynamicObject readJSBigInt(JSContext context) {
+        BigInt value = readBigInt();
+        return assignId(JSBigInt.create(context, value));
     }
 
     private DynamicObject readJSString(JSContext context) {
