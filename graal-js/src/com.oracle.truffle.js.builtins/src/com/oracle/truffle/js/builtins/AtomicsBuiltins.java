@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.function.BinaryOperator;
 import java.util.function.IntBinaryOperator;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -57,12 +58,14 @@ import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsStoreNodeGen
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsWaitNodeGen;
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsWakeNodeGen;
 import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
+import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerSpecialNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
@@ -123,17 +126,17 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             case store:
                 return AtomicsStoreNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
             case add:
-                return AtomicsComputeNodeGen.create(context, builtin, (a, b) -> a + b, args().fixedArgs(3).createArgumentNodes(context));
+                return AtomicsComputeNodeGen.create(context, builtin, (a, b) -> a + b, (a, b) -> a.add(b), args().fixedArgs(3).createArgumentNodes(context));
             case sub:
-                return AtomicsComputeNodeGen.create(context, builtin, (a, b) -> a - b, args().fixedArgs(3).createArgumentNodes(context));
+                return AtomicsComputeNodeGen.create(context, builtin, (a, b) -> a - b, (a, b) -> a.subtract(b), args().fixedArgs(3).createArgumentNodes(context));
             case and:
-                return AtomicsComputeNodeGen.create(context, builtin, (a, b) -> a & b, args().fixedArgs(3).createArgumentNodes(context));
+                return AtomicsComputeNodeGen.create(context, builtin, (a, b) -> a & b, (a, b) -> a.and(b), args().fixedArgs(3).createArgumentNodes(context));
             case or:
-                return AtomicsComputeNodeGen.create(context, builtin, (a, b) -> a | b, args().fixedArgs(3).createArgumentNodes(context));
+                return AtomicsComputeNodeGen.create(context, builtin, (a, b) -> a | b, (a, b) -> a.or(b), args().fixedArgs(3).createArgumentNodes(context));
             case xor:
-                return AtomicsComputeNodeGen.create(context, builtin, (a, b) -> a ^ b, args().fixedArgs(3).createArgumentNodes(context));
+                return AtomicsComputeNodeGen.create(context, builtin, (a, b) -> a ^ b, (a, b) -> a.xor(b), args().fixedArgs(3).createArgumentNodes(context));
             case exchange:
-                return AtomicsComputeNodeGen.create(context, builtin, (a, b) -> b, args().fixedArgs(3).createArgumentNodes(context));
+                return AtomicsComputeNodeGen.create(context, builtin, (a, b) -> b, (a, b) -> b, args().fixedArgs(3).createArgumentNodes(context));
             case wake:
                 return AtomicsWakeNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
             case wait:
@@ -186,11 +189,28 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object, isSharedBufferView(object)) instanceof TypedArray.DirectUint32Array;
         }
 
+        public static boolean isBigInt64SharedBufferView(DynamicObject object) {
+            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object, isSharedBufferView(object)) instanceof TypedArray.DirectBigInt64Array;
+        }
+
+        public static boolean isBigUint64SharedBufferView(DynamicObject object) {
+            return isSharedBufferView(object) && JSArrayBufferView.typedArrayGetArrayType(object, isSharedBufferView(object)) instanceof TypedArray.DirectBigUint64Array;
+        }
+
+        public static boolean isBigInt64SharedBufferView(Object object) {
+            return JSObject.isJSObject(object) && isBigInt64SharedBufferView((DynamicObject) object);
+        }
+
         public static boolean isNotIntSharedBufferView(DynamicObject object) {
             TypedArray typed = JSArrayBufferView.typedArrayGetArrayType(object);
             return isSharedBufferView(object) &&
                             (typed instanceof TypedArray.DirectUint8ClampedArray || typed instanceof TypedArray.DirectFloat32Array || typed instanceof TypedArray.DirectFloat64Array ||
                                             typed instanceof TypedArray.DirectBigInt64Array || typed instanceof TypedArray.DirectBigUint64Array);
+        }
+
+        public static boolean isBigIntSharedBufferView(DynamicObject object) {
+            TypedArray typed = JSArrayBufferView.typedArrayGetArrayType(object);
+            return isSharedBufferView(object) && (typed instanceof TypedArray.DirectBigInt64Array || typed instanceof TypedArray.DirectBigUint64Array);
         }
 
         /* ES8 24.4.1.2 ValidateAtomicAccess */
@@ -259,6 +279,10 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
         protected long doCASLong(DynamicObject target, int index, long expected, long replacement) {
             return SharedMemorySync.atomicFetchOrGetLong(getContext(), target, index, expected, replacement);
+        }
+
+        protected BigInt doCASBigInt(DynamicObject target, int index, BigInt expected, BigInt replacement) {
+            return SharedMemorySync.atomicFetchOrGetBigInt(getContext(), target, index, expected, replacement);
         }
 
         @Specialization(guards = {"isInt8SharedBufferView(target)", "inboundFast(target,index)"})
@@ -339,6 +363,15 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             return doCASInt(target, intIndex, (int) toIntegerNode.executeLong(expected), (int) toIntegerNode.executeLong(replacement));
         }
 
+        @Specialization(guards = {"isBigInt64SharedBufferView(target)||isBigUint64SharedBufferView(target)"})
+        protected BigInt doBigInt64ArrayObjObjIdx(DynamicObject target, Object index,
+                        Object expected, Object replacement,
+                        @Cached("create()") JSToIndexNode toIndexNode,
+                        @Cached("create()") JSToBigIntNode toBigIntNode) {
+            int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+            return doCASBigInt(target, intIndex, toBigIntNode.executeBigInteger(expected), toBigIntNode.executeBigInteger(replacement));
+        }
+
         @Specialization
         protected Object doGeneric(Object maybeTarget, Object index, Object expectedValue, Object replacementValue,
                         @Cached("create()") JSToIndexNode toIndexNode,
@@ -412,6 +445,16 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             return SharedMemorySync.doVolatileGet(target, index) & 0xFFFFFFFFL;
         }
 
+        @Specialization(guards = {"isBigInt64SharedBufferView(target)", "inboundFast(target,index)"})
+        protected Object doBigInt64ArrayObj(DynamicObject target, int index) {
+            return SharedMemorySync.doVolatileGetBigInt(target, index);
+        }
+
+        @Specialization(guards = {"isBigUint64SharedBufferView(target)", "inboundFast(target,index)"})
+        protected Object doBigUint64ArrayObj(DynamicObject target, int index) {
+            return SharedMemorySync.doVolatileGetBigInt(target, index);
+        }
+
         @Specialization(guards = {"isInt32SharedBufferView(target)"})
         protected Object doInt32ArrayObjObjIdx(DynamicObject target, Object index,
                         @Cached("create()") JSToIndexNode toIndexNode) {
@@ -424,7 +467,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                         @Cached("create()") JSToIndexNode toIndexNode) {
             if (isSharedBufferView(maybeTarget)) {
                 DynamicObject target = (DynamicObject) maybeTarget;
-                if (!isNotIntSharedBufferView(target)) {
+                if (!isNotIntSharedBufferView(target) || isBigIntSharedBufferView(target)) {
                     int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
                     if (isInt8SharedBufferView(target)) {
                         return SharedMemorySync.doVolatileGet(target, intIndex);
@@ -438,6 +481,10 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                         return SharedMemorySync.doVolatileGet(target, intIndex);
                     } else if (isUint32SharedBufferView(target)) {
                         return SharedMemorySync.doVolatileGet(target, intIndex) & 0xFFFFFFFFL;
+                    } else if (isBigInt64SharedBufferView(target)) {
+                        return SharedMemorySync.doVolatileGetBigInt(target, intIndex);
+                    } else if (isBigUint64SharedBufferView(target)) {
+                        return SharedMemorySync.doVolatileGetBigInt(target, intIndex);
                     } else {
                         throw Errors.shouldNotReachHere();
                     }
@@ -507,6 +554,16 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             return value;
         }
 
+        @Specialization(guards = {"isBigInt64SharedBufferView(target) || isBigUint64SharedBufferView(target)"})
+        protected Object doBigInt64ArrayObjObjIdx(DynamicObject target, Object index, Object value,
+                        @Cached("create()") JSToIndexNode toIndexNode,
+                        @Cached("create()") JSToBigIntNode toBigIntNode) {
+            int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+            BigInt biValue = toBigIntNode.executeBigInteger(value);
+            SharedMemorySync.doVolatilePutBigInt(target, intIndex, biValue);
+            return biValue;
+        }
+
         @Specialization
         protected Object doGeneric(Object maybeTarget, Object index, Object value,
                         @Cached("create()") JSToIndexNode toIndexNode) {
@@ -535,11 +592,13 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
      * Other atomic operations.
      */
     public abstract static class AtomicsComputeNode extends AtomicsOperationNode {
-        private final IntBinaryOperator operator;
+        private final IntBinaryOperator intOperator;
+        private final BinaryOperator<BigInt> bigIntOperator;
 
-        public AtomicsComputeNode(JSContext context, JSBuiltin builtin, IntBinaryOperator operator) {
+        public AtomicsComputeNode(JSContext context, JSBuiltin builtin, IntBinaryOperator intOperator, BinaryOperator<BigInt> bigIntOperator) {
             super(context, builtin);
-            this.operator = operator;
+            this.intOperator = intOperator;
+            this.bigIntOperator = bigIntOperator;
         }
 
         private int atomicDoInt(DynamicObject target, int index, int value) {
@@ -547,8 +606,18 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             int result;
             do {
                 initial = SharedMemorySync.doVolatileGet(target, index);
-                result = operator.applyAsInt(initial, value);
+                result = intOperator.applyAsInt(initial, value);
             } while (!SharedMemorySync.compareAndSwapInt(getContext(), target, index, initial, result));
+            return initial;
+        }
+
+        private BigInt atomicDoBigInt(DynamicObject target, int index, BigInt value) {
+            BigInt initial;
+            BigInt result;
+            do {
+                initial = SharedMemorySync.doVolatileGetBigInt(target, index);
+                result = bigIntOperator.apply(initial, value);
+            } while (!SharedMemorySync.compareAndSwapBigInt(getContext(), target, index, initial, result));
             return initial;
         }
 
@@ -587,6 +656,14 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                         @Cached("create()") JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             return atomicDoInt(target, intIndex, value);
+        }
+
+        @Specialization(guards = {"isBigInt64SharedBufferView(target) || isBigUint64SharedBufferView(target)"})
+        protected Object doBigInt64ArrayObjObjIdx(DynamicObject target, Object index, Object value,
+                        @Cached("create()") JSToIndexNode toIndexNode,
+                        @Cached("create()") JSToBigIntNode toBigIntNode) {
+            int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+            return atomicDoBigInt(target, intIndex, toBigIntNode.executeBigInteger(value));
         }
 
         @Specialization
@@ -632,7 +709,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected Object doGeneric(Object maybeTarget, Object index, Object count,
                         @Cached("create()") JSToIndexNode toIndexNode,
                         @Cached("create()") JSToInt32Node toInt32Node) {
-            if (isSharedBufferView(maybeTarget) && isInt32SharedBufferView(maybeTarget)) {
+            if (isSharedBufferView(maybeTarget) && (isInt32SharedBufferView(maybeTarget) || isBigInt64SharedBufferView(maybeTarget))) {
                 DynamicObject target = (DynamicObject) maybeTarget;
                 int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
 
@@ -677,11 +754,12 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                         @Cached("create()") JSToIndexNode toIndexNode,
                         @Cached("create()") JSToNumberNode timeToInt32Node,
                         @Cached("createHelperNode()") AtomicsLoadNode loadNode) {
-            if (isSharedBufferView(maybeTarget) && isInt32SharedBufferView(maybeTarget)) {
+            if (isSharedBufferView(maybeTarget) && (isInt32SharedBufferView(maybeTarget) || isBigInt64SharedBufferView(maybeTarget))) {
                 DynamicObject target = (DynamicObject) maybeTarget;
                 int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
 
-                int v = JSRuntime.toInt32(value);
+                boolean isIntBranch = isInt32SharedBufferView(maybeTarget);
+                Object v = isIntBranch ? JSRuntime.toInt32(value) : JSRuntime.toBigInt(value).toBigInt64();
                 int t = Integer.MAX_VALUE;
                 Number tmp = timeToInt32Node.executeNumber(timeout);
                 if (!JSRuntime.isNaN(tmp)) {
@@ -694,7 +772,9 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
                 SharedMemorySync.enterCriticalSection(getContext(), wl);
                 Object w = loadNode.executeWithBufferAndIndex(frame, maybeTarget, i);
-                if (!(w instanceof Integer) || (int) w != v) {
+                boolean isNotEqual = isIntBranch ? !(w instanceof Integer) || (int) w != (int) v
+                                : !(w instanceof BigInt) || ((BigInt) w).compareTo((BigInt) v) != 0;
+                if (isNotEqual) {
                     SharedMemorySync.leaveCriticalSection(getContext(), wl);
                     return NOT_EQUAL;
                 }
@@ -724,6 +804,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         // For now, we assume that any platform is lock free on Graal.js
         private static final boolean AR_IsLockFree1 = true;
         private static final boolean AR_IsLockFree2 = true;
+        private static final boolean AR_IsLockFree8 = true;
 
         public AtomicsIsLockFreeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -739,6 +820,8 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 return AR_IsLockFree2;
             } else if (n == 4) {
                 return true;
+            } else if (n == 8) {
+                return AR_IsLockFree8;
             }
             return false;
         }
