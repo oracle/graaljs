@@ -73,6 +73,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
@@ -83,6 +84,7 @@ import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -93,6 +95,7 @@ import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
+import com.oracle.truffle.js.runtime.array.TypedArray.TypedBigIntArray;
 import com.oracle.truffle.js.runtime.array.TypedArray.TypedFloatArray;
 import com.oracle.truffle.js.runtime.array.TypedArray.TypedIntArray;
 import com.oracle.truffle.js.runtime.array.TypedArray.Uint8ClampedArray;
@@ -854,6 +857,8 @@ public class WriteElementNode extends JSTargetableNode {
                     return new TypedIntArrayWriteElementCacheNode(context, isStrict, array, writeOwn, next);
                 } else if (array instanceof TypedFloatArray) {
                     return new TypedFloatArrayWriteElementCacheNode(context, isStrict, array, writeOwn, next);
+                } else if (array instanceof TypedBigIntArray) {
+                    return new TypedBigIntArrayWriteElementCacheNode(context, isStrict, array, writeOwn, next);
                 } else {
                     return new TypedArrayWriteElementCacheNode(context, isStrict, array, writeOwn, next);
                 }
@@ -1572,6 +1577,27 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected int toInt(Object value) {
             return toIntNode.executeInt(value);
+        }
+    }
+
+    private static class TypedBigIntArrayWriteElementCacheNode extends ArrayClassGuardCachedArrayWriteElementCacheNode {
+
+        @Child private JSToBigIntNode toBigIntNode;
+        private final ConditionProfile inBoundsProfile = ConditionProfile.createBinaryProfile();
+
+        TypedBigIntArrayWriteElementCacheNode(JSContext context, boolean isStrict, ScriptArray arrayType, boolean writeOwn, ArrayWriteElementCacheNode arrayCacheNext) {
+            super(context, isStrict, arrayType, writeOwn, arrayCacheNext);
+            this.toBigIntNode = JSToBigIntNode.create();
+        }
+
+        @Override
+        protected final void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+            TypedBigIntArray<?> typedArray = (TypedBigIntArray<?>) cast(array);
+            BigInt biValue = toBigIntNode.executeBigInteger(value); // could throw
+            checkDetachedArrayBuffer(target);
+            if (inBoundsProfile.profile(typedArray.hasElement(target, index, arrayCondition))) {
+                typedArray.setBigInt(target, (int) index, biValue, arrayCondition);
+            }
         }
     }
 
