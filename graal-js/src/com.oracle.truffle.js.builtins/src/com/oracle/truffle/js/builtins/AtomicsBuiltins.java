@@ -759,8 +759,8 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 DynamicObject target = (DynamicObject) maybeTarget;
                 int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
 
-                boolean isIntBranch = isInt32SharedBufferView(maybeTarget);
-                Object v = isIntBranch ? JSRuntime.toInt32(value) : JSRuntime.toBigInt(value).toBigInt64();
+                boolean isInt32 = isInt32SharedBufferView(maybeTarget);
+                Object v = isInt32 ? JSRuntime.toInt32(value) : JSRuntime.toBigInt(value).toBigInt64();
                 int t = Integer.MAX_VALUE;
                 Number tmp = timeToInt32Node.executeNumber(timeout);
                 if (!JSRuntime.isNaN(tmp)) {
@@ -772,25 +772,27 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 }
                 JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
                 SharedMemorySync.enterCriticalSection(getContext(), wl);
-                Object w = loadNode.executeWithBufferAndIndex(frame, maybeTarget, i);
-                boolean isNotEqual = isIntBranch ? !(w instanceof Integer) || (int) w != (int) v
-                                : !(w instanceof BigInt) || ((BigInt) w).compareTo((BigInt) v) != 0;
-                if (isNotEqual) {
+                try {
+                    Object w = loadNode.executeWithBufferAndIndex(frame, maybeTarget, i);
+                    boolean isNotEqual = isInt32 ? !(w instanceof Integer) || (int) w != (int) v
+                                    : !(w instanceof BigInt) || ((BigInt) w).compareTo((BigInt) v) != 0;
+                    if (isNotEqual) {
+                        return NOT_EQUAL;
+                    }
+                    int id = getContext().getJSAgent().getSignifier();
+                    SharedMemorySync.addWaiter(getContext(), wl, id);
+                    if (t < 0) {
+                        return TIMED_OUT;
+                    }
+                    boolean awoken = SharedMemorySync.suspendAgent(getContext(), wl, id, t);
+                    SharedMemorySync.removeWaiter(getContext(), wl, id);
+                    if (awoken) {
+                        return OK;
+                    } else {
+                        return TIMED_OUT;
+                    }
+                } finally {
                     SharedMemorySync.leaveCriticalSection(getContext(), wl);
-                    return NOT_EQUAL;
-                }
-                int id = getContext().getJSAgent().getSignifier();
-                SharedMemorySync.addWaiter(getContext(), wl, id);
-                if (t < 0) {
-                    return TIMED_OUT;
-                }
-                boolean awoken = SharedMemorySync.suspendAgent(getContext(), wl, id, t);
-                SharedMemorySync.removeWaiter(getContext(), wl, id);
-                SharedMemorySync.leaveCriticalSection(getContext(), wl);
-                if (awoken) {
-                    return OK;
-                } else {
-                    return TIMED_OUT;
                 }
             }
             throw createTypeErrorNonSharedArray();
