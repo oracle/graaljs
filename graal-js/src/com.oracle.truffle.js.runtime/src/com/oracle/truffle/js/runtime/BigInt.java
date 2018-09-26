@@ -143,6 +143,11 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     }
 
     @TruffleBoundary
+    public BigInt toBigUint64() {
+        return new BigInt(value.mod(TWO64));
+    }
+
+    @TruffleBoundary
     public BigInt pow(int e) {
         return new BigInt(value.pow(e));
     }

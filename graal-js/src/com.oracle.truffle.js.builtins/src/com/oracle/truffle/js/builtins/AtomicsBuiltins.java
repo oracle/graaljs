@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.function.BinaryOperator;
 import java.util.function.IntBinaryOperator;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -86,6 +87,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains builtins for {@linkplain Atomics}.
  */
 public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<AtomicsBuiltins.Atomics> {
+
     protected AtomicsBuiltins() {
         super(JSRealm.ATOMICS_CLASS_NAME, Atomics.class);
     }
@@ -202,13 +204,6 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             return JSObject.isJSObject(object) && isBigInt64SharedBufferView((DynamicObject) object);
         }
 
-        public static boolean isNotIntSharedBufferView(DynamicObject object) {
-            TypedArray typed = JSArrayBufferView.typedArrayGetArrayType(object);
-            return isSharedBufferView(object) &&
-                            (typed instanceof TypedArray.DirectUint8ClampedArray || typed instanceof TypedArray.DirectFloat32Array || typed instanceof TypedArray.DirectFloat64Array ||
-                                            typed instanceof TypedArray.DirectBigInt64Array || typed instanceof TypedArray.DirectBigUint64Array);
-        }
-
         public static boolean isBigIntSharedBufferView(DynamicObject object) {
             TypedArray typed = JSArrayBufferView.typedArrayGetArrayType(object);
             return isSharedBufferView(object) && (typed instanceof TypedArray.DirectBigInt64Array || typed instanceof TypedArray.DirectBigUint64Array);
@@ -222,6 +217,35 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 throw createRangeErrorSharedArray(originalIndex);
             }
             return (int) convertedIndex;
+        }
+
+        protected TypedArray validateSharedIntegerTypedArray(DynamicObject object, boolean waitable) {
+
+            if (!isSharedBufferView(object)) {
+                throw createTypeErrorNotSharedArray();
+            }
+            TypedArray ta = JSArrayBufferView.typedArrayGetArrayType(object);
+
+            if (waitable) {
+                if (!(ta instanceof TypedArray.DirectInt32Array || ta instanceof TypedArray.DirectBigInt64Array)) {
+                    throw createTypeErrorNotWaitableSharedIntArray();
+                }
+            } else {
+                if (!(ta instanceof TypedArray.DirectInt8Array || ta instanceof TypedArray.DirectUint8Array || ta instanceof TypedArray.DirectInt16Array ||
+                                ta instanceof TypedArray.DirectUint16Array || ta instanceof TypedArray.DirectInt32Array || ta instanceof TypedArray.DirectUint32Array ||
+                                ta instanceof TypedArray.DirectBigInt64Array || ta instanceof TypedArray.DirectBigUint64Array)) {
+
+                    throw createTypeErrorNotSharedIntArray();
+                }
+            }
+            return ta;
+        }
+
+        protected DynamicObject ensureDynamicObject(Object maybeTarget) {
+            if (!(maybeTarget instanceof DynamicObject)) {
+                throw createTypeErrorNotSharedArray();
+            }
+            return (DynamicObject) maybeTarget;
         }
 
         public static ByteBuffer getBuffer(DynamicObject thisObj, boolean condition) {
@@ -238,8 +262,20 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         @TruffleBoundary
-        protected final JSException createTypeErrorNonSharedArray() {
-            return Errors.createTypeError("Cannot execute on non-shared array", this);
+        protected final JSException createTypeErrorNotSharedArray() {
+            return Errors.createTypeError("Cannot execute on non-shared array.", this);
+        }
+
+        @TruffleBoundary
+        protected final JSException createTypeErrorNotSharedIntArray() {
+            return Errors.createTypeError("Can only execute on selected types of shared int typed arrays " +
+                            "(\"Int8Array\", \"Uint8Array\", \"Int16Array\", \"Uint16Array\",  \"Int32Array\", \"Uint32Array\"," +
+                            " \"BigUint64Array\", or \"BigInt64Array\").", this);
+        }
+
+        @TruffleBoundary
+        protected final JSException createTypeErrorNotWaitableSharedIntArray() {
+            return Errors.createTypeError("Can only execute on shared Int32Array or BigInt64Array typed arrays.", this);
         }
 
         @TruffleBoundary
@@ -257,6 +293,9 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
      * 6.3.3 Atomics.compareExchange(typedArray, index, expectedValue, replacementValue).
      */
     public abstract static class AtomicsCompareExchangeNode extends AtomicsOperationNode {
+
+        @Child private JSToBigIntNode toBigIntNode;
+        @Child private JSToIntegerSpecialNode toIntNode;
 
         public AtomicsCompareExchangeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -327,9 +366,8 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         @Specialization(guards = {"isInt32SharedBufferView(target)", "inboundFast(target,index)"})
-        protected int doInt32ArrayObj(DynamicObject target, int index, Object expected, Object replacement,
-                        @Cached("create()") JSToIntegerSpecialNode toIntegerNode) {
-            return doCASInt(target, index, (int) toIntegerNode.executeLong(expected), (int) toIntegerNode.executeLong(replacement));
+        protected int doInt32ArrayObj(DynamicObject target, int index, Object expected, Object replacement) {
+            return doCASInt(target, index, toInt(expected), toInt(replacement));
         }
 
         @Specialization(guards = {"isInt32SharedBufferView(target)"})
@@ -358,50 +396,70 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isInt32SharedBufferView(target)"})
         protected int doInt32ArrayObjObjIdx(DynamicObject target, Object index,
                         Object expected, Object replacement,
-                        @Cached("create()") JSToIndexNode toIndexNode,
-                        @Cached("create()") JSToIntegerSpecialNode toIntegerNode) {
+                        @Cached("create()") JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-            return doCASInt(target, intIndex, (int) toIntegerNode.executeLong(expected), (int) toIntegerNode.executeLong(replacement));
+            return doCASInt(target, intIndex, toInt(expected), toInt(replacement));
         }
 
-        @Specialization(guards = {"isBigInt64SharedBufferView(target)||isBigUint64SharedBufferView(target)"})
+        @Specialization(guards = {"isBigInt64SharedBufferView(target)"})
         protected BigInt doBigInt64ArrayObjObjIdx(DynamicObject target, Object index,
                         Object expected, Object replacement,
-                        @Cached("create()") JSToIndexNode toIndexNode,
-                        @Cached("create()") JSToBigIntNode toBigIntNode) {
+                        @Cached("create()") JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-            return doCASBigInt(target, intIndex, toBigIntNode.executeBigInteger(expected), toBigIntNode.executeBigInteger(replacement));
+            return doCASBigInt(target, intIndex, toBigInt(expected).toBigInt64(), toBigInt(replacement));
+        }
+
+        @Specialization(guards = {"isBigUint64SharedBufferView(target)"})
+        protected BigInt doBigUint64ArrayObjObjIdx(DynamicObject target, Object index,
+                        Object expected, Object replacement,
+                        @Cached("create()") JSToIndexNode toIndexNode) {
+            int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+            return doCASBigInt(target, intIndex, toBigInt(expected).toBigUint64(), toBigInt(replacement));
         }
 
         @Specialization
-        protected Object doGeneric(Object maybeTarget, Object index, Object expectedValue, Object replacementValue,
-                        @Cached("create()") JSToIndexNode toIndexNode,
-                        @Cached("create()") JSToIntegerSpecialNode toIntegerNode) {
-            if (isSharedBufferView(maybeTarget)) {
-                DynamicObject target = (DynamicObject) maybeTarget;
-                if (!isNotIntSharedBufferView(target)) {
-                    int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-                    int expected = (int) toIntegerNode.executeLong(expectedValue);
-                    int replacement = (int) toIntegerNode.executeLong(replacementValue);
+        protected Object doGeneric(Object maybeTarget, Object index, Object expected, Object replacement,
+                        @Cached("create()") JSToIndexNode toIndexNode) {
 
-                    if (isInt8SharedBufferView(target)) {
-                        return doCASInt8(target, intIndex, expected, replacement, true);
-                    } else if (isUint8SharedBufferView(target)) {
-                        return doCASInt8(target, intIndex, expected, replacement, false);
-                    } else if (isInt16SharedBufferView(target)) {
-                        return doCASInt16(target, intIndex, expected, replacement, true);
-                    } else if (isUint16SharedBufferView(target)) {
-                        return doCASInt16(target, intIndex, expected, replacement, false);
-                    } else if (isInt32SharedBufferView(target)) {
-                        return doCASInt(target, intIndex, expected, replacement);
-                    } else if (isUint32SharedBufferView(target)) {
-                        return doCASUint32(target, intIndex, expected, replacement);
-                    } else {
-                        throw Errors.shouldNotReachHere();
-                    }
-                }
+            DynamicObject target = ensureDynamicObject(maybeTarget);
+            TypedArray ta = validateSharedIntegerTypedArray(target, false);
+            int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+
+            if (ta instanceof TypedArray.DirectInt8Array) {
+                return doCASInt8(target, intIndex, toInt(expected), toInt(replacement), true);
+            } else if (ta instanceof TypedArray.DirectUint8Array) {
+                return doCASInt8(target, intIndex, toInt(expected), toInt(replacement), false);
+            } else if (ta instanceof TypedArray.DirectInt16Array) {
+                return doCASInt16(target, intIndex, toInt(expected), toInt(replacement), true);
+            } else if (ta instanceof TypedArray.DirectUint16Array) {
+                return doCASInt16(target, intIndex, toInt(expected), toInt(replacement), false);
+            } else if (ta instanceof TypedArray.DirectInt32Array) {
+                return doCASInt(target, intIndex, toInt(expected), toInt(replacement));
+            } else if (ta instanceof TypedArray.DirectUint32Array) {
+                return doCASUint32(target, intIndex, toInt(expected), toInt(replacement));
+            } else if (ta instanceof TypedArray.DirectBigInt64Array) {
+                return doCASBigInt(target, intIndex, toBigInt(expected).toBigInt64(), toBigInt(replacement));
+            } else if (ta instanceof TypedArray.DirectBigUint64Array) {
+                return doCASBigInt(target, intIndex, toBigInt(expected).toBigUint64(), toBigInt(replacement));
+            } else {
+                throw Errors.shouldNotReachHere();
             }
-            throw createTypeErrorNonSharedArray();
+        }
+
+        private int toInt(Object v) {
+            if (toIntNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toIntNode = insert(JSToIntegerSpecialNode.create());
+            }
+            return (int) toIntNode.executeLong(v);
+        }
+
+        private BigInt toBigInt(Object v) {
+            if (toBigIntNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toBigIntNode = insert(JSToBigIntNode.create());
+            }
+            return toBigIntNode.executeBigInteger(v);
         }
     }
 
@@ -466,40 +524,40 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization
         protected Object doGeneric(Object maybeTarget, Object index,
                         @Cached("create()") JSToIndexNode toIndexNode) {
-            if (isSharedBufferView(maybeTarget)) {
-                DynamicObject target = (DynamicObject) maybeTarget;
-                if (!isNotIntSharedBufferView(target) || isBigIntSharedBufferView(target)) {
-                    int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-                    if (isInt8SharedBufferView(target)) {
-                        return SharedMemorySync.doVolatileGet(target, intIndex);
-                    } else if (isUint8SharedBufferView(target)) {
-                        return SharedMemorySync.doVolatileGet(target, intIndex) & 0xFF;
-                    } else if (isInt16SharedBufferView(target)) {
-                        return SharedMemorySync.doVolatileGet(target, intIndex);
-                    } else if (isUint16SharedBufferView(target)) {
-                        return SharedMemorySync.doVolatileGet(target, intIndex) & 0xFFFF;
-                    } else if (isInt32SharedBufferView(target)) {
-                        return SharedMemorySync.doVolatileGet(target, intIndex);
-                    } else if (isUint32SharedBufferView(target)) {
-                        return SharedMemorySync.doVolatileGet(target, intIndex) & 0xFFFFFFFFL;
-                    } else if (isBigInt64SharedBufferView(target)) {
-                        return SharedMemorySync.doVolatileGetBigInt(target, intIndex);
-                    } else if (isBigUint64SharedBufferView(target)) {
-                        return SharedMemorySync.doVolatileGetBigInt(target, intIndex);
-                    } else {
-                        throw Errors.shouldNotReachHere();
-                    }
-                }
-            }
-            throw createTypeErrorNonSharedArray();
-        }
 
+            DynamicObject target = ensureDynamicObject(maybeTarget);
+            TypedArray ta = validateSharedIntegerTypedArray(target, false);
+            int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+
+            if (ta instanceof TypedArray.DirectInt8Array) {
+                return SharedMemorySync.doVolatileGet(target, intIndex);
+            } else if (ta instanceof TypedArray.DirectUint8Array) {
+                return SharedMemorySync.doVolatileGet(target, intIndex) & 0xFF;
+            } else if (ta instanceof TypedArray.DirectInt16Array) {
+                return SharedMemorySync.doVolatileGet(target, intIndex);
+            } else if (ta instanceof TypedArray.DirectUint16Array) {
+                return SharedMemorySync.doVolatileGet(target, intIndex) & 0xFFFF;
+            } else if (ta instanceof TypedArray.DirectInt32Array) {
+                return SharedMemorySync.doVolatileGet(target, intIndex);
+            } else if (ta instanceof TypedArray.DirectUint32Array) {
+                return SharedMemorySync.doVolatileGet(target, intIndex) & 0xFFFFFFFFL;
+            } else if (ta instanceof TypedArray.DirectBigInt64Array) {
+                return SharedMemorySync.doVolatileGetBigInt(target, intIndex);
+            } else if (ta instanceof TypedArray.DirectBigUint64Array) {
+                return SharedMemorySync.doVolatileGetBigInt(target, intIndex);
+            } else {
+                throw Errors.shouldNotReachHere();
+            }
+        }
     }
 
     /**
      * 6.3.11 Atomics.store(typedArray, index, value).
      */
     public abstract static class AtomicsStoreNode extends AtomicsOperationNode {
+
+        @Child private JSToBigIntNode toBigIntNode;
+        @Child private JSToIntegerSpecialNode toIntNode;
 
         public AtomicsStoreNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -515,8 +573,9 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isInt8SharedBufferView(target)||isUint8SharedBufferView(target)",
                         "inboundFast(target,index)"})
         protected Object doIntArrayObj(DynamicObject target, int index, double value) {
-            SharedMemorySync.doVolatilePut(target, index, (int) value);
-            return JSRuntime.toInteger(value);
+            long v = toInt(value);
+            SharedMemorySync.doVolatilePut(target, index, (int) v);
+            return v;
         }
 
         @Specialization(guards = {"isInt16SharedBufferView(target)||isUint16SharedBufferView(target)",
@@ -529,8 +588,9 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isInt16SharedBufferView(target)||isUint16SharedBufferView(target)",
                         "inboundFast(target,index)"})
         protected Object doInt16ArrayObj(DynamicObject target, int index, double value) {
-            SharedMemorySync.doVolatilePut(target, index, (short) value);
-            return JSRuntime.toInteger(value);
+            long v = toInt(value);
+            SharedMemorySync.doVolatilePut(target, index, (int) v);
+            return v;
         }
 
         @Specialization(guards = {"isInt32SharedBufferView(target)||isUint32SharedBufferView(target)",
@@ -543,8 +603,9 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isInt32SharedBufferView(target)||isUint32SharedBufferView(target)",
                         "inboundFast(target,index)"})
         protected Object doInt32ArrayObj(DynamicObject target, int index, double value) {
-            SharedMemorySync.doVolatilePut(target, index, (int) JSRuntime.toInteger(value));
-            return JSRuntime.toInteger(value);
+            long v = toInt(value);
+            SharedMemorySync.doVolatilePut(target, index, (int) v);
+            return v;
         }
 
         @Specialization(guards = {"isInt32SharedBufferView(target)"})
@@ -557,10 +618,9 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
         @Specialization(guards = {"isBigInt64SharedBufferView(target) || isBigUint64SharedBufferView(target)"})
         protected Object doBigInt64ArrayObjObjIdx(DynamicObject target, Object index, Object value,
-                        @Cached("create()") JSToIndexNode toIndexNode,
-                        @Cached("create()") JSToBigIntNode toBigIntNode) {
+                        @Cached("create()") JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-            BigInt biValue = toBigIntNode.executeBigInteger(value);
+            BigInt biValue = toBigInt(value);
             SharedMemorySync.doVolatilePutBigInt(target, intIndex, biValue);
             return biValue;
         }
@@ -568,24 +628,46 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization
         protected Object doGeneric(Object maybeTarget, Object index, Object value,
                         @Cached("create()") JSToIndexNode toIndexNode) {
-            if (isSharedBufferView(maybeTarget)) {
-                DynamicObject target = (DynamicObject) maybeTarget;
-                if (!isNotIntSharedBufferView(target)) {
-                    int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
 
-                    if (isInt8SharedBufferView(target) || isUint8SharedBufferView(target)) {
-                        SharedMemorySync.doVolatilePut(target, intIndex, (int) JSRuntime.toInteger(value));
-                    } else if (isInt16SharedBufferView(target) || isUint16SharedBufferView(target)) {
-                        SharedMemorySync.doVolatilePut(target, intIndex, (short) JSRuntime.toInteger(value));
-                    } else if (isInt32SharedBufferView(target) || isUint32SharedBufferView(target)) {
-                        SharedMemorySync.doVolatilePut(target, intIndex, (int) JSRuntime.toInteger(value));
-                    } else {
-                        throw Errors.shouldNotReachHere();
-                    }
-                    return JSRuntime.toInteger(value);
-                }
+            DynamicObject target = ensureDynamicObject(maybeTarget);
+            TypedArray ta = validateSharedIntegerTypedArray(target, false);
+            int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+
+            if (ta instanceof TypedArray.DirectInt8Array || ta instanceof TypedArray.DirectUint8Array) {
+                long v = toInt(value);
+                SharedMemorySync.doVolatilePut(target, intIndex, (int) v);
+                return v;
+            } else if (ta instanceof TypedArray.DirectInt16Array || ta instanceof TypedArray.DirectUint16Array) {
+                long v = toInt(value);
+                SharedMemorySync.doVolatilePut(target, intIndex, (short) v);
+                return v;
+            } else if (ta instanceof TypedArray.DirectInt32Array || ta instanceof TypedArray.DirectUint32Array) {
+                long v = toInt(value);
+                SharedMemorySync.doVolatilePut(target, intIndex, (int) v);
+                return v;
+            } else if (ta instanceof TypedArray.DirectBigInt64Array || ta instanceof TypedArray.DirectBigUint64Array) {
+                BigInt v = toBigInt(value);
+                SharedMemorySync.doVolatilePutBigInt(target, intIndex, v);
+                return v;
+            } else {
+                throw Errors.shouldNotReachHere();
             }
-            throw createTypeErrorNonSharedArray();
+        }
+
+        private long toInt(Object v) {
+            if (toIntNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toIntNode = insert(JSToIntegerSpecialNode.create());
+            }
+            return toIntNode.executeLong(v);
+        }
+
+        private BigInt toBigInt(Object v) {
+            if (toBigIntNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toBigIntNode = insert(JSToBigIntNode.create());
+            }
+            return toBigIntNode.executeBigInteger(v);
         }
     }
 
@@ -593,8 +675,12 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
      * Other atomic operations.
      */
     public abstract static class AtomicsComputeNode extends AtomicsOperationNode {
+
         private final IntBinaryOperator intOperator;
         private final BinaryOperator<BigInt> bigIntOperator;
+
+        @Child private JSToBigIntNode toBigIntNode;
+        @Child private JSToIntegerSpecialNode toIntNode;
 
         public AtomicsComputeNode(JSContext context, JSBuiltin builtin, IntBinaryOperator intOperator, BinaryOperator<BigInt> bigIntOperator) {
             super(context, builtin);
@@ -661,39 +747,52 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
         @Specialization(guards = {"isBigInt64SharedBufferView(target) || isBigUint64SharedBufferView(target)"})
         protected Object doBigInt64ArrayObjObjIdx(DynamicObject target, Object index, Object value,
-                        @Cached("create()") JSToIndexNode toIndexNode,
-                        @Cached("create()") JSToBigIntNode toBigIntNode) {
+                        @Cached("create()") JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-            return atomicDoBigInt(target, intIndex, toBigIntNode.executeBigInteger(value));
+            return atomicDoBigInt(target, intIndex, toBigInt(value));
         }
 
         @Specialization
         protected Object doGeneric(Object maybeTarget, Object index, Object value,
-                        @Cached("create()") JSToIndexNode toIndexNode,
-                        @Cached("create()") JSToIntegerSpecialNode toIntegerNode) {
-            if (isSharedBufferView(maybeTarget)) {
-                DynamicObject target = (DynamicObject) maybeTarget;
-                if (!isNotIntSharedBufferView(target)) {
-                    int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-                    int intValue = (int) toIntegerNode.executeLong(value);
-                    if (isInt8SharedBufferView(target)) {
-                        return (int) (byte) atomicDoInt(target, intIndex, intValue);
-                    } else if (isUint8SharedBufferView(target)) {
-                        return ((byte) atomicDoInt(target, intIndex, intValue)) & 0xFF;
-                    } else if (isInt16SharedBufferView(target)) {
-                        return atomicDoInt(target, intIndex, intValue);
-                    } else if (isUint16SharedBufferView(target)) {
-                        return (atomicDoInt(target, intIndex, intValue)) & 0xFFFF;
-                    } else if (isInt32SharedBufferView(target)) {
-                        return atomicDoInt(target, intIndex, intValue);
-                    } else if (isUint32SharedBufferView(target)) {
-                        return (atomicDoInt(target, intIndex, intValue)) & 0xFFFFFFFFL;
-                    } else {
-                        throw Errors.shouldNotReachHere();
-                    }
-                }
+                        @Cached("create()") JSToIndexNode toIndexNode) {
+
+            DynamicObject target = ensureDynamicObject(maybeTarget);
+            TypedArray ta = validateSharedIntegerTypedArray(target, false);
+            int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+
+            if (ta instanceof TypedArray.DirectInt8Array) {
+                return (int) (byte) atomicDoInt(target, intIndex, toInt(value));
+            } else if (ta instanceof TypedArray.DirectUint8Array) {
+                return ((byte) atomicDoInt(target, intIndex, toInt(value))) & 0xFF;
+            } else if (ta instanceof TypedArray.DirectInt16Array) {
+                return atomicDoInt(target, intIndex, toInt(value));
+            } else if (ta instanceof TypedArray.DirectUint16Array) {
+                return (atomicDoInt(target, intIndex, toInt(value))) & 0xFFFF;
+            } else if (ta instanceof TypedArray.DirectInt32Array) {
+                return atomicDoInt(target, intIndex, toInt(value));
+            } else if (ta instanceof TypedArray.DirectUint32Array) {
+                return (atomicDoInt(target, intIndex, toInt(value))) & 0xFFFFFFFFL;
+            } else if (ta instanceof TypedArray.DirectBigInt64Array || ta instanceof TypedArray.DirectBigUint64Array) {
+                return atomicDoBigInt(target, intIndex, toBigInt(value));
+            } else {
+                throw Errors.shouldNotReachHere();
             }
-            throw createTypeErrorNonSharedArray();
+        }
+
+        private int toInt(Object v) {
+            if (toIntNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toIntNode = insert(JSToIntegerSpecialNode.create());
+            }
+            return (int) toIntNode.executeLong(v);
+        }
+
+        private BigInt toBigInt(Object v) {
+            if (toBigIntNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toBigIntNode = insert(JSToBigIntNode.create());
+            }
+            return toBigIntNode.executeBigInteger(v);
         }
     }
 
@@ -710,26 +809,25 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected Object doGeneric(Object maybeTarget, Object index, Object count,
                         @Cached("create()") JSToIndexNode toIndexNode,
                         @Cached("create()") JSToInt32Node toInt32Node) {
-            if (isSharedBufferView(maybeTarget) && (isInt32SharedBufferView(maybeTarget) || isBigInt64SharedBufferView(maybeTarget))) {
-                DynamicObject target = (DynamicObject) maybeTarget;
-                int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
 
-                int c = Integer.MAX_VALUE;
-                if (count != Undefined.instance) {
-                    int tmp = toInt32Node.executeInt(count);
-                    c = Integer.max(tmp, 0);
-                }
-                JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
-                int n = 0;
-                SharedMemorySync.enterCriticalSection(getContext(), wl);
-                List<Integer> waiters = SharedMemorySync.removeWaiters(getContext(), wl, c);
-                while (n < waiters.size()) {
-                    SharedMemorySync.wakeWaiter(getContext(), Boundaries.listGet(waiters, n++), wl);
-                }
-                SharedMemorySync.leaveCriticalSection(getContext(), wl);
-                return n;
+            DynamicObject target = ensureDynamicObject(maybeTarget);
+            validateSharedIntegerTypedArray(target, true);
+            int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+
+            int c = Integer.MAX_VALUE;
+            if (count != Undefined.instance) {
+                int tmp = toInt32Node.executeInt(count);
+                c = Integer.max(tmp, 0);
             }
-            throw createTypeErrorNonSharedArray();
+            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
+            int n = 0;
+            SharedMemorySync.enterCriticalSection(getContext(), wl);
+            List<Integer> waiters = SharedMemorySync.removeWaiters(getContext(), wl, c);
+            while (n < waiters.size()) {
+                SharedMemorySync.wakeWaiter(getContext(), Boundaries.listGet(waiters, n++), wl);
+            }
+            SharedMemorySync.leaveCriticalSection(getContext(), wl);
+            return n;
         }
     }
 
@@ -741,6 +839,9 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         private static final String OK = "ok";
         private static final String NOT_EQUAL = "not-equal";
         private static final String TIMED_OUT = "timed-out";
+
+        @Child private JSToBigIntNode toBigIntNode;
+        @Child private JSToInt32Node toInt32Node;
 
         public AtomicsWaitNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -755,47 +856,63 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                         @Cached("create()") JSToIndexNode toIndexNode,
                         @Cached("create()") JSToNumberNode timeToInt32Node,
                         @Cached("createHelperNode()") AtomicsLoadNode loadNode) {
-            if (isSharedBufferView(maybeTarget) && (isInt32SharedBufferView(maybeTarget) || isBigInt64SharedBufferView(maybeTarget))) {
-                DynamicObject target = (DynamicObject) maybeTarget;
-                int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
 
-                boolean isInt32 = isInt32SharedBufferView(maybeTarget);
-                Object v = isInt32 ? JSRuntime.toInt32(value) : JSRuntime.toBigInt(value).toBigInt64();
-                int t = Integer.MAX_VALUE;
-                Number tmp = timeToInt32Node.executeNumber(timeout);
-                if (!JSRuntime.isNaN(tmp)) {
-                    t = Integer.max(tmp.intValue(), 0);
-                }
+            DynamicObject target = ensureDynamicObject(maybeTarget);
+            validateSharedIntegerTypedArray(target, true);
 
-                if (!SharedMemorySync.agentCanSuspend(getContext())) {
-                    throw createTypeErrorUnsupported();
-                }
-                JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
-                SharedMemorySync.enterCriticalSection(getContext(), wl);
-                try {
-                    Object w = loadNode.executeWithBufferAndIndex(frame, maybeTarget, i);
-                    boolean isNotEqual = isInt32 ? !(w instanceof Integer) || (int) w != (int) v
-                                    : !(w instanceof BigInt) || ((BigInt) w).compareTo((BigInt) v) != 0;
-                    if (isNotEqual) {
-                        return NOT_EQUAL;
-                    }
-                    int id = getContext().getJSAgent().getSignifier();
-                    SharedMemorySync.addWaiter(getContext(), wl, id);
-                    if (t < 0) {
-                        return TIMED_OUT;
-                    }
-                    boolean awoken = SharedMemorySync.suspendAgent(getContext(), wl, id, t);
-                    SharedMemorySync.removeWaiter(getContext(), wl, id);
-                    if (awoken) {
-                        return OK;
-                    } else {
-                        return TIMED_OUT;
-                    }
-                } finally {
-                    SharedMemorySync.leaveCriticalSection(getContext(), wl);
-                }
+            int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
+
+            boolean isInt32 = isInt32SharedBufferView(maybeTarget);
+            long v = isInt32 ? toInt32(value) : toBigInt(value).longValue();
+            int t = Integer.MAX_VALUE;
+            Number tmp = timeToInt32Node.executeNumber(timeout);
+            if (!JSRuntime.isNaN(tmp)) {
+                t = Integer.max(tmp.intValue(), 0);
             }
-            throw createTypeErrorNonSharedArray();
+
+            if (!SharedMemorySync.agentCanSuspend(getContext())) {
+                throw createTypeErrorUnsupported();
+            }
+            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
+            SharedMemorySync.enterCriticalSection(getContext(), wl);
+            try {
+                Object w = loadNode.executeWithBufferAndIndex(frame, maybeTarget, i);
+                boolean isNotEqual = isInt32 ? !(w instanceof Integer) || (int) w != (int) v
+                                : !(w instanceof BigInt) || ((BigInt) w).longValue() != v;
+                if (isNotEqual) {
+                    return NOT_EQUAL;
+                }
+                int id = getContext().getJSAgent().getSignifier();
+                SharedMemorySync.addWaiter(getContext(), wl, id);
+                if (t < 0) {
+                    return TIMED_OUT;
+                }
+                boolean awoken = SharedMemorySync.suspendAgent(getContext(), wl, id, t);
+                SharedMemorySync.removeWaiter(getContext(), wl, id);
+                if (awoken) {
+                    return OK;
+                } else {
+                    return TIMED_OUT;
+                }
+            } finally {
+                SharedMemorySync.leaveCriticalSection(getContext(), wl);
+            }
+        }
+
+        private int toInt32(Object v) {
+            if (toInt32Node == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toInt32Node = insert(JSToInt32Node.create());
+            }
+            return toInt32Node.executeInt(v);
+        }
+
+        private BigInt toBigInt(Object v) {
+            if (toBigIntNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toBigIntNode = insert(JSToBigIntNode.create());
+            }
+            return toBigIntNode.executeBigInteger(v);
         }
     }
 
