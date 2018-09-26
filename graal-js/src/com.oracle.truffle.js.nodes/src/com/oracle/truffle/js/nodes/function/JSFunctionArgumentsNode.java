@@ -45,15 +45,16 @@ import java.util.ArrayList;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.runtime.Boundaries;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
-public class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
+class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
 
     @Children protected final JavaScriptNode[] args;
 
     public static AbstractFunctionArgumentsNode create(JavaScriptNode[] args) {
+        assert args.length <= JSTruffleOptions.MaxFunctionArgumentsLength;
         for (JavaScriptNode arg : args) {
             if (arg instanceof SpreadArgumentNode) {
                 return new SpreadFunctionArgumentsNode(args);
@@ -69,9 +70,6 @@ public class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
 
     protected JSFunctionArgumentsNode(JavaScriptNode[] args) {
         this.args = args;
-        if (args.length > JSTruffleOptions.MaxFunctionArgumentsLength) {
-            throw Errors.createSyntaxError("function has too many parameters");
-        }
     }
 
     @Override
@@ -93,6 +91,15 @@ public class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
         return new JSFunctionArgumentsNode(JavaScriptNode.cloneUninitialized(args));
     }
 
+    @Override
+    public void materializeInstrumentableArguments() {
+        for (int i = 0; i < args.length; i++) {
+            if (!(args[i] instanceof SpreadArgumentNode) && !args[i].isInstrumentable()) {
+                args[i] = insert(JSInputGeneratingNodeWrapper.create(args[i]));
+            }
+        }
+    }
+
 }
 
 class JSFunctionZeroArgumentsNode extends AbstractFunctionArgumentsNode {
@@ -112,6 +119,11 @@ class JSFunctionZeroArgumentsNode extends AbstractFunctionArgumentsNode {
     @Override
     protected AbstractFunctionArgumentsNode copyUninitialized() {
         return new JSFunctionZeroArgumentsNode();
+    }
+
+    @Override
+    public void materializeInstrumentableArguments() {
+        // No-op
     }
 
 }
@@ -151,6 +163,12 @@ class JSFunctionOneArgumentNode extends AbstractFunctionArgumentsNode {
         return new JSFunctionOneArgumentNode(JavaScriptNode.cloneUninitialized(child));
     }
 
+    @Override
+    public void materializeInstrumentableArguments() {
+        if (!child.isInstrumentable()) {
+            child = insert(JSInputGeneratingNodeWrapper.create(child));
+        }
+    }
 }
 
 class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {

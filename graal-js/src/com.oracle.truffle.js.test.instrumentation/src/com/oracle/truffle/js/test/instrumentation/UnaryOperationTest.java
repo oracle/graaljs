@@ -44,6 +44,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
@@ -95,25 +96,26 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
 
     @Test
     public void toInt() {
-        assertBasicUnaryOperation("var x = true; var b = ~x;", -2, "~");
+        // 'true' is converted to '1' before the binary operation.
+        assertBasicUnaryOperation("var x = true; var b = ~x;", true, 1, -2, "~");
     }
 
     @Test
     public void not() {
-        assertBasicUnaryOperation("var x = true; var b = !x;", false, "!");
+        assertBasicUnaryOperation("var x = true; var b = !x;", true, true, false, "!");
     }
 
     @Test
     public void minus() {
-        assertBasicUnaryOperation("var x = true; var b = -x;", -1, "-");
+        assertBasicUnaryOperation("var x = true; var b = -x;", true, true, -1, "-");
     }
 
     @Test
     public void plus() {
-        assertBasicUnaryOperation("var x = true; var b = +x;", 1, "+");
+        assertBasicUnaryOperation("var x = true; var b = +x;", true, true, 1, "+");
     }
 
-    private void assertBasicUnaryOperation(String src, Object expectedPostUnaryOpValue, String operator) {
+    private void assertBasicUnaryOperation(String src, Object expectedLiteralValue, Object expectedPreUnaryOpValue, Object expectedPostUnaryOpValue, String operator) {
         evalAllTags(src);
 
         assertGlobalVarDeclaration("x", true);
@@ -126,10 +128,27 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
                 enter(ReadPropertyExpressionTag.class, (e3, prop) -> {
                     assertAttribute(e3, KEY, "x");
                     prop.input(assertGlobalObjectInput);
-                }).exit();
-                unary.input(true);
+                }).exit(assertReturnValue(expectedLiteralValue));
+                unary.input(expectedPreUnaryOpValue);
             }).exit();
             write.input(expectedPostUnaryOpValue);
+        }).exit();
+    }
+
+    @Test
+    public void complement() {
+        evalAllTags("0 & (~-1073741824);");
+
+        enter(BinaryExpressionTag.class, (e, b) -> {
+            enter(LiteralExpressionTag.class).exit(assertReturnValue(0));
+            b.input(0);
+
+            enter(UnaryExpressionTag.class, (e2, u) -> {
+                enter(LiteralExpressionTag.class).exit(assertReturnValue(-1073741824));
+                u.input(-1073741824);
+            }).exit(assertReturnValue(1073741823));
+
+            b.input(1073741823);
         }).exit();
     }
 

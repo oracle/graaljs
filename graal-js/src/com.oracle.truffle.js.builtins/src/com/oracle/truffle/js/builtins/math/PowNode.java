@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -103,7 +104,7 @@ public abstract class PowNode extends MathOperation {
             } else if (b == 2.5) {
                 hasSeenTwoPointFive = true;
             } else {
-                throw new SlowPathException();
+                throw JSNodeUtil.slowPathException();
             }
             return pow(a, b);
         }
@@ -128,7 +129,7 @@ public abstract class PowNode extends MathOperation {
         if (JSRuntime.doubleIsRepresentableAsInt(b, true) && b > 0) {
             return positivePow(a, (int) b);
         } else {
-            throw new SlowPathException();
+            throw JSNodeUtil.slowPathException();
         }
     }
 

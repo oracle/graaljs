@@ -184,7 +184,6 @@ import com.oracle.truffle.js.nodes.function.ConstructorRootNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.IterationScopeNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionArgumentsNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode;
@@ -550,11 +549,11 @@ public class NodeFactory {
             if (expression instanceof PropertyNode) {
                 ((PropertyNode) expression).setMethod();
             }
-            return JSFunctionCallNode.createInvoke((JSTargetableNode) expression, JSFunctionArgumentsNode.create(arguments), false, false);
+            return JSFunctionCallNode.createInvoke((JSTargetableNode) expression, arguments, false, false);
         } else if (expression instanceof JSTargetableWrapperNode) {
             JavaScriptNode function = ((JSTargetableWrapperNode) expression).getDelegate();
             JavaScriptNode target = ((JSTargetableWrapperNode) expression).getTarget();
-            return JSFunctionCallNode.create(function, target, JSFunctionArgumentsNode.create(arguments), false, false);
+            return JSFunctionCallNode.createCall(function, target, arguments, false, false);
         } else {
             assert expression != null;
             JavaScriptNode target = null;
@@ -564,7 +563,7 @@ public class NodeFactory {
             } else if (function instanceof GlobalScopeVarWrapperNode) {
                 ((GlobalScopeVarWrapperNode) function).setMethod();
             }
-            return JSFunctionCallNode.create(function, target, JSFunctionArgumentsNode.create(arguments), false, false);
+            return JSFunctionCallNode.createCall(function, target, arguments, false, false);
         }
     }
 
@@ -572,11 +571,11 @@ public class NodeFactory {
         assert expression instanceof JSTargetableWrapperNode;
         JavaScriptNode function = ((JSTargetableWrapperNode) expression).getDelegate();
         JavaScriptNode target = ((JSTargetableWrapperNode) expression).getTarget();
-        return JSFunctionCallNode.create(function, target, JSFunctionArgumentsNode.create(arguments), false, true);
+        return JSFunctionCallNode.createCall(function, target, arguments, false, true);
     }
 
     public JavaScriptNode createNew(JSContext context, JavaScriptNode function, JavaScriptNode[] arguments) {
-        return JSNewNode.create(context, function, JSFunctionArgumentsNode.create(arguments));
+        return JSNewNode.create(context, function, arguments);
     }
 
     // ##### Argument nodes

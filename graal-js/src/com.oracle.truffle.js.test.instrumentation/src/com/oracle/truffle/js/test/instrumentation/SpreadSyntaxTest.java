@@ -38,26 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes;
+package com.oracle.truffle.js.test.instrumentation;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.runtime.Evaluator;
-import com.oracle.truffle.js.runtime.JSContext;
+import org.junit.Test;
 
-public interface NodeEvaluator extends Evaluator {
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 
-    /**
-     * Loads a script file and compiles it. Returns an executable script object.
-     */
-    ScriptNode loadCompile(JSContext context, Source source);
+public class SpreadSyntaxTest extends FineGrainedAccessTest {
 
-    /**
-     * Parses a script string. Returns an executable script object.
-     */
-    ScriptNode evalCompile(JSContext context, String sourceCode, String name);
+    @Test
+    public void spreadSyntax() {
 
-    /**
-     * Parse function using parameter list and body, to be used by the {@code Function} constructor.
-     */
-    ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName);
+        String src = "var x = [1,2];" +
+                        "[...x];";
+
+        evalWithTags(src, new Class[]{LiteralExpressionTag.class, ReadPropertyExpressionTag.class,
+                        WritePropertyExpressionTag.class});
+
+        enter(WritePropertyExpressionTag.class, (e, p) -> {
+            assertAttribute(e, KEY, "x");
+            p.input(assertJSObjectInput);
+            enter(LiteralExpressionTag.class).exit();
+            p.input(assertJSArrayInput);
+        }).exit();
+
+        enter(LiteralExpressionTag.class, (o, l) -> {
+            enter(ReadPropertyExpressionTag.class, (e, p) -> {
+                assertAttribute(e, KEY, "x");
+                p.input(assertGlobalObjectInput);
+            }).exit();
+        }).exit(assertJSObjectReturn);
+
+    }
+
 }

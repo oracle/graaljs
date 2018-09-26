@@ -142,15 +142,7 @@ public class JSRealm implements ShapeContext {
         // Copied from `Launcher`. See GR-6243.
         String version = System.getProperty(GRAALVM_VERSION_PROPERTY);
         String altVersion = System.getProperty(ALT_GRAALVM_VERSION_PROPERTY);
-        if (version != null && altVersion == null) {
-            GRAALVM_VERSION = version;
-        } else if (altVersion != null && version == null) {
-            GRAALVM_VERSION = altVersion;
-        } else if (version != null && version.equals(altVersion)) {
-            GRAALVM_VERSION = version;
-        } else {
-            GRAALVM_VERSION = null;
-        }
+        GRAALVM_VERSION = version != null ? version : altVersion;
     }
 
     private final JSContext context;
@@ -1132,22 +1124,28 @@ public class JSRealm implements ShapeContext {
 
     private void putGraalObject(DynamicObject global) {
         DynamicObject graalObject = JSUserObject.create(context);
-        JSObjectUtil.putDataProperty(context, graalObject, "language", AbstractJavaScriptLanguage.NAME);
-        JSObjectUtil.putDataProperty(context, graalObject, "versionJS", AbstractJavaScriptLanguage.VERSION_NUMBER);
-        String graalVMVersion = System.getProperty(ALT_GRAALVM_VERSION_PROPERTY);
-        if (graalVMVersion == null) {
-            graalVMVersion = GRAALVM_VERSION;
+        int flags = JSAttributes.notConfigurableEnumerableNotWritable();
+        JSObjectUtil.putDataProperty(context, graalObject, "language", AbstractJavaScriptLanguage.NAME, flags);
+        JSObjectUtil.putDataProperty(context, graalObject, "versionJS", AbstractJavaScriptLanguage.VERSION_NUMBER, flags);
+        if (GRAALVM_VERSION != null) {
+            JSObjectUtil.putDataProperty(context, graalObject, "versionGraalVM", GRAALVM_VERSION, flags);
         }
-
-        if (graalVMVersion != null) {
-            JSObjectUtil.putDataProperty(context, graalObject, "versionGraalVM", graalVMVersion);
-        }
-        JSObjectUtil.putDataProperty(context, graalObject, "isGraalRuntime", isGraalRuntime());
+        JSObjectUtil.putDataProperty(context, graalObject, "isGraalRuntime", JSFunction.create(this, isGraalRuntimeFunction(context)), flags);
         putGlobalProperty(global, "Graal", graalObject);
     }
 
-    private static Object isGraalRuntime() {
-        return Truffle.getRuntime().getName().contains("Graal");
+    private static JSFunctionData isGraalRuntimeFunction(JSContext context) {
+        return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return isGraalRuntime();
+            }
+
+            @TruffleBoundary
+            private boolean isGraalRuntime() {
+                return Truffle.getRuntime().getName().contains("Graal");
+            }
+        }), 0, "isGraalRuntime");
     }
 
     private JSConstructor getSIMDTypeConstructor(SIMDTypeFactory<? extends SIMDType> factory) {

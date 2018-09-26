@@ -40,17 +40,24 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
  * Represents abstract operation IsCallable.
  *
  * @see JSRuntime#isCallable(Object)
  */
+@ImportStatic({JSInteropUtil.class})
 public abstract class IsCallableNode extends JSUnaryNode {
 
     protected IsCallableNode(JavaScriptNode operand) {
@@ -71,6 +78,12 @@ public abstract class IsCallableNode extends JSUnaryNode {
     @Specialization(guards = "isJSProxy(proxy)")
     protected static boolean doJSProxy(DynamicObject proxy) {
         return JSRuntime.isCallableProxy(proxy);
+    }
+
+    @Specialization(guards = "isForeignObject(obj)")
+    protected static boolean doTruffleObject(TruffleObject obj,
+                    @Cached("createIsExecutable()") Node isExecutableNode) {
+        return JSInteropNodeUtil.isExecutable(obj, isExecutableNode);
     }
 
     @SuppressWarnings("unused")

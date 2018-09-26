@@ -1393,9 +1393,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             if (convertedIndex instanceof Long) {
                 intIndexBranch.enter();
                 int intIndex = ((Long) convertedIndex).intValue();
-                if (intIndex >= 0 && intIndex < JSRuntime.length(charSequence)) {
+                if (intIndex >= 0 && intIndex < charSequence.length()) {
                     intIndexInBoundsBranch.enter();
-                    return String.valueOf(Boundaries.charAt(charSequence, intIndex));
+                    return String.valueOf(charSequence.charAt(intIndex));
                 }
             }
             stringIndexBranch.enter();
@@ -1407,7 +1407,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
             if (index >= 0 && index < charSequence.length()) {
                 intIndexInBoundsBranch.enter();
-                return String.valueOf(Boundaries.charAt(charSequence, index));
+                return String.valueOf(charSequence.charAt(index));
             } else {
                 stringIndexBranch.enter();
                 return JSObject.get(JSString.create(context, charSequence), index, jsclassProfile);

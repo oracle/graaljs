@@ -38,26 +38,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes;
+package com.oracle.truffle.js.runtime;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.runtime.Evaluator;
-import com.oracle.truffle.js.runtime.JSContext;
+/**
+ * Default class implementing a dummy ECMA2017 8.7 Agent for the JS main thread.
+ */
+public final class MainJSAgent extends JSAgent {
 
-public interface NodeEvaluator extends Evaluator {
+    public MainJSAgent() {
+        super(false);
+    }
 
-    /**
-     * Loads a script file and compiles it. Returns an executable script object.
-     */
-    ScriptNode loadCompile(JSContext context, Source source);
+    @Override
+    public void execute(EcmaAgent owner, Runnable task) {
+        throw Errors.unsupported("Multithreading not supported");
+    }
 
-    /**
-     * Parses a script string. Returns an executable script object.
-     */
-    ScriptNode evalCompile(JSContext context, String sourceCode, String name);
+    @Override
+    public boolean isTerminated() {
+        return false;
+    }
 
-    /**
-     * Parse function using parameter list and body, to be used by the {@code Function} constructor.
-     */
-    ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName);
+    @Override
+    public void terminate(int timeout) {
+        // No-op
+    }
+
+    @Override
+    public void wakeAgent(int w) {
+        // No-op
+    }
+
 }

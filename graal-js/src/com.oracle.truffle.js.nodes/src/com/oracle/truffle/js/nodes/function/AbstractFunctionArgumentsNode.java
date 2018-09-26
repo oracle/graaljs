@@ -49,6 +49,8 @@ public abstract class AbstractFunctionArgumentsNode extends JavaScriptBaseNode {
 
     public abstract Object[] executeFillObjectArray(VirtualFrame frame, Object[] arguments, int delta);
 
+    public abstract void materializeInstrumentableArguments();
+
     protected abstract AbstractFunctionArgumentsNode copyUninitialized();
 
     @SuppressWarnings("unchecked")

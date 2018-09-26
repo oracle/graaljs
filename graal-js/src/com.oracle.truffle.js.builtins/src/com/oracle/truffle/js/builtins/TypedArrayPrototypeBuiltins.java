@@ -521,7 +521,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected Object forEach(DynamicObject thisJSObj, Object callback, Object thisArg) {
             checkHasDetachedBuffer(thisJSObj);
             long length = JSArrayBufferView.typedArrayGetArrayType(thisJSObj, JSArrayBufferView.isJSArrayBufferView(thisJSObj)).length(thisJSObj);
-            DynamicObject callbackFn = checkCallbackIsFunction(callback);
+            TruffleObject callbackFn = checkCallbackIsFunction(callback);
             return forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, Undefined.instance);
         }
 

@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode.JSStringToNumberWithTrimNode;
 import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -120,7 +119,7 @@ public abstract class JSToIntegerNode extends JavaScriptBaseNode {
     @Specialization
     protected int doString(String value,
                     @Cached("create()") JSToIntegerNode nestedToIntegerNode,
-                    @Cached("create()") JSStringToNumberWithTrimNode stringToNumberNode) {
+                    @Cached("create()") JSStringToNumberNode stringToNumberNode) {
         return nestedToIntegerNode.executeInt(stringToNumberNode.executeString(value));
     }
 

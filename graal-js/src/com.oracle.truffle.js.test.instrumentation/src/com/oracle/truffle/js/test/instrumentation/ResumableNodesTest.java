@@ -144,13 +144,14 @@ public class ResumableNodesTest extends FineGrainedAccessTest {
                 call2.input(assertJSFunctionInput("crash"));
             }).exit();
         }).exit();
-        // 2nd next() resumes and calls 'dummy()' -- but does not call cash
+        // 2nd next() resumes and calls 'dummy()' -- but does not call crash
         enter(FunctionCallExpressionTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
             call.input(assertJSFunctionInput("next"));
             enter(FunctionCallExpressionTag.class, (e2, call2) -> {
                 call2.input(assertJSObjectInput);
                 call2.input(assertJSFunctionInput("dummy"));
+                call2.input(assertUndefinedInput);
             }).exit();
         }).exit();
         // 3rd next() does no calls

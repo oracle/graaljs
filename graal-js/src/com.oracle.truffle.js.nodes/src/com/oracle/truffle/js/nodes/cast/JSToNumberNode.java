@@ -46,9 +46,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode.JSStringToNumberWithTrimNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNodeGen.JSToNumberWrapperNodeGen;
 import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
@@ -64,7 +64,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 public abstract class JSToNumberNode extends JavaScriptBaseNode {
 
     @Child private JSToNumberNode toNumberNode;
-    @Child private JSStringToNumberWithTrimNode stringToNumberNode;
+    @Child private JSStringToNumberNode stringToNumberNode;
 
     public abstract Object execute(Object value);
 
@@ -110,7 +110,7 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     protected int doStringInt(String value) throws SlowPathException {
         double doubleValue = stringToNumber(value);
         if (!JSRuntime.doubleIsRepresentableAsInt(doubleValue)) {
-            throw new SlowPathException();
+            throw JSNodeUtil.slowPathException();
         }
         return (int) doubleValue;
     }
@@ -153,7 +153,7 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     private double stringToNumber(String value) {
         if (stringToNumberNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            stringToNumberNode = insert(JSStringToNumberWithTrimNode.create());
+            stringToNumberNode = insert(JSStringToNumberNode.create());
         }
         return stringToNumberNode.executeString(value);
     }

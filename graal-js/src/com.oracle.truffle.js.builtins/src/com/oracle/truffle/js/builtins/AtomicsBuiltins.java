@@ -224,6 +224,11 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         protected static final JSException createRangeErrorSharedArray(Object idx) {
             return Errors.createRangeError("Range error with index : " + idx);
         }
+
+        @TruffleBoundary
+        protected final JSException createTypeErrorUnsupported() {
+            return Errors.createTypeError("Unsupported operation", this);
+        }
     }
 
     /**
@@ -683,7 +688,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 }
 
                 if (!SharedMemorySync.agentCanSuspend(getContext())) {
-                    throw createTypeErrorNonSharedArray();
+                    throw createTypeErrorUnsupported();
                 }
                 JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
                 SharedMemorySync.enterCriticalSection(getContext(), wl);
