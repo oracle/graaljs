@@ -97,7 +97,7 @@ public abstract class JSFunctionFactory {
         if (context.getEcmaScriptVersion() < 6 && functionData.hasStrictFunctionProperties()) {
             return createES5Strict(factory, functionData, enclosingFrame, classPrototype, realm, prototype);
         }
-        if (context.isMultiContext()) {
+        if (isInObjectProto()) {
             return JSObjectFactory.newInstance(factory, prototype, functionData, enclosingFrame, classPrototype, realm);
         }
         assert JSObjectFactory.verifyPrototype(factory, prototype);
@@ -105,7 +105,7 @@ public abstract class JSFunctionFactory {
     }
 
     private DynamicObject createES5Strict(DynamicObjectFactory factory, JSFunctionData functionData, MaterializedFrame enclosingFrame, Object classPrototype, JSRealm realm, DynamicObject prototype) {
-        if (context.isMultiContext()) {
+        if (isInObjectProto()) {
             return JSObjectFactory.newInstance(factory, prototype, functionData, enclosingFrame, classPrototype, realm, realm.getThrowerAccessor(), realm.getThrowerAccessor());
         } else {
             assert JSObjectFactory.verifyPrototype(factory, prototype);
@@ -122,7 +122,7 @@ public abstract class JSFunctionFactory {
         if (context.getEcmaScriptVersion() < 6) {
             return createBoundES5(factory, functionData, classPrototype, realm, prototype, boundTargetFunction, boundThis, boundArguments);
         }
-        if (context.isMultiContext()) {
+        if (isInObjectProto()) {
             return JSObjectFactory.newInstance(factory, prototype, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, classPrototype, realm, boundTargetFunction, boundThis, boundArguments);
         }
         assert JSObjectFactory.verifyPrototype(factory, prototype);
@@ -131,7 +131,7 @@ public abstract class JSFunctionFactory {
 
     private DynamicObject createBoundES5(DynamicObjectFactory factory, JSFunctionData functionData, Object classPrototype, JSRealm realm, DynamicObject prototype,
                     DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
-        if (context.isMultiContext()) {
+        if (isInObjectProto()) {
             return JSObjectFactory.newInstance(factory, prototype, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, classPrototype, realm, realm.getThrowerAccessor(), realm.getThrowerAccessor(),
                             boundTargetFunction, boundThis, boundArguments);
         } else {
@@ -145,12 +145,16 @@ public abstract class JSFunctionFactory {
 
     protected abstract DynamicObjectFactory getFactory(JSRealm realm, DynamicObject prototype);
 
+    protected abstract boolean isInObjectProto();
+
     private static final class Default extends JSFunctionFactory {
         private final DynamicObjectFactory factory;
+        private final boolean inObjectProto;
 
         protected Default(JSContext context, DynamicObjectFactory factory) {
             super(context);
             this.factory = factory;
+            this.inObjectProto = JSObjectFactory.hasInObjectProto(factory);
         }
 
         @Override
@@ -161,6 +165,11 @@ public abstract class JSFunctionFactory {
         @Override
         protected DynamicObjectFactory getFactory(JSRealm realm, DynamicObject prototype) {
             return factory;
+        }
+
+        @Override
+        protected boolean isInObjectProto() {
+            return inObjectProto;
         }
     }
 
@@ -183,6 +192,11 @@ public abstract class JSFunctionFactory {
         @Override
         protected DynamicObjectFactory getFactory(JSRealm realm, DynamicObject prototype) {
             return factory;
+        }
+
+        @Override
+        protected boolean isInObjectProto() {
+            return true;
         }
     }
 
@@ -223,6 +237,11 @@ public abstract class JSFunctionFactory {
                 realmFactory = realm.getObjectFactories().factories[slot] = newFactory;
             }
             return realmFactory;
+        }
+
+        @Override
+        protected boolean isInObjectProto() {
+            return false;
         }
     }
 }
