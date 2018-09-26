@@ -168,7 +168,7 @@ public final class JSError extends JSBuiltinObject {
         JSContext ctx = realm.getContext();
         DynamicObject proto = errorType == JSErrorType.Error ? realm.getObjectPrototype() : realm.getErrorConstructor(JSErrorType.Error).getPrototype();
 
-        DynamicObject errorPrototype = JSObject.create(realm, proto, ctx.getEcmaScriptVersion() < 6 ? INSTANCE : JSUserObject.INSTANCE);
+        DynamicObject errorPrototype = JSObject.createInit(realm, proto, ctx.getEcmaScriptVersion() < 6 ? INSTANCE : JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(ctx, errorPrototype, MESSAGE, "", JSAttributes.getDefaultNotEnumerable());
 
         if (errorType == JSErrorType.Error) {
@@ -210,7 +210,7 @@ public final class JSError extends JSBuiltinObject {
 
     private static DynamicObject createCallSitePrototype(JSRealm realm) {
         DynamicObject proto = realm.getObjectPrototype();
-        DynamicObject callSitePrototype = JSObject.create(realm, proto, JSUserObject.INSTANCE);
+        DynamicObject callSitePrototype = JSObject.createInit(realm, proto, JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(realm, callSitePrototype, CALL_SITE_PROTOTYPE_NAME);
         return callSitePrototype;
     }

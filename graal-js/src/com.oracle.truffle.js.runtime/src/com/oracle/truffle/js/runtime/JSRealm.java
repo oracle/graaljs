@@ -771,7 +771,7 @@ public class JSRealm {
         putGlobalProperty(global, JSDataView.CLASS_NAME, getDataViewConstructor().getFunctionObject());
 
         if (JSTruffleOptions.SIMDJS) {
-            DynamicObject simdObject = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+            DynamicObject simdObject = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
             for (SIMDTypeFactory<? extends SIMDType> factory : SIMDType.FACTORIES) {
                 JSObjectUtil.putDataProperty(context, simdObject, factory.getName(), getSIMDTypeConstructor(factory).getFunctionObject(), JSAttributes.getDefaultNotEnumerable());
             }
@@ -920,7 +920,7 @@ public class JSRealm {
         if (!isJavaInteropAvailable()) {
             return;
         }
-        DynamicObject java = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject java = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, java, Symbol.SYMBOL_TO_STRING_TAG, JAVA_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, java, JAVA_CLASS_NAME);
         if (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop) {
@@ -947,7 +947,7 @@ public class JSRealm {
     }
 
     private void setupPolyglot(DynamicObject global) {
-        DynamicObject obj = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_CLASS_NAME);
         if (getContext().isOptionDebugBuiltin()) {
             JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_INTERNAL_CLASS_NAME);
@@ -966,7 +966,7 @@ public class JSRealm {
      * Creates the %IteratorPrototype% object as specified in ES6 25.1.2.
      */
     private DynamicObject createIteratorPrototype() {
-        DynamicObject prototype = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(this), JSAttributes.getDefaultNotEnumerable());
         return prototype;
     }
@@ -979,7 +979,7 @@ public class JSRealm {
      * Creates the %ArrayIteratorPrototype% object as specified in ES6 22.1.5.2.
      */
     private DynamicObject createArrayIteratorPrototype() {
-        DynamicObject prototype = JSObject.create(this, this.iteratorPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.createInit(this, this.iteratorPrototype, JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, JSArray.ITERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSArray.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -989,7 +989,7 @@ public class JSRealm {
      * Creates the %SetIteratorPrototype% object.
      */
     private DynamicObject createSetIteratorPrototype() {
-        DynamicObject prototype = JSObject.create(this, this.iteratorPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.createInit(this, this.iteratorPrototype, JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, JSSet.ITERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSSet.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -999,7 +999,7 @@ public class JSRealm {
      * Creates the %MapIteratorPrototype% object.
      */
     private DynamicObject createMapIteratorPrototype() {
-        DynamicObject prototype = JSObject.create(this, this.iteratorPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.createInit(this, this.iteratorPrototype, JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, JSMap.ITERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSMap.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -1009,7 +1009,7 @@ public class JSRealm {
      * Creates the %StringIteratorPrototype% object.
      */
     private DynamicObject createStringIteratorPrototype() {
-        DynamicObject prototype = JSObject.create(this, this.iteratorPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.createInit(this, this.iteratorPrototype, JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, JSString.ITERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSString.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -1019,7 +1019,7 @@ public class JSRealm {
      * Creates the %RegExpStringIteratorPrototype% object.
      */
     private DynamicObject createRegExpStringIteratorPrototype() {
-        DynamicObject prototype = JSObject.create(this, this.iteratorPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.createInit(this, this.iteratorPrototype, JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, prototype, JSString.REGEXP_ITERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSString.REGEXP_ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -1030,14 +1030,14 @@ public class JSRealm {
     }
 
     private DynamicObject createReflect() {
-        DynamicObject obj = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_STRING_TAG, REFLECT_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, obj, REFLECT_CLASS_NAME);
         return obj;
     }
 
     private DynamicObject createAtomics() {
-        DynamicObject obj = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_STRING_TAG, ATOMICS_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, obj, ATOMICS_CLASS_NAME);
         return obj;
@@ -1108,7 +1108,7 @@ public class JSRealm {
     }
 
     private DynamicObject createRealmBuiltinObject() {
-        DynamicObject obj = JSObject.create(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(getContext(), obj, Symbol.SYMBOL_TO_STRING_TAG, REALM_BUILTIN_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, obj, REALM_BUILTIN_CLASS_NAME);
         return obj;

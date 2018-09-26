@@ -96,7 +96,7 @@ public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFa
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext context = realm.getContext();
-        DynamicObject bigIntPrototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject bigIntPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(context, bigIntPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, bigIntPrototype, PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, bigIntPrototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());

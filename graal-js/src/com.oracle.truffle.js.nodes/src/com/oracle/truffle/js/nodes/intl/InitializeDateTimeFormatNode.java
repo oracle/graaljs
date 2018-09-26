@@ -52,7 +52,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 
 /*
  * https://tc39.github.io/ecma402/#sec-initializedatetimeformat
@@ -161,7 +160,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         @SuppressWarnings("unused")
         @Specialization(guards = "isUndefined(opts)")
         public DynamicObject fromUndefined(Object opts, String required, String defaults) {
-            return setDefaultsIfNeeded(JSUserObject.createWithPrototype(Null.instance, getContext()), required, defaults);
+            return setDefaultsIfNeeded(JSUserObject.createWithNullPrototype(getContext()), required, defaults);
         }
 
         @Specialization(guards = "!isUndefined(opts)")

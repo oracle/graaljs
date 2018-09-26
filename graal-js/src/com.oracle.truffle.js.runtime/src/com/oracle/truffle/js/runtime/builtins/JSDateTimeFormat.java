@@ -129,7 +129,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject numberFormatPrototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject numberFormatPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, numberFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, PROTOTYPE_NAME);
         JSObjectUtil.putConstantAccessorProperty(ctx, numberFormatPrototype, "format", createFormatFunctionGetter(realm, ctx), Undefined.instance);
