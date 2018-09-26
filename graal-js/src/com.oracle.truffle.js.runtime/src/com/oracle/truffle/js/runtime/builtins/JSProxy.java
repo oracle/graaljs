@@ -589,7 +589,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         JSObjectUtil.putFunctionsFromContainer(realm, proxyConstructor, CLASS_NAME);
         // Proxy constructor does not have a prototype property (ES6 26.2.2)
         // Still, makeInitialShape currently needs a dummy prototype
-        DynamicObject dummyPrototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject dummyPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         return new JSConstructor(proxyConstructor, dummyPrototype);
     }
 

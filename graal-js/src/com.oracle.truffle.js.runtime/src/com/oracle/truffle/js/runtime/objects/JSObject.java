@@ -167,9 +167,24 @@ public final class JSObject {
         return object;
     }
 
-    @TruffleBoundary
-    public static DynamicObject create(JSRealm realm, DynamicObject prototype, JSClass builtinObject) {
-        return create(realm.getContext(), prototype, builtinObject);
+    /**
+     * For Realm/Context initialization only. Does not track allocation.
+     */
+    public static DynamicObject createInit(JSRealm realm, DynamicObject prototype, JSClass builtinObject) {
+        CompilerAsserts.neverPartOfCompilation();
+        return createInit(realm.getContext(), prototype, builtinObject);
+    }
+
+    /**
+     * For Realm/Context initialization only. Does not track allocation.
+     */
+    public static DynamicObject createInit(JSContext context, DynamicObject prototype, JSClass builtinObject) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert prototype == Null.instance || JSRuntime.isObject(prototype);
+        if (context.isMultiContext() && builtinObject == JSUserObject.INSTANCE) {
+            return JSUserObject.createWithPrototypeInObject(prototype, context);
+        }
+        return createNoTrack(prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
     }
 
     @TruffleBoundary

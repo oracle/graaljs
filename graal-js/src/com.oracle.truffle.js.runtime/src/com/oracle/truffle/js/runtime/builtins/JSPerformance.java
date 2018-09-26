@@ -53,7 +53,7 @@ public final class JSPerformance {
     }
 
     public static DynamicObject create(JSRealm realm) {
-        DynamicObject obj = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(realm, obj, CLASS_NAME);
         return obj;
     }

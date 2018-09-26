@@ -95,7 +95,7 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext context = realm.getContext();
-        DynamicObject arrayBufferPrototype = JSObject.create(realm, realm.getObjectPrototype(), INSTANCE);
+        DynamicObject arrayBufferPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), INSTANCE);
         putConstructorProperty(context, arrayBufferPrototype, ctor);
         putFunctionsFromContainer(realm, arrayBufferPrototype, PROTOTYPE_NAME);
         /* ECMA2017 24.2.4.1 get SharedArrayBuffer.prototype.byteLength */
