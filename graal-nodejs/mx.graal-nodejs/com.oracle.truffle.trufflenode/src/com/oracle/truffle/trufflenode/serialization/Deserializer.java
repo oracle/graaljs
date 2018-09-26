@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -154,7 +155,7 @@ public class Deserializer {
             case ARRAY_BUFFER_TRANSFER:
                 return readTransferredJSArrayBuffer(context);
             case SHARED_ARRAY_BUFFER:
-                return readSharedArrayBuffer();
+                return readSharedArrayBuffer(context);
             case BEGIN_JS_OBJECT:
                 return readJSObject(context);
             case BEGIN_JS_MAP:
@@ -467,9 +468,12 @@ public class Deserializer {
         return (peekTag() == SerializationTag.ARRAY_BUFFER_VIEW) ? readJSArrayBufferView(context, arrayBuffer) : arrayBuffer;
     }
 
-    public Object readSharedArrayBuffer() {
+    public Object readSharedArrayBuffer(JSContext context) {
         int id = readVarInt();
-        return NativeAccess.getSharedArrayBufferFromId(delegate, id);
+        Object sharedArrayBuffer = NativeAccess.getSharedArrayBufferFromId(delegate, id);
+        assert JSSharedArrayBuffer.isJSSharedArrayBuffer(sharedArrayBuffer);
+        assignId(sharedArrayBuffer);
+        return (peekTag() == SerializationTag.ARRAY_BUFFER_VIEW) ? readJSArrayBufferView(context, (DynamicObject) sharedArrayBuffer) : sharedArrayBuffer;
     }
 
     public int readBytes(int length) {
