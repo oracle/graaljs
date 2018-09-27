@@ -44,6 +44,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
@@ -242,6 +243,46 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
             assertNestedPropertyRead("prototype", "String");
             assertPropertyRead("__defineGetter__");
         }
+    }
+
+    @Test
+    public void globalPropertyRefError() {
+        evalWithTags("var o = {foo: 1};" +
+                        "with (o) {" +
+                        "  foo = 42;" +
+                        "}" +
+                        "try {" +
+                        "  foo;" +
+                        // property read for "Error" not executed.
+                        "  throw new Error();" +
+                        "}" +
+                        "catch (e) {" +
+                        // exception must be reference error
+                        "  e instanceof ReferenceError;" +
+                        "}", new Class[]{ReadPropertyExpressionTag.class, BinaryExpressionTag.class});
+
+        enter(ReadPropertyExpressionTag.class, (e, p) -> {
+            p.input(assertGlobalObjectInput);
+            assertAttribute(e, KEY, "o");
+        }).exit();
+
+        enter(ReadPropertyExpressionTag.class, (e, p) -> {
+            assertAttribute(e, KEY, "foo");
+            p.input(assertGlobalObjectInput);
+        }).exitExceptional();
+
+        enter(BinaryExpressionTag.class, (e, b) -> {
+
+            b.input(assertJSObjectInput);
+            enter(ReadPropertyExpressionTag.class, (e1, p) -> {
+                p.input(assertGlobalObjectInput);
+                assertAttribute(e1, KEY, "ReferenceError");
+            }).exit();
+
+            b.input(assertJSFunctionInput);
+
+        }).exit(assertReturnValue(true));
+
     }
 
     private void assertPropertyRead(String key) {
