@@ -814,15 +814,21 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 int tmp = toInt32Node.executeInt(count);
                 c = Integer.max(tmp, 0);
             }
+
             JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
-            int n = 0;
+
             SharedMemorySync.enterCriticalSection(getContext(), wl);
-            List<Integer> waiters = SharedMemorySync.removeWaiters(getContext(), wl, c);
-            while (n < waiters.size()) {
-                SharedMemorySync.wakeWaiter(getContext(), Boundaries.listGet(waiters, n++), wl);
+            try {
+                List<Integer> waiters = SharedMemorySync.removeWaiters(getContext(), wl, c);
+                int n = 0;
+                while (n < waiters.size()) {
+                    SharedMemorySync.wakeWaiter(getContext(), Boundaries.listGet(waiters, n++), wl);
+                }
+                return n;
+
+            } finally {
+                SharedMemorySync.leaveCriticalSection(getContext(), wl);
             }
-            SharedMemorySync.leaveCriticalSection(getContext(), wl);
-            return n;
         }
     }
 
