@@ -41,27 +41,27 @@
 package com.oracle.truffle.js.builtins;
 
 import java.io.PrintWriter;
-import java.util.HashMap;
+import java.util.Map;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleAssertNodeGen;
-import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleClearNodeGen;
-import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleCountNodeGen;
-import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleCountResetNodeGen;
-import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleGroupEndNodeGen;
-import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleGroupNodeGen;
-import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleTimeEndNodeGen;
-import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleTimeLogNodeGen;
-import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleTimeNodeGen;
+import com.oracle.truffle.js.builtins.ConsoleBuiltinsFactory.JSConsoleAssertNodeGen;
+import com.oracle.truffle.js.builtins.ConsoleBuiltinsFactory.JSConsoleClearNodeGen;
+import com.oracle.truffle.js.builtins.ConsoleBuiltinsFactory.JSConsoleCountNodeGen;
+import com.oracle.truffle.js.builtins.ConsoleBuiltinsFactory.JSConsoleCountResetNodeGen;
+import com.oracle.truffle.js.builtins.ConsoleBuiltinsFactory.JSConsoleGroupEndNodeGen;
+import com.oracle.truffle.js.builtins.ConsoleBuiltinsFactory.JSConsoleGroupNodeGen;
+import com.oracle.truffle.js.builtins.ConsoleBuiltinsFactory.JSConsoleTimeEndNodeGen;
+import com.oracle.truffle.js.builtins.ConsoleBuiltinsFactory.JSConsoleTimeLogNodeGen;
+import com.oracle.truffle.js.builtins.ConsoleBuiltinsFactory.JSConsoleTimeNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltins.JSGlobalPrintNode;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalPrintNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.runtime.JSConsoleUtil;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -70,12 +70,12 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 /**
  * Contains builtins for `console`.
  */
-public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ConsolePrototypeBuiltins.ConsolePrototype> {
-    protected ConsolePrototypeBuiltins() {
-        super("Console", ConsolePrototype.class);
+public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<ConsoleBuiltins.Console> {
+    protected ConsoleBuiltins() {
+        super("Console", Console.class);
     }
 
-    public enum ConsolePrototype implements BuiltinEnum<ConsolePrototype> {
+    public enum Console implements BuiltinEnum<Console> {
         log(0),
         info(0),
         debug(0),
@@ -95,7 +95,7 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
 
         private final int length;
 
-        ConsolePrototype(int length) {
+        Console(int length) {
             this.length = length;
         }
 
@@ -106,7 +106,7 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ConsolePrototype builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, Console builtinEnum) {
         switch (builtinEnum) {
             case log:
             case info:
@@ -139,30 +139,16 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         return null;
     }
 
-    private static HashMap<String, Integer> countMap;
-    private static HashMap<String, Long> timeMap;
-
     public abstract static class JSConsoleOperation extends JSBuiltinNode {
 
         public JSConsoleOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        protected HashMap<String, Integer> getCountMap() {
-            if (countMap == null) {
-                CompilerDirectives.transferToInterpreter();
-                countMap = new HashMap<>();
-            }
-            return countMap;
+        public JSConsoleUtil getConsoleUtil() {
+            return getContext().getRealm().getConsoleUtil();
         }
 
-        protected HashMap<String, Long> getTimeMap() {
-            if (timeMap == null) {
-                CompilerDirectives.transferToInterpreter();
-                timeMap = new HashMap<>();
-            }
-            return timeMap;
-        }
     }
 
     public abstract static class JSConsoleAssertNode extends JSConsoleOperation {
@@ -184,7 +170,7 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                 if (data.length > 1) {
                     System.arraycopy(data, 1, arr, 1, data.length - 1);
                 }
-                arr[0] = "Assertion failed:";
+                arr[0] = data.length > 1 ? "Assertion failed:" : "Assertion failed";
                 printNode.executeObjectArray(arr);
             }
             return Undefined.instance;
@@ -221,13 +207,15 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         protected DynamicObject count(Object label) {
             String key = label == Undefined.instance ? "default" : toStringNode.executeString(label);
             int count = 0;
-            if (getCountMap().containsKey(key)) {
-                count = getCountMap().get(key);
+            JSConsoleUtil console = getConsoleUtil();
+            Map<String, Integer> countMap = console.getCountMap();
+            if (countMap.containsKey(key)) {
+                count = countMap.get(key);
             }
-            getCountMap().put(key, ++count);
+            countMap.put(key, ++count);
 
             PrintWriter writer = getContext().getRealm().getOutputWriter();
-            writer.append(getContext().getRealm().getConsoleIndentationString());
+            writer.append(console.getConsoleIndentationString());
             writer.append(key);
             writer.append(": ");
             writer.append(String.valueOf(count));
@@ -250,7 +238,7 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @TruffleBoundary
         protected DynamicObject count(Object label) {
             String key = label == Undefined.instance ? "default" : toStringNode.executeString(label);
-            getCountMap().remove(key);
+            getConsoleUtil().getCountMap().remove(key);
             return Undefined.instance;
         }
     }
@@ -272,7 +260,7 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             if (label.length > 0) {
                 printNode.executeObjectArray(label);
             }
-            getContext().getRealm().incConsoleIndentation();
+            getConsoleUtil().incConsoleIndentation();
             return Undefined.instance;
         }
     }
@@ -287,7 +275,7 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization
         @TruffleBoundary
         protected DynamicObject groupEnd() {
-            getContext().getRealm().decConsoleIndentation();
+            getConsoleUtil().decConsoleIndentation();
             return Undefined.instance;
         }
     }
@@ -304,7 +292,7 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @TruffleBoundary
         protected DynamicObject time(Object label) {
             String key = label == Undefined.instance ? "default" : toStringNode.executeString(label);
-            getTimeMap().put(key, getContext().getRealm().currentTimeMillis());
+            getConsoleUtil().getTimeMap().put(key, getContext().getRealm().currentTimeMillis());
             return Undefined.instance;
         }
     }
@@ -323,8 +311,9 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @TruffleBoundary
         protected DynamicObject timeEnd(Object label) {
             String key = label == Undefined.instance ? "default" : toStringNode.executeString(label);
-            if (getTimeMap().containsKey(key)) {
-                long start = getTimeMap().remove(key);
+            Map<String, Long> timeMap = getConsoleUtil().getTimeMap();
+            if (timeMap.containsKey(key)) {
+                long start = timeMap.remove(key);
                 long end = getContext().getRealm().currentTimeMillis();
                 long delta = end - start;
                 printNode.executeObjectArray(new Object[]{key + ":", String.valueOf(delta) + "ms"});
@@ -345,10 +334,12 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization
+        @TruffleBoundary
         protected DynamicObject timeLog(Object... data) {
             String key = data.length == 0 || data[0] == Undefined.instance ? "default" : toStringNode.executeString(data[0]);
-            if (getTimeMap().containsKey(key)) {
-                long start = getTimeMap().get(key);
+            Map<String, Long> timeMap = getConsoleUtil().getTimeMap();
+            if (timeMap.containsKey(key)) {
+                long start = timeMap.get(key);
                 long end = getContext().getRealm().currentTimeMillis();
                 long delta = end - start;
 

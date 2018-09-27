@@ -52,6 +52,7 @@ import java.util.SplittableRandom;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -264,7 +265,7 @@ public class JSRealm {
     private PrintWriterWrapper outputWriter;
     private PrintWriterWrapper errorWriter;
 
-    private int consoleIndentation = 0;
+    @CompilationFinal private JSConsoleUtil consoleUtil;
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
@@ -1288,26 +1289,12 @@ public class JSRealm {
         return lazyRegexArrayShape;
     }
 
-    public int getConsoleIndentation() {
-        return consoleIndentation;
-    }
-
-    public void incConsoleIndentation() {
-        consoleIndentation++;
-    }
-
-    public void decConsoleIndentation() {
-        if (consoleIndentation > 0) {
-            consoleIndentation--;
+    public JSConsoleUtil getConsoleUtil() {
+        if (consoleUtil == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            consoleUtil = new JSConsoleUtil();
         }
+        return consoleUtil;
     }
 
-    @TruffleBoundary
-    public String getConsoleIndentationString() {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < this.consoleIndentation; i++) {
-            sb.append("  ");
-        }
-        return sb.toString();
-    }
 }
