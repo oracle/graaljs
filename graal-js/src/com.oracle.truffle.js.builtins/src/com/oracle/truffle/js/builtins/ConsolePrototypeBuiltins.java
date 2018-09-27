@@ -40,9 +40,13 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import java.io.PrintWriter;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleAssertNodeGen;
+import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleClearNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltins.JSGlobalPrintNode;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalPrintNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -66,7 +70,8 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         debug(1),
         error(1),
         warn(1),
-        assert_(2);
+        assert_(2),
+        clear(0);
 
         private final int length;
 
@@ -92,6 +97,8 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                 return JSGlobalPrintNodeGen.create(context, builtin, true, args().varArgs().createArgumentNodes(context));
             case assert_:
                 return JSConsoleAssertNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+            case clear:
+                return JSConsoleClearNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
         }
         return null;
     }
@@ -125,6 +132,22 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                 arr[0] = "Assertion failed:";
                 printNode.executeObjectArray(arr);
             }
+            return Undefined.instance;
+        }
+    }
+
+    public abstract static class JSConsoleClearNode extends JSConsoleOperation {
+
+        public JSConsoleClearNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected DynamicObject clear() {
+            PrintWriter writer = getContext().getRealm().getOutputWriter();
+            writer.append("\033[H\033[2J");
+            writer.flush();
             return Undefined.instance;
         }
     }
