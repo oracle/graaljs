@@ -493,6 +493,19 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     shared_buffer_ = env->GetDirectBufferAddress(shared_buffer);
     ResetSharedBuffer();
 
+    // Externalization support
+    jclass directByteBufferClass = env->GetObjectClass(shared_buffer);
+    cleanerField_ = env->GetFieldID(directByteBufferClass, "cleaner", "Lsun/misc/Cleaner;");
+    if (cleanerField_ == NULL) EXIT_WITH_MESSAGE(env, "DirectByteBuffer.cleaner field not found!\n")
+    jobject cleaner = env->GetObjectField(shared_buffer, cleanerField_);
+    jclass cleanerClass = env->GetObjectClass(cleaner);
+    thunkField_ = env->GetFieldID(cleanerClass, "thunk", "Ljava/lang/Runnable;");
+    if (thunkField_ == NULL) EXIT_WITH_MESSAGE(env, "Cleaner.thunk field not found!\n")
+    jobject deallocator = env->GetObjectField(cleaner, thunkField_);
+    jclass deallocatorClass = env->GetObjectClass(deallocator);
+    addressField_ = env->GetFieldID(deallocatorClass, "address", "J");
+    if (addressField_ == NULL) EXIT_WITH_MESSAGE(env, "DirectByteBuffer$Deallocator.address field not found!\n")
+
     ACCESS_METHOD(GraalAccessMethod::undefined_instance, "undefinedInstance", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::null_instance, "nullInstance", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::value_type, "valueType", "(Ljava/lang/Object;)I");
@@ -566,7 +579,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_length, "arrayBufferViewByteLength", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_offset, "arrayBufferViewByteOffset", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_is_external, "arrayBufferIsExternal", "(Ljava/lang/Object;)Z")
-    ACCESS_METHOD(GraalAccessMethod::array_buffer_externalize, "arrayBufferExternalize", "(Ljava/lang/Object;Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::array_buffer_externalize, "arrayBufferExternalize", "(Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_neuter, "arrayBufferNeuter", "(Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::typed_array_length, "typedArrayLength", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::uint8_array_new, "uint8ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
@@ -736,10 +749,10 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::big_int_new_from_words, "bigIntNewFromWords", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::big_int_word_count, "bigIntWordCount", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::big_int_to_words_array, "bigIntToWordsArray", "(Ljava/lang/Object;)V")
-    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_new, "sharedArrayBufferNew", "(Ljava/lang/Object;Ljava/lang/Object;J)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_new, "sharedArrayBufferNew", "(Ljava/lang/Object;Ljava/lang/Object;JZ)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_is_external, "sharedArrayBufferIsExternal", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_get_contents, "sharedArrayBufferGetContents", "(Ljava/lang/Object;)Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_externalize, "sharedArrayBufferExternalize", "(Ljava/lang/Object;Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_externalize, "sharedArrayBufferExternalize", "(Ljava/lang/Object;J)V")
 
     int root_offset = v8::internal::Internals::kIsolateRootsOffset / v8::internal::kApiPointerSize;
     slot[v8::internal::Internals::kExternalMemoryOffset / v8::internal::kApiPointerSize] = (void*) 0;
@@ -1275,4 +1288,11 @@ void GraalIsolate::HandleEmptyCallResult() {
             }
         }
     }
+}
+
+void GraalIsolate::Externalize(jobject java_buffer) {
+    JNIEnv* env = GetJNIEnv();
+    jobject cleaner = env->GetObjectField(java_buffer, cleanerField_);
+    jobject deallocator = env->GetObjectField(cleaner, thunkField_);
+    env->SetLongField(deallocator, addressField_, (jlong) 0);
 }

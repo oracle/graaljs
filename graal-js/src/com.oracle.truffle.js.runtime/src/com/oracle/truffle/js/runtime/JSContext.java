@@ -1203,9 +1203,6 @@ public class JSContext {
     }
 
     public void setJSAgent(JSAgent newAgent) {
-        if (agent != null) {
-            throw new RuntimeException("Cannot re-initialize JSAgent");
-        }
         assert newAgent != null : "Cannot set a null agent!";
         CompilerAsserts.neverPartOfCompilation("Assigning agent to context in compiled code");
         this.agent = newAgent;

@@ -304,5 +304,23 @@
   },
   {
     "name": "java.lang.Object"
+  },
+  {
+    "name": "java.nio.DirectByteBuffer",
+    "fields": [
+      { "name": "cleaner" }
+    ]
+  },
+  {
+    "name": "sun.misc.Cleaner",
+    "fields": [
+      { "name": "thunk" }
+    ]
+  },
+  {
+    "name": "java.nio.DirectByteBuffer$Deallocator",
+    "fields": [
+      { "name": "address" }
+    ]
   }
 ]

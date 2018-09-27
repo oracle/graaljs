@@ -136,6 +136,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
@@ -238,6 +239,7 @@ public final class GraalJSAccess {
 
     private final Context evaluator;
     private final JSContext mainJSContext;
+    private final NodeJSAgent agent;
     private final Deallocator deallocator;
     private ESModuleLoader moduleLoader;
 
@@ -288,6 +290,8 @@ public final class GraalJSAccess {
         assert mainJSContext != null : "JSContext initialized";
         GraalJSJavaInteropMainWorker worker = new GraalJSJavaInteropMainWorker(this, loopAddress);
         mainJSContext.initializeJavaInteropWorkers(worker, worker);
+        agent = new NodeJSAgent();
+        mainJSContext.setJSAgent(agent);
         deallocator = new Deallocator();
         envForInstruments = mainJSRealm.getEnv();
     }
@@ -989,9 +993,8 @@ public final class GraalJSAccess {
         return ((DynamicObject) arrayBuffer).get(EXTERNALIZED_KEY) == Boolean.TRUE;
     }
 
-    public void arrayBufferExternalize(Object arrayBuffer, Object content) {
+    public void arrayBufferExternalize(Object arrayBuffer) {
         DynamicObject dynamicObject = (DynamicObject) arrayBuffer;
-        JSArrayBuffer.setDirectByteBuffer(dynamicObject, (ByteBuffer) content);
         dynamicObject.define(EXTERNALIZED_KEY, true);
     }
 
@@ -1022,13 +1025,55 @@ public final class GraalJSAccess {
         }
     }
 
-    public Object sharedArrayBufferNew(Object context, Object buffer, long pointer) {
+    private static final ReferenceQueue<JSAgentWaiterList> agentWaiterListQueue = new ReferenceQueue<>();
+    private static final Map<Long, WeakReference<JSAgentWaiterList>> agentWaiterListMap = new HashMap<>();
+
+    private static class WeakAgentWaiterList extends WeakReference<JSAgentWaiterList> {
+        long pointer;
+
+        WeakAgentWaiterList(JSAgentWaiterList wl, long pointer) {
+            super(wl, agentWaiterListQueue);
+            this.pointer = pointer;
+        }
+
+    }
+
+    private static void pollAgentWaiterListQueue() {
+        WeakAgentWaiterList ref;
+        while ((ref = (WeakAgentWaiterList) agentWaiterListQueue.poll()) != null) {
+            if (agentWaiterListMap.get(ref.pointer).get() == null) {
+                agentWaiterListMap.remove(ref.pointer);
+            }
+        }
+    }
+
+    private static void updateWaiterList(DynamicObject sharedArrayBuffer, long pointer) {
+        synchronized (agentWaiterListMap) {
+            pollAgentWaiterListQueue();
+            assert JSSharedArrayBuffer.isJSSharedArrayBuffer(sharedArrayBuffer);
+            assert pointer != 0;
+            WeakReference<JSAgentWaiterList> ref = agentWaiterListMap.get(pointer);
+            JSAgentWaiterList wl = (ref == null) ? null : ref.get();
+            if (wl == null) {
+                // new data block => save wl
+                ref = new WeakAgentWaiterList(JSSharedArrayBuffer.getWaiterList(sharedArrayBuffer), pointer);
+                agentWaiterListMap.put(pointer, ref);
+            } else {
+                // known data block => share wl
+                JSSharedArrayBuffer.setWaiterList(sharedArrayBuffer, wl);
+            }
+        }
+    }
+
+    public Object sharedArrayBufferNew(Object context, Object buffer, long pointer, boolean externalized) {
         ByteBuffer byteBuffer = (ByteBuffer) buffer;
-        if (pointer != 0) {
+        DynamicObject sharedArrayBuffer = JSSharedArrayBuffer.createSharedArrayBuffer(((JSRealm) context).getContext(), byteBuffer);
+        sharedArrayBuffer.define(EXTERNALIZED_KEY, externalized);
+        if (externalized) {
+            updateWaiterList(sharedArrayBuffer, pointer);
+        } else {
             deallocator.register(byteBuffer, pointer);
         }
-        DynamicObject sharedArrayBuffer = JSSharedArrayBuffer.createSharedArrayBuffer(((JSRealm) context).getContext(), byteBuffer);
-        sharedArrayBuffer.define(EXTERNALIZED_KEY, pointer == 0);
         return sharedArrayBuffer;
     }
 
@@ -1040,10 +1085,10 @@ public final class GraalJSAccess {
         return JSSharedArrayBuffer.getDirectByteBuffer((DynamicObject) sharedArrayBuffer);
     }
 
-    public void sharedArrayBufferExternalize(Object sharedArrayBuffer, Object content) {
+    public void sharedArrayBufferExternalize(Object sharedArrayBuffer, long pointer) {
         DynamicObject dynamicObject = (DynamicObject) sharedArrayBuffer;
-        JSSharedArrayBuffer.setDirectByteBuffer(dynamicObject, (ByteBuffer) content);
         dynamicObject.define(EXTERNALIZED_KEY, true);
+        updateWaiterList(dynamicObject, pointer);
     }
 
     public int typedArrayLength(Object typedArray) {
@@ -2131,6 +2176,7 @@ public final class GraalJSAccess {
         if (createChildContext) {
             realm = mainJSContext.getRealm().createChildRealm();
             context = realm.getContext();
+            context.setJSAgent(agent);
         } else {
             realm = mainJSContext.getRealm();
             context = mainJSContext;
@@ -2440,6 +2486,9 @@ public final class GraalJSAccess {
             isolateStack.set(list);
         }
         Object previous = mainJSContext.getRealm().getTruffleContext().enter();
+        if (list.isEmpty()) {
+            agent.setThread(Thread.currentThread());
+        }
         list.push(new Pair<>(isolate, previous));
     }
 
@@ -2448,7 +2497,12 @@ public final class GraalJSAccess {
         Pair<Long, Object> pair = list.pop();
         assert pair.getFirst() == isolate;
         mainJSContext.getRealm().getTruffleContext().leave(pair.getSecond());
-        return list.isEmpty() ? 0 : list.peekLast().getFirst();
+        if (list.isEmpty()) {
+            agent.setThread(null);
+            return 0;
+        } else {
+            return list.peekLast().getFirst();
+        }
     }
 
     public Object correctReturnValue(Object value) {

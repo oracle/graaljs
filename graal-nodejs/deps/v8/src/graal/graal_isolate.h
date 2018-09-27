@@ -529,6 +529,7 @@ public:
     }
 
     jobject CorrectReturnValue(GraalValue* value, jobject null_replacement);
+    void Externalize(jobject java_buffer);
 
     static void SetFlags(int argc, char** argv) {
         GraalIsolate::argc = argc;
@@ -570,6 +571,9 @@ private:
     v8::Value* internal_field_count_key_;
     jmethodID jni_methods_[GraalAccessMethod::count];
     jfieldID jni_fields_[static_cast<int>(GraalAccessField::count)];
+    jfieldID cleanerField_;
+    jfieldID thunkField_;
+    jfieldID addressField_;
     GraalPrimitive* undefined_instance_;
     GraalPrimitive* null_instance_;
     GraalBoolean* true_instance_;
