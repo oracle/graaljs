@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleAssertNodeGen;
+import com.oracle.truffle.js.builtins.GlobalBuiltins.JSGlobalPrintNode;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalPrintNodeGen;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -61,8 +63,10 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
     public enum ConsolePrototype implements BuiltinEnum<ConsolePrototype> {
         log(1),
         info(1),
+        debug(1),
         error(1),
-        warn(1);
+        warn(1),
+        assert_(2);
 
         private final int length;
 
@@ -81,11 +85,13 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         switch (builtinEnum) {
             case log:
             case info:
+            case debug:
                 return JSGlobalPrintNodeGen.create(context, builtin, false, args().varArgs().createArgumentNodes(context));
             case error:
             case warn:
                 return JSGlobalPrintNodeGen.create(context, builtin, true, args().varArgs().createArgumentNodes(context));
-
+            case assert_:
+                return JSConsoleAssertNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
         }
         return null;
     }
@@ -97,16 +103,28 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
     }
 
-    public abstract static class JSConsoleLogNode extends JSConsoleOperation {
+    public abstract static class JSConsoleAssertNode extends JSConsoleOperation {
 
-        public JSConsoleLogNode(JSContext context, JSBuiltin builtin) {
+        @Child private JSGlobalPrintNode printNode;
+        @Child private JSToBooleanNode toBooleanNode;
+
+        public JSConsoleAssertNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            printNode = JSGlobalPrintNodeGen.create(context, null, false, null);
+            toBooleanNode = JSToBooleanNode.create();
         }
 
         @Specialization
-        @TruffleBoundary
-        protected DynamicObject log(Object o) {
-            System.out.println("new: " + o.toString());
+        protected DynamicObject _assert(Object... data) {
+            boolean result = data.length > 0 ? toBooleanNode.executeBoolean(data[0]) : false;
+            if (!result) {
+                Object arr[] = new Object[data.length > 0 ? data.length : 1];
+                if (data.length > 1) {
+                    System.arraycopy(data, 1, arr, 1, data.length - 1);
+                }
+                arr[0] = "Assertion failed:";
+                printNode.executeObjectArray(arr);
+            }
             return Undefined.instance;
         }
     }

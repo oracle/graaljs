@@ -984,6 +984,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             this.useErr = useErr;
         }
 
+        public abstract Object executeObjectArray(Object[] args);
+
         @Specialization
         protected Object print(Object[] arguments) {
             // without a StringBuilder, synchronization fails testnashorn JDK-8041998.js
