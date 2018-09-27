@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -66,6 +67,8 @@ public abstract class SetViewValueNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode isLittleEndianNode;
     @Child @Executed protected JavaScriptNode valueNode;
     @Child private JSToBooleanNode toBooleanNode;
+    @Child private JSToNumberNode toNumberNode;
+    @Child private JSToBigIntNode toBigIntNode;
 
     protected SetViewValueNode(JSContext context, String type, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian, JavaScriptNode value) {
         this(context, GetViewValueNode.typedArrayFactoryFromType(type), view, requestIndex, isLittleEndian, value);
@@ -79,6 +82,11 @@ public abstract class SetViewValueNode extends JavaScriptNode {
         this.isLittleEndianNode = isLittleEndian;
         this.valueNode = value;
         this.toBooleanNode = factory.bytesPerElement() == 1 ? null : JSToBooleanNode.create();
+        if (isBigIntView()) {
+            this.toBigIntNode = JSToBigIntNode.create();
+        } else {
+            this.toNumberNode = JSToNumberNode.create();
+        }
     }
 
     public abstract Object execute(DynamicObject dataView, Object byteOffset, Object littleEndian, Object value);
@@ -86,7 +94,6 @@ public abstract class SetViewValueNode extends JavaScriptNode {
     @Specialization
     protected final Object doSet(Object view, Object requestIndex, Object littleEndian, Object value,
                     @Cached("create()") JSToIndexNode toIndexNode,
-                    @Cached("create()") JSToNumberNode valueToNumberNode,
                     @Cached("create()") BranchProfile errorBranch,
                     @Cached("createClassProfile()") ValueProfile typeProfile) {
         if (!JSDataView.isJSDataView(view)) {
@@ -97,7 +104,7 @@ public abstract class SetViewValueNode extends JavaScriptNode {
         DynamicObject buffer = JSDataView.getArrayBuffer(dataView);
 
         long getIndex = toIndexNode.executeLong(requestIndex);
-        Number numberValue = valueToNumberNode.executeNumber(value);
+        Object numberValue = isBigIntView() ? toBigIntNode.executeBigInteger(value) : toNumberNode.executeNumber(value);
         boolean isLittleEndian = factory.bytesPerElement() == 1 ? true : toBooleanNode.executeBoolean(littleEndian);
 
         if (!context.getTypedArrayNotDetachedAssumption().isValid()) {
@@ -119,6 +126,10 @@ public abstract class SetViewValueNode extends JavaScriptNode {
         TypedArray strategy = typeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true));
         strategy.setBufferElement(buffer, bufferIndex, isLittleEndian, JSDataView.isJSDataView(view), numberValue);
         return Undefined.instance;
+    }
+
+    private boolean isBigIntView() {
+        return factory == TypedArrayFactory.BigInt64Array || factory == TypedArrayFactory.BigUint64Array;
     }
 
     public static SetViewValueNode create(JSContext context, String type, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian, JavaScriptNode value) {

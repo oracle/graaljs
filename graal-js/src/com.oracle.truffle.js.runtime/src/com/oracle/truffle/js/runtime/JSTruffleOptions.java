@@ -99,6 +99,7 @@ public class JSTruffleOptions {
     public static final boolean SkipPrototypeShapeCheck = booleanOption("SkipPrototypeShapeCheck", true, 0);
     public static final boolean SkipGlobalShapeCheck = booleanOption("SkipGlobalShapeCheck", true, 0);
     public static final boolean SkipFinalShapeCheck = booleanOption("SkipFinalShapeCheck", true, 0);
+    public static final boolean LeafShapeAssumption = booleanOption("LeafShapeAssumption", true, 0);
 
     // Runtime options
     public static final boolean LazyStrings = booleanOption("LazyStrings", true, OPTION_PERFORMANCE);
@@ -142,17 +143,6 @@ public class JSTruffleOptions {
     public static final int MaxECMAScriptVersion = integerOption("ECMAScriptVersion", LatestECMAScriptVersion, OPTION_LANGUAGE_FEATURE);
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = booleanOption("AnnexB", true, OPTION_LANGUAGE_FEATURE);
-
-    /**
-     * Enable ES.next features according to the
-     * <a href="https://tc39.github.io/process-document">TC39 process</a> maturity stages. Stage 4
-     * features are going to be included in the next ECMAScript standard.
-     */
-    public static final boolean Stage4 = booleanOption("Stage4", MaxECMAScriptVersion >= LatestECMAScriptVersion, OPTION_LANGUAGE_FEATURE); // Finished
-    public static final boolean Stage3 = booleanOption("Stage3", Stage4, OPTION_LANGUAGE_FEATURE); // Candidate
-    public static final boolean Stage2 = booleanOption("Stage2", Stage3, OPTION_LANGUAGE_FEATURE); // Draft
-    public static final boolean Stage1 = booleanOption("Stage1", Stage2, OPTION_LANGUAGE_FEATURE); // Proposal
-    public static final boolean Stage0 = booleanOption("Stage0", Stage1, OPTION_LANGUAGE_FEATURE); // Strawman
 
     /** Enable non-standard extensions. */
     public static final boolean Extensions = booleanOption("Extensions", true, OPTION_LANGUAGE_FEATURE);

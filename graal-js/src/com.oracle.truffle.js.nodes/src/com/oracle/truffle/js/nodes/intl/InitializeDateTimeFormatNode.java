@@ -160,7 +160,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         @SuppressWarnings("unused")
         @Specialization(guards = "isUndefined(opts)")
         public DynamicObject fromUndefined(Object opts, String required, String defaults) {
-            return setDefaultsIfNeeded(JSUserObject.createWithPrototype(null, getContext()), required, defaults);
+            return setDefaultsIfNeeded(JSUserObject.createWithNullPrototype(getContext()), required, defaults);
         }
 
         @Specialization(guards = "!isUndefined(opts)")

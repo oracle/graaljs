@@ -85,6 +85,7 @@ Code referencing `ScriptObjectMirror` instances can be rewritten by changing the
 
 ### Multithreading
 Graal JavaScript supports multithreading by creating several `Context` objects from Java code.
+Contexts can be shared between threads, but each context must be accessed by a single thread at a time.
 Multiple JavaScript engines can be created from a Java application, and can be safely executed in parallel on multiple threads.
 
 ```js
@@ -94,6 +95,7 @@ Value array = polyglot.eval("js", "[1,2,42,4]");
 ```
 
 Graal JavaScript does not allow the creation of threads from JavaScript applications with access to the current `Context`.
+Moreover, Graal JavaScript does not allow concurrent threads to access the same `Context` at the same time.
 This could lead to unmanagable synchronization problems like data races in a language that is not prepared for multithreading.
 
 ```js
@@ -110,6 +112,8 @@ A child thread may create a new `Context` instance, though.
 ```js
 new Thread(aJavaRunnable).start(); // allowed on Graal JavaScript
 ```
+
+With proper synchronization in place, multiple contexts can be shared between different threads. Example Java applications using Graal JavaScript `Context`s from multiple threads can be found [here](https://github.com/graalvm/graaljs/tree/master/graal-js/src/com.oracle.truffle.js.test.threading/src/com/oracle/truffle/js/test/threading).
 
 ## Extensions only available in Nashorn compatibility mode
 The following extensions to JavaScript available in Nashorn are deactivated in Graal JavaScript by default.

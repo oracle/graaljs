@@ -38,31 +38,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import java.util.Arrays;
 
-public final class JSJava {
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
 
-    public static final String CLASS_NAME = "Java";
+/**
+ * Extra data associated with prototype objects.
+ */
+public final class JSPrototypeData {
+    private static final Shape[] EMPTY_SHAPE_ARRAY = new Shape[0];
+    private volatile Shape[] protoChildTrees;
 
-    private static final String JAVA_WORKER_PROPERTY_NAME = "Worker";
-
-    public static final String CLASS_NAME_NASHORN_COMPAT = "JavaNashornCompat";
-
-    private JSJava() {
+    public JSPrototypeData() {
+        this.protoChildTrees = EMPTY_SHAPE_ARRAY;
     }
 
-    public static DynamicObject create(JSRealm realm) {
-        DynamicObject obj = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
-        JSObjectUtil.putDataProperty(realm.getContext(), obj, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        JSObjectUtil.putDataProperty(realm.getContext(), obj, JAVA_WORKER_PROPERTY_NAME, realm.getJavaInteropWorkerConstructor().getFunctionObject(),
-                        JSAttributes.configurableNotEnumerableNotWritable());
-        return obj;
+    public Shape getProtoChildTree(JSClass jsclass) {
+        for (Shape childTree : protoChildTrees) {
+            if (JSShape.getJSClassNoCast(childTree) == jsclass) {
+                return childTree;
+            }
+        }
+        return null;
+    }
+
+    public synchronized Shape getOrAddProtoChildTree(JSClass jsclass, Shape newRootShape) {
+        CompilerAsserts.neverPartOfCompilation();
+        Shape existingRootShape = getProtoChildTree(jsclass);
+        if (existingRootShape == null) {
+            Shape[] oldArray = protoChildTrees;
+            Shape[] newArray = Arrays.copyOf(oldArray, oldArray.length + 1);
+            newArray[oldArray.length] = newRootShape;
+            protoChildTrees = newArray;
+            return newRootShape;
+        }
+        return existingRootShape;
     }
 }

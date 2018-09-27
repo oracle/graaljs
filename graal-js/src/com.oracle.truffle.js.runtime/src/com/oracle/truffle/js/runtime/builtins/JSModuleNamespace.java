@@ -119,7 +119,7 @@ public final class JSModuleNamespace extends JSBuiltinObject {
     }
 
     public static DynamicObject create(JSContext context, Object module, Map<String, ExportResolution> exports) {
-        DynamicObject obj = JSObject.create(context, context.getModuleNamespaceFactory(), module, exports);
+        DynamicObject obj = JSObject.createWithBoundPrototype(context, context.getModuleNamespaceFactory(), module, exports);
         assert isJSModuleNamespace(obj);
         return obj;
     }

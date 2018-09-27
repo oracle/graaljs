@@ -164,6 +164,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private static final int MAX_TOSTRING_DEPTH = 10;
 
     private volatile JSContext languageContext;
+    private volatile boolean multiContext;
 
     public static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
@@ -489,6 +490,16 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected void disposeContext(JSRealm realm) {
+    }
+
+    @Override
+    protected void initializeMultipleContexts() {
+        multiContext = true;
+    }
+
+    @Override
+    public boolean isMultiContext() {
+        return multiContext;
     }
 
     @Override

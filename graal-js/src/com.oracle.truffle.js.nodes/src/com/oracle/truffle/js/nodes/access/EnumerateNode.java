@@ -126,7 +126,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
             // null or undefined
             iterator = Collections.emptyIterator();
         }
-        return JSObject.create(context, context.getEnumerateIteratorFactory(), iterator);
+        return newEnumerateIterator(context, iterator);
     }
 
     @TruffleBoundary
@@ -154,7 +154,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
                 return enumerateCallbackResultNode.execute(returnValue);
             }
         }
-        return JSObject.create(context, context.getEnumerateIteratorFactory(), Collections.emptyIterator());
+        return newEnumerateIterator(context, Collections.emptyIterator());
     }
 
     EnumerateNode createValues() {
@@ -164,7 +164,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
     @Specialization(guards = "isJSJavaWrapper(iteratedObject)")
     protected DynamicObject doEnumerateJava(DynamicObject iteratedObject) {
         Iterator<?> iterator = (values ? JSJavaWrapper.getValues(iteratedObject) : JSObject.ownPropertyKeys(iteratedObject)).iterator();
-        return JSObject.create(context, context.getEnumerateIteratorFactory(), iterator);
+        return newEnumerateIterator(context, iterator);
     }
 
     @Specialization(guards = {"isForeignObject(iteratedObject)"})
@@ -181,7 +181,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
             Object hostObject = env.asHostObject(iteratedObject);
             Iterator<?> iterator = getHostObjectIterator(hostObject, values, env);
             if (iterator != null) {
-                return JSObject.create(context, context.getEnumerateIteratorFactory(), iterator);
+                return newEnumerateIterator(context, iterator);
             }
         }
 
@@ -226,7 +226,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
             // swallow and default
         }
         // in case of any errors, return an empty iterator
-        return JSObject.create(context, context.getEnumerateIteratorFactory(), Collections.emptyIterator());
+        return newEnumerateIterator(context, Collections.emptyIterator());
     }
 
     private static DynamicObject enumerateForeignArrayLike(JSContext context, TruffleObject iteratedObject, Node getSizeNode, Node readNode, JSToLengthNode toLengthNode,
@@ -258,7 +258,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
                 throw new NoSuchElementException();
             }
         };
-        return JSObject.create(context, context.getEnumerateIteratorFactory(), iterator);
+        return newEnumerateIterator(context, iterator);
     }
 
     private static DynamicObject enumerateForeignNonArray(JSContext context, TruffleObject iteratedObject, TruffleObject keysObject, Node getSizeNode, Node readNode, JSToLengthNode toLengthNode,
@@ -297,6 +297,10 @@ public abstract class EnumerateNode extends JavaScriptNode {
                 throw new NoSuchElementException();
             }
         };
+        return newEnumerateIterator(context, iterator);
+    }
+
+    private static DynamicObject newEnumerateIterator(JSContext context, Iterator<?> iterator) {
         return JSObject.create(context, context.getEnumerateIteratorFactory(), iterator);
     }
 

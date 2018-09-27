@@ -44,6 +44,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
 public abstract class SIMDType {
@@ -583,7 +585,7 @@ public abstract class SIMDType {
         }
     }
 
-    public static final class SIMDTypeFactory<T extends SIMDType> {
+    public static final class SIMDTypeFactory<T extends SIMDType> implements PrototypeSupplier {
         private final int bytesPerElement;
         private final int numberOfElements;
         @CompilationFinal private int factoryIndex;
@@ -615,6 +617,11 @@ public abstract class SIMDType {
 
         public String getName() {
             return name;
+        }
+
+        @Override
+        public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getSIMDTypeConstructor(this).getPrototype();
         }
     }
 

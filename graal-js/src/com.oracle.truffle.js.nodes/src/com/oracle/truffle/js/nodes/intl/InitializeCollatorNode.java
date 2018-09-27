@@ -120,7 +120,7 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
         @SuppressWarnings("unused")
         @Specialization(guards = "isUndefined(opts)")
         public DynamicObject fromUndefined(Object opts) {
-            return JSUserObject.createWithPrototype(null, getContext());
+            return JSUserObject.createWithNullPrototype(getContext());
         }
 
         @Specialization(guards = "!isUndefined(opts)")

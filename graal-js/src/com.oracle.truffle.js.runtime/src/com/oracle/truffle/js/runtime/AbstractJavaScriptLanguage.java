@@ -64,4 +64,6 @@ public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm
     public static TruffleLanguage.Env getCurrentEnv() {
         return getCurrentContext(AbstractJavaScriptLanguage.class).getEnv();
     }
+
+    public abstract boolean isMultiContext();
 }

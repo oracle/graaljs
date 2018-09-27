@@ -87,10 +87,12 @@ import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResultNode;
 import com.oracle.truffle.js.nodes.access.JSGetLengthNode;
+import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -318,6 +320,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         private final ConditionProfile isDirectProf = ConditionProfile.createBinaryProfile();
         private final BranchProfile intToIntBranch = BranchProfile.create();
         private final BranchProfile floatToFloatBranch = BranchProfile.create();
+        private final BranchProfile bigIntToBigIntBranch = BranchProfile.create();
         private final BranchProfile objectToObjectBranch = BranchProfile.create();
 
         @Child private JSGetLengthNode getLengthNode;
@@ -463,11 +466,17 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                     double value = ((TypedArray.TypedFloatArray<Object>) sourceType).getDoubleImpl(sourceBackingBuffer, sourceByteIndex, i);
                     ((TypedArray.TypedFloatArray<Object>) targetType).setDoubleImpl(targetBackingBuffer, targetByteOffset, i + targetOffset, value);
                 }
+            } else if (sourceType instanceof TypedArray.TypedBigIntArray && targetType instanceof TypedArray.TypedBigIntArray) {
+                bigIntToBigIntBranch.enter();
+                for (int i = 0; i < sourceLength; i++) {
+                    BigInt value = ((TypedArray.TypedBigIntArray<Object>) sourceType).getBigIntImpl(sourceBackingBuffer, sourceByteIndex, i);
+                    ((TypedArray.TypedBigIntArray<Object>) targetType).setBigIntImpl(targetBackingBuffer, targetByteOffset, i + targetOffset, value);
+                }
             } else {
                 objectToObjectBranch.enter();
                 boolean littleEndian = ByteOrder.LITTLE_ENDIAN == ByteOrder.nativeOrder();
                 for (int i = 0; i < sourceLength; i++) {
-                    Number value = sourceType.getBufferElement(sourceBuffer, sourceByteIndex + i * sourceElementSize, littleEndian, false);
+                    Object value = sourceType.getBufferElement(sourceBuffer, sourceByteIndex + i * sourceElementSize, littleEndian, false);
                     targetType.setBufferElement(targetBuffer, targetByteIndex + i * targetElementSize, littleEndian, false, value);
                 }
             }
@@ -602,6 +611,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         private final ConditionProfile offsetProfile1 = ConditionProfile.createBinaryProfile();
         private final ConditionProfile offsetProfile2 = ConditionProfile.createBinaryProfile();
         @Child private JSToNumberNode toNumberNode;
+        @Child private JSToBigIntNode toBigIntNode;
 
         public JSArrayBufferViewFillNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, true);
@@ -612,7 +622,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             validateTypedArray(thisObj);
             DynamicObject thisJSObj = (DynamicObject) thisObj;
             long len = getLength(thisJSObj);
-            Object convValue = toNumber(value);
+            Object convValue = JSArrayBufferView.isBigIntArrayBufferView(thisJSObj) ? toBigInt(value) : toNumber(value);
             long lStart = JSRuntime.getOffset(toIntegerSpecial(start), len, offsetProfile1);
             long lEnd = end == Undefined.instance ? len : JSRuntime.getOffset(toIntegerSpecial(end), len, offsetProfile2);
             checkHasDetachedBuffer(thisJSObj);
@@ -628,6 +638,14 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 toNumberNode = insert(JSToNumberNode.create());
             }
             return toNumberNode.execute(value);
+        }
+
+        protected Object toBigInt(Object value) {
+            if (toBigIntNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toBigIntNode = insert(JSToBigIntNode.create());
+            }
+            return toBigIntNode.execute(value);
         }
     }
 

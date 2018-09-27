@@ -40,7 +40,10 @@
  */
 package com.oracle.truffle.js.runtime;
 
-public enum JSErrorType {
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+
+public enum JSErrorType implements PrototypeSupplier {
     Error,
 
     /**
@@ -74,5 +77,10 @@ public enum JSErrorType {
      * Indicates that one of the global URI handling functions was used in a way that is
      * incompatible with its definition ECMA262[15.11.6.6].
      */
-    URIError
+    URIError;
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getErrorConstructor(this).getPrototype();
+    }
 }

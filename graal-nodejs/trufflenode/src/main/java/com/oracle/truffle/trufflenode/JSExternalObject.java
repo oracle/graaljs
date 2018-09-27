@@ -74,7 +74,7 @@ public final class JSExternalObject extends JSBuiltinObject {
     }
 
     public static Shape makeInitialShape(JSContext ctx) {
-        Shape initialShape = ctx.getEmptyShape().changeType(INSTANCE);
+        Shape initialShape = ctx.getEmptyShapeNullPrototype().changeType(INSTANCE);
         initialShape = initialShape.addProperty(POINTER_PROPERTY);
         return initialShape;
     }

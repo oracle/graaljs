@@ -96,15 +96,15 @@ public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFa
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext context = realm.getContext();
-        DynamicObject bigIntPrototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject bigIntPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(context, bigIntPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, bigIntPrototype, PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, bigIntPrototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return bigIntPrototype;
     }
 
-    public static Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        assert JSShape.getProtoChildTree(prototype.getShape(), INSTANCE) == null;
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         initialShape = initialShape.addProperty(VALUE_PROPERTY);
         return initialShape;
@@ -142,5 +142,10 @@ public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFa
             return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj),
                             new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
         }
+    }
+
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getBigIntConstructor().getPrototype();
     }
 }

@@ -58,7 +58,6 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LocationModifier;
@@ -190,6 +189,8 @@ public final class JSFunction extends JSBuiltinObject {
     /** Marker property to ensure generator function shapes are distinct from normal functions. */
     private static final Property GENERATOR_FUNCTION_MARKER_PROPERTY;
     private static final HiddenKey GENERATOR_FUNCTION_MARKER_ID = new HiddenKey("generator function");
+    private static final Property ASYNC_GENERATOR_FUNCTION_MARKER_PROPERTY;
+    private static final HiddenKey ASYNC_GENERATOR_FUNCTION_MARKER_ID = new HiddenKey("async generator function");
 
     /** Internal Slots of Exotic Bound Function Objects. **/
     private static final HiddenKey BOUND_ARGUMENTS = new HiddenKey("BoundArguments");
@@ -232,6 +233,7 @@ public final class JSFunction extends JSBuiltinObject {
         NAME_PROPERTY = JSObjectUtil.makeProxyProperty(NAME, NAME_PROXY, JSAttributes.configurableNotEnumerableNotWritable());
 
         GENERATOR_FUNCTION_MARKER_PROPERTY = JSObjectUtil.makeHiddenProperty(GENERATOR_FUNCTION_MARKER_ID, allocator.constantLocation(null));
+        ASYNC_GENERATOR_FUNCTION_MARKER_PROPERTY = JSObjectUtil.makeHiddenProperty(ASYNC_GENERATOR_FUNCTION_MARKER_ID, allocator.constantLocation(null));
     }
 
     private JSFunction() {
@@ -283,34 +285,36 @@ public final class JSFunction extends JSBuiltinObject {
     }
 
     public static DynamicObject create(JSRealm realm, JSFunctionData functionData, MaterializedFrame enclosingFrame) {
-        return create(initialFactory(realm, functionData), realm, functionData, enclosingFrame);
+        return createDefault(functionData, enclosingFrame, CLASS_PROTOTYPE_PLACEHOLDER, realm);
     }
 
-    public static DynamicObject create(DynamicObjectFactory factory, JSRealm realm, JSFunctionData functionData, MaterializedFrame enclosingFrame) {
-        return createImpl(factory, functionData, enclosingFrame, CLASS_PROTOTYPE_PLACEHOLDER, realm);
+    public static DynamicObject createWithPrototype(JSFunctionFactory factory, JSRealm realm, JSFunctionData functionData, MaterializedFrame enclosingFrame, DynamicObject prototype) {
+        return createWithPrototype(factory, functionData, enclosingFrame, CLASS_PROTOTYPE_PLACEHOLDER, realm, prototype);
     }
 
     public static DynamicObject createLexicalThis(JSRealm realm, JSFunctionData functionData, MaterializedFrame enclosingFrame, Object lexicalThis) {
-        return createImpl(initialFactory(realm, functionData), functionData, enclosingFrame, lexicalThis, realm);
+        return createDefault(functionData, enclosingFrame, lexicalThis, realm);
     }
 
-    private static DynamicObject createImpl(DynamicObjectFactory factory, JSFunctionData functionData, MaterializedFrame enclosingFrame, Object classPrototype, JSRealm realm) {
-        assert factory.getShape().getObjectType() == JSFunction.INSTANCE;
-        assert functionData != null;
-        assert enclosingFrame != null; // use JSFrameUtil.NULL_MATERIALIZED_FRAME instead
-        return JSObject.create(functionData.getContext(), factory, functionData, enclosingFrame, classPrototype, realm);
+    private static DynamicObject createDefault(JSFunctionData functionData, MaterializedFrame enclosingFrame, Object classPrototype, JSRealm realm) {
+        JSFunctionFactory factory = initialFactory(functionData);
+        return factory.create(functionData, enclosingFrame, classPrototype, realm);
+    }
+
+    private static DynamicObject createWithPrototype(JSFunctionFactory factory, JSFunctionData functionData, MaterializedFrame enclosingFrame, Object classPrototype, JSRealm realm,
+                    DynamicObject prototype) {
+        return factory.createWithPrototype(functionData, enclosingFrame, classPrototype, realm, prototype);
     }
 
     public static DynamicObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments,
                     boolean isAnonymous) {
         assert functionData != null;
-        DynamicObjectFactory factory = isAnonymous ? context.getRealm().getInitialAnonymousBoundFunctionFactory() : context.getRealm().getInitialBoundFunctionFactory();
-        return JSObject.create(context, factory, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, CLASS_PROTOTYPE_PLACEHOLDER, realm,
-                        boundTargetFunction, boundThis, boundArguments);
+        JSFunctionFactory factory = context.getBoundFunctionFactory(functionData, isAnonymous);
+        return factory.createBound(functionData, CLASS_PROTOTYPE_PLACEHOLDER, realm, boundTargetFunction, boundThis, boundArguments);
     }
 
-    private static DynamicObjectFactory initialFactory(JSRealm realm, JSFunctionData functionData) {
-        return realm.getFunctionFactory(functionData);
+    private static JSFunctionFactory initialFactory(JSFunctionData functionData) {
+        return functionData.getContext().getFunctionFactory(functionData);
     }
 
     public static String getName(DynamicObject obj) {
@@ -353,7 +357,7 @@ public final class JSFunction extends JSBuiltinObject {
         assert JSFunction.isJSFunction(thisFnObj);
         JSContext context = realm.getContext();
         DynamicObject proto = JSObject.getPrototype(thisFnObj);
-        DynamicObject boundFunction = boundFunctionCreate(context, realm, thisFnObj, thisArg, boundArguments, proto, false);
+        DynamicObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto, false);
 
         int length = 0;
         boolean targetHasLength = JSObject.hasOwnProperty(thisFnObj, JSFunction.LENGTH);
@@ -379,8 +383,7 @@ public final class JSFunction extends JSBuiltinObject {
         return boundFunction;
     }
 
-    public static DynamicObject boundFunctionCreate(JSContext context, JSRealm realm, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments, DynamicObject proto,
-                    boolean isAnonymous) {
+    public static DynamicObject boundFunctionCreate(JSContext context, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments, DynamicObject proto, boolean isAnonymous) {
         assert JSFunction.isJSFunction(boundTargetFunction);
         CompilerAsserts.partialEvaluationConstant(context);
 
@@ -391,8 +394,16 @@ public final class JSFunction extends JSBuiltinObject {
             int length = Math.max(0, JSFunction.getLength(boundTargetFunction) - boundArguments.length);
             functionData = makeBoundFunctionData(context, length, constructor, isAsync);
         }
+        JSRealm realm;
+        if (context.isSingleRealm()) {
+            realm = context.getRealm();
+            assert realm == JSFunction.getRealm(boundTargetFunction);
+            CompilerAsserts.partialEvaluationConstant(realm);
+        } else {
+            realm = JSFunction.getRealm(boundTargetFunction);
+        }
         DynamicObject boundFunction = JSFunction.createBound(context, realm, functionData, boundTargetFunction, boundThis, boundArguments, isAnonymous);
-        if (proto != context.getRealm().getFunctionPrototype()) {
+        if (proto != realm.getFunctionPrototype()) {
             JSObject.setPrototype(boundFunction, proto);
         }
         assert JSObject.getPrototype(boundFunction) == proto;
@@ -505,11 +516,11 @@ public final class JSFunction extends JSBuiltinObject {
         JSRealm realm = getRealm(constructor);
         JSContext context = functionData.getContext();
         if (!functionData.isGenerator()) {
-            DynamicObject prototype = JSUserObject.create(realm);
+            DynamicObject prototype = JSUserObject.create(context, realm);
             JSObjectUtil.putConstructorProperty(context, prototype, constructor);
             return prototype;
         } else {
-            return JSObject.create(context, functionData.isAsync() ? realm.getInitialAsyncGeneratorObjectShape() : realm.getInitialGeneratorObjectShape());
+            return JSObject.createWithRealm(context, functionData.isAsync() ? context.getAsyncGeneratorObjectFactory() : context.getGeneratorObjectFactory(), realm);
         }
     }
 
@@ -628,8 +639,9 @@ public final class JSFunction extends JSBuiltinObject {
     }
 
     public static DynamicObject createFunctionPrototype(JSRealm realm, DynamicObject objectPrototype) {
-        DynamicObject obj = JSObject.create(realm, objectPrototype, INSTANCE);
-        JSObjectUtil.putHiddenProperty(obj, FUNCTION_DATA_PROPERTY, createEmptyFunctionData(realm.getContext()));
+        JSContext context = realm.getContext();
+        DynamicObject obj = JSObject.createInit(realm, objectPrototype, INSTANCE);
+        JSObjectUtil.putHiddenProperty(obj, FUNCTION_DATA_PROPERTY, createEmptyFunctionData(context));
         JSObjectUtil.putHiddenProperty(obj, ENCLOSING_FRAME_PROPERTY, JSFrameUtil.NULL_MATERIALIZED_FRAME);
         JSObjectUtil.putHiddenProperty(obj, CLASS_PROTOTYPE_PROPERTY, CLASS_PROTOTYPE_PLACEHOLDER);
         JSObjectUtil.putHiddenProperty(obj, REALM_PROPERTY, realm);
@@ -663,8 +675,7 @@ public final class JSFunction extends JSBuiltinObject {
         }
     }
 
-    private static Shape makeBaseFunctionShape(JSRealm realm, DynamicObject prototype, boolean isStrict) {
-        JSContext context = realm.getContext();
+    private static Shape makeBaseFunctionShape(JSContext context, DynamicObject prototype, boolean isStrict) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         initialShape = initialShape.reservePrimitiveExtensionArray();
         initialShape = initialShape.addProperty(FUNCTION_DATA_PROPERTY);
@@ -678,7 +689,7 @@ public final class JSFunction extends JSBuiltinObject {
             }
         } else {
             if (isStrict) {
-                initialShape = makeStrictFunctionShape(realm, initialShape);
+                initialShape = makeStrictFunctionShape(context, initialShape);
             }
         }
 
@@ -690,9 +701,9 @@ public final class JSFunction extends JSBuiltinObject {
         return isAnonymous && !context.isOptionV8CompatibilityMode() ? shape : shape.addProperty(NAME_PROPERTY);
     }
 
-    public static Shape makeInitialFunctionShape(JSRealm realm, DynamicObject prototype, boolean isStrict, boolean isAnonymous) {
-        Shape initialShape = makeBaseFunctionShape(realm, prototype, isStrict);
-        initialShape = addLengthAndNameProxyProperties(initialShape, realm.getContext(), isAnonymous);
+    public static Shape makeInitialFunctionShape(JSContext context, DynamicObject prototype, boolean isStrict, boolean isAnonymous) {
+        Shape initialShape = makeBaseFunctionShape(context, prototype, isStrict);
+        initialShape = addLengthAndNameProxyProperties(initialShape, context, isAnonymous);
         return initialShape;
     }
 
@@ -737,12 +748,13 @@ public final class JSFunction extends JSBuiltinObject {
     /**
      * Set arguments and caller properties of strict function objects. ES5 Legacy.
      */
-    private static Shape makeStrictFunctionShape(JSRealm realm, Shape nonStrictShape) {
-        assert JSFunction.isJSFunction(realm.getThrowerFunction());
-        Location throwerAccessor = JSObjectUtil.createConstantLocation(new Accessor(realm.getThrowerFunction(), realm.getThrowerFunction()));
+    private static Shape makeStrictFunctionShape(JSContext context, Shape nonStrictShape) {
+        assert context.getEcmaScriptVersion() < 6;
         Shape strictShape = nonStrictShape;
-        strictShape = strictShape.addProperty(JSObjectUtil.makeAccessorProperty(ARGUMENTS, throwerAccessor, JSAttributes.notConfigurableNotEnumerable()));
-        strictShape = strictShape.addProperty(JSObjectUtil.makeAccessorProperty(CALLER, throwerAccessor, JSAttributes.notConfigurableNotEnumerable()));
+        strictShape = strictShape.addProperty(JSObjectUtil.makeAccessorProperty(ARGUMENTS,
+                        nonStrictShape.allocator().locationForType(Accessor.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.notConfigurableNotEnumerable()));
+        strictShape = strictShape.addProperty(JSObjectUtil.makeAccessorProperty(CALLER,
+                        nonStrictShape.allocator().locationForType(Accessor.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.notConfigurableNotEnumerable()));
         return strictShape;
     }
 
@@ -822,7 +834,7 @@ public final class JSFunction extends JSBuiltinObject {
     public static DynamicObject createGeneratorFunctionPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
         // intrinsic object %Generator%
-        DynamicObject prototype = JSObject.create(realm, realm.getFunctionPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.createInit(realm, realm.getFunctionPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.PROTOTYPE, createGeneratorPrototype(realm, prototype), JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, GENERATOR_FUNCTION_NAME, JSAttributes.configurableNotEnumerableNotWritable());
@@ -832,7 +844,7 @@ public final class JSFunction extends JSBuiltinObject {
     private static DynamicObject createGeneratorPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
         // intrinsic object %GeneratorPrototype%
-        DynamicObject generatorPrototype = JSObject.create(realm, realm.getIteratorPrototype(), JSUserObject.INSTANCE);
+        DynamicObject generatorPrototype = JSObject.createInit(realm, realm.getIteratorPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(realm, generatorPrototype, JSFunction.GENERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(ctx, generatorPrototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, generatorPrototype, Symbol.SYMBOL_TO_STRING_TAG, GENERATOR_NAME, JSAttributes.configurableNotEnumerableNotWritable());
@@ -849,22 +861,12 @@ public final class JSFunction extends JSBuiltinObject {
         return new JSConstructor(constructor, prototype);
     }
 
-    public static Shape makeInitialGeneratorFunctionConstructorShape(JSRealm realm, DynamicObject prototype, boolean isAnonymous) {
-        Shape initialShape = makeBaseFunctionShape(realm, prototype, true);
-        initialShape = initialShape.addProperty(GENERATOR_FUNCTION_MARKER_PROPERTY);
-        initialShape = addLengthAndNameProxyProperties(initialShape, realm.getContext(), isAnonymous);
+    static Shape makeInitialGeneratorFunctionShape(JSContext context, DynamicObject prototype, boolean isAsync, boolean isAnonymous) {
+        Shape initialShape = makeBaseFunctionShape(context, prototype, true);
+        initialShape = initialShape.addProperty(isAsync ? ASYNC_GENERATOR_FUNCTION_MARKER_PROPERTY : GENERATOR_FUNCTION_MARKER_PROPERTY);
+        initialShape = addLengthAndNameProxyProperties(initialShape, context, isAnonymous);
         initialShape = makeConstructorShape(initialShape);
         return initialShape;
-    }
-
-    public static Shape makeInitialGeneratorObjectShape(JSRealm realm) {
-        DynamicObject generatorObjectPrototype = (DynamicObject) realm.getGeneratorFunctionConstructor().getPrototype().get(JSObject.PROTOTYPE, null);
-        return JSObjectUtil.getProtoChildShape(generatorObjectPrototype, JSUserObject.INSTANCE, realm.getContext());
-    }
-
-    public static Shape makeInitialAsyncGeneratorObjectShape(JSRealm realm) {
-        DynamicObject asyncGeneratorObjectPrototype = (DynamicObject) realm.getAsyncGeneratorFunctionConstructor().getPrototype().get(JSObject.PROTOTYPE, null);
-        return JSObjectUtil.getProtoChildShape(asyncGeneratorObjectPrototype, JSUserObject.INSTANCE, realm.getContext());
     }
 
     // ##### Async functions
@@ -872,7 +874,7 @@ public final class JSFunction extends JSBuiltinObject {
     public static DynamicObject createAsyncFunctionPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
         // intrinsic object %AsyncFunctionPrototype%
-        DynamicObject prototype = JSObject.create(realm, realm.getFunctionPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.createInit(realm, realm.getFunctionPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, ASYNC_FUNCTION_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
@@ -888,16 +890,12 @@ public final class JSFunction extends JSBuiltinObject {
         return new JSConstructor(constructor, prototype);
     }
 
-    public static Shape makeInitialAsyncFunctionShape(JSRealm realm, DynamicObject prototype, boolean isAnonymous) {
-        return makeInitialFunctionShape(realm, prototype, true, isAnonymous);
-    }
-
     /**
      * Creates the %AsyncIteratorPrototype% object (ES2018 11.1.2).
      */
     public static DynamicObject createAsyncIteratorPrototype(JSRealm realm) {
-        DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSContext context = realm.getContext();
+        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
@@ -913,7 +911,7 @@ public final class JSFunction extends JSBuiltinObject {
      * Creates the %AsyncFromSyncIteratorPrototype% object (ES2018 11.1.3.2).
      */
     public static DynamicObject createAsyncFromSyncIteratorPrototype(JSRealm realm) {
-        DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, JSFunction.ASYNC_FROM_SYNC_ITERATOR_PROTOTYPE_NAME);
         return prototype;
     }
@@ -921,7 +919,7 @@ public final class JSFunction extends JSBuiltinObject {
     public static DynamicObject createAsyncGeneratorFunctionPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
         // intrinsic object %AsyncGenerator%
-        DynamicObject prototype = JSObject.create(realm, realm.getFunctionPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.createInit(realm, realm.getFunctionPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.PROTOTYPE, createAsyncGeneratorPrototype(realm, prototype), JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, ASYNC_GENERATOR_FUNCTION_NAME, JSAttributes.configurableNotEnumerableNotWritable());
@@ -931,7 +929,7 @@ public final class JSFunction extends JSBuiltinObject {
     private static DynamicObject createAsyncGeneratorPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
         // intrinsic object %AsyncGeneratorPrototype%
-        DynamicObject prototype = JSObject.create(realm, realm.getAsyncIteratorPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.createInit(realm, realm.getAsyncIteratorPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, JSFunction.ASYNC_GENERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(ctx, prototype, JSObject.CONSTRUCTOR, constructor, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, ASYNC_GENERATOR_NAME, JSAttributes.configurableNotEnumerableNotWritable());
@@ -950,22 +948,25 @@ public final class JSFunction extends JSBuiltinObject {
 
     // ##### Bound functions and enumerate iterator
 
-    public static Shape makeInitialEnumerateIteratorShape(JSRealm realm) {
+    public static DynamicObject createEnumerateIteratorPrototype(JSRealm realm) {
         DynamicObject iteratorPrototype = realm.getIteratorPrototype();
-        DynamicObject enumerateIteratorPrototype = JSObject.create(realm, iteratorPrototype, JSUserObject.INSTANCE);
-        JSContext context = realm.getContext();
-        final Property iteratorProperty = JSObjectUtil.makeHiddenProperty(JSRuntime.ENUMERATE_ITERATOR_ID,
-                        realm.getInitialUserObjectShape().allocator().locationForType(Iterator.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+        DynamicObject enumerateIteratorPrototype = JSObject.createInit(realm, iteratorPrototype, JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(realm, enumerateIteratorPrototype, JSFunction.ENUMERATE_ITERATOR_PROTOTYPE_NAME);
+        return enumerateIteratorPrototype;
+    }
+
+    public static Shape makeInitialEnumerateIteratorShape(JSContext context, DynamicObject enumerateIteratorPrototype) {
+        final Property iteratorProperty = JSObjectUtil.makeHiddenProperty(JSRuntime.ENUMERATE_ITERATOR_ID,
+                        JSShape.makeAllocator(JSObject.LAYOUT).locationForType(Iterator.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
         return JSObjectUtil.getProtoChildShape(enumerateIteratorPrototype, JSUserObject.INSTANCE, context).addProperty(iteratorProperty);
     }
 
-    public static Shape makeInitialBoundFunctionShape(JSRealm realm, DynamicObject prototype, boolean isAnonymous) {
-        Shape initialShape = makeBaseFunctionShape(realm, prototype, true);
+    public static Shape makeInitialBoundFunctionShape(JSContext context, DynamicObject prototype, boolean isAnonymous) {
+        Shape initialShape = makeBaseFunctionShape(context, prototype, true);
         initialShape = initialShape.addProperty(BOUND_TARGET_FUNCTION_PROPERTY);
         initialShape = initialShape.addProperty(BOUND_THIS_PROPERTY);
         initialShape = initialShape.addProperty(BOUND_ARGUMENTS_PROPERTY);
-        initialShape = addLengthAndNameProxyProperties(initialShape, realm.getContext(), isAnonymous);
+        initialShape = addLengthAndNameProxyProperties(initialShape, context, isAnonymous);
         return initialShape;
     }
 
@@ -987,6 +988,11 @@ public final class JSFunction extends JSBuiltinObject {
 
     public static boolean isBuiltinSourceSection(SourceSection sourceSection) {
         return sourceSection == BUILTIN_SOURCE_SECTION;
+    }
+
+    public static boolean isBuiltinThatShouldNotAppearInStackTrace(JSRealm realm, DynamicObject function) {
+        return function == realm.getApplyFunctionObject() || function == realm.getCallFunctionObject() || function == realm.getReflectApplyFunctionObject() ||
+                        function == realm.getReflectConstructFunctionObject();
     }
 
     private static class ArgumentsProxyProperty implements PropertyProxy {
@@ -1056,8 +1062,8 @@ public final class JSFunction extends JSBuiltinObject {
                             }
                             if (JSFunction.isBuiltinSourceSection(ss)) {
                                 JSRealm realm = functionData.getContext().getRealm();
-                                if (function == realm.getApplyFunctionObject() || function == realm.getCallFunctionObject()) {
-                                    return null; // skip apply() and call()
+                                if (isBuiltinThatShouldNotAppearInStackTrace(realm, function)) {
+                                    return null;
                                 }
                                 if (functionData.getName().startsWith("[Symbol.")) {
                                     return null;

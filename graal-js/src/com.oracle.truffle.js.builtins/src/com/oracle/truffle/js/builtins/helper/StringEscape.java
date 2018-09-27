@@ -52,43 +52,38 @@ import com.oracle.truffle.js.runtime.JSRuntime;
  */
 public class StringEscape {
 
-    private static BitSet dontEncodeSet;
+    private static final BitSet dontEscapeSet;
 
-    private static synchronized void init() {
-        if (dontEncodeSet == null) {
-            dontEncodeSet = new BitSet(256);
-            int i;
-            for (i = 'a'; i <= 'z'; i++) {
-                dontEncodeSet.set(i);
-            }
-            for (i = 'A'; i <= 'Z'; i++) {
-                dontEncodeSet.set(i);
-            }
-            for (i = '0'; i <= '9'; i++) {
-                dontEncodeSet.set(i);
-            }
-            dontEncodeSet.set('@');
-            dontEncodeSet.set('*');
-            dontEncodeSet.set('_');
-            dontEncodeSet.set('+');
-            dontEncodeSet.set('-');
-            dontEncodeSet.set('.');
-            dontEncodeSet.set('/');
-        }
+    static {
+        BitSet unescaped = new BitSet(128);
+        unescaped.set('a', 'z' + 1);
+        unescaped.set('A', 'Z' + 1);
+        unescaped.set('0', '9' + 1);
+        unescaped.set('@');
+        unescaped.set('*');
+        unescaped.set('_');
+        unescaped.set('+');
+        unescaped.set('-');
+        unescaped.set('.');
+        unescaped.set('/');
+        dontEscapeSet = unescaped;
     }
 
     @TruffleBoundary
     public static String escape(String s) {
-        boolean didEscape = false;
-        StringBuffer out = new StringBuffer(s.length());
+        int len = s.length();
+        StringBuilder out = null;
 
-        init();
-        for (int i = 0; i < s.length(); i++) {
+        for (int i = 0; i < len; i++) {
             int c = s.charAt(i);
-            if (dontEncodeSet.get(c)) {
-                out.append((char) c);
+            if (dontEscapeSet.get(c)) {
+                if (out != null) {
+                    out.append((char) c);
+                }
             } else {
-                didEscape = true;
+                if (out == null) {
+                    out = allocBuffer(s, i, len + 16);
+                }
                 out.append('%');
                 if (c < 256) {
                     char ch = hexChar((c >> 4) & 0xF);
@@ -108,17 +103,21 @@ public class StringEscape {
                 }
             }
         }
-        return didEscape ? out.toString() : s;
+        return out != null ? out.toString() : s;
     }
 
     @TruffleBoundary
     public static String unescape(String string) {
         int len = string.length();
-        StringBuilder builder = new StringBuilder();
+        StringBuilder builder = null;
+
         int k = 0;
         while (k < len) {
             char c = string.charAt(k);
             if (c == '%') {
+                if (builder == null) {
+                    builder = allocBuffer(string, k, len);
+                }
                 if (k <= (len - 6)) {
                     if (unescapeU0000(string, builder, k)) {
                         k += 6;
@@ -132,10 +131,20 @@ public class StringEscape {
                     }
                 }
             }
-            builder.append(c);
+            if (builder != null) {
+                builder.append(c);
+            }
             k++;
         }
-        return builder.toString();
+        return builder != null ? builder.toString() : string;
+    }
+
+    private static StringBuilder allocBuffer(String s, int i, int estimatedLength) {
+        StringBuilder newBuffer = new StringBuilder(estimatedLength);
+        if (i > 0) {
+            newBuffer.append(s, 0, i);
+        }
+        return newBuffer;
     }
 
     private static boolean unescapeU0000(String string, StringBuilder builder, int k) {

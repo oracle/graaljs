@@ -60,6 +60,8 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     public enum DataViewPrototype implements BuiltinEnum<DataViewPrototype> {
+        getBigInt64(1),
+        getBigUint64(1),
         getFloat32(1),
         getFloat64(1),
         getInt8(1),
@@ -68,6 +70,8 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         getUint8(1),
         getUint16(1),
         getUint32(1),
+        setBigInt64(2),
+        setBigUint64(2),
         setFloat32(2),
         setFloat64(2),
         setInt8(2),
@@ -92,6 +96,8 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, DataViewPrototype builtinEnum) {
         switch (builtinEnum) {
+            case getBigInt64:
+            case getBigUint64:
             case getFloat32:
             case getFloat64:
             case getInt16:
@@ -101,6 +107,8 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             case getUint32:
             case getUint8:
                 return DataViewGetNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case setBigInt64:
+            case setBigUint64:
             case setFloat32:
             case setFloat64:
             case setInt16:

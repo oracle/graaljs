@@ -217,6 +217,10 @@ public final class JSFunctionData {
         return (flags & IS_ASYNC) != 0;
     }
 
+    public boolean isAsyncGenerator() {
+        return isGenerator() && isAsync();
+    }
+
     public boolean isDerived() {
         return (flags & IS_DERIVED) != 0;
     }

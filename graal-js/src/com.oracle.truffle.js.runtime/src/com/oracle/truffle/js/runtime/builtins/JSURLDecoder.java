@@ -67,7 +67,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CoderResult;
 import java.nio.charset.StandardCharsets;
@@ -80,14 +79,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 public class JSURLDecoder {
 
     private final boolean isSpecial;
-    private final Charset charset;
 
     public JSURLDecoder(boolean isSpecial) {
-        this(isSpecial, StandardCharsets.UTF_8);
-    }
-
-    public JSURLDecoder(boolean isSpecial, Charset charset) {
-        this.charset = charset;
         this.isSpecial = isSpecial;
     }
 
@@ -95,7 +88,7 @@ public class JSURLDecoder {
     public String decode(String string) {
         int strLen = string.length();
         StringBuilder buffer = null;
-        CharsetDecoder decoder = charset.newDecoder();
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
         int k = 0;
 
         while (k < strLen) {
@@ -105,32 +98,18 @@ public class JSURLDecoder {
                     buffer.append(c);
                 }
             } else {
-                buffer = initBuffer(buffer, string, k);
+                if (buffer == null) {
+                    buffer = JSURLEncoder.allocBuffer(string, k, strLen);
+                }
                 k = decodeConvert(string, strLen, k, buffer, decoder);
             }
             k++;
         }
-        String returnStr = (buffer != null ? buffer.toString() : string);
-        return returnStr;
+        return buffer != null ? buffer.toString() : string;
     }
 
-    /**
-     * Initialize the buffer lazily, only when needed.
-     */
-    private static StringBuilder initBuffer(StringBuilder buffer, String s, int i) {
-        if (buffer != null) {
-            return buffer;
-        } else {
-            StringBuilder newBuffer = new StringBuilder(s.length());
-            if (i >= 1) {
-                newBuffer.append(s, 0, i);
-            }
-            return newBuffer;
-        }
-    }
-
-    private int decodeConvert(String string, int strLen, int kParam, StringBuilder buffer, CharsetDecoder decoder) {
-        int k = kParam;
+    private int decodeConvert(String string, int strLen, int start, StringBuilder buffer, CharsetDecoder decoder) {
+        int k = start;
         if (k + 2 >= strLen) {
             throw Errors.createURIError("illegal escape sequence");
         }
@@ -138,15 +117,20 @@ public class JSURLDecoder {
         int hex2 = getHexValue(string.charAt(k + 2));
         byte b = (byte) ((hex1 << 4) + hex2);
         k += 2;
-        if ((b & 0x80) == 0) { // vi.
-            appendChar(string, kParam, k, (char) b, buffer);
-        } else { // vii.
-            k = decodeConvertIntl(string, strLen, k, kParam, b, buffer, decoder);
+        if ((b & 0x80) == 0) { // vi. most significant bit is 0
+            char c = (char) b;
+            if (!isReserved(c)) {
+                buffer.append(c);
+            } else {
+                buffer.append(string, start, k + 1);
+            }
+        } else { // vii. most significant bit is 1
+            k = decodeConvertIntl(string, strLen, k, b, buffer, decoder);
         }
         return k;
     }
 
-    private int decodeConvertIntl(String string, int strLen, int kParam, int start, byte b, StringBuilder buffer, CharsetDecoder decoder) {
+    private int decodeConvertIntl(String string, int strLen, int kParam, byte b, StringBuilder buffer, CharsetDecoder decoder) {
         int k = kParam;
         int n = findN(b);
         if (n == 1 || n > 4) {
@@ -174,7 +158,7 @@ public class JSURLDecoder {
             j++;
         }
         ByteBuffer bb = ByteBuffer.wrap(octetsB);
-        CharBuffer cb = CharBuffer.wrap(new char[10]);
+        CharBuffer cb = CharBuffer.wrap(new char[2]);
         decoder.reset();
         cb.rewind();
         CoderResult coderResult = decoder.decode(bb, cb, true);
@@ -182,7 +166,8 @@ public class JSURLDecoder {
             throw invalidEncodingError();
         }
         if (cb.position() == 1) {
-            appendChar(string, start, k, cb.get(0), buffer);
+            assert !isReserved(cb.get(0));
+            buffer.append(cb.get(0));
         } else {
             buffer.append(cb.get(0));
             buffer.append(cb.get(1));
@@ -194,14 +179,6 @@ public class JSURLDecoder {
         throw Errors.createURIError("invalid encoding");
     }
 
-    private void appendChar(String string, int start, int k, char c, StringBuilder buffer) {
-        if (needsDecoding(c)) {
-            buffer.append(c);
-        } else {
-            buffer.append(string.substring(start, k + 1));
-        }
-    }
-
     private static int getHexValue(char digit) {
         int value = JSRuntime.valueInHex(digit);
         if (value < 0) {
@@ -210,24 +187,11 @@ public class JSURLDecoder {
         return value;
     }
 
-    private boolean needsDecoding(char c) {
+    private boolean isReserved(char c) {
         if (isSpecial) {
-            switch (c) {
-                case ';':
-                case '/':
-                case '?':
-                case ':':
-                case '@':
-                case '&':
-                case '=':
-                case '+':
-                case '$':
-                case ',':
-                case '#':
-                    return false;
-            }
+            return JSURLEncoder.reservedURISet.get(c);
         }
-        return true;
+        return false;
     }
 
     private static int findN(byte b) {

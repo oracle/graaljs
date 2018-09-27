@@ -558,7 +558,8 @@ public final class GraalJSAccess {
     }
 
     public Object objectNew(Object context) {
-        return JSUserObject.create((JSRealm) context);
+        JSRealm jsRealm = (JSRealm) context;
+        return JSUserObject.create(jsRealm.getContext(), jsRealm);
     }
 
     public boolean objectSet(Object object, Object key, Object value) {
@@ -1300,7 +1301,7 @@ public final class GraalJSAccess {
         FunctionTemplate functionHandler = template.getFunctionHandler();
         DynamicObject instance;
         if (functionHandler == null) {
-            instance = JSUserObject.create(jsRealm);
+            instance = JSUserObject.create(jsContext, jsRealm);
         } else {
             instance = functionTemplateCreateCallback(jsContext, jsRealm, functionHandler);
         }
@@ -1313,7 +1314,7 @@ public final class GraalJSAccess {
 
     @CompilerDirectives.TruffleBoundary
     public DynamicObject propertyHandlerInstantiate(JSContext context, JSRealm realm, ObjectTemplate template, DynamicObject target, boolean global) {
-        DynamicObject handler = JSUserObject.create(realm);
+        DynamicObject handler = JSUserObject.create(context, realm);
         DynamicObject proxy = JSProxy.create(context, target, handler);
 
         DynamicObject getter = functionFromRootNode(context, realm, new ExecuteNativePropertyHandlerNode(
