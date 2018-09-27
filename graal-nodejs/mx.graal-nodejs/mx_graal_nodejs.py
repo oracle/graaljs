@@ -204,14 +204,12 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
             return []
 
         brokenModules = [
-            'internal/errors.js',               # Uses JSFunction.HOME_OBJECT_ID
-            'internal/loader/ModuleJob.js',     # Uses await
-            'internal/loader/ModuleMap.js',     # Uses JSFunction.HOME_OBJECT_ID
-            'internal/loader/ModuleRequest.js', # Uses await
-            'internal/loader/Loader.js',        # Uses await
-            'internal/readline.js',             # Uses yield
-            'internal/v8_prof_processor.js',    # Uses eval
-            'module.js',                        # Uses await
+            'assert.js',                          # Uses await
+            'internal/errors.js',                 # Uses JSFunction.HOME_OBJECT_ID
+            'internal/fs/promises.js',            # Uses await
+            'internal/modules/esm/module_map.js', # Uses JSFunction.HOME_OBJECT_ID
+            'internal/readline.js',               # Uses yield
+            'vm.js',                              # Uses JSFunction.HOME_OBJECT_ID
         ]
 
         allModules = []
