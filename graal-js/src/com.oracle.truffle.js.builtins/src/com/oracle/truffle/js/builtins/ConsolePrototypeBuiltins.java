@@ -177,10 +177,10 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @Specialization
-        protected DynamicObject _assert(Object... data) {
+        protected DynamicObject assertImpl(Object... data) {
             boolean result = data.length > 0 ? toBooleanNode.executeBoolean(data[0]) : false;
             if (!result) {
-                Object arr[] = new Object[data.length > 0 ? data.length : 1];
+                Object[] arr = new Object[data.length > 0 ? data.length : 1];
                 if (data.length > 1) {
                     System.arraycopy(data, 1, arr, 1, data.length - 1);
                 }
@@ -352,7 +352,7 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                 long end = getContext().getRealm().currentTimeMillis();
                 long delta = end - start;
 
-                Object arr[] = new Object[data.length + 1]; // ignore first, but add two
+                Object[] arr = new Object[data.length + 1]; // ignore first, but add two
                 if (data.length > 1) {
                     System.arraycopy(data, 1, arr, 2, data.length - 1);
                 }
