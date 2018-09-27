@@ -264,6 +264,8 @@ public class JSRealm {
     private PrintWriterWrapper outputWriter;
     private PrintWriterWrapper errorWriter;
 
+    private int consoleIndentation = 0;
+
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
         this.truffleLanguageEnv = env; // can be null
@@ -1284,5 +1286,28 @@ public class JSRealm {
 
     public Shape getLazyRegexArrayShape() {
         return lazyRegexArrayShape;
+    }
+
+    public int getConsoleIndentation() {
+        return consoleIndentation;
+    }
+
+    public void incConsoleIndentation() {
+        consoleIndentation++;
+    }
+
+    public void decConsoleIndentation() {
+        if (consoleIndentation > 0) {
+            consoleIndentation--;
+        }
+    }
+
+    @TruffleBoundary
+    public String getConsoleIndentationString() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < this.consoleIndentation; i++) {
+            sb.append("  ");
+        }
+        return sb.toString();
     }
 }

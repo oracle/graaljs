@@ -51,6 +51,8 @@ import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleA
 import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleClearNodeGen;
 import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleCountNodeGen;
 import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleCountResetNodeGen;
+import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleGroupEndNodeGen;
+import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleGroupNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltins.JSGlobalPrintNode;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalPrintNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -80,7 +82,10 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         assert_(0),
         clear(0),
         count(0),
-        countReset(0);
+        countReset(0),
+        group(0),
+        groupCollapsed(0),
+        groupEnd(0);
 
         private final int length;
 
@@ -113,6 +118,11 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                 return JSConsoleCountNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case countReset:
                 return JSConsoleCountResetNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case group:
+            case groupCollapsed:
+                return JSConsoleGroupNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+            case groupEnd:
+                return JSConsoleGroupEndNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
         }
         return null;
     }
@@ -196,6 +206,7 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             getCountMap().put(key, ++count);
 
             PrintWriter writer = getContext().getRealm().getOutputWriter();
+            writer.append(getContext().getRealm().getConsoleIndentationString());
             writer.append(key);
             writer.append(": ");
             writer.append(String.valueOf(count));
@@ -219,6 +230,44 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         protected DynamicObject count(Object label) {
             String key = label == Undefined.instance ? "default" : toStringNode.executeString(label);
             getCountMap().remove(key);
+            return Undefined.instance;
+        }
+    }
+
+    public abstract static class JSConsoleGroupNode extends JSConsoleOperation {
+
+        @Child private JSGlobalPrintNode printNode;
+        @Child private JSToStringNode toStringNode;
+
+        public JSConsoleGroupNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            toStringNode = JSToStringNode.create();
+            printNode = JSGlobalPrintNodeGen.create(context, null, false, null);
+
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected DynamicObject group(Object[] label) {
+            if (label.length > 0) {
+                printNode.executeObjectArray(label);
+            }
+            getContext().getRealm().incConsoleIndentation();
+            return Undefined.instance;
+        }
+    }
+
+    public abstract static class JSConsoleGroupEndNode extends JSConsoleOperation {
+
+        public JSConsoleGroupEndNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected DynamicObject groupEnd() {
+            getContext().getRealm().decConsoleIndentation();
             return Undefined.instance;
         }
     }

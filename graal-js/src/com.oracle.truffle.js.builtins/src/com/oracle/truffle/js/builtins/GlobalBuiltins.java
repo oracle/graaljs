@@ -990,6 +990,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected Object print(Object[] arguments) {
             // without a StringBuilder, synchronization fails testnashorn JDK-8041998.js
             StringBuilder builder = new StringBuilder();
+            if (getContext().getRealm().getConsoleIndentation() > 0) {
+                Boundaries.builderAppend(builder, getContext().getRealm().getConsoleIndentationString());
+            }
             if (argumentsCount.profile(arguments.length == 1)) {
                 Boundaries.builderAppend(builder, toString1(arguments[0]));
             } else {
