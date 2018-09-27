@@ -127,6 +127,16 @@ public final class JSException extends GraalJSException {
         this.exceptionObj = exceptionObj;
     }
 
+    @Override
+    public Object getExceptionObject() {
+        if (exceptionObj == null) {
+            JSRealm innerRealm = this.realm != null ? this.realm : AbstractJavaScriptLanguage.getCurrentJSRealm();
+            String message = getRawMessage();
+            exceptionObj = JSError.createFromJSException(this, innerRealm, (message == null) ? "" : message);
+        }
+        return super.getExceptionObject();
+    }
+
     @TruffleBoundary
     @Override
     public Object getErrorObjectEager(JSContext context) {
