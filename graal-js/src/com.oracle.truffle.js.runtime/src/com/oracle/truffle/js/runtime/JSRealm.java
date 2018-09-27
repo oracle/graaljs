@@ -958,7 +958,7 @@ public class JSRealm {
 
     private void putConsoleObject(DynamicObject global) {
         DynamicObject console = JSUserObject.create(context, this);
-        putGlobalProperty(console, "log", JSObject.get(global, "print"));
+        JSObjectUtil.putFunctionsFromContainer(this, console, "Console");
         putGlobalProperty(global, "console", console);
     }
 
