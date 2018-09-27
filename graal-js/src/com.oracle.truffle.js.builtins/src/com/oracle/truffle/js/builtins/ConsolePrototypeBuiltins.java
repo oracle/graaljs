@@ -53,6 +53,9 @@ import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleC
 import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleCountResetNodeGen;
 import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleGroupEndNodeGen;
 import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleGroupNodeGen;
+import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleTimeEndNodeGen;
+import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleTimeLogNodeGen;
+import com.oracle.truffle.js.builtins.ConsolePrototypeBuiltinsFactory.JSConsoleTimeNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltins.JSGlobalPrintNode;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalPrintNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -85,7 +88,10 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         countReset(0),
         group(0),
         groupCollapsed(0),
-        groupEnd(0);
+        groupEnd(0),
+        time(0),
+        timeEnd(0),
+        timeLog(0);
 
         private final int length;
 
@@ -123,11 +129,18 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                 return JSConsoleGroupNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
             case groupEnd:
                 return JSConsoleGroupEndNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
+            case time:
+                return JSConsoleTimeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case timeEnd:
+                return JSConsoleTimeEndNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case timeLog:
+                return JSConsoleTimeLogNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
         }
         return null;
     }
 
     private static HashMap<String, Integer> countMap;
+    private static HashMap<String, Long> timeMap;
 
     public abstract static class JSConsoleOperation extends JSBuiltinNode {
 
@@ -141,6 +154,14 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                 countMap = new HashMap<>();
             }
             return countMap;
+        }
+
+        protected HashMap<String, Long> getTimeMap() {
+            if (timeMap == null) {
+                CompilerDirectives.transferToInterpreter();
+                timeMap = new HashMap<>();
+            }
+            return timeMap;
         }
     }
 
@@ -243,7 +264,6 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
             toStringNode = JSToStringNode.create();
             printNode = JSGlobalPrintNodeGen.create(context, null, false, null);
-
         }
 
         @Specialization
@@ -268,6 +288,78 @@ public final class ConsolePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @TruffleBoundary
         protected DynamicObject groupEnd() {
             getContext().getRealm().decConsoleIndentation();
+            return Undefined.instance;
+        }
+    }
+
+    public abstract static class JSConsoleTimeNode extends JSConsoleOperation {
+        @Child private JSToStringNode toStringNode;
+
+        public JSConsoleTimeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            toStringNode = JSToStringNode.create();
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected DynamicObject time(Object label) {
+            String key = label == Undefined.instance ? "default" : toStringNode.executeString(label);
+            getTimeMap().put(key, getContext().getRealm().currentTimeMillis());
+            return Undefined.instance;
+        }
+    }
+
+    public abstract static class JSConsoleTimeEndNode extends JSConsoleOperation {
+        @Child private JSToStringNode toStringNode;
+        @Child private JSGlobalPrintNode printNode;
+
+        public JSConsoleTimeEndNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            toStringNode = JSToStringNode.create();
+            printNode = JSGlobalPrintNodeGen.create(context, null, false, null);
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected DynamicObject timeEnd(Object label) {
+            String key = label == Undefined.instance ? "default" : toStringNode.executeString(label);
+            if (getTimeMap().containsKey(key)) {
+                long start = getTimeMap().remove(key);
+                long end = getContext().getRealm().currentTimeMillis();
+                long delta = end - start;
+                printNode.executeObjectArray(new Object[]{key + ":", String.valueOf(delta) + "ms"});
+            }
+            return Undefined.instance;
+        }
+    }
+
+    public abstract static class JSConsoleTimeLogNode extends JSConsoleOperation {
+
+        @Child private JSGlobalPrintNode printNode;
+        @Child private JSToStringNode toStringNode;
+
+        public JSConsoleTimeLogNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            printNode = JSGlobalPrintNodeGen.create(context, null, false, null);
+            toStringNode = JSToStringNode.create();
+        }
+
+        @Specialization
+        protected DynamicObject timeLog(Object... data) {
+            String key = data.length == 0 || data[0] == Undefined.instance ? "default" : toStringNode.executeString(data[0]);
+            if (getTimeMap().containsKey(key)) {
+                long start = getTimeMap().get(key);
+                long end = getContext().getRealm().currentTimeMillis();
+                long delta = end - start;
+
+                Object arr[] = new Object[data.length + 1]; // ignore first, but add two
+                if (data.length > 1) {
+                    System.arraycopy(data, 1, arr, 2, data.length - 1);
+                }
+                arr[0] = key + ":";
+                arr[1] = String.valueOf(delta) + "ms";
+                printNode.executeObjectArray(arr);
+            }
             return Undefined.instance;
         }
     }
