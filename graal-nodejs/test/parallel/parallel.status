@@ -40,6 +40,7 @@ test-repl-pretty-stack                                             : FAIL
 # it once the memory intensive section is done (despite there is no
 # memory leak).
 test-crypto-dh-leak                                                : SKIP
+test-worker-memory                                                 : SKIP
 
 # v8.cachedDataVersionTag() not supported
 test-v8-version-tag                                                : FAIL
@@ -115,6 +116,7 @@ test-fs-write                                                      : FAIL
 
 # unclassified
 test-async-hooks-recursive-stack                                   : SKIP
+test-async-hooks-recursive-stack-runInAsyncScope                   : SKIP
 test-common-gc                                                     : FAIL
 test-crypto-fips                                                   : FAIL
 test-domain-no-error-handler-abort-on-uncaught-0                   : FAIL
