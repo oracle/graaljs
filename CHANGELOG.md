@@ -3,6 +3,9 @@
 This changelog summarizes major changes between GraalVM versions of the Graal JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 1.0.0 RC8
+* Provide simplified implementations for methods of the global `console` object.
+
 ## Version 1.0.0 RC7
 * Improved support for sharing of shapes between Contexts with the same Engine.
 * BigInteger TypedArrays.
