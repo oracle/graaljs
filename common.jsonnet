@@ -32,6 +32,7 @@
       valgrind: '>=3.9.0',
       'pip:astroid': '==1.1.0',
       'pip:pylint': '==1.1.0',
+      zlib: '>=1.2.11',
     },
     catch_files+: [
       'Graal diagnostic output saved in (?P<filename>.+.zip)',
