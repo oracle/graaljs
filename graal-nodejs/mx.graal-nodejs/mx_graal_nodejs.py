@@ -79,6 +79,7 @@ def _build(args, debug, shared_library, threading, parallelism, debug_mode, outp
     _mxrun(['./configure',
             '--partly-static',
             '--build-only-native',
+            '--openssl-no-asm',
             '--without-dtrace',
             '--without-snapshot',
             '--shared-zlib',
