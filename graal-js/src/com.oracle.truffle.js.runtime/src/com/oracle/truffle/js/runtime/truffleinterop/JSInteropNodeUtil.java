@@ -104,6 +104,11 @@ public final class JSInteropNodeUtil {
         return JSInteropUtil.createIsExecutable();
     }
 
+    static Node getIsInstantiableNode() {
+        CompilerAsserts.neverPartOfCompilation();
+        return JSInteropUtil.createIsInstantiable();
+    }
+
     static Node getUnboxNode() {
         CompilerAsserts.neverPartOfCompilation();
         return JSInteropUtil.createUnbox();
@@ -327,5 +332,15 @@ public final class JSInteropNodeUtil {
     @TruffleBoundary
     public static boolean isExecutable(TruffleObject obj, Node isExecutableNode) {
         return ForeignAccess.sendIsExecutable(isExecutableNode, obj);
+    }
+
+    @TruffleBoundary
+    public static boolean isInstantiable(TruffleObject obj) {
+        return ForeignAccess.sendIsInstantiable(getIsInstantiableNode(), obj);
+    }
+
+    @TruffleBoundary
+    public static boolean isInstantiable(TruffleObject obj, Node isInstantiableNode) {
+        return ForeignAccess.sendIsInstantiable(isInstantiableNode, obj);
     }
 }

@@ -654,7 +654,7 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static int toInt8(long number) {
-        int res = (int) (Math.floorMod(number, 256));
+        int res = (int) Math.floorMod(number, 256);
         if (res >= 128) {
             res = res - 256;
         }
@@ -710,7 +710,7 @@ public final class JSRuntime {
 
     @TruffleBoundary()
     public static int toInt16(long number) {
-        int res = (int) (Math.floorMod(number, 65536));
+        int res = (int) Math.floorMod(number, 65536);
         if (res >= 32768) {
             res = res - 65536;
         }
@@ -2581,6 +2581,16 @@ public final class JSRuntime {
             return true;
         } else if (JSProxy.isProxy(constrObj)) {
             return isConstructorProxy((DynamicObject) constrObj);
+        } else if (constrObj instanceof TruffleObject) {
+            return isConstructorForeign((TruffleObject) constrObj);
+        }
+        return false;
+    }
+
+    @TruffleBoundary
+    private static boolean isConstructorForeign(TruffleObject value) {
+        if (isForeignObject(value)) {
+            return JSInteropNodeUtil.isInstantiable(value);
         }
         return false;
     }
