@@ -193,7 +193,9 @@ public class GraalJSParserHelper {
     private static void throwErrors(com.oracle.truffle.api.source.Source source, ErrorManager errors) {
         ParserException parserException = errors.getParserException();
         SourceSection sourceLocation = null;
+        boolean isIncompleteSource = false;
         if (parserException != null) {
+            isIncompleteSource = parserException.isIncompleteSource();
             if (parserException.getPosition() >= 0) {
                 // For EOL tokens, length is the line number
                 int length = Token.descType(parserException.getToken()) == TokenType.EOL ? 0 : Token.descLength(parserException.getToken());
@@ -205,7 +207,7 @@ public class GraalJSParserHelper {
                 assert parserException.getErrorType() == com.oracle.js.parser.JSErrorType.SyntaxError;
             }
         }
-        throw Errors.createSyntaxError(((ErrorManager.StringBuilderErrorManager) errors).getOutput(), sourceLocation);
+        throw Errors.createSyntaxError(((ErrorManager.StringBuilderErrorManager) errors).getOutput(), sourceLocation, isIncompleteSource);
     }
 
     public static Object parseJSON(String jsonString, JSContext context) throws ParserException {
