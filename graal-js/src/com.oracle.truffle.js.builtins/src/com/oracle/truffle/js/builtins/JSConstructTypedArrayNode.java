@@ -264,6 +264,12 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
         checkDetachedBuffer(srcData);
 
+        boolean elementTypeIsBig = factory == TypedArrayFactory.BigInt64Array || factory == TypedArrayFactory.BigUint64Array;
+        boolean sourceTypeIsBig = sourceType instanceof TypedArray.TypedBigIntArray;
+        if (elementTypeIsBig != sourceTypeIsBig) {
+            throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+        }
+
         TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);
         DynamicObject result = createTypedArray(arrayBuffer, typedArray, 0, (int) length, newTarget);
 
