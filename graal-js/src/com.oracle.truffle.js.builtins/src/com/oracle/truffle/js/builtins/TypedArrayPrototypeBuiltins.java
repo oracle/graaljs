@@ -472,6 +472,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                     BigInt value = ((TypedArray.TypedBigIntArray<Object>) sourceType).getBigIntImpl(sourceBackingBuffer, sourceByteIndex, i);
                     ((TypedArray.TypedBigIntArray<Object>) targetType).setBigIntImpl(targetBackingBuffer, targetByteOffset, i + targetOffset, value);
                 }
+            } else if ((sourceType instanceof TypedArray.TypedBigIntArray) != (targetType instanceof TypedArray.TypedBigIntArray)) {
+                throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
             } else {
                 objectToObjectBranch.enter();
                 boolean littleEndian = ByteOrder.LITTLE_ENDIAN == ByteOrder.nativeOrder();
