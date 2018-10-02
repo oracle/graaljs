@@ -52,6 +52,7 @@ import java.util.SplittableRandom;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -263,6 +264,8 @@ public class JSRealm {
     private OutputStream errorStream;
     private PrintWriterWrapper outputWriter;
     private PrintWriterWrapper errorWriter;
+
+    @CompilationFinal private JSConsoleUtil consoleUtil;
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
@@ -958,7 +961,7 @@ public class JSRealm {
 
     private void putConsoleObject(DynamicObject global) {
         DynamicObject console = JSUserObject.create(context, this);
-        putGlobalProperty(console, "log", JSObject.get(global, "print"));
+        JSObjectUtil.putFunctionsFromContainer(this, console, "Console");
         putGlobalProperty(global, "console", console);
     }
 
@@ -1285,4 +1288,13 @@ public class JSRealm {
     public Shape getLazyRegexArrayShape() {
         return lazyRegexArrayShape;
     }
+
+    public JSConsoleUtil getConsoleUtil() {
+        if (consoleUtil == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            consoleUtil = new JSConsoleUtil();
+        }
+        return consoleUtil;
+    }
+
 }
