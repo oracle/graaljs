@@ -176,4 +176,9 @@ public final class ParserException extends RuntimeException implements TruffleEx
     public boolean isSyntaxError() {
         return true;
     }
+
+    @Override
+    public boolean isIncompleteSource() {
+        return Token.descType(token) == TokenType.EOF;
+    }
 }
