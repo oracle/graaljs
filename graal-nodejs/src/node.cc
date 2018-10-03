@@ -2825,6 +2825,10 @@ static void CheckIfAllowedInEnv(const char* exe, bool is_env,
     "--perf_basic_prof",
     "--perf_prof",
     "--stack_trace_limit",
+
+    // Graal.js options
+    "--jvm",
+    "--native",
   };
 
   for (unsigned i = 0; i < arraysize(whitelist); i++) {
