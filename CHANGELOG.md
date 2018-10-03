@@ -5,6 +5,7 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 1.0.0 RC8
 * Provide simplified implementations for methods of the global `console` object.
+* Updated Node.js to 10.9.0.
 
 ## Version 1.0.0 RC7
 * Improved support for sharing of shapes between Contexts with the same Engine.
