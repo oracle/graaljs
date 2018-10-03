@@ -489,8 +489,7 @@ def buildSvmImage(args):
     _js_version = VC.get_vc(_suite.vc_dir).parent(_suite.vc_dir)
     mx.logv('Fetch JS version {}'.format(_js_version))
     for _lang in ['js', 'nodejs']:
-        _svm.fetch_languages(['--language:{}=version={}'.format(_lang, _js_version)])
-    _svm.fetch_languages(['--tool:regex'])
+        _svm.truffle_language_ensure(_lang, _js_version)
     _svm.native_image_on_jvm(['-H:+EnforceMaxRuntimeCompileMethods', '--language:nodejs', '-H:JNIConfigurationResources=svmnodejs.jniconfig'] + args)
 
 def _prepare_svm_env():
