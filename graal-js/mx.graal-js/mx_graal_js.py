@@ -29,7 +29,7 @@
 import os, zipfile, re, shutil, tarfile
 from os.path import join, exists, isdir, getmtime
 
-import mx_graal_js_benchmark # pylint: disable=unused-import
+import mx_graal_js_benchmark
 import mx, mx_sdk
 from mx_gate import Task, add_gate_runner
 from mx_unittest import unittest
@@ -308,6 +308,8 @@ def deploy_binary_if_master(args):
         mx.warn('The active branch is "%s". Binaries are deployed only if the active branch is "%s".' % (active_branch, primary_branch))
         return 0
 
+def mx_post_parse_cmd_line(args):
+    mx_graal_js_benchmark.register_js_vms()
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
@@ -349,3 +351,4 @@ mx.update_commands(_suite, {
     'testinstrumentation': [testinstrumentation, ''],
     'unpackIcuData': [unpackIcuData, ''],
 })
+

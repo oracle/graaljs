@@ -49,7 +49,6 @@ import com.oracle.truffle.js.nodes.intl.InitializeCollatorNodeGen.CreateOptionsO
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 
 /*
  * https://tc39.github.io/ecma402/#sec-initializecollator
@@ -121,7 +120,7 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
         @SuppressWarnings("unused")
         @Specialization(guards = "isUndefined(opts)")
         public DynamicObject fromUndefined(Object opts) {
-            return JSUserObject.createWithPrototype(Null.instance, getContext());
+            return JSUserObject.createWithNullPrototype(getContext());
         }
 
         @Specialization(guards = "!isUndefined(opts)")

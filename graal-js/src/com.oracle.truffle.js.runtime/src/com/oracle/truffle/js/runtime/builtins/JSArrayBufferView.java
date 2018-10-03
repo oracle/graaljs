@@ -337,7 +337,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
 
     private static DynamicObject createArrayBufferViewPrototype(JSRealm realm, DynamicObject ctor, int bytesPerElement, TypedArrayFactory factory, DynamicObject taPrototype) {
         JSContext context = realm.getContext();
-        DynamicObject prototype = JSObject.create(realm, taPrototype, context.getEcmaScriptVersion() < 6 ? INSTANCE : JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.createInit(realm, taPrototype, context.getEcmaScriptVersion() < 6 ? INSTANCE : JSUserObject.INSTANCE);
         if (context.getEcmaScriptVersion() < 6) {
             byte[] byteArray = new byte[0];
             DynamicObject arrayBuffer = JSObject.createWithRealm(context, context.getArrayBufferFactory(), realm, byteArray);
@@ -411,7 +411,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
 
     private static DynamicObject createTypedArrayPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
         putArrayBufferViewPrototypeGetter(realm, prototype, LENGTH, new ArrayBufferViewGetter() {

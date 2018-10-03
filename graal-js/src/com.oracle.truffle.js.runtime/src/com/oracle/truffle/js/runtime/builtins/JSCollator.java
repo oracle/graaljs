@@ -112,7 +112,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject collatorPrototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject collatorPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, collatorPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, collatorPrototype, PROTOTYPE_NAME);
         JSObjectUtil.putConstantAccessorProperty(ctx, collatorPrototype, "compare", createCompareFunctionGetter(realm, ctx), Undefined.instance);
@@ -296,7 +296,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                             compareFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.CollatorCompare, c -> createCompareFunctionData(c));
                             compareFn = JSFunction.create(realm, compareFunctionData);
                         }
-                        DynamicObject boundFn = JSFunction.boundFunctionCreate(context, realm, compareFn, collatorObj, new Object[]{}, JSObject.getPrototype(compareFn), true);
+                        DynamicObject boundFn = JSFunction.boundFunctionCreate(context, compareFn, collatorObj, new Object[]{}, JSObject.getPrototype(compareFn), true);
                         state.boundCompareFunction = boundFn;
                     }
 

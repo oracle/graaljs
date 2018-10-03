@@ -3,7 +3,7 @@ suite = {
 
   "name" : "graal-js",
 
-  "version" : "1.0.0-rc6",
+  "version" : "1.0.0-rc8",
   "groupId" : "org.graalvm.js",
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -484,7 +484,7 @@ suite = {
       "distDependencies" : ["sdk:LAUNCHER_COMMON"],
       "description" : "Graal JavaScript Launcher",
       "maven" : {
-        "artifactId" : "launcher",
+        "artifactId" : "js-launcher",
       },
       "allowsJavadocWarnings": True,
     },
@@ -498,7 +498,7 @@ suite = {
       ],
       "description" : "Graal JavaScript ScriptEngine",
       "maven" : {
-        "artifactId" : "scriptengine",
+        "artifactId" : "js-scriptengine",
       },
       "allowsJavadocWarnings": True,
     },

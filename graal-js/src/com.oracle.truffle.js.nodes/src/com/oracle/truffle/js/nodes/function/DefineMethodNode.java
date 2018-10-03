@@ -94,7 +94,7 @@ public class DefineMethodNode extends JavaScriptBaseNode {
         public abstract DynamicObject executeWithPrototype(VirtualFrame frame, Object prototype);
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"prototype == cachedPrototype", "isJSObject(cachedPrototype)"}, limit = "PropertyCacheLimit")
+        @Specialization(guards = {"!getContext().isMultiContext()", "prototype == cachedPrototype", "isJSObject(cachedPrototype)"}, limit = "PropertyCacheLimit")
         protected final DynamicObject doCached(VirtualFrame frame, DynamicObject prototype,
                         @Cached("prototype") DynamicObject cachedPrototype,
                         @Cached("makeFactory(prototype)") JSFunctionFactory factory) {
@@ -102,9 +102,15 @@ public class DefineMethodNode extends JavaScriptBaseNode {
 
         }
 
-        @Specialization(guards = "isJSObject(prototype)", replaces = "doCached")
+        @Specialization(guards = {"!getContext().isMultiContext()", "isJSObject(prototype)"}, replaces = "doCached")
         protected final DynamicObject doUncached(VirtualFrame frame, DynamicObject prototype) {
             JSFunctionFactory factory = makeFactory(prototype);
+            return makeFunction(frame, factory, prototype);
+        }
+
+        @Specialization(guards = {"getContext().isMultiContext()", "isJSObject(prototype)"})
+        protected final DynamicObject doMultiContext(VirtualFrame frame, DynamicObject prototype,
+                        @Cached("makeFactoryMultiContext()") JSFunctionFactory factory) {
             return makeFunction(frame, factory, prototype);
         }
 
@@ -114,12 +120,16 @@ public class DefineMethodNode extends JavaScriptBaseNode {
                             functionData.isPrototypeNotWritable()).createFactory());
         }
 
+        protected final JSFunctionFactory makeFactoryMultiContext() {
+            return makeFactory(null);
+        }
+
         protected final DynamicObject makeFunction(VirtualFrame frame, JSFunctionFactory factory, DynamicObject prototype) {
             MaterializedFrame enclosingFrame = functionData.needsParentFrame() ? frame.materialize() : JSFrameUtil.NULL_MATERIALIZED_FRAME;
             return JSFunction.createWithPrototype(factory, getContext().getRealm(), functionData, enclosingFrame, prototype);
         }
 
-        private JSContext getContext() {
+        final JSContext getContext() {
             return functionData.getContext();
         }
 

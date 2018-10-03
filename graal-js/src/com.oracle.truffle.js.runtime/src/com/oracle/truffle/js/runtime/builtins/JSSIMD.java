@@ -113,7 +113,7 @@ public final class JSSIMD extends JSBuiltinObject {
 
     private static DynamicObject createTypedArrayPrototype(final JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject prototype = JSObject.create(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
 
@@ -176,7 +176,7 @@ public final class JSSIMD extends JSBuiltinObject {
     private static DynamicObject createSIMDPrototype(JSRealm realm, DynamicObject ctor, SIMDTypeFactory<? extends SIMDType> factory,
                     DynamicObject taPrototype) {
         JSContext context = realm.getContext();
-        DynamicObject prototype = JSObject.create(realm, taPrototype, JSUserObject.INSTANCE);
+        DynamicObject prototype = JSObject.createInit(realm, taPrototype, JSUserObject.INSTANCE);
         JSObjectUtil.putHiddenProperty(prototype, SIMD_TYPE_PROPERTY, factory.createSimdType());
         JSObjectUtil.putHiddenProperty(prototype, ARRAY_PROPERTY, new Object[0]);
         JSObjectUtil.putConstructorProperty(context, prototype, ctor);

@@ -81,6 +81,10 @@ public final class JSUserObject extends JSBuiltinObject implements PrototypeSupp
         return JSObject.create(context, prototype, INSTANCE);
     }
 
+    public static DynamicObject createWithNullPrototype(JSContext context) {
+        return JSObject.create(context, context.getEmptyShapeNullPrototype());
+    }
+
     public static DynamicObject createWithPrototypeInObject(DynamicObject prototype, JSContext context) {
         assert prototype == Null.instance || JSRuntime.isObject(prototype);
         Shape shape = context.getEmptyShapePrototypeInObject();

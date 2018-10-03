@@ -191,7 +191,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
-        DynamicObject arrayPrototype = JSObject.create(realm, realm.getObjectPrototype(), INSTANCE);
+        DynamicObject arrayPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), INSTANCE);
 
         putArrayProperties(arrayPrototype, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray());
 

@@ -149,8 +149,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createSyntaxError(String message, SourceSection sourceLocation) {
-        return JSException.create(JSErrorType.SyntaxError, message, sourceLocation);
+    public static JSException createSyntaxError(String message, SourceSection sourceLocation, boolean isIncompleteSource) {
+        return JSException.create(JSErrorType.SyntaxError, message, sourceLocation, isIncompleteSource);
     }
 
     @TruffleBoundary
@@ -170,7 +170,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createReferenceError(String message, SourceSection sourceLocation) {
-        return JSException.create(JSErrorType.ReferenceError, message, sourceLocation);
+        return JSException.create(JSErrorType.ReferenceError, message, sourceLocation, false);
     }
 
     @TruffleBoundary
