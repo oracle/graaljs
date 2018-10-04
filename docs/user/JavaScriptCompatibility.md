@@ -255,14 +255,20 @@ In many cases, this is not necessary, you can typically use the Java datastructu
 #### `Java.to(jsData, toType)`
 
 The `to` function converts the argument to a Java dataype.
-When no `toType` is provided, `Object[]` is assumed.
+The source object `jsData` is expected to be a JavaScript array, or object with a `length` property.
+The target `toType` can either be a String (e.g. `"int[]"`) or a type object (e.g., `Java.type("int[]")`).
+Valid target types are Java arrays.
+When no target type is provided, `Object[]` is assumed.
 
 ```js
-var jsArr = ["a", "b", "c"]
-var strArrType = Java.type("java.lang.String[]")
-var javaArr = Java.to(jsArr, strArrType)
+var jsArr = ["a", "b", "c"];
+var strArrType = Java.type("java.lang.String[]");
+var javaArr = Java.to(jsArr, strArrType);
 assertEquals('class [Ljava.lang.String;', String(javaArr.getClass()));
 ```
+
+The conversion methods as defined by ECMAScript (e.g., `ToString`, `ToDouble`) are executed when a JavaScript value has to be converted to a Java type.
+Lossy conversion is disallowed and results in a TypeError.
 
 #### `Java.isJavaObject(obj)`
 
