@@ -106,6 +106,7 @@ public:
     int32_t Int32Value() const;
     uint32_t Uint32Value() const;
     int64_t IntegerValue() const;
+    v8::Maybe<int64_t> IntegerValue(v8::Local<v8::Context> context) const;
     bool BooleanValue() const;
     double NumberValue() const;
     v8::Local<v8::Object> ToObject(v8::Isolate* isolate) const;

@@ -1296,7 +1296,7 @@ namespace v8 {
     }
 
     Maybe<int64_t> Value::IntegerValue(Local<Context> context) const {
-        return Just<int64_t>(reinterpret_cast<const GraalValue*> (this)->IntegerValue());
+        return reinterpret_cast<const GraalValue*> (this)->IntegerValue(context);
     }
 
     bool Value::BooleanValue() const {

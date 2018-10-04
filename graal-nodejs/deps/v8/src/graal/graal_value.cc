@@ -299,19 +299,33 @@ uint32_t GraalValue::Uint32Value() const {
 int64_t GraalValue::IntegerValue() const {
     if (IsNumber()) {
         const GraalNumber* graal_number = reinterpret_cast<const GraalNumber*> (this);
-        double d = graal_number->Value();
-        if (std::isnan(d)) return 0;
-        if (d >= static_cast<double> (std::numeric_limits<int64_t>::max())) {
-            return std::numeric_limits<int64_t>::max();
-        }
-        if (d <= static_cast<double> (std::numeric_limits<int64_t>::min())) {
-            return std::numeric_limits<int64_t>::min();
-        }
-        return static_cast<int64_t> (d);
+        double value = graal_number->Value();
+        return static_cast<int64_t>(value);
     } else {
         JNI_CALL(jlong, result, Isolate(), GraalAccessMethod::value_integer_value, Long, GetJavaObject());
         return result;
     }
+}
+
+v8::Maybe<int64_t> GraalValue::IntegerValue(v8::Local<v8::Context> context) const {
+    int64_t result;
+    if (IsNumber()) {
+        const GraalNumber* graal_number = reinterpret_cast<const GraalNumber*> (this);
+        double d = graal_number->Value();
+        if (std::isnan(d))  {
+            result = 0;
+        } else if (d >= static_cast<double> (std::numeric_limits<int64_t>::max())) {
+            result = std::numeric_limits<int64_t>::max();
+        } else  if (d <= static_cast<double> (std::numeric_limits<int64_t>::min())) {
+            result = std::numeric_limits<int64_t>::min();
+        } else {
+            result = static_cast<int64_t> (d);
+        }
+    } else {
+        JNI_CALL(jlong, java_result, Isolate(), GraalAccessMethod::value_integer_value, Long, GetJavaObject());
+        result = java_result;
+    }
+    return v8::Just<int64_t>(result);
 }
 
 bool GraalValue::BooleanValue() const {

@@ -542,24 +542,46 @@ describe('Value - Is*()', function () {
 });
 
 describe('Value - *Value()', function () {
-    describe('IntegerValue', function () {
+    // Value::IntegerValue() returns int64_t => module.Value_IntegerValue()
+    // returns BigInt to avoid a loss of precision.
+    describe('IntegerValue()', function () {
         it('should return 1234 for "1234"', function () {
-            assert.strictEqual(module.Value_IntegerValue("1234"), 1234);
+            assert.strictEqual(module.Value_IntegerValue("1234"), 1234n);
         });
         it('should return 1 for true', function () {
-            assert.strictEqual(module.Value_IntegerValue(true), 1);
+            assert.strictEqual(module.Value_IntegerValue(true), 1n);
         });
         it('should return 0 for {}', function () {
-            assert.strictEqual(module.Value_IntegerValue({}), 0);
+            assert.strictEqual(module.Value_IntegerValue({}), 0n);
         });
         it('should return 1234 for "1234.5"', function () {
-            assert.strictEqual(module.Value_IntegerValue("1234.5"), 1234);
+            assert.strictEqual(module.Value_IntegerValue("1234.5"), 1234n);
         });
         it('should return 3 for 3.1415', function () {
-            assert.strictEqual(module.Value_IntegerValue(3.1415), 3);
+            assert.strictEqual(module.Value_IntegerValue(3.1415), 3n);
+        });
+        it('should return -9223372036854775808 for NaN', function () {
+            assert.strictEqual(module.Value_IntegerValue(NaN), -9223372036854775808n);
+        });
+    });
+    describe('IntegerValue(Context)', function () {
+        it('should return 1234 for "1234"', function () {
+            assert.strictEqual(module.Value_IntegerValueContext("1234"), 1234n);
+        });
+        it('should return 1 for true', function () {
+            assert.strictEqual(module.Value_IntegerValueContext(true), 1n);
+        });
+        it('should return 0 for {}', function () {
+            assert.strictEqual(module.Value_IntegerValueContext({}), 0n);
+        });
+        it('should return 1234 for "1234.5"', function () {
+            assert.strictEqual(module.Value_IntegerValueContext("1234.5"), 1234n);
+        });
+        it('should return 3 for 3.1415', function () {
+            assert.strictEqual(module.Value_IntegerValueContext(3.1415), 3n);
         });
         it('should return 0 for NaN', function () {
-            assert.strictEqual(module.Value_IntegerValue(NaN), 0);
+            assert.strictEqual(module.Value_IntegerValueContext(NaN), 0n);
         });
     });
     describe('NumberValue', function () {
