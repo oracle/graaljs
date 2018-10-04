@@ -6,6 +6,7 @@ The main focus is on user-observable behavior of the engine.
 ## Version 1.0.0 RC8
 * Provide simplified implementations for methods of the global `console` object even outside Node.js mode.
 * Updated Node.js to version 10.9.0.
+* Fix: Can construct `Proxy(JavaType)` and correctly reports as type `function`. Github #60.
 
 ## Version 1.0.0 RC7
 * Improved support for sharing of shapes between Contexts with the same Engine.
