@@ -182,8 +182,8 @@ public abstract class JSNewNode extends JavaScriptNode {
      * Implements [[Construct]] for Proxy.
      */
     @Specialization(guards = "isProxy(proxy)")
-    protected Object callJSProxy(VirtualFrame frame, DynamicObject proxy) {
-        if (!JSRuntime.isCallableProxy(proxy)) {
+    protected Object doNewJSProxy(VirtualFrame frame, DynamicObject proxy) {
+        if (!JSRuntime.isConstructorProxy(proxy)) {
             throw Errors.createTypeErrorNotAFunction(proxy, this);
         }
         DynamicObject handler = JSProxy.getHandlerChecked(proxy);
