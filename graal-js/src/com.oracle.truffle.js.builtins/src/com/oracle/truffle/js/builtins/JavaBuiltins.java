@@ -615,6 +615,11 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             }
         }
 
+        @Specialization(guards = "!isDynamicObject(jsObj)")
+        protected Object to(Object jsObj, @SuppressWarnings("unused") Object toType) {
+            throw Errors.createTypeErrorNotAnObject(jsObj);
+        }
+
         private static boolean isJavaArrayClass(Object obj, TruffleLanguage.Env env) {
             if (env.isHostObject(obj)) {
                 Object javaObj = env.asHostObject(obj);
@@ -907,6 +912,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 return obj;
             }
         }
+
     }
 
     static Object asJSONCompatible(Object obj) {
