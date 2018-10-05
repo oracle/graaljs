@@ -568,7 +568,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             return toStringNode.executeString(target);
         }
 
-        private Object[] toObjectArray(DynamicObject jsObj) {
+        private Object[] toObjectArray(TruffleObject jsObj) {
             if (toObjectArrayNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toObjectArrayNode = insert(JSToObjectArrayNode.create(getContext()));
@@ -577,7 +577,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @Specialization
-        protected Object to(DynamicObject jsObj, Object toType) {
+        protected Object to(TruffleObject jsObj, Object toType) {
             Class<?> targetType;
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
             if (toType instanceof TruffleObject && env.isHostObject(toType)) {
@@ -615,8 +615,8 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             }
         }
 
-        @Specialization(guards = "!isDynamicObject(jsObj)")
-        protected Object to(Object jsObj, @SuppressWarnings("unused") Object toType) {
+        @Specialization(guards = "!isTruffleObject(jsObj)")
+        protected Object toNonObject(Object jsObj, @SuppressWarnings("unused") Object toType) {
             throw Errors.createTypeErrorNotAnObject(jsObj);
         }
 
@@ -628,7 +628,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             return false;
         }
 
-        private Object toArray(DynamicObject jsObj, TruffleObject arrayType, TruffleLanguage.Env env) {
+        private Object toArray(TruffleObject jsObj, TruffleObject arrayType, TruffleLanguage.Env env) {
             assert isJavaArrayClass(arrayType, env);
 
             if (newNode == null) {
@@ -652,7 +652,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             }
         }
 
-        private Object toArray(DynamicObject jsObj, Class<?> arrayType) {
+        private Object toArray(TruffleObject jsObj, Class<?> arrayType) {
             assert JSTruffleOptions.NashornJavaInterop;
             Object[] arr = toObjectArray(jsObj);
             if (arrayType == Object[].class) {
@@ -721,12 +721,12 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @TruffleBoundary
-        private static Object toList(DynamicObject jsObj) {
+        private static Object toList(TruffleObject jsObj) {
             assert JSTruffleOptions.NashornJavaInterop;
             if (JSArray.isJSArray(jsObj)) {
-                return new JSArrayListWrapper(jsObj);
+                return new JSArrayListWrapper((DynamicObject) jsObj);
             } else {
-                return new JSObjectListWrapper(jsObj);
+                return new JSObjectListWrapper((DynamicObject) jsObj);
             }
         }
 
