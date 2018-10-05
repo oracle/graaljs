@@ -9521,12 +9521,12 @@ bool PersistentBase<T>::IsIndependent() const {
 template <class T>
 bool PersistentBase<T>::IsNearDeath() const {
 //  typedef internal::Internals I;
-  if (this->IsEmpty()) return false;
+//  if (this->IsEmpty()) return false;
 //  uint8_t node_state =
 //      I::GetNodeState(reinterpret_cast<internal::Object**>(this->val_));
 //  return node_state == I::kNodeStateIsNearDeathValue ||
 //      node_state == I::kNodeStateIsPendingValue;
-  return true;
+  return (val_ != NULL);
 }
 
 
