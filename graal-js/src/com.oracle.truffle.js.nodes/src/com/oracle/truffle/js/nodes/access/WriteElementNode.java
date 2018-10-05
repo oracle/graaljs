@@ -525,7 +525,6 @@ public class WriteElementNode extends JSTargetableNode {
         JSObjectWriteElementTypeCacheNode(JSContext context, boolean isStrict, boolean writeOwn) {
             super(context, isStrict, writeOwn);
             this.isArrayNode = IsArrayNode.createIsFastOrTypedArray();
-            this.toArrayIndexNode = ToArrayIndexNode.create();
         }
 
         @Override
@@ -534,7 +533,7 @@ public class WriteElementNode extends JSTargetableNode {
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
                 ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
-                Object objIndex = toArrayIndexNode.execute(index);
+                Object objIndex = toArrayIndex(index);
 
                 if (intOrStringIndexProfile.profile(objIndex instanceof Long)) {
                     getArrayWriteElementNode().executeWithTargetAndArrayAndIndexAndValue(targetObject, array, (Long) objIndex, value, arrayCondition);
@@ -544,6 +543,14 @@ public class WriteElementNode extends JSTargetableNode {
             } else {
                 setPropertyGeneric(targetObject, index, value);
             }
+        }
+
+        private Object toArrayIndex(Object index) {
+            if (toArrayIndexNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toArrayIndexNode = insert(ToArrayIndexNode.create());
+            }
+            return toArrayIndexNode.execute(index);
         }
 
         private ArrayWriteElementCacheNode getArrayWriteElementNode() {

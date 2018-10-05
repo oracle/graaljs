@@ -527,7 +527,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         JSObjectReadElementTypeCacheNode(JSContext context) {
             super(context);
             this.isArrayNode = IsArrayNode.createIsAnyArray();
-            this.toArrayIndexNode = ToArrayIndexNode.create();
             this.isObjectNode = IsObjectNode.createIncludeNullUndefined();
         }
 
@@ -537,7 +536,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition && !(index instanceof HiddenKey))) {
                 ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
-                Object objIndex = toArrayIndexNode.execute(index);
+                Object objIndex = toArrayIndex(index);
 
                 if (arrayIndexProfile.profile(objIndex instanceof Long)) {
                     return getArrayReadElementNode().executeWithTargetAndArrayAndIndex(targetObject, array, (Long) objIndex, arrayCondition);
@@ -547,6 +546,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             } else {
                 return readNonArrayObjectIndex(targetObject, index);
             }
+        }
+
+        private Object toArrayIndex(Object index) {
+            if (toArrayIndexNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toArrayIndexNode = insert(ToArrayIndexNode.create());
+            }
+            return toArrayIndexNode.execute(index);
         }
 
         private ArrayReadElementCacheNode getArrayReadElementNode() {
@@ -583,7 +590,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition && !(index instanceof HiddenKey))) {
                 ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
-                Object objIndex = toArrayIndexNode.execute(index);
+                Object objIndex = toArrayIndex(index);
 
                 if (arrayIndexProfile.profile(objIndex instanceof Long)) {
                     return getArrayReadElementNode().executeWithTargetAndArrayAndIndexInt(targetObject, array, (Long) objIndex, arrayCondition);
@@ -618,7 +625,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition && !(index instanceof HiddenKey))) {
                 ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
-                Object objIndex = toArrayIndexNode.execute(index);
+                Object objIndex = toArrayIndex(index);
 
                 if (arrayIndexProfile.profile(objIndex instanceof Long)) {
                     return getArrayReadElementNode().executeWithTargetAndArrayAndIndexDouble(targetObject, array, (Long) objIndex, arrayCondition);
