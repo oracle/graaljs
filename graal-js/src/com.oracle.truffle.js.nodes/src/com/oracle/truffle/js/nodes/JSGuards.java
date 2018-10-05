@@ -545,4 +545,8 @@ public final class JSGuards {
     public static boolean isTruffleJavaObject(TruffleObject object) {
         return AbstractJavaScriptLanguage.getCurrentEnv().isHostObject(object);
     }
+
+    public static boolean isArrayIndexLengthInRange(String str) {
+        return JSRuntime.arrayIndexLengthInRange(str);
+    }
 }
