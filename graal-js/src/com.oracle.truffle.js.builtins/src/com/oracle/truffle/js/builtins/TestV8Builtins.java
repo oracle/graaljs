@@ -275,9 +275,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization
         protected Object runMicrotasks() {
             JSContext context = getContext();
-            while (context.processAllPendingPromiseJobs()) {
-                // we consume all pending jobs
-            }
+            context.processAllPendingPromiseJobs();
             return Undefined.instance;
         }
     }
