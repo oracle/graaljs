@@ -102,6 +102,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressio
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
+import com.oracle.truffle.js.parser.foreign.InteropAsyncFunctionForeign;
 import com.oracle.truffle.js.parser.foreign.InteropBoundFunctionForeign;
 import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.parser.foreign.JSMetaObject;
@@ -444,8 +445,12 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(env.getOptions())).toZoneId());
         }
 
-        context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionForeign.ACCESS));
+        context.setInteropRuntime(interopRuntime());
         return context;
+    }
+
+    private static JSInteropRuntime interopRuntime() {
+        return new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionForeign.ACCESS, InteropAsyncFunctionForeign.ACCESS);
     }
 
     @Override
@@ -479,7 +484,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(newEnv.getOptions())).toZoneId());
         }
 
-        context.setInteropRuntime(new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionForeign.ACCESS));
+        context.setInteropRuntime(interopRuntime());
         realm.setArguments(newEnv.getApplicationArguments());
 
         if (((GraalJSParserOptions) context.getParserOptions()).isScripting()) {

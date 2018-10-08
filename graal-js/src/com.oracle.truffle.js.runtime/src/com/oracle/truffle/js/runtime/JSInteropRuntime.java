@@ -44,18 +44,24 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 
 public class JSInteropRuntime {
     private final ForeignAccess foreignAccess;
-    private final ForeignAccess interopObjectForeignAccess;
+    private final ForeignAccess boundFunctionForeignAccess;
+    private final ForeignAccess asyncFunctionForeignAccess;
 
-    public JSInteropRuntime(ForeignAccess foreignAccess, ForeignAccess interopObjectForeignAccess) {
+    public JSInteropRuntime(ForeignAccess foreignAccess, ForeignAccess boundFunctionForeignAccess, ForeignAccess asyncFunctionForeignAccess) {
         this.foreignAccess = foreignAccess;
-        this.interopObjectForeignAccess = interopObjectForeignAccess;
+        this.boundFunctionForeignAccess = boundFunctionForeignAccess;
+        this.asyncFunctionForeignAccess = asyncFunctionForeignAccess;
     }
 
     public ForeignAccess getForeignAccessFactory() {
         return foreignAccess;
     }
 
-    public ForeignAccess getInteropObjectForeignAccess() {
-        return interopObjectForeignAccess;
+    public ForeignAccess getInteropBoundFunctionForeignAccess() {
+        return boundFunctionForeignAccess;
+    }
+
+    public ForeignAccess getInteropAsyncFunctionForeignAccess() {
+        return asyncFunctionForeignAccess;
     }
 }

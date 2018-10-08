@@ -53,9 +53,11 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropAsyncFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
 
 /**
@@ -64,7 +66,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
  *
  * @see JSRuntime#exportValue(Object)
  */
-@ImportStatic(JSTruffleOptions.class)
+@ImportStatic({JSTruffleOptions.class, JSFunction.class})
 public abstract class ExportValueNode extends JavaScriptBaseNode {
     private final AbstractJavaScriptLanguage language;
 
@@ -74,24 +76,29 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
 
     public abstract Object executeWithTarget(Object property, Object thiz);
 
-    @Specialization(guards = {"isJSFunction(function)", "isUndefined(thiz)"})
+    @Specialization(guards = {"isJSFunction(function)", "!BindProgramResult", "!InteropCompletePromises || !isAsyncFunction(function)"})
+    protected static TruffleObject doFunctionNoBind(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
+        return function;
+    }
+
+    @Specialization(guards = {"isJSFunction(function)", "BindProgramResult", "isUndefined(thiz)", "!InteropCompletePromises || !isAsyncFunction(function)"})
     protected static TruffleObject doFunctionUndefinedThis(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
         return function;
     }
 
-    @Specialization(guards = {"isJSFunction(function)", "!isUndefined(thiz)", "!isBoundJSFunction(function)", "!BindProgramResult"})
-    protected static TruffleObject doNotBindUnboundFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
-        return function;
-    }
-
-    @Specialization(guards = {"isJSFunction(function)", "!isUndefined(thiz)", "!isBoundJSFunction(function)", "BindProgramResult"})
+    @Specialization(guards = {"isJSFunction(function)", "BindProgramResult", "!isUndefined(thiz)", "!isBoundJSFunction(function)", "!InteropCompletePromises || !isAsyncFunction(function)"})
     protected static TruffleObject doBindUnboundFunction(DynamicObject function, Object thiz) {
         return new InteropBoundFunction(function, thiz);
     }
 
-    @Specialization(guards = {"isJSFunction(function)", "isBoundJSFunction(function)"})
+    @Specialization(guards = {"isJSFunction(function)", "BindProgramResult", "isBoundJSFunction(function)", "!InteropCompletePromises || !isAsyncFunction(function)"})
     protected static TruffleObject doBoundFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
         return function;
+    }
+
+    @Specialization(guards = {"isJSFunction(function)", "InteropCompletePromises", "isAsyncFunction(function)"})
+    protected static TruffleObject doAsyncFunction(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
+        return new InteropAsyncFunction(function);
     }
 
     @Specialization
