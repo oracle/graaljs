@@ -136,6 +136,7 @@ test-gc-http-client-connaborted                                    : SKIP
 test-gc-http-client-onerror                                        : SKIP
 test-gc-http-client-timeout                                        : SKIP
 test-gc-net-timeout                                                : SKIP
+test-http2-response-splitting                                      : SKIP
 test-net-connect-memleak                                           : FAIL
 test-repl                                                          : FAIL
 test-repl-context                                                  : FAIL
