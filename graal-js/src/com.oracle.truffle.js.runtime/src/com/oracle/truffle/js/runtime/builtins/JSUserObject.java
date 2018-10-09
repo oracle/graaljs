@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -91,6 +92,16 @@ public final class JSUserObject extends JSBuiltinObject implements PrototypeSupp
         DynamicObject obj = JSObject.create(context, shape);
         JSObject.PROTO_PROPERTY.setSafe(obj, prototype, shape);
         return obj;
+    }
+
+    public static DynamicObject createInit(JSRealm realm) {
+        CompilerAsserts.neverPartOfCompilation();
+        return JSObject.createInit(realm, realm.getObjectPrototype(), INSTANCE);
+    }
+
+    public static DynamicObject createInit(JSRealm realm, DynamicObject prototype) {
+        CompilerAsserts.neverPartOfCompilation();
+        return JSObject.createInit(realm, prototype, INSTANCE);
     }
 
     public static boolean isJSUserObject(Object obj) {

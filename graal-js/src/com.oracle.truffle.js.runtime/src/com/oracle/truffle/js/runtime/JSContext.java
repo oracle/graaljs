@@ -1220,6 +1220,7 @@ public class JSContext {
     }
 
     public final AllocationReporter getAllocationReporter() {
+        assert realmInit.get() == REALM_INITIALIZED : "getAllocationReporter() during Realm initialization";
         return allocationReporter;
     }
 

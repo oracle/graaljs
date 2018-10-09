@@ -47,7 +47,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.js.runtime.builtins.JSDebug;
 
 public class JSTruffleOptions {
     public static final String TRUFFLE_JS_OPTION_PREFIX = "truffle.js.";
@@ -190,7 +189,7 @@ public class JSTruffleOptions {
 
     // Debug options
     /** Expose {@code Debug} built-in object with a custom property name. */
-    public static final String DebugPropertyName = stringOption("DebugPropertyName", JSDebug.CLASS_NAME, OPTION_LANGUAGE_FEATURE);
+    public static final String DebugPropertyName = stringOption("DebugPropertyName", JSRealm.DEBUG_CLASS_NAME, OPTION_LANGUAGE_FEATURE);
     public static final boolean DebugCounters = booleanOption("DebugCounters", false, OPTION_SETUP);
     /** Load per-function data lazily. */
     public static final boolean LazyFunctionData = booleanOption("LazyFunctionData", true, OPTION_SETUP | OPTION_PERFORMANCE);

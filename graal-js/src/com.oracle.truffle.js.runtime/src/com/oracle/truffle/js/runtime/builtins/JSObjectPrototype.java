@@ -62,7 +62,7 @@ public final class JSObjectPrototype extends JSBuiltinObject {
 
     public static DynamicObject create(JSContext context) {
         Shape objectPrototypeShape = context.makeEmptyShapeWithNullPrototype(INSTANCE);
-        DynamicObject obj = JSObject.createNoTrack(objectPrototypeShape);
+        DynamicObject obj = JSObject.createInit(objectPrototypeShape);
         JSAbstractArray.putArrayProperties(obj, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray());
         return obj;
     }
