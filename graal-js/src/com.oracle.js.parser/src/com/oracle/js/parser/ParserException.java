@@ -41,14 +41,11 @@
 
 package com.oracle.js.parser;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
-
 /**
  * ECMAScript parser exceptions.
  */
 @SuppressWarnings("serial")
-public final class ParserException extends RuntimeException implements TruffleException {
+public final class ParserException extends RuntimeException {
     // script file name
     private String fileName;
     // script line number
@@ -183,17 +180,6 @@ public final class ParserException extends RuntimeException implements TruffleEx
         return errorType;
     }
 
-    @Override
-    public Node getLocation() {
-        return null;
-    }
-
-    @Override
-    public boolean isSyntaxError() {
-        return true;
-    }
-
-    @Override
     public boolean isIncompleteSource() {
         return Token.descType(token) == TokenType.EOF;
     }
