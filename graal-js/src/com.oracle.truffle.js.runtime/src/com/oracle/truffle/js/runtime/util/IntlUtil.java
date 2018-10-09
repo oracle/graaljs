@@ -56,11 +56,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
+import org.graalvm.polyglot.Engine;
+
 /**
  *
  * ECMA 402 Utilities.
  */
 public class IntlUtil {
+
+    private static final String COM_IBM_ICU_IMPL_ICU_BINARY_DATA_PATH = "com.ibm.icu.impl.ICUBinary.dataPath";
 
     // based on http://unicode.org/repos/cldr/trunk/common/bcp47/number.xml
     public static final List<String> BCP47_NU_KEYS = Arrays.asList(new String[]{"adlm", "ahom", "arab", "arabext", "armn", "armnlow", "bali", "beng", "bhks", "brah", "cakm", "cham", "cyrl", "deva",
@@ -236,5 +240,16 @@ public class IntlUtil {
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
         return strippedLocale;
+    }
+
+    public static void ensureICU4JDataPathSet() {
+        String dataPath = System.getProperty(COM_IBM_ICU_IMPL_ICU_BINARY_DATA_PATH);
+        if (dataPath == null || dataPath.isEmpty()) {
+            dataPath = System.getenv("ICU4J_DATA_PATH");
+            if (dataPath == null || dataPath.isEmpty()) {
+                String newDataPath = Engine.findHome().resolve("jre").resolve("languages").resolve("js").resolve("icu4j").resolve("icudt").toString();
+                System.setProperty(COM_IBM_ICU_IMPL_ICU_BINARY_DATA_PATH, newDataPath);
+            }
+        }
     }
 }
