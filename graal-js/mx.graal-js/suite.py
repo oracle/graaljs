@@ -249,7 +249,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "truffle:TRUFFLE_API",
+        "sdk:GRAAL_SDK"
       ],
       "exports" : [],
       "javaCompliance" : "1.8",
