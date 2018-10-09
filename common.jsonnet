@@ -25,6 +25,7 @@
   local common = {
     packages: {
       'apache/ab': '==2.3',
+      binutils: '>=2.23',
       gcc: '==4.9.1',
       git: '>=1.8.3',
       maven: '==3.3.9',
