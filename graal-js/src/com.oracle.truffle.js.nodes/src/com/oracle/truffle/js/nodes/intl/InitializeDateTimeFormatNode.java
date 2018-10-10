@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.MissingResourceException;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -47,6 +49,7 @@ import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNodeGen.ToDateTimeOptionsNodeGen;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
@@ -135,7 +138,11 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         String secondOpt = getSecondOption.executeValue(options);
         String tzNameOpt = getTimeZoneNameOption.executeValue(options);
 
-        JSDateTimeFormat.setupInternalDateTimeFormat(state, locales, options, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt);
+        try {
+            JSDateTimeFormat.setupInternalDateTimeFormat(state, locales, options, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt);
+        } catch (MissingResourceException e) {
+            throw Errors.createICU4JDataError();
+        }
 
         return dateTimeFormatObj;
     }

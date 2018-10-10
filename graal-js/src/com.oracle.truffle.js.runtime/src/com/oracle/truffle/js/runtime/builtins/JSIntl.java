@@ -42,10 +42,8 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public final class JSIntl {
 
@@ -55,10 +53,6 @@ public final class JSIntl {
     }
 
     public static DynamicObject create(JSRealm realm) {
-
-        if (JSTruffleOptions.SubstrateVM) {
-            IntlUtil.ensureICU4JDataPathSet();
-        }
 
         DynamicObject obj = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(realm, obj, CLASS_NAME);

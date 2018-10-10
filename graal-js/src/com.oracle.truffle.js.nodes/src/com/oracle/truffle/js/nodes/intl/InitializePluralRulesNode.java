@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.MissingResourceException;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
@@ -105,8 +108,14 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
         state.initialized = true;
 
         state.type = optType;
-        JSNumberFormat.setLocaleAndNumberingSystem(state, locales);
-        JSPluralRules.setupInternalPluralRulesAndNumberFormat(state);
+
+        try {
+            JSNumberFormat.setLocaleAndNumberingSystem(state, locales);
+            JSPluralRules.setupInternalPluralRulesAndNumberFormat(state);
+
+        } catch (MissingResourceException e) {
+            throw Errors.createICU4JDataError();
+        }
 
         int mnfdDefault = 0;
         int mxfdDefault = 3;

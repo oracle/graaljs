@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.MissingResourceException;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -145,7 +147,11 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
             }
         }
         state.useGrouping = optUseGrouping;
-        JSNumberFormat.setupInternalNumberFormat(state);
+        try {
+            JSNumberFormat.setupInternalNumberFormat(state);
+        } catch (MissingResourceException e) {
+            throw Errors.createICU4JDataError();
+        }
         setNumberFormatDigitOptions(state, options, mnfdDefault, mxfdDefault);
         return numberFormatObj;
     }
