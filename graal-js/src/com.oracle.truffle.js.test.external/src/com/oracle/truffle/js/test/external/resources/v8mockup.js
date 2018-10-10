@@ -710,10 +710,6 @@ function v8ConstructConsString(s1, s2) {
     return s1 + s2;
 }
 
-function v8MaxSmi() {
-    return 0;
-}
-
 function v8IsJSReceiver() {
     return v8IgnoreResult;
 }
