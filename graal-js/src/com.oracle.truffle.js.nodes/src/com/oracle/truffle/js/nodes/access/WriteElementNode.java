@@ -860,7 +860,7 @@ public class WriteElementNode extends JSTargetableNode {
                 } else if (array instanceof TypedBigIntArray) {
                     return new TypedBigIntArrayWriteElementCacheNode(context, isStrict, array, writeOwn, next);
                 } else {
-                    return new TypedArrayWriteElementCacheNode(context, isStrict, array, writeOwn, next);
+                    throw Errors.shouldNotReachHere();
                 }
             } else {
                 return new ExactArrayWriteElementCacheNode(context, isStrict, array, writeOwn, next);
@@ -1521,25 +1521,6 @@ public class WriteElementNode extends JSTargetableNode {
             } else {
                 assert objectArray.isSparse(target, index, arrayCondition);
                 setArrayAndWrite(objectArray.toSparse(target, index, value), target, index, value, arrayCondition);
-            }
-        }
-    }
-
-    private static class TypedArrayWriteElementCacheNode extends ArrayClassGuardCachedArrayWriteElementCacheNode {
-        private final ConditionProfile inBoundsProfile = ConditionProfile.createBinaryProfile();
-
-        TypedArrayWriteElementCacheNode(JSContext context, boolean isStrict, ScriptArray arrayType, boolean writeOwn, ArrayWriteElementCacheNode arrayCacheNext) {
-            super(context, isStrict, arrayType, writeOwn, arrayCacheNext);
-        }
-
-        @Override
-        protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
-            checkDetachedArrayBuffer(target);
-            TypedArray typedArray = (TypedArray) cast(array);
-            if (inBoundsProfile.profile(typedArray.hasElement(target, index, arrayCondition))) {
-                typedArray.setElement(target, index, value, isStrict, arrayCondition);
-            } else {
-                // do nothing; cf. ES6 9.4.5.9 IntegerIndexedElementSet(O, index, value)
             }
         }
     }
