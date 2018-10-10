@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.interop;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -87,6 +88,14 @@ public final class JavaPackage extends JSBuiltinObject {
 
     public static DynamicObject create(JSRealm realm, String packageName) {
         DynamicObject obj = JSObject.createWithPrototype(realm.getContext(), realm.getContext().getJavaPackageFactory(), realm, realm.getObjectPrototype(), packageName);
+        JSObjectUtil.putDataProperty(obj, Symbol.SYMBOL_TO_PRIMITIVE, realm.getJavaPackageToPrimitiveFunction(), JSAttributes.notConfigurableNotEnumerableNotWritable());
+        assert isJavaPackage(obj);
+        return obj;
+    }
+
+    public static DynamicObject createInit(JSRealm realm, String packageName) {
+        CompilerAsserts.neverPartOfCompilation();
+        DynamicObject obj = realm.getContext().getJavaPackageFactory().createWithPrototype(realm, realm.getObjectPrototype(), packageName);
         JSObjectUtil.putDataProperty(obj, Symbol.SYMBOL_TO_PRIMITIVE, realm.getJavaPackageToPrimitiveFunction(), JSAttributes.notConfigurableNotEnumerableNotWritable());
         assert isJavaPackage(obj);
         return obj;

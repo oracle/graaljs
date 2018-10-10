@@ -110,7 +110,7 @@ public final class JSObject {
     /**
      * Use only for realm initialization; omits allocation tracking.
      */
-    public static DynamicObject createNoTrack(Shape shape) {
+    public static DynamicObject createInit(Shape shape) {
         CompilerAsserts.neverPartOfCompilation();
         return shape.newInstance();
     }
@@ -182,9 +182,12 @@ public final class JSObject {
         CompilerAsserts.neverPartOfCompilation();
         assert prototype == Null.instance || JSRuntime.isObject(prototype);
         if (context.isMultiContext() && builtinObject == JSUserObject.INSTANCE) {
-            return JSUserObject.createWithPrototypeInObject(prototype, context);
+            Shape shape = context.getEmptyShapePrototypeInObject();
+            DynamicObject obj = JSObject.createInit(shape);
+            JSObject.PROTO_PROPERTY.setSafe(obj, prototype, shape);
+            return obj;
         }
-        return createNoTrack(prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
+        return createInit(prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, builtinObject, context));
     }
 
     @TruffleBoundary
