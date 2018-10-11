@@ -49,18 +49,24 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.IllformedLocaleException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
+import java.util.MissingResourceException;
+
+import org.graalvm.polyglot.Engine;
 
 /**
  *
  * ECMA 402 Utilities.
  */
 public class IntlUtil {
+
+    private static final String ICU4J_DATA_PATH_SYS_PROPERTY = "com.ibm.icu.impl.ICUBinary.dataPath";
 
     // based on http://unicode.org/repos/cldr/trunk/common/bcp47/number.xml
     public static final List<String> BCP47_NU_KEYS = Arrays.asList(new String[]{"adlm", "ahom", "arab", "arabext", "armn", "armnlow", "bali", "beng", "bhks", "brah", "cakm", "cham", "cyrl", "deva",
@@ -74,6 +80,9 @@ public class IntlUtil {
         Locale matchedLocale = lookupMatcher(locales);
         return matchedLocale != null ? matchedLocale.toLanguageTag() : null;
     }
+
+    private static volatile boolean icu4jPathInitialized = false;
+    private static final Object icu4jPathLock = new Object();
 
     @TruffleBoundary
     private static Locale lookupMatcher(String[] languageTags) {
@@ -116,12 +125,17 @@ public class IntlUtil {
         return getAvailableLocales().contains(strippedLocale);
     }
 
-    static List<Locale> availableLocales = null;
+    static volatile List<Locale> availableLocales = null;
+    private static final Object localesLock = new Object();
 
     @TruffleBoundary
     private static List<Locale> getAvailableLocales() {
         if (availableLocales == null) {
-            availableLocales = doGetAvailableLocales();
+            synchronized (localesLock) {
+                if (availableLocales == null) {
+                    availableLocales = doGetAvailableLocales();
+                }
+            }
         }
         return availableLocales;
     }
@@ -137,15 +151,19 @@ public class IntlUtil {
         List<Locale> result = new ArrayList<>();
 
         if (JSTruffleOptions.SubstrateVM) {
-            // GR-6347 (Locale.getAvailableLocales() support is missing in SVM)
-            ULocale[] localesAvailable = ULocale.getAvailableLocales();
-            Locale[] javaLocalesAvailable = new Locale[localesAvailable.length];
-            int i = 0;
-            for (ULocale ul : localesAvailable) {
-                javaLocalesAvailable[i++] = ul.toLocale();
+            ensureICU4JDataPathSet();
+            try {
+                // GR-6347 (Locale.getAvailableLocales() support is missing in SVM)
+                ULocale[] localesAvailable = ULocale.getAvailableLocales();
+                Locale[] javaLocalesAvailable = new Locale[localesAvailable.length];
+                int i = 0;
+                for (ULocale ul : localesAvailable) {
+                    javaLocalesAvailable[i++] = ul.toLocale();
+                }
+                result.addAll(Arrays.asList(javaLocalesAvailable));
+            } catch (MissingResourceException e) {
+                throw Errors.createICU4JDataError();
             }
-
-            result.addAll(Arrays.asList(javaLocalesAvailable));
         } else {
             result.addAll(Arrays.asList(Locale.getAvailableLocales()));
         }
@@ -236,5 +254,31 @@ public class IntlUtil {
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
         return strippedLocale;
+    }
+
+    @TruffleBoundary
+    public static void ensureICU4JDataPathSet() {
+
+        if (JSTruffleOptions.SubstrateVM && !icu4jPathInitialized) {
+
+            synchronized (icu4jPathLock) {
+                if (!icu4jPathInitialized) {
+
+                    icu4jPathInitialized = true;
+
+                    String dataPath = System.getProperty(ICU4J_DATA_PATH_SYS_PROPERTY);
+                    if (dataPath == null || dataPath.isEmpty()) {
+                        dataPath = System.getenv("ICU4J_DATA_PATH");
+                        if (dataPath == null || dataPath.isEmpty()) {
+                            Path homePath = Engine.findHome();
+                            if (homePath != null) {
+                                String newDataPath = homePath.resolve("jre").resolve("languages").resolve("js").resolve("icu4j").resolve("icudt").toString();
+                                System.setProperty(ICU4J_DATA_PATH_SYS_PROPERTY, newDataPath);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
