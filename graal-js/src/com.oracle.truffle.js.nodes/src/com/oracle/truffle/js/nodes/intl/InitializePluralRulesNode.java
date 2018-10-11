@@ -110,9 +110,8 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
 
         state.type = optType;
 
+        IntlUtil.ensureICU4JDataPathSet();
         try {
-            IntlUtil.ensureICU4JDataPathSet();
-
             JSNumberFormat.setLocaleAndNumberingSystem(state, locales);
             JSPluralRules.setupInternalPluralRulesAndNumberFormat(state);
 

@@ -100,9 +100,8 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
         String sensitivity = getSensitivityOption.executeValue(options);
         Boolean ignorePunctuation = getIgnorePunctuationOption.executeValue(options);
 
+        IntlUtil.ensureICU4JDataPathSet();
         try {
-            IntlUtil.ensureICU4JDataPathSet();
-
             JSCollator.initializeCollator(state, locales, usage, optLocaleMatcher, optkn, optkf, sensitivity, ignorePunctuation);
 
         } catch (MissingResourceException e) {

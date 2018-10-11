@@ -139,9 +139,8 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         String secondOpt = getSecondOption.executeValue(options);
         String tzNameOpt = getTimeZoneNameOption.executeValue(options);
 
+        IntlUtil.ensureICU4JDataPathSet();
         try {
-            IntlUtil.ensureICU4JDataPathSet();
-
             JSDateTimeFormat.setupInternalDateTimeFormat(state, locales, options, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt);
 
         } catch (MissingResourceException e) {

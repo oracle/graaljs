@@ -66,7 +66,7 @@ import org.graalvm.polyglot.Engine;
  */
 public class IntlUtil {
 
-    private static final String COM_IBM_ICU_IMPL_ICU_BINARY_DATA_PATH = "com.ibm.icu.impl.ICUBinary.dataPath";
+    private static final String ICU4J_DATA_PATH_SYS_PROPERTY = "com.ibm.icu.impl.ICUBinary.dataPath";
 
     // based on http://unicode.org/repos/cldr/trunk/common/bcp47/number.xml
     public static final List<String> BCP47_NU_KEYS = Arrays.asList(new String[]{"adlm", "ahom", "arab", "arabext", "armn", "armnlow", "bali", "beng", "bhks", "brah", "cakm", "cham", "cyrl", "deva",
@@ -82,6 +82,7 @@ public class IntlUtil {
     }
 
     private static boolean icu4jPathInitialized = false;
+    private static final Object icu4jPathLock = new Object();
 
     @TruffleBoundary
     private static Locale lookupMatcher(String[] languageTags) {
@@ -145,8 +146,8 @@ public class IntlUtil {
         List<Locale> result = new ArrayList<>();
 
         if (JSTruffleOptions.SubstrateVM) {
+            ensureICU4JDataPathSet();
             try {
-                ensureICU4JDataPathSet();
                 // GR-6347 (Locale.getAvailableLocales() support is missing in SVM)
                 ULocale[] localesAvailable = ULocale.getAvailableLocales();
                 Locale[] javaLocalesAvailable = new Locale[localesAvailable.length];
@@ -252,16 +253,24 @@ public class IntlUtil {
 
     @TruffleBoundary
     public static void ensureICU4JDataPathSet() {
+
         if (JSTruffleOptions.SubstrateVM && !icu4jPathInitialized) {
-            icu4jPathInitialized = true;
-            String dataPath = System.getProperty(COM_IBM_ICU_IMPL_ICU_BINARY_DATA_PATH);
-            if (dataPath == null || dataPath.isEmpty()) {
-                dataPath = System.getenv("ICU4J_DATA_PATH");
-                if (dataPath == null || dataPath.isEmpty()) {
-                    Path homePath = Engine.findHome();
-                    if (homePath != null) {
-                        String newDataPath = homePath.resolve("jre").resolve("languages").resolve("js").resolve("icu4j").resolve("icudt").toString();
-                        System.setProperty(COM_IBM_ICU_IMPL_ICU_BINARY_DATA_PATH, newDataPath);
+
+            synchronized (icu4jPathLock) {
+                if (!icu4jPathInitialized) {
+
+                    icu4jPathInitialized = true;
+
+                    String dataPath = System.getProperty(ICU4J_DATA_PATH_SYS_PROPERTY);
+                    if (dataPath == null || dataPath.isEmpty()) {
+                        dataPath = System.getenv("ICU4J_DATA_PATH");
+                        if (dataPath == null || dataPath.isEmpty()) {
+                            Path homePath = Engine.findHome();
+                            if (homePath != null) {
+                                String newDataPath = homePath.resolve("jre").resolve("languages").resolve("js").resolve("icu4j").resolve("icudt").toString();
+                                System.setProperty(ICU4J_DATA_PATH_SYS_PROPERTY, newDataPath);
+                            }
+                        }
                     }
                 }
             }

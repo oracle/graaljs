@@ -538,10 +538,10 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createICU4JDataError() {
         return Errors.createError("ICU4J library not properly configured to work with native image. " +
-                        "Please either set VM property, " +
+                        "Please either set system property, " +
                         "com.ibm.icu.impl.ICUBinary.dataPath" +
                         ", or environment variable, " +
                         "ICU4J_DATA_PATH" +
-                        ", to contain path to your ICU4J icudt directory (should come bundled with GRAAL_VM in jre/languages/js/icu4j/icudt subdirectory).");
+                        ", to contain path to your ICU4J icudt directory (should come bundled with GraalVM in jre/languages/js/icu4j/icudt subdirectory).");
     }
 }
