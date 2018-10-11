@@ -55,6 +55,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
  * https://tc39.github.io/ecma402/#sec-initializedatetimeformat
@@ -139,7 +140,10 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         String tzNameOpt = getTimeZoneNameOption.executeValue(options);
 
         try {
+            IntlUtil.ensureICU4JDataPathSet();
+
             JSDateTimeFormat.setupInternalDateTimeFormat(state, locales, options, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt);
+
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError();
         }

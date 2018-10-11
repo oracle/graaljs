@@ -52,6 +52,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
  * https://tc39.github.io/ecma402/#sec-initializecollator
@@ -100,6 +101,8 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
         Boolean ignorePunctuation = getIgnorePunctuationOption.executeValue(options);
 
         try {
+            IntlUtil.ensureICU4JDataPathSet();
+
             JSCollator.initializeCollator(state, locales, usage, optLocaleMatcher, optkn, optkf, sensitivity, ignorePunctuation);
 
         } catch (MissingResourceException e) {

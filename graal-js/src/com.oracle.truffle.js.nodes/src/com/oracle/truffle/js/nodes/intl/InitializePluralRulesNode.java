@@ -52,6 +52,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
  * https://tc39.github.io/ecma402/#sec-initializepluralrules
@@ -110,6 +111,8 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
         state.type = optType;
 
         try {
+            IntlUtil.ensureICU4JDataPathSet();
+
             JSNumberFormat.setLocaleAndNumberingSystem(state, locales);
             JSPluralRules.setupInternalPluralRulesAndNumberFormat(state);
 

@@ -148,7 +148,10 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         }
         state.useGrouping = optUseGrouping;
         try {
+            IntlUtil.ensureICU4JDataPathSet();
+
             JSNumberFormat.setupInternalNumberFormat(state);
+
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError();
         }
