@@ -49,6 +49,7 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugToLengthNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetachBufferNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ConstructDoubleNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8DoublePartNodeGen;
+import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8RunMicrotasksNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNameNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNumberNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToPrimitiveNodeGen;
@@ -62,6 +63,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Contains builtins to support special behavior used by TestV8.
@@ -77,6 +79,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
     public enum TestV8 implements BuiltinEnum<TestV8> {
         class_(1),
         className(1),
+        runMicrotasks(0),
         stringCompare(2),
         typedArrayDetachBuffer(1),
 
@@ -111,6 +114,8 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                 return DebugClassNodeGen.create(context, builtin, true, args().fixedArgs(1).createArgumentNodes(context));
             case className:
                 return DebugClassNameNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case runMicrotasks:
+                return TestV8RunMicrotasksNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case stringCompare:
                 return DebugStringCompareNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case typedArrayDetachBuffer:
@@ -249,4 +254,24 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             }
         }
     }
+
+    /**
+     * Executes all pending jobs, used by v8mockup.js.
+     */
+    public abstract static class TestV8RunMicrotasksNode extends JSBuiltinNode {
+
+        public TestV8RunMicrotasksNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object runMicrotasks() {
+            JSContext context = getContext();
+            while (context.processAllPendingPromiseJobs()) {
+                // we consume all pending jobs
+            }
+            return Undefined.instance;
+        }
+    }
+
 }

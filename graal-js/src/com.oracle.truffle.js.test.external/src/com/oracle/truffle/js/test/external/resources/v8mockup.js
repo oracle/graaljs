@@ -79,7 +79,7 @@ function v8ClearFunctionTypeFeedback() {
 }
 
 function v8RunMicrotasks() {
-    return undefined;
+    return TestV8.runMicrotasks();
 }
 
 function v8EnqueueMicrotask(a) {
