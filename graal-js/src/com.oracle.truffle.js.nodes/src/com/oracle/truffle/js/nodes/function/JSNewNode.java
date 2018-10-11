@@ -363,9 +363,9 @@ public abstract class JSNewNode extends JavaScriptNode {
             return JSUserObject.createWithPrototypeInObject(proto, context);
         }
 
-        @Specialization(guards = {"!isBuiltin", "isConstructor", "isUndefined(shape)"})
-        public DynamicObject createUserObjectAsObject(DynamicObject target, Object shape) {
-            assert shape == Undefined.instance;
+        @Specialization(guards = {"!isBuiltin", "isConstructor", "isUndefined(proto)"})
+        public DynamicObject createUserObjectAsObject(DynamicObject target, Object proto) {
+            assert proto == Undefined.instance;
             // user-provided prototype is not an object
             JSRealm realm = JSRuntime.getFunctionRealm(target, context.getRealm());
             if (isAsyncGenerator) {
@@ -377,7 +377,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         }
 
         @Specialization(guards = {"isBuiltin", "isConstructor"})
-        public Object useConstruct(@SuppressWarnings("unused") DynamicObject target, @SuppressWarnings("unused") Object shape) {
+        static Object builtinConstructor(@SuppressWarnings("unused") DynamicObject target, @SuppressWarnings("unused") Object shape) {
             return JSFunction.CONSTRUCT;
         }
 
@@ -422,11 +422,6 @@ public abstract class JSNewNode extends JavaScriptNode {
             return Undefined.instance;
         }
 
-        @Specialization(guards = {"context.isMultiContext()"})
-        protected static Object doProtoInObject(Object prototype) {
-            return prototype;
-        }
-
         @SuppressWarnings("unused")
         @Specialization(guards = {"!context.isMultiContext()", "prototype == cachedPrototype"}, limit = "PropertyCacheLimit")
         protected static Object doCached(Object prototype,
@@ -444,6 +439,16 @@ public abstract class JSNewNode extends JavaScriptNode {
                 return JSObjectUtil.getProtoChildShape(((DynamicObject) prototype), JSUserObject.INSTANCE, context, slowBranch);
             }
             notAnObjectBranch.enter();
+            return Undefined.instance;
+        }
+
+        @Specialization(guards = {"context.isMultiContext()", "isJSObject(prototype)"})
+        protected static Object doUncachedMulti(Object prototype) {
+            return prototype;
+        }
+
+        @Specialization(guards = {"context.isMultiContext()", "!isJSObject(prototype)"})
+        protected static Object doNotObject(@SuppressWarnings("unused") Object prototype) {
             return Undefined.instance;
         }
     }
