@@ -81,7 +81,7 @@ public class IntlUtil {
         return matchedLocale != null ? matchedLocale.toLanguageTag() : null;
     }
 
-    private static boolean icu4jPathInitialized = false;
+    private static volatile boolean icu4jPathInitialized = false;
     private static final Object icu4jPathLock = new Object();
 
     @TruffleBoundary
@@ -125,12 +125,17 @@ public class IntlUtil {
         return getAvailableLocales().contains(strippedLocale);
     }
 
-    static List<Locale> availableLocales = null;
+    static volatile List<Locale> availableLocales = null;
+    private static final Object localesLock = new Object();
 
     @TruffleBoundary
     private static List<Locale> getAvailableLocales() {
         if (availableLocales == null) {
-            availableLocales = doGetAvailableLocales();
+            synchronized (localesLock) {
+                if (availableLocales == null) {
+                    availableLocales = doGetAvailableLocales();
+                }
+            }
         }
         return availableLocales;
     }
