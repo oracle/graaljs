@@ -285,7 +285,13 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             if (method == Undefined.instance) {
                 return processUndefinedMethod(frame, promiseCapability, value);
             }
-            Object returnResult = executeReturnMethod.executeCall(JSArguments.create(syncIterator, method, value));
+            Object returnResult;
+            try {
+                returnResult = executeReturnMethod.executeCall(JSArguments.create(syncIterator, method, value));
+            } catch (GraalJSException e) {
+                promiseCapabilityReject(promiseCapability, e);
+                return promiseCapability.getPromise();
+            }
             if (!JSObject.isJSObject(returnResult)) {
                 promiseCapabilityReject(promiseCapability, Errors.createTypeErrorNotAnObject(returnResult));
                 return promiseCapability.getPromise();
