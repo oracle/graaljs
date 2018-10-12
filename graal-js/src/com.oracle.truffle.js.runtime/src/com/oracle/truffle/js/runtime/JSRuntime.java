@@ -2225,7 +2225,7 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    private static boolean isCallableForeign(TruffleObject value) {
+    public static boolean isCallableForeign(TruffleObject value) {
         if (isForeignObject(value)) {
             return JSInteropNodeUtil.isExecutable(value);
         }
@@ -2588,7 +2588,7 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    private static boolean isConstructorForeign(TruffleObject value) {
+    public static boolean isConstructorForeign(TruffleObject value) {
         if (isForeignObject(value)) {
             return JSInteropNodeUtil.isInstantiable(value);
         }
