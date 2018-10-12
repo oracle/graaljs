@@ -108,7 +108,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
         super(token, finish);
         assert start <= finish;
 
-        this.statements = Arrays.asList(statements);
+        this.statements = statements.length == 0 ? Collections.emptyList() : Arrays.asList(statements);
         this.symbols    = EconomicMap.create();
         final int len = statements.length;
         final int terminalFlags = len > 0 && statements[len - 1].hasTerminalFlags() ? IS_TERMINAL : 0;
