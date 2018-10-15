@@ -40,42 +40,58 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public class FulfillPromiseNode extends JavaScriptBaseNode {
-    @Child private PropertyGetNode getPromiseFulfillReactions;
-    @Child private PropertySetNode setPromiseResult;
-    @Child private PropertySetNode setPromiseFulfillReactions;
-    @Child private PropertySetNode setPromiseRejectReactions;
-    @Child private PropertySetNode setPromiseState;
-    @Child private TriggerPromiseReactionsNode triggerPromiseReactions;
+@SuppressWarnings("unused")
+@ImportStatic(JSPromise.class)
+public abstract class UnwrapPromiseNode extends JavaScriptBaseNode {
+    @Child private PropertyGetNode getPromiseState;
+    @Child private PropertyGetNode getPromiseResult;
 
-    protected FulfillPromiseNode(JSContext context) {
-        this.getPromiseFulfillReactions = PropertyGetNode.createGetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
-        this.setPromiseResult = PropertySetNode.createSetHidden(JSPromise.PROMISE_RESULT, context);
-        this.setPromiseFulfillReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
-        this.setPromiseRejectReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_REJECT_REACTIONS, context);
-        this.setPromiseState = PropertySetNode.createSetHidden(JSPromise.PROMISE_STATE, context);
-        this.triggerPromiseReactions = TriggerPromiseReactionsNode.create(context);
+    protected UnwrapPromiseNode(JSContext context) {
+        this.getPromiseState = PropertyGetNode.createGetHidden(JSPromise.PROMISE_STATE, context);
+        this.getPromiseResult = PropertyGetNode.createGetHidden(JSPromise.PROMISE_RESULT, context);
     }
 
-    public static FulfillPromiseNode create(JSContext context) {
-        return new FulfillPromiseNode(context);
+    public static UnwrapPromiseNode create(JSContext context) {
+        return UnwrapPromiseNodeGen.create(context);
     }
 
-    public Object execute(DynamicObject promise, Object value) {
-        assert JSPromise.isPending(promise);
-        Object reactions = getPromiseFulfillReactions.getValue(promise);
-        setPromiseResult.setValue(promise, value);
-        setPromiseFulfillReactions.setValue(promise, Undefined.instance);
-        setPromiseRejectReactions.setValue(promise, Undefined.instance);
-        setPromiseState.setValueInt(promise, JSPromise.FULFILLED);
-        return triggerPromiseReactions.execute(reactions, value);
+    public final Object execute(DynamicObject promise) {
+        int promiseState;
+        try {
+            promiseState = getPromiseState.getValueInt(promise);
+        } catch (UnexpectedResultException e) {
+            throw Errors.shouldNotReachHere();
+        }
+        Object promiseResult = getPromiseResult.getValue(promise);
+        return execute(promise, promiseState, promiseResult);
+    }
+
+    protected abstract Object execute(DynamicObject promise, int promiseState, Object promiseResult);
+
+    @Specialization(guards = "promiseState == FULFILLED")
+    protected static Object fulfilled(DynamicObject promise, int promiseState, Object promiseResult) {
+        return promiseResult;
+    }
+
+    @Specialization(guards = "promiseState == REJECTED")
+    protected static Object rejected(DynamicObject promise, int promiseState, Object promiseResult) {
+        throw UserScriptException.create(promiseResult);
+    }
+
+    @Specialization(guards = "promiseState == PENDING")
+    protected static Object pending(DynamicObject promise, int promiseState, Object promiseResult) {
+        throw Errors.createTypeError("Attempt to unwrap pending promise");
     }
 }
