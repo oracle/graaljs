@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -50,6 +51,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -77,11 +79,6 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
 
         this.getReturnNode = GetMethodNode.create(context, null, "return");
         this.methodCallNode = JSFunctionCallNode.createCall();
-
-        this.readAsyncResultNode = asyncResultNode;
-        this.readAsyncContextNode = asyncContextNode;
-        this.awaitTrampolineCall = JSFunctionCallNode.createCall();
-
     }
 
     public static JavaScriptNode create(JSContext context, JavaScriptNode loopNode, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode,
@@ -92,51 +89,84 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
     @Override
     public Object execute(VirtualFrame frame) {
         Object result;
-        try {
-            result = loopNode.execute(frame);
-        } catch (YieldException e) {
-            throw e;
-        } catch (Exception e) {
-            IteratorRecord iteratorRecord = (IteratorRecord) iteratorNode.execute(frame);
-            DynamicObject iterator = iteratorRecord.getIterator();
-            Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
-            if (returnMethod != Undefined.instance) {
-                try {
-                    methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-                } catch (Exception ex) {
-                    // re-throw outer exception
+        Object innerResult;
+        Completion completion;
+        await: {
+            try {
+                result = loopNode.execute(frame);
+            } catch (YieldException e) {
+                throw e;
+            } catch (ControlFlowException e) {
+                IteratorRecord iteratorRecord = (IteratorRecord) iteratorNode.execute(frame);
+                DynamicObject iterator = iteratorRecord.getIterator();
+                Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
+                if (returnMethod != Undefined.instance) {
+                    innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                    completion = Completion.forReturn(e);
+                    break await;
+                } else {
+                    throw e;
+                }
+            } catch (Throwable e) {
+                if (TryCatchNode.shouldCatch(e)) {
+                    IteratorRecord iteratorRecord = (IteratorRecord) iteratorNode.execute(frame);
+                    DynamicObject iterator = iteratorRecord.getIterator();
+                    Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
+                    if (returnMethod != Undefined.instance) {
+                        try {
+                            innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                        } catch (Exception ex) {
+                            // re-throw outer exception
+                            throw e;
+                        }
+                        completion = Completion.forThrow(e);
+                        break await;
+                    } else {
+                        throw e;
+                    }
+                } else {
+                    throw e;
                 }
             }
-            throw e;
-        }
-        if (StatementNode.executeConditionAsBoolean(frame, doneNode)) {
-            return result;
-        } else {
-            IteratorRecord iteratorRecord = (IteratorRecord) iteratorNode.execute(frame);
-            DynamicObject iterator = iteratorRecord.getIterator();
-            Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
-            if (returnMethod == Undefined.instance) {
+            if (StatementNode.executeConditionAsBoolean(frame, doneNode)) {
                 return result;
+            } else {
+                IteratorRecord iteratorRecord = (IteratorRecord) iteratorNode.execute(frame);
+                DynamicObject iterator = iteratorRecord.getIterator();
+                Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
+                if (returnMethod != Undefined.instance) {
+                    innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                    completion = Completion.forNormal(result);
+                    break await;
+                } else {
+                    return result;
+                }
             }
-            Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-            setState(frame, 1);
-            return suspendAwait(frame, innerResult);
         }
+        setState(frame, completion);
+        return suspendAwait(frame, innerResult);
     }
 
     @Override
     public Object resume(VirtualFrame frame) {
-        int index = getStateAsInt(frame);
-        if (index == 0) {
+        Object state = getState(frame);
+        if (state == Undefined.instance) {
             return execute(frame);
         } else {
-            setState(frame, 0);
+            resetState(frame);
+            Completion completion = (Completion) state;
+            if (completion.isThrow()) {
+                throw TryFinallyNode.rethrow((Throwable) completion.getValue());
+            }
             Object innerResult = resumeAwait(frame);
             if (!JSObject.isJSObject(innerResult)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
             }
-            return innerResult;
+            if (completion.isAbrupt()) {
+                throw TryFinallyNode.rethrow((Throwable) completion.getValue());
+            }
+            return completion.getValue();
         }
     }
 
