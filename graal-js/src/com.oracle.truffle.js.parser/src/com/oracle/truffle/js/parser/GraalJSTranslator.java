@@ -1802,7 +1802,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assert forNode.isForIn() && !forNode.isForEach() && !forNode.isForOf();
             createIteratorNode = factory.createEnumerate(context, modify, false);
         }
-        return desugarForInOrOfBody(forNode, createIteratorNode, jumpTarget);
+        return desugarForInOrOfBody(forNode, factory.createGetIterator(context, createIteratorNode), jumpTarget);
     }
 
     private JavaScriptNode desugarForOf(ForNode forNode, JavaScriptNode modify, JumpTargetCloseable<ContinueTarget> jumpTarget) {
@@ -1816,7 +1816,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode iteratorInit = iteratorVar.createWriteNode(iterator);
         VarRef nextResultVar = environment.createTempVar();
         VarRef doneVar = environment.createTempVar();
-        JavaScriptNode iteratorNext = factory.createIteratorNext(context, iteratorVar.createReadNode());
+        JavaScriptNode iteratorNext = factory.createIteratorNext(iteratorVar.createReadNode());
         // nextResult = IteratorNext(iterator)
         // while(!(done = IteratorComplete(nextResult)))
         JavaScriptNode condition = factory.createUnary(UnaryOperation.NOT, doneVar.createWriteNode(factory.createIteratorComplete(context, nextResultVar.createWriteNode(iteratorNext))));

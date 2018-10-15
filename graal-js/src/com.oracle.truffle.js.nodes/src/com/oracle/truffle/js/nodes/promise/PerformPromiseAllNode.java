@@ -130,7 +130,7 @@ public class PerformPromiseAllNode extends PerformPromiseAllOrRaceNode {
         for (int index = 0;; index++) {
             Object next;
             try {
-                next = iteratorStep.execute(iteratorRecord.getIterator());
+                next = iteratorStep.execute(iteratorRecord);
             } catch (Throwable error) {
                 iteratorRecord.setDone(true);
                 throw error;

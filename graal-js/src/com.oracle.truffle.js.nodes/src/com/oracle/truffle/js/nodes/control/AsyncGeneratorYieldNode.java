@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorYieldNode extends AwaitNode {
@@ -174,7 +175,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         this.writeIteratorTemp = writeTemp;
 
         this.getIteratorNode = GetIteratorNode.createAsync(context, null);
-        this.iteratorNextNode = IteratorNextNode.create(context);
+        this.iteratorNextNode = IteratorNextNode.create();
         this.iteratorCompleteNode = IteratorCompleteNode.create(context);
         this.iteratorValueNode = IteratorValueNode.create(context, null);
         this.getThrowMethodNode = GetMethodNode.create(context, null, "throw");
@@ -195,14 +196,15 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         final int returnAwaitReceivedValue = 7;
         final int throwAwaitReturnResult = 8;
 
-        DynamicObject iterator;
+        IteratorRecord iteratorRecord;
         if (state == 0) {
-            iterator = getIteratorNode.execute(expression.execute(frame));
-            writeIteratorTemp.executeWrite(frame, iterator);
+            iteratorRecord = getIteratorNode.execute(expression.execute(frame));
+            writeIteratorTemp.executeWrite(frame, iteratorRecord);
             state = loopBegin;
         } else {
-            iterator = (DynamicObject) readIteratorTemp.execute(frame);
+            iteratorRecord = (IteratorRecord) readIteratorTemp.execute(frame);
         }
+        DynamicObject iterator = iteratorRecord.getIterator();
 
         Completion received = Completion.forNormal(Undefined.instance);
         Object awaited;
@@ -210,7 +212,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
             switch (state) {
                 case loopBegin: {
                     if (received.isNormal()) {
-                        DynamicObject innerResult = iteratorNextNode.execute(iterator, received.getValue());
+                        DynamicObject innerResult = iteratorNextNode.execute(iteratorRecord, received.getValue());
                         awaited = awaitWithNext(frame, innerResult, normalOrThrowAwaitInnerResult);
                     } else if (received.isThrow()) {
                         Object throwMethod = getThrowMethodNode.executeWithTarget(iterator);

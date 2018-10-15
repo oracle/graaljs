@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -49,6 +50,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -95,7 +97,8 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
         } catch (YieldException e) {
             throw e;
         } catch (Exception e) {
-            Object iterator = iteratorNode.execute(frame);
+            IteratorRecord iteratorRecord = (IteratorRecord) iteratorNode.execute(frame);
+            DynamicObject iterator = iteratorRecord.getIterator();
             Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
             if (returnMethod != Undefined.instance) {
                 try {
@@ -109,7 +112,8 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
         if (StatementNode.executeConditionAsBoolean(frame, doneNode)) {
             return result;
         } else {
-            Object iterator = iteratorNode.execute(frame);
+            IteratorRecord iteratorRecord = (IteratorRecord) iteratorNode.execute(frame);
+            DynamicObject iterator = iteratorRecord.getIterator();
             Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
             if (returnMethod == Undefined.instance) {
                 return result;

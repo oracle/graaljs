@@ -42,10 +42,10 @@ package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 public class IteratorCloseIfNotDoneNode extends JavaScriptNode implements ResumableNode {
     @Child private JavaScriptNode block;
@@ -76,57 +76,32 @@ public class IteratorCloseIfNotDoneNode extends JavaScriptNode implements Resuma
         } catch (YieldException e) {
             throw e;
         } catch (ControlFlowException e) {
-            Object iteratorValue = iterator.execute(frame);
+            IteratorRecord iteratorRecord = (IteratorRecord) iterator.execute(frame);
             Object isDone = done.execute(frame);
             if (isDone != Boolean.TRUE) {
-                iteratorClose.executeVoid((DynamicObject) iteratorValue);
+                iteratorClose.executeVoid(iteratorRecord.getIterator());
             }
             throw e;
         } catch (Throwable e) {
-            Object iteratorValue = iterator.execute(frame);
+            IteratorRecord iteratorRecord = (IteratorRecord) iterator.execute(frame);
             Object isDone = done.execute(frame);
             if (isDone != Boolean.TRUE) {
-                iteratorClose.executeAbrupt((DynamicObject) iteratorValue);
+                iteratorClose.executeAbrupt(iteratorRecord.getIterator());
             }
             throw e;
         }
 
-        Object iteratorValue = iterator.execute(frame);
+        IteratorRecord iteratorRecord = (IteratorRecord) iterator.execute(frame);
         Object isDone = done.execute(frame);
         if (isDone != Boolean.TRUE) {
-            iteratorClose.executeVoid((DynamicObject) iteratorValue);
+            iteratorClose.executeVoid(iteratorRecord.getIterator());
         }
         return result;
     }
 
     @Override
     public Object resume(VirtualFrame frame) {
-        Object result;
-        try {
-            result = block.execute(frame);
-        } catch (YieldException e) {
-            throw e;
-        } catch (ControlFlowException e) {
-            Object iteratorValue = iterator.execute(frame);
-            Object isDone = done.execute(frame);
-            if (isDone != Boolean.TRUE) {
-                iteratorClose.executeVoid((DynamicObject) iteratorValue);
-            }
-            throw e;
-        } catch (Throwable e) {
-            Object iteratorValue = iterator.execute(frame);
-            Object isDone = done.execute(frame);
-            if (isDone != Boolean.TRUE) {
-                iteratorClose.executeAbrupt((DynamicObject) iteratorValue);
-            }
-            throw e;
-        }
-        Object iteratorValue = iterator.execute(frame);
-        Object isDone = done.execute(frame);
-        if (isDone != Boolean.TRUE) {
-            iteratorClose.executeVoid((DynamicObject) iteratorValue);
-        }
-        return result;
+        return execute(frame);
     }
 
     @Override

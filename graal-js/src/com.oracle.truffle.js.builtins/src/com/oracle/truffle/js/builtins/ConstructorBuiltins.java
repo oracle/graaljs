@@ -192,6 +192,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -1708,7 +1709,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             iteratorCloseNode.executeAbrupt(iterator);
         }
 
-        protected DynamicObject getIterator(Object iterator) {
+        protected IteratorRecord getIterator(Object iterator) {
             if (getIteratorNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getIteratorNode = insert(GetIteratorNode.create(getContext()));
@@ -1724,7 +1725,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return getIteratorValueNode.execute(iteratorResult);
         }
 
-        protected Object iteratorStep(DynamicObject iterator) {
+        protected Object iteratorStep(IteratorRecord iterator) {
             if (iteratorStepNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 iteratorStepNode = insert(IteratorStepNode.create(getContext(), null));
@@ -1775,7 +1776,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     throw Errors.createTypeError("function set not callable");
                 }
                 DynamicObject adderFn = (DynamicObject) adder;
-                DynamicObject iter = getIterator(iterable);
+                IteratorRecord iter = getIterator(iterable);
 
                 try {
                     while (true) {
@@ -1794,7 +1795,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         call(mapObj, adderFn, new Object[]{k, v});
                     }
                 } catch (Exception ex) {
-                    iteratorCloseAbrupt(iter);
+                    iteratorCloseAbrupt(iter.getIterator());
                     throw ex;
                 }
             }
@@ -1844,7 +1845,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     throw Errors.createTypeError("function add not callable");
                 }
                 DynamicObject adderFn = (DynamicObject) adder;
-                DynamicObject iter = getIterator(iterable);
+                IteratorRecord iter = getIterator(iterable);
 
                 try {
                     while (true) {
@@ -1856,7 +1857,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         call(setObj, adderFn, nextValue);
                     }
                 } catch (Exception ex) {
-                    iteratorCloseAbrupt(iter);
+                    iteratorCloseAbrupt(iter.getIterator());
                     throw ex;
                 }
             }

@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -71,17 +72,17 @@ public abstract class IteratorStepNode extends JavaScriptNode {
     }
 
     @Specialization
-    protected Object doIteratorStep(DynamicObject iterator) {
+    protected Object doIteratorStep(IteratorRecord iteratorRecord) {
         if (iteratorNextNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            iteratorNextNode = insert(IteratorNextNode.create(context));
+            iteratorNextNode = insert(IteratorNextNode.create());
         }
         if (iteratorCompleteNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             iteratorCompleteNode = insert(IteratorCompleteNode.create(context));
         }
         // passing undefined might be wrong, we should NOT pass "value"
-        Object result = iteratorNextNode.execute(iterator, Undefined.instance);
+        Object result = iteratorNextNode.execute(iteratorRecord, Undefined.instance);
         Object done = iteratorCompleteNode.execute((DynamicObject) result);
         if (done instanceof Boolean && ((Boolean) done) == Boolean.TRUE) {
             return false;
@@ -89,7 +90,7 @@ public abstract class IteratorStepNode extends JavaScriptNode {
         return result;
     }
 
-    public abstract Object execute(DynamicObject iterator);
+    public abstract Object execute(IteratorRecord iterator);
 
     @Override
     protected JavaScriptNode copyUninitialized() {

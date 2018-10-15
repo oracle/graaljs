@@ -128,8 +128,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
             PromiseCapabilityRecord promiseCapability = newPromiseCapability.execute(constructor);
             IteratorRecord iteratorRecord;
             try {
-                DynamicObject iterator = getIterator.execute(iterable);
-                iteratorRecord = IteratorRecord.create(iterator, false);
+                iteratorRecord = getIterator.execute(iterable);
             } catch (Throwable ex) {
                 if (shouldCatch(ex)) {
                     return rejectPromise(getErrorObjectNode.execute(ex), promiseCapability);

@@ -857,8 +857,8 @@ public class NodeFactory {
         return EnumerateNode.create(context, iteratedObject, values);
     }
 
-    public JavaScriptNode createIteratorNext(JSContext context, JavaScriptNode iterator) {
-        return IteratorNextUnaryNode.create(context, iterator);
+    public JavaScriptNode createIteratorNext(JavaScriptNode iterator) {
+        return IteratorNextUnaryNode.create(iterator);
     }
 
     public JavaScriptNode createIteratorComplete(JSContext context, JavaScriptNode iterResult) {

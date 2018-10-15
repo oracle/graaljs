@@ -60,6 +60,7 @@ import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.JSGetLengthNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -72,6 +73,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -200,6 +202,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Child private IteratorStepNode iteratorStepNode;
         @Child private GetMethodNode getIteratorMethodNode;
         @Child private IsObjectNode isObjectNode;
+        @Child private PropertyGetNode getNextMethodNode;
         @Child private JSGetLengthNode getSourceLengthNode;
         @Child private IsArrayNode isFastArrayNode;
         private final ConditionProfile isIterable = ConditionProfile.createBinaryProfile();
@@ -219,7 +222,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             iteratorCloseNode.executeAbrupt(iterator);
         }
 
-        protected DynamicObject getIterator(DynamicObject object, Object usingIterator) {
+        protected IteratorRecord getIterator(DynamicObject object, Object usingIterator) {
             if (callIteratorMethodNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callIteratorMethodNode = insert(JSFunctionCallNode.createCall());
@@ -228,7 +231,12 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 isObjectNode = insert(IsObjectNode.create());
             }
-            return GetIteratorNode.getIterator(object, usingIterator, callIteratorMethodNode, isObjectNode, this);
+            if (getNextMethodNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getNextMethodNode = insert(PropertyGetNode.create(JSRuntime.NEXT, getContext()));
+            }
+
+            return GetIteratorNode.getIterator(object, usingIterator, callIteratorMethodNode, isObjectNode, getNextMethodNode, this);
         }
 
         protected Object getIteratorValue(DynamicObject iteratorResult) {
@@ -239,12 +247,12 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             return getIteratorValueNode.execute(iteratorResult);
         }
 
-        protected Object iteratorStep(DynamicObject iterator) {
+        protected Object iteratorStep(IteratorRecord iteratorRecord) {
             if (iteratorStepNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 iteratorStepNode = insert(IteratorStepNode.create(getContext(), null));
             }
-            return iteratorStepNode.execute(iterator);
+            return iteratorStepNode.execute(iteratorRecord);
         }
 
         protected final Object callMapFn(Object target, DynamicObject function, Object... userArguments) {
@@ -293,11 +301,11 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         protected DynamicObject arrayFromIterable(Object thisObj, DynamicObject items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping) {
             DynamicObject obj = constructOrArray(thisObj, 0, false);
 
-            DynamicObject iterator = getIterator(items, usingIterator);
+            IteratorRecord iteratorRecord = getIterator(items, usingIterator);
             long k = 0;
             try {
                 while (true) {
-                    Object next = iteratorStep(iterator);
+                    Object next = iteratorStep(iteratorRecord);
                     if (next instanceof Boolean && ((Boolean) next) == Boolean.FALSE) {
                         setLength(obj, k);
                         return obj;
@@ -314,7 +322,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                     k++;
                 }
             } catch (Exception ex) {
-                iteratorCloseAbrupt(iterator);
+                iteratorCloseAbrupt(iteratorRecord.getIterator());
                 throw ex; // should be executed by iteratorClose
             }
         }

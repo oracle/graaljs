@@ -71,6 +71,7 @@ import com.oracle.truffle.js.runtime.array.dyn.ConstantIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 @GenerateWrapper
 public abstract class ArrayLiteralNode extends JavaScriptNode {
@@ -600,10 +601,10 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         }
 
         public int executeToList(VirtualFrame frame, List<Object> toList) {
-            DynamicObject iterator = getIteratorNode.execute(frame);
+            IteratorRecord iteratorRecord = getIteratorNode.execute(frame);
             int count = 0;
             for (;;) {
-                Object nextArg = iteratorStepNode.execute(frame, iterator);
+                Object nextArg = iteratorStepNode.execute(frame, iteratorRecord);
                 if (nextArg == null) {
                     break;
                 }
