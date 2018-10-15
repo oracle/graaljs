@@ -2026,14 +2026,6 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/BigInt/detached-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/BigInt/tonumber-value-throws.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"

@@ -895,6 +895,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 selection = new TypedIntArrayReadElementCacheNode(context, array);
             } else if (array instanceof TypedArray.TypedFloatArray) {
                 selection = new TypedFloatArrayReadElementCacheNode(context, array);
+            } else if (array instanceof TypedArray.TypedBigIntArray) {
+                selection = new TypedBigIntArrayReadElementCacheNode(context, array);
             } else {
                 selection = new ExactArrayReadElementCacheNode(context, array);
             }
@@ -1356,6 +1358,24 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 return typedArray.getDouble(target, (int) index, arrayCondition);
             } else {
                 throw new UnexpectedResultException(Undefined.instance);
+            }
+        }
+    }
+
+    private static class TypedBigIntArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
+
+        TypedBigIntArrayReadElementCacheNode(JSContext context, ScriptArray arrayType) {
+            super(context, arrayType);
+        }
+
+        @Override
+        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, boolean arrayCondition) {
+            checkDetachedArrayBuffer(target);
+            TypedArray.TypedBigIntArray<?> typedArray = (TypedArray.TypedBigIntArray<?>) cast(array);
+            if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
+                return typedArray.getBigInt(target, (int) index, arrayCondition);
+            } else {
+                return Undefined.instance;
             }
         }
     }
