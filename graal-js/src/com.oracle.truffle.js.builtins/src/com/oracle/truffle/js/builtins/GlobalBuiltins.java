@@ -115,6 +115,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConsoleUtil;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
@@ -984,10 +985,16 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             this.useErr = useErr;
         }
 
+        public abstract Object executeObjectArray(Object[] args);
+
         @Specialization
         protected Object print(Object[] arguments) {
             // without a StringBuilder, synchronization fails testnashorn JDK-8041998.js
             StringBuilder builder = new StringBuilder();
+            JSConsoleUtil consoleUtil = getContext().getRealm().getConsoleUtil();
+            if (consoleUtil.getConsoleIndentation() > 0) {
+                Boundaries.builderAppend(builder, consoleUtil.getConsoleIndentationString());
+            }
             if (argumentsCount.profile(arguments.length == 1)) {
                 Boundaries.builderAppend(builder, toString1(arguments[0]));
             } else {

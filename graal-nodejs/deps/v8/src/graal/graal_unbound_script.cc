@@ -84,3 +84,10 @@ int GraalUnboundScript::GetId() {
     JNI_CALL(jint, id, Isolate(), GraalAccessMethod::unbound_script_get_id, Int, GetJavaObject());
     return id;
 }
+
+v8::Local<v8::String> GraalUnboundScript::GetContent() {
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_content, graal_isolate, GraalAccessMethod::unbound_script_get_content, Object, GetJavaObject());
+    GraalString* graal_content = new GraalString(graal_isolate, (jstring) java_content);
+    return reinterpret_cast<v8::String*> (graal_content);
+}

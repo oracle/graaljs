@@ -5,7 +5,7 @@ const assert = require('assert');
 
 const bench = common.createBenchmark(main, {
   method: ['copy', 'rest', 'arguments'],
-  millions: [100]
+  n: [1e8]
 });
 
 function copyArguments() {
@@ -34,48 +34,38 @@ function useArguments() {
 }
 
 function runCopyArguments(n) {
-
-  var i = 0;
-  bench.start();
-  for (; i < n; i++)
+  for (var i = 0; i < n; i++)
     copyArguments(1, 2, 'a', 'b');
-  bench.end(n / 1e6);
 }
 
 function runRestArguments(n) {
-
-  var i = 0;
-  bench.start();
-  for (; i < n; i++)
+  for (var i = 0; i < n; i++)
     restArguments(1, 2, 'a', 'b');
-  bench.end(n / 1e6);
 }
 
 function runUseArguments(n) {
-
-  var i = 0;
-  bench.start();
-  for (; i < n; i++)
+  for (var i = 0; i < n; i++)
     useArguments(1, 2, 'a', 'b');
-  bench.end(n / 1e6);
 }
 
-function main(conf) {
-  const n = +conf.millions * 1e6;
-
-  switch (conf.method) {
+function main({ n, method }) {
+  var fn;
+  switch (method) {
     case '':
       // Empty string falls through to next line as default, mostly for tests.
     case 'copy':
-      runCopyArguments(n);
+      fn = runCopyArguments;
       break;
     case 'rest':
-      runRestArguments(n);
+      fn = runRestArguments;
       break;
     case 'arguments':
-      runUseArguments(n);
+      fn = runUseArguments;
       break;
     default:
-      throw new Error('Unexpected method');
+      throw new Error(`Unexpected method "${method}"`);
   }
+  bench.start();
+  fn(n);
+  bench.end(n);
 }

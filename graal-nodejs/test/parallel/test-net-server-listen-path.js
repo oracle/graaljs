@@ -2,8 +2,11 @@
 
 const common = require('../common');
 const net = require('net');
+const assert = require('assert');
+const fs = require('fs');
 
-common.refreshTmpDir();
+const tmpdir = require('../common/tmpdir');
+tmpdir.refresh();
 
 function closeServer() {
   return common.mustCall(function() {
@@ -46,4 +49,23 @@ function randomPipePath() {
   const handlePath = randomPipePath();
   net.createServer()
     .listen({ path: handlePath }, closeServer());
+}
+
+// Test pipe chmod
+{
+  const handlePath = randomPipePath();
+
+  const srv = net.createServer()
+    .listen({
+      path: handlePath,
+      readableAll: true,
+      writableAll: true
+    }, common.mustCall(() => {
+      if (process.platform !== 'win32') {
+        const mode = fs.statSync(handlePath).mode;
+        assert.notStrictEqual(mode & fs.constants.S_IROTH, 0);
+        assert.notStrictEqual(mode & fs.constants.S_IWOTH, 0);
+      }
+      srv.close();
+    }));
 }

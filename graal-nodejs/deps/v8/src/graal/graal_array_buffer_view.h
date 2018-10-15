@@ -61,6 +61,8 @@ public:
     bool IsInt32Array() const override;
     bool IsFloat32Array() const override;
     bool IsFloat64Array() const override;
+    bool IsBigInt64Array() const override;
+    bool IsBigUint64Array() const override;
     bool IsDataView() const override;
     size_t ByteLength();
     size_t ByteOffset();
@@ -75,6 +77,8 @@ public:
     static const int kFloat32Array = 8;
     static const int kFloat64Array = 9;
     static const int kDataView = 10;
+    static const int kBigInt64Array = 11;
+    static const int kBigUint64Array = 12;
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 private:

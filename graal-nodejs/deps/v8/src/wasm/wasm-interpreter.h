@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef V8_WASM_INTERPRETER_H_
-#define V8_WASM_INTERPRETER_H_
+#ifndef V8_WASM_WASM_INTERPRETER_H_
+#define V8_WASM_WASM_INTERPRETER_H_
 
 #include "src/wasm/wasm-opcodes.h"
 #include "src/wasm/wasm-value.h"
@@ -78,22 +78,15 @@ class InterpretedFrame {
   DISALLOW_COPY_AND_ASSIGN(InterpretedFrame);
 };
 
+// Deleter struct to delete the underlying InterpretedFrameImpl without
+// violating language specifications.
+struct InterpretedFrameDeleter {
+  void operator()(InterpretedFrame* ptr);
+};
+
 // An interpreter capable of executing WebAssembly.
 class V8_EXPORT_PRIVATE WasmInterpreter {
  public:
-  // Open a HeapObjectsScope before running any code in the interpreter which
-  // needs access to the instance object or needs to call to JS functions.
-  class V8_EXPORT_PRIVATE HeapObjectsScope {
-   public:
-    HeapObjectsScope(WasmInterpreter* interpreter,
-                     Handle<WasmInstanceObject> instance);
-    ~HeapObjectsScope();
-
-   private:
-    char data[3 * sizeof(void*)];  // must match sizeof(HeapObjectsScopeImpl).
-    DISALLOW_COPY_AND_ASSIGN(HeapObjectsScope);
-  };
-
   // State machine for a Thread:
   //                         +---------Run()/Step()--------+
   //                         V                             |
@@ -111,6 +104,8 @@ class V8_EXPORT_PRIVATE WasmInterpreter {
     AfterReturn = 1 << 0,
     AfterCall = 1 << 1
   };
+
+  using FramePtr = std::unique_ptr<InterpretedFrame, InterpretedFrameDeleter>;
 
   // Representation of a thread in the interpreter.
   class V8_EXPORT_PRIVATE Thread {
@@ -138,7 +133,7 @@ class V8_EXPORT_PRIVATE WasmInterpreter {
     // TODO(clemensh): Make this uint32_t.
     int GetFrameCount();
     // The InterpretedFrame is only valid as long as the Thread is paused.
-    std::unique_ptr<InterpretedFrame> GetFrame(int index);
+    FramePtr GetFrame(int index);
     WasmValue GetReturnValue(int index = 0);
     TrapReason GetTrapReason();
 
@@ -172,8 +167,8 @@ class V8_EXPORT_PRIVATE WasmInterpreter {
   };
 
   WasmInterpreter(Isolate* isolate, const WasmModule* module,
-                  const ModuleWireBytes& wire_bytes, byte* globals_start,
-                  byte* mem_start, uint32_t mem_size);
+                  const ModuleWireBytes& wire_bytes,
+                  Handle<WasmInstanceObject> instance);
   ~WasmInterpreter();
 
   //==========================================================================
@@ -199,11 +194,6 @@ class V8_EXPORT_PRIVATE WasmInterpreter {
   Thread* GetThread(int id);
 
   //==========================================================================
-  // Update the cached module env memory parameters after a grow memory event.
-  //==========================================================================
-  void UpdateMemory(byte* mem_start, uint32_t mem_size);
-
-  //==========================================================================
   // Testing functionality.
   //==========================================================================
   // Manually adds a function to this interpreter. The func_index of the
@@ -212,6 +202,7 @@ class V8_EXPORT_PRIVATE WasmInterpreter {
   // Manually adds code to the interpreter for the given function.
   void SetFunctionCodeForTesting(const WasmFunction* function,
                                  const byte* start, const byte* end);
+  void SetCallIndirectTestMode();
 
   // Computes the control transfers for the given bytecode. Used internally in
   // the interpreter, but exposed for testing.
@@ -227,4 +218,4 @@ class V8_EXPORT_PRIVATE WasmInterpreter {
 }  // namespace internal
 }  // namespace v8
 
-#endif  // V8_WASM_INTERPRETER_H_
+#endif  // V8_WASM_WASM_INTERPRETER_H_

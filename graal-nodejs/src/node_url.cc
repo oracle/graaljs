@@ -1,6 +1,6 @@
 #include "node_url.h"
 #include "node_internals.h"
-#include "base-object-inl.h"
+#include "base_object-inl.h"
 #include "node_i18n.h"
 
 #include <string>
@@ -15,6 +15,7 @@ using v8::Context;
 using v8::Function;
 using v8::FunctionCallbackInfo;
 using v8::HandleScope;
+using v8::Int32;
 using v8::Integer;
 using v8::Isolate;
 using v8::Local;
@@ -26,23 +27,12 @@ using v8::TryCatch;
 using v8::Undefined;
 using v8::Value;
 
-#define GET(env, obj, name)                                                   \
-  obj->Get(env->context(),                                                    \
-           OneByteString(env->isolate(), name)).ToLocalChecked()
-
-#define GET_AND_SET(env, obj, name, data, flag)                               \
-  {                                                                           \
-    Local<Value> val = GET(env, obj, #name);                                  \
-    if (val->IsString()) {                                                    \
-      Utf8Value value(env->isolate(), val.As<String>());                      \
-      data->name = *value;                                                    \
-      data->flags |= flag;                                                    \
-    }                                                                         \
-  }
-
-#define UTF8STRING(isolate, str)                                              \
-  String::NewFromUtf8(isolate, str.c_str(), v8::NewStringType::kNormal)       \
-    .ToLocalChecked()
+inline Local<String> Utf8String(Isolate* isolate, const std::string& str) {
+  return String::NewFromUtf8(isolate,
+                             str.data(),
+                             v8::NewStringType::kNormal,
+                             str.length()).ToLocalChecked();
+}
 
 namespace url {
 
@@ -69,6 +59,8 @@ class URLHost {
 
   inline bool ParsingFailed() const { return type_ == HostType::H_FAILED; }
   std::string ToString() const;
+  // Like ToString(), but avoids a copy in exchange for invalidating `*this`.
+  std::string ToStringMove();
 
  private:
   enum class HostType {
@@ -80,10 +72,9 @@ class URLHost {
   };
 
   union Value {
-    std::string domain;
+    std::string domain_or_opaque;
     uint32_t ipv4;
     uint16_t ipv6[8];
-    std::string opaque;
 
     ~Value() {}
     Value() : ipv4(0) {}
@@ -91,6 +82,19 @@ class URLHost {
 
   Value value_;
   HostType type_ = HostType::H_FAILED;
+
+  inline void Reset() {
+    using string = std::string;
+    switch (type_) {
+      case HostType::H_DOMAIN:
+      case HostType::H_OPAQUE:
+        value_.domain_or_opaque.~string();
+        break;
+      default:
+        break;
+    }
+    type_ = HostType::H_FAILED;
+  }
 
   // Setting the string members of the union with = is brittle because
   // it relies on them being initialized to a state that requires no
@@ -101,23 +105,20 @@ class URLHost {
   // These helpers are the easiest solution but we might want to consider
   // just not forcing strings into an union.
   inline void SetOpaque(std::string&& string) {
+    Reset();
     type_ = HostType::H_OPAQUE;
-    new(&value_.opaque) std::string(std::move(string));
+    new(&value_.domain_or_opaque) std::string(std::move(string));
   }
 
   inline void SetDomain(std::string&& string) {
+    Reset();
     type_ = HostType::H_DOMAIN;
-    new(&value_.domain) std::string(std::move(string));
+    new(&value_.domain_or_opaque) std::string(std::move(string));
   }
 };
 
 URLHost::~URLHost() {
-  using string = std::string;
-  switch (type_) {
-    case HostType::H_DOMAIN: value_.domain.~string(); break;
-    case HostType::H_OPAQUE: value_.opaque.~string(); break;
-    default: break;
-  }
+  Reset();
 }
 
 #define ARGS(XX)                                                              \
@@ -129,7 +130,8 @@ URLHost::~URLHost() {
   XX(ARG_PORT)                                                                \
   XX(ARG_PATH)                                                                \
   XX(ARG_QUERY)                                                               \
-  XX(ARG_FRAGMENT)
+  XX(ARG_FRAGMENT)                                                            \
+  XX(ARG_COUNT)  // This one has to be last.
 
 #define ERR_ARGS(XX)                                                          \
   XX(ERR_ARG_FLAGS)                                                           \
@@ -324,6 +326,74 @@ const uint8_t C0_CONTROL_ENCODE_SET[32] = {
   // F8     F9     FA     FB     FC     FD     FE     FF
     0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80
 };
+
+const uint8_t FRAGMENT_ENCODE_SET[32] = {
+  // 00     01     02     03     04     05     06     07
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // 08     09     0A     0B     0C     0D     0E     0F
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // 10     11     12     13     14     15     16     17
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // 18     19     1A     1B     1C     1D     1E     1F
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // 20     21     22     23     24     25     26     27
+    0x01 | 0x00 | 0x04 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 28     29     2A     2B     2C     2D     2E     2F
+    0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 30     31     32     33     34     35     36     37
+    0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 38     39     3A     3B     3C     3D     3E     3F
+    0x00 | 0x00 | 0x00 | 0x00 | 0x10 | 0x00 | 0x40 | 0x00,
+  // 40     41     42     43     44     45     46     47
+    0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 48     49     4A     4B     4C     4D     4E     4F
+    0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 50     51     52     53     54     55     56     57
+    0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 58     59     5A     5B     5C     5D     5E     5F
+    0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 60     61     62     63     64     65     66     67
+    0x01 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 68     69     6A     6B     6C     6D     6E     6F
+    0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 70     71     72     73     74     75     76     77
+    0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00,
+  // 78     79     7A     7B     7C     7D     7E     7F
+    0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x00 | 0x80,
+  // 80     81     82     83     84     85     86     87
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // 88     89     8A     8B     8C     8D     8E     8F
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // 90     91     92     93     94     95     96     97
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // 98     99     9A     9B     9C     9D     9E     9F
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // A0     A1     A2     A3     A4     A5     A6     A7
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // A8     A9     AA     AB     AC     AD     AE     AF
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // B0     B1     B2     B3     B4     B5     B6     B7
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // B8     B9     BA     BB     BC     BD     BE     BF
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // C0     C1     C2     C3     C4     C5     C6     C7
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // C8     C9     CA     CB     CC     CD     CE     CF
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // D0     D1     D2     D3     D4     D5     D6     D7
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // D8     D9     DA     DB     DC     DD     DE     DF
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // E0     E1     E2     E3     E4     E5     E6     E7
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // E8     E9     EA     EB     EC     ED     EE     EF
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // F0     F1     F2     F3     F4     F5     F6     F7
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80,
+  // F8     F9     FA     FB     FC     FD     FE     FF
+    0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80
+};
+
 
 const uint8_t PATH_ENCODE_SET[32] = {
   // 00     01     02     03     04     05     06     07
@@ -590,7 +660,7 @@ inline std::string PercentDecode(const char* input, size_t len) {
   XX("ws:", 80)                                                               \
   XX("wss:", 443)
 
-inline bool IsSpecial(std::string scheme) {
+inline bool IsSpecial(const std::string& scheme) {
 #define XX(name, _) if (scheme == name) return true;
   SPECIALS(XX);
 #undef XX
@@ -609,7 +679,7 @@ inline bool StartsWithWindowsDriveLetter(const char* p, const char* end) {
       p[2] == '#');
 }
 
-inline int NormalizePort(std::string scheme, int p) {
+inline int NormalizePort(const std::string& scheme, int p) {
 #define XX(name, port) if (scheme == name && p == port) return -1;
   SPECIALS(XX);
 #undef XX
@@ -855,7 +925,7 @@ void URLHost::ParseIPv4Host(const char* input, size_t length, bool* is_ipv4) {
 void URLHost::ParseOpaqueHost(const char* input, size_t length) {
   CHECK_EQ(type_, HostType::H_FAILED);
   std::string output;
-  output.reserve(length * 3);
+  output.reserve(length);
   for (size_t i = 0; i < length; i++) {
     const char ch = input[i];
     if (ch != '%' && IsForbiddenHostCodePoint(ch)) {
@@ -918,7 +988,7 @@ void URLHost::ParseHost(const char* input,
 
 // Locates the longest sequence of 0 segments in an IPv6 address
 // in order to use the :: compression when serializing
-template<typename T>
+template <typename T>
 inline T* FindLongestZeroSequence(T* values, size_t len) {
   T* start = values;
   T* end = start + len;
@@ -947,14 +1017,27 @@ inline T* FindLongestZeroSequence(T* values, size_t len) {
   return result;
 }
 
+std::string URLHost::ToStringMove() {
+  std::string return_value;
+  switch (type_) {
+    case HostType::H_DOMAIN:
+    case HostType::H_OPAQUE:
+      return_value = std::move(value_.domain_or_opaque);
+      break;
+    default:
+      return_value = ToString();
+      break;
+  }
+  Reset();
+  return return_value;
+}
+
 std::string URLHost::ToString() const {
   std::string dest;
   switch (type_) {
     case HostType::H_DOMAIN:
-      return value_.domain;
-      break;
     case HostType::H_OPAQUE:
-      return value_.opaque;
+      return value_.domain_or_opaque;
       break;
     case HostType::H_IPV4: {
       dest.reserve(15);
@@ -1014,103 +1097,125 @@ bool ParseHost(const std::string& input,
   host.ParseHost(input.c_str(), input.length(), is_special, unicode);
   if (host.ParsingFailed())
     return false;
-  *output = host.ToString();
+  *output = host.ToStringMove();
   return true;
 }
 
-inline void Copy(Environment* env,
-                 Local<Array> ary,
-                 std::vector<std::string>* vec) {
-  const int32_t len = ary->Length();
+inline std::vector<std::string> FromJSStringArray(Environment* env,
+                                                  Local<Array> array) {
+  std::vector<std::string> vec;
+  const int32_t len = array->Length();
   if (len == 0)
-    return;  // nothing to copy
-  vec->reserve(len);
+    return vec;  // nothing to copy
+  vec.reserve(len);
   for (int32_t n = 0; n < len; n++) {
-    Local<Value> val = ary->Get(env->context(), n).ToLocalChecked();
+    Local<Value> val = array->Get(env->context(), n).ToLocalChecked();
     if (val->IsString()) {
       Utf8Value value(env->isolate(), val.As<String>());
-      vec->push_back(std::string(*value, value.length()));
+      vec.emplace_back(*value, value.length());
     }
   }
+  return vec;
 }
 
-inline Local<Array> Copy(Environment* env,
-                         const std::vector<std::string>& vec) {
+inline Local<Array> ToJSStringArray(Environment* env,
+                                    const std::vector<std::string>& vec) {
   Isolate* isolate = env->isolate();
-  Local<Array> ary = Array::New(isolate, vec.size());
+  Local<Array> array = Array::New(isolate, vec.size());
   for (size_t n = 0; n < vec.size(); n++)
-    ary->Set(env->context(), n, UTF8STRING(isolate, vec[n])).FromJust();
-  return ary;
+    array->Set(env->context(), n, Utf8String(isolate, vec[n])).FromJust();
+  return array;
 }
 
-inline void HarvestBase(Environment* env,
-                        struct url_data* base,
-                        Local<Object> base_obj) {
+inline url_data HarvestBase(Environment* env, Local<Object> base_obj) {
+  url_data base;
   Local<Context> context = env->context();
-  Local<Value> flags = GET(env, base_obj, "flags");
+  Local<Value> flags =
+      base_obj->Get(env->context(), env->flags_string()).ToLocalChecked();
   if (flags->IsInt32())
-    base->flags = flags->Int32Value(context).FromJust();
+    base.flags = flags->Int32Value(context).FromJust();
 
-  Local<Value> scheme = GET(env, base_obj, "scheme");
-  base->scheme = Utf8Value(env->isolate(), scheme).out();
+  Local<Value> scheme =
+      base_obj->Get(env->context(), env->scheme_string()).ToLocalChecked();
+  base.scheme = Utf8Value(env->isolate(), scheme).out();
 
-  GET_AND_SET(env, base_obj, username, base, URL_FLAGS_HAS_USERNAME);
-  GET_AND_SET(env, base_obj, password, base, URL_FLAGS_HAS_PASSWORD);
-  GET_AND_SET(env, base_obj, host, base, URL_FLAGS_HAS_HOST);
-  GET_AND_SET(env, base_obj, query, base, URL_FLAGS_HAS_QUERY);
-  GET_AND_SET(env, base_obj, fragment, base, URL_FLAGS_HAS_FRAGMENT);
-  Local<Value> port = GET(env, base_obj, "port");
+  auto GetStr = [&](std::string url_data::* member,
+                    int flag,
+                    Local<String> name) {
+    Local<Value> value = base_obj->Get(env->context(), name).ToLocalChecked();
+    if (value->IsString()) {
+      Utf8Value utf8value(env->isolate(), value.As<String>());
+      (base.*member).assign(*utf8value, utf8value.length());
+      base.flags |= flag;
+    }
+  };
+  GetStr(&url_data::username, URL_FLAGS_HAS_USERNAME, env->username_string());
+  GetStr(&url_data::password, URL_FLAGS_HAS_PASSWORD, env->password_string());
+  GetStr(&url_data::host, URL_FLAGS_HAS_HOST, env->host_string());
+  GetStr(&url_data::query, URL_FLAGS_HAS_QUERY, env->query_string());
+  GetStr(&url_data::fragment, URL_FLAGS_HAS_FRAGMENT, env->fragment_string());
+
+  Local<Value> port =
+      base_obj->Get(env->context(), env->port_string()).ToLocalChecked();
   if (port->IsInt32())
-    base->port = port->Int32Value(context).FromJust();
-  Local<Value> path = GET(env, base_obj, "path");
+    base.port = port.As<Int32>()->Value();
+
+  Local<Value>
+      path = base_obj->Get(env->context(), env->path_string()).ToLocalChecked();
   if (path->IsArray()) {
-    base->flags |= URL_FLAGS_HAS_PATH;
-    Copy(env, path.As<Array>(), &(base->path));
+    base.flags |= URL_FLAGS_HAS_PATH;
+    base.path = FromJSStringArray(env, path.As<Array>());
   }
+  return base;
 }
 
-inline void HarvestContext(Environment* env,
-                           struct url_data* context,
-                           Local<Object> context_obj) {
-  Local<Value> flags = GET(env, context_obj, "flags");
+inline url_data HarvestContext(Environment* env, Local<Object> context_obj) {
+  url_data context;
+  Local<Value> flags =
+      context_obj->Get(env->context(), env->flags_string()).ToLocalChecked();
   if (flags->IsInt32()) {
-    int32_t _flags = flags->Int32Value(env->context()).FromJust();
-    if (_flags & URL_FLAGS_SPECIAL)
-      context->flags |= URL_FLAGS_SPECIAL;
-    if (_flags & URL_FLAGS_CANNOT_BE_BASE)
-      context->flags |= URL_FLAGS_CANNOT_BE_BASE;
-    if (_flags & URL_FLAGS_HAS_USERNAME)
-      context->flags |= URL_FLAGS_HAS_USERNAME;
-    if (_flags & URL_FLAGS_HAS_PASSWORD)
-      context->flags |= URL_FLAGS_HAS_PASSWORD;
-    if (_flags & URL_FLAGS_HAS_HOST)
-      context->flags |= URL_FLAGS_HAS_HOST;
+    static const int32_t copy_flags_mask =
+        URL_FLAGS_SPECIAL |
+        URL_FLAGS_CANNOT_BE_BASE |
+        URL_FLAGS_HAS_USERNAME |
+        URL_FLAGS_HAS_PASSWORD |
+        URL_FLAGS_HAS_HOST;
+    context.flags |= flags.As<Int32>()->Value() & copy_flags_mask;
   }
-  Local<Value> scheme = GET(env, context_obj, "scheme");
+  Local<Value> scheme =
+      context_obj->Get(env->context(), env->scheme_string()).ToLocalChecked();
   if (scheme->IsString()) {
     Utf8Value value(env->isolate(), scheme);
-    context->scheme.assign(*value, value.length());
+    context.scheme.assign(*value, value.length());
   }
-  Local<Value> port = GET(env, context_obj, "port");
+  Local<Value> port =
+      context_obj->Get(env->context(), env->port_string()).ToLocalChecked();
   if (port->IsInt32())
-    context->port = port->Int32Value(env->context()).FromJust();
-  if (context->flags & URL_FLAGS_HAS_USERNAME) {
-    Local<Value> username = GET(env, context_obj, "username");
+    context.port = port.As<Int32>()->Value();
+  if (context.flags & URL_FLAGS_HAS_USERNAME) {
+    Local<Value> username =
+        context_obj->Get(env->context(),
+                         env->username_string()).ToLocalChecked();
     CHECK(username->IsString());
     Utf8Value value(env->isolate(), username);
-    context->username.assign(*value, value.length());
+    context.username.assign(*value, value.length());
   }
-  if (context->flags & URL_FLAGS_HAS_PASSWORD) {
-    Local<Value> password = GET(env, context_obj, "password");
+  if (context.flags & URL_FLAGS_HAS_PASSWORD) {
+    Local<Value> password =
+        context_obj->Get(env->context(),
+                         env->password_string()).ToLocalChecked();
     CHECK(password->IsString());
     Utf8Value value(env->isolate(), password);
-    context->password.assign(*value, value.length());
+    context.password.assign(*value, value.length());
   }
-  Local<Value> host = GET(env, context_obj, "host");
+  Local<Value> host =
+      context_obj->Get(env->context(),
+                       env->host_string()).ToLocalChecked();
   if (host->IsString()) {
     Utf8Value value(env->isolate(), host);
-    context->host.assign(*value, value.length());
+    context.host.assign(*value, value.length());
   }
+  return context;
 }
 
 // Single dot segment can be ".", "%2e", or "%2E"
@@ -1192,30 +1297,37 @@ void URL::Parse(const char* input,
     len = end - p;
   }
 
+  // The spec says we should strip out any ASCII tabs or newlines.
+  // In those cases, we create another std::string instance with the filtered
+  // contents, but in the general case we avoid the overhead.
   std::string whitespace_stripped;
-  whitespace_stripped.reserve(len);
-  for (const char* ptr = p; ptr < end; ptr++)
+  for (const char* ptr = p; ptr < end; ptr++) {
     if (!IsASCIITabOrNewline(*ptr))
-      whitespace_stripped += *ptr;
+      continue;
+    // Hit tab or newline. Allocate storage, copy what we have until now,
+    // and then iterate and filter all similar characters out.
+    whitespace_stripped.reserve(len - 1);
+    whitespace_stripped.assign(p, ptr - p);
+    // 'ptr + 1' skips the current char, which we know to be tab or newline.
+    for (ptr = ptr + 1; ptr < end; ptr++) {
+      if (!IsASCIITabOrNewline(*ptr))
+        whitespace_stripped += *ptr;
+    }
 
-  input = whitespace_stripped.c_str();
-  len = whitespace_stripped.size();
-  p = input;
-  end = input + len;
+    // Update variables like they should have looked like if the string
+    // had been stripped of whitespace to begin with.
+    input = whitespace_stripped.c_str();
+    len = whitespace_stripped.size();
+    p = input;
+    end = input + len;
+    break;
+  }
 
-  bool atflag = false;
-  bool sbflag = false;
-  bool uflag = false;
+  bool atflag = false;  // Set when @ has been seen.
+  bool square_bracket_flag = false;  // Set inside of [...]
+  bool password_token_seen_flag = false;  // Set after a : after an username.
 
   std::string buffer;
-  url->scheme.reserve(len);
-  url->username.reserve(len);
-  url->password.reserve(len);
-  url->host.reserve(len);
-  url->path.reserve(len);
-  url->query.reserve(len);
-  url->fragment.reserve(len);
-  buffer.reserve(len);
 
   // Set the initial parse state.
   const bool has_state_override = state_override != kUnknownState;
@@ -1272,7 +1384,7 @@ void URL::Parse(const char* input,
             // as it can be done before even entering C++ binding.
           }
 
-          url->scheme = buffer;
+          url->scheme = std::move(buffer);
           url->port = NormalizePort(url->scheme, url->port);
           if (new_is_special) {
             url->flags |= URL_FLAGS_SPECIAL;
@@ -1298,7 +1410,7 @@ void URL::Parse(const char* input,
           } else {
             url->flags |= URL_FLAGS_CANNOT_BE_BASE;
             url->flags |= URL_FLAGS_HAS_PATH;
-            url->path.push_back("");
+            url->path.emplace_back("");
             state = kCannotBeBase;
           }
         } else if (!has_state_override) {
@@ -1527,12 +1639,12 @@ void URL::Parse(const char* input,
             const char bch = buffer[n];
             if (bch == ':') {
               url->flags |= URL_FLAGS_HAS_PASSWORD;
-              if (!uflag) {
-                uflag = true;
+              if (!password_token_seen_flag) {
+                password_token_seen_flag = true;
                 continue;
               }
             }
-            if (uflag) {
+            if (password_token_seen_flag) {
               AppendOrEscape(&url->password, bch, USERINFO_ENCODE_SET);
             } else {
               AppendOrEscape(&url->username, bch, USERINFO_ENCODE_SET);
@@ -1560,7 +1672,7 @@ void URL::Parse(const char* input,
         if (has_state_override && url->scheme == "file:") {
           state = kFileHost;
           continue;
-        } else if (ch == ':' && !sbflag) {
+        } else if (ch == ':' && !square_bracket_flag) {
           if (buffer.size() == 0) {
             url->flags |= URL_FLAGS_FAILED;
             return;
@@ -1604,9 +1716,9 @@ void URL::Parse(const char* input,
           }
         } else {
           if (ch == '[')
-            sbflag = true;
+            square_bracket_flag = true;
           if (ch == ']')
-            sbflag = false;
+            square_bracket_flag = false;
           buffer += ch;
         }
         break;
@@ -1637,6 +1749,8 @@ void URL::Parse(const char* input,
             }
             // the port is valid
             url->port = NormalizePort(url->scheme, static_cast<int>(port));
+            if (url->port == -1)
+              url->flags |= URL_FLAGS_IS_DEFAULT_SCHEME_PORT;
             buffer.clear();
           } else if (has_state_override) {
             // TODO(TimothyGu): Similar case as above.
@@ -1813,12 +1927,12 @@ void URL::Parse(const char* input,
             ShortenUrlPath(url);
             if (ch != '/' && !special_back_slash) {
               url->flags |= URL_FLAGS_HAS_PATH;
-              url->path.push_back("");
+              url->path.emplace_back("");
             }
           } else if (IsSingleDotSegment(buffer) &&
                      ch != '/' && !special_back_slash) {
             url->flags |= URL_FLAGS_HAS_PATH;
-            url->path.push_back("");
+            url->path.emplace_back("");
           } else if (!IsSingleDotSegment(buffer)) {
             if (url->scheme == "file:" &&
                 url->path.empty() &&
@@ -1832,8 +1946,7 @@ void URL::Parse(const char* input,
               buffer[1] = ':';
             }
             url->flags |= URL_FLAGS_HAS_PATH;
-            std::string segment(buffer.c_str(), buffer.size());
-            url->path.push_back(segment);
+            url->path.emplace_back(std::move(buffer));
           }
           buffer.clear();
           if (url->scheme == "file:" &&
@@ -1872,7 +1985,7 @@ void URL::Parse(const char* input,
       case kQuery:
         if (ch == kEOL || (!has_state_override && ch == '#')) {
           url->flags |= URL_FLAGS_HAS_QUERY;
-          url->query = buffer;
+          url->query = std::move(buffer);
           buffer.clear();
           if (ch == '#')
             state = kFragment;
@@ -1884,12 +1997,12 @@ void URL::Parse(const char* input,
         switch (ch) {
           case kEOL:
             url->flags |= URL_FLAGS_HAS_FRAGMENT;
-            url->fragment = buffer;
+            url->fragment = std::move(buffer);
             break;
           case 0:
             break;
           default:
-            AppendOrEscape(&buffer, ch, C0_CONTROL_ENCODE_SET);
+            AppendOrEscape(&buffer, ch, FRAGMENT_ENCODE_SET);
         }
         break;
       default:
@@ -1902,25 +2015,25 @@ void URL::Parse(const char* input,
 }  // NOLINT(readability/fn_size)
 
 static inline void SetArgs(Environment* env,
-                           Local<Value> argv[],
-                           const struct url_data* url) {
+                           Local<Value> argv[ARG_COUNT],
+                           const struct url_data& url) {
   Isolate* isolate = env->isolate();
-  argv[ARG_FLAGS] = Integer::NewFromUnsigned(isolate, url->flags);
-  argv[ARG_PROTOCOL] = OneByteString(isolate, url->scheme.c_str());
-  if (url->flags & URL_FLAGS_HAS_USERNAME)
-    argv[ARG_USERNAME] = UTF8STRING(isolate, url->username);
-  if (url->flags & URL_FLAGS_HAS_PASSWORD)
-    argv[ARG_PASSWORD] = UTF8STRING(isolate, url->password);
-  if (url->flags & URL_FLAGS_HAS_HOST)
-    argv[ARG_HOST] = UTF8STRING(isolate, url->host);
-  if (url->flags & URL_FLAGS_HAS_QUERY)
-    argv[ARG_QUERY] = UTF8STRING(isolate, url->query);
-  if (url->flags & URL_FLAGS_HAS_FRAGMENT)
-    argv[ARG_FRAGMENT] = UTF8STRING(isolate, url->fragment);
-  if (url->port > -1)
-    argv[ARG_PORT] = Integer::New(isolate, url->port);
-  if (url->flags & URL_FLAGS_HAS_PATH)
-    argv[ARG_PATH] = Copy(env, url->path);
+  argv[ARG_FLAGS] = Integer::NewFromUnsigned(isolate, url.flags);
+  argv[ARG_PROTOCOL] = OneByteString(isolate, url.scheme.c_str());
+  if (url.flags & URL_FLAGS_HAS_USERNAME)
+    argv[ARG_USERNAME] = Utf8String(isolate, url.username);
+  if (url.flags & URL_FLAGS_HAS_PASSWORD)
+    argv[ARG_PASSWORD] = Utf8String(isolate, url.password);
+  if (url.flags & URL_FLAGS_HAS_HOST)
+    argv[ARG_HOST] = Utf8String(isolate, url.host);
+  if (url.flags & URL_FLAGS_HAS_QUERY)
+    argv[ARG_QUERY] = Utf8String(isolate, url.query);
+  if (url.flags & URL_FLAGS_HAS_FRAGMENT)
+    argv[ARG_FRAGMENT] = Utf8String(isolate, url.fragment);
+  if (url.port > -1)
+    argv[ARG_PORT] = Integer::New(isolate, url.port);
+  if (url.flags & URL_FLAGS_HAS_PATH)
+    argv[ARG_PATH] = ToJSStringArray(env, url.path);
 }
 
 static void Parse(Environment* env,
@@ -1940,12 +2053,12 @@ static void Parse(Environment* env,
   const bool has_context = context_obj->IsObject();
   const bool has_base = base_obj->IsObject();
 
-  struct url_data base;
-  struct url_data url;
+  url_data base;
+  url_data url;
   if (has_context)
-    HarvestContext(env, &url, context_obj.As<Object>());
+    url = HarvestContext(env, context_obj.As<Object>());
   if (has_base)
-    HarvestBase(env, &base, base_obj.As<Object>());
+    base = HarvestBase(env, base_obj.As<Object>());
 
   URL::Parse(input, len, state_override, &url, has_context, &base, has_base);
   if ((url.flags & URL_FLAGS_INVALID_PARSE_STATE) ||
@@ -1957,7 +2070,7 @@ static void Parse(Environment* env,
   const Local<Value> undef = Undefined(isolate);
   const Local<Value> null = Null(isolate);
   if (!(url.flags & URL_FLAGS_FAILED)) {
-    Local<Value> argv[9] = {
+    Local<Value> argv[] = {
       undef,
       undef,
       undef,
@@ -1968,7 +2081,7 @@ static void Parse(Environment* env,
       null,  // query defaults to null
       null,  // fragment defaults to null
     };
-    SetArgs(env, argv, &url);
+    SetArgs(env, argv, url);
     cb->Call(context, recv, arraysize(argv), argv).FromMaybe(Local<Value>());
   } else if (error_cb->IsFunction()) {
     Local<Value> argv[2] = { undef, undef };
@@ -2077,7 +2190,7 @@ static void DomainToASCII(const FunctionCallbackInfo<Value>& args) {
     args.GetReturnValue().Set(FIXED_ONE_BYTE_STRING(env->isolate(), ""));
     return;
   }
-  std::string out = host.ToString();
+  std::string out = host.ToStringMove();
   args.GetReturnValue().Set(
       String::NewFromUtf8(env->isolate(),
                           out.c_str(),
@@ -2097,7 +2210,7 @@ static void DomainToUnicode(const FunctionCallbackInfo<Value>& args) {
     args.GetReturnValue().Set(FIXED_ONE_BYTE_STRING(env->isolate(), ""));
     return;
   }
-  std::string out = host.ToString();
+  std::string out = host.ToStringMove();
   args.GetReturnValue().Set(
       String::NewFromUtf8(env->isolate(),
                           out.c_str(),
@@ -2180,7 +2293,7 @@ const Local<Value> URL::ToObject(Environment* env) const {
   if (context_.flags & URL_FLAGS_FAILED)
     return Local<Value>();
 
-  Local<Value> argv[9] = {
+  Local<Value> argv[] = {
     undef,
     undef,
     undef,
@@ -2191,21 +2304,18 @@ const Local<Value> URL::ToObject(Environment* env) const {
     null,  // query defaults to null
     null,  // fragment defaults to null
   };
-  SetArgs(env, argv, &context_);
+  SetArgs(env, argv, context_);
 
-  TryCatch try_catch(isolate);
+  MaybeLocal<Value> ret;
+  {
+    FatalTryCatch try_catch(env);
 
-  // The SetURLConstructor method must have been called already to
-  // set the constructor function used below. SetURLConstructor is
-  // called automatically when the internal/url.js module is loaded
-  // during the internal/bootstrap_node.js processing.
-  MaybeLocal<Value> ret =
-      env->url_constructor_function()
-          ->Call(env->context(), undef, 9, argv);
-
-  if (ret.IsEmpty()) {
-    ClearFatalExceptionHandlers(env);
-    FatalException(isolate, try_catch);
+    // The SetURLConstructor method must have been called already to
+    // set the constructor function used below. SetURLConstructor is
+    // called automatically when the internal/url.js module is loaded
+    // during the internal/bootstrap/node.js processing.
+    ret = env->url_constructor_function()
+        ->Call(env->context(), undef, arraysize(argv), argv);
   }
 
   return ret.ToLocalChecked();
@@ -2218,16 +2328,16 @@ static void SetURLConstructor(const FunctionCallbackInfo<Value>& args) {
   env->set_url_constructor_function(args[0].As<Function>());
 }
 
-static void Init(Local<Object> target,
-                 Local<Value> unused,
-                 Local<Context> context,
-                 void* priv) {
+static void Initialize(Local<Object> target,
+                       Local<Value> unused,
+                       Local<Context> context,
+                       void* priv) {
   Environment* env = Environment::GetCurrent(context);
   env->SetMethod(target, "parse", Parse);
-  env->SetMethod(target, "encodeAuth", EncodeAuthSet);
-  env->SetMethod(target, "toUSVString", ToUSVString);
-  env->SetMethod(target, "domainToASCII", DomainToASCII);
-  env->SetMethod(target, "domainToUnicode", DomainToUnicode);
+  env->SetMethodNoSideEffect(target, "encodeAuth", EncodeAuthSet);
+  env->SetMethodNoSideEffect(target, "toUSVString", ToUSVString);
+  env->SetMethodNoSideEffect(target, "domainToASCII", DomainToASCII);
+  env->SetMethodNoSideEffect(target, "domainToUnicode", DomainToUnicode);
   env->SetMethod(target, "setURLConstructor", SetURLConstructor);
 
 #define XX(name, _) NODE_DEFINE_CONSTANT(target, name);
@@ -2241,4 +2351,4 @@ static void Init(Local<Object> target,
 }  // namespace url
 }  // namespace node
 
-NODE_BUILTIN_MODULE_CONTEXT_AWARE(url, node::url::Init)
+NODE_BUILTIN_MODULE_CONTEXT_AWARE(url, node::url::Initialize)

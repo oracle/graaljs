@@ -8,12 +8,14 @@ const RoundRobinHandle = require('internal/cluster/round_robin_handle');
 const SharedHandle = require('internal/cluster/shared_handle');
 const Worker = require('internal/cluster/worker');
 const { internal, sendHelper, handles } = require('internal/cluster/utils');
+const { ERR_SOCKET_BAD_PORT } = require('internal/errors').codes;
 const keys = Object.keys;
 const cluster = new EventEmitter();
 const intercom = new EventEmitter();
 const SCHED_NONE = 1;
 const SCHED_RR = 2;
 const { isLegalPort } = require('internal/net');
+const [ minPort, maxPort ] = [ 1024, 65535 ];
 
 module.exports = cluster;
 
@@ -101,11 +103,14 @@ function createWorkerProcess(id, env) {
   const workerEnv = util._extend({}, process.env);
   const execArgv = cluster.settings.execArgv.slice();
   const debugArgRegex = /--inspect(?:-brk|-port)?|--debug-port/;
+  const nodeOptions = process.env.NODE_OPTIONS ?
+    process.env.NODE_OPTIONS : '';
 
   util._extend(workerEnv, env);
   workerEnv.NODE_UNIQUE_ID = '' + id;
 
-  if (execArgv.some((arg) => arg.match(debugArgRegex))) {
+  if (execArgv.some((arg) => arg.match(debugArgRegex)) ||
+      nodeOptions.match(debugArgRegex)) {
     let inspectPort;
     if ('inspectPort' in cluster.settings) {
       if (typeof cluster.settings.inspectPort === 'function')
@@ -114,11 +119,12 @@ function createWorkerProcess(id, env) {
         inspectPort = cluster.settings.inspectPort;
 
       if (!isLegalPort(inspectPort)) {
-        throw new TypeError('cluster.settings.inspectPort' +
-          ' is invalid');
+        throw new ERR_SOCKET_BAD_PORT(inspectPort);
       }
     } else {
       inspectPort = process.debugPort + debugPortOffset;
+      if (inspectPort > maxPort)
+        inspectPort = inspectPort - maxPort + minPort - 1;
       debugPortOffset++;
     }
 
@@ -126,8 +132,10 @@ function createWorkerProcess(id, env) {
   }
 
   return fork(cluster.settings.exec, cluster.settings.args, {
+    cwd: cluster.settings.cwd,
     env: workerEnv,
     silent: cluster.settings.silent,
+    windowsHide: cluster.settings.windowsHide,
     execArgv: execArgv,
     stdio: cluster.settings.stdio,
     gid: cluster.settings.gid,
@@ -267,12 +275,8 @@ function queryServer(worker, message) {
   if (worker.exitedAfterDisconnect)
     return;
 
-  const args = [message.address,
-                message.port,
-                message.addressType,
-                message.fd,
-                message.index];
-  const key = args.join(':');
+  const key = `${message.address}:${message.port}:${message.addressType}:` +
+              `${message.fd}:${message.index}`;
   var handle = handles[key];
 
   if (handle === undefined) {

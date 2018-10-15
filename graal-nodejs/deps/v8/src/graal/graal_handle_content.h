@@ -94,6 +94,10 @@ public:
     inline bool IsWeak() const {
         return ((ref_type_ & WEAK_FLAG) != 0);
     }
+
+    inline bool IsEmpty() const {
+        return IsWeak() ? IsWeakCollected() : false;
+    }
 protected:
     virtual GraalHandleContent* CopyImpl(jobject java_object_copy) = 0;
 private:
@@ -107,6 +111,8 @@ private:
     inline bool IsGlobal() const {
         return ((ref_type_ & GLOBAL_FLAG) != 0);
     }
+
+    bool IsWeakCollected() const;
 };
 
 #endif /* GRAAL_HANDLE_CONTENT_H_ */

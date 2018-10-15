@@ -1,13 +1,26 @@
 'use strict';
 
-const errors = require('internal/errors');
-const { StringDecoder } = require('string_decoder');
+const {
+  errnoException,
+  codes: {
+    ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_HANDLE_TYPE,
+    ERR_INVALID_OPT_VALUE,
+    ERR_INVALID_SYNC_FORK_INPUT,
+    ERR_IPC_CHANNEL_CLOSED,
+    ERR_IPC_DISCONNECTED,
+    ERR_IPC_ONE_PIPE,
+    ERR_IPC_SYNC_FORK,
+    ERR_MISSING_ARGS
+  }
+} = require('internal/errors');
+const { validateString } = require('internal/validators');
 const EventEmitter = require('events');
 const net = require('net');
 const dgram = require('dgram');
 const util = require('util');
 const assert = require('assert');
-const uv = process.binding('uv');
+
 const defaultProcess = process.binding('process_wrap').Process;
 if (process.__node_cluster_threading) {
   var vProcess = require('internal/graal/thread_process_wrap').Process;
@@ -26,9 +39,26 @@ const { UDP } = process.binding('udp_wrap');
 const SocketList = require('internal/socket_list');
 const { convertToValidSignal } = require('internal/util');
 const { isUint8Array } = require('internal/util/types');
+const spawn_sync = process.binding('spawn_sync');
+const { HTTPParser } = process.binding('http_parser');
+const { freeParser } = require('_http_common');
+const { kStateSymbol } = require('internal/dgram');
 
-const errnoException = util._errnoException;
+const {
+  UV_EACCES,
+  UV_EAGAIN,
+  UV_EINVAL,
+  UV_EMFILE,
+  UV_ENFILE,
+  UV_ENOENT,
+  UV_ENOSYS,
+  UV_ESRCH
+} = process.binding('uv');
+
 const { SocketListSend, SocketListReceive } = SocketList;
+
+// Lazy loaded for startup performance.
+let StringDecoder;
 
 const MAX_HANDLE_RETRANSMISSIONS = 3;
 
@@ -69,7 +99,7 @@ const handleConversion = {
 
       // if the socket was created by net.Server
       if (socket.server) {
-        // the slave should keep track of the socket
+        // the worker should keep track of the socket
         message.key = socket.server._connectionKey;
 
         var firstTime = !this.channel.sockets.send[message.key];
@@ -77,8 +107,8 @@ const handleConversion = {
 
         // the server should no longer expose a .connection property
         // and when asked to close it should query the socket status from
-        // the slaves
-        if (firstTime) socket.server._setupSlave(socketList);
+        // the workers
+        if (firstTime) socket.server._setupWorker(socketList);
 
         // Act like socket is detached
         if (!options.keepOpen)
@@ -92,6 +122,14 @@ const handleConversion = {
       if (!options.keepOpen) {
         handle.onread = nop;
         socket._handle = null;
+        socket.setTimeout(0);
+        // In case of an HTTP connection socket, release the associated
+        // resources
+        if (socket.parser && socket.parser instanceof HTTPParser) {
+          freeParser(socket.parser, null, socket);
+          if (socket._httpMessage)
+            socket._httpMessage.detachSocket(socket);
+        }
       }
 
       return handle;
@@ -116,8 +154,11 @@ const handleConversion = {
     },
 
     got: function(message, handle, emit) {
-      var socket = new net.Socket({ handle: handle });
-      socket.readable = socket.writable = true;
+      var socket = new net.Socket({
+        handle: handle,
+        readable: true,
+        writable: true
+      });
 
       // if the socket was created by net.Server we will track the socket
       if (message.key) {
@@ -151,7 +192,7 @@ const handleConversion = {
     send: function(message, socket, options) {
       message.dgramType = socket.type;
 
-      return socket._handle;
+      return socket[kStateSymbol].handle;
     },
 
     got: function(message, handle, emit) {
@@ -236,17 +277,7 @@ function flushStdio(subprocess) {
 
 
 function createSocket(pipe, readable) {
-  var s = new net.Socket({ handle: pipe });
-
-  if (readable) {
-    s.writable = false;
-    s.readable = true;
-  } else {
-    s.writable = true;
-    s.readable = false;
-  }
-
-  return s;
+  return net.Socket({ handle: pipe, readable, writable: !readable });
 }
 
 
@@ -270,8 +301,9 @@ ChildProcess.prototype.spawn = function(options) {
   var ipcFd;
   var i;
 
-  if (options === null || typeof options !== 'object')
-    throw new TypeError('"options" must be an object');
+  if (options === null || typeof options !== 'object') {
+    throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
+  }
 
   // If no `stdio` option was given - use default
   var stdio = options.stdio || 'pipe';
@@ -286,8 +318,11 @@ ChildProcess.prototype.spawn = function(options) {
     // Let child process know about opened IPC channel
     if (options.envPairs === undefined)
       options.envPairs = [];
-    else if (!Array.isArray(options.envPairs))
-      throw new TypeError('"envPairs" must be an array');
+    else if (!Array.isArray(options.envPairs)) {
+      throw new ERR_INVALID_ARG_TYPE('options.envPairs',
+                                     'Array',
+                                     options.envPairs);
+    }
 
     options.envPairs.push('NODE_CHANNEL_FD=' + ipcFd);
   } else if (process.__node_cluster_threading) {
@@ -298,17 +333,15 @@ ChildProcess.prototype.spawn = function(options) {
     this._handle.onexit = oldHandle.onexit;
   }
 
-  if (typeof options.file === 'string')
-    this.spawnfile = options.file;
-  else
-    throw new TypeError('"file" must be a string');
+  validateString(options.file, 'options.file');
+  this.spawnfile = options.file;
 
   if (Array.isArray(options.args))
     this.spawnargs = options.args;
   else if (options.args === undefined)
     this.spawnargs = [];
   else
-    throw new TypeError('"args" must be an array');
+    throw new ERR_INVALID_ARG_TYPE('options.args', 'Array', options.args);
 
   // (db) we extend 'options' with info for thread-based spawn
   options.ipc = ipc;
@@ -317,17 +350,18 @@ ChildProcess.prototype.spawn = function(options) {
   var err = this._handle.spawn(options);
 
   // Run-time errors should emit an error, not throw an exception.
-  if (err === uv.UV_EAGAIN ||
-      err === uv.UV_EMFILE ||
-      err === uv.UV_ENFILE ||
-      err === uv.UV_ENOENT) {
+  if (err === UV_EACCES ||
+      err === UV_EAGAIN ||
+      err === UV_EMFILE ||
+      err === UV_ENFILE ||
+      err === UV_ENOENT) {
     process.nextTick(onErrorNT, this, err);
     // There is no point in continuing when we've hit EMFILE or ENFILE
     // because we won't be able to set up the stdio file descriptors.
     // It's kind of silly that the de facto spec for ENOENT (the test suite)
     // mandates that stdio _is_ set up, even if there is no process on the
     // receiving end, but it is what it is.
-    if (err !== uv.UV_ENOENT) return err;
+    if (err !== UV_ENOENT) return err;
   } else if (err) {
     // Close all opened fds on error
     for (i = 0; i < stdio.length; i++) {
@@ -404,9 +438,9 @@ ChildProcess.prototype.kill = function(sig) {
       this.killed = true;
       return true;
     }
-    if (err === uv.UV_ESRCH) {
+    if (err === UV_ESRCH) {
       /* Already dead. */
-    } else if (err === uv.UV_EINVAL || err === uv.UV_ENOSYS) {
+    } else if (err === UV_EINVAL || err === UV_ENOSYS) {
       /* The underlying platform doesn't support this signal. */
       throw errnoException(err, 'kill');
     } else {
@@ -463,11 +497,16 @@ function setupChannel(target, channel) {
 
   const control = new Control(channel);
 
+  if (StringDecoder === undefined)
+    StringDecoder = require('string_decoder').StringDecoder;
   var decoder = new StringDecoder('utf8');
   var jsonBuffer = '';
   var pendingHandle = null;
   channel.buffering = false;
-  channel.onread = function(nread, pool, recvHandle) {
+  channel.pendingHandle = null;
+  channel.onread = function(nread, pool) {
+    const recvHandle = channel.pendingHandle;
+    channel.pendingHandle = null;
     // TODO(bnoordhuis) Check that nread > 0.
     if (pool) {
       if (recvHandle)
@@ -596,7 +635,7 @@ function setupChannel(target, channel) {
       options = undefined;
     } else if (options !== undefined &&
                (options === null || typeof options !== 'object')) {
-      throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'options', 'Object');
+      throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
     }
 
     options = Object.assign({ swallowErrors: false }, options);
@@ -604,11 +643,11 @@ function setupChannel(target, channel) {
     if (this.connected) {
       return this._send(message, handle, options, callback);
     }
-    const ex = new errors.Error('ERR_IPC_CHANNEL_CLOSED');
+    const ex = new ERR_IPC_CHANNEL_CLOSED();
     if (typeof callback === 'function') {
       process.nextTick(callback, ex);
     } else {
-      this.emit('error', ex);  // FIXME(bnoordhuis) Defer to next tick.
+      process.nextTick(() => this.emit('error', ex));
     }
     return false;
   };
@@ -617,7 +656,7 @@ function setupChannel(target, channel) {
     assert(this.connected || this.channel);
 
     if (message === undefined)
-      throw new errors.TypeError('ERR_MISSING_ARGS', 'message');
+      throw new ERR_MISSING_ARGS('message');
 
     // Support legacy function signature
     if (typeof options === 'boolean') {
@@ -644,7 +683,7 @@ function setupChannel(target, channel) {
       } else if (handle instanceof UDP) {
         message.type = 'dgram.Native';
       } else {
-        throw new errors.TypeError('ERR_INVALID_HANDLE_TYPE');
+        throw new ERR_INVALID_HANDLE_TYPE();
       }
 
       // Queue-up message and handle if we haven't received ACK yet.
@@ -722,7 +761,7 @@ function setupChannel(target, channel) {
         if (typeof callback === 'function') {
           process.nextTick(callback, ex);
         } else {
-          this.emit('error', ex);  // FIXME(bnoordhuis) Defer to next tick.
+          process.nextTick(() => this.emit('error', ex));
         }
       }
     }
@@ -744,7 +783,7 @@ function setupChannel(target, channel) {
 
   target.disconnect = function() {
     if (!this.connected) {
-      this.emit('error', new errors.Error('ERR_IPC_DISCONNECTED'));
+      this.emit('error', new ERR_IPC_DISCONNECTED());
       return;
     }
 
@@ -826,11 +865,10 @@ function _validateStdio(stdio, sync) {
       case 'pipe': stdio = ['pipe', 'pipe', 'pipe']; break;
       case 'inherit': stdio = [0, 1, 2]; break;
       default:
-        throw new errors.TypeError('ERR_INVALID_OPT_VALUE', 'stdio', stdio);
+        throw new ERR_INVALID_OPT_VALUE('stdio', stdio);
     }
   } else if (!Array.isArray(stdio)) {
-    throw new errors.TypeError('ERR_INVALID_OPT_VALUE',
-                               'stdio', util.inspect(stdio));
+    throw new ERR_INVALID_OPT_VALUE('stdio', util.inspect(stdio));
   }
 
   // At least 3 stdio will be created
@@ -872,9 +910,9 @@ function _validateStdio(stdio, sync) {
         // Cleanup previously created pipes
         cleanup();
         if (!sync)
-          throw new errors.Error('ERR_IPC_ONE_PIPE');
+          throw new ERR_IPC_ONE_PIPE();
         else
-          throw new errors.Error('ERR_IPC_SYNC_FORK');
+          throw new ERR_IPC_SYNC_FORK();
       }
 
       ipc = new Pipe(PipeConstants.IPC);
@@ -909,14 +947,12 @@ function _validateStdio(stdio, sync) {
     } else if (isUint8Array(stdio) || typeof stdio === 'string') {
       if (!sync) {
         cleanup();
-        throw new errors.TypeError('ERR_INVALID_SYNC_FORK_INPUT',
-                                   util.inspect(stdio));
+        throw new ERR_INVALID_SYNC_FORK_INPUT(util.inspect(stdio));
       }
     } else {
       // Cleanup
       cleanup();
-      throw new errors.TypeError('ERR_INVALID_OPT_VALUE', 'stdio',
-                                 util.inspect(stdio));
+      throw new ERR_INVALID_OPT_VALUE('stdio', util.inspect(stdio));
     }
 
     return acc;
@@ -926,12 +962,12 @@ function _validateStdio(stdio, sync) {
 }
 
 
-function getSocketList(type, slave, key) {
-  var sockets = slave.channel.sockets[type];
+function getSocketList(type, worker, key) {
+  var sockets = worker.channel.sockets[type];
   var socketList = sockets[key];
   if (!socketList) {
     var Construct = type === 'send' ? SocketListSend : SocketListReceive;
-    socketList = sockets[key] = new Construct(slave, key);
+    socketList = sockets[key] = new Construct(worker, key);
   }
   return socketList;
 }
@@ -945,9 +981,33 @@ function maybeClose(subprocess) {
   }
 }
 
+function spawnSync(opts) {
+  var options = opts.options;
+  var result = spawn_sync.spawn(options);
+
+  if (result.output && options.encoding && options.encoding !== 'buffer') {
+    for (var i = 0; i < result.output.length; i++) {
+      if (!result.output[i])
+        continue;
+      result.output[i] = result.output[i].toString(options.encoding);
+    }
+  }
+
+  result.stdout = result.output && result.output[1];
+  result.stderr = result.output && result.output[2];
+
+  if (result.error) {
+    result.error = errnoException(result.error, 'spawnSync ' + opts.file);
+    result.error.path = opts.file;
+    result.error.spawnargs = opts.args.slice(1);
+  }
+
+  return result;
+}
+
 module.exports = {
   ChildProcess,
   setupChannel,
   _validateStdio,
-  getSocketList
+  spawnSync
 };

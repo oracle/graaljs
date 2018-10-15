@@ -8,8 +8,14 @@ prefix es-module
 
 ### Graal.js-specific ###
 
-# Bug in Node.js hidden by a bug in V8
-# see https://github.com/nodejs/node/issues/18249
-test-esm-namespace     : FAIL
-test-esm-require-cache : FAIL
-test-esm-snapshot      : FAIL
+# dynamic import (not supported by Graal.js yet)
+test-esm-cyclic-dynamic-import                   : FAIL
+test-esm-dynamic-import                          : FAIL
+test-esm-error-cache                             : FAIL
+test-esm-loader-invalid-format                   : FAIL
+test-esm-loader-invalid-url                      : FAIL
+test-esm-loader-missing-dynamic-instantiate-hook : FAIL
+test-esm-throw-undefined                         : FAIL
+
+# import.meta (not supported by Graal.js yet)
+test-esm-import-meta                             : FAIL

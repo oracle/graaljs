@@ -64,18 +64,18 @@ if (process.argv[2] !== 'child') {
   let done = 0;
   let timer = null;
 
-  //exit the test if it doesn't succeed within TIMEOUT
+  // Exit the test if it doesn't succeed within TIMEOUT
   timer = setTimeout(function() {
     console.error('[PARENT] Responses were not received within %d ms.',
                   TIMEOUT);
     console.error('[PARENT] Fail');
 
-    killChildren(workers);
+    killSubprocesses(workers);
 
     process.exit(1);
   }, TIMEOUT);
 
-  //launch child processes
+  // Launch child processes
   for (let x = 0; x < listeners; x++) {
     (function() {
       const worker = fork(process.argv[1], ['child']);
@@ -83,7 +83,7 @@ if (process.argv[2] !== 'child') {
 
       worker.messagesReceived = [];
 
-      //handle the death of workers
+      // Handle the death of workers
       worker.on('exit', function(code, signal) {
         // don't consider this the true death if the worker
         // has finished successfully
@@ -102,7 +102,7 @@ if (process.argv[2] !== 'child') {
           console.error('[PARENT] All workers have died.');
           console.error('[PARENT] Fail');
 
-          killChildren(workers);
+          killSubprocesses(workers);
 
           process.exit(1);
         }
@@ -113,7 +113,7 @@ if (process.argv[2] !== 'child') {
           listening += 1;
 
           if (listening === listeners) {
-            //all child process are listening, so start sending
+            // All child process are listening, so start sending
             sendSocket.sendNext();
           }
         } else if (msg.message) {
@@ -155,7 +155,7 @@ if (process.argv[2] !== 'child') {
 
             clearTimeout(timer);
             console.error('[PARENT] Success');
-            killChildren(workers);
+            killSubprocesses(workers);
           }
         }
       });
@@ -203,10 +203,10 @@ if (process.argv[2] !== 'child') {
     );
   };
 
-  function killChildren(children) {
-    Object.keys(children).forEach(function(key) {
-      const child = children[key];
-      child.kill();
+  function killSubprocesses(subprocesses) {
+    Object.keys(subprocesses).forEach(function(key) {
+      const subprocess = subprocesses[key];
+      subprocess.kill();
     });
   }
 }
@@ -239,9 +239,9 @@ if (process.argv[2] === 'child') {
   });
 
   listenSocket.on('close', function() {
-    //HACK: Wait to exit the process to ensure that the parent
-    //process has had time to receive all messages via process.send()
-    //This may be indicative of some other issue.
+    // HACK: Wait to exit the process to ensure that the parent
+    // process has had time to receive all messages via process.send()
+    // This may be indicative of some other issue.
     setTimeout(function() {
       process.exit();
     }, 1000);

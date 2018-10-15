@@ -89,14 +89,16 @@ bool GraalObject::ForceSet(v8::Local<v8::Value> key, v8::Local<v8::Value> value,
 }
 
 v8::Local<v8::Value> GraalObject::Get(v8::Local<v8::Value> key) {
+    GraalIsolate* graal_isolate = Isolate();
     jobject java_key = reinterpret_cast<GraalValue*> (*key)->GetJavaObject();
-    JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::object_get, Object, GetJavaObject(), java_key);
+    JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::object_get, Object, GetJavaObject(), java_key);
     if (java_object == NULL) {
+        graal_isolate->HandleEmptyCallResult();
         return v8::Local<v8::Value>();
     } else {
-        Isolate()->ResetSharedBuffer();
-        int32_t value_t = Isolate()->ReadInt32FromSharedBuffer();
-        GraalValue* graal_value = GraalValue::FromJavaObject(Isolate(), java_object, value_t, true);
+        graal_isolate->ResetSharedBuffer();
+        int32_t value_t = graal_isolate->ReadInt32FromSharedBuffer();
+        GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_object, value_t, true);
         return reinterpret_cast<v8::Value*> (graal_value);
     }
 }
@@ -164,23 +166,27 @@ bool GraalObject::Delete(uint32_t index) {
     return result;
 }
 
-bool GraalObject::SetAccessor(
-        v8::Local<v8::String> name,
-        void (*getter)(v8::Local<v8::String>, v8::PropertyCallbackInfo<v8::Value> const&),
-        void (*setter)(v8::Local<v8::String>, v8::Local<v8::Value>, v8::PropertyCallbackInfo<void> const&),
-        v8::Local<v8::Value> data,
+v8::Maybe<bool> GraalObject::SetAccessor(
+        v8::Local<v8::Name> name,
+        v8::AccessorNameGetterCallback getter,
+        v8::AccessorNameSetterCallback setter,
+        v8::MaybeLocal<v8::Value> data,
         v8::AccessControl settings,
         v8::PropertyAttribute attributes) {
-    jobject java_name = reinterpret_cast<GraalString*> (*name)->GetJavaObject();
+    jobject java_name = reinterpret_cast<GraalValue*> (*name)->GetJavaObject();
     jlong java_getter = (jlong) getter;
     jlong java_setter = (jlong) setter;
+    jobject java_data;
+    GraalIsolate* graal_isolate = Isolate();
     if (data.IsEmpty()) {
-        data = v8::Undefined(reinterpret_cast<v8::Isolate*> (Isolate()));
+        java_data = graal_isolate->GetUndefined()->GetJavaObject();
+    } else {
+        GraalValue* graal_data = reinterpret_cast<GraalValue*> (*(data.ToLocalChecked()));
+        java_data = graal_data->GetJavaObject();
     }
     jint java_attribs = attributes;
-    jobject java_data = data.IsEmpty() ? NULL : reinterpret_cast<GraalValue*> (*data)->GetJavaObject();
     JNI_CALL(jboolean, success, Isolate(), GraalAccessMethod::object_set_accessor, Boolean, GetJavaObject(), java_name, java_getter, java_setter, java_data, java_attribs);
-    return success;
+    return v8::Just((bool) success);
 }
 
 int GraalObject::InternalFieldCount() {
@@ -315,12 +321,26 @@ v8::Maybe<bool> GraalObject::DefineProperty(v8::Local<v8::Context> context, v8::
     jobject get = descriptor.has_get() ? reinterpret_cast<GraalHandleContent*> (*descriptor.get())->GetJavaObject() : NULL;
     jobject set = descriptor.has_set() ? reinterpret_cast<GraalHandleContent*> (*descriptor.set())->GetJavaObject() : NULL;
     jboolean has_enumerable = descriptor.has_enumerable();
-    jboolean enumerable = has_enumerable ? false : descriptor.enumerable();
+    jboolean enumerable = has_enumerable ? descriptor.enumerable() : false;
     jboolean has_configurable = descriptor.has_configurable();
-    jboolean configurable = has_configurable ? false : descriptor.configurable();
+    jboolean configurable = has_configurable ? descriptor.configurable() : false;
     jboolean has_writable = descriptor.has_writable();
-    jboolean writable = has_writable ? false : descriptor.writable();
+    jboolean writable = has_writable ? descriptor.writable() : false;
     JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::object_define_property, Boolean, GetJavaObject(), java_key,
             value, get, set, has_enumerable, enumerable, has_configurable, configurable, has_writable, writable);
     return v8::Just((bool) result);
+}
+
+v8::MaybeLocal<v8::Array> GraalObject::PreviewEntries(bool* is_key_value) {
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_entries, graal_isolate, GraalAccessMethod::object_preview_entries, Object, GetJavaObject());
+    if (java_entries == NULL) {
+        return v8::MaybeLocal<v8::Array>();
+    } else {
+        graal_isolate->ResetSharedBuffer();
+        *is_key_value = graal_isolate->ReadInt32FromSharedBuffer() != 0;
+        GraalValue* graal_entries = GraalValue::FromJavaObject(graal_isolate, java_entries);
+        v8::Local<v8::Array> v8_entries = reinterpret_cast<v8::Array*> (graal_entries);
+        return v8_entries;
+    }
 }

@@ -49,7 +49,7 @@ public:
     GraalProxy(GraalIsolate* isolate, jobject java_proxy);
     bool IsProxy() const override;
     bool IsFunction() const override;
-    v8::Local<v8::Object> GetTarget();
+    v8::Local<v8::Value> GetTarget();
     v8::Local<v8::Value> GetHandler();
 
 protected:

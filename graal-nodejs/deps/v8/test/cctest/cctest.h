@@ -32,10 +32,12 @@
 
 #include "include/libplatform/libplatform.h"
 #include "include/v8-platform.h"
+#include "src/assembler.h"
 #include "src/debug/debug-interface.h"
 #include "src/flags.h"
+#include "src/heap/factory.h"
 #include "src/isolate.h"
-#include "src/objects-inl.h"
+#include "src/objects.h"
 #include "src/utils.h"
 #include "src/v8.h"
 #include "src/zone/accounting-allocator.h"
@@ -113,7 +115,7 @@ class CcTest {
   bool enabled() { return enabled_; }
 
   static v8::Isolate* isolate() {
-    CHECK(isolate_ != NULL);
+    CHECK_NOT_NULL(isolate_);
     v8::base::Relaxed_Store(&isolate_used_, 1);
     return isolate_;
   }
@@ -245,7 +247,7 @@ class RegisterThreadedTest {
  public:
   explicit RegisterThreadedTest(CcTest::TestFunction* callback,
                                 const char* name)
-      : fuzzer_(NULL), callback_(callback), name_(name) {
+      : fuzzer_(nullptr), callback_(callback), name_(name) {
     prev_ = first_;
     first_ = this;
     count_++;
@@ -452,25 +454,6 @@ static inline v8::Local<v8::Value> CompileRun(
 }
 
 
-static inline v8::Local<v8::Value> ParserCacheCompileRun(const char* source) {
-  // Compile once just to get the preparse data, then compile the second time
-  // using the data.
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
-  v8::ScriptCompiler::Source script_source(v8_str(source));
-  v8::ScriptCompiler::Compile(context, &script_source,
-                              v8::ScriptCompiler::kProduceParserCache)
-      .ToLocalChecked();
-
-  // Check whether we received cached data, and if so use it.
-  v8::ScriptCompiler::CompileOptions options =
-      script_source.GetCachedData() ? v8::ScriptCompiler::kConsumeParserCache
-                                    : v8::ScriptCompiler::kNoCompileOptions;
-
-  return CompileRun(context, &script_source, options);
-}
-
-
 // Helper functions that compile and run the source with given origin.
 static inline v8::Local<v8::Value> CompileRunWithOrigin(const char* source,
                                                         const char* origin_url,
@@ -566,6 +549,32 @@ static inline void CheckDoubleEquals(double expected, double actual) {
   CHECK_GE(expected, actual - kEpsilon);
 }
 
+static inline uint8_t* AllocateAssemblerBuffer(
+    size_t* allocated,
+    size_t requested = v8::internal::AssemblerBase::kMinimalBufferSize) {
+  size_t page_size = v8::internal::AllocatePageSize();
+  size_t alloc_size = RoundUp(requested, page_size);
+  void* result = v8::internal::AllocatePages(
+      nullptr, alloc_size, page_size, v8::PageAllocator::kReadWriteExecute);
+  CHECK(result);
+  *allocated = alloc_size;
+  return static_cast<uint8_t*>(result);
+}
+
+static inline void MakeAssemblerBufferExecutable(uint8_t* buffer,
+                                                 size_t allocated) {
+  bool result = v8::internal::SetPermissions(buffer, allocated,
+                                             v8::PageAllocator::kReadExecute);
+  CHECK(result);
+}
+
+static inline void MakeAssemblerBufferWritable(uint8_t* buffer,
+                                               size_t allocated) {
+  bool result = v8::internal::SetPermissions(buffer, allocated,
+                                             v8::PageAllocator::kReadWrite);
+  CHECK(result);
+}
+
 static v8::debug::DebugDelegate dummy_delegate;
 
 static inline void EnableDebugger(v8::Isolate* isolate) {
@@ -631,21 +640,26 @@ class ManualGCScope {
   ManualGCScope()
       : flag_concurrent_marking_(i::FLAG_concurrent_marking),
         flag_concurrent_sweeping_(i::FLAG_concurrent_sweeping),
-        flag_stress_incremental_marking_(i::FLAG_stress_incremental_marking) {
+        flag_stress_incremental_marking_(i::FLAG_stress_incremental_marking),
+        flag_parallel_marking_(i::FLAG_parallel_marking) {
     i::FLAG_concurrent_marking = false;
     i::FLAG_concurrent_sweeping = false;
     i::FLAG_stress_incremental_marking = false;
+    // Parallel marking has a dependency on concurrent marking.
+    i::FLAG_parallel_marking = false;
   }
   ~ManualGCScope() {
     i::FLAG_concurrent_marking = flag_concurrent_marking_;
     i::FLAG_concurrent_sweeping = flag_concurrent_sweeping_;
     i::FLAG_stress_incremental_marking = flag_stress_incremental_marking_;
+    i::FLAG_parallel_marking = flag_parallel_marking_;
   }
 
  private:
   bool flag_concurrent_marking_;
   bool flag_concurrent_sweeping_;
   bool flag_stress_incremental_marking_;
+  bool flag_parallel_marking_;
 };
 
 // This is an abstract base class that can be overridden to implement a test
@@ -654,13 +668,30 @@ class ManualGCScope {
 class TestPlatform : public v8::Platform {
  public:
   // v8::Platform implementation.
+  v8::PageAllocator* GetPageAllocator() override {
+    return old_platform_->GetPageAllocator();
+  }
+
   void OnCriticalMemoryPressure() override {
     old_platform_->OnCriticalMemoryPressure();
   }
 
-  void CallOnBackgroundThread(v8::Task* task,
-                              ExpectedRuntime expected_runtime) override {
-    old_platform_->CallOnBackgroundThread(task, expected_runtime);
+  bool OnCriticalMemoryPressure(size_t length) override {
+    return old_platform_->OnCriticalMemoryPressure(length);
+  }
+
+  std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner(
+      v8::Isolate* isolate) override {
+    return old_platform_->GetForegroundTaskRunner(isolate);
+  }
+
+  std::shared_ptr<v8::TaskRunner> GetWorkerThreadsTaskRunner(
+      v8::Isolate* isolate) override {
+    return old_platform_->GetWorkerThreadsTaskRunner(isolate);
+  }
+
+  void CallOnWorkerThread(std::unique_ptr<v8::Task> task) override {
+    old_platform_->CallOnWorkerThread(std::move(task));
   }
 
   void CallOnForegroundThread(v8::Isolate* isolate, v8::Task* task) override {
@@ -675,6 +706,10 @@ class TestPlatform : public v8::Platform {
 
   double MonotonicallyIncreasingTime() override {
     return old_platform_->MonotonicallyIncreasingTime();
+  }
+
+  double CurrentClockTimeMillis() override {
+    return old_platform_->CurrentClockTimeMillis();
   }
 
   void CallIdleOnForegroundThread(v8::Isolate* isolate,

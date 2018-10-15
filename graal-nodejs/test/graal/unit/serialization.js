@@ -112,7 +112,13 @@ var data = [
     [sparseArray, 'ff0d61e807495449a6034001e807'],
     [sparseArrayWithProperty, 'ff0d61e807495449a6032203666f6f22036261724002e807'],
     [denseArrayWithProperty, 'ff0d4102495449a6032203666f6f2203626172240102'],
-    [sparseArrayWithHighIndex, 'ff0d61ffffffff0f4e0000c0ffffffef4149004001ffffffff0f']
+    [sparseArrayWithHighIndex, 'ff0d61ffffffff0f4e0000c0ffffffef4149004001ffffffff0f'],
+    [0n, 'ff0d5a00'],
+    [1n, 'ff0d5a100100000000000000'],
+    [-1n, 'ff0d5a110100000000000000'],
+    [10000000000000000000n, 'ff0d5a100000e8890423c78a'],
+    [100000000000000000000n, 'ff0d5a20000010632d5ec76b0500000000000000'],
+    [Object(42n), 'ff0d7a102a00000000000000']
 ];
 
 describe('Serialization', function () {

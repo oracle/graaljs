@@ -1,3 +1,4 @@
+// Flags: --expose-internals
 'use strict';
 const common = require('../common');
 common.skipIfInspectorDisabled();
@@ -64,5 +65,4 @@ async function runTests() {
   assert.strictEqual(0, (await child.expectShutdown()).exitCode);
 }
 
-common.crashOnUnhandledRejection();
 runTests();

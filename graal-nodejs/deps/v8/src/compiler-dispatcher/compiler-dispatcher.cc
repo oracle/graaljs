@@ -7,8 +7,8 @@
 #include "include/v8-platform.h"
 #include "include/v8.h"
 #include "src/base/platform/time.h"
+#include "src/base/template-utils.h"
 #include "src/cancelable-task.h"
-#include "src/compilation-info.h"
 #include "src/compiler-dispatcher/compiler-dispatcher-job.h"
 #include "src/compiler-dispatcher/compiler-dispatcher-tracer.h"
 #include "src/compiler-dispatcher/unoptimized-compile-job.h"
@@ -27,7 +27,23 @@ bool DoNextStepOnMainThread(Isolate* isolate, CompilerDispatcherJob* job,
   DCHECK(ThreadId::Current().Equals(isolate->thread_id()));
   TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("v8.compile"),
                "V8.CompilerDispatcherForgroundStep");
-  job->StepNextOnMainThread(isolate);
+  switch (job->status()) {
+    case CompilerDispatcherJob::Status::kInitial:
+      job->PrepareOnMainThread(isolate);
+      break;
+    case CompilerDispatcherJob::Status::kPrepared:
+      job->Compile(false);
+      break;
+    case CompilerDispatcherJob::Status::kCompiled:
+      job->FinalizeOnMainThread(isolate);
+      break;
+    case CompilerDispatcherJob::Status::kHasErrorsToReport:
+      job->ReportErrorsOnMainThread(isolate);
+      break;
+    case CompilerDispatcherJob::Status::kFailed:
+    case CompilerDispatcherJob::Status::kDone:
+      UNREACHABLE();
+  }
 
   DCHECK_EQ(job->IsFailed(), isolate->has_pending_exception());
   if (job->IsFailed() && exception_handling == ExceptionHandling::kSwallow) {
@@ -37,10 +53,16 @@ bool DoNextStepOnMainThread(Isolate* isolate, CompilerDispatcherJob* job,
 }
 
 void DoNextStepOnBackgroundThread(CompilerDispatcherJob* job) {
-  DCHECK(job->CanStepNextOnAnyThread());
+  DCHECK(job->NextStepCanRunOnAnyThread());
   TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("v8.compile"),
                "V8.CompilerDispatcherBackgroundStep");
-  job->StepNextOnBackgroundThread();
+  switch (job->status()) {
+    case CompilerDispatcherJob::Status::kPrepared:
+      job->Compile(true);
+      break;
+    default:
+      UNREACHABLE();
+  }
 }
 
 // Theoretically we get 50ms of idle time max, however it's unlikely that
@@ -70,7 +92,7 @@ MemoryPressureTask::MemoryPressureTask(Isolate* isolate,
 MemoryPressureTask::~MemoryPressureTask() {}
 
 void MemoryPressureTask::RunInternal() {
-  dispatcher_->AbortAll(CompilerDispatcher::BlockingBehavior::kDontBlock);
+  dispatcher_->AbortAll(BlockingBehavior::kDontBlock);
 }
 
 }  // namespace
@@ -101,11 +123,11 @@ void CompilerDispatcher::AbortTask::RunInternal() {
   dispatcher_->AbortInactiveJobs();
 }
 
-class CompilerDispatcher::BackgroundTask : public CancelableTask {
+class CompilerDispatcher::WorkerTask : public CancelableTask {
  public:
-  BackgroundTask(Isolate* isolate, CancelableTaskManager* task_manager,
-                 CompilerDispatcher* dispatcher);
-  ~BackgroundTask() override;
+  WorkerTask(Isolate* isolate, CancelableTaskManager* task_manager,
+             CompilerDispatcher* dispatcher);
+  ~WorkerTask() override;
 
   // CancelableTask implementation.
   void RunInternal() override;
@@ -113,17 +135,17 @@ class CompilerDispatcher::BackgroundTask : public CancelableTask {
  private:
   CompilerDispatcher* dispatcher_;
 
-  DISALLOW_COPY_AND_ASSIGN(BackgroundTask);
+  DISALLOW_COPY_AND_ASSIGN(WorkerTask);
 };
 
-CompilerDispatcher::BackgroundTask::BackgroundTask(
-    Isolate* isolate, CancelableTaskManager* task_manager,
-    CompilerDispatcher* dispatcher)
+CompilerDispatcher::WorkerTask::WorkerTask(Isolate* isolate,
+                                           CancelableTaskManager* task_manager,
+                                           CompilerDispatcher* dispatcher)
     : CancelableTask(task_manager), dispatcher_(dispatcher) {}
 
-CompilerDispatcher::BackgroundTask::~BackgroundTask() {}
+CompilerDispatcher::WorkerTask::~WorkerTask() {}
 
-void CompilerDispatcher::BackgroundTask::RunInternal() {
+void CompilerDispatcher::WorkerTask::RunInternal() {
   dispatcher_->DoBackgroundWork();
 }
 
@@ -166,7 +188,7 @@ CompilerDispatcher::CompilerDispatcher(Isolate* isolate, Platform* platform,
       memory_pressure_level_(MemoryPressureLevel::kNone),
       abort_(false),
       idle_task_scheduled_(false),
-      num_background_tasks_(0),
+      num_worker_tasks_(0),
       main_thread_blocking_on_job_(nullptr),
       block_for_testing_(false),
       semaphore_for_testing_(0) {
@@ -283,7 +305,7 @@ void CompilerDispatcher::WaitForJobIfRunningOnBackground(
   TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("v8.compile"),
                "V8.CompilerDispatcherWaitForBackgroundJob");
   RuntimeCallTimerScope runtimeTimer(
-      isolate_, &RuntimeCallStats::CompileWaitForDispatcher);
+      isolate_, RuntimeCallCounterId::kCompileWaitForDispatcher);
 
   base::LockGuard<base::Mutex> lock(&mutex_);
   if (running_background_jobs_.find(job) == running_background_jobs_.end()) {
@@ -412,7 +434,7 @@ void CompilerDispatcher::AbortInactiveJobs() {
   }
   if (jobs_.empty()) {
     base::LockGuard<base::Mutex> lock(&mutex_);
-    if (num_background_tasks_ == 0) abort_ = false;
+    if (num_worker_tasks_ == 0) abort_ = false;
   }
 }
 
@@ -484,29 +506,27 @@ void CompilerDispatcher::ScheduleAbortTask() {
 
 void CompilerDispatcher::ConsiderJobForBackgroundProcessing(
     CompilerDispatcherJob* job) {
-  if (!job->CanStepNextOnAnyThread()) return;
+  if (!job->NextStepCanRunOnAnyThread()) return;
   {
     base::LockGuard<base::Mutex> lock(&mutex_);
     pending_background_jobs_.insert(job);
   }
-  ScheduleMoreBackgroundTasksIfNeeded();
+  ScheduleMoreWorkerTasksIfNeeded();
 }
 
-void CompilerDispatcher::ScheduleMoreBackgroundTasksIfNeeded() {
+void CompilerDispatcher::ScheduleMoreWorkerTasksIfNeeded() {
   TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("v8.compile"),
-               "V8.CompilerDispatcherScheduleMoreBackgroundTasksIfNeeded");
+               "V8.CompilerDispatcherScheduleMoreWorkerTasksIfNeeded");
   {
     base::LockGuard<base::Mutex> lock(&mutex_);
     if (pending_background_jobs_.empty()) return;
-    if (platform_->NumberOfAvailableBackgroundThreads() <=
-        num_background_tasks_) {
+    if (platform_->NumberOfWorkerThreads() <= num_worker_tasks_) {
       return;
     }
-    ++num_background_tasks_;
+    ++num_worker_tasks_;
   }
-  platform_->CallOnBackgroundThread(
-      new BackgroundTask(isolate_, task_manager_.get(), this),
-      v8::Platform::kShortRunningTask);
+  platform_->CallOnWorkerThread(
+      base::make_unique<WorkerTask>(isolate_, task_manager_.get(), this));
 }
 
 void CompilerDispatcher::DoBackgroundWork() {
@@ -550,7 +570,7 @@ void CompilerDispatcher::DoBackgroundWork() {
 
   {
     base::LockGuard<base::Mutex> lock(&mutex_);
-    --num_background_tasks_;
+    --num_worker_tasks_;
 
     if (running_background_jobs_.empty() && abort_) {
       // This is the last background job that finished. The abort task
@@ -667,7 +687,8 @@ CompilerDispatcher::JobMap::const_iterator CompilerDispatcher::InsertJob(
   CompilerDispatcherJob* inserted_job = it->second.get();
 
   // Maps unoptimized jobs' SFIs to their job id.
-  if (inserted_job->type() == CompilerDispatcherJob::kUnoptimizedCompile) {
+  if (inserted_job->type() ==
+      CompilerDispatcherJob::Type::kUnoptimizedCompile) {
     Handle<SharedFunctionInfo> shared =
         inserted_job->AsUnoptimizedCompileJob()->shared();
     if (!shared.is_null()) {
@@ -684,12 +705,12 @@ CompilerDispatcher::JobMap::const_iterator CompilerDispatcher::RemoveJob(
   job->ResetOnMainThread(isolate_);
 
   // Unmaps unoptimized jobs' SFIs to their job id.
-  if (job->type() == CompilerDispatcherJob::kUnoptimizedCompile) {
+  if (job->type() == CompilerDispatcherJob::Type::kUnoptimizedCompile) {
     Handle<SharedFunctionInfo> shared =
         job->AsUnoptimizedCompileJob()->shared();
     if (!shared.is_null()) {
-      JobId deleted_id = shared_to_unoptimized_job_id_.Delete(shared);
-      USE(deleted_id);
+      JobId deleted_id;
+      shared_to_unoptimized_job_id_.Delete(shared, &deleted_id);
       DCHECK_EQ(it->first, deleted_id);
     }
   }
@@ -697,7 +718,7 @@ CompilerDispatcher::JobMap::const_iterator CompilerDispatcher::RemoveJob(
   it = jobs_.erase(it);
   if (jobs_.empty()) {
     base::LockGuard<base::Mutex> lock(&mutex_);
-    if (num_background_tasks_ == 0) abort_ = false;
+    if (num_worker_tasks_ == 0) abort_ = false;
   }
   return it;
 }

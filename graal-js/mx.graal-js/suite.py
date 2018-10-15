@@ -3,7 +3,8 @@ suite = {
 
   "name" : "graal-js",
 
-  "version" : "1.0.0-rc6",
+  "version" : "1.0.0-rc8",
+  "release" : False,
   "groupId" : "org.graalvm.js",
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -11,6 +12,11 @@ suite = {
     "email" : "graalvm-users@oss.oracle.com",
     "organization" : "Graal",
     "organizationUrl" : "http://www.graalvm.org/",
+  },
+  "scm" : {
+    "url" : "https://github.com/graalvm/graaljs",
+    "read" : "https://github.com/graalvm/graaljs.git",
+    "write" : "git@github.com:graalvm/graaljs.git",
   },
 
   "imports" : {
@@ -249,7 +255,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "truffle:TRUFFLE_API",
+        "sdk:GRAAL_SDK"
       ],
       "exports" : [],
       "javaCompliance" : "1.8",
@@ -484,7 +490,7 @@ suite = {
       "distDependencies" : ["sdk:LAUNCHER_COMMON"],
       "description" : "Graal JavaScript Launcher",
       "maven" : {
-        "artifactId" : "launcher",
+        "artifactId" : "js-launcher",
       },
       "allowsJavadocWarnings": True,
     },
@@ -498,7 +504,7 @@ suite = {
       ],
       "description" : "Graal JavaScript ScriptEngine",
       "maven" : {
-        "artifactId" : "scriptengine",
+        "artifactId" : "js-scriptengine",
       },
       "allowsJavadocWarnings": True,
     },

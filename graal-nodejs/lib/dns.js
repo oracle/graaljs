@@ -21,75 +21,40 @@
 
 'use strict';
 
-const util = require('util');
-
 const cares = process.binding('cares_wrap');
-const uv = process.binding('uv');
-const { isLegalPort } = require('internal/net');
+const { isIP, isIPv4, isLegalPort } = require('internal/net');
 const { customPromisifyArgs } = require('internal/util');
+const errors = require('internal/errors');
+const {
+  bindDefaultResolver,
+  getDefaultResolver,
+  setDefaultResolver,
+  Resolver,
+  validateHints
+} = require('internal/dns/utils');
+const {
+  ERR_INVALID_ARG_TYPE,
+  ERR_INVALID_CALLBACK,
+  ERR_INVALID_OPT_VALUE,
+  ERR_MISSING_ARGS,
+  ERR_SOCKET_BAD_PORT
+} = errors.codes;
+const { validateString } = require('internal/validators');
 
 const {
   GetAddrInfoReqWrap,
   GetNameInfoReqWrap,
   QueryReqWrap,
-  ChannelWrap,
-  isIP
 } = cares;
 
-function errnoException(err, syscall, hostname) {
-  // FIXME(bnoordhuis) Remove this backwards compatibility nonsense and pass
-  // the true error to the user. ENOTFOUND is not even a proper POSIX error!
-  if (err === uv.UV_EAI_MEMORY ||
-      err === uv.UV_EAI_NODATA ||
-      err === uv.UV_EAI_NONAME) {
-    err = 'ENOTFOUND';
-  }
-  var ex = null;
-  if (typeof err === 'string') {  // c-ares error code.
-    const errHost = hostname ? ` ${hostname}` : '';
-    ex = new Error(`${syscall} ${err}${errHost}`);
-    ex.code = err;
-    ex.errno = err;
-    ex.syscall = syscall;
-  } else {
-    ex = util._errnoException(err, syscall);
-  }
-  if (hostname) {
-    ex.hostname = hostname;
-  }
-  return ex;
-}
+const dnsException = errors.dnsException;
 
-const IANA_DNS_PORT = 53;
-const digits = [
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0-15
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 16-31
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 32-47
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, // 48-63
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 64-79
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 80-95
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 96-111
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  // 112-127
-];
-function isIPv4(str) {
-  if (!digits[str.charCodeAt(0)]) return false;
-  if (str.length === 1) return false;
-  if (str.charCodeAt(1) === 46/*'.'*/)
-    return true;
-  else if (!digits[str.charCodeAt(1)])
-    return false;
-  if (str.length === 2) return false;
-  if (str.charCodeAt(2) === 46/*'.'*/)
-    return true;
-  else if (!digits[str.charCodeAt(2)])
-    return false;
-  return (str.length > 3 && str.charCodeAt(3) === 46/*'.'*/);
-}
-
+let promisesWarn = true;
+let promises; // Lazy loaded
 
 function onlookup(err, addresses) {
   if (err) {
-    return this.callback(errnoException(err, 'getaddrinfo', this.hostname));
+    return this.callback(dnsException(err, 'getaddrinfo', this.hostname));
   }
   if (this.family) {
     this.callback(null, addresses[0], this.family);
@@ -101,7 +66,7 @@ function onlookup(err, addresses) {
 
 function onlookupall(err, addresses) {
   if (err) {
-    return this.callback(errnoException(err, 'getaddrinfo', this.hostname));
+    return this.callback(dnsException(err, 'getaddrinfo', this.hostname));
   }
 
   var family = this.family;
@@ -127,31 +92,25 @@ function lookup(hostname, options, callback) {
 
   // Parse arguments
   if (hostname && typeof hostname !== 'string') {
-    throw new TypeError('Invalid arguments: ' +
-                        'hostname must be a string or falsey');
+    throw new ERR_INVALID_ARG_TYPE('hostname', ['string', 'falsy'], hostname);
   } else if (typeof options === 'function') {
     callback = options;
     family = 0;
   } else if (typeof callback !== 'function') {
-    throw new TypeError('Invalid arguments: callback must be passed');
+    throw new ERR_INVALID_CALLBACK();
   } else if (options !== null && typeof options === 'object') {
     hints = options.hints >>> 0;
     family = options.family >>> 0;
     all = options.all === true;
     verbatim = options.verbatim === true;
 
-    if (hints !== 0 &&
-        hints !== cares.AI_ADDRCONFIG &&
-        hints !== cares.AI_V4MAPPED &&
-        hints !== (cares.AI_ADDRCONFIG | cares.AI_V4MAPPED)) {
-      throw new TypeError('Invalid argument: hints must use valid flags');
-    }
+    validateHints(hints);
   } else {
     family = options >>> 0;
   }
 
   if (family !== 0 && family !== 4 && family !== 6)
-    throw new TypeError('Invalid argument: family must be 4 or 6');
+    throw new ERR_INVALID_OPT_VALUE('family', family);
 
   if (!hostname) {
     if (all) {
@@ -181,7 +140,7 @@ function lookup(hostname, options, callback) {
 
   var err = cares.getaddrinfo(req, hostname, family, hints, verbatim);
   if (err) {
-    process.nextTick(callback, errnoException(err, 'getaddrinfo', hostname));
+    process.nextTick(callback, dnsException(err, 'getaddrinfo', hostname));
     return {};
   }
   return req;
@@ -193,7 +152,7 @@ Object.defineProperty(lookup, customPromisifyArgs,
 
 function onlookupservice(err, host, service) {
   if (err)
-    return this.callback(errnoException(err, 'getnameinfo', this.host));
+    return this.callback(dnsException(err, 'getnameinfo', this.host));
 
   this.callback(null, host, service);
 }
@@ -202,16 +161,16 @@ function onlookupservice(err, host, service) {
 // lookupService(address, port, callback)
 function lookupService(host, port, callback) {
   if (arguments.length !== 3)
-    throw new Error('Invalid arguments');
+    throw new ERR_MISSING_ARGS('host', 'port', 'callback');
 
   if (isIP(host) === 0)
-    throw new TypeError('"host" argument needs to be a valid IP address');
+    throw new ERR_INVALID_OPT_VALUE('host', host);
 
   if (!isLegalPort(port))
-    throw new TypeError(`"port" should be >= 0 and < 65536, got "${port}"`);
+    throw new ERR_SOCKET_BAD_PORT(port);
 
   if (typeof callback !== 'function')
-    throw new TypeError('"callback" argument must be a function');
+    throw new ERR_INVALID_CALLBACK();
 
   port = +port;
 
@@ -222,7 +181,7 @@ function lookupService(host, port, callback) {
   req.oncomplete = onlookupservice;
 
   var err = cares.getnameinfo(req, host, port);
-  if (err) throw errnoException(err, 'getnameinfo', host);
+  if (err) throw dnsException(err, 'getnameinfo', host);
   return req;
 }
 
@@ -235,20 +194,9 @@ function onresolve(err, result, ttls) {
     result = result.map((address, index) => ({ address, ttl: ttls[index] }));
 
   if (err)
-    this.callback(errnoException(err, this.bindingName, this.hostname));
+    this.callback(dnsException(err, this.bindingName, this.hostname));
   else
     this.callback(null, result);
-}
-
-// Resolver instances correspond 1:1 to c-ares channels.
-class Resolver {
-  constructor() {
-    this._handle = new ChannelWrap();
-  }
-
-  cancel() {
-    this._handle.cancel();
-  }
 }
 
 function resolver(bindingName) {
@@ -259,10 +207,9 @@ function resolver(bindingName) {
       callback = arguments[2];
     }
 
-    if (typeof name !== 'string') {
-      throw new Error('"name" argument must be a string');
-    } else if (typeof callback !== 'function') {
-      throw new Error('"callback" argument must be a function');
+    validateString(name, 'name');
+    if (typeof callback !== 'function') {
+      throw new ERR_INVALID_CALLBACK();
     }
 
     var req = new QueryReqWrap();
@@ -272,7 +219,7 @@ function resolver(bindingName) {
     req.oncomplete = onresolve;
     req.ttl = !!(options && options.ttl);
     var err = this._handle[bindingName](req, name);
-    if (err) throw errnoException(err, bindingName);
+    if (err) throw dnsException(err, bindingName, name);
     return req;
   }
   Object.defineProperty(query, 'name', { value: bindingName });
@@ -295,115 +242,33 @@ Resolver.prototype.reverse = resolver('getHostByAddr');
 
 Resolver.prototype.resolve = resolve;
 
-function resolve(hostname, type_, callback_) {
-  var resolver, callback;
-  if (typeof type_ === 'string') {
-    resolver = resolveMap[type_];
-    callback = callback_;
-  } else if (typeof type_ === 'function') {
+function resolve(hostname, rrtype, callback) {
+  var resolver;
+  if (typeof rrtype === 'string') {
+    resolver = resolveMap[rrtype];
+  } else if (typeof rrtype === 'function') {
     resolver = resolveMap.A;
-    callback = type_;
+    callback = rrtype;
   } else {
-    throw new Error('"type" argument must be a string');
+    throw new ERR_INVALID_ARG_TYPE('rrtype', 'string', rrtype);
   }
 
   if (typeof resolver === 'function') {
     return resolver.call(this, hostname, callback);
   } else {
-    throw new Error(`Unknown type "${type_}"`);
+    throw new ERR_INVALID_OPT_VALUE('rrtype', rrtype);
   }
-}
-
-
-Resolver.prototype.getServers = getServers;
-function getServers() {
-  const ret = this._handle.getServers();
-  return ret.map((val) => {
-    if (!val[1] || val[1] === IANA_DNS_PORT) return val[0];
-
-    const host = isIP(val[0]) === 6 ? `[${val[0]}]` : val[0];
-    return `${host}:${val[1]}`;
-  });
-}
-
-
-Resolver.prototype.setServers = setServers;
-function setServers(servers) {
-  // cache the original servers because in the event of an error setting the
-  // servers cares won't have any servers available for resolution
-  const orig = this._handle.getServers();
-  const newSet = [];
-  const IPv6RE = /\[(.*)\]/;
-  const addrSplitRE = /(^.+?)(?::(\d+))?$/;
-
-  servers.forEach((serv) => {
-    var ipVersion = isIP(serv);
-    if (ipVersion !== 0)
-      return newSet.push([ipVersion, serv, IANA_DNS_PORT]);
-
-    const match = serv.match(IPv6RE);
-    // we have an IPv6 in brackets
-    if (match) {
-      ipVersion = isIP(match[1]);
-      if (ipVersion !== 0) {
-        const port =
-          parseInt(serv.replace(addrSplitRE, '$2')) ||
-          IANA_DNS_PORT;
-        return newSet.push([ipVersion, match[1], port]);
-      }
-    }
-
-    const [, s, p] = serv.match(addrSplitRE);
-    ipVersion = isIP(s);
-
-    if (ipVersion !== 0) {
-      return newSet.push([ipVersion, s, parseInt(p)]);
-    }
-
-    throw new Error(`IP address is not properly formatted: ${serv}`);
-  });
-
-  const errorNumber = this._handle.setServers(newSet);
-
-  if (errorNumber !== 0) {
-    // reset the servers to the old servers, because ares probably unset them
-    this._handle.setServers(orig.join(','));
-
-    var err = cares.strerror(errorNumber);
-    throw new Error(`c-ares failed to set servers: "${err}" [${servers}]`);
-  }
-}
-
-let defaultResolver = new Resolver();
-
-const resolverKeys = [
-  'getServers',
-  'resolve',
-  'resolveAny',
-  'resolve4',
-  'resolve6',
-  'resolveCname',
-  'resolveMx',
-  'resolveNs',
-  'resolveTxt',
-  'resolveSrv',
-  'resolvePtr',
-  'resolveNaptr',
-  'resolveSoa',
-  'reverse'
-];
-
-function setExportsFunctions() {
-  resolverKeys.forEach((key) => {
-    module.exports[key] = defaultResolver[key].bind(defaultResolver);
-  });
 }
 
 function defaultResolverSetServers(servers) {
   const resolver = new Resolver();
+
   resolver.setServers(servers);
-  defaultResolver = resolver;
-  setExportsFunctions();
+  setDefaultResolver(resolver);
+  bindDefaultResolver(module.exports, Resolver.prototype);
+
+  if (promises !== undefined)
+    bindDefaultResolver(promises, promises.Resolver.prototype);
 }
 
 module.exports = {
@@ -444,4 +309,21 @@ module.exports = {
   CANCELLED: 'ECANCELLED'
 };
 
-setExportsFunctions();
+bindDefaultResolver(module.exports, getDefaultResolver());
+
+Object.defineProperties(module.exports, {
+  promises: {
+    configurable: true,
+    enumerable: false,
+    get() {
+      if (promisesWarn) {
+        promises = require('internal/dns/promises');
+        promises.setServers = defaultResolverSetServers;
+        promisesWarn = false;
+        process.emitWarning('The dns.promises API is experimental',
+                            'ExperimentalWarning');
+      }
+      return promises;
+    }
+  }
+});

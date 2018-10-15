@@ -4,10 +4,21 @@ const Stream = require('stream');
 const Readable = Stream.Readable;
 const binding = process.binding('http2');
 const constants = binding.constants;
-const errors = require('internal/errors');
+const {
+  ERR_HTTP2_HEADERS_SENT,
+  ERR_HTTP2_INFO_STATUS_NOT_ALLOWED,
+  ERR_HTTP2_INVALID_HEADER_VALUE,
+  ERR_HTTP2_INVALID_STREAM,
+  ERR_HTTP2_NO_SOCKET_MANIPULATION,
+  ERR_HTTP2_PSEUDOHEADER_NOT_ALLOWED,
+  ERR_HTTP2_STATUS_INVALID,
+  ERR_INVALID_ARG_VALUE,
+  ERR_INVALID_CALLBACK,
+  ERR_INVALID_HTTP_TOKEN
+} = require('internal/errors').codes;
+const { validateString } = require('internal/validators');
 const { kSocket } = require('internal/http2/util');
 
-const kFinish = Symbol('finish');
 const kBeginSend = Symbol('begin-send');
 const kState = Symbol('state');
 const kStream = Symbol('stream');
@@ -19,6 +30,7 @@ const kTrailers = Symbol('trailers');
 const kRawTrailers = Symbol('rawTrailers');
 const kProxySocket = Symbol('proxySocket');
 const kSetHeader = Symbol('setHeader');
+const kAborted = Symbol('aborted');
 
 const {
   HTTP2_HEADER_AUTHORITY,
@@ -42,11 +54,11 @@ let statusMessageWarned = false;
 function assertValidHeader(name, value) {
   let err;
   if (name === '' || typeof name !== 'string') {
-    err = new errors.TypeError('ERR_INVALID_HTTP_TOKEN', 'Header name', name);
+    err = new ERR_INVALID_HTTP_TOKEN('Header name', name);
   } else if (isPseudoHeader(name)) {
-    err = new errors.Error('ERR_HTTP2_PSEUDOHEADER_NOT_ALLOWED');
+    err = new ERR_HTTP2_PSEUDOHEADER_NOT_ALLOWED();
   } else if (value === undefined || value === null) {
-    err = new errors.TypeError('ERR_HTTP2_INVALID_HEADER_VALUE', value, name);
+    err = new ERR_HTTP2_INVALID_HEADER_VALUE(value, name);
   }
   if (err !== undefined) {
     Error.captureStackTrace(err, assertValidHeader);
@@ -103,9 +115,7 @@ function onStreamError(error) {
   //
   // errors in compatibility mode are
   // not forwarded to the request
-  // and response objects. However,
-  // they are forwarded to 'streamError'
-  // on the server by Http2Stream
+  // and response objects.
 }
 
 function onRequestPause() {
@@ -125,15 +135,13 @@ function onStreamDrain() {
 function onStreamAbortedRequest() {
   const request = this[kRequest];
   if (request !== undefined && request[kState].closed === false) {
+    request[kAborted] = true;
     request.emit('aborted');
-    request.emit('close');
   }
 }
 
 function onStreamAbortedResponse() {
-  const response = this[kResponse];
-  if (response !== undefined && response[kState].closed === false)
-    response.emit('close');
+  // non-op for now
 }
 
 function resumeStream(stream) {
@@ -166,7 +174,7 @@ const proxySocketHandler = {
       case 'read':
       case 'pause':
       case 'resume':
-        throw new errors.Error('ERR_HTTP2_NO_SOCKET_MANIPULATION');
+        throw new ERR_HTTP2_NO_SOCKET_MANIPULATION();
       default:
         const ref = stream.session !== undefined ?
           stream.session[kSocket] : stream;
@@ -202,7 +210,7 @@ const proxySocketHandler = {
       case 'read':
       case 'pause':
       case 'resume':
-        throw new errors.Error('ERR_HTTP2_NO_SOCKET_MANIPULATION');
+        throw new ERR_HTTP2_NO_SOCKET_MANIPULATION();
       default:
         const ref = stream.session !== undefined ?
           stream.session[kSocket] : stream;
@@ -211,6 +219,27 @@ const proxySocketHandler = {
     }
   }
 };
+
+function onStreamCloseRequest() {
+  const req = this[kRequest];
+
+  if (req === undefined)
+    return;
+
+  const state = req[kState];
+  state.closed = true;
+
+  req.push(null);
+  // if the user didn't interact with incoming data and didn't pipe it,
+  // dump it for compatibility with http1
+  if (!state.didRead && !req._readableState.resumeScheduled)
+    req.resume();
+
+  this[kProxySocket] = null;
+  this[kRequest] = undefined;
+
+  req.emit('close');
+}
 
 class Http2ServerRequest extends Readable {
   constructor(stream, headers, options, rawHeaders) {
@@ -224,21 +253,22 @@ class Http2ServerRequest extends Readable {
     this[kTrailers] = {};
     this[kRawTrailers] = [];
     this[kStream] = stream;
+    this[kAborted] = false;
     stream[kProxySocket] = null;
     stream[kRequest] = this;
 
     // Pause the stream..
-    stream.pause();
-    stream.on('data', onStreamData);
     stream.on('trailers', onStreamTrailers);
     stream.on('end', onStreamEnd);
     stream.on('error', onStreamError);
     stream.on('aborted', onStreamAbortedRequest);
-    const onfinish = this[kFinish].bind(this);
-    stream.on('close', onfinish);
-    stream.on('finish', onfinish);
+    stream.on('close', onStreamCloseRequest);
     this.on('pause', onRequestPause);
     this.on('resume', onRequestResume);
+  }
+
+  get aborted() {
+    return this[kAborted];
   }
 
   get complete() {
@@ -294,10 +324,14 @@ class Http2ServerRequest extends Readable {
   _read(nread) {
     const state = this[kState];
     if (!state.closed) {
-      state.didRead = true;
-      process.nextTick(resumeStream, this[kStream]);
+      if (!state.didRead) {
+        state.didRead = true;
+        this[kStream].on('data', onStreamData);
+      } else {
+        process.nextTick(resumeStream, this[kStream]);
+      }
     } else {
-      this.emit('error', new errors.Error('ERR_HTTP2_STREAM_CLOSED'));
+      this.emit('error', new ERR_HTTP2_INVALID_STREAM());
     }
   }
 
@@ -306,8 +340,9 @@ class Http2ServerRequest extends Readable {
   }
 
   set method(method) {
-    if (typeof method !== 'string' || method.trim() === '')
-      throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'method', 'string');
+    validateString(method, 'method');
+    if (method.trim() === '')
+      throw new ERR_INVALID_ARG_VALUE('method', method);
 
     this[kHeaders][HTTP2_HEADER_METHOD] = method;
   }
@@ -333,19 +368,32 @@ class Http2ServerRequest extends Readable {
       return;
     this[kStream].setTimeout(msecs, callback);
   }
+}
 
-  [kFinish]() {
-    const state = this[kState];
-    if (state.closed)
-      return;
-    state.closed = true;
-    this.push(null);
-    this[kStream][kRequest] = undefined;
-    // if the user didn't interact with incoming data and didn't pipe it,
-    // dump it for compatibility with http1
-    if (!state.didRead && !this._readableState.resumeScheduled)
-      this.resume();
-  }
+function onStreamTrailersReady() {
+  this.sendTrailers(this[kResponse][kTrailers]);
+}
+
+function onStreamCloseResponse() {
+  const res = this[kResponse];
+
+  if (res === undefined)
+    return;
+
+  const state = res[kState];
+
+  if (this.headRequest !== state.headRequest)
+    return;
+
+  state.closed = true;
+
+  this[kProxySocket] = null;
+
+  this.removeListener('wantTrailers', onStreamTrailersReady);
+  this[kResponse] = undefined;
+
+  res.emit('finish');
+  res.emit('close');
 }
 
 class Http2ServerResponse extends Stream {
@@ -366,9 +414,8 @@ class Http2ServerResponse extends Stream {
     this.writable = true;
     stream.on('drain', onStreamDrain);
     stream.on('aborted', onStreamAbortedResponse);
-    const onfinish = this[kFinish].bind(this);
-    stream.on('close', onfinish);
-    stream.on('finish', onfinish);
+    stream.on('close', onStreamCloseResponse);
+    stream.on('wantTrailers', onStreamTrailersReady);
   }
 
   // User land modules such as finalhandler just check truthiness of this
@@ -425,16 +472,14 @@ class Http2ServerResponse extends Stream {
   set statusCode(code) {
     code |= 0;
     if (code >= 100 && code < 200)
-      throw new errors.RangeError('ERR_HTTP2_INFO_STATUS_NOT_ALLOWED');
+      throw new ERR_HTTP2_INFO_STATUS_NOT_ALLOWED();
     if (code < 100 || code > 599)
-      throw new errors.RangeError('ERR_HTTP2_STATUS_INVALID', code);
+      throw new ERR_HTTP2_STATUS_INVALID(code);
     this[kState].statusCode = code;
   }
 
   setTrailer(name, value) {
-    if (typeof name !== 'string')
-      throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'name', 'string');
-
+    validateString(name, 'name');
     name = name.trim().toLowerCase();
     assertValidHeader(name, value);
     this[kTrailers][name] = value;
@@ -450,9 +495,7 @@ class Http2ServerResponse extends Stream {
   }
 
   getHeader(name) {
-    if (typeof name !== 'string')
-      throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'name', 'string');
-
+    validateString(name, 'name');
     name = name.trim().toLowerCase();
     return this[kHeaders][name];
   }
@@ -466,30 +509,24 @@ class Http2ServerResponse extends Stream {
   }
 
   hasHeader(name) {
-    if (typeof name !== 'string')
-      throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'name', 'string');
-
+    validateString(name, 'name');
     name = name.trim().toLowerCase();
     return Object.prototype.hasOwnProperty.call(this[kHeaders], name);
   }
 
   removeHeader(name) {
-    if (typeof name !== 'string')
-      throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'name', 'string');
-
+    validateString(name, 'name');
     if (this[kStream].headersSent)
-      throw new errors.Error('ERR_HTTP2_HEADERS_SENT');
+      throw new ERR_HTTP2_HEADERS_SENT();
 
     name = name.trim().toLowerCase();
     delete this[kHeaders][name];
   }
 
   setHeader(name, value) {
-    if (typeof name !== 'string')
-      throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'name', 'string');
-
+    validateString(name, 'name');
     if (this[kStream].headersSent)
-      throw new errors.Error('ERR_HTTP2_HEADERS_SENT');
+      throw new ERR_HTTP2_HEADERS_SENT();
 
     this[kSetHeader](name, value);
   }
@@ -520,9 +557,9 @@ class Http2ServerResponse extends Stream {
     const state = this[kState];
 
     if (state.closed)
-      throw new errors.Error('ERR_HTTP2_STREAM_CLOSED');
+      throw new ERR_HTTP2_INVALID_STREAM();
     if (this[kStream].headersSent)
-      throw new errors.Error('ERR_HTTP2_HEADERS_SENT');
+      throw new ERR_HTTP2_HEADERS_SENT();
 
     if (typeof statusMessage === 'string')
       statusMessageWarn();
@@ -550,7 +587,7 @@ class Http2ServerResponse extends Stream {
     }
 
     if (this[kState].closed) {
-      const err = new errors.Error('ERR_HTTP2_STREAM_CLOSED');
+      const err = new ERR_HTTP2_INVALID_STREAM();
       if (typeof cb === 'function')
         process.nextTick(cb, err);
       else
@@ -599,9 +636,11 @@ class Http2ServerResponse extends Stream {
       this.writeHead(this[kState].statusCode);
 
     if (isFinished)
-      this[kFinish]();
+      onStreamCloseResponse.call(stream);
     else
       stream.end();
+
+    return this;
   }
 
   destroy(err) {
@@ -618,14 +657,17 @@ class Http2ServerResponse extends Stream {
 
   createPushResponse(headers, callback) {
     if (typeof callback !== 'function')
-      throw new errors.TypeError('ERR_INVALID_CALLBACK');
+      throw new ERR_INVALID_CALLBACK();
     if (this[kState].closed) {
-      process.nextTick(callback, new errors.Error('ERR_HTTP2_STREAM_CLOSED'));
+      process.nextTick(callback, new ERR_HTTP2_INVALID_STREAM());
       return;
     }
-    this[kStream].pushStream(headers, {}, function(stream, headers, options) {
-      const response = new Http2ServerResponse(stream);
-      callback(null, response);
+    this[kStream].pushStream(headers, {}, (err, stream, headers, options) => {
+      if (err) {
+        callback(err);
+        return;
+      }
+      callback(null, new Http2ServerResponse(stream));
     });
   }
 
@@ -635,20 +677,9 @@ class Http2ServerResponse extends Stream {
     headers[HTTP2_HEADER_STATUS] = state.statusCode;
     const options = {
       endStream: state.ending,
-      getTrailers: (trailers) => Object.assign(trailers, this[kTrailers])
+      waitForTrailers: true,
     };
     this[kStream].respond(headers, options);
-  }
-
-  [kFinish]() {
-    const stream = this[kStream];
-    const state = this[kState];
-    if (state.closed || stream.headRequest !== state.headRequest)
-      return;
-    state.closed = true;
-    this[kProxySocket] = null;
-    stream[kResponse] = undefined;
-    this.emit('finish');
   }
 
   // TODO doesn't support callbacks
@@ -663,11 +694,11 @@ class Http2ServerResponse extends Stream {
   }
 }
 
-function onServerStream(stream, headers, flags, rawHeaders) {
+function onServerStream(ServerRequest, ServerResponse,
+                        stream, headers, flags, rawHeaders) {
   const server = this;
-  const request = new Http2ServerRequest(stream, headers, undefined,
-                                         rawHeaders);
-  const response = new Http2ServerResponse(stream);
+  const request = new ServerRequest(stream, headers, undefined, rawHeaders);
+  const response = new ServerResponse(stream);
 
   // Check for the CONNECT method
   const method = headers[HTTP2_HEADER_METHOD];

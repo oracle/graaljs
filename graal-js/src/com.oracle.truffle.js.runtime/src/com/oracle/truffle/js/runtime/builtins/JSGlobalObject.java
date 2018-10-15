@@ -64,13 +64,13 @@ public final class JSGlobalObject extends JSBuiltinObject {
         JSContext context = realm.getContext();
         if (context.isMultiContext()) {
             Shape shape = context.makeEmptyShapeWithPrototypeInObject(INSTANCE, JSObject.PROTO_PROPERTY);
-            DynamicObject global = JSObject.createNoTrack(shape);
+            DynamicObject global = JSObject.createInit(shape);
             JSObject.PROTO_PROPERTY.setSafe(global, objectPrototype, shape);
             return global;
         }
         // keep a separate shape tree for the global object in order not to pollute user objects
         Shape shape = JSShape.makeUniqueRootWithPrototype(JSObject.LAYOUT, INSTANCE, context, objectPrototype);
-        return JSObject.createNoTrack(shape);
+        return JSObject.createInit(shape);
     }
 
     public static boolean isJSGlobalObject(Object obj) {

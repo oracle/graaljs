@@ -48,6 +48,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -97,6 +98,15 @@ public class SharedMemorySync {
         return typedArray.getInt(target, intArrayOffset, true);
     }
 
+    // ##### Getters and setters with ordering and memory barriers
+    @TruffleBoundary
+    public static BigInt doVolatileGetBigInt(DynamicObject target, int intArrayOffset) {
+        SyncUtils.loadFence();
+        TypedArray array = typedArrayGetArrayType(target);
+        TypedArray.TypedBigIntArray<?> typedArray = (TypedArray.TypedBigIntArray<?>) array;
+        return typedArray.getBigInt(target, intArrayOffset, true);
+    }
+
     @TruffleBoundary
     public static void doVolatilePut(DynamicObject target, int index, int value) {
         TypedArray array = typedArrayGetArrayType(target);
@@ -105,18 +115,43 @@ public class SharedMemorySync {
         SyncUtils.storeFence();
     }
 
+    @TruffleBoundary
+    public static void doVolatilePutBigInt(DynamicObject target, int index, BigInt value) {
+        TypedArray array = typedArrayGetArrayType(target);
+        TypedArray.TypedBigIntArray<?> typedArray = (TypedArray.TypedBigIntArray<?>) array;
+        typedArray.setBigInt(target, index, value, true);
+        SyncUtils.storeFence();
+    }
+
     // ##### Atomic CAS primitives
     @TruffleBoundary
     public static boolean compareAndSwapInt(JSContext cx, DynamicObject target, int intArrayOffset, int initial, int result) {
         cx.getJSAgent().atomicSectionEnter(target);
-        int value = doVolatileGet(target, intArrayOffset);
-        if (value == initial) {
-            doVolatilePut(target, intArrayOffset, result);
+        try {
+            int value = doVolatileGet(target, intArrayOffset);
+            if (value == initial) {
+                doVolatilePut(target, intArrayOffset, result);
+                return true;
+            }
+            return false;
+        } finally {
             cx.getJSAgent().atomicSectionLeave(target);
-            return true;
         }
-        cx.getJSAgent().atomicSectionLeave(target);
-        return false;
+    }
+
+    @TruffleBoundary
+    public static boolean compareAndSwapBigInt(JSContext cx, DynamicObject target, int intArrayOffset, BigInt initial, BigInt result) {
+        cx.getJSAgent().atomicSectionEnter(target);
+        try {
+            BigInt value = doVolatileGetBigInt(target, intArrayOffset);
+            if (value.compareTo(initial) == 0) {
+                doVolatilePutBigInt(target, intArrayOffset, result);
+                return true;
+            }
+            return false;
+        } finally {
+            cx.getJSAgent().atomicSectionLeave(target);
+        }
     }
 
     // ##### Atomic Fetch-or-Get primitives
@@ -134,23 +169,29 @@ public class SharedMemorySync {
     @TruffleBoundary
     public static long atomicFetchOrGetLong(JSContext cx, DynamicObject target, int intArrayOffset, long expected, long replacement) {
         cx.getJSAgent().atomicSectionEnter(target);
-        int read = doVolatileGet(target, intArrayOffset);
-        if (read == expected) {
-            doVolatilePut(target, intArrayOffset, (int) replacement);
+        try {
+            int read = doVolatileGet(target, intArrayOffset);
+            if (read == expected) {
+                doVolatilePut(target, intArrayOffset, (int) replacement);
+            }
+            return read;
+        } finally {
+            cx.getJSAgent().atomicSectionLeave(target);
         }
-        cx.getJSAgent().atomicSectionLeave(target);
-        return read;
     }
 
     @TruffleBoundary
     public static int atomicFetchOrGetInt(JSContext cx, DynamicObject target, int intArrayOffset, int expected, int replacement) {
         cx.getJSAgent().atomicSectionEnter(target);
-        int read = doVolatileGet(target, intArrayOffset);
-        if (read == expected) {
-            doVolatilePut(target, intArrayOffset, replacement);
+        try {
+            int read = doVolatileGet(target, intArrayOffset);
+            if (read == expected) {
+                doVolatilePut(target, intArrayOffset, replacement);
+            }
+            return read;
+        } finally {
+            cx.getJSAgent().atomicSectionLeave(target);
         }
-        cx.getJSAgent().atomicSectionLeave(target);
-        return read;
     }
 
     @TruffleBoundary
@@ -170,15 +211,32 @@ public class SharedMemorySync {
     @TruffleBoundary
     public static int atomicFetchOrGetByte(JSContext cx, DynamicObject target, int intArrayOffset, int expected, int replacement, boolean sign) {
         cx.getJSAgent().atomicSectionEnter(target);
-        int read = doVolatileGet(target, intArrayOffset);
-        read = sign ? read : read & 0xFF;
-        int expectedChopped = sign ? (byte) expected : expected & 0xFF;
-        if (read == expectedChopped) {
-            int signed = sign ? replacement : replacement & 0xFF;
-            SharedMemorySync.doVolatilePut(target, intArrayOffset, (byte) signed);
+        try {
+            int read = doVolatileGet(target, intArrayOffset);
+            read = sign ? read : read & 0xFF;
+            int expectedChopped = sign ? (byte) expected : expected & 0xFF;
+            if (read == expectedChopped) {
+                int signed = sign ? replacement : replacement & 0xFF;
+                SharedMemorySync.doVolatilePut(target, intArrayOffset, (byte) signed);
+            }
+            return read;
+        } finally {
+            cx.getJSAgent().atomicSectionLeave(target);
         }
-        cx.getJSAgent().atomicSectionLeave(target);
-        return read;
+    }
+
+    @TruffleBoundary
+    public static BigInt atomicFetchOrGetBigInt(JSContext cx, DynamicObject target, int intArrayOffset, BigInt expected, BigInt replacement) {
+        cx.getJSAgent().atomicSectionEnter(target);
+        try {
+            BigInt read = doVolatileGetBigInt(target, intArrayOffset);
+            if (read.compareTo(expected) == 0) {
+                doVolatilePutBigInt(target, intArrayOffset, replacement);
+            }
+            return read;
+        } finally {
+            cx.getJSAgent().atomicSectionLeave(target);
+        }
     }
 
     // ##### Thread Wake/Park primitives
@@ -257,5 +315,4 @@ public class SharedMemorySync {
         }
         return list;
     }
-
 }

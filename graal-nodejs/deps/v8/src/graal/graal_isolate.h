@@ -98,6 +98,18 @@ enum GraalAccessMethod {
     value_is_set_iterator,
     value_is_map_iterator,
     value_is_shared_array_buffer,
+    value_is_arguments_object,
+    value_is_boolean_object,
+    value_is_number_object,
+    value_is_string_object,
+    value_is_symbol_object,
+    value_is_big_int_object,
+    value_is_weak_map,
+    value_is_weak_set,
+    value_is_async_function,
+    value_is_generator_function,
+    value_is_generator_object,
+    value_is_module_namespace_object,
     value_equals,
     value_strict_equals,
     value_instance_of,
@@ -127,6 +139,7 @@ enum GraalAccessMethod {
     object_get_own_property_names,
     object_creation_context,
     object_define_property,
+    object_preview_entries,
     array_new,
     array_length,
     array_buffer_new,
@@ -135,6 +148,9 @@ enum GraalAccessMethod {
     array_buffer_view_buffer,
     array_buffer_view_byte_length,
     array_buffer_view_byte_offset,
+    array_buffer_is_external,
+    array_buffer_externalize,
+    array_buffer_neuter,
     typed_array_length,
     uint8_array_new,
     uint8_clamped_array_new,
@@ -145,6 +161,8 @@ enum GraalAccessMethod {
     int32_array_new,
     float32_array_new,
     float64_array_new,
+    big_int64_array_new,
+    big_uint64_array_new,
     data_view_new,
     external_new,
     integer_new,
@@ -172,10 +190,12 @@ enum GraalAccessMethod {
     isolate_dispose,
     isolate_enter_polyglot_engine,
     isolate_perform_gc,
-    isolate_get_debug_context,
     isolate_enable_promise_hook,
     isolate_enable_promise_reject_callback,
+    isolate_enter,
+    isolate_exit,
     template_set,
+    template_set_accessor_property,
     object_template_new,
     object_template_new_instance,
     object_template_set_accessor,
@@ -204,7 +224,6 @@ enum GraalAccessMethod {
     function_template_instance_template,
     function_template_prototype_template,
     function_template_get_function,
-    function_template_get_function_to_cache,
     function_template_has_instance,
     function_template_set_call_handler,
     function_template_inherit,
@@ -214,6 +233,7 @@ enum GraalAccessMethod {
     unbound_script_compile,
     unbound_script_bind_to_context,
     unbound_script_get_id,
+    unbound_script_get_content,
     context_global,
     context_set_pointer_in_embedder_data,
     context_get_pointer_in_embedder_data,
@@ -255,6 +275,7 @@ enum GraalAccessMethod {
     json_parse,
     json_stringify,
     symbol_new,
+    symbol_name,
     promise_result,
     promise_state,
     promise_resolver_new,
@@ -268,6 +289,7 @@ enum GraalAccessMethod {
     module_get_request,
     module_get_namespace,
     module_get_identity_hash,
+    module_get_exception,
     value_serializer_new,
     value_serializer_release,
     value_serializer_size,
@@ -288,6 +310,19 @@ enum GraalAccessMethod {
     value_deserializer_read_raw_bytes,
     value_deserializer_transfer_array_buffer,
     value_deserializer_get_wire_format_version,
+    big_int_int64_value,
+    big_int_uint64_value,
+    big_int_new,
+    big_int_new_from_unsigned,
+    big_int_new_from_words,
+    big_int_word_count,
+    big_int_to_words_array,
+    map_new,
+    map_set,
+    shared_array_buffer_new,
+    shared_array_buffer_is_external,
+    shared_array_buffer_get_contents,
+    shared_array_buffer_externalize,
 
     count // Should be the last item of GraalAccessMethod
 };
@@ -318,13 +353,15 @@ public:
     void WriteDoubleToSharedBuffer(double number);
     void InternalErrorCheck();
     static v8::Isolate* New(v8::Isolate::CreateParams const& params);
-    v8::Local<v8::Context> GetDebugContext();
     void SetPromiseHook(v8::PromiseHook promise_hook);
     void NotifyPromiseHook(v8::PromiseHookType, v8::Local<v8::Promise> promise, v8::Local<v8::Value> parent);
     void SetPromiseRejectCallback(v8::PromiseRejectCallback callback);
     void NotifyPromiseRejectCallback(v8::PromiseRejectMessage message);
     void EnqueueMicrotask(v8::MicrotaskCallback microtask, void* data);
     void RunMicrotasks();
+    void Enter();
+    void Exit();
+    void HandleEmptyCallResult();
 
     enum GCCallbackType {
         kIsolateGCCallbackType = 0,
@@ -475,19 +512,6 @@ public:
         return ++function_template_count_;
     }
 
-    inline GraalValue* GetFunctionTemplateFunction(unsigned id) {
-        GraalValue* result;
-        if (function_template_functions.size() <= id) {
-            result = nullptr;
-        } else {
-            result = function_template_functions[id];
-        }
-        if (result == nullptr) {
-            result = CacheFunctionTemplateFunction(id);
-        }
-        return result;
-    }
-
     inline GraalValue* GetFunctionTemplateData(unsigned id) {
         return function_template_data[id];
     }
@@ -496,7 +520,6 @@ public:
         return function_template_callbacks[id];
     }
 
-    GraalValue* CacheFunctionTemplateFunction(unsigned id);
     void SetFunctionTemplateFunction(unsigned id, GraalValue* function);
     void SetFunctionTemplateData(unsigned id, GraalValue* data);
     void SetFunctionTemplateCallback(unsigned id, v8::FunctionCallback callback);
@@ -506,6 +529,7 @@ public:
     }
 
     jobject CorrectReturnValue(GraalValue* value, jobject null_replacement);
+    void Externalize(jobject java_buffer);
 
     static void SetFlags(int argc, char** argv) {
         GraalIsolate::argc = argc;
@@ -532,7 +556,6 @@ private:
     std::vector<std::tuple<GCCallbackType, void*, void*>> prolog_callbacks;
     std::vector<std::tuple<GCCallbackType, void*, void*>> epilog_callbacks;
     std::vector<std::pair<v8::MicrotaskCallback, void*>> microtasks;
-    std::vector<GraalValue*> function_template_functions;
     std::vector<GraalValue*> function_template_data;
     std::vector<v8::FunctionCallback> function_template_callbacks;
     JavaVM* jvm_;
@@ -548,6 +571,9 @@ private:
     v8::Value* internal_field_count_key_;
     jmethodID jni_methods_[GraalAccessMethod::count];
     jfieldID jni_fields_[static_cast<int>(GraalAccessField::count)];
+    jfieldID cleanerField_;
+    jfieldID thunkField_;
+    jfieldID addressField_;
     GraalPrimitive* undefined_instance_;
     GraalPrimitive* null_instance_;
     GraalBoolean* true_instance_;

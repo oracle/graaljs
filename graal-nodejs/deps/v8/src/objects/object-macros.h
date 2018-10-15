@@ -7,22 +7,22 @@
 
 // Note 2: This file is deliberately missing the include guards (the undeffing
 // approach wouldn't work otherwise).
+//
+// PRESUBMIT_INTENTIONALLY_MISSING_INCLUDE_GUARD
 
 // The accessors with RELAXED_, ACQUIRE_, and RELEASE_ prefixes should be used
 // for fields that can be written to and read from multiple threads at the same
 // time. See comments in src/base/atomicops.h for the memory ordering sematics.
 
-#define DECL_BOOLEAN_ACCESSORS(name) \
-  inline bool name() const;          \
-  inline void set_##name(bool value);
+#define DECL_PRIMITIVE_ACCESSORS(name, type) \
+  inline type name() const;                  \
+  inline void set_##name(type value);
 
-#define DECL_INT_ACCESSORS(name) \
-  inline int name() const;       \
-  inline void set_##name(int value);
+#define DECL_BOOLEAN_ACCESSORS(name) DECL_PRIMITIVE_ACCESSORS(name, bool)
 
-#define DECL_INT32_ACCESSORS(name) \
-  inline int32_t name() const;     \
-  inline void set_##name(int32_t value);
+#define DECL_INT_ACCESSORS(name) DECL_PRIMITIVE_ACCESSORS(name, int)
+
+#define DECL_INT32_ACCESSORS(name) DECL_PRIMITIVE_ACCESSORS(name, int32_t)
 
 #define DECL_ACCESSORS(name, type)    \
   inline type* name() const;          \
@@ -56,8 +56,9 @@
 #define ACCESSORS_CHECKED2(holder, name, type, offset, get_condition, \
                            set_condition)                             \
   type* holder::name() const {                                        \
+    type* value = type::cast(READ_FIELD(this, offset));               \
     DCHECK(get_condition);                                            \
-    return type::cast(READ_FIELD(this, offset));                      \
+    return value;                                                     \
   }                                                                   \
   void holder::set_##name(type* value, WriteBarrierMode mode) {       \
     DCHECK(set_condition);                                            \
@@ -69,6 +70,25 @@
 
 #define ACCESSORS(holder, name, type, offset) \
   ACCESSORS_CHECKED(holder, name, type, offset, true)
+
+#define WEAK_ACCESSORS_CHECKED2(holder, name, offset, get_condition,      \
+                                set_condition)                            \
+  MaybeObject* holder::name() const {                                     \
+    MaybeObject* value = READ_WEAK_FIELD(this, offset);                   \
+    DCHECK(get_condition);                                                \
+    return value;                                                         \
+  }                                                                       \
+  void holder::set_##name(MaybeObject* value, WriteBarrierMode mode) {    \
+    DCHECK(set_condition);                                                \
+    WRITE_WEAK_FIELD(this, offset, value);                                \
+    CONDITIONAL_WEAK_WRITE_BARRIER(GetHeap(), this, offset, value, mode); \
+  }
+
+#define WEAK_ACCESSORS_CHECKED(holder, name, offset, condition) \
+  WEAK_ACCESSORS_CHECKED2(holder, name, offset, condition, condition)
+
+#define WEAK_ACCESSORS(holder, name, offset) \
+  WEAK_ACCESSORS_CHECKED(holder, name, offset, true)
 
 // Getter that returns a Smi as an int and writes an int as a Smi.
 #define SMI_ACCESSORS_CHECKED(holder, name, offset, condition) \
@@ -126,30 +146,40 @@
   }
 
 #define FIELD_ADDR(p, offset) \
-  (reinterpret_cast<byte*>(p) + offset - kHeapObjectTag)
-
-#define FIELD_ADDR_CONST(p, offset) \
-  (reinterpret_cast<const byte*>(p) + offset - kHeapObjectTag)
+  (reinterpret_cast<Address>(p) + offset - kHeapObjectTag)
 
 #define READ_FIELD(p, offset) \
-  (*reinterpret_cast<Object* const*>(FIELD_ADDR_CONST(p, offset)))
+  (*reinterpret_cast<Object* const*>(FIELD_ADDR(p, offset)))
+
+#define READ_WEAK_FIELD(p, offset) \
+  (*reinterpret_cast<MaybeObject* const*>(FIELD_ADDR(p, offset)))
 
 #define ACQUIRE_READ_FIELD(p, offset)           \
   reinterpret_cast<Object*>(base::Acquire_Load( \
-      reinterpret_cast<const base::AtomicWord*>(FIELD_ADDR_CONST(p, offset))))
+      reinterpret_cast<const base::AtomicWord*>(FIELD_ADDR(p, offset))))
 
 #define RELAXED_READ_FIELD(p, offset)           \
   reinterpret_cast<Object*>(base::Relaxed_Load( \
-      reinterpret_cast<const base::AtomicWord*>(FIELD_ADDR_CONST(p, offset))))
+      reinterpret_cast<const base::AtomicWord*>(FIELD_ADDR(p, offset))))
+
+#define RELAXED_READ_WEAK_FIELD(p, offset)           \
+  reinterpret_cast<MaybeObject*>(base::Relaxed_Load( \
+      reinterpret_cast<const base::AtomicWord*>(FIELD_ADDR(p, offset))))
 
 #ifdef V8_CONCURRENT_MARKING
 #define WRITE_FIELD(p, offset, value)                             \
   base::Relaxed_Store(                                            \
       reinterpret_cast<base::AtomicWord*>(FIELD_ADDR(p, offset)), \
       reinterpret_cast<base::AtomicWord>(value));
+#define WRITE_WEAK_FIELD(p, offset, value)                        \
+  base::Relaxed_Store(                                            \
+      reinterpret_cast<base::AtomicWord*>(FIELD_ADDR(p, offset)), \
+      reinterpret_cast<base::AtomicWord>(value));
 #else
 #define WRITE_FIELD(p, offset, value) \
   (*reinterpret_cast<Object**>(FIELD_ADDR(p, offset)) = value)
+#define WRITE_WEAK_FIELD(p, offset, value) \
+  (*reinterpret_cast<MaybeObject**>(FIELD_ADDR(p, offset)) = value)
 #endif
 
 #define RELEASE_WRITE_FIELD(p, offset, value)                     \
@@ -167,6 +197,12 @@
       object, HeapObject::RawField(object, offset), value); \
   heap->RecordWrite(object, HeapObject::RawField(object, offset), value);
 
+#define WEAK_WRITE_BARRIER(heap, object, offset, value)                    \
+  heap->incremental_marking()->RecordMaybeWeakWrite(                       \
+      object, HeapObject::RawMaybeWeakField(object, offset), value);       \
+  heap->RecordWrite(object, HeapObject::RawMaybeWeakField(object, offset), \
+                    value);
+
 #define CONDITIONAL_WRITE_BARRIER(heap, object, offset, value, mode)        \
   if (mode != SKIP_WRITE_BARRIER) {                                         \
     if (mode == UPDATE_WRITE_BARRIER) {                                     \
@@ -176,24 +212,33 @@
     heap->RecordWrite(object, HeapObject::RawField(object, offset), value); \
   }
 
-#define READ_DOUBLE_FIELD(p, offset) \
-  ReadDoubleValue(FIELD_ADDR_CONST(p, offset))
+#define CONDITIONAL_WEAK_WRITE_BARRIER(heap, object, offset, value, mode)    \
+  if (mode != SKIP_WRITE_BARRIER) {                                          \
+    if (mode == UPDATE_WRITE_BARRIER) {                                      \
+      heap->incremental_marking()->RecordMaybeWeakWrite(                     \
+          object, HeapObject::RawMaybeWeakField(object, offset), value);     \
+    }                                                                        \
+    heap->RecordWrite(object, HeapObject::RawMaybeWeakField(object, offset), \
+                      value);                                                \
+  }
+
+#define READ_DOUBLE_FIELD(p, offset) ReadDoubleValue(FIELD_ADDR(p, offset))
 
 #define WRITE_DOUBLE_FIELD(p, offset, value) \
   WriteDoubleValue(FIELD_ADDR(p, offset), value)
 
 #define READ_INT_FIELD(p, offset) \
-  (*reinterpret_cast<const int*>(FIELD_ADDR_CONST(p, offset)))
+  (*reinterpret_cast<const int*>(FIELD_ADDR(p, offset)))
 
 #define WRITE_INT_FIELD(p, offset, value) \
   (*reinterpret_cast<int*>(FIELD_ADDR(p, offset)) = value)
 
 #define RELAXED_READ_INTPTR_FIELD(p, offset) \
   static_cast<intptr_t>(base::Relaxed_Load(  \
-      reinterpret_cast<const base::AtomicWord*>(FIELD_ADDR_CONST(p, offset))))
+      reinterpret_cast<const base::AtomicWord*>(FIELD_ADDR(p, offset))))
 
 #define READ_INTPTR_FIELD(p, offset) \
-  (*reinterpret_cast<const intptr_t*>(FIELD_ADDR_CONST(p, offset)))
+  (*reinterpret_cast<const intptr_t*>(FIELD_ADDR(p, offset)))
 
 #define RELAXED_WRITE_INTPTR_FIELD(p, offset, value)              \
   base::Relaxed_Store(                                            \
@@ -204,7 +249,7 @@
   (*reinterpret_cast<intptr_t*>(FIELD_ADDR(p, offset)) = value)
 
 #define READ_UINT8_FIELD(p, offset) \
-  (*reinterpret_cast<const uint8_t*>(FIELD_ADDR_CONST(p, offset)))
+  (*reinterpret_cast<const uint8_t*>(FIELD_ADDR(p, offset)))
 
 #define WRITE_UINT8_FIELD(p, offset, value) \
   (*reinterpret_cast<uint8_t*>(FIELD_ADDR(p, offset)) = value)
@@ -214,63 +259,63 @@
                       static_cast<base::Atomic8>(value));
 
 #define READ_INT8_FIELD(p, offset) \
-  (*reinterpret_cast<const int8_t*>(FIELD_ADDR_CONST(p, offset)))
+  (*reinterpret_cast<const int8_t*>(FIELD_ADDR(p, offset)))
 
 #define RELAXED_READ_INT8_FIELD(p, offset) \
   static_cast<int8_t>(base::Relaxed_Load(  \
-      reinterpret_cast<const base::Atomic8*>(FIELD_ADDR_CONST(p, offset))))
+      reinterpret_cast<const base::Atomic8*>(FIELD_ADDR(p, offset))))
 
 #define WRITE_INT8_FIELD(p, offset, value) \
   (*reinterpret_cast<int8_t*>(FIELD_ADDR(p, offset)) = value)
 
 #define READ_UINT16_FIELD(p, offset) \
-  (*reinterpret_cast<const uint16_t*>(FIELD_ADDR_CONST(p, offset)))
+  (*reinterpret_cast<const uint16_t*>(FIELD_ADDR(p, offset)))
 
 #define WRITE_UINT16_FIELD(p, offset, value) \
   (*reinterpret_cast<uint16_t*>(FIELD_ADDR(p, offset)) = value)
 
 #define READ_INT16_FIELD(p, offset) \
-  (*reinterpret_cast<const int16_t*>(FIELD_ADDR_CONST(p, offset)))
+  (*reinterpret_cast<const int16_t*>(FIELD_ADDR(p, offset)))
 
 #define WRITE_INT16_FIELD(p, offset, value) \
   (*reinterpret_cast<int16_t*>(FIELD_ADDR(p, offset)) = value)
 
 #define READ_UINT32_FIELD(p, offset) \
-  (*reinterpret_cast<const uint32_t*>(FIELD_ADDR_CONST(p, offset)))
+  (*reinterpret_cast<const uint32_t*>(FIELD_ADDR(p, offset)))
 
 #define WRITE_UINT32_FIELD(p, offset, value) \
   (*reinterpret_cast<uint32_t*>(FIELD_ADDR(p, offset)) = value)
 
 #define READ_INT32_FIELD(p, offset) \
-  (*reinterpret_cast<const int32_t*>(FIELD_ADDR_CONST(p, offset)))
+  (*reinterpret_cast<const int32_t*>(FIELD_ADDR(p, offset)))
 
 #define WRITE_INT32_FIELD(p, offset, value) \
   (*reinterpret_cast<int32_t*>(FIELD_ADDR(p, offset)) = value)
 
 #define READ_FLOAT_FIELD(p, offset) \
-  (*reinterpret_cast<const float*>(FIELD_ADDR_CONST(p, offset)))
+  (*reinterpret_cast<const float*>(FIELD_ADDR(p, offset)))
 
 #define WRITE_FLOAT_FIELD(p, offset, value) \
   (*reinterpret_cast<float*>(FIELD_ADDR(p, offset)) = value)
 
 #define READ_UINT64_FIELD(p, offset) \
-  (*reinterpret_cast<const uint64_t*>(FIELD_ADDR_CONST(p, offset)))
+  (*reinterpret_cast<const uint64_t*>(FIELD_ADDR(p, offset)))
 
 #define WRITE_UINT64_FIELD(p, offset, value) \
   (*reinterpret_cast<uint64_t*>(FIELD_ADDR(p, offset)) = value)
 
 #define READ_INT64_FIELD(p, offset) \
-  (*reinterpret_cast<const int64_t*>(FIELD_ADDR_CONST(p, offset)))
+  (*reinterpret_cast<const int64_t*>(FIELD_ADDR(p, offset)))
 
 #define WRITE_INT64_FIELD(p, offset, value) \
   (*reinterpret_cast<int64_t*>(FIELD_ADDR(p, offset)) = value)
 
 #define READ_BYTE_FIELD(p, offset) \
-  (*reinterpret_cast<const byte*>(FIELD_ADDR_CONST(p, offset)))
+  (*reinterpret_cast<const byte*>(FIELD_ADDR(p, offset)))
 
 #define RELAXED_READ_BYTE_FIELD(p, offset) \
   static_cast<byte>(base::Relaxed_Load(    \
-      reinterpret_cast<const base::Atomic8*>(FIELD_ADDR_CONST(p, offset))))
+      reinterpret_cast<const base::Atomic8*>(FIELD_ADDR(p, offset))))
 
 #define WRITE_BYTE_FIELD(p, offset, value) \
   (*reinterpret_cast<byte*>(FIELD_ADDR(p, offset)) = value)
@@ -285,18 +330,16 @@
 #define DECL_VERIFIER(Name)
 #endif
 
-#define DEFINE_DEOPT_ELEMENT_ACCESSORS(name, type)       \
-  type* DeoptimizationInputData::name() {                \
-    return type::cast(get(k##name##Index));              \
-  }                                                      \
-  void DeoptimizationInputData::Set##name(type* value) { \
-    set(k##name##Index, value);                          \
+#define DEFINE_DEOPT_ELEMENT_ACCESSORS(name, type)                             \
+  type* DeoptimizationData::name() { return type::cast(get(k##name##Index)); } \
+  void DeoptimizationData::Set##name(type* value) {                            \
+    set(k##name##Index, value);                                                \
   }
 
 #define DEFINE_DEOPT_ENTRY_ACCESSORS(name, type)                \
-  type* DeoptimizationInputData::name(int i) {                  \
+  type* DeoptimizationData::name(int i) {                       \
     return type::cast(get(IndexForEntry(i) + k##name##Offset)); \
   }                                                             \
-  void DeoptimizationInputData::Set##name(int i, type* value) { \
+  void DeoptimizationData::Set##name(int i, type* value) {      \
     set(IndexForEntry(i) + k##name##Offset, value);             \
   }

@@ -48,9 +48,10 @@
 void TryCatch_InvokeCallback(const FunctionCallbackInfo<Value>& args);
 
 Local<StackTrace> createStackTrace(const FunctionCallbackInfo<Value>& args) {
-    V8::SetCaptureStackTraceForUncaughtExceptions(true, 100);
+    Isolate* isolate = args.GetIsolate();
+    isolate->SetCaptureStackTraceForUncaughtExceptions(true, 100);
 
-    TryCatch tryCatch;
+    TryCatch tryCatch(isolate);
     TryCatch_InvokeCallback(args);
     Local<Message> message = tryCatch.Message();
     Local<StackTrace> trace = message->GetStackTrace();

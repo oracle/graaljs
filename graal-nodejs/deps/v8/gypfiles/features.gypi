@@ -33,6 +33,9 @@
       'v8_target_arch%': '<(target_arch)',
     },
 
+    # Allows the embedder to add a custom suffix to the version string.
+    'v8_embedder_string%': '',
+
     'v8_enable_disassembler%': 0,
 
     'v8_promise_internal_field_count%': 0,
@@ -82,10 +85,22 @@
     'v8_check_microtasks_scopes_consistency%': 'false',
 
     # Enable concurrent marking.
-    'v8_enable_concurrent_marking%': 0,
+    'v8_enable_concurrent_marking%': 1,
+
+    # Enables various testing features.
+    'v8_enable_test_features%': 0,
+
+    # Controls the threshold for on-heap/off-heap Typed Arrays.
+    'v8_typed_array_max_size_in_heap%': 64,
+
+    # Enable mitigations for executing untrusted code.
+    'v8_untrusted_code_mitigations%': 'true',
   },
   'target_defaults': {
     'conditions': [
+      ['v8_embedder_string!=""', {
+        'defines': ['V8_EMBEDDER_STRING="<(v8_embedder_string)"',],
+      }],
       ['v8_enable_disassembler==1', {
         'defines': ['ENABLE_DISASSEMBLER',],
       }],
@@ -106,6 +121,9 @@
       }],
       ['v8_trace_maps==1', {
         'defines': ['V8_TRACE_MAPS',],
+      }],
+      ['v8_enable_test_features==1', {
+        'defines': ['V8_ENABLE_ALLOCATION_TIMEOUT', 'V8_ENABLE_FORCE_SLOW_PATH'],
       }],
       ['v8_enable_verify_predictable==1', {
         'defines': ['VERIFY_PREDICTABLE',],
@@ -134,6 +152,9 @@
       ['v8_enable_concurrent_marking==1', {
         'defines': ['V8_CONCURRENT_MARKING',],
       }],
+      ['v8_untrusted_code_mitigations=="false"', {
+        'defines': ['DISABLE_UNTRUSTED_CODE_MITIGATIONS',],
+      }],
     ],  # conditions
     'configurations': {
       'DebugBaseCommon': {
@@ -149,7 +170,7 @@
       },  # Debug
       'Release': {
         'variables': {
-          'v8_enable_handle_zapping%': 0,
+          'v8_enable_handle_zapping%': 1,
         },
         'conditions': [
           ['v8_enable_handle_zapping==1', {
@@ -160,6 +181,7 @@
     },  # configurations
     'defines': [
       'V8_GYP_BUILD',
+      'V8_TYPED_ARRAY_MAX_SIZE_IN_HEAP=<(v8_typed_array_max_size_in_heap)',
     ],  # defines
   },  # target_defaults
 }

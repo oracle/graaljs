@@ -68,7 +68,7 @@ describe('Spawn', function () {
                         t.join();`;
             code = code.replace(/\n\s*/g, ' ');
             var result = spawnSync(process.execPath, ['-e', code]);
-            assert.ok(result.stderr.toString().indexOf('thread') !== 0);
+            assert.ok(result.stderr.toString().indexOf('thread') !== -1);
             assert.strictEqual(result.stdout.toString(), '');
             assert.strictEqual(result.status, 1);
         }).timeout(10000);

@@ -44,36 +44,26 @@
 // Script::Compile
 
 EXPORT_TO_JS(Compile) {
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
     Local<String> source = args[0].As<String>();
     Local<String> fileName = args[1].As<String>();
+    ScriptOrigin origin(fileName);
 
-    Local<Script> script = Script::Compile(source, fileName);
+    Local<Script> script = Script::Compile(context, source, &origin).ToLocalChecked();
     int id = script->GetUnboundScript()->GetId();
-    args.GetReturnValue().Set(id);
-}
-
-EXPORT_TO_JS(CompileWithScriptOrigin) {
-    Local<String> source = args[0].As<String>();
-    Local<String> fileName = args[1].As<String>();
-
-    ScriptOrigin* origin = new ScriptOrigin(fileName);
-
-    Local<Script> script = Script::Compile(source, origin);
-    int id = script->GetUnboundScript()->GetId();
-
-    delete origin;
-
     args.GetReturnValue().Set(id);
 }
 
 // Script::Run
 
 EXPORT_TO_JS(Run) {
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
     Local<String> source = args[0].As<String>();
     Local<String> fileName = args[1].As<String>();
+    ScriptOrigin origin(fileName);
 
-    Local<Script> script = Script::Compile(source, fileName);
-    Local<Value> result = script->Run();
+    Local<Script> script = Script::Compile(context, source, &origin).ToLocalChecked();
+    Local<Value> result = script->Run(context).ToLocalChecked();
     args.GetReturnValue().Set(result);
 }
 

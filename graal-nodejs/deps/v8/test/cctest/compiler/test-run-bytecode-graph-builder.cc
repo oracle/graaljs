@@ -4,7 +4,7 @@
 
 #include <utility>
 
-#include "src/compilation-info.h"
+#include "src/api.h"
 #include "src/compiler/pipeline.h"
 #include "src/debug/debug-interface.h"
 #include "src/execution.h"
@@ -12,6 +12,7 @@
 #include "src/interpreter/bytecode-array-builder.h"
 #include "src/interpreter/interpreter.h"
 #include "src/objects-inl.h"
+#include "src/optimized-compilation-info.h"
 #include "src/parsing/parse-info.h"
 #include "test/cctest/cctest.h"
 
@@ -118,11 +119,17 @@ class BytecodeGraphTester {
 
     Zone zone(function->GetIsolate()->allocator(), ZONE_NAME);
     Handle<SharedFunctionInfo> shared(function->shared());
-    Handle<Script> script(Script::cast(shared->script()));
-    CompilationInfo compilation_info(&zone, function->GetIsolate(), script,
-                                     shared, function);
-    Handle<Code> code = Pipeline::GenerateCodeForTesting(&compilation_info);
-    function->ReplaceCode(*code);
+    OptimizedCompilationInfo compilation_info(&zone, function->GetIsolate(),
+                                              shared, function);
+
+    // Compiler relies on canonicalized handles, let's create
+    // a canonicalized scope and migrate existing handles there.
+    CanonicalHandleScope canonical(isolate_);
+    compilation_info.ReopenHandlesInNewHandleScope();
+
+    Handle<Code> code = Pipeline::GenerateCodeForTesting(
+        &compilation_info, function->GetIsolate());
+    function->set_code(*code);
 
     return function;
   }
@@ -611,9 +618,6 @@ TEST(BytecodeGraphBuilderCallRuntime) {
        {factory->true_value(), BytecodeGraphTester::NewObject("[1, 2, 3]")}},
       {"function f(arg0) { return %Add(arg0, 2) }\nf(1)",
        {factory->NewNumberFromInt(5), factory->NewNumberFromInt(3)}},
-      {"function f(arg0) { return %spread_arguments(arg0).length }\nf([])",
-       {factory->NewNumberFromInt(3),
-        BytecodeGraphTester::NewObject("[1, 2, 3]")}},
   };
 
   for (size_t i = 0; i < arraysize(snippets); i++) {
@@ -2964,7 +2968,6 @@ class CountBreakDebugDelegate : public v8::debug::DebugDelegate {
  public:
   void BreakProgramRequested(v8::Local<v8::Context> paused_context,
                              v8::Local<v8::Object> exec_state,
-                             v8::Local<v8::Value> break_points_hit,
                              const std::vector<int>&) override {
     debug_break_count++;
   }
@@ -2993,6 +2996,19 @@ TEST(BytecodeGraphBuilderDebuggerStatement) {
   CHECK(return_value.is_identical_to(snippet.return_value()));
   CHECK_EQ(2, delegate.debug_break_count);
 }
+
+#undef SHARD_TEST_BY_2
+#undef SHARD_TEST_BY_4
+#undef SPACE
+#undef REPEAT_2
+#undef REPEAT_4
+#undef REPEAT_8
+#undef REPEAT_16
+#undef REPEAT_32
+#undef REPEAT_64
+#undef REPEAT_128
+#undef REPEAT_256
+#undef REPEAT_127
 
 }  // namespace compiler
 }  // namespace internal

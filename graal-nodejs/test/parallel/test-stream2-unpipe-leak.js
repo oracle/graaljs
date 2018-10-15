@@ -66,8 +66,8 @@ assert.strictEqual(dest.listeners('finish').length, 0);
 
 console.error(src._readableState);
 process.on('exit', function() {
-  src._readableState.buffer.length = 0;
+  src.readableBuffer.length = 0;
   console.error(src._readableState);
-  assert(src._readableState.length >= src.readableHighWaterMark);
+  assert(src.readableLength >= src.readableHighWaterMark);
   console.log('ok');
 });

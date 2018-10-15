@@ -3,7 +3,7 @@
 
 #include "unicode/utypes.h"
 
-#if !UCONFIG_NO_FORMATTING && !UPRV_INCOMPLETE_CPP11_SUPPORT
+#if !UCONFIG_NO_FORMATTING
 #ifndef __NUMBER_PATTERNMODIFIER_H__
 #define __NUMBER_PATTERNMODIFIER_H__
 
@@ -13,13 +13,14 @@
 #include "number_types.h"
 #include "number_modifiers.h"
 #include "number_utils.h"
+#include "number_currencysymbols.h"
 
 U_NAMESPACE_BEGIN
 
 // Export an explicit template instantiation of the LocalPointer that is used as a
 // data member of ParameterizedModifier.
-// (MSVC requires this, even though it should not be necessary.)
-#if defined (_MSC_VER)
+// (When building DLLs for Windows this is required.)
+#if U_PF_WINDOWS <= U_PLATFORM && U_PLATFORM <= U_PF_CYGWIN
 // Ignore warning 4661 as LocalPointerBase does not use operator== or operator!=
 #pragma warning(suppress: 4661)
 template class U_I18N_API LocalPointerBase<number::impl::ParameterizedModifier>;
@@ -35,20 +36,23 @@ class MutablePatternModifier;
 // Exported as U_I18N_API because it is needed for the unit test PatternModifierTest
 class U_I18N_API ImmutablePatternModifier : public MicroPropsGenerator, public UMemory {
   public:
-	~ImmutablePatternModifier() U_OVERRIDE = default;
+    ~ImmutablePatternModifier() U_OVERRIDE = default;
 
-    void processQuantity(DecimalQuantity &, MicroProps &micros, UErrorCode &status) const U_OVERRIDE;
+    void processQuantity(DecimalQuantity&, MicroProps& micros, UErrorCode& status) const U_OVERRIDE;
 
-    void applyToMicros(MicroProps &micros, DecimalQuantity &quantity) const;
+    void applyToMicros(MicroProps& micros, DecimalQuantity& quantity) const;
+
+    const Modifier* getModifier(int8_t signum, StandardPlural::Form plural) const;
 
   private:
-    ImmutablePatternModifier(ParameterizedModifier *pm, const PluralRules *rules, const MicroPropsGenerator *parent);
+    ImmutablePatternModifier(ParameterizedModifier* pm, const PluralRules* rules,
+                             const MicroPropsGenerator* parent);
 
     const LocalPointer<ParameterizedModifier> pm;
-    const PluralRules *rules;
-    const MicroPropsGenerator *parent;
+    const PluralRules* rules;
+    const MicroPropsGenerator* parent;
 
-	friend class MutablePatternModifier;
+    friend class MutablePatternModifier;
 };
 
 /**
@@ -74,7 +78,6 @@ class U_I18N_API MutablePatternModifier
         : public MicroPropsGenerator,
           public Modifier,
           public SymbolProvider,
-          public CharSequence,
           public UMemory {
   public:
 
@@ -110,28 +113,27 @@ class U_I18N_API MutablePatternModifier
      *
      * @param symbols
      *            The desired instance of DecimalFormatSymbols.
-     * @param currency
-     *            The currency to be used when substituting currency values into the affixes.
+     * @param currencySymbols
+     *            The currency symbols to be used when substituting currency values into the affixes.
      * @param unitWidth
      *            The width used to render currencies.
      * @param rules
      *            Required if the triple currency sign, "¤¤¤", appears in the pattern, which can be determined from the
      *            convenience method {@link #needsPlurals()}.
      */
-    void
-    setSymbols(const DecimalFormatSymbols *symbols, const CurrencyUnit &currency, UNumberUnitWidth unitWidth,
-               const PluralRules *rules);
+    void setSymbols(const DecimalFormatSymbols* symbols, const CurrencySymbols* currencySymbols,
+                    UNumberUnitWidth unitWidth, const PluralRules* rules);
 
     /**
      * Sets attributes of the current number being processed.
      *
-     * @param isNegative
-     *            Whether the number is negative.
+     * @param signum
+     *            -1 if negative; +1 if positive; or 0 if zero.
      * @param plural
-     *            The plural form of the number, required only if the pattern contains the triple currency sign, "¤¤¤"
-     *            (and as indicated by {@link #needsPlurals()}).
+     *            The plural form of the number, required only if the pattern contains the triple
+     *            currency sign, "¤¤¤" (and as indicated by {@link #needsPlurals()}).
      */
-    void setNumberProperties(bool isNegative, StandardPlural::Form plural);
+    void setNumberProperties(int8_t signum, StandardPlural::Form plural);
 
     /**
      * Returns true if the pattern represented by this MurkyModifier requires a plural keyword in order to localize.
@@ -187,13 +189,7 @@ class U_I18N_API MutablePatternModifier
      */
     UnicodeString getSymbol(AffixPatternType type) const U_OVERRIDE;
 
-    int32_t length() const U_OVERRIDE;
-
-    char16_t charAt(int32_t index) const U_OVERRIDE;
-
-    // Use default implementation of codePointAt
-
-    UnicodeString toUnicodeString() const U_OVERRIDE;
+    UnicodeString toUnicodeString() const;
 
   private:
     // Modifier details (initialized in constructor)
@@ -207,22 +203,18 @@ class U_I18N_API MutablePatternModifier
     // Symbol details (initialized in setSymbols)
     const DecimalFormatSymbols *symbols;
     UNumberUnitWidth unitWidth;
-    char16_t currencyCode[4];
+    const CurrencySymbols *currencySymbols;
     const PluralRules *rules;
 
     // Number details (initialized in setNumberProperties)
-    bool isNegative;
+    int8_t signum;
     StandardPlural::Form plural;
 
     // QuantityChain details (initialized in addToChain)
     const MicroPropsGenerator *parent;
 
-    // Transient CharSequence fields (initialized in enterCharSequenceMode)
-    bool inCharSequenceMode = false;
-    int32_t fFlags;
-    int32_t fLength;
-    bool prependSign;
-    bool plusReplacesMinusSign;
+    // Transient fields for rendering
+    UnicodeString currentAffix;
 
     /**
      * Uses the current properties to create a single {@link ConstantMultiFieldModifier} with currency spacing support
@@ -244,9 +236,7 @@ class U_I18N_API MutablePatternModifier
 
     int32_t insertSuffix(NumberStringBuilder &sb, int position, UErrorCode &status);
 
-    void enterCharSequenceMode(bool isPrefix);
-
-    void exitCharSequenceMode();
+    void prepareAffix(bool isPrefix);
 };
 
 

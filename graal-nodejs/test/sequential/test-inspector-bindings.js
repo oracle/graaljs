@@ -27,9 +27,9 @@ function checkScope(session, scopeId) {
 }
 
 function debuggerPausedCallback(session, notification) {
-  const params = notification['params'];
-  const callFrame = params['callFrames'][0];
-  const scopeId = callFrame['scopeChain'][0]['object']['objectId'];
+  const params = notification.params;
+  const callFrame = params.callFrames[0];
+  const scopeId = callFrame.scopeChain[0].object.objectId;
   checkScope(session, scopeId);
 }
 
@@ -65,26 +65,17 @@ function testSampleDebugSession() {
   scopeCallback = function(error, result) {
     const i = cur++;
     let v, actual, expected;
-    for (v of result['result']) {
-      actual = v['value']['value'];
-      expected = expects[v['name']][i];
+    for (v of result.result) {
+      actual = v.value.value;
+      expected = expects[v.name][i];
       if (actual !== expected) {
-        failures.push(`Iteration ${i} variable: ${v['name']} ` +
+        failures.push(`Iteration ${i} variable: ${v.name} ` +
           `expected: ${expected} actual: ${actual}`);
       }
     }
   };
   const session = new inspector.Session();
   session.connect();
-  let secondSessionOpened = false;
-  const secondSession = new inspector.Session();
-  try {
-    secondSession.connect();
-    secondSessionOpened = true;
-  } catch (error) {
-    // expected as the session already exists
-  }
-  assert.strictEqual(secondSessionOpened, false);
   session.on('Debugger.paused',
              (notification) => debuggerPausedCallback(session, notification));
   let cbAsSecondArgCalled = false;
@@ -123,8 +114,6 @@ async function testNoCrashConsoleLogBeforeThrow() {
   console.log('Did not crash');
   session.disconnect();
 }
-
-common.crashOnUnhandledRejection();
 
 async function doTests() {
   await testNoCrashWithExceptionInCallback();

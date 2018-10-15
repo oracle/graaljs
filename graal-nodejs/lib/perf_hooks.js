@@ -3,11 +3,13 @@
 const {
   PerformanceEntry,
   mark: _mark,
+  clearMark: _clearMark,
   measure: _measure,
   milestones,
   observerCounts,
   setupObservers,
   timeOrigin,
+  timeOriginTimestamp,
   timerify,
   constants
 } = process.binding('performance');
@@ -18,23 +20,17 @@ const {
   NODE_PERFORMANCE_ENTRY_TYPE_MEASURE,
   NODE_PERFORMANCE_ENTRY_TYPE_GC,
   NODE_PERFORMANCE_ENTRY_TYPE_FUNCTION,
+  NODE_PERFORMANCE_ENTRY_TYPE_HTTP2,
 
   NODE_PERFORMANCE_MILESTONE_NODE_START,
   NODE_PERFORMANCE_MILESTONE_V8_START,
   NODE_PERFORMANCE_MILESTONE_LOOP_START,
   NODE_PERFORMANCE_MILESTONE_LOOP_EXIT,
   NODE_PERFORMANCE_MILESTONE_BOOTSTRAP_COMPLETE,
-  NODE_PERFORMANCE_MILESTONE_ENVIRONMENT,
-  NODE_PERFORMANCE_MILESTONE_THIRD_PARTY_MAIN_START,
-  NODE_PERFORMANCE_MILESTONE_THIRD_PARTY_MAIN_END,
-  NODE_PERFORMANCE_MILESTONE_CLUSTER_SETUP_START,
-  NODE_PERFORMANCE_MILESTONE_CLUSTER_SETUP_END,
-  NODE_PERFORMANCE_MILESTONE_MODULE_LOAD_START,
-  NODE_PERFORMANCE_MILESTONE_MODULE_LOAD_END,
-  NODE_PERFORMANCE_MILESTONE_PRELOAD_MODULE_LOAD_START,
-  NODE_PERFORMANCE_MILESTONE_PRELOAD_MODULE_LOAD_END
+  NODE_PERFORMANCE_MILESTONE_ENVIRONMENT
 } = constants;
 
+const { AsyncResource } = require('async_hooks');
 const L = require('internal/linkedlist');
 const kInspect = require('internal/util').customInspectSymbol;
 const { inherits } = require('util');
@@ -47,33 +43,102 @@ const kBuffering = Symbol('buffering');
 const kQueued = Symbol('queued');
 const kTimerified = Symbol('timerified');
 const kInsertEntry = Symbol('insert-entry');
-const kIndexEntry = Symbol('index-entry');
-const kClearEntry = Symbol('clear-entry');
 const kGetEntries = Symbol('get-entries');
 const kIndex = Symbol('index');
 const kMarks = Symbol('marks');
+const kCount = Symbol('count');
 
-observerCounts[NODE_PERFORMANCE_ENTRY_TYPE_MARK] = 1;
-observerCounts[NODE_PERFORMANCE_ENTRY_TYPE_MEASURE] = 1;
 const observers = {};
 const observerableTypes = [
   'node',
   'mark',
   'measure',
   'gc',
-  'function'
+  'function',
+  'http2'
 ];
+
+const IDX_STREAM_STATS_ID = 0;
+const IDX_STREAM_STATS_TIMETOFIRSTBYTE = 1;
+const IDX_STREAM_STATS_TIMETOFIRSTHEADER = 2;
+const IDX_STREAM_STATS_TIMETOFIRSTBYTESENT = 3;
+const IDX_STREAM_STATS_SENTBYTES = 4;
+const IDX_STREAM_STATS_RECEIVEDBYTES = 5;
+
+const IDX_SESSION_STATS_TYPE = 0;
+const IDX_SESSION_STATS_PINGRTT = 1;
+const IDX_SESSION_STATS_FRAMESRECEIVED = 2;
+const IDX_SESSION_STATS_FRAMESSENT = 3;
+const IDX_SESSION_STATS_STREAMCOUNT = 4;
+const IDX_SESSION_STATS_STREAMAVERAGEDURATION = 5;
+const IDX_SESSION_STATS_DATA_SENT = 6;
+const IDX_SESSION_STATS_DATA_RECEIVED = 7;
+const IDX_SESSION_STATS_MAX_CONCURRENT_STREAMS = 8;
+
+let sessionStats;
+let streamStats;
+
+function collectHttp2Stats(entry) {
+  switch (entry.name) {
+    case 'Http2Stream':
+      if (streamStats === undefined)
+        streamStats = process.binding('http2').streamStats;
+      entry.id =
+        streamStats[IDX_STREAM_STATS_ID] >>> 0;
+      entry.timeToFirstByte =
+        streamStats[IDX_STREAM_STATS_TIMETOFIRSTBYTE];
+      entry.timeToFirstHeader =
+        streamStats[IDX_STREAM_STATS_TIMETOFIRSTHEADER];
+      entry.timeToFirstByteSent =
+        streamStats[IDX_STREAM_STATS_TIMETOFIRSTBYTESENT];
+      entry.bytesWritten =
+        streamStats[IDX_STREAM_STATS_SENTBYTES];
+      entry.bytesRead =
+        streamStats[IDX_STREAM_STATS_RECEIVEDBYTES];
+      break;
+    case 'Http2Session':
+      if (sessionStats === undefined)
+        sessionStats = process.binding('http2').sessionStats;
+      entry.type =
+        sessionStats[IDX_SESSION_STATS_TYPE] >>> 0 === 0 ? 'server' : 'client';
+      entry.pingRTT =
+        sessionStats[IDX_SESSION_STATS_PINGRTT];
+      entry.framesReceived =
+        sessionStats[IDX_SESSION_STATS_FRAMESRECEIVED];
+      entry.framesSent =
+        sessionStats[IDX_SESSION_STATS_FRAMESSENT];
+      entry.streamCount =
+        sessionStats[IDX_SESSION_STATS_STREAMCOUNT];
+      entry.streamAverageDuration =
+        sessionStats[IDX_SESSION_STATS_STREAMAVERAGEDURATION];
+      entry.bytesWritten =
+        sessionStats[IDX_SESSION_STATS_DATA_SENT];
+      entry.bytesRead =
+        sessionStats[IDX_SESSION_STATS_DATA_RECEIVED];
+      entry.maxConcurrentStreams =
+        sessionStats[IDX_SESSION_STATS_MAX_CONCURRENT_STREAMS];
+      break;
+  }
+}
+
 
 let errors;
 function lazyErrors() {
   if (errors === undefined)
-    errors = require('internal/errors');
+    errors = require('internal/errors').codes;
   return errors;
 }
 
 function now() {
   const hr = process.hrtime();
   return hr[0] * 1000 + hr[1] / 1e6;
+}
+
+function getMilestoneTimestamp(milestoneIdx) {
+  const ns = milestones[milestoneIdx];
+  if (ns === -1)
+    return ns;
+  return ns / 1e6 - timeOrigin;
 }
 
 class PerformanceNodeTiming {
@@ -88,7 +153,7 @@ class PerformanceNodeTiming {
   }
 
   get startTime() {
-    return timeOrigin;
+    return 0;
   }
 
   get duration() {
@@ -96,59 +161,27 @@ class PerformanceNodeTiming {
   }
 
   get nodeStart() {
-    return milestones[NODE_PERFORMANCE_MILESTONE_NODE_START];
+    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_NODE_START);
   }
 
   get v8Start() {
-    return milestones[NODE_PERFORMANCE_MILESTONE_V8_START];
+    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_V8_START);
   }
 
   get environment() {
-    return milestones[NODE_PERFORMANCE_MILESTONE_ENVIRONMENT];
+    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_ENVIRONMENT);
   }
 
   get loopStart() {
-    return milestones[NODE_PERFORMANCE_MILESTONE_LOOP_START];
+    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_LOOP_START);
   }
 
   get loopExit() {
-    return milestones[NODE_PERFORMANCE_MILESTONE_LOOP_EXIT];
+    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
   }
 
   get bootstrapComplete() {
-    return milestones[NODE_PERFORMANCE_MILESTONE_BOOTSTRAP_COMPLETE];
-  }
-
-  get thirdPartyMainStart() {
-    return milestones[NODE_PERFORMANCE_MILESTONE_THIRD_PARTY_MAIN_START];
-  }
-
-  get thirdPartyMainEnd() {
-    return milestones[NODE_PERFORMANCE_MILESTONE_THIRD_PARTY_MAIN_END];
-  }
-
-  get clusterSetupStart() {
-    return milestones[NODE_PERFORMANCE_MILESTONE_CLUSTER_SETUP_START];
-  }
-
-  get clusterSetupEnd() {
-    return milestones[NODE_PERFORMANCE_MILESTONE_CLUSTER_SETUP_END];
-  }
-
-  get moduleLoadStart() {
-    return milestones[NODE_PERFORMANCE_MILESTONE_MODULE_LOAD_START];
-  }
-
-  get moduleLoadEnd() {
-    return milestones[NODE_PERFORMANCE_MILESTONE_MODULE_LOAD_END];
-  }
-
-  get preloadModuleLoadStart() {
-    return milestones[NODE_PERFORMANCE_MILESTONE_PRELOAD_MODULE_LOAD_START];
-  }
-
-  get preloadModuleLoadEnd() {
-    return milestones[NODE_PERFORMANCE_MILESTONE_PRELOAD_MODULE_LOAD_END];
+    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_BOOTSTRAP_COMPLETE);
   }
 
   [kInspect]() {
@@ -184,10 +217,17 @@ const nodeTiming = new PerformanceNodeTiming();
 // Maintains a list of entries as a linked list stored in insertion order.
 class PerformanceObserverEntryList {
   constructor() {
-    Object.defineProperty(this, kEntries, {
-      writable: true,
-      enumerable: false,
-      value: {}
+    Object.defineProperties(this, {
+      [kEntries]: {
+        writable: true,
+        enumerable: false,
+        value: {}
+      },
+      [kCount]: {
+        writable: true,
+        enumerable: false,
+        value: 0
+      }
     });
     L.init(this[kEntries]);
   }
@@ -195,11 +235,11 @@ class PerformanceObserverEntryList {
   [kInsertEntry](entry) {
     const item = { entry };
     L.append(this[kEntries], item);
-    this[kIndexEntry](item);
+    this[kCount]++;
   }
 
-  [kIndexEntry](entry) {
-    // Default implementation does nothing
+  get length() {
+    return this[kCount];
   }
 
   [kGetEntries](name, type) {
@@ -236,12 +276,13 @@ class PerformanceObserverEntryList {
   }
 }
 
-class PerformanceObserver {
+class PerformanceObserver extends AsyncResource {
   constructor(callback) {
     if (typeof callback !== 'function') {
       const errors = lazyErrors();
-      throw new errors.TypeError('ERR_INVALID_CALLBACK');
+      throw new errors.ERR_INVALID_CALLBACK();
     }
+    super('PerformanceObserver');
     Object.defineProperties(this, {
       [kTypes]: {
         enumerable: false,
@@ -287,15 +328,14 @@ class PerformanceObserver {
   observe(options) {
     const errors = lazyErrors();
     if (typeof options !== 'object' || options == null) {
-      throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'options', 'Object');
+      throw new errors.ERR_INVALID_ARG_TYPE('options', 'Object', options);
     }
     if (!Array.isArray(options.entryTypes)) {
-      throw new errors.TypeError('ERR_INVALID_OPT_VALUE',
-                                 'entryTypes', options);
+      throw new errors.ERR_INVALID_OPT_VALUE('entryTypes', options);
     }
     const entryTypes = options.entryTypes.filter(filterTypes).map(mapTypes);
     if (entryTypes.length === 0) {
-      throw new errors.Error('ERR_VALID_PERFORMANCE_ENTRY_TYPE');
+      throw new errors.ERR_VALID_PERFORMANCE_ENTRY_TYPE();
     }
     this.disconnect();
     this[kBuffer][kEntries] = [];
@@ -312,46 +352,11 @@ class PerformanceObserver {
   }
 }
 
-class Performance extends PerformanceObserverEntryList {
+class Performance {
   constructor() {
-    super();
     this[kIndex] = {
       [kMarks]: new Set()
     };
-    this[kInsertEntry](nodeTiming);
-  }
-
-  [kIndexEntry](item) {
-    const index = this[kIndex];
-    const type = item.entry.entryType;
-    let items = index[type];
-    if (!items) {
-      items = index[type] = {};
-      L.init(items);
-    }
-    const entry = item.entry;
-    L.append(items, { entry, item });
-  }
-
-  [kClearEntry](type, name) {
-    const index = this[kIndex];
-    const items = index[type];
-    if (!items) return;
-    let item = L.peek(items);
-    while (item && item !== items) {
-      const entry = item.entry;
-      const next = item._idlePrev;
-      if (name !== undefined) {
-        if (entry.name === `${name}`) {
-          L.remove(item); // remove from the index
-          L.remove(item.item); // remove from the master
-        }
-      } else {
-        L.remove(item); // remove from the index
-        L.remove(item.item); // remove from the master
-      }
-      item = next;
-    }
   }
 
   get nodeTiming() {
@@ -359,11 +364,11 @@ class Performance extends PerformanceObserverEntryList {
   }
 
   get timeOrigin() {
-    return timeOrigin;
+    return timeOriginTimestamp;
   }
 
   now() {
-    return now();
+    return now() - timeOrigin;
   }
 
   mark(name) {
@@ -379,36 +384,26 @@ class Performance extends PerformanceObserverEntryList {
     const marks = this[kIndex][kMarks];
     if (!marks.has(endMark) && !(endMark in nodeTiming)) {
       const errors = lazyErrors();
-      throw new errors.Error('ERR_INVALID_PERFORMANCE_MARK', endMark);
+      throw new errors.ERR_INVALID_PERFORMANCE_MARK(endMark);
     }
     _measure(name, startMark, endMark);
   }
 
   clearMarks(name) {
     name = name !== undefined ? `${name}` : name;
-    this[kClearEntry]('mark', name);
-    if (name !== undefined)
+    if (name !== undefined) {
       this[kIndex][kMarks].delete(name);
-    else
+      _clearMark(name);
+    } else {
       this[kIndex][kMarks].clear();
-  }
-
-  clearMeasures(name) {
-    this[kClearEntry]('measure', name);
-  }
-
-  clearGC() {
-    this[kClearEntry]('gc');
-  }
-
-  clearFunctions(name) {
-    this[kClearEntry]('function', name);
+      _clearMark();
+    }
   }
 
   timerify(fn) {
     if (typeof fn !== 'function') {
       const errors = lazyErrors();
-      throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'fn', 'Function');
+      throw new errors.ERR_INVALID_ARG_TYPE('fn', 'Function', fn);
     }
     if (fn[kTimerified])
       return fn[kTimerified];
@@ -438,8 +433,8 @@ class Performance extends PerformanceObserverEntryList {
 
   [kInspect]() {
     return {
-      timeOrigin,
-      nodeTiming
+      nodeTiming: this.nodeTiming,
+      timeOrigin: this.timeOrigin
     };
   }
 }
@@ -457,7 +452,7 @@ function getObserversList(type) {
 
 function doNotify() {
   this[kQueued] = false;
-  this[kCallback](this[kBuffer], this);
+  this.runInAsyncScope(this[kCallback], this, this[kBuffer], this);
   this[kBuffer][kEntries] = [];
   L.init(this[kBuffer][kEntries]);
 }
@@ -465,7 +460,10 @@ function doNotify() {
 // Set up the callback used to receive PerformanceObserver notifications
 function observersCallback(entry) {
   const type = mapTypes(entry.entryType);
-  performance[kInsertEntry](entry);
+
+  if (type === NODE_PERFORMANCE_ENTRY_TYPE_HTTP2)
+    collectHttp2Stats(entry);
+
   const list = getObserversList(type);
 
   let current = L.peek(list);
@@ -504,6 +502,7 @@ function mapTypes(i) {
     case 'measure': return NODE_PERFORMANCE_ENTRY_TYPE_MEASURE;
     case 'gc': return NODE_PERFORMANCE_ENTRY_TYPE_GC;
     case 'function': return NODE_PERFORMANCE_ENTRY_TYPE_FUNCTION;
+    case 'http2': return NODE_PERFORMANCE_ENTRY_TYPE_HTTP2;
   }
 }
 

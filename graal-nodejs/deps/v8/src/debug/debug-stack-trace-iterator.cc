@@ -4,6 +4,7 @@
 
 #include "src/debug/debug-stack-trace-iterator.h"
 
+#include "src/api.h"
 #include "src/debug/debug-evaluate.h"
 #include "src/debug/debug-scope-iterator.h"
 #include "src/debug/debug.h"
@@ -28,7 +29,6 @@ DebugStackTraceIterator::DebugStackTraceIterator(Isolate* isolate, int index)
       is_top_frame_(true) {
   if (iterator_.done()) return;
   std::vector<FrameSummary> frames;
-  frames.reserve(FLAG_max_inlining_levels + 1);
   iterator_.frame()->Summarize(&frames);
   inlined_frame_index_ = static_cast<int>(frames.size());
   Advance();
@@ -60,7 +60,6 @@ void DebugStackTraceIterator::Advance() {
     iterator_.Advance();
     if (iterator_.done()) break;
     std::vector<FrameSummary> frames;
-    frames.reserve(FLAG_max_inlining_levels + 1);
     iterator_.frame()->Summarize(&frames);
     inlined_frame_index_ = static_cast<int>(frames.size());
   }
@@ -77,13 +76,42 @@ int DebugStackTraceIterator::GetContextId() const {
   return 0;
 }
 
-v8::Local<v8::Value> DebugStackTraceIterator::GetReceiver() const {
+v8::MaybeLocal<v8::Value> DebugStackTraceIterator::GetReceiver() const {
   DCHECK(!Done());
+  if (frame_inspector_->IsJavaScript() &&
+      frame_inspector_->GetFunction()->shared()->kind() == kArrowFunction) {
+    // FrameInspector is not able to get receiver for arrow function.
+    // So let's try to fetch it using same logic as is used to retrieve 'this'
+    // during DebugEvaluate::Local.
+    Handle<JSFunction> function = frame_inspector_->GetFunction();
+    Handle<Context> context(function->context());
+    // Arrow function defined in top level function without references to
+    // variables may have NativeContext as context.
+    if (!context->IsFunctionContext()) return v8::MaybeLocal<v8::Value>();
+    ScopeIterator scope_iterator(isolate_, frame_inspector_.get(),
+                                 ScopeIterator::COLLECT_NON_LOCALS);
+    // We lookup this variable in function context only when it is used in arrow
+    // function otherwise V8 can optimize it out.
+    if (!scope_iterator.GetNonLocals()->Has(isolate_->factory()->this_string()))
+      return v8::MaybeLocal<v8::Value>();
+
+    Handle<ScopeInfo> scope_info(context->scope_info());
+    VariableMode mode;
+    InitializationFlag flag;
+    MaybeAssignedFlag maybe_assigned_flag;
+    int slot_index = ScopeInfo::ContextSlotIndex(
+        scope_info, isolate_->factory()->this_string(), &mode, &flag,
+        &maybe_assigned_flag);
+    if (slot_index < 0) return v8::MaybeLocal<v8::Value>();
+    Handle<Object> value = handle(context->get(slot_index), isolate_);
+    if (value->IsTheHole(isolate_)) return v8::MaybeLocal<v8::Value>();
+    return Utils::ToLocal(value);
+  }
   Handle<Object> value = frame_inspector_->GetReceiver();
   if (value.is_null() || (value->IsSmi() || !value->IsTheHole(isolate_))) {
     return Utils::ToLocal(value);
   }
-  return v8::Undefined(reinterpret_cast<v8::Isolate*>(isolate_));
+  return v8::MaybeLocal<v8::Value>();
 }
 
 v8::Local<v8::Value> DebugStackTraceIterator::GetReturnValue() const {
@@ -97,7 +125,7 @@ v8::Local<v8::Value> DebugStackTraceIterator::GetReturnValue() const {
   return Utils::ToLocal(isolate_->debug()->return_value_handle());
 }
 
-v8::Local<v8::String> DebugStackTraceIterator::GetFunctionName() const {
+v8::Local<v8::String> DebugStackTraceIterator::GetFunctionDebugName() const {
   DCHECK(!Done());
   return Utils::ToLocal(frame_inspector_->GetFunctionName());
 }
@@ -144,6 +172,8 @@ v8::MaybeLocal<v8::Value> DebugStackTraceIterator::Evaluate(
     v8::Local<v8::String> source, bool throw_on_side_effect) {
   DCHECK(!Done());
   Handle<Object> value;
+  i::SafeForInterruptsScope safe_for_interrupt_scope(
+      isolate_, i::StackGuard::TERMINATE_EXECUTION);
   if (!DebugEvaluate::Local(isolate_, iterator_.frame()->id(),
                             inlined_frame_index_, Utils::OpenHandle(*source),
                             throw_on_side_effect)

@@ -41,20 +41,19 @@ server.on('listening', common.mustCall(() => {
 
   const req = client.request({
     ':path': '/',
-    abc: [1, 2, 3],
-    cookie: ['a=b', 'c=d', 'e=f'],
+    'abc': [1, 2, 3],
+    'cookie': ['a=b', 'c=d', 'e=f'],
   });
   req.resume();
 
   req.on('response', common.mustCall((headers) => {
     assert(Array.isArray(headers['set-cookie']));
-    assert.deepStrictEqual(headers['set-cookie'], setCookie,
-                           'set-cookie header does not match');
+    assert.deepStrictEqual(headers['set-cookie'], setCookie);
   }));
 
   req.on('end', common.mustCall(() => {
     server.close();
-    client.destroy();
+    client.close();
   }));
   req.end();
 

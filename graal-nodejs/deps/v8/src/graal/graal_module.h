@@ -57,6 +57,7 @@ public:
     v8::Local<v8::String> GetModuleRequest(int index) const;
     v8::Local<v8::Value> GetModuleNamespace();
     int GetIdentityHash() const;
+    v8::Local<v8::Value> GetException() const;
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };

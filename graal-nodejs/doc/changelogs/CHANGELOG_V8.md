@@ -2,6 +2,7 @@
 # Node.js 8 ChangeLog
 
 <!--lint disable prohibited-strings-->
+<!--lint disable maximum-line-length-->
 
 <table>
 <tr>
@@ -40,6 +41,8 @@
 </table>
 
 * Other Versions
+  * [10.x](CHANGELOG_V10.md)
+  * [9.x](CHANGELOG_V9.md)
   * [7.x](CHANGELOG_V7.md)
   * [6.x](CHANGELOG_V6.md)
   * [5.x](CHANGELOG_V5.md)
@@ -3234,7 +3237,7 @@ LTS codename `'Carbon'`. Note that the
 * [[`443691a5ae`](https://github.com/nodejs/node/commit/443691a5ae)] - **(SEMVER-MAJOR)** **crypto**: fix default encoding of LazyTransform (Lukas Möller) [#8611](https://github.com/nodejs/node/pull/8611)
 * [[`9f74184e98`](https://github.com/nodejs/node/commit/9f74184e98)] - **(SEMVER-MAJOR)** **crypto**: upgrade pbkdf2 without digest to an error (James M Snell) [#11305](https://github.com/nodejs/node/pull/11305)
 * [[`e90f38270c`](https://github.com/nodejs/node/commit/e90f38270c)] - **(SEMVER-MAJOR)** **crypto**: throw error in CipherBase::SetAutoPadding (Kirill Fomichev) [#9405](https://github.com/nodejs/node/pull/9405)
-* [[`1ef401ce92`](https://github.com/nodejs/node/commit/1ef401ce92)] - **(SEMVER-7aa5a993b25eb333768503b5320224045df0d14a)** **crypto**: use check macros in CipherBase::SetAuthTag (Kirill Fomichev) [#9395](https://github.com/nodejs/node/pull/9395)
+* [[`1ef401ce92`](https://github.com/nodejs/node/commit/1ef401ce92)] - **(SEMVER-MAJOR)** **crypto**: use check macros in CipherBase::SetAuthTag (Kirill Fomichev) [#9395](https://github.com/nodejs/node/pull/9395)
 * [[`7599b0ef9d`](https://github.com/nodejs/node/commit/7599b0ef9d)] - **(SEMVER-MAJOR)** **debug**: activate inspector with _debugProcess (Eugene Ostroukhov) [#11431](https://github.com/nodejs/node/pull/11431)
 * [[`549e81bfa1`](https://github.com/nodejs/node/commit/549e81bfa1)] - **(SEMVER-MAJOR)** **debugger**: remove obsolete _debug_agent.js (Rich Trott) [#12582](https://github.com/nodejs/node/pull/12582)
 * [[`3c3b36af0f`](https://github.com/nodejs/node/commit/3c3b36af0f)] - **(SEMVER-MAJOR)** **deps**: upgrade npm beta to 5.0.0-beta.56 (Kat Marchán) [#12936](https://github.com/nodejs/node/pull/12936)

@@ -5,7 +5,7 @@
 #include "test/unittests/compiler/graph-unittest.h"
 
 #include "src/compiler/node-properties.h"
-#include "src/factory.h"
+#include "src/heap/factory.h"
 #include "src/objects-inl.h"  // TODO(everyone): Make typer.h IWYU compliant.
 #include "test/unittests/compiler/node-test-utils.h"
 
@@ -17,7 +17,9 @@ GraphTest::GraphTest(int num_parameters)
     : TestWithNativeContext(),
       TestWithIsolateAndZone(),
       common_(zone()),
-      graph_(zone()) {
+      graph_(zone()),
+      source_positions_(&graph_),
+      node_origins_(&graph_) {
   graph()->SetStart(graph()->NewNode(common()->Start(num_parameters)));
   graph()->SetEnd(graph()->NewNode(common()->End(1), graph()->start()));
 }
@@ -58,7 +60,7 @@ Node* GraphTest::NumberConstant(volatile double value) {
 
 Node* GraphTest::HeapConstant(const Handle<HeapObject>& value) {
   Node* node = graph()->NewNode(common()->HeapConstant(value));
-  Type* type = Type::NewConstant(value, zone());
+  Type type = Type::NewConstant(value, zone());
   NodeProperties::SetType(node, type);
   return node;
 }
@@ -112,20 +114,16 @@ TypedGraphTest::TypedGraphTest(int num_parameters)
 
 TypedGraphTest::~TypedGraphTest() {}
 
-
-Node* TypedGraphTest::Parameter(Type* type, int32_t index) {
+Node* TypedGraphTest::Parameter(Type type, int32_t index) {
   Node* node = GraphTest::Parameter(index);
   NodeProperties::SetType(node, type);
   return node;
 }
 
-
-namespace {
+namespace graph_unittest {
 
 const Operator kDummyOperator(0, Operator::kNoProperties, "Dummy", 0, 0, 0, 1,
                               0, 0);
-
-}  // namespace
 
 
 TEST_F(GraphTest, NewNode) {
@@ -139,6 +137,7 @@ TEST_F(GraphTest, NewNode) {
   EXPECT_EQ(&kDummyOperator, n1->op());
 }
 
+}  // namespace graph_unittest
 }  // namespace compiler
 }  // namespace internal
 }  // namespace v8

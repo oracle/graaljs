@@ -26,8 +26,8 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import mx, mx_graal_js
-from mx_benchmark import GuestVm, java_vm_registry
+import mx, mx_benchmark, mx_graal_js
+from mx_benchmark import GuestVm
 
 class GraalJsVm(GuestVm):
     def __init__(self, config_name, options, host_vm=None):
@@ -42,20 +42,21 @@ class GraalJsVm(GuestVm):
         return self._config_name
 
     def hosting_registry(self):
-        return java_vm_registry
+        return mx_benchmark.java_vm_registry
 
     def with_host_vm(self, host_vm):
         return self.__class__(self.config_name(), self._options, host_vm)
 
     def run(self, cwd, args):
         args += self._options
-        code, out, dims = self.host_vm().run(cwd, mx_graal_js.graaljs_cmd_line(args))
-        dims.update({'config.name': self.config_name()})
-        return code, out, dims
+        if hasattr(self.host_vm(), 'run_lang'):
+            return self.host_vm().run_lang('js', args + self._options, cwd)
+        else:
+            return self.host_vm().run(cwd, mx_graal_js.graaljs_cmd_line(args))
 
-try:
-    import mx_js_benchmarks
-    _suite = mx.suite('graal-js')
-    mx_js_benchmarks.add_vm(GraalJsVm('default', []), _suite, 10)
-except ImportError:
-    pass
+
+def register_js_vms():
+    if mx.suite('js-benchmarks', fatalIfMissing=False):
+        import mx_js_benchmarks
+        _suite = mx.suite('graal-js')
+        mx_js_benchmarks.add_vm(GraalJsVm('default', []), _suite, 10)

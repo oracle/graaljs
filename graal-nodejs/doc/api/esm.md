@@ -1,6 +1,7 @@
 # ECMAScript Modules
 
 <!--introduced_in=v8.5.0-->
+<!-- type=misc -->
 
 > Stability: 1 - Experimental
 
@@ -33,16 +34,23 @@ node --experimental-modules my-app.mjs
 ### Supported
 
 Only the CLI argument for the main entry point to the program can be an entry
-point into an ESM graph. In the future `import()` can be used to create entry
-points into ESM graphs at run time.
+point into an ESM graph. Dynamic import can also be used to create entry points
+into ESM graphs at runtime.
+
+#### import.meta
+
+* {Object}
+
+The `import.meta` metaproperty is an `Object` that contains the following
+property:
+
+* `url` {string} The absolute `file:` URL of the module.
 
 ### Unsupported
 
 | Feature | Reason |
 | --- | --- |
-| `require('./foo.mjs')` | ES Modules have differing resolution and timing, use language standard `import()` |
-| `import()` | pending newer V8 release used in Node.js |
-| `import.meta` | pending V8 implementation |
+| `require('./foo.mjs')` | ES Modules have differing resolution and timing, use dynamic import |
 
 ## Notable differences between `import` and `require`
 
@@ -87,14 +95,41 @@ When loaded via `import` these modules will provide a single `default` export
 representing the value of `module.exports` at the time they finished evaluating.
 
 ```js
-import fs from 'fs';
-fs.readFile('./foo.txt', (err, body) => {
+// foo.js
+module.exports = { one: 1 };
+
+// bar.js
+import foo from './foo.js';
+foo.one === 1; // true
+```
+
+Builtin modules will provide named exports of their public API, as well as a
+default export which can be used for, among other things, modifying the named
+exports. Named exports of builtin modules are updated when the corresponding
+exports property is accessed, redefined, or deleted.
+
+```js
+import EventEmitter from 'events';
+const e = new EventEmitter();
+```
+
+```js
+import { readFile } from 'fs';
+readFile('./foo.txt', (err, source) => {
   if (err) {
     console.error(err);
   } else {
-    console.log(body);
+    console.log(source);
   }
 });
+```
+
+```js
+import fs, { readFileSync } from 'fs';
+
+fs.readFileSync = () => Buffer.from('Hello, ESM');
+
+fs.readFileSync === readFileSync;
 ```
 
 ## Loader hooks
@@ -102,7 +137,7 @@ fs.readFile('./foo.txt', (err, body) => {
 <!-- type=misc -->
 
 To customize the default module resolution, loader hooks can optionally be
-provided via a `--loader ./loader-name.mjs` argument to Node.
+provided via a `--loader ./loader-name.mjs` argument to Node.js.
 
 When hooks are used they only apply to ES module loading and not to any
 CommonJS modules loaded.
@@ -113,9 +148,12 @@ The resolve hook returns the resolved file URL and module format for a
 given module specifier and parent file URL:
 
 ```js
-import url from 'url';
+const baseURL = new URL('file://');
+baseURL.pathname = `${process.cwd()}/`;
 
-export async function resolve(specifier, parentModuleURL, defaultResolver) {
+export async function resolve(specifier,
+                              parentModuleURL = baseURL,
+                              defaultResolver) {
   return {
     url: new URL(specifier, parentModuleURL).href,
     format: 'esm'
@@ -123,7 +161,10 @@ export async function resolve(specifier, parentModuleURL, defaultResolver) {
 }
 ```
 
-The default NodeJS ES module resolution function is provided as a third
+The `parentModuleURL` is provided as `undefined` when performing main Node.js
+load itself.
+
+The default Node.js ES module resolution function is provided as a third
 argument to the resolver for easy compatibility workflows.
 
 In addition to returning the resolved file URL value, the resolve hook also
@@ -132,19 +173,18 @@ module. This can be one of the following:
 
 | `format` | Description |
 | --- | --- |
-| `"esm"` | Load a standard JavaScript module |
-| `"commonjs"` | Load a node-style CommonJS module |
-| `"builtin"` | Load a node builtin CommonJS module |
-| `"json"` | Load a JSON file |
-| `"addon"` | Load a [C++ Addon][addons] |
-| `"dynamic"` | Use a [dynamic instantiate hook][] |
+| `'esm'` | Load a standard JavaScript module |
+| `'cjs'` | Load a node-style CommonJS module |
+| `'builtin'` | Load a node builtin CommonJS module |
+| `'json'` | Load a JSON file |
+| `'addon'` | Load a [C++ Addon][addons] |
+| `'dynamic'` | Use a [dynamic instantiate hook][] |
 
 For example, a dummy loader to load JavaScript restricted to browser resolution
-rules with only JS file extension and Node builtin modules support could
+rules with only JS file extension and Node.js builtin modules support could
 be written:
 
 ```js
-import url from 'url';
 import path from 'path';
 import process from 'process';
 import Module from 'module';
@@ -152,7 +192,10 @@ import Module from 'module';
 const builtins = Module.builtinModules;
 const JS_EXTENSIONS = new Set(['.js', '.mjs']);
 
-export function resolve(specifier, parentModuleURL/*, defaultResolve */) {
+const baseURL = new URL('file://');
+baseURL.pathname = `${process.cwd()}/`;
+
+export function resolve(specifier, parentModuleURL = baseURL, defaultResolve) {
   if (builtins.includes(specifier)) {
     return {
       url: specifier,
@@ -165,7 +208,7 @@ export function resolve(specifier, parentModuleURL/*, defaultResolve */) {
     throw new Error(
       `imports must begin with '/', './', or '../'; '${specifier}' does not`);
   }
-  const resolved = new url.URL(specifier, parentModuleURL);
+  const resolved = new URL(specifier, parentModuleURL);
   const ext = path.extname(resolved.pathname);
   if (!JS_EXTENSIONS.has(ext)) {
     throw new Error(
@@ -191,7 +234,7 @@ would load the module `x.js` as an ES module with relative resolution support
 
 To create a custom dynamic module that doesn't correspond to one of the
 existing `format` interpretations, the `dynamicInstantiate` hook can be used.
-This hook is called only for modules that return `format: "dynamic"` from
+This hook is called only for modules that return `format: 'dynamic'` from
 the `resolve` hook.
 
 ```js

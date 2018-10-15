@@ -30,9 +30,9 @@ const typeErrorTests = [true, false, 7, null, {}, undefined, [], NaN];
 function fail(fn) {
   const args = Array.from(arguments).slice(1);
 
-  assert.throws(() => {
+  common.expectsError(() => {
     fn.apply(null, args);
-  }, TypeError);
+  }, { code: 'ERR_INVALID_ARG_TYPE', type: TypeError });
 }
 
 typeErrorTests.forEach((test) => {
@@ -68,6 +68,6 @@ assert.strictEqual(path.win32.delimiter, ';');
 assert.strictEqual(path.posix.delimiter, ':');
 
 if (common.isWindows)
-  assert.deepStrictEqual(path, path.win32, 'should be win32 path module');
+  assert.strictEqual(path, path.win32);
 else
-  assert.deepStrictEqual(path, path.posix, 'should be posix path module');
+  assert.strictEqual(path, path.posix);

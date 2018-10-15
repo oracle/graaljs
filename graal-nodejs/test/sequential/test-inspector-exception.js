@@ -1,3 +1,4 @@
+// Flags: --expose-internals
 'use strict';
 const common = require('../common');
 const fixtures = require('../common/fixtures');
@@ -39,7 +40,5 @@ async function runTest() {
   await session.runToCompletion();
   assert.strictEqual(1, (await child.expectShutdown()).exitCode);
 }
-
-common.crashOnUnhandledRejection();
 
 runTest();

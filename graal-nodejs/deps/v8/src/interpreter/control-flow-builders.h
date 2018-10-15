@@ -105,9 +105,7 @@ class V8_EXPORT_PRIVATE LoopBuilder final : public BreakableControlFlowBuilder {
   LoopBuilder(BytecodeArrayBuilder* builder,
               BlockCoverageBuilder* block_coverage_builder, AstNode* node)
       : BreakableControlFlowBuilder(builder, block_coverage_builder, node),
-        continue_labels_(builder->zone()),
-        generator_jump_table_location_(nullptr),
-        parent_generator_jump_table_(nullptr) {
+        continue_labels_(builder->zone()) {
     if (block_coverage_builder_ != nullptr) {
       set_needs_continuation_counter();
       block_coverage_body_slot_ =
@@ -118,8 +116,6 @@ class V8_EXPORT_PRIVATE LoopBuilder final : public BreakableControlFlowBuilder {
   ~LoopBuilder();
 
   void LoopHeader();
-  void LoopHeaderInGenerator(BytecodeJumpTable** parent_generator_jump_table,
-                             int first_resume_id, int resume_count);
   void LoopBody();
   void JumpToHeader(int loop_depth);
   void BindContinueTarget();
@@ -137,13 +133,6 @@ class V8_EXPORT_PRIVATE LoopBuilder final : public BreakableControlFlowBuilder {
   // Unbound labels that identify jumps for continue statements in the code and
   // jumps from checking the loop condition to the header for do-while loops.
   BytecodeLabels continue_labels_;
-
-  // While we're in the loop, we want to have a different jump table for
-  // generator switch statements. We restore it at the end of the loop.
-  // TODO(leszeks): Storing a pointer to the BytecodeGenerator's jump table
-  // field is ugly, figure out a better way to do this.
-  BytecodeJumpTable** generator_jump_table_location_;
-  BytecodeJumpTable* parent_generator_jump_table_;
 
   int block_coverage_body_slot_;
 };
@@ -188,10 +177,16 @@ class V8_EXPORT_PRIVATE SwitchBuilder final
 class V8_EXPORT_PRIVATE TryCatchBuilder final : public ControlFlowBuilder {
  public:
   TryCatchBuilder(BytecodeArrayBuilder* builder,
+                  BlockCoverageBuilder* block_coverage_builder,
+                  TryCatchStatement* statement,
                   HandlerTable::CatchPrediction catch_prediction)
       : ControlFlowBuilder(builder),
         handler_id_(builder->NewHandlerEntry()),
-        catch_prediction_(catch_prediction) {}
+        catch_prediction_(catch_prediction),
+        block_coverage_builder_(block_coverage_builder),
+        statement_(statement) {}
+
+  ~TryCatchBuilder();
 
   void BeginTry(Register context);
   void EndTry();
@@ -202,6 +197,9 @@ class V8_EXPORT_PRIVATE TryCatchBuilder final : public ControlFlowBuilder {
   HandlerTable::CatchPrediction catch_prediction_;
   BytecodeLabel handler_;
   BytecodeLabel exit_;
+
+  BlockCoverageBuilder* block_coverage_builder_;
+  TryCatchStatement* statement_;
 };
 
 
@@ -209,11 +207,17 @@ class V8_EXPORT_PRIVATE TryCatchBuilder final : public ControlFlowBuilder {
 class V8_EXPORT_PRIVATE TryFinallyBuilder final : public ControlFlowBuilder {
  public:
   TryFinallyBuilder(BytecodeArrayBuilder* builder,
+                    BlockCoverageBuilder* block_coverage_builder,
+                    TryFinallyStatement* statement,
                     HandlerTable::CatchPrediction catch_prediction)
       : ControlFlowBuilder(builder),
         handler_id_(builder->NewHandlerEntry()),
         catch_prediction_(catch_prediction),
-        finalization_sites_(builder->zone()) {}
+        finalization_sites_(builder->zone()),
+        block_coverage_builder_(block_coverage_builder),
+        statement_(statement) {}
+
+  ~TryFinallyBuilder();
 
   void BeginTry(Register context);
   void LeaveTry();
@@ -229,6 +233,9 @@ class V8_EXPORT_PRIVATE TryFinallyBuilder final : public ControlFlowBuilder {
 
   // Unbound labels that identify jumps to the finally block in the code.
   BytecodeLabels finalization_sites_;
+
+  BlockCoverageBuilder* block_coverage_builder_;
+  TryFinallyStatement* statement_;
 };
 
 class V8_EXPORT_PRIVATE ConditionalControlFlowBuilder final

@@ -206,16 +206,21 @@ class GitRecipesMixin(object):
     self.Git(MakeArgs(args), **kwargs)
 
   def GitUpload(self, reviewer="", author="", force=False, cq=False,
-                bypass_hooks=False, cc="", private=False, **kwargs):
+                cq_dry_run=False, bypass_hooks=False, cc="", private=False,
+                tbr_reviewer="", **kwargs):
     args = ["cl upload --send-mail"]
     if author:
       args += ["--email", Quoted(author)]
     if reviewer:
       args += ["-r", Quoted(reviewer)]
+    if tbr_reviewer:
+      args += ["--tbrs", Quoted(tbr_reviewer)]
     if force:
       args.append("-f")
     if cq:
       args.append("--use-commit-queue")
+    if cq_dry_run:
+      args.append("--cq-dry-run")
     if bypass_hooks:
       args.append("--bypass-hooks")
     if cc:

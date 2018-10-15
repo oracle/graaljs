@@ -4,78 +4,286 @@
 
 #include "src/ic/handler-configuration.h"
 
+#include "src/code-stubs.h"
 #include "src/ic/handler-configuration-inl.h"
 #include "src/transitions.h"
 
 namespace v8 {
 namespace internal {
 
-// |name| can be nullptr if no name/details check needs to be performed.
-Object* StoreHandler::ValidTuple3HandlerOrNull(Object* handler, Name* name,
-                                               Handle<Map>* out_transition) {
-  DCHECK(handler->IsTuple3());
-  // Step 1: Check validity cell.
-  STATIC_ASSERT(kValidityCellOffset == Tuple3::kValue3Offset);
-  Object* raw_validity_cell = Tuple3::cast(handler)->value3();
-  Smi* valid = Smi::FromInt(Map::kPrototypeChainValid);
-  // |raw_valitity_cell| can be Smi::kZero if no validity cell is required
-  // (which counts as valid).
-  if (raw_validity_cell->IsCell() &&
-      Cell::cast(raw_validity_cell)->value() != valid) {
-    return nullptr;
-  }
-  // Step 2 (optional): Check transition key.
-  WeakCell* target_cell = StoreHandler::GetTuple3TransitionCell(handler);
-  if (name != nullptr) {
-    if (!TransitionsAccessor::IsMatchingMap(target_cell, name, kData, NONE)) {
-      return nullptr;
+namespace {
+
+template <typename BitField>
+Handle<Smi> SetBitFieldValue(Isolate* isolate, Handle<Smi> smi_handler,
+                             typename BitField::FieldType value) {
+  int config = smi_handler->value();
+  config = BitField::update(config, true);
+  return handle(Smi::FromInt(config), isolate);
+}
+
+// TODO(ishell): Remove templatezation once we move common bits from
+// Load/StoreHandler to the base class.
+template <typename ICHandler, bool fill_handler = true>
+int InitPrototypeChecksImpl(Isolate* isolate, Handle<ICHandler> handler,
+                            Handle<Smi>* smi_handler, Handle<Map> receiver_map,
+                            Handle<JSReceiver> holder, Handle<Object> data1,
+                            MaybeHandle<Object> maybe_data2) {
+  int checks_count = 0;
+  // Holder-is-receiver case itself does not add entries unless there is an
+  // optional data2 value provided.
+
+  if (receiver_map->IsPrimitiveMap() ||
+      receiver_map->is_access_check_needed()) {
+    DCHECK(!receiver_map->IsJSGlobalObjectMap());
+    // The validity cell check for primitive and global proxy receivers does
+    // not guarantee that certain native context ever had access to other
+    // native context. However, a handler created for one native context could
+    // be used in other native context through the megamorphic stub cache.
+    // So we record the original native context to which this handler
+    // corresponds.
+    if (fill_handler) {
+      Handle<Context> native_context = isolate->native_context();
+      handler->set_data2(native_context->self_weak_cell());
+    } else {
+      // Enable access checks on receiver.
+      typedef typename ICHandler::DoAccessCheckOnReceiverBits Bit;
+      *smi_handler = SetBitFieldValue<Bit>(isolate, *smi_handler, true);
+    }
+    checks_count++;
+  } else if (receiver_map->is_dictionary_map() &&
+             !receiver_map->IsJSGlobalObjectMap()) {
+    if (!fill_handler) {
+      // Enable lookup on receiver.
+      typedef typename ICHandler::LookupOnReceiverBits Bit;
+      *smi_handler = SetBitFieldValue<Bit>(isolate, *smi_handler, true);
     }
   }
-  // Step 3: Check if the transition target is deprecated.
-  Map* transition = Map::cast(target_cell->value());
-  if (transition->is_deprecated()) return nullptr;
-  *out_transition = handle(transition);
+  if (fill_handler) {
+    handler->set_data1(*data1);
+  }
+  Handle<Object> data2;
+  if (maybe_data2.ToHandle(&data2)) {
+    if (fill_handler) {
+      // This value will go either to data2 or data3 slot depending on whether
+      // data2 slot is already occupied by native context.
+      if (checks_count == 0) {
+        handler->set_data2(*data2);
+      } else {
+        DCHECK_EQ(1, checks_count);
+        handler->set_data3(*data2);
+      }
+    }
+    checks_count++;
+  }
+  return checks_count;
+}
+
+// Returns 0 if the validity cell check is enough to ensure that the
+// prototype chain from |receiver_map| till |holder| did not change.
+// If the |holder| is an empty handle then the full prototype chain is
+// checked.
+// Returns -1 if the handler has to be compiled or the number of prototype
+// checks otherwise.
+template <typename ICHandler>
+int GetPrototypeCheckCount(
+    Isolate* isolate, Handle<Smi>* smi_handler, Handle<Map> receiver_map,
+    Handle<JSReceiver> holder, Handle<Object> data1,
+    MaybeHandle<Object> maybe_data2 = MaybeHandle<Object>()) {
+  DCHECK_NOT_NULL(smi_handler);
+  return InitPrototypeChecksImpl<ICHandler, false>(isolate, Handle<ICHandler>(),
+                                                   smi_handler, receiver_map,
+                                                   holder, data1, maybe_data2);
+}
+
+template <typename ICHandler>
+void InitPrototypeChecks(
+    Isolate* isolate, Handle<ICHandler> handler, Handle<Map> receiver_map,
+    Handle<JSReceiver> holder, Handle<Object> data1,
+    MaybeHandle<Object> maybe_data2 = MaybeHandle<Object>()) {
+  InitPrototypeChecksImpl<ICHandler, true>(
+      isolate, handler, nullptr, receiver_map, holder, data1, maybe_data2);
+}
+
+}  // namespace
+
+// static
+Handle<Object> LoadHandler::LoadFromPrototype(Isolate* isolate,
+                                              Handle<Map> receiver_map,
+                                              Handle<JSReceiver> holder,
+                                              Handle<Smi> smi_handler,
+                                              MaybeHandle<Object> maybe_data1,
+                                              MaybeHandle<Object> maybe_data2) {
+  Handle<Object> data1;
+  if (!maybe_data1.ToHandle(&data1)) {
+    data1 = Map::GetOrCreatePrototypeWeakCell(holder, isolate);
+  }
+
+  int checks_count = GetPrototypeCheckCount<LoadHandler>(
+      isolate, &smi_handler, receiver_map, holder, data1, maybe_data2);
+
+  Handle<Object> validity_cell =
+      Map::GetOrCreatePrototypeChainValidityCell(receiver_map, isolate);
+
+  int data_count = 1 + checks_count;
+  Handle<LoadHandler> handler = isolate->factory()->NewLoadHandler(data_count);
+
+  handler->set_smi_handler(*smi_handler);
+  handler->set_validity_cell(*validity_cell);
+  InitPrototypeChecks(isolate, handler, receiver_map, holder, data1,
+                      maybe_data2);
   return handler;
 }
 
-Object* StoreHandler::ValidFixedArrayHandlerOrNull(
-    Object* raw_handler, Name* name, Handle<Map>* out_transition) {
-  DCHECK(raw_handler->IsFixedArray());
-  FixedArray* handler = FixedArray::cast(raw_handler);
-  // Step 1: Check validity cell.
-  Object* value = Cell::cast(handler->get(kValidityCellIndex))->value();
-  if (value != Smi::FromInt(Map::kPrototypeChainValid)) return nullptr;
-  // Step 2: Check transition key.
-  WeakCell* target_cell = StoreHandler::GetArrayTransitionCell(handler);
-  if (!TransitionsAccessor::IsMatchingMap(target_cell, name, kData, NONE)) {
-    return nullptr;
+// static
+Handle<Object> LoadHandler::LoadFullChain(Isolate* isolate,
+                                          Handle<Map> receiver_map,
+                                          Handle<Object> holder,
+                                          Handle<Smi> smi_handler) {
+  Handle<JSReceiver> end;  // null handle, means full prototype chain lookup.
+  Handle<Object> data1 = holder;
+  int checks_count = GetPrototypeCheckCount<LoadHandler>(
+      isolate, &smi_handler, receiver_map, end, data1);
+
+  Handle<Object> validity_cell =
+      Map::GetOrCreatePrototypeChainValidityCell(receiver_map, isolate);
+  if (validity_cell->IsSmi()) {
+    DCHECK_EQ(0, checks_count);
+    // Lookup on receiver isn't supported in case of a simple smi handler.
+    if (!LookupOnReceiverBits::decode(smi_handler->value())) return smi_handler;
   }
-  // Step 3: Check prototypes.
-  Heap* heap = handler->GetHeap();
-  Isolate* isolate = heap->isolate();
-  Handle<Name> name_handle(name, isolate);
-  for (int i = kFirstPrototypeIndex; i < handler->length(); i++) {
-    // This mirrors AccessorAssembler::CheckPrototype.
-    WeakCell* prototype_cell = WeakCell::cast(handler->get(i));
-    if (prototype_cell->cleared()) return nullptr;
-    HeapObject* maybe_prototype = HeapObject::cast(prototype_cell->value());
-    if (maybe_prototype->IsPropertyCell()) {
-      Object* value = PropertyCell::cast(maybe_prototype)->value();
-      if (value != heap->the_hole_value()) return nullptr;
-    } else {
-      DCHECK(maybe_prototype->map()->is_dictionary_map());
-      // Do a negative dictionary lookup.
-      NameDictionary* dict =
-          JSObject::cast(maybe_prototype)->property_dictionary();
-      int number = dict->FindEntry(isolate, name_handle);
-      if (number != NameDictionary::kNotFound) return nullptr;
+
+  int data_count = 1 + checks_count;
+  Handle<LoadHandler> handler = isolate->factory()->NewLoadHandler(data_count);
+
+  handler->set_smi_handler(*smi_handler);
+  handler->set_validity_cell(*validity_cell);
+  InitPrototypeChecks(isolate, handler, receiver_map, end, data1);
+  return handler;
+}
+
+// static
+KeyedAccessLoadMode LoadHandler::GetKeyedAccessLoadMode(MaybeObject* handler) {
+  DisallowHeapAllocation no_gc;
+  if (handler->IsSmi()) {
+    int const raw_handler = Smi::cast(handler->ToSmi())->value();
+    Kind const kind = KindBits::decode(raw_handler);
+    if ((kind == kElement || kind == kIndexedString) &&
+        AllowOutOfBoundsBits::decode(raw_handler)) {
+      return LOAD_IGNORE_OUT_OF_BOUNDS;
     }
   }
-  // Step 4: Check if the transition target is deprecated.
-  Map* transition = Map::cast(target_cell->value());
-  if (transition->is_deprecated()) return nullptr;
-  *out_transition = handle(transition);
+  return STANDARD_LOAD;
+}
+
+// static
+Handle<Object> StoreHandler::StoreElementTransition(
+    Isolate* isolate, Handle<Map> receiver_map, Handle<Map> transition,
+    KeyedAccessStoreMode store_mode) {
+  bool is_js_array = receiver_map->instance_type() == JS_ARRAY_TYPE;
+  ElementsKind elements_kind = receiver_map->elements_kind();
+  Handle<Code> stub = ElementsTransitionAndStoreStub(
+                          isolate, elements_kind, transition->elements_kind(),
+                          is_js_array, store_mode)
+                          .GetCode();
+  Handle<Object> validity_cell =
+      Map::GetOrCreatePrototypeChainValidityCell(receiver_map, isolate);
+  Handle<WeakCell> cell = Map::WeakCellForMap(transition);
+  Handle<StoreHandler> handler = isolate->factory()->NewStoreHandler(1);
+  handler->set_smi_handler(*stub);
+  handler->set_validity_cell(*validity_cell);
+  handler->set_data1(*cell);
   return handler;
+}
+
+MaybeObjectHandle StoreHandler::StoreTransition(Isolate* isolate,
+                                                Handle<Map> transition_map) {
+  bool is_dictionary_map = transition_map->is_dictionary_map();
+#ifdef DEBUG
+  if (!is_dictionary_map) {
+    int descriptor = transition_map->LastAdded();
+    Handle<DescriptorArray> descriptors(transition_map->instance_descriptors());
+    PropertyDetails details = descriptors->GetDetails(descriptor);
+    if (descriptors->GetKey(descriptor)->IsPrivate()) {
+      DCHECK_EQ(DONT_ENUM, details.attributes());
+    } else {
+      DCHECK_EQ(NONE, details.attributes());
+    }
+    Representation representation = details.representation();
+    DCHECK(!representation.IsNone());
+  }
+#endif
+  // Declarative handlers don't support access checks.
+  DCHECK(!transition_map->is_access_check_needed());
+
+  // Get validity cell value if it is necessary for the handler.
+  Handle<Object> validity_cell;
+  if (is_dictionary_map || !transition_map->IsPrototypeValidityCellValid()) {
+    validity_cell =
+        Map::GetOrCreatePrototypeChainValidityCell(transition_map, isolate);
+  }
+
+  if (is_dictionary_map) {
+    DCHECK(!transition_map->IsJSGlobalObjectMap());
+    Handle<StoreHandler> handler = isolate->factory()->NewStoreHandler(0);
+    // Store normal with enabled lookup on receiver.
+    int config = KindBits::encode(kNormal) | LookupOnReceiverBits::encode(true);
+    handler->set_smi_handler(Smi::FromInt(config));
+    handler->set_validity_cell(*validity_cell);
+    return MaybeObjectHandle(handler);
+
+  } else {
+    // Ensure the transition map contains a valid prototype validity cell.
+    if (!validity_cell.is_null()) {
+      transition_map->set_prototype_validity_cell(*validity_cell);
+    }
+    return MaybeObjectHandle::Weak(transition_map);
+  }
+}
+
+// static
+Handle<Object> StoreHandler::StoreThroughPrototype(
+    Isolate* isolate, Handle<Map> receiver_map, Handle<JSReceiver> holder,
+    Handle<Smi> smi_handler, MaybeHandle<Object> maybe_data1,
+    MaybeHandle<Object> maybe_data2) {
+  Handle<Object> data1;
+  if (!maybe_data1.ToHandle(&data1)) {
+    data1 = Map::GetOrCreatePrototypeWeakCell(holder, isolate);
+  }
+
+  int checks_count = GetPrototypeCheckCount<StoreHandler>(
+      isolate, &smi_handler, receiver_map, holder, data1, maybe_data2);
+
+  Handle<Object> validity_cell =
+      Map::GetOrCreatePrototypeChainValidityCell(receiver_map, isolate);
+  DCHECK_IMPLIES(validity_cell->IsSmi(), checks_count == 0);
+
+  int data_count = 1 + checks_count;
+  Handle<StoreHandler> handler =
+      isolate->factory()->NewStoreHandler(data_count);
+
+  handler->set_smi_handler(*smi_handler);
+  handler->set_validity_cell(*validity_cell);
+  InitPrototypeChecks(isolate, handler, receiver_map, holder, data1,
+                      maybe_data2);
+  return handler;
+}
+
+// static
+MaybeObjectHandle StoreHandler::StoreGlobal(Isolate* isolate,
+                                            Handle<PropertyCell> cell) {
+  return MaybeObjectHandle::Weak(cell);
+}
+
+// static
+Handle<Object> StoreHandler::StoreProxy(Isolate* isolate,
+                                        Handle<Map> receiver_map,
+                                        Handle<JSProxy> proxy,
+                                        Handle<JSReceiver> receiver) {
+  Handle<Smi> smi_handler = StoreProxy(isolate);
+  if (receiver.is_identical_to(proxy)) return smi_handler;
+  Handle<WeakCell> holder_cell = isolate->factory()->NewWeakCell(proxy);
+  return StoreThroughPrototype(isolate, receiver_map, proxy, smi_handler,
+                               holder_cell);
 }
 
 }  // namespace internal

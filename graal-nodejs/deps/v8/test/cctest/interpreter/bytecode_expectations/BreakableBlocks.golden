@@ -62,25 +62,25 @@ bytecodes: [
   /*  106 S> */ B(LdaZero),
                 B(Star), R(2),
   /*  111 S> */ B(LdaSmi), I8(3),
-  /*  111 E> */ B(TestLessThan), R(2), U8(2),
+  /*  111 E> */ B(TestLessThan), R(2), U8(1),
                 B(JumpIfFalse), U8(34),
   /*   93 E> */ B(StackCheck),
   /*  129 S> */ B(Ldar), R(0),
-                B(Inc), U8(4),
+                B(Inc), U8(2),
                 B(Star), R(0),
   /*  142 S> */ B(Ldar), R(2),
-  /*  148 E> */ B(Add), R(1), U8(5),
+  /*  148 E> */ B(Add), R(1), U8(3),
                 B(Star), R(3),
                 B(LdaSmi), I8(12),
-  /*  152 E> */ B(TestEqual), R(3), U8(6),
+  /*  152 E> */ B(TestEqual), R(3), U8(4),
                 B(JumpIfFalse), U8(4),
   /*  161 S> */ B(Jump), U8(20),
   /*  118 S> */ B(Ldar), R(2),
-                B(Inc), U8(3),
+                B(Inc), U8(5),
                 B(Star), R(2),
                 B(JumpLoop), U8(36), I8(1),
   /*   84 S> */ B(Ldar), R(1),
-                B(Inc), U8(1),
+                B(Inc), U8(6),
                 B(Star), R(1),
                 B(JumpLoop), U8(56), I8(0),
   /*  188 S> */ B(Ldar), R(0),
@@ -101,10 +101,9 @@ snippet: "
 "
 frame size: 3
 parameter count: 1
-bytecode array length: 31
+bytecode array length: 29
 bytecodes: [
   /*   30 E> */ B(StackCheck),
-                B(Ldar), R(closure),
                 B(CreateBlockContext), U8(0),
                 B(PushContext), R(2),
                 B(LdaTheHole),
@@ -114,14 +113,14 @@ bytecodes: [
   /*   53 S> */ B(LdaSmi), I8(10),
   /*   53 E> */ B(StaCurrentContextSlot), U8(4),
                 B(Mov), R(0), R(1),
-                B(Ldar), R(1),
+                B(Ldar), R(0),
   /*   88 S> */ B(Jump), U8(2),
                 B(PopContext), R(2),
                 B(LdaUndefined),
   /*  103 S> */ B(Return),
 ]
 constant pool: [
-  FIXED_ARRAY_TYPE,
+  SCOPE_INFO_TYPE,
   SHARED_FUNCTION_INFO_TYPE,
 ]
 handlers: [
@@ -142,21 +141,20 @@ snippet: "
 "
 frame size: 4
 parameter count: 1
-bytecode array length: 54
+bytecode array length: 53
 bytecodes: [
-                B(CreateFunctionContext), U8(1),
+                B(CreateFunctionContext), U8(0), U8(1),
                 B(PushContext), R(2),
                 B(LdaTheHole),
                 B(StaCurrentContextSlot), U8(4),
   /*   30 E> */ B(StackCheck),
   /*   42 S> */ B(LdaSmi), I8(1),
   /*   42 E> */ B(StaCurrentContextSlot), U8(4),
-                B(Ldar), R(closure),
-                B(CreateBlockContext), U8(0),
+                B(CreateBlockContext), U8(1),
                 B(PushContext), R(3),
                 B(LdaTheHole),
                 B(StaCurrentContextSlot), U8(4),
-                B(CreateClosure), U8(1), U8(0), U8(2),
+                B(CreateClosure), U8(2), U8(0), U8(2),
                 B(Star), R(0),
   /*   76 S> */ B(LdaSmi), I8(2),
   /*   76 E> */ B(StaCurrentContextSlot), U8(4),
@@ -174,7 +172,8 @@ bytecodes: [
   /*  162 S> */ B(Return),
 ]
 constant pool: [
-  FIXED_ARRAY_TYPE,
+  SCOPE_INFO_TYPE,
+  SCOPE_INFO_TYPE,
   SHARED_FUNCTION_INFO_TYPE,
 ]
 handlers: [

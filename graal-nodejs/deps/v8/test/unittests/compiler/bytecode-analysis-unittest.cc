@@ -11,6 +11,7 @@
 #include "src/interpreter/bytecode-label.h"
 #include "src/interpreter/control-flow-builders.h"
 #include "src/objects-inl.h"
+#include "test/unittests/interpreter/bytecode-utils.h"
 #include "test/unittests/test-utils.h"
 
 namespace v8 {
@@ -90,7 +91,7 @@ class BytecodeAnalysisTest : public TestWithIsolateAndZone {
 SaveFlags* BytecodeAnalysisTest::save_flags_ = nullptr;
 
 TEST_F(BytecodeAnalysisTest, EmptyBlock) {
-  interpreter::BytecodeArrayBuilder builder(isolate(), zone(), 3, 3);
+  interpreter::BytecodeArrayBuilder builder(zone(), 3, 3);
   std::vector<std::pair<std::string, std::string>> expected_liveness;
 
   interpreter::Register reg_0(0);
@@ -104,7 +105,7 @@ TEST_F(BytecodeAnalysisTest, EmptyBlock) {
 }
 
 TEST_F(BytecodeAnalysisTest, SimpleLoad) {
-  interpreter::BytecodeArrayBuilder builder(isolate(), zone(), 3, 3);
+  interpreter::BytecodeArrayBuilder builder(zone(), 3, 3);
   std::vector<std::pair<std::string, std::string>> expected_liveness;
 
   interpreter::Register reg_0(0);
@@ -121,7 +122,7 @@ TEST_F(BytecodeAnalysisTest, SimpleLoad) {
 }
 
 TEST_F(BytecodeAnalysisTest, StoreThenLoad) {
-  interpreter::BytecodeArrayBuilder builder(isolate(), zone(), 3, 3);
+  interpreter::BytecodeArrayBuilder builder(zone(), 3, 3);
   std::vector<std::pair<std::string, std::string>> expected_liveness;
 
   interpreter::Register reg_0(0);
@@ -141,7 +142,7 @@ TEST_F(BytecodeAnalysisTest, StoreThenLoad) {
 }
 
 TEST_F(BytecodeAnalysisTest, DiamondLoad) {
-  interpreter::BytecodeArrayBuilder builder(isolate(), zone(), 3, 3);
+  interpreter::BytecodeArrayBuilder builder(zone(), 3, 3);
   std::vector<std::pair<std::string, std::string>> expected_liveness;
 
   interpreter::Register reg_0(0);
@@ -178,7 +179,7 @@ TEST_F(BytecodeAnalysisTest, DiamondLoad) {
 }
 
 TEST_F(BytecodeAnalysisTest, DiamondLookupsAndBinds) {
-  interpreter::BytecodeArrayBuilder builder(isolate(), zone(), 3, 3);
+  interpreter::BytecodeArrayBuilder builder(zone(), 3, 3);
   std::vector<std::pair<std::string, std::string>> expected_liveness;
 
   interpreter::Register reg_0(0);
@@ -225,7 +226,7 @@ TEST_F(BytecodeAnalysisTest, DiamondLookupsAndBinds) {
 }
 
 TEST_F(BytecodeAnalysisTest, SimpleLoop) {
-  interpreter::BytecodeArrayBuilder builder(isolate(), zone(), 3, 3);
+  interpreter::BytecodeArrayBuilder builder(zone(), 3, 3);
   std::vector<std::pair<std::string, std::string>> expected_liveness;
 
   interpreter::Register reg_0(0);
@@ -273,7 +274,7 @@ TEST_F(BytecodeAnalysisTest, SimpleLoop) {
 }
 
 TEST_F(BytecodeAnalysisTest, TryCatch) {
-  interpreter::BytecodeArrayBuilder builder(isolate(), zone(), 3, 3);
+  interpreter::BytecodeArrayBuilder builder(zone(), 3, 3);
   std::vector<std::pair<std::string, std::string>> expected_liveness;
 
   interpreter::Register reg_0(0);
@@ -284,7 +285,8 @@ TEST_F(BytecodeAnalysisTest, TryCatch) {
   builder.StoreAccumulatorInRegister(reg_0);
   expected_liveness.emplace_back(".LLL", "LLL.");
 
-  interpreter::TryCatchBuilder try_builder(&builder, HandlerTable::CAUGHT);
+  interpreter::TryCatchBuilder try_builder(&builder, nullptr, nullptr,
+                                           HandlerTable::CAUGHT);
   try_builder.BeginTry(reg_context);
   {
     // Gen r0.
@@ -325,7 +327,7 @@ TEST_F(BytecodeAnalysisTest, DiamondInLoop) {
   // diamond should eventually propagate up the other path when the loop is
   // reprocessed.
 
-  interpreter::BytecodeArrayBuilder builder(isolate(), zone(), 3, 3);
+  interpreter::BytecodeArrayBuilder builder(zone(), 3, 3);
   std::vector<std::pair<std::string, std::string>> expected_liveness;
 
   interpreter::Register reg_0(0);
@@ -395,7 +397,7 @@ TEST_F(BytecodeAnalysisTest, KillingLoopInsideLoop) {
   // still process the inner loop when processing the outer loop, to ensure that
   // r1 becomes live in 3 (via 5), but r0 stays dead (because of 4).
 
-  interpreter::BytecodeArrayBuilder builder(isolate(), zone(), 3, 3);
+  interpreter::BytecodeArrayBuilder builder(zone(), 3, 3);
   std::vector<std::pair<std::string, std::string>> expected_liveness;
 
   interpreter::Register reg_0(0);
@@ -443,6 +445,53 @@ TEST_F(BytecodeAnalysisTest, KillingLoopInsideLoop) {
 
   builder.LoadUndefined();
   expected_liveness.emplace_back("....", "...L");
+  builder.Return();
+  expected_liveness.emplace_back("...L", "....");
+
+  Handle<BytecodeArray> bytecode = builder.ToBytecodeArray(isolate());
+
+  EnsureLivenessMatches(bytecode, expected_liveness);
+}
+
+TEST_F(BytecodeAnalysisTest, SuspendPoint) {
+  interpreter::BytecodeArrayBuilder builder(zone(), 3, 3);
+  std::vector<std::pair<std::string, std::string>> expected_liveness;
+
+  interpreter::Register reg_0(0);
+  interpreter::Register reg_1(1);
+  interpreter::Register reg_gen(2);
+  interpreter::BytecodeJumpTable* gen_jump_table =
+      builder.AllocateJumpTable(1, 0);
+
+  builder.StoreAccumulatorInRegister(reg_gen);
+  expected_liveness.emplace_back("L..L", "L.LL");
+
+  // Note: technically, r0 should be dead here since the resume will write it,
+  // but in practice the bytecode analysis doesn't bother to special case it,
+  // since the generator switch is close to the top of the function anyway.
+  builder.SwitchOnGeneratorState(reg_gen, gen_jump_table);
+  expected_liveness.emplace_back("L.LL", "L.LL");
+
+  builder.StoreAccumulatorInRegister(reg_0);
+  expected_liveness.emplace_back("..LL", "L.LL");
+
+  // Reg 1 is never read, so should be dead.
+  builder.StoreAccumulatorInRegister(reg_1);
+  expected_liveness.emplace_back("L.LL", "L.LL");
+
+  builder.SuspendGenerator(
+      reg_gen, interpreter::BytecodeUtils::NewRegisterList(0, 3), 0);
+  expected_liveness.emplace_back("L.LL", "L.L.");
+
+  builder.Bind(gen_jump_table, 0);
+
+  builder.ResumeGenerator(reg_gen,
+                          interpreter::BytecodeUtils::NewRegisterList(0, 1));
+  expected_liveness.emplace_back("L.L.", "L...");
+
+  builder.LoadAccumulatorWithRegister(reg_0);
+  expected_liveness.emplace_back("L...", "...L");
+
   builder.Return();
   expected_liveness.emplace_back("...L", "....");
 

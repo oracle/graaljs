@@ -3,12 +3,22 @@
 This changelog summarizes major changes between GraalVM versions of the Graal JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 1.0.0 RC8
+* Provide simplified implementations for methods of the global `console` object even outside Node.js mode.
+* Updated Node.js to version 10.9.0.
+* Fix: Can construct `Proxy(JavaType)` and correctly reports as type `function`. Github #60.
+
+## Version 1.0.0 RC7
+* Improved support for sharing of shapes between Contexts with the same Engine.
+* Provide support for BigInteger TypedArrays, cf. [ECMAScript BigInt proposal](https://tc39.github.io/proposal-bigint/#sec-typedarrays-and-dataview).
+* Extended instrumentation support to more types of interpreter nodes.
+
 ## Version 1.0.0 RC6
-* Serialization API of v8/Node.js implemented.
-* Update version of Unicode to 11 in RegExp and Intl.
+* [Serialization API](https://nodejs.org/api/v8.html#v8_serialization_api) of v8/Node.js implemented.
+* Update version of Unicode to 11 in `RegExp` and `Intl`.
 * Implement Truffle file virtualization for JavaScript.
-* Support polyglot Truffle objects in Array.prototype.map et al and Array.prototype.sort.
-* Support for fuzzy time in performance.now() and Date.
+* Support polyglot Truffle objects in `Array.prototype.map` et al and `Array.prototype.sort`.
+* Support for fuzzy time in `performance.now()` and `Date`.
 
 ## Version 1.0.0 RC5
 * Add support for `Symbol.prototype.description`, a Stage 3 proposal.
@@ -36,7 +46,7 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 1.0.0 RC2
 * Enabled code sharing between Contexts with the same Engine.
-* Updated Node.js to 8.11.1.
+* Updated Node.js to version 8.11.1.
 
 ## Version 1.0.0 RC1
 * LICENSE set to The Universal Permissive License (UPL), Version 1.0.

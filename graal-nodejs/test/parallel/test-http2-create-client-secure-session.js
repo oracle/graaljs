@@ -19,6 +19,14 @@ function loadKey(keyname) {
 
 function onStream(stream, headers) {
   const socket = stream.session[kSocket];
+
+  assert(stream.session.encrypted);
+  assert.strictEqual(stream.session.alpnProtocol, 'h2');
+  const originSet = stream.session.originSet;
+  assert(Array.isArray(originSet));
+  assert.strictEqual(originSet[0],
+                     `https://${socket.servername}:${socket.remotePort}`);
+
   assert(headers[':authority'].startsWith(socket.servername));
   stream.respond({ 'content-type': 'application/json' });
   stream.end(JSON.stringify({
@@ -30,6 +38,7 @@ function onStream(stream, headers) {
 function verifySecureSession(key, cert, ca, opts) {
   const server = h2.createSecureServer({ cert, key });
   server.on('stream', common.mustCall(onStream));
+  server.on('close', common.mustCall());
   server.listen(0, common.mustCall(() => {
     opts = opts || { };
     opts.secureContext = tls.createSecureContext({ ca });
@@ -39,10 +48,21 @@ function verifySecureSession(key, cert, ca, opts) {
     assert.strictEqual(client.socket.listenerCount('secureConnect'), 1);
     const req = client.request();
 
+    client.on('connect', common.mustCall(() => {
+      assert(client.encrypted);
+      assert.strictEqual(client.alpnProtocol, 'h2');
+      const originSet = client.originSet;
+      assert(Array.isArray(originSet));
+      assert.strictEqual(originSet.length, 1);
+      assert.strictEqual(
+        originSet[0],
+        `https://${opts.servername || 'localhost'}:${server.address().port}`);
+    }));
+
     req.on('response', common.mustCall((headers) => {
       assert.strictEqual(headers[':status'], 200);
       assert.strictEqual(headers['content-type'], 'application/json');
-      assert(headers['date']);
+      assert(headers.date);
     }));
 
     let data = '';
@@ -53,7 +73,7 @@ function verifySecureSession(key, cert, ca, opts) {
       assert.strictEqual(jsonData.servername,
                          opts.servername || 'localhost');
       assert.strictEqual(jsonData.alpnProtocol, 'h2');
-      server.close();
+      server.close(common.mustCall());
       client[kSocket].destroy();
     }));
   }));

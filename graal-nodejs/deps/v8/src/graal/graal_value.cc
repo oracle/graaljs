@@ -42,12 +42,14 @@
 #include "graal_array.h"
 #include "graal_array_buffer.h"
 #include "graal_array_buffer_view.h"
+#include "graal_big_int.h"
 #include "graal_boolean.h"
 #include "graal_date.h"
 #include "graal_external.h"
 #include "graal_function.h"
 #include "graal_isolate.h"
 #include "graal_map.h"
+#include "graal_missing_primitive.h"
 #include "graal_number.h"
 #include "graal_object.h"
 #include "graal_promise.h"
@@ -57,7 +59,6 @@
 #include "graal_string.h"
 #include "graal_symbol.h"
 #include "graal_value.h"
-#include "graal_missing_primitive.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -149,6 +150,14 @@ bool GraalValue::IsFloat64Array() const {
     return false;
 }
 
+bool GraalValue::IsBigInt64Array() const {
+    return false;
+}
+
+bool GraalValue::IsBigUint64Array() const {
+    return false;
+}
+
 bool GraalValue::IsMap() const {
     return false;
 }
@@ -193,6 +202,10 @@ bool GraalValue::IsDataView() const {
     return false;
 }
 
+bool GraalValue::IsBigInt() const {
+    return false;
+}
+
 bool GraalValue::IsNativeError() const {
     JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_native_error, Boolean, GetJavaObject());
     return result;
@@ -213,6 +226,66 @@ bool GraalValue::IsSharedArrayBuffer() const {
     return result;
 }
 
+bool GraalValue::IsArgumentsObject() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_arguments_object, Boolean, GetJavaObject());
+    return result;
+}
+
+bool GraalValue::IsBooleanObject() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_boolean_object, Boolean, GetJavaObject());
+    return result;
+}
+
+bool GraalValue::IsNumberObject() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_number_object, Boolean, GetJavaObject());
+    return result;
+}
+
+bool GraalValue::IsStringObject() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_string_object, Boolean, GetJavaObject());
+    return result;
+}
+
+bool GraalValue::IsSymbolObject() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_symbol_object, Boolean, GetJavaObject());
+    return result;
+}
+
+bool GraalValue::IsBigIntObject() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_big_int_object, Boolean, GetJavaObject());
+    return result;
+}
+
+bool GraalValue::IsWeakMap() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_weak_map, Boolean, GetJavaObject());
+    return result;
+}
+
+bool GraalValue::IsWeakSet() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_weak_set, Boolean, GetJavaObject());
+    return result;
+}
+
+bool GraalValue::IsAsyncFunction() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_async_function, Boolean, GetJavaObject());
+    return result;
+}
+
+bool GraalValue::IsGeneratorFunction() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_generator_function, Boolean, GetJavaObject());
+    return result;
+}
+
+bool GraalValue::IsGeneratorObject() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_generator_object, Boolean, GetJavaObject());
+    return result;
+}
+
+bool GraalValue::IsModuleNamespaceObject() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_is_module_namespace_object, Boolean, GetJavaObject());
+    return result;
+}
+
 int32_t GraalValue::Int32Value() const {
     JNI_CALL(jint, result, Isolate(), GraalAccessMethod::value_int32_value, Int, GetJavaObject());
     return result;
@@ -227,11 +300,32 @@ int64_t GraalValue::IntegerValue() const {
     if (IsNumber()) {
         const GraalNumber* graal_number = reinterpret_cast<const GraalNumber*> (this);
         double value = graal_number->Value();
-        return std::isfinite(value) ? value : std::numeric_limits<int64_t>::min();
+        return static_cast<int64_t>(value);
     } else {
         JNI_CALL(jlong, result, Isolate(), GraalAccessMethod::value_integer_value, Long, GetJavaObject());
         return result;
     }
+}
+
+v8::Maybe<int64_t> GraalValue::IntegerValue(v8::Local<v8::Context> context) const {
+    int64_t result;
+    if (IsNumber()) {
+        const GraalNumber* graal_number = reinterpret_cast<const GraalNumber*> (this);
+        double d = graal_number->Value();
+        if (std::isnan(d))  {
+            result = 0;
+        } else if (d >= static_cast<double> (std::numeric_limits<int64_t>::max())) {
+            result = std::numeric_limits<int64_t>::max();
+        } else  if (d <= static_cast<double> (std::numeric_limits<int64_t>::min())) {
+            result = std::numeric_limits<int64_t>::min();
+        } else {
+            result = static_cast<int64_t> (d);
+        }
+    } else {
+        JNI_CALL(jlong, java_result, Isolate(), GraalAccessMethod::value_integer_value, Long, GetJavaObject());
+        result = java_result;
+    }
+    return v8::Just<int64_t>(result);
 }
 
 bool GraalValue::BooleanValue() const {
@@ -550,6 +644,12 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
         case 30:
             result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kDataView, use_shared_buffer, placement);
             break;
+        case 32:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kBigInt64Array, use_shared_buffer, placement);
+            break;
+        case 33:
+            result = CreateArrayBufferView(isolate, java_object, GraalArrayBufferView::kBigUint64Array, use_shared_buffer, placement);
+            break;
         case 15:
             if (placement) {
                 result = new(placement) GraalArrayBuffer(isolate, java_object);
@@ -590,6 +690,13 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
                 result = new(placement) GraalProxy(isolate, java_object);
             } else {
                 result = new GraalProxy(isolate, java_object);
+            }
+            break;
+        case 31:
+            if (placement) {
+                result = new(placement) GraalBigInt(isolate, java_object);
+            } else {
+                result = new GraalBigInt(isolate, java_object);
             }
             break;
         default:

@@ -9,6 +9,9 @@
 Structures are aligned so that any libuv handle can be cast to `uv_handle_t`.
 All API functions defined here work with any handle type.
 
+Libuv handles are not movable. Pointers to handle structures passed to
+functions must remain valid for the duration of the requested operation. Take
+care when using stack allocated handles.
 
 Data types
 ----------
@@ -97,6 +100,14 @@ Public members
 
 API
 ---
+
+.. c:function:: UV_HANDLE_TYPE_MAP(iter_macro)
+
+    Macro that expands to a series of invocations of `iter_macro` for
+    each of the handle types. `iter_macro` is invoked with two
+    arguments: the name of the `uv_handle_type` element without the
+    `UV_` prefix, and the name of the corresponding structure type
+    without the `uv_` prefix and `_t` suffix.
 
 .. c:function:: int uv_is_active(const uv_handle_t* handle)
 

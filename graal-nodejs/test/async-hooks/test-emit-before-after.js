@@ -7,6 +7,9 @@ const spawnSync = require('child_process').spawnSync;
 const async_hooks = require('internal/async_hooks');
 const initHooks = require('./init-hooks');
 
+if (!common.isMainThread)
+  common.skip('Worker bootstrapping works differently -> different async IDs');
+
 switch (process.argv[2]) {
   case 'test_invalid_async_id':
     async_hooks.emitBefore(-2, 1);
@@ -34,8 +37,8 @@ assert.strictEqual(
   'RangeError [ERR_INVALID_ASYNC_ID]: Invalid triggerAsyncId value: -2');
 assert.strictEqual(c2.status, 1);
 
-const expectedId = async_hooks.newUid();
-const expectedTriggerId = async_hooks.newUid();
+const expectedId = async_hooks.newAsyncId();
+const expectedTriggerId = async_hooks.newAsyncId();
 const expectedType = 'test_emit_before_after_type';
 
 // Verify that if there is no registered hook, then nothing will happen.

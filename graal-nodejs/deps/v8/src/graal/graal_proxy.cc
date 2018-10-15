@@ -59,12 +59,12 @@ bool GraalProxy::IsProxy() const {
     return true;
 }
 
-v8::Local<v8::Object> GraalProxy::GetTarget() {
+v8::Local<v8::Value> GraalProxy::GetTarget() {
     GraalIsolate* graal_isolate = Isolate();
     jobject java_proxy = GetJavaObject();
     JNI_CALL(jobject, java_target, graal_isolate, GraalAccessMethod::proxy_get_target, Object, java_proxy);
     GraalValue* graal_target = GraalValue::FromJavaObject(graal_isolate, java_target);
-    return reinterpret_cast<v8::Object*> (graal_target);
+    return reinterpret_cast<v8::Value*> (graal_target);
 }
 
 v8::Local<v8::Value> GraalProxy::GetHandler() {

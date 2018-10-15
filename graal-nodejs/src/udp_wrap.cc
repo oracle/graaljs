@@ -22,12 +22,11 @@
 #include "udp_wrap.h"
 #include "env-inl.h"
 #include "node_buffer.h"
+#include "node_internals.h"
 #include "handle_wrap.h"
-#include "req-wrap-inl.h"
-#include "util.h"
+#include "req_wrap-inl.h"
 #include "util-inl.h"
 
-#include <stdlib.h>
 
 
 namespace node {
@@ -42,7 +41,7 @@ using v8::Integer;
 using v8::Local;
 using v8::Object;
 using v8::PropertyAttribute;
-using v8::PropertyCallbackInfo;
+using v8::Signature;
 using v8::String;
 using v8::Uint32;
 using v8::Undefined;
@@ -54,10 +53,15 @@ using AsyncHooks = Environment::AsyncHooks;
 class SendWrap : public ReqWrap<uv_udp_send_t> {
  public:
   SendWrap(Environment* env, Local<Object> req_wrap_obj, bool have_callback);
-  ~SendWrap();
   inline bool have_callback() const;
   size_t msg_size;
-  size_t self_size() const override { return sizeof(*this); }
+
+  void MemoryInfo(MemoryTracker* tracker) const override {
+    tracker->TrackThis(this);
+  }
+
+  ADD_MEMORY_INFO_NAME(SendWrap)
+
  private:
   const bool have_callback_;
 };
@@ -68,23 +72,11 @@ SendWrap::SendWrap(Environment* env,
                    bool have_callback)
     : ReqWrap(env, req_wrap_obj, AsyncWrap::PROVIDER_UDPSENDWRAP),
       have_callback_(have_callback) {
-  Wrap(req_wrap_obj, this);
-}
-
-
-SendWrap::~SendWrap() {
-  ClearWrap(object());
 }
 
 
 inline bool SendWrap::have_callback() const {
   return have_callback_;
-}
-
-
-static void NewSendWrap(const FunctionCallbackInfo<Value>& args) {
-  CHECK(args.IsConstructCall());
-  ClearWrap(args.This());
 }
 
 
@@ -111,18 +103,24 @@ void UDPWrap::Initialize(Local<Object> target,
 
   enum PropertyAttribute attributes =
       static_cast<PropertyAttribute>(v8::ReadOnly | v8::DontDelete);
-  t->PrototypeTemplate()->SetAccessor(env->fd_string(),
-                                      UDPWrap::GetFD,
-                                      nullptr,
-                                      env->as_external(),
-                                      v8::DEFAULT,
-                                      attributes);
+
+  Local<Signature> signature = Signature::New(env->isolate(), t);
+
+  Local<FunctionTemplate> get_fd_templ =
+      FunctionTemplate::New(env->isolate(),
+                            UDPWrap::GetFD,
+                            env->as_external(),
+                            signature);
+
+  t->PrototypeTemplate()->SetAccessorProperty(env->fd_string(),
+                                              get_fd_templ,
+                                              Local<FunctionTemplate>(),
+                                              attributes);
 
   env->SetProtoMethod(t, "bind", Bind);
   env->SetProtoMethod(t, "send", Send);
   env->SetProtoMethod(t, "bind6", Bind6);
   env->SetProtoMethod(t, "send6", Send6);
-  env->SetProtoMethod(t, "close", Close);
   env->SetProtoMethod(t, "recvStart", RecvStart);
   env->SetProtoMethod(t, "recvStop", RecvStop);
   env->SetProtoMethod(t, "getsockname",
@@ -136,19 +134,15 @@ void UDPWrap::Initialize(Local<Object> target,
   env->SetProtoMethod(t, "setTTL", SetTTL);
   env->SetProtoMethod(t, "bufferSize", BufferSize);
 
-  env->SetProtoMethod(t, "ref", HandleWrap::Ref);
-  env->SetProtoMethod(t, "unref", HandleWrap::Unref);
-  env->SetProtoMethod(t, "hasRef", HandleWrap::HasRef);
-
   AsyncWrap::AddWrapMethods(env, t);
+  HandleWrap::AddWrapMethods(env, t);
 
   target->Set(udpString, t->GetFunction());
   env->set_udp_constructor_function(t->GetFunction());
 
   // Create FunctionTemplate for SendWrap
   Local<FunctionTemplate> swt =
-      FunctionTemplate::New(env->isolate(), NewSendWrap);
-  swt->InstanceTemplate()->SetInternalFieldCount(1);
+      BaseObject::MakeLazilyInitializedJSTemplate(env);
   AsyncWrap::AddWrapMethods(env, swt);
   Local<String> sendWrapString =
       FIXED_ONE_BYTE_STRING(env->isolate(), "SendWrap");
@@ -164,7 +158,7 @@ void UDPWrap::New(const FunctionCallbackInfo<Value>& args) {
 }
 
 
-void UDPWrap::GetFD(Local<String>, const PropertyCallbackInfo<Value>& args) {
+void UDPWrap::GetFD(const FunctionCallbackInfo<Value>& args) {
   int fd = UV_EBADF;
 #if !defined(_WIN32)
   UDPWrap* wrap = Unwrap<UDPWrap>(args.This());
@@ -235,8 +229,10 @@ void UDPWrap::BufferSize(const FunctionCallbackInfo<Value>& args) {
   const char* uv_func_name = is_recv ? "uv_recv_buffer_size" :
                                        "uv_send_buffer_size";
 
-  if (!args[0]->IsInt32())
-    return env->ThrowUVException(UV_EINVAL, uv_func_name);
+  if (!args[0]->IsInt32()) {
+    env->CollectUVExceptionInfo(args[2], UV_EINVAL, uv_func_name);
+    return args.GetReturnValue().SetUndefined();
+  }
 
   uv_handle_t* handle = reinterpret_cast<uv_handle_t*>(&wrap->handle_);
   int size = static_cast<int>(args[0].As<Uint32>()->Value());
@@ -247,8 +243,10 @@ void UDPWrap::BufferSize(const FunctionCallbackInfo<Value>& args) {
   else
     err = uv_send_buffer_size(handle, &size);
 
-  if (err != 0)
-    return env->ThrowUVException(err, uv_func_name);
+  if (err != 0) {
+    env->CollectUVExceptionInfo(args[2], err, uv_func_name);
+    return args.GetReturnValue().SetUndefined();
+  }
 
   args.GetReturnValue().Set(size);
 }
@@ -349,8 +347,7 @@ void UDPWrap::DoSend(const FunctionCallbackInfo<Value>& args, int family) {
 
   SendWrap* req_wrap;
   {
-    AsyncHooks::DefaultTriggerAsyncIdScope trigger_scope(
-      env, wrap->get_async_id());
+    AsyncHooks::DefaultTriggerAsyncIdScope trigger_scope(wrap);
     req_wrap = new SendWrap(env, req_wrap_obj, have_callback);
   }
   size_t msg_size = 0;
@@ -385,15 +382,14 @@ void UDPWrap::DoSend(const FunctionCallbackInfo<Value>& args, int family) {
   }
 
   if (err == 0) {
-    err = uv_udp_send(req_wrap->req(),
-                      &wrap->handle_,
-                      *bufs,
-                      count,
-                      reinterpret_cast<const sockaddr*>(&addr),
-                      OnSend);
+    err = req_wrap->Dispatch(uv_udp_send,
+                             &wrap->handle_,
+                             *bufs,
+                             count,
+                             reinterpret_cast<const sockaddr*>(&addr),
+                             OnSend);
   }
 
-  req_wrap->Dispatched();
   if (err)
     delete req_wrap;
 
@@ -501,8 +497,7 @@ Local<Object> UDPWrap::Instantiate(Environment* env,
                                    AsyncWrap* parent,
                                    UDPWrap::SocketType type) {
   EscapableHandleScope scope(env->isolate());
-  AsyncHooks::DefaultTriggerAsyncIdScope trigger_scope(
-    env, parent->get_async_id());
+  AsyncHooks::DefaultTriggerAsyncIdScope trigger_scope(parent);
 
   // If this assert fires then Initialize hasn't been called yet.
   CHECK_EQ(env->udp_constructor_function().IsEmpty(), false);

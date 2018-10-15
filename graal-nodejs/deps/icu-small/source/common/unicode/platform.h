@@ -197,20 +197,6 @@
 #endif
 
 /**
- * \def UPRV_INCOMPLETE_CPP11_SUPPORT
- * This switch turns off ICU 60 NumberFormatter code.
- * By default, this switch is enabled on AIX and z/OS,
- * which have poor C++11 support.
- *
- * NOTE: This switch is intended to be temporary; see #13393.
- *
- * @internal
- */
-#ifndef UPRV_INCOMPLETE_CPP11_SUPPORT
-#   define UPRV_INCOMPLETE_CPP11_SUPPORT (U_PLATFORM == U_PF_AIX || U_PLATFORM == U_PF_OS390 || U_PLATFORM == U_PF_SOLARIS )
-#endif
-
-/**
  * \def CYGWINMSVC
  * Defined if this is Windows with Cygwin, but using MSVC rather than gcc.
  * Otherwise undefined.
@@ -482,9 +468,9 @@
     /* Otherwise use the predefined value. */
 #elif !defined(__cplusplus)
 #   define U_CPLUSPLUS_VERSION 0
-#elif __cplusplus >= 201402L
+#elif __cplusplus >= 201402L || (defined(_MSVC_LANG) && _MSVC_LANG >= 201402L)
 #   define U_CPLUSPLUS_VERSION 14
-#elif __cplusplus >= 201103L
+#elif __cplusplus >= 201103L || (defined(_MSVC_LANG) && _MSVC_LANG >= 201103L)
 #   define U_CPLUSPLUS_VERSION 11
 #else
     // C++98 or C++03
@@ -631,7 +617,7 @@ namespace std {
  */
 #ifdef U_CHARSET_IS_UTF8
     /* Use the predefined value. */
-#elif U_PLATFORM == U_PF_ANDROID || U_PLATFORM_IS_DARWIN_BASED
+#elif U_PLATFORM_IS_LINUX_BASED || U_PLATFORM_IS_DARWIN_BASED
 #   define U_CHARSET_IS_UTF8 1
 #else
 #   define U_CHARSET_IS_UTF8 0
@@ -749,8 +735,10 @@ namespace std {
 #else
     /*
      * Notes:
-     * Visual Studio 10 (_MSC_VER>=1600) defines char16_t but
-     * does not support u"abc" string literals.
+     * Visual Studio 2010 (_MSC_VER==1600) defines char16_t as a typedef
+     * and does not support u"abc" string literals.
+     * Visual Studio 2015 (_MSC_VER>=1900) and above adds support for
+     * both char16_t and u"abc" string literals.
      * gcc 4.4 defines the __CHAR16_TYPE__ macro to a usable type but
      * does not support u"abc" string literals.
      * C++11 and C11 require support for UTF-16 literals

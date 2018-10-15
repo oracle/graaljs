@@ -8,34 +8,69 @@ const h2 = require('http2');
 
 const server = h2.createServer();
 server.on('stream', (stream) => {
+  stream.on('close', common.mustCall());
   stream.respond();
   stream.end('ok');
 });
 
-server.listen(0);
-
-server.on('listening', common.mustCall(() => {
-
+server.listen(0, common.mustCall(() => {
   const client = h2.connect(`http://localhost:${server.address().port}`);
+  const req = client.request();
+  const closeCode = 1;
 
-  const req = client.request({ ':path': '/' });
-  req.rstStream(0);
+  assert.throws(
+    () => req.close(2 ** 32),
+    {
+      name: 'RangeError [ERR_OUT_OF_RANGE]',
+      code: 'ERR_OUT_OF_RANGE',
+      message: 'The value of "code" is out of range. It must be ' +
+               '>= 0 && <= 4294967295. Received 4294967296'
+    }
+  );
+  assert.strictEqual(req.closed, false);
 
-  // make sure that destroy is called
+  [true, 1, {}, [], null, 'test'].forEach((notFunction) => {
+    common.expectsError(
+      () => req.close(closeCode, notFunction),
+      {
+        type: TypeError,
+        code: 'ERR_INVALID_CALLBACK',
+        message: 'Callback must be a function'
+      }
+    );
+    assert.strictEqual(req.closed, false);
+  });
+
+  req.close(closeCode, common.mustCall());
+  assert.strictEqual(req.closed, true);
+
+  // Make sure that destroy is called.
   req._destroy = common.mustCall(req._destroy.bind(req));
 
-  // second call doesn't do anything
-  assert.doesNotThrow(() => req.rstStream(8));
+  // Second call doesn't do anything.
+  req.close(closeCode + 1);
 
-  req.on('close', common.mustCall((code) => {
+  req.on('close', common.mustCall(() => {
     assert.strictEqual(req.destroyed, true);
-    assert.strictEqual(code, 0);
+    assert.strictEqual(req.rstCode, closeCode);
     server.close();
-    client.destroy();
+    client.close();
   }));
 
+  req.on('error', common.expectsError({
+    code: 'ERR_HTTP2_STREAM_ERROR',
+    type: Error,
+    message: 'Stream closed with error code NGHTTP2_PROTOCOL_ERROR'
+  }));
+
+  // The `response` event should not fire as the server should receive the
+  // RST_STREAM frame before it ever has a chance to reply.
   req.on('response', common.mustNotCall());
-  req.resume();
+
+  // The `end` event should still fire as we close the readable stream by
+  // pushing a `null` chunk.
   req.on('end', common.mustCall());
+
+  req.resume();
   req.end();
 }));

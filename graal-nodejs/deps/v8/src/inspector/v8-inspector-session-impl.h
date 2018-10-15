@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef V8_INSPECTOR_V8INSPECTORSESSIONIMPL_H_
-#define V8_INSPECTOR_V8INSPECTORSESSIONIMPL_H_
+#ifndef V8_INSPECTOR_V8_INSPECTOR_SESSION_IMPL_H_
+#define V8_INSPECTOR_V8_INSPECTOR_SESSION_IMPL_H_
 
 #include <vector>
 
@@ -85,8 +85,8 @@ class V8InspectorSessionImpl : public V8InspectorSession,
                     v8::Local<v8::Value>*, v8::Local<v8::Context>*,
                     std::unique_ptr<StringBuffer>* objectGroup) override;
   std::unique_ptr<protocol::Runtime::API::RemoteObject> wrapObject(
-      v8::Local<v8::Context>, v8::Local<v8::Value>,
-      const StringView& groupName) override;
+      v8::Local<v8::Context>, v8::Local<v8::Value>, const StringView& groupName,
+      bool generatePreview) override;
 
   V8InspectorSession::Inspectable* inspectedObject(unsigned num);
   static const unsigned kInspectedObjectBufferSize = 5;
@@ -126,4 +126,4 @@ class V8InspectorSessionImpl : public V8InspectorSession,
 
 }  // namespace v8_inspector
 
-#endif  // V8_INSPECTOR_V8INSPECTORSESSIONIMPL_H_
+#endif  // V8_INSPECTOR_V8_INSPECTOR_SESSION_IMPL_H_

@@ -65,8 +65,6 @@ class TestReader extends R {
   }
 }
 
-/////
-
 class TestWriter extends EE {
   constructor() {
     super();
@@ -214,10 +212,10 @@ class TestWriter extends EE {
                    'xxxxx' ];
 
   w[0].on('end', common.mustCall(function(received) {
-    assert.deepStrictEqual(received, expect, 'first');
+    assert.deepStrictEqual(received, expect);
   }));
   w[1].on('end', common.mustCall(function(received) {
-    assert.deepStrictEqual(received, expect, 'second');
+    assert.deepStrictEqual(received, expect);
   }));
 
   r.pipe(w[0]);

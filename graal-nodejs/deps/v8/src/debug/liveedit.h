@@ -76,9 +76,8 @@ class LiveEdit : AllStatic {
  public:
   static void InitializeThreadLocal(Debug* debug);
 
-  MUST_USE_RESULT static MaybeHandle<JSArray> GatherCompileInfo(
-      Handle<Script> script,
-      Handle<String> source);
+  V8_WARN_UNUSED_RESULT static MaybeHandle<JSArray> GatherCompileInfo(
+      Handle<Script> script, Handle<String> source);
 
   static void ReplaceFunctionCode(Handle<JSArray> new_compile_info_array,
                                   Handle<JSArray> shared_info_array);
@@ -123,7 +122,7 @@ class LiveEdit : AllStatic {
       bool do_drop);
 
   // Restarts the call frame and completely drops all frames above it.
-  // Return error message or NULL.
+  // Return error message or nullptr.
   static const char* RestartFrame(JavaScriptFrame* frame);
 
   // A copy of this is in liveedit.js.
@@ -213,7 +212,8 @@ class JSArrayBasedStruct {
 
  protected:
   void SetField(int field_position, Handle<Object> value) {
-    Object::SetElement(isolate(), array_, field_position, value, SLOPPY)
+    Object::SetElement(isolate(), array_, field_position, value,
+                       LanguageMode::kSloppy)
         .Assert();
   }
 
@@ -320,4 +320,4 @@ class SharedInfoWrapper : public JSArrayBasedStruct<SharedInfoWrapper> {
 }  // namespace internal
 }  // namespace v8
 
-#endif /* V8_DEBUG_LIVEEDIT_H_ */
+#endif  // V8_DEBUG_LIVEEDIT_H_

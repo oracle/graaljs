@@ -42,6 +42,7 @@
 #include "graal_array.h"
 #include "graal_array_buffer.h"
 #include "graal_array_buffer_view.h"
+#include "graal_big_int.h"
 #include "graal_boolean.h"
 #include "graal_context.h"
 #include "graal_date.h"
@@ -49,6 +50,7 @@
 #include "graal_function.h"
 #include "graal_function_template.h"
 #include "graal_isolate.h"
+#include "graal_map.h"
 #include "graal_message.h"
 #include "graal_module.h"
 #include "graal_number.h"
@@ -60,16 +62,15 @@
 #include "graal_stack_frame.h"
 #include "graal_stack_trace.h"
 #include "graal_string.h"
+#include "graal_symbol.h"
 #include "graal_unbound_script.h"
 #include "graal_value.h"
-#include "include/v8.h"
-#include "include/v8-debug.h"
-#include "include/v8-profiler.h"
-#include "include/libplatform/v8-tracing.h"
+#include "v8.h"
+#include "v8-profiler.h"
+#include "libplatform/v8-tracing.h"
 #include "src/base/once.h"
 #include "src/base/platform/mutex.h"
 #include "stdlib.h"
-#include "graal_symbol.h"
 #include <string.h>
 #include <string>
 
@@ -102,7 +103,7 @@ namespace v8 {
     }
 
     void ArrayBuffer::Neuter() {
-        TRACE
+        reinterpret_cast<GraalArrayBuffer*> (this)->Neuter();
     }
 
     Local<ArrayBuffer> ArrayBuffer::New(Isolate* isolate, size_t byte_length) {
@@ -130,10 +131,6 @@ namespace v8 {
             length = 0;
         }
         return GraalArray::New(isolate, length);
-    }
-
-    void base::CallOnceImpl(OnceType* once, PointerArgFunction init_func, void* arg) {
-        TRACE
     }
 
     void Context::Enter() {
@@ -164,7 +161,8 @@ namespace v8 {
             Isolate* isolate,
             ExtensionConfiguration* ext,
             MaybeLocal<ObjectTemplate> templ,
-            MaybeLocal<Value> value) {
+            MaybeLocal<Value> value,
+            DeserializeInternalFieldsCallback internal_fields_deserializer) {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
         jobject java_template;
         if (templ.IsEmpty()) {
@@ -201,19 +199,6 @@ namespace v8 {
 
     void CpuProfiler::SetIdle(bool) {
         TRACE
-    }
-
-    void Debug::DebugBreak(Isolate*) {
-        TRACE
-    }
-
-    void Debug::SendCommand(Isolate*, unsigned short const*, int, Debug::ClientData*) {
-        TRACE
-    }
-
-    bool Debug::SetDebugEventListener(Isolate* isolate, Debug::EventCallback that, Local<Value> data) {
-        TRACE
-        return false;
     }
 
     EscapableHandleScope::EscapableHandleScope(Isolate* isolate) {
@@ -308,10 +293,10 @@ namespace v8 {
     }
 
     Local<FunctionTemplate> FunctionTemplate::New(
-            Isolate* isolate, void (*callback)(FunctionCallbackInfo<Value> const&),
+            Isolate* isolate, FunctionCallback callback,
             Local<Value> data, Local<Signature> signature, int length,
-            ConstructorBehavior behavior) {
-        return GraalFunctionTemplate::New(isolate, callback, data, signature, length);
+            ConstructorBehavior behavior, SideEffectType side_effect_type) {
+        return GraalFunctionTemplate::New(isolate, callback, data, signature, length, behavior);
     }
 
     Local<ObjectTemplate> FunctionTemplate::PrototypeTemplate() {
@@ -326,7 +311,7 @@ namespace v8 {
         TRACE
     }
 
-    void FunctionTemplate::SetCallHandler(FunctionCallback callback, Local<Value> data) {
+    void FunctionTemplate::SetCallHandler(FunctionCallback callback, Local<Value> data, SideEffectType side_effect_type) {
         reinterpret_cast<GraalFunctionTemplate*> (this)->SetCallHandler(callback, data);
     }
 
@@ -387,11 +372,11 @@ namespace v8 {
     }
 
     void Isolate::Enter() {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->Enter();
     }
 
     void Isolate::Exit() {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->Exit();
     }
 
     CpuProfiler* Isolate::GetCpuProfiler() {
@@ -546,32 +531,16 @@ namespace v8 {
         return reinterpret_cast<GraalObject*> (this)->CreationContext();
     }
 
-    Maybe<bool> Object::Delete(Local<Context> context, Local<Value> key) {
-        return Just(Delete(key));
-    }
-
     bool Object::Delete(Local<Value> key) {
         return reinterpret_cast<GraalObject*> (this)->Delete(key);
     }
 
-    bool Object::Delete(uint32_t index) {
-        return reinterpret_cast<GraalObject*> (this)->Delete(index);
+    Maybe<bool> Object::Delete(Local<Context> context, Local<Value> key) {
+        return Just(reinterpret_cast<GraalObject*> (this)->Delete(key));
     }
 
     Maybe<bool> Object::Delete(Local<Context> context, uint32_t index) {
-        return Just(Delete(index));
-    }
-
-    Maybe<bool> Object::ForceSet(Local<Context> context, Local<Value> key, Local<Value> value, PropertyAttribute attribs) {
-        return Just(ForceSet(key, value, attribs));
-    }
-
-    bool Object::ForceSet(
-            Local<Value> key,
-            Local<Value> value,
-            PropertyAttribute attribs
-            ) {
-        return reinterpret_cast<GraalObject*> (this)->ForceSet(key, value, attribs);
+        return Just(reinterpret_cast<GraalObject*> (this)->Delete(index));
     }
 
     Local<String> Object::GetConstructorName() {
@@ -607,10 +576,6 @@ namespace v8 {
         return reinterpret_cast<GraalObject*> (this)->GetRealNamedPropertyAttributes(context, key);
     }
 
-    Local<Value> Object::GetRealNamedProperty(Local<String> key) {
-        return reinterpret_cast<GraalObject*> (this)->GetRealNamedProperty(GetIsolate()->GetCurrentContext(), key);
-    }
-
     MaybeLocal<Value> Object::GetRealNamedProperty(Local<Context> context, Local<Name> key) {
         return reinterpret_cast<GraalObject*> (this)->GetRealNamedProperty(context, key);
     }
@@ -639,16 +604,12 @@ namespace v8 {
         return reinterpret_cast<GraalObject*> (this)->Get(key);
     }
 
-    bool Object::HasOwnProperty(Local<String> key) {
-        return reinterpret_cast<GraalObject*> (this)->HasOwnProperty(key);
-    }
-
     Maybe<bool> Object::HasOwnProperty(Local<Context> context, Local<Name> key) {
         return Just(reinterpret_cast<GraalObject*> (this)->HasOwnProperty(key));
     }
 
     bool Object::HasRealIndexedProperty(uint32_t index) {
-        return HasOwnProperty(Integer::NewFromUnsigned(GetIsolate(), index)->ToString());
+        return HasOwnProperty(GetIsolate()->GetCurrentContext(), Integer::NewFromUnsigned(GetIsolate(), index)->ToString()).FromJust();
     }
 
     bool Object::Has(Local<Value> key) {
@@ -671,23 +632,20 @@ namespace v8 {
         return GraalObject::New(isolate);
     }
 
-    bool Object::SetAccessor(
-            Local<String> name,
-            void (*getter)(Local<String>, PropertyCallbackInfo<Value> const&),
-            void (*setter)(Local<String>, Local<Value>, PropertyCallbackInfo<void> const&),
-            Local<Value> data,
+    Maybe<bool> Object::SetAccessor(
+            Local<Context> context,
+            Local<Name> name,
+            AccessorNameGetterCallback getter,
+            AccessorNameSetterCallback setter,
+            MaybeLocal<Value> data,
             AccessControl settings,
-            PropertyAttribute attributes
-            ) {
+            PropertyAttribute attributes,
+            SideEffectType getter_side_effect_type) {
         return reinterpret_cast<GraalObject*> (this)->SetAccessor(name, getter, setter, data, settings, attributes);
     }
 
     void Object::SetAlignedPointerInInternalField(int index, void* value) {
         reinterpret_cast<GraalObject*> (this)->SetAlignedPointerInInternalField(index, value);
-    }
-
-    bool Object::SetPrototype(Local<Value> prototype) {
-        return reinterpret_cast<GraalObject*> (this)->SetPrototype(prototype);
     }
 
     Maybe<bool> Object::SetPrototype(Local<Context> context, Local<Value> prototype) {
@@ -725,10 +683,6 @@ namespace v8 {
 
     MaybeLocal<Object> ObjectTemplate::NewInstance(Local<Context> context) {
         return reinterpret_cast<GraalObjectTemplate*> (this)->NewInstance(context);
-    }
-
-    Local<ObjectTemplate> ObjectTemplate::New() {
-        return New(Isolate::GetCurrent());
     }
 
     Local<ObjectTemplate> ObjectTemplate::New(Isolate* isolate, Local<FunctionTemplate> constructor) {
@@ -797,21 +751,14 @@ namespace v8 {
         }
     }
 
-    Local<UnboundScript> ScriptCompiler::CompileUnbound(Isolate* isolate, ScriptCompiler::Source* source, ScriptCompiler::CompileOptions options) {
+    MaybeLocal<Script> ScriptCompiler::Compile(
+            Local<Context> context,
+            Source* source,
+            CompileOptions options,
+            NoCacheReason no_cache_reason) {
+        Isolate* isolate = context->GetIsolate();
         Local<Value> resource_name = source->resource_name;
         Local<String> file_name = resource_name.IsEmpty() ? resource_name.As<String>() : resource_name->ToString(isolate);
-        return GraalUnboundScript::Compile(source->source_string, file_name);
-    }
-
-    Local<Script> ScriptCompiler::Compile(Isolate* isolate, Source* source, CompileOptions options) {
-        Local<Value> resource_name = source->resource_name;
-        Local<String> file_name = resource_name.IsEmpty() ? resource_name.As<String>() : resource_name->ToString(isolate);
-        return GraalScript::Compile(source->source_string, file_name);
-    }
-
-    MaybeLocal<Script> ScriptCompiler::Compile(Local<Context> context, Source* source, CompileOptions options) {
-        Local<Value> resource_name = source->resource_name;
-        Local<String> file_name = resource_name.IsEmpty() ? resource_name.As<String>() : resource_name->ToString(context->GetIsolate());
         return GraalScript::Compile(source->source_string, file_name);
     }
 
@@ -874,25 +821,12 @@ namespace v8 {
         return GraalString::NewExternal(isolate, resource);
     }
 
-    Local<String> String::NewExternal(Isolate* isolate, ExternalStringResource* resource) {
-        return GraalString::NewExternal(isolate, resource);
-    }
-
     MaybeLocal<String> String::NewFromOneByte(
             Isolate* isolate,
             unsigned char const* data,
             v8::NewStringType type,
             int length) {
         return GraalString::NewFromOneByte(isolate, data, (String::NewStringType)type, length);
-    }
-
-    Local<String> String::NewFromOneByte(
-            Isolate* isolate,
-            unsigned char const* data,
-            String::NewStringType type,
-            int length
-            ) {
-        return GraalString::NewFromOneByte(isolate, data, type, length);
     }
 
     MaybeLocal<String> String::NewFromTwoByte(
@@ -928,14 +862,17 @@ namespace v8 {
         }
     }
 
-    String::Utf8Value::Utf8Value(Local<v8::Value> obj) {
+    String::Utf8Value::Utf8Value(Local<v8::Value> obj) : Utf8Value(Isolate::GetCurrent(), obj) {
+    }
+
+    String::Utf8Value::Utf8Value(Isolate* isolate, Local<v8::Value> obj) {
         JNIEnv* env;
         if (obj.IsEmpty()) {
             java_string_ = nullptr;
             env = nullptr;
         } else {
             GraalValue* graal_obj = reinterpret_cast<GraalValue*> (*obj);
-            GraalIsolate* graal_isolate = graal_obj->Isolate();
+            GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
             env = graal_isolate->GetJNIEnv();
             if (graal_obj->IsString()) {
                 java_string_ = env->NewLocalRef(graal_obj->GetJavaObject());
@@ -970,9 +907,12 @@ namespace v8 {
         }
     }
 
-    String::Value::Value(Local<v8::Value> obj) {
+    String::Value::Value(Local<v8::Value> obj) : Value(Isolate::GetCurrent(), obj) {
+    }
+
+    String::Value::Value(Isolate* isolate, Local<v8::Value> obj) {
         GraalValue* graal_obj = reinterpret_cast<GraalValue*> (*obj);
-        GraalIsolate* graal_isolate = graal_obj->Isolate();
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
         JNIEnv* env = graal_isolate->GetJNIEnv();
         if (graal_obj->IsString()) {
             java_string_ = env->NewLocalRef(graal_obj->GetJavaObject());
@@ -987,6 +927,15 @@ namespace v8 {
 
     void Template::Set(Local<Name> name, Local<Data> value, PropertyAttribute attributes) {
         reinterpret_cast<GraalTemplate*> (this)->Set(name, value, attributes);
+    }
+
+    void Template::SetAccessorProperty(
+            Local<Name> name,
+            Local<FunctionTemplate> getter,
+            Local<FunctionTemplate> setter,
+            PropertyAttribute attributes,
+            AccessControl settings) {
+        reinterpret_cast<GraalTemplate*> (this)->SetAccessorProperty(name, getter, setter, attributes);
     }
 
     Local<Value> TryCatch::ReThrow() {
@@ -1026,9 +975,6 @@ namespace v8 {
         }
     }
 
-    TryCatch::TryCatch() : TryCatch(reinterpret_cast<v8::Isolate*> (CurrentIsolate())) {
-    }
-
     TryCatch::TryCatch(Isolate* isolate) {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
         isolate_ = reinterpret_cast<v8::internal::Isolate*> (isolate);
@@ -1057,6 +1003,8 @@ namespace v8 {
     ArrayBufferViewNew(Float32Array, kFloat32Array, float32_array_new)
     ArrayBufferViewNew(Float64Array, kFloat64Array, float64_array_new)
     ArrayBufferViewNew(DataView, kDataView, data_view_new)
+    ArrayBufferViewNew(BigInt64Array, kBigInt64Array, big_int64_array_new)
+    ArrayBufferViewNew(BigUint64Array, kBigUint64Array, big_uint64_array_new)
 
     size_t TypedArray::Length() {
         GraalArrayBufferView* graal_typed_array = reinterpret_cast<GraalArrayBufferView*> (this);
@@ -1111,7 +1059,7 @@ namespace v8 {
 
     const char* V8::GetVersion() {
         TRACE
-        return "5.0.0";
+        return "6.7.0.0-node.0";
     }
 
     internal::Object** V8::GlobalizeReference(internal::Isolate* isolate, internal::Object** obj) {
@@ -1161,14 +1109,6 @@ namespace v8 {
 
     void V8::SetEntropySource(EntropySource source) {
         TRACE
-    }
-
-    void V8::AddGCPrologueCallback(GCCallback callback, GCType gc_type_filter) {
-        CurrentIsolate()->AddGCPrologueCallback(GraalIsolate::kV8GCCallbackType, (void*) callback);
-    }
-
-    void V8::AddGCEpilogueCallback(GCCallback callback, GCType gc_type_filter) {
-        CurrentIsolate()->AddGCEpilogueCallback(GraalIsolate::kV8GCCallbackType, (void*) callback);
     }
 
     bool EqualOptions(char* name, const char* normalized_name) {
@@ -1356,7 +1296,7 @@ namespace v8 {
     }
 
     Maybe<int64_t> Value::IntegerValue(Local<Context> context) const {
-        return Just<int64_t>(reinterpret_cast<const GraalValue*> (this)->IntegerValue());
+        return reinterpret_cast<const GraalValue*> (this)->IntegerValue(context);
     }
 
     bool Value::BooleanValue() const {
@@ -1380,14 +1320,6 @@ namespace v8 {
         return external->Value();
     }
 
-    Local<Object> Function::NewInstance() const {
-        return NewInstance(0, nullptr);
-    }
-
-    Local<Object> Function::NewInstance(int argc, Local<Value>* argv) const {
-        return reinterpret_cast<const GraalFunction*> (this)->NewInstance(argc, argv);
-    }
-
     MaybeLocal<Object> Function::NewInstance(Local<Context> context, int argc, Local<Value> argv[]) const {
         return reinterpret_cast<const GraalFunction*> (this)->NewInstance(argc, argv);
     }
@@ -1396,7 +1328,13 @@ namespace v8 {
         return FunctionTemplate::New(isolate, callback, data, Local<Signature>(), length)->GetFunction();
     }
 
-    MaybeLocal<Function> Function::New(Local<Context> context, FunctionCallback callback, Local<Value> data, int length, ConstructorBehavior behavior) {
+    MaybeLocal<Function> Function::New(
+            Local<Context> context,
+            FunctionCallback callback,
+            Local<Value> data,
+            int length,
+            ConstructorBehavior behavior,
+            SideEffectType side_effect_type) {
         return FunctionTemplate::New(context->GetIsolate(), callback, data, Local<Signature>(), length)->GetFunction();
     }
 
@@ -1420,12 +1358,20 @@ namespace v8 {
         return reinterpret_cast<const GraalMessage*> (this)->GetLineNumber();
     }
 
+    Maybe<int> Message::GetLineNumber(Local<Context> context) const {
+        return Just(GetLineNumber());
+    }
+
     Local<Value> Message::GetScriptResourceName() const {
         return reinterpret_cast<const GraalMessage*> (this)->GetScriptResourceName();
     }
 
     Local<String> Message::GetSourceLine() const {
         return reinterpret_cast<const GraalMessage*> (this)->GetSourceLine();
+    }
+
+    MaybeLocal<String> Message::GetSourceLine(Local<Context> context) const {
+        return GetSourceLine();
     }
 
     int Message::GetStartColumn() const {
@@ -1641,6 +1587,14 @@ namespace v8 {
         return reinterpret_cast<const GraalValue*> (this)->IsFloat64Array();
     }
 
+    bool Value::IsBigInt64Array() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsBigInt64Array();
+    }
+
+    bool Value::IsBigUint64Array() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsBigUint64Array();
+    }
+
     bool Value::StrictEquals(Local<Value> that) const {
         return reinterpret_cast<const GraalValue*> (this)->StrictEquals(that);
     }
@@ -1675,10 +1629,6 @@ namespace v8 {
         return graal_value->ToInt32(isolate);
     }
 
-    Local<Uint32> Value::ToUint32(v8::Isolate* isolate) const {
-        return reinterpret_cast<const GraalValue*> (this)->ToUint32(isolate);
-    }
-
     MaybeLocal<Uint32> Value::ToUint32(Local<Context> context) const {
         const GraalValue* graal_value = reinterpret_cast<const GraalValue*> (this);
         Isolate* isolate = reinterpret_cast<Isolate*> (graal_value->Isolate());
@@ -1703,10 +1653,6 @@ namespace v8 {
         const GraalValue* graal_value = reinterpret_cast<const GraalValue*> (this);
         Isolate* isolate = reinterpret_cast<Isolate*> (graal_value->Isolate());
         return graal_value->ToNumber(isolate);
-    }
-
-    Local<Uint32> Value::ToArrayIndex() const {
-        return reinterpret_cast<const GraalValue*> (this)->ToArrayIndex();
     }
 
     MaybeLocal<Uint32> Value::ToArrayIndex(Local<Context> context) const {
@@ -1817,10 +1763,10 @@ namespace v8 {
         return reinterpret_cast<const GraalMessage*> (this)->GetStackTrace();
     }
 
-    Local<Message> Exception::CreateMessage(Local<Value> exception) {
+    Local<Message> Exception::CreateMessage(Isolate* isolate, Local<Value> exception) {
         GraalValue* graal_exception = reinterpret_cast<GraalValue*> (*exception);
         jobject exception_object = graal_exception->GetJavaObject();
-        GraalIsolate* graal_isolate = graal_exception->Isolate();
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
         JNI_CALL(jobject, java_exception, graal_isolate, GraalAccessMethod::exception_create_message, Object, exception_object);
         return reinterpret_cast<v8::Message*> (new GraalMessage(graal_isolate, java_exception));
     }
@@ -1857,44 +1803,8 @@ namespace v8 {
         return Just(GetEndColumn());
     }
 
-    void Debug::ProcessDebugMessages(Isolate* isolate) {
-        TRACE
-    }
-
-    Maybe<bool> Object::SetAccessor(
-            Local<Context> context,
-            Local<Name> name,
-            AccessorNameGetterCallback getter,
-            AccessorNameSetterCallback setter,
-            MaybeLocal<Value> data,
-            AccessControl settings,
-            PropertyAttribute attribute) {
-        return v8::Just(reinterpret_cast<GraalObject*> (this)->SetAccessor(
-                reinterpret_cast<String*> (*name),
-                reinterpret_cast<AccessorGetterCallback> (getter),
-                reinterpret_cast<AccessorSetterCallback> (setter),
-                data.ToLocalChecked(),
-                settings,
-                attribute));
-    }
-
-    bool Object::SetAccessor(Local<Name> name,
-            AccessorNameGetterCallback getter,
-            AccessorNameSetterCallback setter,
-            Local<Value> data,
-            AccessControl settings,
-            PropertyAttribute attribute) {
-        return reinterpret_cast<GraalObject*> (this)->SetAccessor(
-                reinterpret_cast<String*> (*name),
-                reinterpret_cast<AccessorGetterCallback> (getter),
-                reinterpret_cast<AccessorSetterCallback> (setter),
-                data,
-                settings,
-                attribute);
-    }
-
     Maybe<bool> Object::DefineOwnProperty(Local<Context> context, Local<Name> key, Local<Value> value, PropertyAttribute attributes) {
-        return ForceSet(context, key, value, attributes);
+        return Just(reinterpret_cast<GraalObject*> (this)->ForceSet(key, value, attributes));
     }
 
     MaybeLocal<Script> Script::Compile(Local<Context> context, Local<String> source, ScriptOrigin* origin) {
@@ -1909,14 +1819,14 @@ namespace v8 {
         TRACE
     }
 
-    Local<Context> Debug::GetDebugContext(Isolate* isolate) {
-        return reinterpret_cast<GraalIsolate*> (isolate)->GetDebugContext();
-    }
-
     ScriptCompiler::CachedData::CachedData(const uint8_t* data, int length, BufferPolicy buffer_policy): data(data), length(length), rejected(false), buffer_policy(buffer_policy) {
     }
 
-    MaybeLocal<UnboundScript> ScriptCompiler::CompileUnboundScript(Isolate* isolate, Source* source, CompileOptions options) {
+    MaybeLocal<UnboundScript> ScriptCompiler::CompileUnboundScript(
+            Isolate* isolate,
+            Source* source,
+            CompileOptions options,
+            NoCacheReason no_cache_reason) {
         if (options == ScriptCompiler::kProduceCodeCache) {
             String::Utf8Value text(source->source_string);
             uint8_t* copy = new uint8_t[text.length()];
@@ -1929,7 +1839,9 @@ namespace v8 {
                 data->rejected = true;
             }
         }
-        return CompileUnbound(isolate, source, options);
+        Local<Value> resource_name = source->resource_name;
+        Local<String> file_name = resource_name.IsEmpty() ? resource_name.As<String>() : resource_name->ToString(isolate);
+        return GraalUnboundScript::Compile(source->source_string, file_name);
     }
 
     bool Value::IsDataView() const {
@@ -1945,7 +1857,9 @@ namespace v8 {
                 IsUint32Array() ||
                 IsInt32Array() ||
                 IsFloat32Array() ||
-                IsFloat64Array();
+                IsFloat64Array() ||
+                IsBigInt64Array() ||
+                IsBigUint64Array();
     }
 
     bool Value::IsMap() const {
@@ -1960,7 +1874,7 @@ namespace v8 {
         return reinterpret_cast<const GraalValue*> (this)->IsProxy();
     }
 
-    Local<Object> Proxy::GetTarget() {
+    Local<Value> Proxy::GetTarget() {
         return reinterpret_cast<GraalProxy*> (this)->GetTarget();
     }
 
@@ -1980,7 +1894,8 @@ namespace v8 {
             "old_space",
             "code_space",
             "map_space",
-            "large_object_space"
+            "large_object_space",
+            "read_only_space"
         };
         space_statistics->space_name_ = names[index];
         space_statistics->space_size_ = 0;
@@ -1991,23 +1906,19 @@ namespace v8 {
     }
 
     size_t Isolate::NumberOfHeapSpaces() {
-        return 5;
+        return 6;
     }
 
     Local<AccessorSignature> AccessorSignature::New(Isolate* isolate, Local<FunctionTemplate> receiver) {
         return reinterpret_cast<AccessorSignature*> (*receiver);
     }
 
-    void Debug::SetMessageHandler(Isolate* isolate, MessageHandler handler) {
-        TRACE
-    }
-
     MaybeLocal<String> String::NewExternalOneByte(Isolate* isolate, ExternalOneByteStringResource* resource) {
-        return String::NewExternal(isolate, resource);
+        return GraalString::NewExternal(isolate, resource);
     }
 
     MaybeLocal<String> String::NewExternalTwoByte(Isolate* isolate, ExternalStringResource* resource) {
-        return String::NewExternal(isolate, resource);
+        return GraalString::NewExternal(isolate, resource);
     }
 
     Local<Value> BooleanObject::New(Isolate* isolate, bool value) {
@@ -2117,7 +2028,7 @@ namespace v8 {
         return Parse(context->GetIsolate(), json_string);
     }
 
-    MaybeLocal<String> JSON::Stringify(Local<Context> context, Local<Object> json_object, Local<String> gap) {
+    MaybeLocal<String> JSON::Stringify(Local<Context> context, Local<Value> json_object, Local<String> gap) {
         GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
         GraalIsolate* graal_isolate = graal_context->Isolate();
         jobject java_context = graal_context->GetJavaObject();
@@ -2153,8 +2064,7 @@ namespace v8 {
     }
 
     bool Value::IsAsyncFunction() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalValue*> (this)->IsAsyncFunction();
     }
 
     Maybe<bool> Value::InstanceOf(Local<Context> context, Local<Object> object) {
@@ -2172,6 +2082,10 @@ namespace v8 {
 
     Local<Symbol> Symbol::New(Isolate* isolate, Local<String> name) {
         return GraalSymbol::New(isolate, name.IsEmpty() ? String::Empty(isolate) : name);
+    }
+
+    Local<Value> Symbol::Name() const {
+        return reinterpret_cast<const GraalSymbol*> (this)->Name();
     }
 
     Local<Private> Private::New(Isolate* isolate, Local<String> name) {
@@ -2278,16 +2192,7 @@ namespace v8 {
         return ScriptOrigin(Local<Value>(), zero, zero);
     }
 
-    void ArrayBuffer::Allocator::SetProtection(void* data, size_t length, Protection protection) {
-        TRACE
-    }
-
-    void* ArrayBuffer::Allocator::Reserve(size_t length) {
-        TRACE
-        return nullptr;
-    }
-
-    void ArrayBuffer::Allocator::Free(void* data, size_t length, AllocationMode mode) {
+    void ArrayBuffer::Allocator::Free(void* data, size_t length) {
         TRACE
     }
 
@@ -2662,6 +2567,16 @@ namespace v8 {
         TRACE
     }
 
+    int64_t v8::platform::tracing::TracingController::CurrentTimestampMicroseconds() {
+        TRACE
+        return 0;
+    }
+
+    int64_t v8::platform::tracing::TracingController::CurrentCpuTimestampMicroseconds() {
+        TRACE
+        return 0;
+    }
+
     v8::platform::tracing::TracingController::TracingController() {
         TRACE
     }
@@ -2670,9 +2585,10 @@ namespace v8 {
         TRACE
     }
 
+    // Tracing is disabled
+    static uint8_t CategoryGroupEnabled = 0;
     const uint8_t* v8::platform::tracing::TracingController::GetCategoryGroupEnabled(const char* category_group) {
-        TRACE
-        return nullptr;
+        return &CategoryGroupEnabled;
     }
 
     uint64_t v8::platform::tracing::TracingController::AddTraceEvent(
@@ -2682,6 +2598,17 @@ namespace v8 {
             const uint64_t* arg_values,
             std::unique_ptr<v8::ConvertableToTraceFormat>* arg_convertables,
             unsigned int flags) {
+        TRACE
+        return 0;
+    }
+
+    uint64_t v8::platform::tracing::TracingController::AddTraceEventWithTimestamp(
+            char phase, const uint8_t* category_enabled_flag, const char* name,
+            const char* scope, uint64_t id, uint64_t bind_id, int32_t num_args,
+            const char** arg_names, const uint8_t* arg_types,
+            const uint64_t* arg_values,
+            std::unique_ptr<v8::ConvertableToTraceFormat>* arg_convertables,
+            unsigned int flags, int64_t timestamp) {
         TRACE
         return 0;
     }
@@ -2712,6 +2639,254 @@ namespace v8 {
         TRACE
     }
 
+    void Isolate::SetMicrotasksPolicy(MicrotasksPolicy policy) {
+        TRACE
+    }
+
+    void Isolate::SetAllowWasmCodeGenerationCallback(AllowWasmCodeGenerationCallback callback) {
+        TRACE
+    }
+
+    Local<Object> Context::GetExtrasBindingObject() {
+        TRACE
+        return Global();
+    }
+
+    void Isolate::DiscardThreadSpecificMetadata() {
+        TRACE
+    }
+
+    Isolate::DisallowJavascriptExecutionScope::DisallowJavascriptExecutionScope(Isolate* isolate, OnFailure on_failure) {
+        TRACE
+    }
+
+    Isolate::DisallowJavascriptExecutionScope::~DisallowJavascriptExecutionScope() {
+        TRACE
+    }
+
+    void Isolate::CheckMemoryPressure() {
+        TRACE
+    }
+
+    void HeapProfiler::RemoveBuildEmbedderGraphCallback(BuildEmbedderGraphCallback callback, void* data) {
+        TRACE
+    }
+
+    void HeapProfiler::AddBuildEmbedderGraphCallback(BuildEmbedderGraphCallback callback, void* data) {
+        TRACE
+    }
+
+    void Isolate::SetIdle(bool is_idle) {
+        TRACE
+    }
+
+    bool Value::SameValue(Local<Value> that) const {
+        TRACE
+        return false;
+    }
+
+    int Object::GetIdentityHash() {
+        TRACE
+        return 0;
+    }
+
+    int Name::GetIdentityHash() {
+        TRACE
+        return 0;
+    }
+
+    Local<Value> Module::GetException() const {
+        return reinterpret_cast<const GraalModule*> (this)->GetException();
+    }
+
+    void Isolate::SetHostImportModuleDynamicallyCallback(HostImportModuleDynamicallyCallback callback) {
+        TRACE
+    }
+
+    void Isolate::SetHostInitializeImportMetaObjectCallback(HostInitializeImportMetaObjectCallback callback) {
+        TRACE
+    }
+
+    Local<Value> ScriptOrModule::GetResourceName() {
+        TRACE
+        return Local<Value>();
+    }
+
+    Local<BigInt> BigInt::New(Isolate* isolate, int64_t value) {
+        return GraalBigInt::New(isolate, value);
+    }
+
+    Local<BigInt> BigInt::NewFromUnsigned(Isolate* isolate, uint64_t value) {
+        return GraalBigInt::NewFromUnsigned(isolate, value);
+    }
+
+    MaybeLocal<BigInt> BigInt::NewFromWords(Local<Context> context, int sign_bit, int word_count, const uint64_t* words) {
+        return GraalBigInt::NewFromWords(context, sign_bit, word_count, words);
+    }
+
+    uint64_t BigInt::Uint64Value(bool* lossless) const {
+        return reinterpret_cast<const GraalBigInt*> (this)->Uint64Value(lossless);
+    }
+
+    int64_t BigInt::Int64Value(bool* lossless) const {
+        return reinterpret_cast<const GraalBigInt*> (this)->Int64Value(lossless);
+    }
+
+    int BigInt::WordCount() const {
+        return reinterpret_cast<const GraalBigInt*> (this)->WordCount();
+    }
+
+    void BigInt::ToWordsArray(int* sign_bit, int* word_count, uint64_t* words) const {
+        return reinterpret_cast<const GraalBigInt*> (this)->ToWordsArray(sign_bit, word_count, words);
+    }
+
+    bool Value::IsBigInt() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsBigInt();
+    }
+
+    bool Value::IsGeneratorFunction() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsGeneratorFunction();
+    }
+
+    bool Value::IsGeneratorObject() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsGeneratorObject();
+    }
+
+    bool Value::IsModuleNamespaceObject() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsModuleNamespaceObject();
+    }
+
+    bool Value::IsWeakMap() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsWeakMap();
+    }
+
+    bool Value::IsWeakSet() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsWeakSet();
+    }
+
+    bool Value::IsNumberObject() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsNumberObject();
+    }
+
+    bool Value::IsStringObject() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsStringObject();
+    }
+
+    bool Value::IsSymbolObject() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsSymbolObject();
+    }
+
+    bool Value::IsBooleanObject() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsBooleanObject();
+    }
+
+    bool Value::IsBigIntObject() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsBigIntObject();
+    }
+
+    bool Value::IsArgumentsObject() const {
+        return reinterpret_cast<const GraalValue*> (this)->IsArgumentsObject();
+    }
+
+    bool Value::IsWebAssemblyCompiledModule() const {
+        return false;
+    }
+
+    void Context::AllowCodeGenerationFromStrings(bool allow) {
+        TRACE
+    }
+
+    ScriptCompiler::CachedData* ScriptCompiler::CreateCodeCache(Local<UnboundScript> unbound_script) {
+        GraalUnboundScript* graal_script = reinterpret_cast<GraalUnboundScript*> (*unbound_script);
+        String::Utf8Value text(graal_script->GetContent());
+        uint8_t* copy = new uint8_t[text.length()];
+        memcpy(copy, *text, text.length());
+        return new ScriptCompiler::CachedData((const uint8_t*) copy, text.length());
+    }
+
+    bool ArrayBuffer::IsNeuterable() const {
+        return true;
+    }
+
+    bool ArrayBuffer::IsExternal() const {
+        return reinterpret_cast<const GraalArrayBuffer*> (this)->IsExternal();
+    }
+
+    ArrayBuffer::Contents ArrayBuffer::Externalize() {
+        GraalArrayBuffer* graal_array_buffer = reinterpret_cast<GraalArrayBuffer*> (this);
+        GraalIsolate* graal_isolate = graal_array_buffer->Isolate();
+        jobject java_array_buffer = graal_array_buffer->GetJavaObject();
+        jobject java_buffer = graal_isolate->JNIGetObjectFieldOrCall(java_array_buffer, GraalAccessField::array_buffer_byte_buffer, GraalAccessMethod::array_buffer_get_contents);
+        graal_isolate->Externalize(java_buffer);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        ArrayBuffer::Contents contents;
+        contents.data_ = env->GetDirectBufferAddress(java_buffer);
+        contents.byte_length_ = env->GetDirectBufferCapacity(java_buffer);
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::array_buffer_externalize, java_array_buffer);
+        env->DeleteLocalRef(java_buffer);
+        return contents;        
+    }
+
+    bool SharedArrayBuffer::IsExternal() const {
+        const GraalObject* graal_object = reinterpret_cast<const GraalObject*> (this);
+        GraalIsolate* graal_isolate = graal_object->Isolate();
+        jobject java_object = graal_object->GetJavaObject();
+        JNI_CALL(jboolean, result, graal_isolate, GraalAccessMethod::shared_array_buffer_is_external, Boolean, java_object);
+        return result;
+    }
+
+    SharedArrayBuffer::Contents SharedArrayBuffer::Externalize() {        
+        GraalObject* graal_object = reinterpret_cast<GraalObject*> (this);
+        GraalIsolate* graal_isolate = graal_object->Isolate();
+        jobject java_object = graal_object->GetJavaObject();
+        JNI_CALL(jobject, java_buffer, graal_isolate, GraalAccessMethod::shared_array_buffer_get_contents, Object, java_object);
+        graal_isolate->Externalize(java_buffer);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        SharedArrayBuffer::Contents contents;
+        void* pointer = env->GetDirectBufferAddress(java_buffer);
+        contents.data_ = pointer;
+        contents.byte_length_ = env->GetDirectBufferCapacity(java_buffer);
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::shared_array_buffer_externalize, java_object, (jlong) pointer);
+        env->DeleteLocalRef(java_buffer);
+        return contents;
+    }
+
+    Local<SharedArrayBuffer> SharedArrayBuffer::New(
+            Isolate* isolate,
+            void* data,
+            size_t byte_length,
+            ArrayBufferCreationMode mode) {
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+        jobject java_byte_buffer = graal_isolate->GetJNIEnv()->NewDirectByteBuffer(data, byte_length);
+        jboolean externalized = (mode == v8::ArrayBufferCreationMode::kExternalized);
+        jobject java_context = graal_isolate->CurrentJavaContext();
+        JNI_CALL(jobject, java_array_buffer, graal_isolate, GraalAccessMethod::shared_array_buffer_new, Object, java_context, java_byte_buffer, (jlong) data, externalized);
+        graal_isolate->GetJNIEnv()->DeleteLocalRef(java_byte_buffer);
+        return reinterpret_cast<v8::SharedArrayBuffer*> (new GraalObject(graal_isolate, java_array_buffer));
+    }
+
+    double Platform::SystemClockTimeMillis() {
+        TRACE
+        return 0;
+    }
+
+    MaybeLocal<Array> Object::PreviewEntries(bool* is_key_value) {
+        return reinterpret_cast<GraalObject*> (this)->PreviewEntries(is_key_value);
+    }
+
+    MaybeLocal<SharedArrayBuffer> ValueDeserializer::Delegate::GetSharedArrayBufferFromId(Isolate* isolate, uint32_t clone_id) {
+        TRACE
+        return MaybeLocal<SharedArrayBuffer>();
+    }
+
+    Local<Map> Map::New(Isolate* isolate) {
+        return GraalMap::New(isolate);
+    }
+
+    MaybeLocal<Map> Map::Set(Local<Context> context, Local<Value> key, Local<Value> value) {
+        return reinterpret_cast<GraalMap*> (this)->Set(context, key, value);
+    }
+
     void Object::CheckCast(v8::Value* obj) {}
     void Promise::CheckCast(v8::Value* obj) {}
     void Function::CheckCast(v8::Value* obj) {}
@@ -2734,5 +2909,9 @@ namespace v8 {
     void Date::CheckCast(v8::Value* obj) {}
     void Integer::CheckCast(v8::Value* that) {}
     void RegExp::CheckCast(v8::Value* that) {}
+    void External::CheckCast(v8::Value* that) {}
+    void BigInt::CheckCast(v8::Value* that) {}
+    void BigInt64Array::CheckCast(v8::Value* that) {}
+    void BigUint64Array::CheckCast(v8::Value* that) {}
 
 }

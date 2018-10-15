@@ -32,6 +32,7 @@
 
 #include <vector>
 
+#include "src/base/platform/mutex.h"
 #include "src/inspector/inspected-context.h"
 #include "src/inspector/string-util.h"
 #include "src/inspector/v8-console-agent-impl.h"
@@ -43,6 +44,8 @@
 #include "src/inspector/v8-profiler-agent-impl.h"
 #include "src/inspector/v8-runtime-agent-impl.h"
 #include "src/inspector/v8-stack-trace-impl.h"
+
+#include "include/v8-platform.h"
 
 namespace v8_inspector {
 
@@ -58,11 +61,14 @@ V8InspectorImpl::V8InspectorImpl(v8::Isolate* isolate,
       m_debugger(new V8Debugger(isolate, this)),
       m_capturingStackTracesCount(0),
       m_lastExceptionId(0),
-      m_lastContextId(0) {
+      m_lastContextId(0),
+      m_isolateId(v8::debug::GetNextRandomInt64(m_isolate)) {
+  v8::debug::SetInspector(m_isolate, this);
   v8::debug::SetConsoleDelegate(m_isolate, console());
 }
 
 V8InspectorImpl::~V8InspectorImpl() {
+  v8::debug::SetInspector(m_isolate, nullptr);
   v8::debug::SetConsoleDelegate(m_isolate, nullptr);
 }
 
@@ -84,6 +90,7 @@ v8::MaybeLocal<v8::Value> V8InspectorImpl::compileAndRunInternalScript(
   v8::MicrotasksScope microtasksScope(m_isolate,
                                       v8::MicrotasksScope::kDoNotRunMicrotasks);
   v8::Context::Scope contextScope(context);
+  v8::Isolate::SafeForTerminationScope allowTermination(m_isolate);
   return unboundScript->BindToCurrentContext()->Run(context);
 }
 
@@ -234,21 +241,9 @@ void V8InspectorImpl::resetContextGroup(int contextGroupId) {
   m_debugger->wasmTranslation()->Clear();
 }
 
-void V8InspectorImpl::idleStarted() {
-  for (auto& it : m_sessions) {
-    for (auto& it2 : it.second) {
-      if (it2.second->profilerAgent()->idleStarted()) return;
-    }
-  }
-}
+void V8InspectorImpl::idleStarted() { m_isolate->SetIdle(true); }
 
-void V8InspectorImpl::idleFinished() {
-  for (auto& it : m_sessions) {
-    for (auto& it2 : it.second) {
-      if (it2.second->profilerAgent()->idleFinished()) return;
-    }
-  }
-}
+void V8InspectorImpl::idleFinished() { m_isolate->SetIdle(false); }
 
 unsigned V8InspectorImpl::exceptionThrown(
     v8::Local<v8::Context> context, const StringView& message,
@@ -285,6 +280,19 @@ void V8InspectorImpl::exceptionRevoked(v8::Local<v8::Context> context,
 std::unique_ptr<V8StackTrace> V8InspectorImpl::captureStackTrace(
     bool fullStack) {
   return m_debugger->captureStackTrace(fullStack);
+}
+
+V8StackTraceId V8InspectorImpl::storeCurrentStackTrace(
+    const StringView& description) {
+  return m_debugger->storeCurrentStackTrace(description);
+}
+
+void V8InspectorImpl::externalAsyncTaskStarted(const V8StackTraceId& parent) {
+  m_debugger->externalAsyncTaskStarted(parent);
+}
+
+void V8InspectorImpl::externalAsyncTaskFinished(const V8StackTraceId& parent) {
+  m_debugger->externalAsyncTaskFinished(parent);
 }
 
 void V8InspectorImpl::asyncTaskScheduled(const StringView& taskName, void* task,
@@ -370,6 +378,55 @@ void V8InspectorImpl::forEachSession(
     auto sessionIt = it->second.find(sessionId);
     if (sessionIt != it->second.end()) callback(sessionIt->second);
   }
+}
+
+V8InspectorImpl::EvaluateScope::EvaluateScope(v8::Isolate* isolate)
+    : m_isolate(isolate), m_safeForTerminationScope(isolate) {}
+
+struct V8InspectorImpl::EvaluateScope::CancelToken {
+  v8::base::Mutex m_mutex;
+  bool m_canceled = false;
+};
+
+V8InspectorImpl::EvaluateScope::~EvaluateScope() {
+  if (m_cancelToken) {
+    v8::base::LockGuard<v8::base::Mutex> lock(&m_cancelToken->m_mutex);
+    m_cancelToken->m_canceled = true;
+    m_isolate->CancelTerminateExecution();
+  }
+}
+
+class V8InspectorImpl::EvaluateScope::TerminateTask : public v8::Task {
+ public:
+  TerminateTask(v8::Isolate* isolate, std::shared_ptr<CancelToken> token)
+      : m_isolate(isolate), m_token(token) {}
+
+  void Run() {
+    // CancelToken contains m_canceled bool which may be changed from main
+    // thread, so lock mutex first.
+    v8::base::LockGuard<v8::base::Mutex> lock(&m_token->m_mutex);
+    if (m_token->m_canceled) return;
+    m_isolate->TerminateExecution();
+  }
+
+ private:
+  v8::Isolate* m_isolate;
+  std::shared_ptr<CancelToken> m_token;
+};
+
+protocol::Response V8InspectorImpl::EvaluateScope::setTimeout(double timeout) {
+  if (m_isolate->IsExecutionTerminating()) {
+    return protocol::Response::Error("Execution was terminated");
+  }
+  std::shared_ptr<v8::TaskRunner> taskRunner =
+      v8::debug::GetCurrentPlatform()->GetWorkerThreadsTaskRunner(m_isolate);
+  if (!taskRunner) {
+    return protocol::Response::Error("Timeout is not supported by embedder");
+  }
+  m_cancelToken.reset(new CancelToken());
+  taskRunner->PostDelayedTask(
+      v8::base::make_unique<TerminateTask>(m_isolate, m_cancelToken), timeout);
+  return protocol::Response::OK();
 }
 
 }  // namespace v8_inspector

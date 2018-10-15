@@ -11,15 +11,20 @@ const utils = require('./rules-utils.js');
 // Rule Definition
 //------------------------------------------------------------------------------
 const msg = 'Please add a skipIfInspectorDisabled() call to allow this ' +
-            'test to be skippped when Node is built \'--without-inspector\'.';
+            'test to be skipped when Node is built \'--without-inspector\'.';
 
 module.exports = function(context) {
   const missingCheckNodes = [];
+  var commonModuleNode = null;
   var hasInspectorCheck = false;
 
   function testInspectorUsage(context, node) {
     if (utils.isRequired(node, ['inspector'])) {
       missingCheckNodes.push(node);
+    }
+
+    if (utils.isCommonModule(node)) {
+      commonModuleNode = node;
     }
   }
 
@@ -32,7 +37,18 @@ module.exports = function(context) {
   function reportIfMissing(context) {
     if (!hasInspectorCheck) {
       missingCheckNodes.forEach((node) => {
-        context.report(node, msg);
+        context.report({
+          node,
+          message: msg,
+          fix: (fixer) => {
+            if (commonModuleNode) {
+              return fixer.insertTextAfter(
+                commonModuleNode,
+                '\ncommon.skipIfInspectorDisabled();'
+              );
+            }
+          }
+        });
       });
     }
   }

@@ -20,18 +20,19 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "async_wrap-inl.h"
-#include "env.h"
 #include "env-inl.h"
 #include "util-inl.h"
 #include "node.h"
+#include "node_internals.h"
 #include "handle_wrap.h"
 #include "string_bytes.h"
 
-#include <stdlib.h>
 
 namespace node {
 
 using v8::Context;
+using v8::DontDelete;
+using v8::DontEnum;
 using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
 using v8::HandleScope;
@@ -39,6 +40,9 @@ using v8::Integer;
 using v8::Local;
 using v8::MaybeLocal;
 using v8::Object;
+using v8::PropertyAttribute;
+using v8::ReadOnly;
+using v8::Signature;
 using v8::String;
 using v8::Value;
 
@@ -51,9 +55,13 @@ class FSEventWrap: public HandleWrap {
                          Local<Context> context);
   static void New(const FunctionCallbackInfo<Value>& args);
   static void Start(const FunctionCallbackInfo<Value>& args);
-  static void Close(const FunctionCallbackInfo<Value>& args);
+  static void GetInitialized(const FunctionCallbackInfo<Value>& args);
 
-  size_t self_size() const override { return sizeof(*this); }
+  void MemoryInfo(MemoryTracker* tracker) const override {
+    tracker->TrackThis(this);
+  }
+
+  ADD_MEMORY_INFO_NAME(FSEventWrap)
 
  private:
   static const encoding kDefaultEncoding = UTF8;
@@ -65,7 +73,6 @@ class FSEventWrap: public HandleWrap {
     int status);
 
   uv_fs_event_t handle_;
-  bool initialized_ = false;
   enum encoding encoding_ = kDefaultEncoding;
 };
 
@@ -74,13 +81,19 @@ FSEventWrap::FSEventWrap(Environment* env, Local<Object> object)
     : HandleWrap(env,
                  object,
                  reinterpret_cast<uv_handle_t*>(&handle_),
-                 AsyncWrap::PROVIDER_FSEVENTWRAP) {}
+                 AsyncWrap::PROVIDER_FSEVENTWRAP) {
+  MarkAsUninitialized();
+}
 
 
 FSEventWrap::~FSEventWrap() {
-  CHECK_EQ(initialized_, false);
 }
 
+void FSEventWrap::GetInitialized(const FunctionCallbackInfo<Value>& args) {
+  FSEventWrap* wrap = Unwrap<FSEventWrap>(args.This());
+  CHECK_NOT_NULL(wrap);
+  args.GetReturnValue().Set(!wrap->IsHandleClosing());
+}
 
 void FSEventWrap::Initialize(Local<Object> target,
                              Local<Value> unused,
@@ -96,6 +109,18 @@ void FSEventWrap::Initialize(Local<Object> target,
   env->SetProtoMethod(t, "start", Start);
   env->SetProtoMethod(t, "close", Close);
 
+  Local<FunctionTemplate> get_initialized_templ =
+      FunctionTemplate::New(env->isolate(),
+                            GetInitialized,
+                            env->as_external(),
+                            Signature::New(env->isolate(), t));
+
+  t->PrototypeTemplate()->SetAccessorProperty(
+      FIXED_ONE_BYTE_STRING(env->isolate(), "initialized"),
+      get_initialized_templ,
+      Local<FunctionTemplate>(),
+      static_cast<PropertyAttribute>(ReadOnly | DontDelete | v8::DontEnum));
+
   target->Set(fsevent_string, t->GetFunction());
 }
 
@@ -106,21 +131,19 @@ void FSEventWrap::New(const FunctionCallbackInfo<Value>& args) {
   new FSEventWrap(env, args.This());
 }
 
-
+// wrap.start(filename, persistent, recursive, encoding)
 void FSEventWrap::Start(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
 
-  FSEventWrap* wrap;
-  ASSIGN_OR_RETURN_UNWRAP(&wrap, args.Holder());
-  CHECK_EQ(wrap->initialized_, false);
+  FSEventWrap* wrap = Unwrap<FSEventWrap>(args.This());
+  CHECK_NOT_NULL(wrap);
+  CHECK(wrap->IsHandleClosing());  // Check that Start() has not been called.
 
-  static const char kErrMsg[] = "filename must be a string or Buffer";
-  if (args.Length() < 1)
-    return env->ThrowTypeError(kErrMsg);
+  const int argc = args.Length();
+  CHECK_GE(argc, 4);
 
   BufferValue path(env->isolate(), args[0]);
-  if (*path == nullptr)
-    return env->ThrowTypeError(kErrMsg);
+  CHECK_NOT_NULL(*path);
 
   unsigned int flags = 0;
   if (args[2]->IsTrue())
@@ -129,19 +152,21 @@ void FSEventWrap::Start(const FunctionCallbackInfo<Value>& args) {
   wrap->encoding_ = ParseEncoding(env->isolate(), args[3], kDefaultEncoding);
 
   int err = uv_fs_event_init(wrap->env()->event_loop(), &wrap->handle_);
-  if (err == 0) {
-    wrap->initialized_ = true;
+  if (err != 0) {
+    return args.GetReturnValue().Set(err);
+  }
 
-    err = uv_fs_event_start(&wrap->handle_, OnEvent, *path, flags);
+  err = uv_fs_event_start(&wrap->handle_, OnEvent, *path, flags);
+  wrap->MarkAsInitialized();
 
-    if (err == 0) {
-      // Check for persistent argument
-      if (!args[1]->IsTrue()) {
-        uv_unref(reinterpret_cast<uv_handle_t*>(&wrap->handle_));
-      }
-    } else {
-      FSEventWrap::Close(args);
-    }
+  if (err != 0) {
+    FSEventWrap::Close(args);
+    return args.GetReturnValue().Set(err);
+  }
+
+  // Check for persistent argument
+  if (!args[1]->IsTrue()) {
+    uv_unref(reinterpret_cast<uv_handle_t*>(&wrap->handle_));
   }
 
   args.GetReturnValue().Set(err);
@@ -205,18 +230,6 @@ void FSEventWrap::OnEvent(uv_fs_event_t* handle, const char* filename,
   }
 
   wrap->MakeCallback(env->onchange_string(), arraysize(argv), argv);
-}
-
-
-void FSEventWrap::Close(const FunctionCallbackInfo<Value>& args) {
-  FSEventWrap* wrap;
-  ASSIGN_OR_RETURN_UNWRAP(&wrap, args.Holder());
-
-  if (wrap == nullptr || wrap->initialized_ == false)
-    return;
-  wrap->initialized_ = false;
-
-  HandleWrap::Close(args);
 }
 
 }  // anonymous namespace

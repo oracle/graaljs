@@ -174,6 +174,11 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
         return (JSAgentWaiterList) BUFFER_WAIT_LIST.get(thisObj, condition);
     }
 
+    public static void setWaiterList(DynamicObject thisObj, JSAgentWaiterList wl) {
+        assert isJSSharedArrayBuffer(thisObj);
+        BUFFER_WAIT_LIST.setSafe(thisObj, wl, null);
+    }
+
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getSharedArrayBufferConstructor().getPrototype();

@@ -16,9 +16,6 @@ class JSStream : public AsyncWrap, public StreamBase {
                          v8::Local<v8::Value> unused,
                          v8::Local<v8::Context> context);
 
-  ~JSStream();
-
-  void* Cast() override;
   bool IsAlive() override;
   bool IsClosing() override;
   int ReadStart() override;
@@ -30,7 +27,11 @@ class JSStream : public AsyncWrap, public StreamBase {
               size_t count,
               uv_stream_t* send_handle) override;
 
-  size_t self_size() const override { return sizeof(*this); }
+  void MemoryInfo(MemoryTracker* tracker) const override {
+    tracker->TrackThis(this);
+  }
+
+  ADD_MEMORY_INFO_NAME(JSStream)
 
  protected:
   JSStream(Environment* env, v8::Local<v8::Object> obj);
@@ -38,7 +39,6 @@ class JSStream : public AsyncWrap, public StreamBase {
   AsyncWrap* GetAsyncWrap() override;
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void DoAfterWrite(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void ReadBuffer(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void EmitEOF(const v8::FunctionCallbackInfo<v8::Value>& args);
 

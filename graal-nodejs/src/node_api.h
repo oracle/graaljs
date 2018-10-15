@@ -1,12 +1,3 @@
-/******************************************************************************
- * Experimental prototype for demonstrating VM agnostic and ABI stable API
- * for native modules to use instead of using Nan and V8 APIs directly.
- *
- * The current status is "Experimental" and should not be used for
- * production applications.  The API is still subject to change
- * and as an experimental feature is NOT subject to semver.
- *
- ******************************************************************************/
 #ifndef SRC_NODE_API_H_
 #define SRC_NODE_API_H_
 
@@ -15,6 +6,16 @@
 #include "node_api_types.h"
 
 struct uv_loop_s;  // Forward declaration.
+
+#ifndef NAPI_VERSION
+#ifdef NAPI_EXPERIMENTAL
+// Use INT_MAX, this should only be consumed by the pre-processor anyway.
+#define NAPI_VERSION 2147483647
+#else
+// The baseline version for N-API
+#define NAPI_VERSION 3
+#endif
+#endif
 
 #ifdef _WIN32
   #ifdef BUILDING_NODE_EXTENSION
@@ -99,8 +100,27 @@ typedef struct {
     }                                                                 \
   EXTERN_C_END
 
-#define NAPI_MODULE(modname, regfunc) \
+#define NAPI_MODULE(modname, regfunc)                                 \
   NAPI_MODULE_X(modname, regfunc, NULL, 0)  // NOLINT (readability/null_usage)
+
+#define NAPI_MODULE_INITIALIZER_BASE napi_register_module_v
+
+#define NAPI_MODULE_INITIALIZER_X(base, version)                      \
+    NAPI_MODULE_INITIALIZER_X_HELPER(base, version)
+#define NAPI_MODULE_INITIALIZER_X_HELPER(base, version) base##version
+
+#define NAPI_MODULE_INITIALIZER                                       \
+  NAPI_MODULE_INITIALIZER_X(NAPI_MODULE_INITIALIZER_BASE,             \
+      NAPI_MODULE_VERSION)
+
+#define NAPI_MODULE_INIT()                                            \
+  EXTERN_C_START                                                      \
+  NAPI_MODULE_EXPORT napi_value                                       \
+  NAPI_MODULE_INITIALIZER(napi_env env, napi_value exports);          \
+  EXTERN_C_END                                                        \
+  NAPI_MODULE(NODE_GYP_MODULE_NAME, NAPI_MODULE_INITIALIZER)          \
+  napi_value NAPI_MODULE_INITIALIZER(napi_env env,                    \
+                                     napi_value exports)
 
 #define NAPI_AUTO_LENGTH SIZE_MAX
 
@@ -177,7 +197,7 @@ NAPI_EXTERN napi_status napi_create_range_error(napi_env env,
                                                 napi_value msg,
                                                 napi_value* result);
 
-// Methods to get the the native napi_value from Primitive type
+// Methods to get the native napi_value from Primitive type
 NAPI_EXTERN napi_status napi_typeof(napi_env env,
                                     napi_value value,
                                     napi_valuetype* result);
@@ -583,9 +603,99 @@ NAPI_EXTERN napi_status napi_run_script(napi_env env,
                                         napi_value script,
                                         napi_value* result);
 
+#if NAPI_VERSION >= 2
+
 // Return the current libuv event loop for a given environment
 NAPI_EXTERN napi_status napi_get_uv_event_loop(napi_env env,
                                                struct uv_loop_s** loop);
+
+#endif  // NAPI_VERSION >= 2
+
+#if NAPI_VERSION >= 3
+
+NAPI_EXTERN napi_status napi_open_callback_scope(napi_env env,
+                                                 napi_value resource_object,
+                                                 napi_async_context context,
+                                                 napi_callback_scope* result);
+
+NAPI_EXTERN napi_status napi_close_callback_scope(napi_env env,
+                                                  napi_callback_scope scope);
+
+NAPI_EXTERN napi_status napi_fatal_exception(napi_env env, napi_value err);
+
+NAPI_EXTERN napi_status napi_add_env_cleanup_hook(napi_env env,
+                                                  void (*fun)(void* arg),
+                                                  void* arg);
+
+NAPI_EXTERN napi_status napi_remove_env_cleanup_hook(napi_env env,
+                                                     void (*fun)(void* arg),
+                                                     void* arg);
+
+#endif  // NAPI_VERSION >= 3
+
+#ifdef NAPI_EXPERIMENTAL
+
+// Calling into JS from other threads
+NAPI_EXTERN napi_status
+napi_create_threadsafe_function(napi_env env,
+                                napi_value func,
+                                napi_value async_resource,
+                                napi_value async_resource_name,
+                                size_t max_queue_size,
+                                size_t initial_thread_count,
+                                void* thread_finalize_data,
+                                napi_finalize thread_finalize_cb,
+                                void* context,
+                                napi_threadsafe_function_call_js call_js_cb,
+                                napi_threadsafe_function* result);
+
+NAPI_EXTERN napi_status
+napi_get_threadsafe_function_context(napi_threadsafe_function func,
+                                     void** result);
+
+NAPI_EXTERN napi_status
+napi_call_threadsafe_function(napi_threadsafe_function func,
+                              void* data,
+                              napi_threadsafe_function_call_mode is_blocking);
+
+NAPI_EXTERN napi_status
+napi_acquire_threadsafe_function(napi_threadsafe_function func);
+
+NAPI_EXTERN napi_status
+napi_release_threadsafe_function(napi_threadsafe_function func,
+                                 napi_threadsafe_function_release_mode mode);
+
+NAPI_EXTERN napi_status
+napi_unref_threadsafe_function(napi_env env, napi_threadsafe_function func);
+
+NAPI_EXTERN napi_status
+napi_ref_threadsafe_function(napi_env env, napi_threadsafe_function func);
+
+NAPI_EXTERN napi_status napi_create_bigint_int64(napi_env env,
+                                                 int64_t value,
+                                                 napi_value* result);
+NAPI_EXTERN napi_status napi_create_bigint_uint64(napi_env env,
+                                                  uint64_t value,
+                                                  napi_value* result);
+NAPI_EXTERN napi_status napi_create_bigint_words(napi_env env,
+                                                 int sign_bit,
+                                                 size_t word_count,
+                                                 const uint64_t* words,
+                                                 napi_value* result);
+NAPI_EXTERN napi_status napi_get_value_bigint_int64(napi_env env,
+                                                    napi_value value,
+                                                    int64_t* result,
+                                                    bool* lossless);
+NAPI_EXTERN napi_status napi_get_value_bigint_uint64(napi_env env,
+                                                     napi_value value,
+                                                     uint64_t* result,
+                                                     bool* lossless);
+NAPI_EXTERN napi_status napi_get_value_bigint_words(napi_env env,
+                                                    napi_value value,
+                                                    int* sign_bit,
+                                                    size_t* word_count,
+                                                    uint64_t* words);
+#endif  // NAPI_EXPERIMENTAL
 
 EXTERN_C_END
 

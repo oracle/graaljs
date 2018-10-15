@@ -19,7 +19,7 @@ Handle<ScriptContextTable> ScriptContextTable::Extend(
   int used = table->used();
   int length = table->length();
   CHECK(used >= 0 && length > 0 && used < length);
-  if (used + kFirstContextSlot == length) {
+  if (used + kFirstContextSlotIndex == length) {
     CHECK(length < Smi::kMaxValue / 2);
     Isolate* isolate = table->GetIsolate();
     Handle<FixedArray> copy =
@@ -32,7 +32,7 @@ Handle<ScriptContextTable> ScriptContextTable::Extend(
   result->set_used(used + 1);
 
   DCHECK(script_context->IsScriptContext());
-  result->set(used + kFirstContextSlot, *script_context);
+  result->set(used + kFirstContextSlotIndex, *script_context);
   return result;
 }
 
@@ -62,13 +62,11 @@ bool Context::is_declaration_context() {
       IsModuleContext()) {
     return true;
   }
-  if (IsEvalContext()) return closure()->shared()->language_mode() == STRICT;
+  if (IsEvalContext()) {
+    return scope_info()->language_mode() == LanguageMode::kStrict;
+  }
   if (!IsBlockContext()) return false;
-  Object* ext = extension();
-  // If we have the special extension, we immediately know it must be a
-  // declaration scope. That's just a small performance shortcut.
-  return ext->IsContextExtension() ||
-         ScopeInfo::cast(ext)->is_declaration_scope();
+  return scope_info()->is_declaration_scope();
 }
 
 
@@ -86,20 +84,15 @@ Context* Context::closure_context() {
          !current->IsModuleContext() && !current->IsNativeContext() &&
          !current->IsEvalContext()) {
     current = current->previous();
-    DCHECK(current->closure() == closure());
   }
   return current;
 }
 
 JSObject* Context::extension_object() {
   DCHECK(IsNativeContext() || IsFunctionContext() || IsBlockContext() ||
-         IsEvalContext());
+         IsEvalContext() || IsCatchContext());
   HeapObject* object = extension();
   if (object->IsTheHole(GetIsolate())) return nullptr;
-  if (IsBlockContext()) {
-    if (!object->IsContextExtension()) return nullptr;
-    object = JSObject::cast(ContextExtension::cast(object)->extension());
-  }
   DCHECK(object->IsJSContextExtensionObject() ||
          (IsNativeContext() && object->IsJSGlobalObject()));
   return JSObject::cast(object);
@@ -108,23 +101,11 @@ JSObject* Context::extension_object() {
 JSReceiver* Context::extension_receiver() {
   DCHECK(IsNativeContext() || IsWithContext() || IsEvalContext() ||
          IsFunctionContext() || IsBlockContext());
-  return IsWithContext() ? JSReceiver::cast(
-                               ContextExtension::cast(extension())->extension())
-                         : extension_object();
+  return IsWithContext() ? JSReceiver::cast(extension()) : extension_object();
 }
 
 ScopeInfo* Context::scope_info() {
-  DCHECK(!IsNativeContext());
-  if (IsFunctionContext() || IsModuleContext() || IsEvalContext()) {
-    return closure()->shared()->scope_info();
-  }
-  HeapObject* object = extension();
-  if (object->IsContextExtension()) {
-    DCHECK(IsBlockContext() || IsCatchContext() || IsWithContext() ||
-           IsDebugEvaluateContext());
-    object = ContextExtension::cast(object)->scope_info();
-  }
-  return ScopeInfo::cast(object);
+  return ScopeInfo::cast(get(SCOPE_INFO_INDEX));
 }
 
 Module* Context::module() {
@@ -134,12 +115,6 @@ Module* Context::module() {
   }
   return Module::cast(current->extension());
 }
-
-String* Context::catch_name() {
-  DCHECK(IsCatchContext());
-  return String::cast(ContextExtension::cast(extension())->extension());
-}
-
 
 JSGlobalObject* Context::global_object() {
   return JSGlobalObject::cast(native_context()->extension());
@@ -173,7 +148,7 @@ static Maybe<bool> UnscopableLookup(LookupIterator* it) {
   Isolate* isolate = it->isolate();
 
   Maybe<bool> found = JSReceiver::HasProperty(it);
-  if (!found.IsJust() || !found.FromJust()) return found;
+  if (found.IsNothing() || !found.FromJust()) return found;
 
   Handle<Object> unscopables;
   ASSIGN_RETURN_ON_EXCEPTION_VALUE(
@@ -294,7 +269,7 @@ Handle<Object> Context::Lookup(Handle<String> name, ContextLookupFlags flags,
         maybe = JSReceiver::GetPropertyAttributes(object, name);
       }
 
-      if (!maybe.IsJust()) return Handle<Object>();
+      if (maybe.IsNothing()) return Handle<Object>();
       DCHECK(!isolate->has_pending_exception());
       *attributes = maybe.FromJust();
 
@@ -310,7 +285,7 @@ Handle<Object> Context::Lookup(Handle<String> name, ContextLookupFlags flags,
     // 2. Check the context proper if it has slots.
     if (context->IsFunctionContext() || context->IsBlockContext() ||
         context->IsScriptContext() || context->IsEvalContext() ||
-        context->IsModuleContext()) {
+        context->IsModuleContext() || context->IsCatchContext()) {
       // Use serialized scope information of functions and blocks to search
       // for the context index.
       Handle<ScopeInfo> scope_info(context->scope_info());
@@ -376,31 +351,16 @@ Handle<Object> Context::Lookup(Handle<String> name, ContextLookupFlags flags,
           return handle(context->module(), isolate);
         }
       }
-    } else if (context->IsCatchContext()) {
-      // Catch contexts have the variable name in the extension slot.
-      if (String::Equals(name, handle(context->catch_name()))) {
-        if (FLAG_trace_contexts) {
-          PrintF("=> found in catch context\n");
-        }
-        *index = Context::THROWN_OBJECT_INDEX;
-        *attributes = NONE;
-        *init_flag = kCreatedInitialized;
-        *variable_mode = VAR;
-        return context;
-      }
     } else if (context->IsDebugEvaluateContext()) {
       // Check materialized locals.
       Object* ext = context->get(EXTENSION_INDEX);
-      if (ext->IsContextExtension()) {
-        Object* obj = ContextExtension::cast(ext)->extension();
-        if (obj->IsJSReceiver()) {
-          Handle<JSReceiver> extension(JSReceiver::cast(obj));
-          LookupIterator it(extension, name, extension);
-          Maybe<bool> found = JSReceiver::HasProperty(&it);
-          if (found.FromMaybe(false)) {
-            *attributes = NONE;
-            return extension;
-          }
+      if (ext->IsJSReceiver()) {
+        Handle<JSReceiver> extension(JSReceiver::cast(ext));
+        LookupIterator it(extension, name, extension);
+        Maybe<bool> found = JSReceiver::HasProperty(&it);
+        if (found.FromMaybe(false)) {
+          *attributes = NONE;
+          return extension;
         }
       }
       // Check the original context, but do not follow its context chain.
@@ -440,77 +400,6 @@ Handle<Object> Context::Lookup(Handle<String> name, ContextLookupFlags flags,
     PrintF("=> no property/slot found\n");
   }
   return Handle<Object>::null();
-}
-
-void Context::AddOptimizedFunction(JSFunction* function) {
-  DCHECK(IsNativeContext());
-#ifdef ENABLE_SLOW_DCHECKS
-  Isolate* isolate = GetIsolate();
-  if (FLAG_enable_slow_asserts) {
-    Object* element = get(OPTIMIZED_FUNCTIONS_LIST);
-    while (!element->IsUndefined(isolate)) {
-      CHECK(element != function);
-      element = JSFunction::cast(element)->next_function_link();
-    }
-  }
-
-  // Check that the context belongs to the weak native contexts list.
-  bool found = false;
-  Object* context = isolate->heap()->native_contexts_list();
-  while (!context->IsUndefined(isolate)) {
-    if (context == this) {
-      found = true;
-      break;
-    }
-    context = Context::cast(context)->next_context_link();
-  }
-  CHECK(found);
-#endif
-
-  DCHECK(function->next_function_link()->IsUndefined(GetIsolate()));
-  function->set_next_function_link(get(OPTIMIZED_FUNCTIONS_LIST),
-                                   UPDATE_WEAK_WRITE_BARRIER);
-  set(OPTIMIZED_FUNCTIONS_LIST, function, UPDATE_WEAK_WRITE_BARRIER);
-}
-
-
-void Context::RemoveOptimizedFunction(JSFunction* function) {
-  DCHECK(IsNativeContext());
-  Object* element = get(OPTIMIZED_FUNCTIONS_LIST);
-  JSFunction* prev = NULL;
-  Isolate* isolate = function->GetIsolate();
-  while (!element->IsUndefined(isolate)) {
-    JSFunction* element_function = JSFunction::cast(element);
-    DCHECK(element_function->next_function_link()->IsUndefined(isolate) ||
-           element_function->next_function_link()->IsJSFunction());
-    if (element_function == function) {
-      if (prev == NULL) {
-        set(OPTIMIZED_FUNCTIONS_LIST, element_function->next_function_link(),
-            UPDATE_WEAK_WRITE_BARRIER);
-      } else {
-        prev->set_next_function_link(element_function->next_function_link(),
-                                     UPDATE_WEAK_WRITE_BARRIER);
-      }
-      element_function->set_next_function_link(GetHeap()->undefined_value(),
-                                               UPDATE_WEAK_WRITE_BARRIER);
-      return;
-    }
-    prev = element_function;
-    element = element_function->next_function_link();
-  }
-  UNREACHABLE();
-}
-
-
-void Context::SetOptimizedFunctionsListHead(Object* head) {
-  DCHECK(IsNativeContext());
-  set(OPTIMIZED_FUNCTIONS_LIST, head, UPDATE_WEAK_WRITE_BARRIER);
-}
-
-
-Object* Context::OptimizedFunctionsListHead() {
-  DCHECK(IsNativeContext());
-  return get(OPTIMIZED_FUNCTIONS_LIST);
 }
 
 

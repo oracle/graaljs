@@ -1,4 +1,29 @@
 {
+  # 'force_load' means to include the static libs into the shared lib or
+  # executable. Therefore, it is enabled when building:
+  # 1. The executable and it uses static lib (cctest and node)
+  # 2. The shared lib
+  # Linker optimizes out functions that are not used. When force_load=true,
+  # --whole-archive,force_load and /WHOLEARCHIVE are used to include
+  # all obj files in static libs into the executable or shared lib.
+  'variables': {
+    'variables': {
+      'variables': {
+        'force_load%': 'true',
+        'current_type%': '<(_type)',
+      },
+      'force_load%': '<(force_load)',
+      'conditions': [
+        ['current_type=="static_library"', {
+          'force_load': 'false',
+        }],
+        [ 'current_type=="executable" and node_target_type=="shared_library"', {
+          'force_load': 'false',
+        }]
+      ],
+    },
+    'force_load%': '<(force_load)',
+  },
   'conditions': [
     [ 'node_shared=="false"', {
       'msvs_settings': {
@@ -12,13 +37,37 @@
         'NODE_SHARED_MODE',
       ],
     }],
+    [ 'OS=="win"', {
+      'defines!': [
+        'NODE_PLATFORM="win"',
+      ],
+      'defines': [
+        'FD_SETSIZE=1024',
+        # we need to use node's preferred "win32" rather than gyp's preferred "win"
+        'NODE_PLATFORM="win32"',
+        # Stop <windows.h> from defining macros that conflict with
+        # std::min() and std::max().  We don't use <windows.h> (much)
+        # but we still inherit it from uv.h.
+        'NOMINMAX',
+        '_UNICODE=1',
+      ],
+    }, { # POSIX
+      'defines': [ '__POSIX__' ],
+    }],
+
     [ 'node_enable_d8=="true"', {
-      'dependencies': [ 'deps/v8/src/d8.gyp:d8' ],
+      'dependencies': [ 'deps/v8/gypfiles/d8.gyp:d8' ],
     }],
     [ 'node_use_bundled_v8=="true"', {
-      'dependencies': [
-        'deps/v8/src/v8.gyp:v8',
-        'deps/v8/src/v8.gyp:v8_libplatform'
+      'conditions': [
+        [ 'build_v8_with_gn=="true"', {
+          'dependencies': ['deps/v8/gypfiles/v8-monolithic.gyp:v8_monolith'],
+        }, {
+          'dependencies': [
+            'deps/v8/gypfiles/v8.gyp:v8',
+            'deps/v8/gypfiles/v8.gyp:v8_libplatform',
+          ],
+        }],
       ],
     }],
     [ 'node_use_v8_platform=="true"', {
@@ -36,20 +85,10 @@
     [ 'node_v8_options!=""', {
       'defines': [ 'NODE_V8_OPTIONS="<(node_v8_options)"'],
     }],
-    # No node_main.cc for anything except executable
-    [ 'node_target_type!="executable"', {
-      'sources!': [
-        'src/node_main.cc',
-      ],
-    }],
     [ 'node_release_urlbase!=""', {
       'defines': [
         'NODE_RELEASE_URLBASE="<(node_release_urlbase)"',
       ]
-    }],
-    [
-      'debug_http2==1', {
-      'defines': [ 'NODE_DEBUG_HTTP2=1' ]
     }],
     [ 'v8_enable_i18n_support==1', {
       'defines': [ 'NODE_HAVE_I18N_SUPPORT=1' ],
@@ -67,58 +106,56 @@
        target_arch=="ia32" or target_arch=="x32")', {
       'defines': [ 'NODE_ENABLE_VTUNE_PROFILING' ],
       'dependencies': [
-        'deps/v8/src/third_party/vtune/v8vtune.gyp:v8_vtune'
+        'deps/v8/gypfiles/v8vtune.gyp:v8_vtune'
       ],
     }],
-    [ 'node_use_lttng=="true"', {
-      'defines': [ 'HAVE_LTTNG=1' ],
-      'include_dirs': [ '<(SHARED_INTERMEDIATE_DIR)' ],
-      'libraries': [ '-llttng-ust' ],
-      'sources': [
-        'src/node_lttng.cc'
-      ],
-    } ],
-    [ 'node_use_etw=="true" and node_target_type!="static_library"', {
-      'defines': [ 'HAVE_ETW=1' ],
-      'dependencies': [ 'node_etw' ],
-      'sources': [
-        'src/node_win32_etw_provider.h',
-        'src/node_win32_etw_provider-inl.h',
-        'src/node_win32_etw_provider.cc',
-        'src/node_dtrace.cc',
-        'tools/msvs/genfiles/node_etw_provider.h',
-        'tools/msvs/genfiles/node_etw_provider.rc',
-      ]
-    } ],
-    [ 'node_use_perfctr=="true" and node_target_type!="static_library"', {
-      'defines': [ 'HAVE_PERFCTR=1' ],
-      'dependencies': [ 'node_perfctr' ],
-      'sources': [
-        'src/node_win32_perfctr_provider.h',
-        'src/node_win32_perfctr_provider.cc',
-        'src/node_counters.cc',
-        'src/node_counters.h',
-        'tools/msvs/genfiles/node_perfctr_provider.rc',
-      ]
-    } ],
     [ 'node_no_browser_globals=="true"', {
       'defines': [ 'NODE_NO_BROWSER_GLOBALS' ],
     } ],
     [ 'node_use_bundled_v8=="true" and v8_postmortem_support=="true"', {
-      'dependencies': [ 'deps/v8/src/v8.gyp:postmortem-metadata' ],
       'conditions': [
         # -force_load is not applicable for the static library
-        [ 'node_target_type!="static_library"', {
+        [ 'force_load=="true"', {
           'xcode_settings': {
             'OTHER_LDFLAGS': [
-              '-Wl,-force_load,<(V8_BASE)',
+              '-Wl,-force_load,<(v8_base)',
             ],
           },
+        }],
+        # when building with GN, the v8_monolith target already includes postmortem metadata
+        [ 'build_v8_with_gn=="false"', {
+          'dependencies': [ 'deps/v8/gypfiles/v8.gyp:postmortem-metadata' ],
         }],
       ],
     }],
     [ 'node_shared_zlib=="false"', {
       'dependencies': [ 'deps/zlib/zlib.gyp:zlib' ],
+      'conditions': [
+        [ 'force_load=="true"', {
+          'xcode_settings': {
+            'OTHER_LDFLAGS': [
+              '-Wl,-force_load,<(PRODUCT_DIR)/<(STATIC_LIB_PREFIX)'
+                  'zlib<(STATIC_LIB_SUFFIX)',
+            ],
+          },
+          'msvs_settings': {
+            'VCLinkerTool': {
+              'AdditionalOptions': [
+                '/WHOLEARCHIVE:<(PRODUCT_DIR)\\lib\\zlib<(STATIC_LIB_SUFFIX)',
+              ],
+            },
+          },
+          'conditions': [
+            ['OS!="aix" and node_shared=="false"', {
+              'ldflags': [
+                '-Wl,--whole-archive,<(obj_dir)/deps/zlib/<(STATIC_LIB_PREFIX)'
+                    'zlib<(STATIC_LIB_SUFFIX)',
+                '-Wl,--no-whole-archive',
+              ],
+            }],
+          ],
+        }],
+      ],
     }],
 
     [ 'node_shared_http_parser=="false"', {
@@ -131,6 +168,32 @@
 
     [ 'node_shared_libuv=="false"', {
       'dependencies': [ 'deps/uv/uv.gyp:libuv' ],
+      'conditions': [
+        [ 'force_load=="true"', {
+          'xcode_settings': {
+            'OTHER_LDFLAGS': [
+              '-Wl,-force_load,<(PRODUCT_DIR)/<(STATIC_LIB_PREFIX)'
+                  'uv<(STATIC_LIB_SUFFIX)',
+            ],
+          },
+          'msvs_settings': {
+            'VCLinkerTool': {
+              'AdditionalOptions': [
+                '/WHOLEARCHIVE:<(PRODUCT_DIR)\\lib\\libuv<(STATIC_LIB_SUFFIX)',
+              ],
+            },
+          },
+          'conditions': [
+            ['OS!="aix" and node_shared=="false"', {
+              'ldflags': [
+                '-Wl,--whole-archive,<(obj_dir)/deps/uv/<(STATIC_LIB_PREFIX)'
+                    'uv<(STATIC_LIB_SUFFIX)',
+                '-Wl,--no-whole-archive',
+              ],
+            }],
+          ],
+        }],
+      ],
     }],
 
     [ 'node_shared_nghttp2=="false"', {
@@ -159,6 +222,27 @@
       'defines': [
         '_LINUX_SOURCE_COMPAT',
       ],
+      'conditions': [
+        [ 'force_load=="true"', {
+
+          'actions': [
+            {
+              'action_name': 'expfile',
+              'inputs': [
+                '<(obj_dir)'
+              ],
+              'outputs': [
+                '<(PRODUCT_DIR)/node.exp'
+              ],
+              'action': [
+                'sh', 'tools/create_expfile.sh',
+                      '<@(_inputs)', '<@(_outputs)'
+              ],
+            }
+          ],
+          'ldflags': ['-Wl,-bE:<(PRODUCT_DIR)/node.exp', '-Wl,-brtl'],
+        }],
+      ],
     }],
     [ 'OS=="solaris"', {
       'libraries': [
@@ -174,24 +258,21 @@
         'NODE_PLATFORM="sunos"',
       ],
     }],
-    [ '(OS=="freebsd" or OS=="linux") and node_shared=="false" and coverage=="false"', {
+    [ '(OS=="freebsd" or OS=="linux") and node_shared=="false"'
+        ' and force_load=="true"', {
       'ldflags': [ '-Wl,-z,noexecstack,--allow-multiple-definition',
-                   '-Wl,--whole-archive <(V8_BASE)',
+                   '-Wl,--whole-archive <(v8_base)',
                    '-Wl,--no-whole-archive' ]
     }],
-    [ '(OS=="freebsd" or OS=="linux") and node_shared=="false" and coverage=="true"', {
-      'ldflags': [ '-Wl,-z,noexecstack',
-                   '-Wl,--whole-archive <(V8_BASE)',
-                   '-Wl,--no-whole-archive',
-                   '--coverage',
+    [ 'OS in "mac freebsd linux" and node_shared=="false"'
+        ' and coverage=="true"', {
+      'ldflags': [ '--coverage',
                    '-g',
                    '-O0' ],
-       'cflags': [ '--coverage',
+      'cflags': [ '--coverage',
                    '-g',
                    '-O0' ],
-       'cflags!': [ '-O3' ]
-    }],
-    [ 'OS=="mac" and node_shared=="false" and coverage=="true"', {
+      'cflags!': [ '-O3' ],
       'xcode_settings': {
         'OTHER_LDFLAGS': [
           '--coverage',
@@ -206,5 +287,60 @@
     [ 'OS=="sunos"', {
       'ldflags': [ '-Wl,-M,/usr/lib/ld/map.noexstk' ],
     }],
+
+    [ 'node_use_openssl=="true"', {
+      'defines': [ 'HAVE_OPENSSL=1' ],
+      'conditions': [
+        ['openssl_fips != ""', {
+          'defines': [ 'NODE_FIPS_MODE' ],
+        }],
+        [ 'node_shared_openssl=="false"', {
+          'dependencies': [
+            './deps/openssl/openssl.gyp:openssl',
+
+            # For tests
+            './deps/openssl/openssl.gyp:openssl-cli',
+          ],
+          'conditions': [
+            # -force_load or --whole-archive are not applicable for
+            # the static library
+            [ 'force_load=="true"', {
+              'xcode_settings': {
+                'OTHER_LDFLAGS': [
+                  '-Wl,-force_load,<(PRODUCT_DIR)/<(openssl_product)',
+                ],
+              },
+              'msvs_settings': {
+                'VCLinkerTool': {
+                  'AdditionalOptions': [
+                    '/WHOLEARCHIVE:<(PRODUCT_DIR)\\lib\\<(openssl_product)',
+                  ],
+                },
+              },
+              'conditions': [
+                ['OS in "linux freebsd" and node_shared=="false"', {
+                  'ldflags': [
+                    '-Wl,--whole-archive,'
+                      '<(obj_dir)/deps/openssl/<(openssl_product)',
+                    '-Wl,--no-whole-archive',
+                  ],
+                }],
+                # openssl.def is based on zlib.def, zlib symbols
+                # are always exported.
+                ['use_openssl_def==1', {
+                  'sources': ['<(SHARED_INTERMEDIATE_DIR)/openssl.def'],
+                }],
+                ['OS=="win" and use_openssl_def==0', {
+                  'sources': ['deps/zlib/win32/zlib.def'],
+                }],
+              ],
+            }],
+          ],
+        }]]
+
+    }, {
+      'defines': [ 'HAVE_OPENSSL=0' ]
+    }],
+
   ],
 }

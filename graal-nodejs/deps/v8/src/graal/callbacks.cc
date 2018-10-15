@@ -53,7 +53,7 @@
 #include "graal_string.h"
 #include "graal_external.h"
 #include "jni.h"
-#include "../../../uv/include/uv.h"
+#include "uv.h"
 #include "../../../../mxbuild/trufflenode/coremodules/node_snapshots.h"
 #include <vector>
 #include <stdlib.h>
@@ -78,6 +78,8 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("executePropertyHandlerQuery", "(JLjava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;Z)Ljava/lang/Object;", &GraalExecutePropertyHandlerQuery),
     CALLBACK("executePropertyHandlerDeleter", "(JLjava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;Z)Z", &GraalExecutePropertyHandlerDeleter),
     CALLBACK("executePropertyHandlerEnumerator", "(JLjava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecutePropertyHandlerEnumerator),
+    CALLBACK("executePropertyHandlerDefiner", "(JLjava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I[Ljava/lang/Object;Ljava/lang/Object;Z)V", &GraalExecutePropertyHandlerDefiner),
+    CALLBACK("executePropertyHandlerDescriptor", "(JLjava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;Z)Ljava/lang/Object;", &GraalExecutePropertyHandlerDescriptor),
     CALLBACK("deallocate", "(J)V", &GraalDeallocate),
     CALLBACK("weakCallback", "(JJI)V", &GraalWeakCallback),
     CALLBACK("notifyGCCallbacks", "(Z)V", &GraalNotifyGCCallbacks),
@@ -92,7 +94,8 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("writeHostObject", "(JLjava/lang/Object;)V", &GraalWriteHostObject),
     CALLBACK("readHostObject", "(J)Ljava/lang/Object;", &GraalReadHostObject),
     CALLBACK("throwDataCloneError", "(JLjava/lang/String;)V", &GraalThrowDataCloneError),
-    CALLBACK("getSharedArrayBufferId", "(JLjava/lang/Object;)I", &GraalGetSharedArrayBufferId)
+    CALLBACK("getSharedArrayBufferId", "(JLjava/lang/Object;)I", &GraalGetSharedArrayBufferId),
+    CALLBACK("getSharedArrayBufferFromId", "(JI)Ljava/lang/Object;", &GraalGetSharedArrayBufferFromId)
  };
 
 static const int CALLBACK_COUNT = sizeof(callbacks) / sizeof(*callbacks);
@@ -148,13 +151,12 @@ jobject GraalExecuteFunction(JNIEnv* env, jclass nativeAccess, jint id, jobjectA
     int offset = is_new_target ? 3 : 2;
     std::vector<GraalValue*> values(length - offset + 1);
     for (int i = 0; i < length - offset; i++) {
-        jobject java_value = env->GetObjectArrayElement(arguments, i + 2);
+        jobject java_value = env->GetObjectArrayElement(arguments, i + offset);
         GraalValue* graal_value = GraalValue::FromJavaObject(isolate, java_value);
         values[length - offset - 1 - i] = graal_value;
     }
     jobject java_this = env->GetObjectArrayElement(arguments, 0);
     GraalValue* graal_this = GraalValue::FromJavaObject(isolate, java_this);
-    GraalValue* graal_callee = isolate->GetFunctionTemplateFunction(id);
     GraalValue* graal_new_target;
     if (is_new_target) {
         jobject java_new_target = env->GetObjectArrayElement(arguments, 2);
@@ -166,7 +168,7 @@ jobject GraalExecuteFunction(JNIEnv* env, jclass nativeAccess, jint id, jobjectA
     }
     GraalValue* graal_data = isolate->GetFunctionTemplateData(id);
     int argc = length - offset;
-    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_callee, graal_new_target, graal_data, values.data(), argc, is_new, true);
+    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_new_target, graal_data, values.data(), argc, is_new, true);
     return GraalExecuteFunction(env, isolate, id, callbackArgs, java_context);
 }
 
@@ -185,10 +187,9 @@ jobject GraalExecuteFunction0(JNIEnv* env, jclass nativeAccess, jint id,
     std::array<GraalValue*, 1> values;
     char memory[2][GraalValue::MAX_SIZE];
     GraalValue* graal_this = GraalValue::FromJavaObject(isolate, this_object, this_type, false, memory[0]);
-    GraalValue* graal_callee = isolate->GetFunctionTemplateFunction(id);
     GraalValue* graal_new_target = AllocateNewTarget(isolate, new_target, memory[1]);
     GraalValue* graal_data = isolate->GetFunctionTemplateData(id);
-    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_callee, graal_new_target, graal_data, values.data(), 0, new_target != NULL, false);
+    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_new_target, graal_data, values.data(), 0, new_target != NULL, false);
     return GraalExecuteFunction(env, isolate, id, callbackArgs, java_context);
 }
 
@@ -203,10 +204,9 @@ jobject GraalExecuteFunction1(JNIEnv* env, jclass nativeAccess, jint id,
     int i = values.size() - 1;
     values[--i] = GraalValue::FromJavaObject(isolate, argument1, argument1_type, true, memory[0]);
     GraalValue* graal_this = GraalValue::FromJavaObject(isolate, this_object, this_type, false, memory[1]);
-    GraalValue* graal_callee = isolate->GetFunctionTemplateFunction(id);
     GraalValue* graal_new_target = AllocateNewTarget(isolate, new_target, memory[2]);
     GraalValue* graal_data = isolate->GetFunctionTemplateData(id);
-    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_callee, graal_new_target, graal_data, values.data(), 1, new_target != NULL, false);
+    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_new_target, graal_data, values.data(), 1, new_target != NULL, false);
     return GraalExecuteFunction(env, isolate, id, callbackArgs, java_context);
 }
 
@@ -223,10 +223,9 @@ jobject GraalExecuteFunction2(JNIEnv* env, jclass nativeAccess, jint id,
     values[--i] = GraalValue::FromJavaObject(isolate, argument1, argument1_type, true, memory[0]);
     values[--i] = GraalValue::FromJavaObject(isolate, argument2, argument2_type, true, memory[1]);
     GraalValue* graal_this = GraalValue::FromJavaObject(isolate, this_object, this_type, false, memory[2]);
-    GraalValue* graal_callee = isolate->GetFunctionTemplateFunction(id);
     GraalValue* graal_new_target = AllocateNewTarget(isolate, new_target, memory[3]);
     GraalValue* graal_data = isolate->GetFunctionTemplateData(id);
-    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_callee, graal_new_target, graal_data, values.data(), 2, new_target != NULL, false);
+    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_new_target, graal_data, values.data(), 2, new_target != NULL, false);
     return GraalExecuteFunction(env, isolate, id, callbackArgs, java_context);
 }
 
@@ -245,10 +244,9 @@ jobject GraalExecuteFunction3(JNIEnv* env, jclass nativeAccess, jint id,
     values[--i] = GraalValue::FromJavaObject(isolate, argument2, argument2_type, true, memory[1]);
     values[--i] = GraalValue::FromJavaObject(isolate, argument3, argument3_type, true, memory[2]);
     GraalValue* graal_this = GraalValue::FromJavaObject(isolate, this_object, this_type, false, memory[3]);
-    GraalValue* graal_callee = isolate->GetFunctionTemplateFunction(id);
     GraalValue* graal_new_target = AllocateNewTarget(isolate, new_target, memory[4]);
     GraalValue* graal_data = isolate->GetFunctionTemplateData(id);
-    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_callee, graal_new_target, graal_data, values.data(), 3, new_target != NULL, false);
+    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_new_target, graal_data, values.data(), 3, new_target != NULL, false);
     return GraalExecuteFunction(env, isolate, id, callbackArgs, java_context);
 }
 
@@ -269,10 +267,9 @@ jobject GraalExecuteFunction4(JNIEnv* env, jclass nativeAccess, jint id,
     values[--i] = GraalValue::FromJavaObject(isolate, argument3, argument3_type, true, memory[2]);
     values[--i] = GraalValue::FromJavaObject(isolate, argument4, argument4_type, true, memory[3]);
     GraalValue* graal_this = GraalValue::FromJavaObject(isolate, this_object, this_type, false, memory[4]);
-    GraalValue* graal_callee = isolate->GetFunctionTemplateFunction(id);
     GraalValue* graal_new_target = AllocateNewTarget(isolate, new_target, memory[5]);
     GraalValue* graal_data = isolate->GetFunctionTemplateData(id);
-    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_callee, graal_new_target, graal_data, values.data(), 4, new_target != NULL, false);
+    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_new_target, graal_data, values.data(), 4, new_target != NULL, false);
     return GraalExecuteFunction(env, isolate, id, callbackArgs, java_context);
 }
 
@@ -295,10 +292,9 @@ jobject GraalExecuteFunction5(JNIEnv* env, jclass nativeAccess, jint id,
     values[--i] = GraalValue::FromJavaObject(isolate, argument4, argument4_type, true, memory[3]);
     values[--i] = GraalValue::FromJavaObject(isolate, argument5, argument5_type, true, memory[4]);
     GraalValue* graal_this = GraalValue::FromJavaObject(isolate, this_object, this_type, false, memory[5]);
-    GraalValue* graal_callee = isolate->GetFunctionTemplateFunction(id);
     GraalValue* graal_new_target = AllocateNewTarget(isolate, new_target, memory[6]);
     GraalValue* graal_data = isolate->GetFunctionTemplateData(id);
-    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_callee, graal_new_target, graal_data, values.data(), 5, new_target != NULL, false);
+    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_new_target, graal_data, values.data(), 5, new_target != NULL, false);
     return GraalExecuteFunction(env, isolate, id, callbackArgs, java_context);
 }
 
@@ -323,10 +319,9 @@ jobject GraalExecuteFunction6(JNIEnv* env, jclass nativeAccess, jint id,
     values[--i] = GraalValue::FromJavaObject(isolate, argument5, argument5_type, true, memory[4]);
     values[--i] = GraalValue::FromJavaObject(isolate, argument6, argument6_type, true, memory[5]);
     GraalValue* graal_this = GraalValue::FromJavaObject(isolate, this_object, this_type, false, memory[6]);
-    GraalValue* graal_callee = isolate->GetFunctionTemplateFunction(id);
     GraalValue* graal_new_target = AllocateNewTarget(isolate, new_target, memory[7]);
     GraalValue* graal_data = isolate->GetFunctionTemplateData(id);
-    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_callee, graal_new_target, graal_data, values.data(), 6, new_target != NULL, false);
+    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_new_target, graal_data, values.data(), 6, new_target != NULL, false);
     return GraalExecuteFunction(env, isolate, id, callbackArgs, java_context);
 }
 
@@ -458,6 +453,77 @@ jobject GraalExecutePropertyHandlerEnumerator(JNIEnv* env, jclass nativeAccess, 
     GraalValue*** graal_value = reinterpret_cast<GraalValue***> (&value);
     jobject return_value = (**graal_value == nullptr) ? isolate->GetUndefined()->GetJavaObject() : env->NewLocalRef((**graal_value)->GetJavaObject());
     return return_value;
+}
+
+void GraalExecutePropertyHandlerDefiner(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobject value, jobject get, jobject set, int flags, jobjectArray arguments, jobject data, jboolean named) {
+    GraalIsolate* isolate = CurrentIsolateChecked();
+
+    jobject java_key = env->GetObjectArrayElement(arguments, 3);
+    GraalValue* graal_key = GraalValue::FromJavaObject(isolate, java_key);
+    GraalPropertyCallbackInfo<v8::Value> info = GraalPropertyCallbackInfo<v8::Value>::New(isolate, arguments, 0, data, holder);
+    bool has_configurable = flags & (1 << 0);
+    bool congigurable = flags & (1 << 1);
+    bool has_enumerable = flags & (1 << 2);
+    bool enumerable = flags & (1 << 3);
+    bool has_writable = flags & (1 << 4);
+    bool writable = flags & (1 << 5);
+
+    v8::PropertyDescriptor* descriptor;
+    if (value != nullptr) {
+        GraalValue* graal_value = GraalValue::FromJavaObject(isolate, value);
+        v8::Local<v8::Value> v8_value = reinterpret_cast<v8::Value*> (graal_value);
+        if (has_writable) {
+            descriptor = new v8::PropertyDescriptor(v8_value, writable);
+        } else {
+            descriptor = new v8::PropertyDescriptor(v8_value);
+        }
+    } else if (get != nullptr || set != nullptr) {
+        GraalValue* graal_get = (get == nullptr) ? nullptr : GraalValue::FromJavaObject(isolate, get);
+        GraalValue* graal_set = (set == nullptr) ? nullptr : GraalValue::FromJavaObject(isolate, set);
+        v8::Local<v8::Value> v8_get = reinterpret_cast<v8::Value*> (graal_get);
+        v8::Local<v8::Value> v8_set = reinterpret_cast<v8::Value*> (graal_set);
+        descriptor = new v8::PropertyDescriptor(v8_get, v8_set);
+    } else {
+        descriptor = new v8::PropertyDescriptor();
+    }
+    if (has_configurable) {
+        descriptor->set_configurable(congigurable);
+    }
+    if (has_enumerable) {
+        descriptor->set_enumerable(enumerable);
+    }
+
+    if (named) {
+        v8::Name* property_name = reinterpret_cast<v8::Name*> (graal_key);
+        v8::GenericNamedPropertyDefinerCallback callback = (v8::GenericNamedPropertyDefinerCallback) pointer;
+        callback(property_name, *descriptor, info);
+    } else {
+        uint32_t index = graal_key->ToUint32(reinterpret_cast<v8::Isolate*> (isolate))->Value();
+        v8::IndexedPropertyDefinerCallback callback = (v8::IndexedPropertyDefinerCallback) pointer;
+        callback(index, *descriptor, info);
+    }
+    delete descriptor;
+}
+
+jobject GraalExecutePropertyHandlerDescriptor(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobjectArray arguments, jobject data, jboolean named) {
+    GraalIsolate* isolate = CurrentIsolateChecked();
+
+    jobject java_key = env->GetObjectArrayElement(arguments, 3);
+    GraalValue* graal_key = GraalValue::FromJavaObject(isolate, java_key);
+    GraalPropertyCallbackInfo<v8::Value> info = GraalPropertyCallbackInfo<v8::Value>::New(isolate, arguments, 0, data, holder);
+
+    if (named) {
+        v8::Name* property_name = reinterpret_cast<v8::Name*> (graal_key);
+        v8::GenericNamedPropertyDescriptorCallback callback = (v8::GenericNamedPropertyDescriptorCallback)pointer;
+        callback(property_name, info);
+    } else {
+        uint32_t index = graal_key->ToUint32(reinterpret_cast<v8::Isolate*> (isolate))->Value();
+        v8::IndexedPropertyDescriptorCallback callback = (v8::IndexedPropertyDescriptorCallback)pointer;
+        callback(index, info);
+    }
+
+    v8::ReturnValue<v8::Value> value = info.GetReturnValue();
+    return isolate->CorrectReturnValue(**reinterpret_cast<GraalValue***> (&value), nullptr);
 }
 
 void GraalDeallocate(JNIEnv* env, jclass nativeAccess, jlong pointer) {
@@ -634,4 +700,17 @@ jint GraalGetSharedArrayBufferId(JNIEnv* env, jclass nativeAccess, jlong delegat
     v8::SharedArrayBuffer* object = reinterpret_cast<v8::SharedArrayBuffer*> (graal_value);
     v8::ValueSerializer::Delegate* d = reinterpret_cast<v8::ValueSerializer::Delegate*> (delegate);
     return d->GetSharedArrayBufferId(isolate, object).FromJust();
+}
+
+jobject GraalGetSharedArrayBufferFromId(JNIEnv* env, jclass nativeAccess, jlong delegate, jint id) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    v8::ValueDeserializer::Delegate* d = reinterpret_cast<v8::ValueDeserializer::Delegate*> (delegate);
+    v8::MaybeLocal<v8::SharedArrayBuffer> v8_maybe_buffer = d->GetSharedArrayBufferFromId(isolate, id);
+    if (v8_maybe_buffer.IsEmpty()) {
+        return nullptr;
+    } else {
+        v8::Local<v8::SharedArrayBuffer> v8_buffer = v8_maybe_buffer.ToLocalChecked();
+        return reinterpret_cast<GraalHandleContent*> (*v8_buffer)->GetJavaObject();
+    }
 }

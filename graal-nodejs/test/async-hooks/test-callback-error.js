@@ -88,13 +88,13 @@ assert.ok(!arg);
   child.on('close', (code, signal) => {
     clearTimeout(tO);
     if (common.isWindows) {
-      assert.strictEqual(code, 3);
+      assert.strictEqual(code, 134);
       assert.strictEqual(signal, null);
     } else {
       assert.strictEqual(code, null);
       // most posix systems will show 'SIGABRT', but alpine34 does not
       if (signal !== 'SIGABRT') {
-        console.log(`parent recived signal ${signal}\nchild's stderr:`);
+        console.log(`parent received signal ${signal}\nchild's stderr:`);
         console.log(stderr);
         process.exit(1);
       }

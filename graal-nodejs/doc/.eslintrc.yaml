@@ -5,10 +5,13 @@ rules:
   no-restricted-properties: off
   no-undef: off
   no-unused-vars: off
-  strict: off
   symbol-description: off
 
   # add new ECMAScript features gradually
   no-var: error
   prefer-const: error
   prefer-rest-params: error
+  prefer-template: error
+
+  # Stylistic Issues
+  no-multiple-empty-lines: [error, {max: 1, maxEOF: 0, maxBOF: 0}]

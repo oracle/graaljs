@@ -49,11 +49,6 @@ describe('ObjectNew', function () {
             assert(re instanceof RegExp);
             assert(re.global);
         });
-        it('should return a RegExp object (maybe version)', function () {
-            var re = module.ObjectNew_RegExpMaybe("beer");
-            assert(re instanceof RegExp);
-            assert(re.global);
-        });
     });
     describe('Date::New', function () {
         const time = new Date(2018,1,1).valueOf();

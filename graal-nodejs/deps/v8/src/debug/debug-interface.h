@@ -5,7 +5,7 @@
 #ifndef V8_DEBUG_DEBUG_INTERFACE_H_
 #define V8_DEBUG_DEBUG_INTERFACE_H_
 
-#include "include/v8-debug.h"
+#include "include/v8-inspector.h"
 #include "include/v8-util.h"
 #include "include/v8.h"
 
@@ -18,14 +18,20 @@ namespace internal {
 struct CoverageBlock;
 struct CoverageFunction;
 struct CoverageScript;
+struct TypeProfileEntry;
+struct TypeProfileScript;
 class Coverage;
 class Script;
-}
+class TypeProfile;
+}  // namespace internal
 
 namespace debug {
 
 void SetContextId(Local<Context> context, int id);
 int GetContextId(Local<Context> context);
+
+void SetInspector(Isolate* isolate, v8_inspector::V8Inspector*);
+v8_inspector::V8Inspector* GetInspector(Isolate* isolate);
 
 /**
  * Debugger is running in its own context which is entered while debugger
@@ -117,8 +123,11 @@ bool AllFramesOnStackAreBlackboxed(Isolate* isolate);
  * \param data the parameter provided during callback installation.
  */
 typedef void (*OutOfMemoryCallback)(void* data);
-void SetOutOfMemoryCallback(Isolate* isolate, OutOfMemoryCallback callback,
-                            void* data);
+
+V8_DEPRECATED("Use v8::Isolate::AddNearHeapLimitCallback",
+              void SetOutOfMemoryCallback(Isolate* isolate,
+                                          OutOfMemoryCallback callback,
+                                          void* data));
 
 /**
  * Native wrapper around v8::internal::Script object.
@@ -164,6 +173,7 @@ class WasmScript : public Script {
   std::pair<int, int> GetFunctionRange(int function_index) const;
 
   debug::WasmDisassembly DisassembleFunction(int function_index) const;
+  uint32_t GetFunctionHash(int function_index);
 };
 
 void GetLoadedScripts(Isolate* isolate, PersistentValueVector<Script>& scripts);
@@ -175,15 +185,13 @@ class DebugDelegate {
  public:
   virtual ~DebugDelegate() {}
   virtual void PromiseEventOccurred(debug::PromiseDebugActionType type, int id,
-                                    int parent_id, bool created_by_user) {}
+                                    bool is_blackboxed) {}
   virtual void ScriptCompiled(v8::Local<Script> script, bool is_live_edited,
                               bool has_compile_error) {}
-  // |break_points_hit| contains installed by JS debug API breakpoint objects.
   // |inspector_break_points_hit| contains id of breakpoints installed with
   // debug::Script::SetBreakpoint API.
   virtual void BreakProgramRequested(
       v8::Local<v8::Context> paused_context, v8::Local<v8::Object> exec_state,
-      v8::Local<v8::Value> break_points_hit,
       const std::vector<debug::BreakpointId>& inspector_break_points_hit) {}
   virtual void ExceptionThrown(v8::Local<v8::Context> paused_context,
                                v8::Local<v8::Object> exec_state,
@@ -203,10 +211,6 @@ void ResetBlackboxedStateCache(Isolate* isolate,
                                v8::Local<debug::Script> script);
 
 int EstimatedValueSize(Isolate* isolate, v8::Local<v8::Value> value);
-
-v8::MaybeLocal<v8::Array> EntriesPreview(Isolate* isolate,
-                                         v8::Local<v8::Value> value,
-                                         bool* is_key_value);
 
 enum Builtin {
   kObjectKeys,
@@ -244,6 +248,8 @@ class GeneratorObject {
  */
 class V8_EXPORT_PRIVATE Coverage {
  public:
+  MOVE_ONLY_NO_DEFAULT_CONSTRUCTOR(Coverage);
+
   enum Mode {
     // Make use of existing information in feedback vectors on the heap.
     // Only return a yes/no result. Optimization and GC are not affected.
@@ -269,19 +275,27 @@ class V8_EXPORT_PRIVATE Coverage {
 
   class V8_EXPORT_PRIVATE BlockData {
    public:
+    MOVE_ONLY_NO_DEFAULT_CONSTRUCTOR(BlockData);
+
     int StartOffset() const;
     int EndOffset() const;
     uint32_t Count() const;
 
    private:
-    explicit BlockData(i::CoverageBlock* block) : block_(block) {}
+    explicit BlockData(i::CoverageBlock* block,
+                       std::shared_ptr<i::Coverage> coverage)
+        : block_(block), coverage_(std::move(coverage)) {}
+
     i::CoverageBlock* block_;
+    std::shared_ptr<i::Coverage> coverage_;
 
     friend class v8::debug::Coverage::FunctionData;
   };
 
   class V8_EXPORT_PRIVATE FunctionData {
    public:
+    MOVE_ONLY_NO_DEFAULT_CONSTRUCTOR(FunctionData);
+
     int StartOffset() const;
     int EndOffset() const;
     uint32_t Count() const;
@@ -291,22 +305,29 @@ class V8_EXPORT_PRIVATE Coverage {
     BlockData GetBlockData(size_t i) const;
 
    private:
-    explicit FunctionData(i::CoverageFunction* function)
-        : function_(function) {}
+    explicit FunctionData(i::CoverageFunction* function,
+                          std::shared_ptr<i::Coverage> coverage)
+        : function_(function), coverage_(std::move(coverage)) {}
+
     i::CoverageFunction* function_;
+    std::shared_ptr<i::Coverage> coverage_;
 
     friend class v8::debug::Coverage::ScriptData;
   };
 
   class V8_EXPORT_PRIVATE ScriptData {
    public:
+    MOVE_ONLY_NO_DEFAULT_CONSTRUCTOR(ScriptData);
+
     Local<debug::Script> GetScript() const;
     size_t FunctionCount() const;
     FunctionData GetFunctionData(size_t i) const;
 
    private:
-    explicit ScriptData(i::CoverageScript* script) : script_(script) {}
+    explicit ScriptData(size_t index, std::shared_ptr<i::Coverage> c);
+
     i::CoverageScript* script_;
+    std::shared_ptr<i::Coverage> coverage_;
 
     friend class v8::debug::Coverage;
   };
@@ -320,11 +341,72 @@ class V8_EXPORT_PRIVATE Coverage {
   ScriptData GetScriptData(size_t i) const;
   bool IsEmpty() const { return coverage_ == nullptr; }
 
-  ~Coverage();
+ private:
+  explicit Coverage(std::shared_ptr<i::Coverage> coverage)
+      : coverage_(std::move(coverage)) {}
+  std::shared_ptr<i::Coverage> coverage_;
+};
+
+/*
+ * Provide API layer between inspector and type profile.
+ */
+class V8_EXPORT_PRIVATE TypeProfile {
+ public:
+  MOVE_ONLY_NO_DEFAULT_CONSTRUCTOR(TypeProfile);
+
+  enum Mode {
+    kNone,
+    kCollect,
+  };
+  class ScriptData;  // Forward declaration.
+
+  class V8_EXPORT_PRIVATE Entry {
+   public:
+    MOVE_ONLY_NO_DEFAULT_CONSTRUCTOR(Entry);
+
+    int SourcePosition() const;
+    std::vector<MaybeLocal<String>> Types() const;
+
+   private:
+    explicit Entry(const i::TypeProfileEntry* entry,
+                   std::shared_ptr<i::TypeProfile> type_profile)
+        : entry_(entry), type_profile_(std::move(type_profile)) {}
+
+    const i::TypeProfileEntry* entry_;
+    std::shared_ptr<i::TypeProfile> type_profile_;
+
+    friend class v8::debug::TypeProfile::ScriptData;
+  };
+
+  class V8_EXPORT_PRIVATE ScriptData {
+   public:
+    MOVE_ONLY_NO_DEFAULT_CONSTRUCTOR(ScriptData);
+
+    Local<debug::Script> GetScript() const;
+    std::vector<Entry> Entries() const;
+
+   private:
+    explicit ScriptData(size_t index,
+                        std::shared_ptr<i::TypeProfile> type_profile);
+
+    i::TypeProfileScript* script_;
+    std::shared_ptr<i::TypeProfile> type_profile_;
+
+    friend class v8::debug::TypeProfile;
+  };
+
+  static TypeProfile Collect(Isolate* isolate);
+
+  static void SelectMode(Isolate* isolate, Mode mode);
+
+  size_t ScriptCount() const;
+  ScriptData GetScriptData(size_t i) const;
 
  private:
-  explicit Coverage(i::Coverage* coverage) : coverage_(coverage) {}
-  i::Coverage* coverage_;
+  explicit TypeProfile(std::shared_ptr<i::TypeProfile> type_profile)
+      : type_profile_(std::move(type_profile)) {}
+
+  std::shared_ptr<i::TypeProfile> type_profile_;
 };
 
 class ScopeIterator {
@@ -354,6 +436,9 @@ class ScopeIterator {
   virtual ScopeType GetType() = 0;
   virtual v8::Local<v8::Object> GetObject() = 0;
   virtual v8::Local<v8::Function> GetFunction() = 0;
+  virtual v8::Local<v8::Value> GetFunctionDebugName() = 0;
+  virtual int GetScriptId() = 0;
+  virtual bool HasLocationInfo() = 0;
   virtual debug::Location GetStartLocation() = 0;
   virtual debug::Location GetEndLocation() = 0;
 
@@ -375,9 +460,9 @@ class StackTraceIterator {
   virtual void Advance() = 0;
 
   virtual int GetContextId() const = 0;
-  virtual v8::Local<v8::Value> GetReceiver() const = 0;
+  virtual v8::MaybeLocal<v8::Value> GetReceiver() const = 0;
   virtual v8::Local<v8::Value> GetReturnValue() const = 0;
-  virtual v8::Local<v8::String> GetFunctionName() const = 0;
+  virtual v8::Local<v8::String> GetFunctionDebugName() const = 0;
   virtual v8::Local<v8::debug::Script> GetScript() const = 0;
   virtual debug::Location GetSourceLocation() const = 0;
   virtual v8::Local<v8::Function> GetFunction() const = 0;
@@ -400,6 +485,35 @@ class QueryObjectPredicate {
 void QueryObjects(v8::Local<v8::Context> context,
                   QueryObjectPredicate* predicate,
                   v8::PersistentValueVector<v8::Object>* objects);
+
+void GlobalLexicalScopeNames(v8::Local<v8::Context> context,
+                             v8::PersistentValueVector<v8::String>* names);
+
+void SetReturnValue(v8::Isolate* isolate, v8::Local<v8::Value> value);
+
+enum class NativeAccessorType {
+  None = 0,
+  HasGetter = 1 << 0,
+  HasSetter = 1 << 1,
+  IsBuiltin = 1 << 2
+};
+
+int GetNativeAccessorDescriptor(v8::Local<v8::Context> context,
+                                v8::Local<v8::Object> object,
+                                v8::Local<v8::Name> name);
+
+int64_t GetNextRandomInt64(v8::Isolate* isolate);
+
+v8::MaybeLocal<v8::Value> EvaluateGlobal(v8::Isolate* isolate,
+                                         v8::Local<v8::String> source,
+                                         bool throw_on_side_effect);
+
+int GetDebuggingId(v8::Local<v8::Function> function);
+
+bool SetFunctionBreakpoint(v8::Local<v8::Function> function,
+                           v8::Local<v8::String> condition, BreakpointId* id);
+
+v8::Platform* GetCurrentPlatform();
 
 }  // namespace debug
 }  // namespace v8

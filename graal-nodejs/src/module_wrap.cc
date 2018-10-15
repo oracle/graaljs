@@ -4,15 +4,20 @@
 #include "module_wrap.h"
 
 #include "env.h"
+#include "node_errors.h"
 #include "node_url.h"
 #include "util-inl.h"
 #include "node_internals.h"
+#include "node_contextify.h"
+#include "node_watchdog.h"
 
 namespace node {
 namespace loader {
 
+using node::contextify::ContextifyContext;
 using node::url::URL;
 using node::url::URL_FLAGS_FAILED;
+using v8::Array;
 using v8::Context;
 using v8::Function;
 using v8::FunctionCallbackInfo;
@@ -34,6 +39,7 @@ using v8::ScriptCompiler;
 using v8::ScriptOrigin;
 using v8::String;
 using v8::TryCatch;
+using v8::Undefined;
 using v8::Value;
 
 static const char* const EXTENSIONS[] = {".mjs", ".js", ".json", ".node"};
@@ -56,70 +62,102 @@ ModuleWrap::~ModuleWrap() {
       break;
     }
   }
+}
 
-  module_.Reset();
+ModuleWrap* ModuleWrap::GetFromModule(Environment* env,
+                                      Local<Module> module) {
+  ModuleWrap* ret = nullptr;
+  auto range = env->module_map.equal_range(module->GetIdentityHash());
+  for (auto it = range.first; it != range.second; ++it) {
+    if (it->second->module_ == module) {
+      ret = it->second;
+      break;
+    }
+  }
+  return ret;
 }
 
 void ModuleWrap::New(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
+  Isolate* isolate = env->isolate();
 
-  Isolate* isolate = args.GetIsolate();
+  CHECK(args.IsConstructCall());
+  Local<Object> that = args.This();
 
-  if (!args.IsConstructCall()) {
-    env->ThrowError("constructor must be called using new");
-    return;
-  }
+  const int argc = args.Length();
+  CHECK_GE(argc, 2);
 
-  if (args.Length() != 2) {
-    env->ThrowError("constructor must have exactly 2 arguments "
-                    "(string, string)");
-    return;
-  }
-
-  if (!args[0]->IsString()) {
-    env->ThrowError("first argument is not a string");
-    return;
-  }
-
+  CHECK(args[0]->IsString());
   Local<String> source_text = args[0].As<String>();
 
-  if (!args[1]->IsString()) {
-    env->ThrowError("second argument is not a string");
-    return;
-  }
-
+  CHECK(args[1]->IsString());
   Local<String> url = args[1].As<String>();
 
+  Local<Context> context;
+  Local<Integer> line_offset;
+  Local<Integer> column_offset;
+
+  if (argc == 5) {
+    // new ModuleWrap(source, url, context?, lineOffset, columnOffset)
+    if (args[2]->IsUndefined()) {
+      context = that->CreationContext();
+    } else {
+      CHECK(args[2]->IsObject());
+      ContextifyContext* sandbox =
+          ContextifyContext::ContextFromContextifiedSandbox(
+              env, args[2].As<Object>());
+      CHECK_NOT_NULL(sandbox);
+      context = sandbox->context();
+    }
+
+    CHECK(args[3]->IsNumber());
+    line_offset = args[3].As<Integer>();
+
+    CHECK(args[4]->IsNumber());
+    column_offset = args[4].As<Integer>();
+  } else {
+    // new ModuleWrap(source, url)
+    context = that->CreationContext();
+    line_offset = Integer::New(isolate, 0);
+    column_offset = Integer::New(isolate, 0);
+  }
+
+  Environment::ShouldNotAbortOnUncaughtScope no_abort_scope(env);
+  TryCatch try_catch(isolate);
   Local<Module> module;
 
   // compile
   {
     ScriptOrigin origin(url,
-                        Integer::New(isolate, 0),             // line offset
-                        Integer::New(isolate, 0),             // column offset
+                        line_offset,                          // line offset
+                        column_offset,                        // column offset
                         False(isolate),                       // is cross origin
                         Local<Integer>(),                     // script id
                         Local<Value>(),                       // source map URL
                         False(isolate),                       // is opaque (?)
                         False(isolate),                       // is WASM
                         True(isolate));                       // is ES6 module
+    Context::Scope context_scope(context);
     ScriptCompiler::Source source(source_text, origin);
-    if (!ScriptCompiler::CompileModule(isolate, &source).ToLocal(&module))
+    if (!ScriptCompiler::CompileModule(isolate, &source).ToLocal(&module)) {
+      CHECK(try_catch.HasCaught());
+      CHECK(!try_catch.Message().IsEmpty());
+      CHECK(!try_catch.Exception().IsEmpty());
+      AppendExceptionLine(env, try_catch.Exception(), try_catch.Message(),
+                          ErrorHandlingMode::MODULE_ERROR);
+      try_catch.ReThrow();
       return;
+    }
   }
 
-  Local<Object> that = args.This();
-  Local<Context> context = that->CreationContext();
-  Local<String> url_str = FIXED_ONE_BYTE_STRING(isolate, "url");
-
-  if (!that->Set(context, url_str, url).FromMaybe(false)) {
+  if (!that->Set(context, env->url_string(), url).FromMaybe(false)) {
     return;
   }
 
   ModuleWrap* obj = new ModuleWrap(env, that, module, url);
+  obj->context_.Reset(isolate, context);
 
   env->module_map.emplace(module->GetIdentityHash(), obj);
-  Wrap(that, obj);
 
   that->SetIntegrityLevel(context, IntegrityLevel::kFrozen);
   args.GetReturnValue().Set(that);
@@ -128,20 +166,26 @@ void ModuleWrap::New(const FunctionCallbackInfo<Value>& args) {
 void ModuleWrap::Link(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   Isolate* isolate = args.GetIsolate();
-  if (!args[0]->IsFunction()) {
-    env->ThrowError("first argument is not a function");
+
+  CHECK_EQ(args.Length(), 1);
+  CHECK(args[0]->IsFunction());
+
+  Local<Object> that = args.This();
+
+  ModuleWrap* obj;
+  ASSIGN_OR_RETURN_UNWRAP(&obj, that);
+
+  if (obj->linked_)
     return;
-  }
+  obj->linked_ = true;
 
   Local<Function> resolver_arg = args[0].As<Function>();
 
-  Local<Object> that = args.This();
-  ModuleWrap* obj = Unwrap<ModuleWrap>(that);
-  CHECK_NE(obj, nullptr);
-  Local<Context> mod_context = that->CreationContext();
-  if (obj->linked_) return;
-  obj->linked_ = true;
-  Local<Module> module(obj->module_.Get(isolate));
+  Local<Context> mod_context = obj->context_.Get(isolate);
+  Local<Module> module = obj->module_.Get(isolate);
+
+  Local<Array> promises = Array::New(isolate,
+                                     module->GetModuleRequestsLength());
 
   // call the dependency resolve callbacks
   for (int i = 0; i < module->GetModuleRequestsLength(); i++) {
@@ -165,41 +209,89 @@ void ModuleWrap::Link(const FunctionCallbackInfo<Value>& args) {
     }
     Local<Promise> resolve_promise = resolve_return_value.As<Promise>();
     obj->resolve_cache_[specifier_std].Reset(env->isolate(), resolve_promise);
+
+    promises->Set(mod_context, i, resolve_promise).FromJust();
   }
 
-  args.GetReturnValue().Set(that);
+  args.GetReturnValue().Set(promises);
 }
 
 void ModuleWrap::Instantiate(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
   Isolate* isolate = args.GetIsolate();
-  Local<Object> that = args.This();
-  Local<Context> context = that->CreationContext();
-
-  ModuleWrap* obj = Unwrap<ModuleWrap>(that);
-  CHECK_NE(obj, nullptr);
+  ModuleWrap* obj;
+  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
+  Local<Context> context = obj->context_.Get(isolate);
   Local<Module> module = obj->module_.Get(isolate);
-  Maybe<bool> ok =
-      module->InstantiateModule(context, ModuleWrap::ResolveCallback);
+  TryCatch try_catch(isolate);
+  Maybe<bool> ok = module->InstantiateModule(context, ResolveCallback);
 
   // clear resolve cache on instantiate
-  for (auto& entry : obj->resolve_cache_)
-    entry.second.Reset();
   obj->resolve_cache_.clear();
 
   if (!ok.FromMaybe(false)) {
+    CHECK(try_catch.HasCaught());
+    CHECK(!try_catch.Message().IsEmpty());
+    CHECK(!try_catch.Exception().IsEmpty());
+    AppendExceptionLine(env, try_catch.Exception(), try_catch.Message(),
+                        ErrorHandlingMode::MODULE_ERROR);
+    try_catch.ReThrow();
     return;
   }
 }
 
 void ModuleWrap::Evaluate(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-  Local<Object> that = args.This();
-  Local<Context> context = that->CreationContext();
-  ModuleWrap* obj = Unwrap<ModuleWrap>(that);
-  CHECK_NE(obj, nullptr);
-  MaybeLocal<Value> result = obj->module_.Get(isolate)->Evaluate(context);
+  Environment* env = Environment::GetCurrent(args);
+  Isolate* isolate = env->isolate();
+  ModuleWrap* obj;
+  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
+  Local<Context> context = obj->context_.Get(isolate);
+  Local<Module> module = obj->module_.Get(isolate);
 
-  if (result.IsEmpty()) {
+  // module.evaluate(timeout, breakOnSigint)
+  CHECK_EQ(args.Length(), 2);
+
+  CHECK(args[0]->IsNumber());
+  int64_t timeout = args[0]->IntegerValue(env->context()).FromJust();
+
+  CHECK(args[1]->IsBoolean());
+  bool break_on_sigint = args[1]->IsTrue();
+
+  Environment::ShouldNotAbortOnUncaughtScope no_abort_scope(env);
+  TryCatch try_catch(isolate);
+
+  bool timed_out = false;
+  bool received_signal = false;
+  MaybeLocal<Value> result;
+  if (break_on_sigint && timeout != -1) {
+    Watchdog wd(isolate, timeout, &timed_out);
+    SigintWatchdog swd(isolate, &received_signal);
+    result = module->Evaluate(context);
+  } else if (break_on_sigint) {
+    SigintWatchdog swd(isolate, &received_signal);
+    result = module->Evaluate(context);
+  } else if (timeout != -1) {
+    Watchdog wd(isolate, timeout, &timed_out);
+    result = module->Evaluate(context);
+  } else {
+    result = module->Evaluate(context);
+  }
+
+  // Convert the termination exception into a regular exception.
+  if (timed_out || received_signal) {
+    env->isolate()->CancelTerminateExecution();
+    // It is possible that execution was terminated by another timeout in
+    // which this timeout is nested, so check whether one of the watchdogs
+    // from this invocation is responsible for termination.
+    if (timed_out) {
+      env->ThrowError("Script execution timed out.");
+    } else if (received_signal) {
+      env->ThrowError("Script execution interrupted.");
+    }
+  }
+
+  if (try_catch.HasCaught()) {
+    try_catch.ReThrow();
     return;
   }
 
@@ -209,9 +301,8 @@ void ModuleWrap::Evaluate(const FunctionCallbackInfo<Value>& args) {
 void ModuleWrap::Namespace(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   Isolate* isolate = args.GetIsolate();
-  Local<Object> that = args.This();
-  ModuleWrap* obj = Unwrap<ModuleWrap>(that);
-  CHECK_NE(obj, nullptr);
+  ModuleWrap* obj;
+  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
 
   Local<Module> module = obj->module_.Get(isolate);
 
@@ -229,6 +320,44 @@ void ModuleWrap::Namespace(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(result);
 }
 
+void ModuleWrap::GetStatus(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = args.GetIsolate();
+  ModuleWrap* obj;
+  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
+
+  Local<Module> module = obj->module_.Get(isolate);
+
+  args.GetReturnValue().Set(module->GetStatus());
+}
+
+void ModuleWrap::GetStaticDependencySpecifiers(
+    const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  ModuleWrap* obj;
+  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
+
+  Local<Module> module = obj->module_.Get(env->isolate());
+
+  int count = module->GetModuleRequestsLength();
+
+  Local<Array> specifiers = Array::New(env->isolate(), count);
+
+  for (int i = 0; i < count; i++)
+    specifiers->Set(env->context(), i, module->GetModuleRequest(i)).FromJust();
+
+  args.GetReturnValue().Set(specifiers);
+}
+
+void ModuleWrap::GetError(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = args.GetIsolate();
+  ModuleWrap* obj;
+  ASSIGN_OR_RETURN_UNWRAP(&obj, args.This());
+
+  Local<Module> module = obj->module_.Get(isolate);
+
+  args.GetReturnValue().Set(module->GetException());
+}
+
 MaybeLocal<Module> ModuleWrap::ResolveCallback(Local<Context> context,
                                                Local<String> specifier,
                                                Local<Module> referrer) {
@@ -239,14 +368,7 @@ MaybeLocal<Module> ModuleWrap::ResolveCallback(Local<Context> context,
     return MaybeLocal<Module>();
   }
 
-  ModuleWrap* dependent = nullptr;
-  auto range = env->module_map.equal_range(referrer->GetIdentityHash());
-  for (auto it = range.first; it != range.second; ++it) {
-    if (it->second->module_ == referrer) {
-      dependent = it->second;
-      break;
-    }
-  }
+  ModuleWrap* dependent = GetFromModule(env, referrer);
 
   if (dependent == nullptr) {
     env->ThrowError("linking error, null dep");
@@ -334,10 +456,9 @@ enum CheckFileOptions {
   CLOSE_AFTER_CHECK
 };
 
-Maybe<uv_file> CheckFile(const URL& search,
+Maybe<uv_file> CheckFile(const std::string& path,
                          CheckFileOptions opt = CLOSE_AFTER_CHECK) {
   uv_fs_t fs_req;
-  std::string path = search.ToFilePath();
   if (path.empty()) {
     return Nothing<uv_file>();
   }
@@ -354,17 +475,76 @@ Maybe<uv_file> CheckFile(const URL& search,
   uv_fs_req_cleanup(&fs_req);
 
   if (is_directory) {
-    uv_fs_close(nullptr, &fs_req, fd, nullptr);
+    CHECK_EQ(0, uv_fs_close(nullptr, &fs_req, fd, nullptr));
     uv_fs_req_cleanup(&fs_req);
     return Nothing<uv_file>();
   }
 
   if (opt == CLOSE_AFTER_CHECK) {
-    uv_fs_close(nullptr, &fs_req, fd, nullptr);
+    CHECK_EQ(0, uv_fs_close(nullptr, &fs_req, fd, nullptr));
     uv_fs_req_cleanup(&fs_req);
   }
 
   return Just(fd);
+}
+
+using Exists = PackageConfig::Exists;
+using IsValid = PackageConfig::IsValid;
+using HasMain = PackageConfig::HasMain;
+
+const PackageConfig& GetPackageConfig(Environment* env,
+                                      const std::string& path) {
+  auto existing = env->package_json_cache.find(path);
+  if (existing != env->package_json_cache.end()) {
+    return existing->second;
+  }
+  Maybe<uv_file> check = CheckFile(path, LEAVE_OPEN_AFTER_CHECK);
+  if (check.IsNothing()) {
+    auto entry = env->package_json_cache.emplace(path,
+        PackageConfig { Exists::No, IsValid::Yes, HasMain::No, "" });
+    return entry.first->second;
+  }
+
+  Isolate* isolate = env->isolate();
+  v8::HandleScope handle_scope(isolate);
+
+  std::string pkg_src = ReadFile(check.FromJust());
+  uv_fs_t fs_req;
+  CHECK_EQ(0, uv_fs_close(nullptr, &fs_req, check.FromJust(), nullptr));
+  uv_fs_req_cleanup(&fs_req);
+
+  Local<String> src;
+  if (!String::NewFromUtf8(isolate,
+                           pkg_src.c_str(),
+                           v8::NewStringType::kNormal,
+                           pkg_src.length()).ToLocal(&src)) {
+    auto entry = env->package_json_cache.emplace(path,
+        PackageConfig { Exists::No, IsValid::Yes, HasMain::No, "" });
+    return entry.first->second;
+  }
+
+  Local<Value> pkg_json_v;
+  Local<Object> pkg_json;
+
+  if (!JSON::Parse(env->context(), src).ToLocal(&pkg_json_v) ||
+      !pkg_json_v->ToObject(env->context()).ToLocal(&pkg_json)) {
+    auto entry = env->package_json_cache.emplace(path,
+        PackageConfig { Exists::Yes, IsValid::No, HasMain::No, "" });
+    return entry.first->second;
+  }
+
+  Local<Value> pkg_main;
+  HasMain has_main = HasMain::No;
+  std::string main_std;
+  if (pkg_json->Get(env->context(), env->main_string()).ToLocal(&pkg_main)) {
+    has_main = HasMain::Yes;
+    Utf8Value main_utf8(isolate, pkg_main);
+    main_std.assign(std::string(*main_utf8, main_utf8.length()));
+  }
+
+  auto entry = env->package_json_cache.emplace(path,
+      PackageConfig { Exists::Yes, IsValid::Yes, has_main, main_std });
+  return entry.first->second;
 }
 
 enum ResolveExtensionsOptions {
@@ -372,10 +552,11 @@ enum ResolveExtensionsOptions {
   ONLY_VIA_EXTENSIONS
 };
 
-template<ResolveExtensionsOptions options>
+template <ResolveExtensionsOptions options>
 Maybe<URL> ResolveExtensions(const URL& search) {
   if (options == TRY_EXACT_NAME) {
-    Maybe<uv_file> check = CheckFile(search);
+    std::string filePath = search.ToFilePath();
+    Maybe<uv_file> check = CheckFile(filePath);
     if (!check.IsNothing()) {
       return Just(search);
     }
@@ -383,7 +564,7 @@ Maybe<URL> ResolveExtensions(const URL& search) {
 
   for (const char* extension : EXTENSIONS) {
     URL guess(search.path() + extension, &search);
-    Maybe<uv_file> check = CheckFile(guess);
+    Maybe<uv_file> check = CheckFile(guess.ToFilePath());
     if (!check.IsNothing()) {
       return Just(guess);
     }
@@ -398,44 +579,20 @@ inline Maybe<URL> ResolveIndex(const URL& search) {
 
 Maybe<URL> ResolveMain(Environment* env, const URL& search) {
   URL pkg("package.json", &search);
-  Maybe<uv_file> check = CheckFile(pkg, LEAVE_OPEN_AFTER_CHECK);
-  if (check.IsNothing()) {
+
+  const PackageConfig& pjson =
+      GetPackageConfig(env, pkg.ToFilePath());
+  // Note invalid package.json should throw in resolver
+  // currently we silently ignore which is incorrect
+  if (pjson.exists == Exists::No ||
+      pjson.is_valid == IsValid::No ||
+      pjson.has_main == HasMain::No) {
     return Nothing<URL>();
   }
-
-  Isolate* isolate = env->isolate();
-  Local<Context> context = isolate->GetCurrentContext();
-  std::string pkg_src = ReadFile(check.FromJust());
-  uv_fs_t fs_req;
-  uv_fs_close(nullptr, &fs_req, check.FromJust(), nullptr);
-  uv_fs_req_cleanup(&fs_req);
-
-  // It's not okay for the called of this method to not be able to tell
-  // whether an exception is pending or not.
-  TryCatch try_catch(isolate);
-
-  Local<String> src;
-  if (!String::NewFromUtf8(isolate,
-                           pkg_src.c_str(),
-                           v8::NewStringType::kNormal,
-                           pkg_src.length()).ToLocal(&src)) {
-    return Nothing<URL>();
+  if (!ShouldBeTreatedAsRelativeOrAbsolutePath(pjson.main)) {
+    return Resolve(env, "./" + pjson.main, search, IgnoreMain);
   }
-
-  Local<Value> pkg_json;
-  if (!JSON::Parse(context, src).ToLocal(&pkg_json) || !pkg_json->IsObject())
-    return Nothing<URL>();
-  Local<Value> pkg_main;
-  if (!pkg_json.As<Object>()->Get(context, env->main_string())
-                              .ToLocal(&pkg_main) || !pkg_main->IsString()) {
-    return Nothing<URL>();
-  }
-  Utf8Value main_utf8(isolate, pkg_main.As<String>());
-  std::string main_std(*main_utf8, main_utf8.length());
-  if (!ShouldBeTreatedAsRelativeOrAbsolutePath(main_std)) {
-    main_std.insert(0, "./");
-  }
-  return Resolve(env, main_std, search);
+  return Resolve(env, pjson.main, search, IgnoreMain);
 }
 
 Maybe<URL> ResolveModule(Environment* env,
@@ -445,7 +602,8 @@ Maybe<URL> ResolveModule(Environment* env,
   URL dir("");
   do {
     dir = parent;
-    Maybe<URL> check = Resolve(env, "./node_modules/" + specifier, dir, true);
+    Maybe<URL> check =
+        Resolve(env, "./node_modules/" + specifier, dir, CheckMain);
     if (!check.IsNothing()) {
       const size_t limit = specifier.find('/');
       const size_t spec_len =
@@ -467,8 +625,8 @@ Maybe<URL> ResolveModule(Environment* env,
 
 Maybe<URL> ResolveDirectory(Environment* env,
                             const URL& search,
-                            bool read_pkg_json) {
-  if (read_pkg_json) {
+                            PackageMainCheck check_pjson_main) {
+  if (check_pjson_main) {
     Maybe<URL> main = ResolveMain(env, search);
     if (!main.IsNothing())
       return main;
@@ -478,15 +636,14 @@ Maybe<URL> ResolveDirectory(Environment* env,
 
 }  // anonymous namespace
 
-
 Maybe<URL> Resolve(Environment* env,
                    const std::string& specifier,
                    const URL& base,
-                   bool read_pkg_json) {
+                   PackageMainCheck check_pjson_main) {
   URL pure_url(specifier);
   if (!(pure_url.flags() & URL_FLAGS_FAILED)) {
     // just check existence, without altering
-    Maybe<uv_file> check = CheckFile(pure_url);
+    Maybe<uv_file> check = CheckFile(pure_url.ToFilePath());
     if (check.IsNothing()) {
       return Nothing<URL>();
     }
@@ -503,7 +660,7 @@ Maybe<URL> Resolve(Environment* env,
     if (specifier.back() != '/') {
       resolved = URL(specifier + "/", base);
     }
-    return ResolveDirectory(env, resolved, read_pkg_json);
+    return ResolveDirectory(env, resolved, check_pjson_main);
   } else {
     return ResolveModule(env, specifier, base);
   }
@@ -512,42 +669,115 @@ Maybe<URL> Resolve(Environment* env,
 void ModuleWrap::Resolve(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
 
-  if (args.IsConstructCall()) {
-    env->ThrowError("resolve() must not be called as a constructor");
-    return;
-  }
-  if (args.Length() != 2) {
-    env->ThrowError("resolve must have exactly 2 arguments (string, string)");
-    return;
-  }
+  // module.resolve(specifier, url)
+  CHECK_EQ(args.Length(), 2);
 
-  if (!args[0]->IsString()) {
-    env->ThrowError("first argument is not a string");
-    return;
-  }
+  CHECK(args[0]->IsString());
   Utf8Value specifier_utf8(env->isolate(), args[0]);
   std::string specifier_std(*specifier_utf8, specifier_utf8.length());
 
-  if (!args[1]->IsString()) {
-    env->ThrowError("second argument is not a string");
-    return;
-  }
+  CHECK(args[1]->IsString());
   Utf8Value url_utf8(env->isolate(), args[1]);
   URL url(*url_utf8, url_utf8.length());
 
   if (url.flags() & URL_FLAGS_FAILED) {
-    env->ThrowError("second argument is not a URL string");
-    return;
+    return node::THROW_ERR_INVALID_ARG_TYPE(
+        env, "second argument is not a URL string");
   }
 
-  Maybe<URL> result = node::loader::Resolve(env, specifier_std, url, true);
+  Maybe<URL> result = node::loader::Resolve(env, specifier_std, url);
   if (result.IsNothing() || (result.FromJust().flags() & URL_FLAGS_FAILED)) {
     std::string msg = "Cannot find module " + specifier_std;
-    env->ThrowError(msg.c_str());
-    return;
+    return node::THROW_ERR_MISSING_MODULE(env, msg.c_str());
   }
 
   args.GetReturnValue().Set(result.FromJust().ToObject(env));
+}
+
+static MaybeLocal<Promise> ImportModuleDynamically(
+    Local<Context> context,
+    Local<v8::ScriptOrModule> referrer,
+    Local<String> specifier) {
+  Isolate* iso = context->GetIsolate();
+  Environment* env = Environment::GetCurrent(context);
+  v8::EscapableHandleScope handle_scope(iso);
+
+  if (env->context() != context) {
+    auto maybe_resolver = Promise::Resolver::New(context);
+    Local<Promise::Resolver> resolver;
+    if (maybe_resolver.ToLocal(&resolver)) {
+      // TODO(jkrems): Turn into proper error object w/ code
+      Local<Value> error = v8::Exception::Error(
+        OneByteString(iso, "import() called outside of main context"));
+      if (resolver->Reject(context, error).IsJust()) {
+        return handle_scope.Escape(resolver.As<Promise>());
+      }
+    }
+    return MaybeLocal<Promise>();
+  }
+
+  Local<Function> import_callback =
+    env->host_import_module_dynamically_callback();
+  Local<Value> import_args[] = {
+    referrer->GetResourceName(),
+    Local<Value>(specifier)
+  };
+  MaybeLocal<Value> maybe_result = import_callback->Call(context,
+                                                         v8::Undefined(iso),
+                                                         2,
+                                                         import_args);
+
+  Local<Value> result;
+  if (maybe_result.ToLocal(&result)) {
+    return handle_scope.Escape(result.As<Promise>());
+  }
+  return MaybeLocal<Promise>();
+}
+
+void ModuleWrap::SetImportModuleDynamicallyCallback(
+    const FunctionCallbackInfo<Value>& args) {
+  Isolate* iso = args.GetIsolate();
+  Environment* env = Environment::GetCurrent(args);
+  HandleScope handle_scope(iso);
+
+  CHECK_EQ(args.Length(), 1);
+  CHECK(args[0]->IsFunction());
+  Local<Function> import_callback = args[0].As<Function>();
+  env->set_host_import_module_dynamically_callback(import_callback);
+
+  iso->SetHostImportModuleDynamicallyCallback(ImportModuleDynamically);
+}
+
+void ModuleWrap::HostInitializeImportMetaObjectCallback(
+    Local<Context> context, Local<Module> module, Local<Object> meta) {
+  Isolate* isolate = context->GetIsolate();
+  Environment* env = Environment::GetCurrent(context);
+  ModuleWrap* module_wrap = GetFromModule(env, module);
+
+  if (module_wrap == nullptr) {
+    return;
+  }
+
+  Local<Object> wrap = module_wrap->object();
+  Local<Function> callback =
+      env->host_initialize_import_meta_object_callback();
+  Local<Value> args[] = { wrap, meta };
+  callback->Call(context, Undefined(isolate), arraysize(args), args)
+      .ToLocalChecked();
+}
+
+void ModuleWrap::SetInitializeImportMetaObjectCallback(
+    const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  Isolate* isolate = env->isolate();
+
+  CHECK_EQ(args.Length(), 1);
+  CHECK(args[0]->IsFunction());
+  Local<Function> import_meta_callback = args[0].As<Function>();
+  env->set_host_initialize_import_meta_object_callback(import_meta_callback);
+
+  isolate->SetHostInitializeImportMetaObjectCallback(
+      HostInitializeImportMetaObjectCallback);
 }
 
 void ModuleWrap::Initialize(Local<Object> target,
@@ -563,10 +793,33 @@ void ModuleWrap::Initialize(Local<Object> target,
   env->SetProtoMethod(tpl, "link", Link);
   env->SetProtoMethod(tpl, "instantiate", Instantiate);
   env->SetProtoMethod(tpl, "evaluate", Evaluate);
-  env->SetProtoMethod(tpl, "namespace", Namespace);
+  env->SetProtoMethodNoSideEffect(tpl, "namespace", Namespace);
+  env->SetProtoMethodNoSideEffect(tpl, "getStatus", GetStatus);
+  env->SetProtoMethodNoSideEffect(tpl, "getError", GetError);
+  env->SetProtoMethodNoSideEffect(tpl, "getStaticDependencySpecifiers",
+                                  GetStaticDependencySpecifiers);
 
   target->Set(FIXED_ONE_BYTE_STRING(isolate, "ModuleWrap"), tpl->GetFunction());
-  env->SetMethod(target, "resolve", node::loader::ModuleWrap::Resolve);
+  env->SetMethod(target, "resolve", Resolve);
+  env->SetMethod(target,
+                 "setImportModuleDynamicallyCallback",
+                 SetImportModuleDynamicallyCallback);
+  env->SetMethod(target,
+                 "setInitializeImportMetaObjectCallback",
+                 SetInitializeImportMetaObjectCallback);
+
+#define V(name)                                                                \
+    target->Set(context,                                                       \
+      FIXED_ONE_BYTE_STRING(env->isolate(), #name),                            \
+      Integer::New(env->isolate(), Module::Status::name))                      \
+        .FromJust()
+    V(kUninstantiated);
+    V(kInstantiating);
+    V(kInstantiated);
+    V(kEvaluating);
+    V(kEvaluated);
+    V(kErrored);
+#undef V
 }
 
 }  // namespace loader

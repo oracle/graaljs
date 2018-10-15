@@ -11,11 +11,13 @@ child.on('close', common.mustCall((code, signal) => {
   assert.strictEqual(code, 0);
   assert.strictEqual(signal, null);
 
-  function testError(err) {
-    assert.strictEqual(err.message, 'channel closed');
-  }
+  const testError = common.expectsError({
+    type: Error,
+    message: 'Channel closed',
+    code: 'ERR_IPC_CHANNEL_CLOSED'
+  }, 2);
 
-  child.on('error', common.mustCall(testError));
+  child.on('error', testError);
 
   {
     const result = child.send('ping');
@@ -23,7 +25,7 @@ child.on('close', common.mustCall((code, signal) => {
   }
 
   {
-    const result = child.send('pong', common.mustCall(testError));
+    const result = child.send('pong', testError);
     assert.strictEqual(result, false);
   }
 }));

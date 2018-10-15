@@ -51,7 +51,8 @@ public:
             v8::Isolate* isolate, v8::FunctionCallback callback,
             v8::Local<v8::Value> data,
             v8::Local<v8::Signature> signature,
-            int length);
+            int length,
+            v8::ConstructorBehavior behavior);
     void SetClassName(v8::Local<v8::String> name);
     v8::Local<v8::ObjectTemplate> InstanceTemplate();
     v8::Local<v8::ObjectTemplate> PrototypeTemplate();

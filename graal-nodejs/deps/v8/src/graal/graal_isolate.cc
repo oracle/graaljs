@@ -46,7 +46,7 @@
 #include "graal_number.h"
 #include "graal_object.h"
 #include "graal_string.h"
-#include "../../../uv/include/uv.h"
+#include "uv.h"
 #include "graal_context.h"
 #include <stdlib.h>
 #include <string>
@@ -173,6 +173,9 @@ jclass findClassExtra(JNIEnv* env, const char* name) {
     return loadedClass;
 }
 
+// Workaround for a bug in SVM's JNI_GetCreatedJavaVMs
+static JavaVM* existing_jvm = nullptr;
+
 v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
     JavaVM *jvm;
     JNIEnv *env;
@@ -243,6 +246,12 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
     jsize existingJVMs;
     createdJVMs(&jvm, 1, &existingJVMs);
     bool spawn_jvm = (existingJVMs == 0);
+
+    if (spawn_jvm && existing_jvm) {
+        // Workaround for a bug in SVM's JNI_GetCreatedJavaVMs
+        jvm = existing_jvm;
+        spawn_jvm = false;
+    }
 
     if (spawn_jvm) {
         std::vector<JavaVMOption> options;
@@ -421,6 +430,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
             fprintf(stderr, "Creation of the JVM failed!\n");
             exit(1);
         }
+        existing_jvm = jvm;
 
         jclass callback_class = findClassExtra(env, "com/oracle/truffle/trufflenode/NativeAccess");
         if (!RegisterCallbacks(env, callback_class)) {
@@ -428,14 +438,14 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
         }
         uv_key_create(&current_isolate_key);
     } else {
-        // As the JVM already exists, attach to it
-        jvm->AttachCurrentThread(reinterpret_cast<void**> (&env), nullptr);
+        if (jvm->GetEnv(reinterpret_cast<void**> (&env), JNI_VERSION_1_8) == JNI_EDETACHED) {
+            jvm->AttachCurrentThread(reinterpret_cast<void**> (&env), nullptr);
+        }
     }
 
     internal_error_check_ = !getstdenv("NODE_INTERNAL_ERROR_CHECK").empty();
 
     GraalIsolate* isolate = new GraalIsolate(jvm, env);
-    uv_key_set(&current_isolate_key, isolate);
 
     isolate->main_ = spawn_jvm;
     if (spawn_jvm) {
@@ -445,7 +455,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
     return reinterpret_cast<v8::Isolate*> (isolate);
 }
 
-GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functions(), function_template_data(), function_template_callbacks(), jvm_(jvm), jni_env_(env), jni_methods_(), jni_fields_(), message_listener_(nullptr), function_template_count_(0), lock_(PTHREAD_MUTEX_INITIALIZER), promise_hook_(nullptr), promise_reject_callback_(nullptr) {
+GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(), function_template_callbacks(), jvm_(jvm), jni_env_(env), jni_methods_(), jni_fields_(), message_listener_(nullptr), function_template_count_(0), lock_(PTHREAD_MUTEX_INITIALIZER), promise_hook_(nullptr), promise_reject_callback_(nullptr) {
     // Object.class
     jclass object_class = env->FindClass("java/lang/Object");
     object_class_ = (jclass) env->NewGlobalRef(object_class);
@@ -483,6 +493,19 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     shared_buffer_ = env->GetDirectBufferAddress(shared_buffer);
     ResetSharedBuffer();
 
+    // Externalization support
+    jclass directByteBufferClass = env->GetObjectClass(shared_buffer);
+    cleanerField_ = env->GetFieldID(directByteBufferClass, "cleaner", "Lsun/misc/Cleaner;");
+    if (cleanerField_ == NULL) EXIT_WITH_MESSAGE(env, "DirectByteBuffer.cleaner field not found!\n")
+    jobject cleaner = env->GetObjectField(shared_buffer, cleanerField_);
+    jclass cleanerClass = env->GetObjectClass(cleaner);
+    thunkField_ = env->GetFieldID(cleanerClass, "thunk", "Ljava/lang/Runnable;");
+    if (thunkField_ == NULL) EXIT_WITH_MESSAGE(env, "Cleaner.thunk field not found!\n")
+    jobject deallocator = env->GetObjectField(cleaner, thunkField_);
+    jclass deallocatorClass = env->GetObjectClass(deallocator);
+    addressField_ = env->GetFieldID(deallocatorClass, "address", "J");
+    if (addressField_ == NULL) EXIT_WITH_MESSAGE(env, "DirectByteBuffer$Deallocator.address field not found!\n")
+
     ACCESS_METHOD(GraalAccessMethod::undefined_instance, "undefinedInstance", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::null_instance, "nullInstance", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::value_type, "valueType", "(Ljava/lang/Object;)I");
@@ -505,6 +528,18 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::value_is_set_iterator, "valueIsSetIterator", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_is_map_iterator, "valueIsMapIterator", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_is_shared_array_buffer, "valueIsSharedArrayBuffer", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_is_arguments_object, "valueIsArgumentsObject", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_is_boolean_object, "valueIsBooleanObject", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_is_number_object, "valueIsNumberObject", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_is_string_object, "valueIsStringObject", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_is_symbol_object, "valueIsSymbolObject", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_is_big_int_object, "valueIsBigIntObject", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_is_weak_map, "valueIsWeakMap", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_is_weak_set, "valueIsWeakSet", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_is_async_function, "valueIsAsyncFunction", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_is_generator_function, "valueIsGeneratorFunction", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_is_generator_object, "valueIsGeneratorObject", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::value_is_module_namespace_object, "valueIsModuleNamespaceObject", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_equals, "valueEquals", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_strict_equals, "valueStrictEquals", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_instance_of, "valueInstanceOf", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
@@ -534,6 +569,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::object_get_own_property_names, "objectGetOwnPropertyNames", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_creation_context, "objectCreationContext", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_define_property, "objectDefineProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;ZZZZZZ)Z")
+    ACCESS_METHOD(GraalAccessMethod::object_preview_entries, "objectPreviewEntries", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_new, "arrayNew", "(Ljava/lang/Object;I)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_length, "arrayLength", "(Ljava/lang/Object;)J")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_new, "arrayBufferNew", "(Ljava/lang/Object;I)Ljava/lang/Object;")
@@ -542,6 +578,9 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_buffer, "arrayBufferViewBuffer", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_length, "arrayBufferViewByteLength", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_offset, "arrayBufferViewByteOffset", "(Ljava/lang/Object;)I")
+    ACCESS_METHOD(GraalAccessMethod::array_buffer_is_external, "arrayBufferIsExternal", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::array_buffer_externalize, "arrayBufferExternalize", "(Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::array_buffer_neuter, "arrayBufferNeuter", "(Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::typed_array_length, "typedArrayLength", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::uint8_array_new, "uint8ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::uint8_clamped_array_new, "uint8ClampedArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
@@ -552,6 +591,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::int32_array_new, "int32ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::float32_array_new, "float32ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::float64_array_new, "float64ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::big_int64_array_new, "bigInt64ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::big_uint64_array_new, "bigUint64ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::data_view_new, "dataViewNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::external_new, "externalNew", "(Ljava/lang/Object;J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::integer_new, "integerNew", "(J)Ljava/lang/Object;")
@@ -579,15 +620,17 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::isolate_dispose, "isolateDispose", "(ZI)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enter_polyglot_engine, "isolateEnterPolyglotEngine", "(JJJJIJIJ)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_perform_gc, "isolatePerformGC", "()V")
-    ACCESS_METHOD(GraalAccessMethod::isolate_get_debug_context, "isolateGetDebugContext", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_promise_hook, "isolateEnablePromiseHook", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_promise_reject_callback, "isolateEnablePromiseRejectCallback", "(Z)V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_enter, "isolateEnter", "(J)V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_exit, "isolateExit", "(J)J")
     ACCESS_METHOD(GraalAccessMethod::template_set, "templateSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
+    ACCESS_METHOD(GraalAccessMethod::template_set_accessor_property, "templateSetAccessorProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_template_new_instance, "objectTemplateNewInstance", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_template_set_accessor, "objectTemplateSetAccessor", "(Ljava/lang/Object;Ljava/lang/Object;JJLjava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_set_named_property_handler, "objectTemplateSetNamedPropertyHandler", "(Ljava/lang/Object;JJJJJLjava/lang/Object;)V")
-    ACCESS_METHOD(GraalAccessMethod::object_template_set_handler, "objectTemplateSetHandler", "(Ljava/lang/Object;JJJJJLjava/lang/Object;ZZ)V")
+    ACCESS_METHOD(GraalAccessMethod::object_template_set_handler, "objectTemplateSetHandler", "(Ljava/lang/Object;JJJJJJJLjava/lang/Object;ZZ)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_set_call_as_function_handler, "objectTemplateSetCallAsFunctionHandler", "(Ljava/lang/Object;IJLjava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::function_new_instance, "functionNewInstance", "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::function_set_name, "functionSetName", "(Ljava/lang/Object;Ljava/lang/String;)V")
@@ -606,12 +649,11 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::function_resource_name, "functionResourceName", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::function_get_script_line_number, "functionGetScriptLineNumber", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::function_get_script_column_number, "functionGetScriptColumnNumber", "(Ljava/lang/Object;)I")
-    ACCESS_METHOD(GraalAccessMethod::function_template_new, "functionTemplateNew", "(IJLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::function_template_new, "functionTemplateNew", "(IJLjava/lang/Object;Ljava/lang/Object;Z)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::function_template_set_class_name, "functionTemplateSetClassName", "(Ljava/lang/Object;Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::function_template_instance_template, "functionTemplateInstanceTemplate", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::function_template_prototype_template, "functionTemplatePrototypeTemplate", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::function_template_get_function, "functionTemplateGetFunction", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::function_template_get_function_to_cache, "functionTemplateGetFunction", "(I)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::function_template_has_instance, "functionTemplateHasInstance", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::function_template_set_call_handler, "functionTemplateSetCallHandler", "(Ljava/lang/Object;JLjava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::function_template_inherit, "functionTemplateInherit", "(Ljava/lang/Object;Ljava/lang/Object;)V")
@@ -621,6 +663,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::unbound_script_compile, "unboundScriptCompile", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::unbound_script_bind_to_context, "unboundScriptBindToContext", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::unbound_script_get_id, "unboundScriptGetId", "(Ljava/lang/Object;)I")
+    ACCESS_METHOD(GraalAccessMethod::unbound_script_get_content, "unboundScriptGetContent", "(Ljava/lang/Object;)Ljava/lang/String;")
     ACCESS_METHOD(GraalAccessMethod::context_global, "contextGlobal", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::context_set_pointer_in_embedder_data, "contextSetPointerInEmbedderData", "(Ljava/lang/Object;IJ)V")
     ACCESS_METHOD(GraalAccessMethod::context_get_pointer_in_embedder_data, "contextGetPointerInEmbedderData", "(Ljava/lang/Object;I)J")
@@ -662,6 +705,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::json_parse, "jsonParse", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::json_stringify, "jsonStringify", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/String;")
     ACCESS_METHOD(GraalAccessMethod::symbol_new, "symbolNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::symbol_name, "symbolName", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::promise_result, "promiseResult", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::promise_state, "promiseState", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::promise_resolver_new, "promiseResolverNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
@@ -675,6 +719,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::module_get_request, "moduleGetRequest", "(Ljava/lang/Object;I)Ljava/lang/String;")
     ACCESS_METHOD(GraalAccessMethod::module_get_namespace, "moduleGetNamespace", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_get_identity_hash, "moduleGetIdentityHash", "(Ljava/lang/Object;)I")
+    ACCESS_METHOD(GraalAccessMethod::module_get_exception, "moduleGetException", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::value_serializer_new, "valueSerializerNew", "(J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::value_serializer_release, "valueSerializerRelease", "(Ljava/lang/Object;Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::value_serializer_size, "valueSerializerSize", "(Ljava/lang/Object;)I")
@@ -695,6 +740,19 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_functio
     ACCESS_METHOD(GraalAccessMethod::value_deserializer_read_raw_bytes, "valueDeserializerReadRawBytes", "(Ljava/lang/Object;I)I")
     ACCESS_METHOD(GraalAccessMethod::value_deserializer_transfer_array_buffer, "valueDeserializerTransferArrayBuffer", "(Ljava/lang/Object;ILjava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::value_deserializer_get_wire_format_version, "valueDeserializerGetWireFormatVersion", "(Ljava/lang/Object;)I")
+    ACCESS_METHOD(GraalAccessMethod::map_new, "mapNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::map_set, "mapSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::big_int_int64_value, "bigIntInt64Value", "(Ljava/lang/Object;)J")
+    ACCESS_METHOD(GraalAccessMethod::big_int_uint64_value, "bigIntUint64Value", "(Ljava/lang/Object;)J")
+    ACCESS_METHOD(GraalAccessMethod::big_int_new, "bigIntNew", "(J)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::big_int_new_from_unsigned, "bigIntNewFromUnsigned", "(J)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::big_int_new_from_words, "bigIntNewFromWords", "()Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::big_int_word_count, "bigIntWordCount", "(Ljava/lang/Object;)I")
+    ACCESS_METHOD(GraalAccessMethod::big_int_to_words_array, "bigIntToWordsArray", "(Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_new, "sharedArrayBufferNew", "(Ljava/lang/Object;Ljava/lang/Object;JZ)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_is_external, "sharedArrayBufferIsExternal", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_get_contents, "sharedArrayBufferGetContents", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_externalize, "sharedArrayBufferExternalize", "(Ljava/lang/Object;J)V")
 
     int root_offset = v8::internal::Internals::kIsolateRootsOffset / v8::internal::kApiPointerSize;
     slot[v8::internal::Internals::kExternalMemoryOffset / v8::internal::kApiPointerSize] = (void*) 0;
@@ -888,10 +946,27 @@ void GraalIsolate::Dispose(bool exit, int status) {
     jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_dispose);
     env->functions->CallVoidMethod(env, access_, method_id, exit, status);
 
+    // Release global references
+    env->DeleteGlobalRef(access_);
+    env->DeleteGlobalRef(boolean_true_);
+    env->DeleteGlobalRef(boolean_false_);
+    env->DeleteGlobalRef(int32_placeholder_);
+    env->DeleteGlobalRef(uint32_placeholder_);
+    env->DeleteGlobalRef(double_placeholder_);
+    access_ = nullptr;
+    boolean_true_ = nullptr;
+    boolean_false_ = nullptr;
+    int32_placeholder_ = nullptr;
+    uint32_placeholder_ = nullptr;
+    double_placeholder_ = nullptr;
+    if (error_to_ignore_ != nullptr) {
+        env->DeleteGlobalRef(error_to_ignore_);
+        error_to_ignore_ = nullptr;
+    }
+
     // this is executed when exit is false only
     env->ExceptionClear();
     jvm_->DetachCurrentThread();
-    uv_key_set(&current_isolate_key, nullptr);
 }
 
 double GraalIsolate::ReadDoubleFromSharedBuffer() {
@@ -1083,21 +1158,6 @@ void GraalIsolate::CancelTerminateExecution() {
     }
 }
 
-GraalValue* GraalIsolate::CacheFunctionTemplateFunction(unsigned id) {
-    JNI_CALL(jobject, java_function, this, GraalAccessMethod::function_template_get_function_to_cache, Object, (jint) id);
-    GraalValue* function = GraalValue::FromJavaObject(this, java_function);
-    SetFunctionTemplateFunction(id, function);
-    return function;
-}
-
-void GraalIsolate::SetFunctionTemplateFunction(unsigned id, GraalValue* function) {
-    while (function_template_functions.size() <= id) function_template_functions.push_back(nullptr);
-    GraalValue* cached_function = reinterpret_cast<GraalValue*> (function->Copy(true));
-    cached_function->MakeWeak();
-    cached_function->ReferenceAdded();
-    function_template_functions[id] = cached_function;
-}
-
 void GraalIsolate::SetFunctionTemplateData(unsigned id, GraalValue* data) {
     while (function_template_data.size() <= id) function_template_data.push_back(nullptr);
     data->ReferenceAdded();
@@ -1128,12 +1188,6 @@ jobject GraalIsolate::CorrectReturnValue(GraalValue* value, jobject null_replace
         result = GetJNIEnv()->NewLocalRef(result);
     }
     return result;
-}
-
-v8::Local<v8::Context> GraalIsolate::GetDebugContext() {
-    JNI_CALL(jobject, java_context, this, GraalAccessMethod::isolate_get_debug_context, Object);
-    GraalContext* graal_context = new GraalContext(this, java_context);
-    return reinterpret_cast<v8::Context*> (graal_context);
 }
 
 int GraalIsolate::argc = 0;
@@ -1191,4 +1245,54 @@ void GraalIsolate::RunMicrotasks() {
 
     // Exit "dummy TryCatch"
     TryCatchExit();
+}
+
+void GraalIsolate::Enter() {
+    if (jvm_->GetEnv(reinterpret_cast<void**> (&jni_env_), JNI_VERSION_1_8) == JNI_EDETACHED) {
+        jvm_->AttachCurrentThread(reinterpret_cast<void**> (&jni_env_), nullptr);
+    }
+    uv_key_set(&current_isolate_key, this);
+    JNI_CALL_VOID(this, GraalAccessMethod::isolate_enter, (jlong) this);
+}
+
+void GraalIsolate::Exit() {
+    JNI_CALL(jlong, previous, this, GraalAccessMethod::isolate_exit, Long, (jlong) this);
+    uv_key_set(&current_isolate_key, reinterpret_cast<void*> (previous));
+}
+
+void GraalIsolate::HandleEmptyCallResult() {
+    JNIEnv* env = GetJNIEnv();
+    if (!TryCatchExists()) {
+        jthrowable java_exception = env->ExceptionOccurred();
+        env->ExceptionClear();
+        JNI_CALL(jboolean, termination_exception, this, GraalAccessMethod::try_catch_has_terminated, Boolean, java_exception);
+        if (termination_exception) {
+            env->Throw(java_exception);
+        } else {
+            jobject java_context = CurrentJavaContext();
+            JNI_CALL(jobject, exception_object, this, GraalAccessMethod::try_catch_exception, Object, java_context, java_exception);
+            GraalValue* graal_exception = GraalValue::FromJavaObject(this, exception_object);
+            v8::Value* exception = reinterpret_cast<v8::Value*> (graal_exception);
+            v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (this);
+            SendMessage(v8::Exception::CreateMessage(v8_isolate, exception), exception, java_exception);
+            if (error_to_ignore_ != nullptr) {
+                env->DeleteGlobalRef(error_to_ignore_);
+                error_to_ignore_ = nullptr;
+            }
+            if (calls_on_stack_ != 0) {
+                // If the process was not terminated then we have to ensure that
+                // the rest of the script is not executed => we re-throw
+                // the exception but remember that we should not report it again.
+                error_to_ignore_ = env->NewGlobalRef(java_exception);
+                env->Throw(java_exception);
+            }
+        }
+    }
+}
+
+void GraalIsolate::Externalize(jobject java_buffer) {
+    JNIEnv* env = GetJNIEnv();
+    jobject cleaner = env->GetObjectField(java_buffer, cleanerField_);
+    jobject deallocator = env->GetObjectField(cleaner, thunkField_);
+    env->SetLongField(deallocator, addressField_, (jlong) 0);
 }

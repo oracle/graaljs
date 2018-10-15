@@ -5,14 +5,22 @@ prefix sequential
 # sample-test                       : PASS,FLAKY
 
 [true] # This section applies to all platforms
+# This test will be flaky until https://github.com/libuv/libuv/pull/1742 lands
+# on Node.js.
+test-fs-readfile-tostring-fail: PASS, FLAKY
 
 ### Graal-specific start ###
 
-# missing multiline support in REPL
-test-repl-timeout-throw     : FAIL
-
 # Unstable, timing sensitive (fails randomly)
 test-readline-interface     : SKIP
+
+# suspicious memory-related test that does some conclusion based on rss
+# before and after some operation, this does not work on JVM (where heap
+# size does not decrease usually - despite there is no memory leak)
+test-net-bytes-per-incoming-chunk-overhead : SKIP
+
+# unstable timing-sensitive test
+test-performance            : SKIP
 
 [$system==solaris]
 
@@ -27,11 +35,6 @@ test-timers-blocking-callback : SKIP
 ### Graal-specific end ###
 
 [$system==win32]
-test-inspector-async-call-stack       : PASS, FLAKY
-test-inspector-bindings               : PASS, FLAKY
-test-inspector-debug-end              : PASS, FLAKY
-test-inspector-async-hook-setup-at-signal:  PASS, FLAKY
-test-inspector-stop-profile-after-done: PASS, FLAKY
 
 [$system==linux]
 

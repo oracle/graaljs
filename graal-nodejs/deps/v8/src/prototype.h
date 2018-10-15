@@ -31,7 +31,7 @@ class PrototypeIterator {
                     WhereToStart where_to_start = kStartAtPrototype,
                     WhereToEnd where_to_end = END_AT_NULL)
       : isolate_(isolate),
-        object_(NULL),
+        object_(nullptr),
         handle_(receiver),
         where_to_end_(where_to_end),
         is_at_end_(false),
@@ -68,7 +68,7 @@ class PrototypeIterator {
   explicit PrototypeIterator(Handle<Map> receiver_map,
                              WhereToEnd where_to_end = END_AT_NULL)
       : isolate_(receiver_map->GetIsolate()),
-        object_(NULL),
+        object_(nullptr),
         handle_(receiver_map->GetPrototypeChainRootMap(isolate_)->prototype(),
                 isolate_),
         where_to_end_(where_to_end),
@@ -103,7 +103,7 @@ class PrototypeIterator {
   template <typename T = Object>
   static Handle<T> GetCurrent(const PrototypeIterator& iterator) {
     DCHECK(!iterator.handle_.is_null());
-    DCHECK(iterator.object_ == NULL);
+    DCHECK_NULL(iterator.object_);
     return Handle<T>::cast(iterator.handle_);
   }
 
@@ -137,8 +137,7 @@ class PrototypeIterator {
   }
 
   // Returns false iff a call to JSProxy::GetPrototype throws.
-  // TODO(neis): This should probably replace Advance().
-  MUST_USE_RESULT bool AdvanceFollowingProxies() {
+  V8_WARN_UNUSED_RESULT bool AdvanceFollowingProxies() {
     DCHECK(!(handle_.is_null() && object_->IsJSProxy()));
     if (!HasAccess()) {
       // Abort the lookup if we do not have access to the current object.
@@ -149,7 +148,7 @@ class PrototypeIterator {
     return AdvanceFollowingProxiesIgnoringAccessChecks();
   }
 
-  MUST_USE_RESULT bool AdvanceFollowingProxiesIgnoringAccessChecks() {
+  V8_WARN_UNUSED_RESULT bool AdvanceFollowingProxiesIgnoringAccessChecks() {
     if (handle_.is_null() || !handle_->IsJSProxy()) {
       AdvanceIgnoringProxies();
       return true;

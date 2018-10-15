@@ -21,40 +21,43 @@
 
 'use strict';
 
-const agent = require('_http_agent');
+const { Agent, globalAgent } = require('_http_agent');
 const { ClientRequest } = require('_http_client');
-const common = require('_http_common');
-const incoming = require('_http_incoming');
-const outgoing = require('_http_outgoing');
-const server = require('_http_server');
+const { methods } = require('_http_common');
+const { IncomingMessage } = require('_http_incoming');
+const { OutgoingMessage } = require('_http_outgoing');
+const {
+  _connectionListener,
+  STATUS_CODES,
+  Server,
+  ServerResponse
+} = require('_http_server');
 
-const { Server } = server;
-
-function createServer(requestListener) {
-  return new Server(requestListener);
+function createServer(opts, requestListener) {
+  return new Server(opts, requestListener);
 }
 
-function request(options, cb) {
-  return new ClientRequest(options, cb);
+function request(url, options, cb) {
+  return new ClientRequest(url, options, cb);
 }
 
-function get(options, cb) {
-  var req = request(options, cb);
+function get(url, options, cb) {
+  var req = request(url, options, cb);
   req.end();
   return req;
 }
 
 module.exports = {
-  _connectionListener: server._connectionListener,
-  METHODS: common.methods.slice().sort(),
-  STATUS_CODES: server.STATUS_CODES,
-  Agent: agent.Agent,
+  _connectionListener,
+  METHODS: methods.slice().sort(),
+  STATUS_CODES,
+  Agent,
   ClientRequest,
-  globalAgent: agent.globalAgent,
-  IncomingMessage: incoming.IncomingMessage,
-  OutgoingMessage: outgoing.OutgoingMessage,
+  globalAgent,
+  IncomingMessage,
+  OutgoingMessage,
   Server,
-  ServerResponse: server.ServerResponse,
+  ServerResponse,
   createServer,
   get,
   request

@@ -2,14 +2,17 @@
 const common = require('../common');
 if (process.config.variables.node_without_node_options)
   common.skip('missing NODE_OPTIONS support');
+if (!common.isMainThread)
+  common.skip('process.chdir is not available in Workers');
 
 // Test options specified by env variable.
 
 const assert = require('assert');
 const exec = require('child_process').execFile;
 
-common.refreshTmpDir();
-process.chdir(common.tmpDir);
+const tmpdir = require('../common/tmpdir');
+tmpdir.refresh();
+process.chdir(tmpdir.path);
 
 expect(`-r ${require.resolve('../fixtures/printA.js')}`, 'A\nB\n');
 expect('--no-deprecation', 'B\n');
@@ -24,6 +27,17 @@ expect('--throw-deprecation', 'B\n');
 expect('--zero-fill-buffers', 'B\n');
 expect('--v8-pool-size=10', 'B\n');
 expect('--trace-event-categories node', 'B\n');
+// eslint-disable-next-line no-template-curly-in-string
+expect('--trace-event-file-pattern {pid}-${rotation}.trace_events', 'B\n');
+
+if (!common.isWindows) {
+  expect('--perf-basic-prof', 'B\n');
+}
+
+if (common.isLinux && ['arm', 'x64'].includes(process.arch)) {
+  // PerfJitLogger is only implemented in Linux.
+  expect('--perf-prof', 'B\n');
+}
 
 if (common.hasCrypto) {
   expect('--use-openssl-ca', 'B\n');

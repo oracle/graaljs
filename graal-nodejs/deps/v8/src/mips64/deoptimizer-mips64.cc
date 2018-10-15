@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "src/codegen.h"
+#include "src/assembler-inl.h"
 #include "src/deoptimizer.h"
 #include "src/register-configuration.h"
 #include "src/safepoint-table.h"
@@ -25,8 +25,8 @@ void Deoptimizer::TableEntryGenerator::Generate() {
   RegList restored_regs = kJSCallerSaved | kCalleeSaved;
   RegList saved_regs = restored_regs | sp.bit() | ra.bit();
 
-  const int kDoubleRegsSize = kDoubleSize * DoubleRegister::kMaxNumRegisters;
-  const int kFloatRegsSize = kFloatSize * FloatRegister::kMaxNumRegisters;
+  const int kDoubleRegsSize = kDoubleSize * DoubleRegister::kNumRegisters;
+  const int kFloatRegsSize = kFloatSize * FloatRegister::kNumRegisters;
 
   // Save all double FPU registers before messing with them.
   __ Dsubu(sp, sp, Operand(kDoubleRegsSize));
@@ -56,8 +56,8 @@ void Deoptimizer::TableEntryGenerator::Generate() {
     }
   }
 
-  __ li(a2, Operand(ExternalReference(IsolateAddressId::kCEntryFPAddress,
-                                      isolate())));
+  __ li(a2, Operand(ExternalReference::Create(
+                IsolateAddressId::kCEntryFPAddress, isolate())));
   __ Sd(fp, MemOperand(a2));
 
   const int kSavedRegistersAreaSize =
@@ -93,7 +93,7 @@ void Deoptimizer::TableEntryGenerator::Generate() {
   // Call Deoptimizer::New().
   {
     AllowExternalCallThatCantCauseGC scope(masm());
-    __ CallCFunction(ExternalReference::new_deoptimizer_function(isolate()), 6);
+    __ CallCFunction(ExternalReference::new_deoptimizer_function(), 6);
   }
 
   // Preserve "deoptimizer" object in register v0 and get the input
@@ -103,7 +103,7 @@ void Deoptimizer::TableEntryGenerator::Generate() {
   __ Ld(a1, MemOperand(v0, Deoptimizer::input_offset()));
 
   // Copy core registers into FrameDescription::registers_[kNumRegisters].
-  DCHECK(Register::kNumRegisters == kNumberOfRegisters);
+  DCHECK_EQ(Register::kNumRegisters, kNumberOfRegisters);
   for (int i = 0; i < kNumberOfRegisters; i++) {
     int offset = (i * kPointerSize) + FrameDescription::registers_offset();
     if ((saved_regs & (1 << i)) != 0) {
@@ -166,8 +166,7 @@ void Deoptimizer::TableEntryGenerator::Generate() {
   // Call Deoptimizer::ComputeOutputFrames().
   {
     AllowExternalCallThatCantCauseGC scope(masm());
-    __ CallCFunction(
-        ExternalReference::compute_output_frames_function(isolate()), 1);
+    __ CallCFunction(ExternalReference::compute_output_frames_function(), 1);
   }
   __ pop(a0);  // Restore deoptimizer object (class Deoptimizer).
 
@@ -207,15 +206,11 @@ void Deoptimizer::TableEntryGenerator::Generate() {
     __ Ldc1(fpu_reg, MemOperand(a1, src_offset));
   }
 
-  // Push state, pc, and continuation from the last output frame.
-  __ Ld(a6, MemOperand(a2, FrameDescription::state_offset()));
-  __ push(a6);
-
+  // Push pc and continuation from the last output frame.
   __ Ld(a6, MemOperand(a2, FrameDescription::pc_offset()));
   __ push(a6);
   __ Ld(a6, MemOperand(a2, FrameDescription::continuation_offset()));
   __ push(a6);
-
 
   // Technically restoring 'at' should work unless zero_reg is also restored
   // but it's safer to check for this.
@@ -267,11 +262,11 @@ void Deoptimizer::TableEntryGenerator::GeneratePrologue() {
       __ bind(&start);
       DCHECK(is_int16(i));
       if (kArchVariant == kMips64r6) {
-        __ li(at, i);
+        __ li(kScratchReg, i);
         __ BranchShort(PROTECT, &done);
       } else {
         __ BranchShort(USE_DELAY_SLOT, &done);  // Expose delay slot.
-        __ li(at, i);                           // In the delay slot.
+        __ li(kScratchReg, i);                  // In the delay slot.
         __ nop();
       }
 
@@ -281,9 +276,9 @@ void Deoptimizer::TableEntryGenerator::GeneratePrologue() {
     DCHECK_EQ(masm()->SizeOfCodeGeneratedSince(&table_start),
               count() * table_entry_size_);
     __ bind(&done);
-    __ Push(at);
+    __ Push(kScratchReg);
   } else {
-    DCHECK(kArchVariant != kMips64r6);
+    DCHECK_NE(kArchVariant, kMips64r6);
     // Uncommon case, the branch cannot reach.
     // Create mini trampoline to reach the end of the table
     for (int i = 0, j = 0; i < count(); i++, j++) {
@@ -292,14 +287,14 @@ void Deoptimizer::TableEntryGenerator::GeneratePrologue() {
       DCHECK(is_int16(i));
       if (j >= kMaxEntriesBranchReach) {
         j = 0;
-        __ li(at, i);
+        __ li(kScratchReg, i);
         __ bind(&trampoline_jump);
         trampoline_jump = Label();
         __ BranchShort(USE_DELAY_SLOT, &trampoline_jump);
         __ nop();
       } else {
         __ BranchShort(USE_DELAY_SLOT, &trampoline_jump);  // Expose delay slot.
-        __ li(at, i);                                      // In the delay slot.
+        __ li(kScratchReg, i);                             // In the delay slot.
         __ nop();
       }
       DCHECK_EQ(table_entry_size_, masm()->SizeOfCodeGeneratedSince(&start));
@@ -308,10 +303,11 @@ void Deoptimizer::TableEntryGenerator::GeneratePrologue() {
     DCHECK_EQ(masm()->SizeOfCodeGeneratedSince(&table_start),
               count() * table_entry_size_);
     __ bind(&trampoline_jump);
-    __ Push(at);
+    __ Push(kScratchReg);
   }
 }
 
+bool Deoptimizer::PadTopOfStackRegister() { return false; }
 
 void FrameDescription::SetCallerPc(unsigned offset, intptr_t value) {
   SetFrameSlot(offset, value);

@@ -51,11 +51,11 @@ GraalHandleContent* GraalNumber::CopyImpl(jobject java_object_copy) {
 }
 
 bool GraalNumber::IsInt32() const {
-    return value_ == (int32_t) value_;
+    return (value_ == (int32_t) value_) && !(value_ == 0 && std::signbit(value_));
 }
 
 bool GraalNumber::IsUint32() const {
-    return value_ == (uint32_t) value_;
+    return (value_ == (uint32_t) value_) && !(value_ == 0 && std::signbit(value_));
 }
 
 bool GraalNumber::IsNumber() const {

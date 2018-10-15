@@ -48,7 +48,7 @@
 void TryCatch_InvokeCallback(const FunctionCallbackInfo<Value>& args);
 
 Local<Message> createMessage(const FunctionCallbackInfo<Value>& args) {
-    TryCatch tryCatch;
+    TryCatch tryCatch(args.GetIsolate());
     TryCatch_InvokeCallback(args);
     Local<Message> message = tryCatch.Message();
     return message;
@@ -74,14 +74,14 @@ EXPORT_TO_JS(GetEndColumn) {
 
 EXPORT_TO_JS(GetLineNumber) {
     Local<Message> message = createMessage(args);
-    args.GetReturnValue().Set(message->GetLineNumber());
+    args.GetReturnValue().Set(message->GetLineNumber(args.GetIsolate()->GetCurrentContext()).FromJust());
 }
 
 // Message::GetSourceLine
 
 EXPORT_TO_JS(GetSourceLine) {
     Local<Message> message = createMessage(args);
-    args.GetReturnValue().Set(message->GetSourceLine());
+    args.GetReturnValue().Set(message->GetSourceLine(args.GetIsolate()->GetCurrentContext()).ToLocalChecked());
 }
 
 // Message::GetScriptResourceName

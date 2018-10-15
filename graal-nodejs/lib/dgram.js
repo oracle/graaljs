@@ -21,17 +21,32 @@
 
 'use strict';
 
-const assert = require('assert');
 const errors = require('internal/errors');
+const {
+  kStateSymbol,
+  _createSocketHandle,
+  newHandle
+} = require('internal/dgram');
+const {
+  ERR_INVALID_ARG_TYPE,
+  ERR_MISSING_ARGS,
+  ERR_SOCKET_ALREADY_BOUND,
+  ERR_SOCKET_BAD_BUFFER_SIZE,
+  ERR_SOCKET_BAD_PORT,
+  ERR_SOCKET_BUFFER_SIZE,
+  ERR_SOCKET_CANNOT_SEND,
+  ERR_SOCKET_DGRAM_NOT_RUNNING
+} = errors.codes;
+const { validateString } = require('internal/validators');
 const { Buffer } = require('buffer');
-const dns = require('dns');
 const util = require('util');
 const { isUint8Array } = require('internal/util/types');
 const EventEmitter = require('events');
-const { defaultTriggerAsyncIdScope } = require('internal/async_hooks');
+const {
+  defaultTriggerAsyncIdScope,
+  symbols: { async_id_symbol }
+} = require('internal/async_hooks');
 const { UV_UDP_REUSEADDR } = process.binding('constants').os;
-const { async_id_symbol } = process.binding('async_wrap');
-const { nextTick } = require('internal/process/next_tick');
 
 const { UDP, SendWrap } = process.binding('udp_wrap');
 
@@ -45,91 +60,43 @@ const SEND_BUFFER = false;
 // Lazily loaded
 var cluster = null;
 
-const errnoException = util._errnoException;
-const exceptionWithHostPort = util._exceptionWithHostPort;
+const errnoException = errors.errnoException;
+const exceptionWithHostPort = errors.exceptionWithHostPort;
 
-
-function lookup4(lookup, address, callback) {
-  return lookup(address || '127.0.0.1', 4, callback);
-}
-
-
-function lookup6(lookup, address, callback) {
-  return lookup(address || '::1', 6, callback);
-}
-
-
-function newHandle(type, lookup) {
-  if (lookup === undefined)
-    lookup = dns.lookup;
-  else if (typeof lookup !== 'function')
-    throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'lookup', 'function');
-
-  if (type === 'udp4') {
-    const handle = new UDP();
-    handle.lookup = lookup4.bind(handle, lookup);
-    return handle;
-  }
-
-  if (type === 'udp6') {
-    const handle = new UDP();
-    handle.lookup = lookup6.bind(handle, lookup);
-    handle.bind = handle.bind6;
-    handle.send = handle.send6;
-    return handle;
-  }
-
-  throw new errors.Error('ERR_SOCKET_BAD_TYPE');
-}
-
-
-function _createSocketHandle(address, port, addressType, fd, flags) {
-  // Opening an existing fd is not supported for UDP handles.
-  assert(typeof fd !== 'number' || fd < 0);
-
-  var handle = newHandle(addressType);
-
-  if (port || address) {
-    var err = handle.bind(address, port || 0, flags);
-    if (err) {
-      handle.close();
-      return err;
-    }
-  }
-
-  return handle;
-}
-
-const kOptionSymbol = Symbol('options symbol');
 
 function Socket(type, listener) {
   EventEmitter.call(this);
   var lookup;
+  let recvBufferSize;
+  let sendBufferSize;
 
-  this[kOptionSymbol] = {};
   if (type !== null && typeof type === 'object') {
     var options = type;
     type = options.type;
     lookup = options.lookup;
-    this[kOptionSymbol].recvBufferSize = options.recvBufferSize;
-    this[kOptionSymbol].sendBufferSize = options.sendBufferSize;
+    recvBufferSize = options.recvBufferSize;
+    sendBufferSize = options.sendBufferSize;
   }
 
   var handle = newHandle(type, lookup);
   handle.owner = this;
 
-  this._handle = handle;
-  this._receiving = false;
-  this._bindState = BIND_STATE_UNBOUND;
-  this[async_id_symbol] = this._handle.getAsyncId();
+  this[async_id_symbol] = handle.getAsyncId();
   this.type = type;
   this.fd = null; // compatibility hack
 
-  // If true - UV_UDP_REUSEADDR flag will be set
-  this._reuseAddr = options && options.reuseAddr;
-
   if (typeof listener === 'function')
     this.on('message', listener);
+
+  this[kStateSymbol] = {
+    handle,
+    receiving: false,
+    bindState: BIND_STATE_UNBOUND,
+    queue: undefined,
+    reuseAddr: options && options.reuseAddr, // Use UV_UDP_REUSEADDR if true.
+    recvBufferSize,
+    sendBufferSize
+  };
 }
 util.inherits(Socket, EventEmitter);
 
@@ -140,55 +107,61 @@ function createSocket(type, listener) {
 
 
 function startListening(socket) {
-  socket._handle.onmessage = onMessage;
+  const state = socket[kStateSymbol];
+
+  state.handle.onmessage = onMessage;
   // Todo: handle errors
-  socket._handle.recvStart();
-  socket._receiving = true;
-  socket._bindState = BIND_STATE_BOUND;
+  state.handle.recvStart();
+  state.receiving = true;
+  state.bindState = BIND_STATE_BOUND;
   socket.fd = -42; // compatibility hack
 
-  if (socket[kOptionSymbol].recvBufferSize)
-    bufferSize(socket, socket[kOptionSymbol].recvBufferSize, RECV_BUFFER);
+  if (state.recvBufferSize)
+    bufferSize(socket, state.recvBufferSize, RECV_BUFFER);
 
-  if (socket[kOptionSymbol].sendBufferSize)
-    bufferSize(socket, socket[kOptionSymbol].sendBufferSize, SEND_BUFFER);
+  if (state.sendBufferSize)
+    bufferSize(socket, state.sendBufferSize, SEND_BUFFER);
 
   socket.emit('listening');
 }
 
 function replaceHandle(self, newHandle) {
+  const state = self[kStateSymbol];
+  const oldHandle = state.handle;
 
   // Set up the handle that we got from master.
-  newHandle.lookup = self._handle.lookup;
-  newHandle.bind = self._handle.bind;
-  newHandle.send = self._handle.send;
+  newHandle.lookup = oldHandle.lookup;
+  newHandle.bind = oldHandle.bind;
+  newHandle.send = oldHandle.send;
   newHandle.owner = self;
 
   // Replace the existing handle by the handle we got from master.
-  self._handle.close();
-  self._handle = newHandle;
+  oldHandle.close();
+  state.handle = newHandle;
 }
 
 function bufferSize(self, size, buffer) {
   if (size >>> 0 !== size)
-    throw new errors.TypeError('ERR_SOCKET_BAD_BUFFER_SIZE');
+    throw new ERR_SOCKET_BAD_BUFFER_SIZE();
 
-  try {
-    return self._handle.bufferSize(size, buffer);
-  } catch (e) {
-    throw new errors.Error('ERR_SOCKET_BUFFER_SIZE', e);
+  const ctx = {};
+  const ret = self[kStateSymbol].handle.bufferSize(size, buffer, ctx);
+  if (ret === undefined) {
+    throw new ERR_SOCKET_BUFFER_SIZE(ctx);
   }
+  return ret;
 }
 
-Socket.prototype.bind = function(port_, address_ /*, callback*/) {
+Socket.prototype.bind = function(port_, address_ /* , callback */) {
   let port = port_;
 
-  this._healthCheck();
+  healthCheck(this);
+  const state = this[kStateSymbol];
 
-  if (this._bindState !== BIND_STATE_UNBOUND)
-    throw new errors.Error('ERR_SOCKET_ALREADY_BOUND');
+  if (state.bindState !== BIND_STATE_UNBOUND)
+    throw new ERR_SOCKET_ALREADY_BOUND();
 
-  this._bindState = BIND_STATE_BINDING;
+  state.bindState = BIND_STATE_BINDING;
 
   if (arguments.length && typeof arguments[arguments.length - 1] === 'function')
     this.once('listening', arguments[arguments.length - 1]);
@@ -220,9 +193,9 @@ Socket.prototype.bind = function(port_, address_ /*, callback*/) {
   }
 
   // resolve address first
-  this._handle.lookup(address, (err, ip) => {
+  state.handle.lookup(address, (err, ip) => {
     if (err) {
-      this._bindState = BIND_STATE_UNBOUND;
+      state.bindState = BIND_STATE_UNBOUND;
       this.emit('error', err);
       return;
     }
@@ -231,7 +204,7 @@ Socket.prototype.bind = function(port_, address_ /*, callback*/) {
       cluster = require('cluster');
 
     var flags = 0;
-    if (this._reuseAddr)
+    if (state.reuseAddr)
       flags |= UV_UDP_REUSEADDR;
 
     if (cluster.isWorker && !exclusive) {
@@ -239,11 +212,11 @@ Socket.prototype.bind = function(port_, address_ /*, callback*/) {
         if (err) {
           var ex = exceptionWithHostPort(err, 'bind', ip, port);
           this.emit('error', ex);
-          this._bindState = BIND_STATE_UNBOUND;
+          state.bindState = BIND_STATE_UNBOUND;
           return;
         }
 
-        if (!this._handle)
+        if (!state.handle)
           // handle has been closed in the mean time.
           return handle.close();
 
@@ -258,14 +231,14 @@ Socket.prototype.bind = function(port_, address_ /*, callback*/) {
         flags: flags
       }, onHandle);
     } else {
-      if (!this._handle)
+      if (!state.handle)
         return; // handle has been closed in the mean time
 
-      const err = this._handle.bind(ip, port || 0, flags);
+      const err = state.handle.bind(ip, port || 0, flags);
       if (err) {
         var ex = exceptionWithHostPort(err, 'bind', ip, port);
         this.emit('error', ex);
-        this._bindState = BIND_STATE_UNBOUND;
+        state.bindState = BIND_STATE_UNBOUND;
         // Todo: close?
         return;
       }
@@ -286,20 +259,18 @@ Socket.prototype.sendto = function(buffer,
                                    address,
                                    callback) {
   if (typeof offset !== 'number') {
-    throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'offset', 'number');
+    throw new ERR_INVALID_ARG_TYPE('offset', 'number', offset);
   }
 
   if (typeof length !== 'number') {
-    throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'length', 'number');
+    throw new ERR_INVALID_ARG_TYPE('length', 'number', length);
   }
 
   if (typeof port !== 'number') {
-    throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'port', 'number');
+    throw new ERR_INVALID_ARG_TYPE('port', 'number', port);
   }
 
-  if (typeof address !== 'string') {
-    throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'address', 'string');
-  }
+  validateString(address, 'address');
 
   this.send(buffer, offset, length, port, address, callback);
 };
@@ -309,9 +280,8 @@ function sliceBuffer(buffer, offset, length) {
   if (typeof buffer === 'string') {
     buffer = Buffer.from(buffer);
   } else if (!isUint8Array(buffer)) {
-    throw new errors.TypeError('ERR_INVALID_ARG_TYPE',
-                               'buffer',
-                               ['Buffer', 'Uint8Array', 'string']);
+    throw new ERR_INVALID_ARG_TYPE('buffer',
+                                   ['Buffer', 'Uint8Array', 'string'], buffer);
   }
 
   offset = offset >>> 0;
@@ -339,14 +309,16 @@ function fixBufferList(list) {
 
 
 function enqueue(self, toEnqueue) {
+  const state = self[kStateSymbol];
+
   // If the send queue hasn't been initialized yet, do it, and install an
   // event handler that flushes the send queue after binding is done.
-  if (!self._queue) {
-    self._queue = [];
+  if (state.queue === undefined) {
+    state.queue = [];
     self.once('error', onListenError);
     self.once('listening', onListenSuccess);
   }
-  self._queue.push(toEnqueue);
+  state.queue.push(toEnqueue);
 }
 
 
@@ -358,14 +330,15 @@ function onListenSuccess() {
 
 function onListenError(err) {
   this.removeListener('listening', onListenSuccess);
-  this._queue = undefined;
-  this.emit('error', new errors.Error('ERR_SOCKET_CANNOT_SEND'));
+  this[kStateSymbol].queue = undefined;
+  this.emit('error', new ERR_SOCKET_CANNOT_SEND());
 }
 
 
 function clearQueue() {
-  const queue = this._queue;
-  this._queue = undefined;
+  const state = this[kStateSymbol];
+  const queue = state.queue;
+  state.queue = undefined;
 
   // Flush the send queue.
   for (var i = 0; i < queue.length; i++)
@@ -402,21 +375,20 @@ Socket.prototype.send = function(buffer,
     if (typeof buffer === 'string') {
       list = [ Buffer.from(buffer) ];
     } else if (!isUint8Array(buffer)) {
-      throw new errors.TypeError('ERR_INVALID_ARG_TYPE',
-                                 'buffer',
-                                 ['Buffer', 'Uint8Array', 'string']);
+      throw new ERR_INVALID_ARG_TYPE('buffer',
+                                     ['Buffer', 'Uint8Array', 'string'],
+                                     buffer);
     } else {
       list = [ buffer ];
     }
   } else if (!(list = fixBufferList(buffer))) {
-    throw new errors.TypeError('ERR_INVALID_ARG_TYPE',
-                               'buffer list arguments',
-                               ['Buffer', 'string']);
+    throw new ERR_INVALID_ARG_TYPE('buffer list arguments',
+                                   ['Buffer', 'string'], buffer);
   }
 
   port = port >>> 0;
   if (port === 0 || port > 65535)
-    throw new errors.RangeError('ERR_SOCKET_BAD_PORT');
+    throw new ERR_SOCKET_BAD_PORT(port);
 
   // Normalize callback so it's either a function or undefined but not anything
   // else.
@@ -427,14 +399,14 @@ Socket.prototype.send = function(buffer,
     callback = address;
     address = undefined;
   } else if (address && typeof address !== 'string') {
-    throw new errors.TypeError('ERR_INVALID_ARG_TYPE',
-                               'address',
-                               ['string', 'falsy']);
+    throw new ERR_INVALID_ARG_TYPE('address', ['string', 'falsy'], address);
   }
 
-  this._healthCheck();
+  healthCheck(this);
 
-  if (this._bindState === BIND_STATE_UNBOUND)
+  const state = this[kStateSymbol];
+
+  if (state.bindState === BIND_STATE_UNBOUND)
     this.bind({ port: 0, exclusive: true }, null);
 
   if (list.length === 0)
@@ -442,7 +414,7 @@ Socket.prototype.send = function(buffer,
 
   // If the socket hasn't been bound yet, push the outbound packet onto the
   // send queue and send after binding is complete.
-  if (this._bindState !== BIND_STATE_BOUND) {
+  if (state.bindState !== BIND_STATE_BOUND) {
     enqueue(this, this.send.bind(this, list, port, address, callback));
     return;
   }
@@ -455,10 +427,12 @@ Socket.prototype.send = function(buffer,
     );
   };
 
-  this._handle.lookup(address, afterDns);
+  state.handle.lookup(address, afterDns);
 };
 
 function doSend(ex, self, ip, list, address, port, callback) {
+  const state = self[kStateSymbol];
+
   if (ex) {
     if (typeof callback === 'function') {
       process.nextTick(callback, ex);
@@ -467,7 +441,7 @@ function doSend(ex, self, ip, list, address, port, callback) {
 
     process.nextTick(() => self.emit('error', ex));
     return;
-  } else if (!self._handle) {
+  } else if (!state.handle) {
     return;
   }
 
@@ -480,7 +454,7 @@ function doSend(ex, self, ip, list, address, port, callback) {
     req.oncomplete = afterSend;
   }
 
-  var err = self._handle.send(req,
+  var err = state.handle.send(req,
                               list,
                               list.length,
                               port,
@@ -505,19 +479,25 @@ function afterSend(err, sent) {
 }
 
 Socket.prototype.close = function(callback) {
+  const state = this[kStateSymbol];
+  const queue = state.queue;
+
   if (typeof callback === 'function')
     this.on('close', callback);
 
-  if (this._queue) {
-    this._queue.push(this.close.bind(this));
+  if (queue !== undefined) {
+    queue.push(this.close.bind(this));
     return this;
   }
 
-  this._healthCheck();
-  this._stopReceiving();
-  this._handle.close();
-  this._handle = null;
-  nextTick(this[async_id_symbol], socketCloseNT, this);
+  healthCheck(this);
+  stopReceiving(this);
+  state.handle.close();
+  state.handle = null;
+  defaultTriggerAsyncIdScope(this[async_id_symbol],
+                             process.nextTick,
+                             socketCloseNT,
+                             this);
 
   return this;
 };
@@ -529,10 +509,10 @@ function socketCloseNT(self) {
 
 
 Socket.prototype.address = function() {
-  this._healthCheck();
+  healthCheck(this);
 
   var out = {};
-  var err = this._handle.getsockname(out);
+  var err = this[kStateSymbol].handle.getsockname(out);
   if (err) {
     throw errnoException(err, 'getsockname');
   }
@@ -542,7 +522,7 @@ Socket.prototype.address = function() {
 
 
 Socket.prototype.setBroadcast = function(arg) {
-  var err = this._handle.setBroadcast(arg ? 1 : 0);
+  var err = this[kStateSymbol].handle.setBroadcast(arg ? 1 : 0);
   if (err) {
     throw errnoException(err, 'setBroadcast');
   }
@@ -551,10 +531,10 @@ Socket.prototype.setBroadcast = function(arg) {
 
 Socket.prototype.setTTL = function(ttl) {
   if (typeof ttl !== 'number') {
-    throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'ttl', 'number', ttl);
+    throw new ERR_INVALID_ARG_TYPE('ttl', 'number', ttl);
   }
 
-  var err = this._handle.setTTL(ttl);
+  var err = this[kStateSymbol].handle.setTTL(ttl);
   if (err) {
     throw errnoException(err, 'setTTL');
   }
@@ -565,10 +545,10 @@ Socket.prototype.setTTL = function(ttl) {
 
 Socket.prototype.setMulticastTTL = function(ttl) {
   if (typeof ttl !== 'number') {
-    throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'ttl', 'number', ttl);
+    throw new ERR_INVALID_ARG_TYPE('ttl', 'number', ttl);
   }
 
-  var err = this._handle.setMulticastTTL(ttl);
+  var err = this[kStateSymbol].handle.setMulticastTTL(ttl);
   if (err) {
     throw errnoException(err, 'setMulticastTTL');
   }
@@ -578,7 +558,7 @@ Socket.prototype.setMulticastTTL = function(ttl) {
 
 
 Socket.prototype.setMulticastLoopback = function(arg) {
-  var err = this._handle.setMulticastLoopback(arg ? 1 : 0);
+  var err = this[kStateSymbol].handle.setMulticastLoopback(arg ? 1 : 0);
   if (err) {
     throw errnoException(err, 'setMulticastLoopback');
   }
@@ -588,15 +568,10 @@ Socket.prototype.setMulticastLoopback = function(arg) {
 
 
 Socket.prototype.setMulticastInterface = function(interfaceAddress) {
-  this._healthCheck();
+  healthCheck(this);
+  validateString(interfaceAddress, 'interfaceAddress');
 
-  if (typeof interfaceAddress !== 'string') {
-    throw new errors.TypeError('ERR_INVALID_ARG_TYPE',
-                               'interfaceAddress',
-                               'string');
-  }
-
-  const err = this._handle.setMulticastInterface(interfaceAddress);
+  const err = this[kStateSymbol].handle.setMulticastInterface(interfaceAddress);
   if (err) {
     throw errnoException(err, 'setMulticastInterface');
   }
@@ -604,13 +579,14 @@ Socket.prototype.setMulticastInterface = function(interfaceAddress) {
 
 Socket.prototype.addMembership = function(multicastAddress,
                                           interfaceAddress) {
-  this._healthCheck();
+  healthCheck(this);
 
   if (!multicastAddress) {
-    throw new errors.TypeError('ERR_MISSING_ARGS', 'multicastAddress');
+    throw new ERR_MISSING_ARGS('multicastAddress');
   }
 
-  var err = this._handle.addMembership(multicastAddress, interfaceAddress);
+  const { handle } = this[kStateSymbol];
+  var err = handle.addMembership(multicastAddress, interfaceAddress);
   if (err) {
     throw errnoException(err, 'addMembership');
   }
@@ -619,35 +595,38 @@ Socket.prototype.addMembership = function(multicastAddress,
 
 Socket.prototype.dropMembership = function(multicastAddress,
                                            interfaceAddress) {
-  this._healthCheck();
+  healthCheck(this);
 
   if (!multicastAddress) {
-    throw new errors.TypeError('ERR_MISSING_ARGS', 'multicastAddress');
+    throw new ERR_MISSING_ARGS('multicastAddress');
   }
 
-  var err = this._handle.dropMembership(multicastAddress, interfaceAddress);
+  const { handle } = this[kStateSymbol];
+  var err = handle.dropMembership(multicastAddress, interfaceAddress);
   if (err) {
     throw errnoException(err, 'dropMembership');
   }
 };
 
 
-Socket.prototype._healthCheck = function() {
-  if (!this._handle) {
+function healthCheck(socket) {
+  if (!socket[kStateSymbol].handle) {
     // Error message from dgram_legacy.js.
-    throw new errors.Error('ERR_SOCKET_DGRAM_NOT_RUNNING');
+    throw new ERR_SOCKET_DGRAM_NOT_RUNNING();
   }
-};
+}
 
 
-Socket.prototype._stopReceiving = function() {
-  if (!this._receiving)
+function stopReceiving(socket) {
+  const state = socket[kStateSymbol];
+
+  if (!state.receiving)
     return;
 
-  this._handle.recvStop();
-  this._receiving = false;
-  this.fd = null; // compatibility hack
-};
+  state.handle.recvStop();
+  state.receiving = false;
+  socket.fd = null; // compatibility hack
+}
 
 
 function onMessage(nread, handle, buf, rinfo) {
@@ -661,16 +640,20 @@ function onMessage(nread, handle, buf, rinfo) {
 
 
 Socket.prototype.ref = function() {
-  if (this._handle)
-    this._handle.ref();
+  const handle = this[kStateSymbol].handle;
+
+  if (handle)
+    handle.ref();
 
   return this;
 };
 
 
 Socket.prototype.unref = function() {
-  if (this._handle)
-    this._handle.unref();
+  const handle = this[kStateSymbol].handle;
+
+  if (handle)
+    handle.unref();
 
   return this;
 };
@@ -693,6 +676,67 @@ Socket.prototype.getRecvBufferSize = function() {
 
 Socket.prototype.getSendBufferSize = function() {
   return bufferSize(this, 0, SEND_BUFFER);
+};
+
+
+// Legacy private APIs to be deprecated in the future.
+Object.defineProperty(Socket.prototype, '_handle', {
+  get() {
+    return this[kStateSymbol].handle;
+  },
+  set(val) {
+    this[kStateSymbol].handle = val;
+  }
+});
+
+
+Object.defineProperty(Socket.prototype, '_receiving', {
+  get() {
+    return this[kStateSymbol].receiving;
+  },
+  set(val) {
+    this[kStateSymbol].receiving = val;
+  }
+});
+
+
+Object.defineProperty(Socket.prototype, '_bindState', {
+  get() {
+    return this[kStateSymbol].bindState;
+  },
+  set(val) {
+    this[kStateSymbol].bindState = val;
+  }
+});
+
+
+Object.defineProperty(Socket.prototype, '_queue', {
+  get() {
+    return this[kStateSymbol].queue;
+  },
+  set(val) {
+    this[kStateSymbol].queue = val;
+  }
+});
+
+
+Object.defineProperty(Socket.prototype, '_reuseAddr', {
+  get() {
+    return this[kStateSymbol].reuseAddr;
+  },
+  set(val) {
+    this[kStateSymbol].reuseAddr = val;
+  }
+});
+
+
+Socket.prototype._healthCheck = function() {
+  healthCheck(this);
+};
+
+
+Socket.prototype._stopReceiving = function() {
+  stopReceiving(this);
 };
 
 

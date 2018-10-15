@@ -6,6 +6,7 @@
 
 #include "src/ast/ast.h"
 #include "src/base/hashmap.h"
+#include "src/debug/debug.h"
 #include "src/deoptimizer.h"
 #include "src/frames-inl.h"
 #include "src/isolate.h"
@@ -48,27 +49,31 @@ class SharedToCounterMap
 namespace {
 int StartPosition(SharedFunctionInfo* info) {
   int start = info->function_token_position();
-  if (start == kNoSourcePosition) start = info->start_position();
+  if (start == kNoSourcePosition) start = info->StartPosition();
   return start;
 }
 
 bool CompareSharedFunctionInfo(SharedFunctionInfo* a, SharedFunctionInfo* b) {
   int a_start = StartPosition(a);
   int b_start = StartPosition(b);
-  if (a_start == b_start) return a->end_position() > b->end_position();
+  if (a_start == b_start) return a->EndPosition() > b->EndPosition();
   return a_start < b_start;
 }
 
 bool CompareCoverageBlock(const CoverageBlock& a, const CoverageBlock& b) {
-  DCHECK(a.start != kNoSourcePosition);
-  DCHECK(b.start != kNoSourcePosition);
+  DCHECK_NE(kNoSourcePosition, a.start);
+  DCHECK_NE(kNoSourcePosition, b.start);
   if (a.start == b.start) return a.end > b.end;
   return a.start < b.start;
 }
 
+void SortBlockData(std::vector<CoverageBlock>& v) {
+  // Sort according to the block nesting structure.
+  std::sort(v.begin(), v.end(), CompareCoverageBlock);
+}
+
 std::vector<CoverageBlock> GetSortedBlockData(Isolate* isolate,
                                               SharedFunctionInfo* shared) {
-  DCHECK(FLAG_block_coverage);
   DCHECK(shared->HasCoverageInfo());
 
   CoverageInfo* coverage_info =
@@ -82,12 +87,11 @@ std::vector<CoverageBlock> GetSortedBlockData(Isolate* isolate,
     const int until_pos = coverage_info->EndSourcePosition(i);
     const int count = coverage_info->BlockCount(i);
 
-    DCHECK(start_pos != kNoSourcePosition);
+    DCHECK_NE(kNoSourcePosition, start_pos);
     result.emplace_back(start_pos, until_pos, count);
   }
 
-  // Sort according to the block nesting structure.
-  std::sort(result.begin(), result.end(), CompareCoverageBlock);
+  SortBlockData(result);
 
   return result;
 }
@@ -243,6 +247,21 @@ void MergeDuplicateSingletons(CoverageFunction* function) {
   }
 }
 
+void MergeDuplicateRanges(CoverageFunction* function) {
+  CoverageBlockIterator iter(function);
+
+  while (iter.Next() && iter.HasNext()) {
+    CoverageBlock& block = iter.GetBlock();
+    CoverageBlock& next_block = iter.GetNextBlock();
+
+    if (!HaveSameSourceRange(block, next_block)) continue;
+
+    DCHECK_NE(kNoSourcePosition, block.end);  // Non-singleton range.
+    next_block.count = std::max(block.count, next_block.count);
+    iter.DeleteBlock();
+  }
+}
+
 // Rewrite position singletons (produced by unconditional control flow
 // like return statements, and by continuation counters) into source
 // ranges that end at the next sibling range or the end of the parent
@@ -274,16 +293,13 @@ void RewritePositionSingletonsToRanges(CoverageFunction* function) {
   }
 }
 
-void MergeNestedAndConsecutiveRanges(CoverageFunction* function) {
+void MergeConsecutiveRanges(CoverageFunction* function) {
   CoverageBlockIterator iter(function);
 
   while (iter.Next()) {
     CoverageBlock& block = iter.GetBlock();
-    CoverageBlock& parent = iter.GetParent();
 
-    if (parent.count == block.count) {
-      iter.DeleteBlock();
-    } else if (iter.HasSiblingOrChild()) {
+    if (iter.HasSiblingOrChild()) {
       CoverageBlock& sibling = iter.GetSiblingOrChild();
       if (sibling.start == block.end && sibling.count == block.count) {
         // Best-effort: this pass may miss mergeable siblings in the presence of
@@ -291,6 +307,21 @@ void MergeNestedAndConsecutiveRanges(CoverageFunction* function) {
         sibling.start = block.start;
         iter.DeleteBlock();
       }
+    }
+  }
+}
+
+void MergeNestedRanges(CoverageFunction* function) {
+  CoverageBlockIterator iter(function);
+
+  while (iter.Next()) {
+    CoverageBlock& block = iter.GetBlock();
+    CoverageBlock& parent = iter.GetParent();
+
+    if (parent.count == block.count) {
+      // Transformation may not be valid if sibling blocks exist with a
+      // differing count.
+      iter.DeleteBlock();
     }
   }
 }
@@ -324,7 +355,6 @@ void ClampToBinary(CoverageFunction* function) {
 }
 
 void ResetAllBlockCounts(SharedFunctionInfo* shared) {
-  DCHECK(FLAG_block_coverage);
   DCHECK(shared->HasCoverageInfo());
 
   CoverageInfo* coverage_info =
@@ -345,10 +375,19 @@ bool IsBlockMode(debug::Coverage::Mode mode) {
   }
 }
 
+bool IsBinaryMode(debug::Coverage::Mode mode) {
+  switch (mode) {
+    case debug::Coverage::kBlockBinary:
+    case debug::Coverage::kPreciseBinary:
+      return true;
+    default:
+      return false;
+  }
+}
+
 void CollectBlockCoverage(Isolate* isolate, CoverageFunction* function,
                           SharedFunctionInfo* info,
                           debug::Coverage::Mode mode) {
-  DCHECK(FLAG_block_coverage);
   DCHECK(IsBlockMode(mode));
 
   function->has_block_coverage = true;
@@ -365,7 +404,15 @@ void CollectBlockCoverage(Isolate* isolate, CoverageFunction* function,
   RewritePositionSingletonsToRanges(function);
 
   // Merge nested and consecutive ranges with identical counts.
-  MergeNestedAndConsecutiveRanges(function);
+  // Note that it's necessary to merge duplicate ranges prior to merging nested
+  // changes in order to avoid invalid transformations. See crbug.com/827530.
+  MergeConsecutiveRanges(function);
+
+  SortBlockData(function->blocks);
+  MergeDuplicateRanges(function);
+  MergeNestedRanges(function);
+
+  MergeConsecutiveRanges(function);
 
   // Filter out ranges with count == 0 unless the immediate parent range has
   // a count != 0.
@@ -374,30 +421,31 @@ void CollectBlockCoverage(Isolate* isolate, CoverageFunction* function,
   // Filter out ranges of zero length.
   FilterEmptyRanges(function);
 
-
   // Reset all counters on the DebugInfo to zero.
   ResetAllBlockCounts(info);
 }
 }  // anonymous namespace
 
-Coverage* Coverage::CollectPrecise(Isolate* isolate) {
+std::unique_ptr<Coverage> Coverage::CollectPrecise(Isolate* isolate) {
   DCHECK(!isolate->is_best_effort_code_coverage());
-  Coverage* result = Collect(isolate, isolate->code_coverage_mode());
-  if (isolate->is_precise_binary_code_coverage() ||
-      isolate->is_block_binary_code_coverage()) {
+  std::unique_ptr<Coverage> result =
+      Collect(isolate, isolate->code_coverage_mode());
+  if (!isolate->is_collecting_type_profile() &&
+      (isolate->is_precise_binary_code_coverage() ||
+       isolate->is_block_binary_code_coverage())) {
     // We do not have to hold onto feedback vectors for invocations we already
     // reported. So we can reset the list.
-    isolate->SetCodeCoverageList(*ArrayList::New(isolate, 0));
+    isolate->SetFeedbackVectorsForProfilingTools(*ArrayList::New(isolate, 0));
   }
   return result;
 }
 
-Coverage* Coverage::CollectBestEffort(Isolate* isolate) {
+std::unique_ptr<Coverage> Coverage::CollectBestEffort(Isolate* isolate) {
   return Collect(isolate, v8::debug::Coverage::kBestEffort);
 }
 
-Coverage* Coverage::Collect(Isolate* isolate,
-                            v8::debug::Coverage::Mode collectionMode) {
+std::unique_ptr<Coverage> Coverage::Collect(
+    Isolate* isolate, v8::debug::Coverage::Mode collectionMode) {
   SharedToCounterMap counter_map;
 
   const bool reset_count = collectionMode != v8::debug::Coverage::kBestEffort;
@@ -408,9 +456,11 @@ Coverage* Coverage::Collect(Isolate* isolate,
     case v8::debug::Coverage::kPreciseBinary:
     case v8::debug::Coverage::kPreciseCount: {
       // Feedback vectors are already listed to prevent losing them to GC.
-      DCHECK(isolate->factory()->code_coverage_list()->IsArrayList());
-      Handle<ArrayList> list =
-          Handle<ArrayList>::cast(isolate->factory()->code_coverage_list());
+      DCHECK(isolate->factory()
+                 ->feedback_vectors_for_profiling_tools()
+                 ->IsArrayList());
+      Handle<ArrayList> list = Handle<ArrayList>::cast(
+          isolate->factory()->feedback_vectors_for_profiling_tools());
       for (int i = 0; i < list->Length(); i++) {
         FeedbackVector* vector = FeedbackVector::cast(list->Get(i));
         SharedFunctionInfo* shared = vector->shared_function_info();
@@ -422,7 +472,9 @@ Coverage* Coverage::Collect(Isolate* isolate,
       break;
     }
     case v8::debug::Coverage::kBestEffort: {
-      DCHECK(!isolate->factory()->code_coverage_list()->IsArrayList());
+      DCHECK(!isolate->factory()
+                  ->feedback_vectors_for_profiling_tools()
+                  ->IsArrayList());
       DCHECK_EQ(v8::debug::Coverage::kBestEffort, collectionMode);
       HeapIterator heap_iterator(isolate->heap());
       while (HeapObject* current_obj = heap_iterator.next()) {
@@ -439,7 +491,7 @@ Coverage* Coverage::Collect(Isolate* isolate,
 
   // Iterate shared function infos of every script and build a mapping
   // between source ranges and invocation counts.
-  Coverage* result = new Coverage();
+  std::unique_ptr<Coverage> result(new Coverage());
   Script::Iterator scripts(isolate);
   while (Script* script = scripts.Next()) {
     if (!script->IsUserJavaScript()) continue;
@@ -466,7 +518,7 @@ Coverage* Coverage::Collect(Isolate* isolate,
     // Use sorted list to reconstruct function nesting.
     for (SharedFunctionInfo* info : sorted) {
       int start = StartPosition(info);
-      int end = info->end_position();
+      int end = info->EndPosition();
       uint32_t count = counter_map.Get(info);
       // Find the correct outer function based on start position.
       while (!nesting.empty() && functions->at(nesting.back()).end <= start) {
@@ -491,8 +543,7 @@ Coverage* Coverage::Collect(Isolate* isolate,
       Handle<String> name(info->DebugName(), isolate);
       CoverageFunction function(start, end, count, name);
 
-      if (FLAG_block_coverage && IsBlockMode(collectionMode) &&
-          info->HasCoverageInfo()) {
+      if (IsBlockMode(collectionMode) && info->HasCoverageInfo()) {
         CollectBlockCoverage(isolate, &function, info, collectionMode);
       }
 
@@ -521,40 +572,40 @@ void Coverage::SelectMode(Isolate* isolate, debug::Coverage::Mode mode) {
       // recording is stopped. Since we delete coverage infos at that point, any
       // following coverage recording (without reloads) will be at function
       // granularity.
-      if (FLAG_block_coverage) isolate->debug()->RemoveAllCoverageInfos();
-      isolate->SetCodeCoverageList(isolate->heap()->undefined_value());
+      isolate->debug()->RemoveAllCoverageInfos();
+      if (!isolate->is_collecting_type_profile()) {
+        isolate->SetFeedbackVectorsForProfilingTools(
+            isolate->heap()->undefined_value());
+      }
       break;
     case debug::Coverage::kBlockBinary:
     case debug::Coverage::kBlockCount:
     case debug::Coverage::kPreciseBinary:
     case debug::Coverage::kPreciseCount: {
       HandleScope scope(isolate);
+
       // Remove all optimized function. Optimized and inlined functions do not
       // increment invocation count.
       Deoptimizer::DeoptimizeAll(isolate);
-      // Collect existing feedback vectors.
-      std::vector<Handle<FeedbackVector>> vectors;
-      {
-        HeapIterator heap_iterator(isolate->heap());
-        while (HeapObject* current_obj = heap_iterator.next()) {
-          if (current_obj->IsSharedFunctionInfo()) {
-            SharedFunctionInfo* shared = SharedFunctionInfo::cast(current_obj);
-            shared->set_has_reported_binary_coverage(false);
-          } else if (current_obj->IsFeedbackVector()) {
-            FeedbackVector* vector = FeedbackVector::cast(current_obj);
-            SharedFunctionInfo* shared = vector->shared_function_info();
-            if (!shared->IsSubjectToDebugging()) continue;
-            vector->clear_invocation_count();
-            vectors.emplace_back(vector, isolate);
-          }
+
+      // Root all feedback vectors to avoid early collection.
+      isolate->MaybeInitializeVectorListFromHeap();
+
+      HeapIterator heap_iterator(isolate->heap());
+      while (HeapObject* o = heap_iterator.next()) {
+        if (IsBinaryMode(mode) && o->IsSharedFunctionInfo()) {
+          // If collecting binary coverage, reset
+          // SFI::has_reported_binary_coverage to avoid optimizing / inlining
+          // functions before they have reported coverage.
+          SharedFunctionInfo* shared = SharedFunctionInfo::cast(o);
+          shared->set_has_reported_binary_coverage(false);
+        } else if (o->IsFeedbackVector()) {
+          // In any case, clear any collected invocation counts.
+          FeedbackVector* vector = FeedbackVector::cast(o);
+          vector->clear_invocation_count();
         }
       }
-      // Add collected feedback vectors to the root list lest we lose them to
-      // GC.
-      Handle<ArrayList> list =
-          ArrayList::New(isolate, static_cast<int>(vectors.size()));
-      for (const auto& vector : vectors) list = ArrayList::Add(list, vector);
-      isolate->SetCodeCoverageList(*list);
+
       break;
     }
   }

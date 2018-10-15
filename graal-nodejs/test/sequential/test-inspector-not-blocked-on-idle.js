@@ -1,3 +1,4 @@
+// Flags: --expose-internals
 'use strict';
 const common = require('../common');
 common.skipIfInspectorDisabled();
@@ -17,5 +18,4 @@ async function runTests() {
   node.kill();
 }
 
-common.crashOnUnhandledRejection();
 runTests();

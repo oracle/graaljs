@@ -23,7 +23,7 @@ void VerifyEmptyGaps(const Instruction* instr) {
        i <= Instruction::LAST_GAP_POSITION; i++) {
     Instruction::GapPosition inner_pos =
         static_cast<Instruction::GapPosition>(i);
-    CHECK(instr->GetParallelMove(inner_pos) == nullptr);
+    CHECK_NULL(instr->GetParallelMove(inner_pos));
   }
 }
 
@@ -77,7 +77,7 @@ RegisterAllocatorVerifier::RegisterAllocatorVerifier(
     for (size_t i = 0; i < instr->OutputCount(); ++i, ++count) {
       BuildConstraint(instr->OutputAt(i), &op_constraints[count]);
       if (op_constraints[count].type_ == kSameAsFirst) {
-        CHECK(instr->InputCount() > 0);
+        CHECK_LT(0, instr->InputCount());
         op_constraints[count].type_ = op_constraints[0].type_;
         op_constraints[count].value_ = op_constraints[0].value_;
       }
@@ -167,13 +167,17 @@ void RegisterAllocatorVerifier::BuildConstraint(const InstructionOperand* op,
       constraint->value_ = unallocated->fixed_slot_index();
     } else {
       switch (unallocated->extended_policy()) {
-        case UnallocatedOperand::ANY:
+        case UnallocatedOperand::REGISTER_OR_SLOT:
         case UnallocatedOperand::NONE:
           if (sequence()->IsFP(vreg)) {
-            constraint->type_ = kNoneFP;
+            constraint->type_ = kRegisterOrSlotFP;
           } else {
-            constraint->type_ = kNone;
+            constraint->type_ = kRegisterOrSlot;
           }
+          break;
+        case UnallocatedOperand::REGISTER_OR_SLOT_OR_CONSTANT:
+          DCHECK(!sequence()->IsFP(vreg));
+          constraint->type_ = kRegisterOrSlotOrConstant;
           break;
         case UnallocatedOperand::FIXED_REGISTER:
           if (unallocated->HasSecondaryStorage()) {
@@ -252,11 +256,15 @@ void RegisterAllocatorVerifier::CheckConstraint(
       CHECK_EQ(ElementSizeLog2Of(LocationOperand::cast(op)->representation()),
                constraint->value_);
       return;
-    case kNone:
+    case kRegisterOrSlot:
       CHECK_WITH_MSG(op->IsRegister() || op->IsStackSlot(), caller_info_);
       return;
-    case kNoneFP:
+    case kRegisterOrSlotFP:
       CHECK_WITH_MSG(op->IsFPRegister() || op->IsFPStackSlot(), caller_info_);
+      return;
+    case kRegisterOrSlotOrConstant:
+      CHECK_WITH_MSG(op->IsRegister() || op->IsStackSlot() || op->IsConstant(),
+                     caller_info_);
       return;
     case kSameAsFirst:
       CHECK_WITH_MSG(false, caller_info_);
@@ -333,7 +341,7 @@ BlockAssessments* RegisterAllocatorVerifier::CreateForBlock(
     // TODO(mtrofin): the following check should hold, however, in certain
     // unit tests it is invalidated by the last block. Investigate and
     // normalize the CFG.
-    // CHECK(current_block_id.ToInt() == 0);
+    // CHECK_EQ(0, current_block_id.ToInt());
     // The phi size test below is because we can, technically, have phi
     // instructions with one argument. Some tests expose that, too.
   } else if (block->PredecessorCount() == 1 && block->phis().size() == 0) {

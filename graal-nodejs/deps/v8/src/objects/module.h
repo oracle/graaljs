@@ -6,6 +6,7 @@
 #define V8_OBJECTS_MODULE_H_
 
 #include "src/objects.h"
+#include "src/objects/fixed-array.h"
 
 // Has to be the last include (doesn't have include guards):
 #include "src/objects/object-macros.h"
@@ -23,17 +24,16 @@ class ModuleInfoEntry;
 class String;
 class Zone;
 
-// A Module object is a mapping from export names to cells
-// This is still very much in flux.
+// The runtime representation of an ECMAScript module.
 class Module : public Struct {
  public:
   DECL_CAST(Module)
   DECL_VERIFIER(Module)
   DECL_PRINTER(Module)
 
-  // The code representing this Module, or an abstraction thereof.
-  // This is either a SharedFunctionInfo or a JSFunction or a ModuleInfo
-  // depending on whether the module has been instantiated and evaluated.  See
+  // The code representing this module, or an abstraction thereof.
+  // This is either a SharedFunctionInfo, a JSFunction, a JSGeneratorObject, or
+  // a ModuleInfo, depending on the state (status) the module is in. See
   // Module::ModuleVerify() for the precise invariant.
   DECL_ACCESSORS(code, Object)
 
@@ -67,6 +67,10 @@ class Module : public Struct {
   // The exception in the case {status} is kErrored.
   Object* GetException();
 
+  // The shared function info in case {status} is not kEvaluating, kEvaluated or
+  // kErrored.
+  SharedFunctionInfo* GetSharedFunctionInfo() const;
+
   // The namespace object (or undefined).
   DECL_ACCESSORS(module_namespace, HeapObject)
 
@@ -78,6 +82,11 @@ class Module : public Struct {
   // [script]: Script from which the module originates.
   DECL_ACCESSORS(script, Script)
 
+  // The value of import.meta inside of this module.
+  // Lazily initialized on first access. It's the hole before first access and
+  // a JSObject afterwards.
+  DECL_ACCESSORS(import_meta, Object)
+
   // Get the ModuleInfo associated with the code.
   inline ModuleInfo* info() const;
 
@@ -85,12 +94,13 @@ class Module : public Struct {
   // Returns false if an exception occurred during instantiation, true
   // otherwise. (In the case where the callback throws an exception, that
   // exception is propagated.)
-  static MUST_USE_RESULT bool Instantiate(Handle<Module> module,
-                                          v8::Local<v8::Context> context,
-                                          v8::Module::ResolveCallback callback);
+  static V8_WARN_UNUSED_RESULT bool Instantiate(
+      Handle<Module> module, v8::Local<v8::Context> context,
+      v8::Module::ResolveCallback callback);
 
   // Implementation of spec operation ModuleEvaluation.
-  static MUST_USE_RESULT MaybeHandle<Object> Evaluate(Handle<Module> module);
+  static V8_WARN_UNUSED_RESULT MaybeHandle<Object> Evaluate(
+      Handle<Module> module);
 
   Cell* GetCell(int cell_index);
   static Handle<Object> LoadVariable(Handle<Module> module, int cell_index);
@@ -119,7 +129,8 @@ class Module : public Struct {
   static const int kDfsAncestorIndexOffset = kDfsIndexOffset + kPointerSize;
   static const int kExceptionOffset = kDfsAncestorIndexOffset + kPointerSize;
   static const int kScriptOffset = kExceptionOffset + kPointerSize;
-  static const int kSize = kScriptOffset + kPointerSize;
+  static const int kImportMetaOffset = kScriptOffset + kPointerSize;
+  static const int kSize = kImportMetaOffset + kPointerSize;
 
  private:
   friend class Factory;
@@ -146,32 +157,40 @@ class Module : public Struct {
   // [must_resolve] is false, a null result may or may not indicate an
   // exception (so check manually!).
   class ResolveSet;
-  static MUST_USE_RESULT MaybeHandle<Cell> ResolveExport(
-      Handle<Module> module, Handle<String> name, MessageLocation loc,
-      bool must_resolve, ResolveSet* resolve_set);
-  static MUST_USE_RESULT MaybeHandle<Cell> ResolveImport(
+  static V8_WARN_UNUSED_RESULT MaybeHandle<Cell> ResolveExport(
+      Handle<Module> module, Handle<String> module_specifier,
+      Handle<String> export_name, MessageLocation loc, bool must_resolve,
+      ResolveSet* resolve_set);
+  static V8_WARN_UNUSED_RESULT MaybeHandle<Cell> ResolveImport(
       Handle<Module> module, Handle<String> name, int module_request,
       MessageLocation loc, bool must_resolve, ResolveSet* resolve_set);
 
-  static MUST_USE_RESULT MaybeHandle<Cell> ResolveExportUsingStarExports(
-      Handle<Module> module, Handle<String> name, MessageLocation loc,
-      bool must_resolve, ResolveSet* resolve_set);
+  static V8_WARN_UNUSED_RESULT MaybeHandle<Cell> ResolveExportUsingStarExports(
+      Handle<Module> module, Handle<String> module_specifier,
+      Handle<String> export_name, MessageLocation loc, bool must_resolve,
+      ResolveSet* resolve_set);
 
-  static MUST_USE_RESULT bool PrepareInstantiate(
+  static V8_WARN_UNUSED_RESULT bool PrepareInstantiate(
       Handle<Module> module, v8::Local<v8::Context> context,
       v8::Module::ResolveCallback callback);
-  static MUST_USE_RESULT bool FinishInstantiate(
+  static V8_WARN_UNUSED_RESULT bool FinishInstantiate(
       Handle<Module> module, ZoneForwardList<Handle<Module>>* stack,
       unsigned* dfs_index, Zone* zone);
-  static void RunInitializationCode(Handle<Module> module);
+  static V8_WARN_UNUSED_RESULT bool RunInitializationCode(
+      Handle<Module> module);
 
-  static MUST_USE_RESULT MaybeHandle<Object> Evaluate(
+  static V8_WARN_UNUSED_RESULT MaybeHandle<Object> Evaluate(
       Handle<Module> module, ZoneForwardList<Handle<Module>>* stack,
       unsigned* dfs_index);
 
-  static void MaybeTransitionComponent(Handle<Module> module,
-                                       ZoneForwardList<Handle<Module>>* stack,
-                                       Status new_status);
+  static V8_WARN_UNUSED_RESULT bool MaybeTransitionComponent(
+      Handle<Module> module, ZoneForwardList<Handle<Module>>* stack,
+      Status new_status);
+
+  // Set module's status back to kUninstantiated and reset other internal state.
+  // This is used when instantiation fails.
+  static void Reset(Handle<Module> module);
+  static void ResetGraph(Handle<Module> module);
 
   // To set status to kErrored, RecordError should be used.
   void SetStatus(Status status);
@@ -200,7 +219,13 @@ class JSModuleNamespace : public JSObject {
   // Retrieve the value exported by [module] under the given [name]. If there is
   // no such export, return Just(undefined). If the export is uninitialized,
   // schedule an exception and return Nothing.
-  MUST_USE_RESULT MaybeHandle<Object> GetExport(Handle<String> name);
+  V8_WARN_UNUSED_RESULT MaybeHandle<Object> GetExport(Handle<String> name);
+
+  // Return the (constant) property attributes for the referenced property,
+  // which is assumed to correspond to an export. If the export is
+  // uninitialized, schedule an exception and return Nothing.
+  static V8_WARN_UNUSED_RESULT Maybe<PropertyAttributes> GetPropertyAttributes(
+      LookupIterator* it);
 
   // In-object fields.
   enum {

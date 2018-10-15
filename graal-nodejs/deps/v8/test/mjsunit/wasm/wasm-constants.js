@@ -78,7 +78,7 @@ let kLocalNamesCode = 2;
 let kWasmFunctionTypeForm = 0x60;
 let kWasmAnyFunctionTypeForm = 0x70;
 
-let kResizableMaximumFlag = 1;
+let kHasMaximumFlag = 1;
 
 // Function declaration flags
 let kDeclFunctionName   = 0x01;
@@ -92,6 +92,8 @@ let kWasmI32 = 0x7f;
 let kWasmI64 = 0x7e;
 let kWasmF32 = 0x7d;
 let kWasmF64 = 0x7c;
+let kWasmS128  = 0x7b;
+let kWasmAnyRef = 0x6f;
 
 let kExternalFunction = 0;
 let kExternalTable = 1;
@@ -113,7 +115,7 @@ let kSig_i_dd = makeSig([kWasmF64, kWasmF64], [kWasmI32]);
 let kSig_v_v = makeSig([], []);
 let kSig_i_v = makeSig([], [kWasmI32]);
 let kSig_l_v = makeSig([], [kWasmI64]);
-let kSig_f_v = makeSig([], [kWasmF64]);
+let kSig_f_v = makeSig([], [kWasmF32]);
 let kSig_d_v = makeSig([], [kWasmF64]);
 let kSig_v_i = makeSig([kWasmI32], []);
 let kSig_v_ii = makeSig([kWasmI32, kWasmI32], []);
@@ -122,6 +124,20 @@ let kSig_v_l = makeSig([kWasmI64], []);
 let kSig_v_d = makeSig([kWasmF64], []);
 let kSig_v_dd = makeSig([kWasmF64, kWasmF64], []);
 let kSig_v_ddi = makeSig([kWasmF64, kWasmF64, kWasmI32], []);
+let kSig_ii_v = makeSig([], [kWasmI32, kWasmI32]);
+let kSig_iii_v = makeSig([], [kWasmI32, kWasmI32, kWasmI32]);
+let kSig_ii_i = makeSig([kWasmI32], [kWasmI32, kWasmI32]);
+let kSig_iii_i = makeSig([kWasmI32], [kWasmI32, kWasmI32, kWasmI32]);
+let kSig_ii_ii = makeSig([kWasmI32, kWasmI32], [kWasmI32, kWasmI32]);
+let kSig_iii_ii = makeSig([kWasmI32, kWasmI32], [kWasmI32, kWasmI32, kWasmI32]);
+
+let kSig_v_f = makeSig([kWasmF32], []);
+let kSig_f_f = makeSig([kWasmF32], [kWasmF32]);
+let kSig_d_d = makeSig([kWasmF64], [kWasmF64]);
+let kSig_r_r = makeSig([kWasmAnyRef], [kWasmAnyRef]);
+let kSig_i_r = makeSig([kWasmAnyRef], [kWasmI32]);
+let kSig_v_r = makeSig([kWasmAnyRef], []);
+let kSig_r_v = makeSig([], [kWasmAnyRef]);
 
 function makeSig(params, results) {
   return {params: params, results: results};
@@ -175,6 +191,7 @@ let kExprI32Const = 0x41;
 let kExprI64Const = 0x42;
 let kExprF32Const = 0x43;
 let kExprF64Const = 0x44;
+let kExprRefNull = 0xd0;
 let kExprI32LoadMem = 0x28;
 let kExprI64LoadMem = 0x29;
 let kExprF32LoadMem = 0x2a;
@@ -234,6 +251,7 @@ let kExprF64Lt = 0x63;
 let kExprF64Gt = 0x64;
 let kExprF64Le = 0x65;
 let kExprF64Ge = 0x66;
+let kExprRefIsNull = 0xd1;
 let kExprI32Clz = 0x67;
 let kExprI32Ctz = 0x68;
 let kExprI32Popcnt = 0x69;
@@ -327,6 +345,12 @@ let kExprF64ReinterpretI64 = 0xbf;
 // Prefix opcodes
 let kAtomicPrefix = 0xfe;
 
+let kExprI32AtomicLoad = 0x10;
+let kExprI32AtomicLoad8U = 0x12;
+let kExprI32AtomicLoad16U = 0x13;
+let kExprI32AtomicStore = 0x17;
+let kExprI32AtomicStore8U = 0x19;
+let kExprI32AtomicStore16U = 0x1a;
 let kExprI32AtomicAdd = 0x1e;
 let kExprI32AtomicAdd8U = 0x20;
 let kExprI32AtomicAdd16U = 0x21;
@@ -357,7 +381,7 @@ let kTrapRemByZero            = 4;
 let kTrapFloatUnrepresentable = 5;
 let kTrapFuncInvalid          = 6;
 let kTrapFuncSigMismatch      = 7;
-let kTrapInvalidIndex         = 8;
+let kTrapTypeError            = 8;
 
 let kTrapMsgs = [
   "unreachable",
@@ -365,10 +389,10 @@ let kTrapMsgs = [
   "divide by zero",
   "divide result unrepresentable",
   "remainder by zero",
-  "integer result unrepresentable",
-  "invalid function",
+  "float unrepresentable in integer range",
+  "invalid index into function table",
   "function signature mismatch",
-  "invalid index into function table"
+  "wasm function signature contains illegal type"
 ];
 
 function assertTraps(trap, code) {
@@ -387,7 +411,7 @@ function assertTraps(trap, code) {
   throw new MjsUnitAssertionError('Did not trap, expected: ' + kTrapMsgs[trap]);
 }
 
-function assertWasmThrows(values, code) {
+function assertWasmThrows(runtime_id, values, code) {
   try {
     if (typeof code === 'function') {
       code();
@@ -396,15 +420,18 @@ function assertWasmThrows(values, code) {
     }
   } catch (e) {
     assertTrue(e instanceof WebAssembly.RuntimeError);
-    assertNotEquals(e['WasmExceptionTag'], undefined);
-    assertTrue(Number.isInteger(e['WasmExceptionTag']));
-    // TODO(kschimpf): Extract values from the exception.
-    let e_values = [];
-    assertEquals(values, e_values);
+    var e_runtime_id = e['WasmExceptionRuntimeId'];
+    assertEquals(e_runtime_id, runtime_id);
+    assertTrue(Number.isInteger(e_runtime_id));
+    var e_values = e['WasmExceptionValues'];
+    assertEquals(values.length, e_values.length);
+    for (i = 0; i < values.length; ++i) {
+      assertEquals(values[i], e_values[i]);
+    }
     // Success.
     return;
   }
-  throw new MjsUnitAssertionError('Did not throw, expected: ' + values);
+  throw new MjsUnitAssertionError('Did not throw expected: ' + runtime_id + values);
 }
 
 function wasmI32Const(val) {

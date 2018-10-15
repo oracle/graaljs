@@ -1,4 +1,3 @@
-// Flags: --expose-http2
 'use strict';
 
 const common = require('../common');
@@ -14,20 +13,20 @@ const server = h2.createServer();
 server.listen(0, common.mustCall(function() {
   const port = server.address().port;
   server.once('request', common.mustCall(function(request, response) {
-    response.destroy();
-
     response.on('finish', common.mustCall(() => {
       assert.strictEqual(response.headersSent, false);
-      assert.doesNotThrow(() => response.setHeader('test', 'value'));
-      assert.doesNotThrow(() => response.removeHeader('test', 'value'));
+      response.setHeader('test', 'value');
+      response.removeHeader('test', 'value');
 
       process.nextTick(() => {
-        assert.doesNotThrow(() => response.setHeader('test', 'value'));
-        assert.doesNotThrow(() => response.removeHeader('test', 'value'));
+        response.setHeader('test', 'value');
+        response.removeHeader('test', 'value');
 
         server.close();
       });
     }));
+
+    response.destroy();
   }));
 
   const url = `http://localhost:${port}`;
@@ -40,7 +39,7 @@ server.listen(0, common.mustCall(function() {
     };
     const request = client.request(headers);
     request.on('end', common.mustCall(function() {
-      client.destroy();
+      client.close();
     }));
     request.end();
     request.resume();

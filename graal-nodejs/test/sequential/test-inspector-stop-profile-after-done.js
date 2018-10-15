@@ -1,3 +1,4 @@
+// Flags: --expose-internals
 'use strict';
 const common = require('../common');
 common.skipIfInspectorDisabled();
@@ -11,20 +12,20 @@ async function runTests() {
                                    console.log(new Object());
                                    if (c++ === 10)
                                      clearInterval(interval);
-                                 }, 10);`);
+                                 }, ${common.platformTimeout(30)});`);
   const session = await child.connectInspectorSession();
 
   session.send([
-    { 'method': 'Profiler.setSamplingInterval', 'params': { 'interval': 100 } },
-    { 'method': 'Profiler.enable' },
-    { 'method': 'Runtime.runIfWaitingForDebugger' },
-    { 'method': 'Profiler.start' }]);
+    { method: 'Profiler.setSamplingInterval',
+      params: { interval: common.platformTimeout(300) } },
+    { method: 'Profiler.enable' },
+    { method: 'Runtime.runIfWaitingForDebugger' },
+    { method: 'Profiler.start' }]);
   while (await child.nextStderrString() !==
          'Waiting for the debugger to disconnect...');
-  await session.send({ 'method': 'Profiler.stop' });
+  await session.send({ method: 'Profiler.stop' });
   session.disconnect();
-  assert.strictEqual(0, (await child.expectShutdown()).exitCode);
+  assert.strictEqual((await child.expectShutdown()).exitCode, 0);
 }
 
-common.crashOnUnhandledRejection();
 runTests();

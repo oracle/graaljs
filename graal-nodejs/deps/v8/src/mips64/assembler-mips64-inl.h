@@ -33,9 +33,8 @@
 // modified significantly by Google Inc.
 // Copyright 2012 the V8 project authors. All rights reserved.
 
-
-#ifndef V8_MIPS_ASSEMBLER_MIPS_INL_H_
-#define V8_MIPS_ASSEMBLER_MIPS_INL_H_
+#ifndef V8_MIPS64_ASSEMBLER_MIPS64_INL_H_
+#define V8_MIPS64_ASSEMBLER_MIPS64_INL_H_
 
 #include "src/mips64/assembler-mips64.h"
 
@@ -46,44 +45,22 @@
 namespace v8 {
 namespace internal {
 
-
-bool CpuFeatures::SupportsCrankshaft() { return IsSupported(FPU); }
+bool CpuFeatures::SupportsOptimizer() { return IsSupported(FPU); }
 
 bool CpuFeatures::SupportsWasmSimd128() { return IsSupported(MIPS_SIMD); }
 
 // -----------------------------------------------------------------------------
 // Operand and MemOperand.
 
-Operand::Operand(int64_t immediate, RelocInfo::Mode rmode)  {
-  rm_ = no_reg;
-  value_.immediate = immediate;
-  rmode_ = rmode;
-}
-
-
-Operand::Operand(const ExternalReference& f)  {
-  rm_ = no_reg;
-  value_.immediate = reinterpret_cast<int64_t>(f.address());
-  rmode_ = RelocInfo::EXTERNAL_REFERENCE;
-}
-
-
-Operand::Operand(Smi* value) {
-  rm_ = no_reg;
-  value_.immediate = reinterpret_cast<intptr_t>(value);
-  rmode_ = RelocInfo::NONE32;
-}
-
-
-Operand::Operand(Register rm) {
-  rm_ = rm;
-}
-
-
 bool Operand::is_reg() const {
   return rm_.is_valid();
 }
 
+int64_t Operand::immediate() const {
+  DCHECK(!is_reg());
+  DCHECK(!IsHeapObjectRequest());
+  return value_.immediate;
+}
 
 // -----------------------------------------------------------------------------
 // RelocInfo.
@@ -91,22 +68,20 @@ bool Operand::is_reg() const {
 void RelocInfo::apply(intptr_t delta) {
   if (IsInternalReference(rmode_) || IsInternalReferenceEncoded(rmode_)) {
     // Absolute code pointer inside code object moves with the code object.
-    byte* p = reinterpret_cast<byte*>(pc_);
-    Assembler::RelocateInternalReference(rmode_, p, delta);
+    Assembler::RelocateInternalReference(rmode_, pc_, delta);
   }
 }
 
 
 Address RelocInfo::target_address() {
-  DCHECK(IsCodeTarget(rmode_) || IsRuntimeEntry(rmode_));
-  return Assembler::target_address_at(pc_, host_);
+  DCHECK(IsCodeTarget(rmode_) || IsRuntimeEntry(rmode_) || IsWasmCall(rmode_));
+  return Assembler::target_address_at(pc_, constant_pool_);
 }
 
 Address RelocInfo::target_address_address() {
-  DCHECK(IsCodeTarget(rmode_) ||
-         IsRuntimeEntry(rmode_) ||
-         rmode_ == EMBEDDED_OBJECT ||
-         rmode_ == EXTERNAL_REFERENCE);
+  DCHECK(IsCodeTarget(rmode_) || IsRuntimeEntry(rmode_) || IsWasmCall(rmode_) ||
+         IsEmbeddedObject(rmode_) || IsExternalReference(rmode_) ||
+         IsOffHeapTarget(rmode_));
   // Read the address of the word containing the target_address in an
   // instruction stream.
   // The only architecture-independent user of this function is the serializer.
@@ -121,10 +96,7 @@ Address RelocInfo::target_address_address() {
   // place, ready to be patched with the target. After jump optimization,
   // that is the address of the instruction that follows J/JAL/JR/JALR
   // instruction.
-  // return reinterpret_cast<Address>(
-  //  pc_ + Assembler::kInstructionsFor32BitConstant * Assembler::kInstrSize);
-  return reinterpret_cast<Address>(
-    pc_ + Assembler::kInstructionsFor64BitConstant * Assembler::kInstrSize);
+  return pc_ + Assembler::kInstructionsFor64BitConstant * Assembler::kInstrSize;
 }
 
 
@@ -137,30 +109,28 @@ int RelocInfo::target_address_size() {
   return Assembler::kSpecialTargetSize;
 }
 
-Address Assembler::target_address_at(Address pc, Code* code) {
-  Address constant_pool = code ? code->constant_pool() : NULL;
-  return target_address_at(pc, constant_pool);
-}
-
-void Assembler::set_target_address_at(Isolate* isolate, Address pc, Code* code,
-                                      Address target,
-                                      ICacheFlushMode icache_flush_mode) {
-  Address constant_pool = code ? code->constant_pool() : NULL;
-  set_target_address_at(isolate, pc, constant_pool, target, icache_flush_mode);
-}
-
 Address Assembler::target_address_from_return_address(Address pc) {
   return pc - kCallTargetAddressOffset;
 }
 
+void Assembler::deserialization_set_special_target_at(
+    Address instruction_payload, Code* code, Address target) {
+  set_target_address_at(
+      instruction_payload - kInstructionsFor64BitConstant * kInstrSize,
+      code ? code->constant_pool() : kNullAddress, target);
+}
+
+int Assembler::deserialization_special_target_size(
+    Address instruction_payload) {
+  return kSpecialTargetSize;
+}
 
 void Assembler::set_target_internal_reference_encoded_at(Address pc,
                                                          Address target) {
   // Encoded internal references are j/jal instructions.
   Instr instr = Assembler::instr_at(pc + 0 * Assembler::kInstrSize);
 
-  uint64_t imm28 =
-      (reinterpret_cast<uint64_t>(target) & static_cast<uint64_t>(kImm28Mask));
+  uint64_t imm28 = target & static_cast<uint64_t>(kImm28Mask);
 
   instr &= ~kImm26Mask;
   uint64_t imm26 = imm28 >> 2;
@@ -171,9 +141,8 @@ void Assembler::set_target_internal_reference_encoded_at(Address pc,
   // after complete deserialization, no need to flush on each reference.
 }
 
-
 void Assembler::deserialization_set_target_internal_reference_at(
-    Isolate* isolate, Address pc, Address target, RelocInfo::Mode mode) {
+    Address pc, Address target, RelocInfo::Mode mode) {
   if (mode == RelocInfo::INTERNAL_REFERENCE_ENCODED) {
     DCHECK(IsJ(instr_at(pc)));
     set_target_internal_reference_encoded_at(pc, target);
@@ -185,25 +154,24 @@ void Assembler::deserialization_set_target_internal_reference_at(
 
 HeapObject* RelocInfo::target_object() {
   DCHECK(IsCodeTarget(rmode_) || rmode_ == EMBEDDED_OBJECT);
-  return HeapObject::cast(
-      reinterpret_cast<Object*>(Assembler::target_address_at(pc_, host_)));
+  return HeapObject::cast(reinterpret_cast<Object*>(
+      Assembler::target_address_at(pc_, constant_pool_)));
 }
 
 Handle<HeapObject> RelocInfo::target_object_handle(Assembler* origin) {
   DCHECK(IsCodeTarget(rmode_) || rmode_ == EMBEDDED_OBJECT);
-  return Handle<HeapObject>(
-      reinterpret_cast<HeapObject**>(Assembler::target_address_at(pc_, host_)));
+  return Handle<HeapObject>(reinterpret_cast<HeapObject**>(
+      Assembler::target_address_at(pc_, constant_pool_)));
 }
 
 void RelocInfo::set_target_object(HeapObject* target,
                                   WriteBarrierMode write_barrier_mode,
                                   ICacheFlushMode icache_flush_mode) {
   DCHECK(IsCodeTarget(rmode_) || rmode_ == EMBEDDED_OBJECT);
-  Assembler::set_target_address_at(target->GetIsolate(), pc_, host_,
+  Assembler::set_target_address_at(pc_, constant_pool_,
                                    reinterpret_cast<Address>(target),
                                    icache_flush_mode);
-  if (write_barrier_mode == UPDATE_WRITE_BARRIER &&
-      host() != NULL &&
+  if (write_barrier_mode == UPDATE_WRITE_BARRIER && host() != nullptr &&
       target->IsHeapObject()) {
     host()->GetHeap()->incremental_marking()->RecordWriteIntoCode(
         host(), this, HeapObject::cast(target));
@@ -214,9 +182,15 @@ void RelocInfo::set_target_object(HeapObject* target,
 
 Address RelocInfo::target_external_reference() {
   DCHECK(rmode_ == EXTERNAL_REFERENCE);
-  return Assembler::target_address_at(pc_, host_);
+  return Assembler::target_address_at(pc_, constant_pool_);
 }
 
+void RelocInfo::set_target_external_reference(
+    Address target, ICacheFlushMode icache_flush_mode) {
+  DCHECK(rmode_ == RelocInfo::EXTERNAL_REFERENCE);
+  Assembler::set_target_address_at(pc_, constant_pool_, target,
+                                   icache_flush_mode);
+}
 
 Address RelocInfo::target_internal_reference() {
   if (rmode_ == INTERNAL_REFERENCE) {
@@ -227,47 +201,57 @@ Address RelocInfo::target_internal_reference() {
     Instr instr = Assembler::instr_at(pc_ + 0 * Assembler::kInstrSize);
     instr &= kImm26Mask;
     uint64_t imm28 = instr << 2;
-    uint64_t segment =
-        (reinterpret_cast<uint64_t>(pc_) & ~static_cast<uint64_t>(kImm28Mask));
-    return reinterpret_cast<Address>(segment | imm28);
+    uint64_t segment = pc_ & ~static_cast<uint64_t>(kImm28Mask);
+    return static_cast<Address>(segment | imm28);
   }
 }
 
 
 Address RelocInfo::target_internal_reference_address() {
   DCHECK(rmode_ == INTERNAL_REFERENCE || rmode_ == INTERNAL_REFERENCE_ENCODED);
-  return reinterpret_cast<Address>(pc_);
+  return pc_;
 }
 
+void RelocInfo::set_wasm_code_table_entry(Address target,
+                                          ICacheFlushMode icache_flush_mode) {
+  DCHECK(rmode_ == RelocInfo::WASM_CODE_TABLE_ENTRY);
+  Assembler::set_target_address_at(pc_, constant_pool_, target,
+                                   icache_flush_mode);
+}
 
 Address RelocInfo::target_runtime_entry(Assembler* origin) {
   DCHECK(IsRuntimeEntry(rmode_));
   return target_address();
 }
 
-void RelocInfo::set_target_runtime_entry(Isolate* isolate, Address target,
+void RelocInfo::set_target_runtime_entry(Address target,
                                          WriteBarrierMode write_barrier_mode,
                                          ICacheFlushMode icache_flush_mode) {
   DCHECK(IsRuntimeEntry(rmode_));
   if (target_address() != target)
-    set_target_address(isolate, target, write_barrier_mode, icache_flush_mode);
+    set_target_address(target, write_barrier_mode, icache_flush_mode);
 }
 
-void RelocInfo::WipeOut(Isolate* isolate) {
+Address RelocInfo::target_off_heap_target() {
+  DCHECK(IsOffHeapTarget(rmode_));
+  return Assembler::target_address_at(pc_, constant_pool_);
+}
+
+void RelocInfo::WipeOut() {
   DCHECK(IsEmbeddedObject(rmode_) || IsCodeTarget(rmode_) ||
          IsRuntimeEntry(rmode_) || IsExternalReference(rmode_) ||
          IsInternalReference(rmode_) || IsInternalReferenceEncoded(rmode_));
   if (IsInternalReference(rmode_)) {
-    Memory::Address_at(pc_) = NULL;
+    Memory::Address_at(pc_) = kNullAddress;
   } else if (IsInternalReferenceEncoded(rmode_)) {
-    Assembler::set_target_internal_reference_encoded_at(pc_, nullptr);
+    Assembler::set_target_internal_reference_encoded_at(pc_, kNullAddress);
   } else {
-    Assembler::set_target_address_at(isolate, pc_, host_, NULL);
+    Assembler::set_target_address_at(pc_, constant_pool_, kNullAddress);
   }
 }
 
 template <typename ObjectVisitor>
-void RelocInfo::Visit(Isolate* isolate, ObjectVisitor* visitor) {
+void RelocInfo::Visit(ObjectVisitor* visitor) {
   RelocInfo::Mode mode = rmode();
   if (mode == RelocInfo::EMBEDDED_OBJECT) {
     visitor->VisitEmbeddedPointer(host(), this);
@@ -280,6 +264,8 @@ void RelocInfo::Visit(Isolate* isolate, ObjectVisitor* visitor) {
     visitor->VisitInternalReference(host(), this);
   } else if (RelocInfo::IsRuntimeEntry(mode)) {
     visitor->VisitRuntimeEntry(host(), this);
+  } else if (RelocInfo::IsOffHeapTarget(mode)) {
+    visitor->VisitOffHeapTarget(host(), this);
   }
 }
 
@@ -366,8 +352,9 @@ void Assembler::emit(uint64_t data) {
   EmitHelper(data);
 }
 
+EnsureSpace::EnsureSpace(Assembler* assembler) { assembler->CheckBuffer(); }
 
 }  // namespace internal
 }  // namespace v8
 
-#endif  // V8_MIPS_ASSEMBLER_MIPS_INL_H_
+#endif  // V8_MIPS64_ASSEMBLER_MIPS64_INL_H_

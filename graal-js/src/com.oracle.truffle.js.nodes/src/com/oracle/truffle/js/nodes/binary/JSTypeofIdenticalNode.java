@@ -257,7 +257,11 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
 
     private static boolean checkProxy(DynamicObject value, boolean isFunction) {
         TruffleObject obj = JSProxy.getTargetNonProxy(value);
-        return isFunction ? JSFunction.isJSFunction(obj) : JSObject.isDynamicObject(obj);
+        if (isFunction) {
+            return JSFunction.isJSFunction(obj) || JSRuntime.isCallableForeign(obj) || JSRuntime.isConstructorForeign(obj);
+        } else {
+            return (JSObject.isJSObject(obj) && !JSFunction.isJSFunction(obj)) || (JSRuntime.isForeignObject(obj) && !JSRuntime.isCallableForeign(obj) && !JSRuntime.isConstructorForeign(obj));
+        }
     }
 
     private static boolean nonPrimitiveJavaObj(Object obj) {

@@ -48,6 +48,8 @@ class GraalMap : public GraalObject {
 public:
     GraalMap(GraalIsolate* isolate, jobject java_map);
     bool IsMap() const override;
+    static v8::Local<v8::Map> New(v8::Isolate* isolate);
+    v8::MaybeLocal<v8::Map> Set(v8::Local<v8::Context> context, v8::Local<v8::Value> key, v8::Local<v8::Value> value);
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };

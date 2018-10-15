@@ -22,15 +22,28 @@
 'use strict';
 
 const errors = require('internal/errors');
+const {
+  ERR_FALSY_VALUE_REJECTION,
+  ERR_INVALID_ARG_TYPE,
+  ERR_OUT_OF_RANGE
+} = errors.codes;
 const { TextDecoder, TextEncoder } = require('internal/encoding');
 const { isBuffer } = require('buffer').Buffer;
-
-const { errname } = process.binding('uv');
 
 const {
   getPromiseDetails,
   getProxyDetails,
+  kPending,
+  kRejected,
+  previewEntries
+} = process.binding('util');
+
+const { internalBinding } = require('internal/bootstrap/loaders');
+const types = internalBinding('types');
+Object.assign(types, require('internal/util/types'));
+const {
   isAnyArrayBuffer,
+  isArgumentsObject,
   isDataView,
   isExternal,
   isMap,
@@ -38,23 +51,21 @@ const {
   isPromise,
   isSet,
   isSetIterator,
+  isWeakMap,
+  isWeakSet,
   isRegExp,
   isDate,
-  kPending,
-  kRejected,
-} = process.binding('util');
-
-const {
   isTypedArray
-} = require('internal/util/types');
+} = types;
 
 const {
   customInspectSymbol,
   deprecate,
-  getConstructorOf,
+  getSystemErrorName: internalErrorName,
   isError,
   promisify,
-  join
+  join,
+  removeColors
 } = require('internal/util');
 
 const inspectDefaultOptions = Object.seal({
@@ -64,7 +75,8 @@ const inspectDefaultOptions = Object.seal({
   customInspect: true,
   showProxy: false,
   maxArrayLength: 100,
-  breakLength: 60
+  breakLength: 60,
+  compact: true
 });
 
 const propertyIsEnumerable = Object.prototype.propertyIsEnumerable;
@@ -72,18 +84,20 @@ const regExpToString = RegExp.prototype.toString;
 const dateToISOString = Date.prototype.toISOString;
 const errorToString = Error.prototype.toString;
 
-var CIRCULAR_ERROR_MESSAGE;
-var Debug;
+let CIRCULAR_ERROR_MESSAGE;
+let internalDeepEqual;
 
-/* eslint-disable */
+/* eslint-disable no-control-regex */
 const strEscapeSequencesRegExp = /[\x00-\x1f\x27\x5c]/;
-const keyEscapeSequencesRegExp = /[\x00-\x1f\x27]/;
 const strEscapeSequencesReplacer = /[\x00-\x1f\x27\x5c]/g;
-const keyEscapeSequencesReplacer = /[\x00-\x1f\x27]/g;
-/* eslint-enable */
+/* eslint-enable no-control-regex */
+
 const keyStrRegExp = /^[a-zA-Z_][a-zA-Z_0-9]*$/;
-const colorRegExp = /\u001b\[\d\d?m/g;
 const numberRegExp = /^(0|[1-9][0-9]*)$/;
+
+const readableRegExps = {};
+
+const MIN_LINE_LENGTH = 16;
 
 // Escaped special characters. Use empty strings to fill up unused entries.
 const meta = [
@@ -101,6 +115,10 @@ const meta = [
   '', '', '', '', '', '', '', '', '', '',
   '', '', '', '', '', '', '', '\\\\'
 ];
+// Constants to map the iterator state.
+const kWeak = 0;
+const kIterator = 1;
+const kMapEntries = 2;
 
 const escapeFn = (str) => meta[str.charCodeAt(0)];
 
@@ -112,39 +130,11 @@ function strEscape(str) {
     return `'${str}'`;
   if (str.length > 100)
     return `'${str.replace(strEscapeSequencesReplacer, escapeFn)}'`;
-  var result = '';
-  var last = 0;
+  let result = '';
+  let last = 0;
   for (var i = 0; i < str.length; i++) {
     const point = str.charCodeAt(i);
     if (point === 39 || point === 92 || point < 32) {
-      if (last === i) {
-        result += meta[point];
-      } else {
-        result += `${str.slice(last, i)}${meta[point]}`;
-      }
-      last = i + 1;
-    }
-  }
-  if (last === 0) {
-    result = str;
-  } else if (last !== i) {
-    result += str.slice(last);
-  }
-  return `'${result}'`;
-}
-
-// Escape control characters and single quotes.
-// Note: for performance reasons this is not combined with strEscape
-function keyEscape(str) {
-  if (str.length < 5000 && !keyEscapeSequencesRegExp.test(str))
-    return `'${str}'`;
-  if (str.length > 100)
-    return `'${str.replace(keyEscapeSequencesReplacer, escapeFn)}'`;
-  var result = '';
-  var last = 0;
-  for (var i = 0; i < str.length; i++) {
-    const point = str.charCodeAt(i);
-    if (point === 39 || point < 32) {
       if (last === i) {
         result += meta[point];
       } else {
@@ -179,24 +169,29 @@ function tryStringify(arg) {
   }
 }
 
-function format(f) {
-  var i, tempStr;
+const emptyOptions = {};
+function format(...args) {
+  return formatWithOptions(emptyOptions, ...args);
+}
+
+function formatWithOptions(inspectOptions, f) {
+  let i, tempStr;
   if (typeof f !== 'string') {
-    if (arguments.length === 0) return '';
-    var res = '';
-    for (i = 0; i < arguments.length - 1; i++) {
-      res += inspect(arguments[i]);
+    if (arguments.length === 1) return '';
+    let res = '';
+    for (i = 1; i < arguments.length - 1; i++) {
+      res += inspect(arguments[i], inspectOptions);
       res += ' ';
     }
-    res += inspect(arguments[i]);
+    res += inspect(arguments[i], inspectOptions);
     return res;
   }
 
-  if (arguments.length === 1) return f;
+  if (arguments.length === 2) return f;
 
-  var str = '';
-  var a = 1;
-  var lastPos = 0;
+  let str = '';
+  let a = 2;
+  let lastPos = 0;
   for (i = 0; i < f.length - 1; i++) {
     if (f.charCodeAt(i) === 37) { // '%'
       const nextChar = f.charCodeAt(++i);
@@ -212,12 +207,18 @@ function format(f) {
             tempStr = `${Number(arguments[a++])}`;
             break;
           case 79: // 'O'
-            tempStr = inspect(arguments[a++]);
+            tempStr = inspect(arguments[a++], inspectOptions);
             break;
           case 111: // 'o'
-            tempStr = inspect(arguments[a++],
-                              { showHidden: true, depth: 4, showProxy: true });
+          {
+            const opts = Object.assign({}, inspectOptions, {
+              showHidden: true,
+              showProxy: true,
+              depth: 4
+            });
+            tempStr = inspect(arguments[a++], opts);
             break;
+          }
           case 105: // 'i'
             tempStr = `${parseInt(arguments[a++])}`;
             break;
@@ -250,44 +251,48 @@ function format(f) {
     if ((typeof x !== 'object' && typeof x !== 'symbol') || x === null) {
       str += ` ${x}`;
     } else {
-      str += ` ${inspect(x)}`;
+      str += ` ${inspect(x, inspectOptions)}`;
     }
   }
   return str;
 }
 
-var debugs = {};
-var debugEnviron;
+const debugs = {};
+let debugEnvRegex = /^$/;
+if (process.env.NODE_DEBUG) {
+  let debugEnv = process.env.NODE_DEBUG;
+  debugEnv = debugEnv.replace(/[|\\{}()[\]^$+?.]/g, '\\$&')
+      .replace(/\*/g, '.*')
+      .replace(/,/g, '$|^')
+      .toUpperCase();
+  debugEnvRegex = new RegExp(`^${debugEnv}$`, 'i');
+}
 
 function debuglog(set) {
-  if (debugEnviron === undefined) {
-    debugEnviron = new Set(
-      (process.env.NODE_DEBUG || '').split(',').map((s) => s.toUpperCase()));
-  }
   set = set.toUpperCase();
   if (!debugs[set]) {
-    if (debugEnviron.has(set)) {
-      var pid = process.pid;
-      debugs[set] = function() {
-        var msg = exports.format.apply(exports, arguments);
+    if (debugEnvRegex.test(set)) {
+      const pid = process.pid;
+      debugs[set] = function debug() {
+        const msg = exports.format.apply(exports, arguments);
         console.error('%s %d: %s', set, pid, msg);
       };
     } else {
-      debugs[set] = function() {};
+      debugs[set] = function debug() {};
     }
   }
   return debugs[set];
 }
 
 /**
- * Echos the value of a value. Tries to print the value out
+ * Echos the value of any input. Tries to print the value out
  * in the best way possible given the different types.
  *
- * @param {Object} obj The object to print out.
+ * @param {any} value The value to print out.
  * @param {Object} opts Optional options object that alters the output.
  */
-/* Legacy: obj, showHidden, depth, colors*/
-function inspect(obj, opts) {
+/* Legacy: value, showHidden, depth, colors */
+function inspect(value, opts) {
   // Default options
   const ctx = {
     seen: [],
@@ -297,9 +302,12 @@ function inspect(obj, opts) {
     colors: inspectDefaultOptions.colors,
     customInspect: inspectDefaultOptions.customInspect,
     showProxy: inspectDefaultOptions.showProxy,
+    // TODO(BridgeAR): Deprecate `maxArrayLength` and replace it with
+    // `maxEntries`.
     maxArrayLength: inspectDefaultOptions.maxArrayLength,
     breakLength: inspectDefaultOptions.breakLength,
-    indentationLvl: 0
+    indentationLvl: 0,
+    compact: inspectDefaultOptions.compact
   };
   // Legacy...
   if (arguments.length > 2) {
@@ -321,7 +329,7 @@ function inspect(obj, opts) {
   }
   if (ctx.colors) ctx.stylize = stylizeWithColor;
   if (ctx.maxArrayLength === null) ctx.maxArrayLength = Infinity;
-  return formatValue(ctx, obj, ctx.depth);
+  return formatValue(ctx, value, ctx.depth);
 }
 inspect.custom = customInspectSymbol;
 
@@ -331,10 +339,11 @@ Object.defineProperty(inspect, 'defaultOptions', {
   },
   set(options) {
     if (options === null || typeof options !== 'object') {
-      throw new TypeError('"options" must be an object');
+      throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
     }
-    Object.assign(inspectDefaultOptions, options);
-    return inspectDefaultOptions;
+    // TODO(BridgeAR): Add input validation and make sure `defaultOptions` are
+    // not configurable.
+    return _extend(inspectDefaultOptions, options);
   }
 });
 
@@ -359,6 +368,7 @@ inspect.colors = Object.assign(Object.create(null), {
 inspect.styles = Object.assign(Object.create(null), {
   'special': 'cyan',
   'number': 'yellow',
+  'bigint': 'yellow',
   'boolean': 'yellow',
   'undefined': 'grey',
   'null': 'bold',
@@ -382,17 +392,39 @@ function stylizeNoColor(str, styleType) {
   return str;
 }
 
-function ensureDebugIsInitialized() {
-  if (Debug === undefined) {
-    const runInDebugContext = require('vm').runInDebugContext;
-    Debug = runInDebugContext('Debug');
+function getConstructorName(obj) {
+  while (obj) {
+    const descriptor = Object.getOwnPropertyDescriptor(obj, 'constructor');
+    if (descriptor !== undefined &&
+        typeof descriptor.value === 'function' &&
+        descriptor.value.name !== '') {
+      return descriptor.value.name;
+    }
+
+    obj = Object.getPrototypeOf(obj);
   }
+
+  return '';
 }
 
-function formatValue(ctx, value, recurseTimes, ln) {
+function getPrefix(constructor, tag) {
+  if (constructor !== '') {
+    if (tag !== '' && constructor !== tag) {
+      return `${constructor} [${tag}] `;
+    }
+    return `${constructor} `;
+  }
+
+  if (tag !== '')
+    return `[${tag}] `;
+
+  return '';
+}
+
+function formatValue(ctx, value, recurseTimes) {
   // Primitive types cannot have properties
   if (typeof value !== 'object' && typeof value !== 'function') {
-    return formatPrimitive(ctx.stylize, value);
+    return formatPrimitive(ctx.stylize, value, ctx);
   }
   if (value === null) {
     return ctx.stylize('null', 'null');
@@ -420,14 +452,23 @@ function formatValue(ctx, value, recurseTimes, ln) {
   // Provide a hook for user-specified inspect functions.
   // Check that value is an object with an inspect function on it
   if (ctx.customInspect) {
-    const maybeCustomInspect = value[customInspectSymbol] || value.inspect;
+    let maybeCustom = value[customInspectSymbol];
 
-    if (typeof maybeCustomInspect === 'function' &&
+    if (!maybeCustom && value.inspect !== exports.inspect &&
+        typeof value.inspect === 'function') {
+      maybeCustom = deprecate(
+        value.inspect,
+        'Custom inspection function on Objects via .inspect() is deprecated',
+        'DEP0079'
+      );
+    }
+
+    if (typeof maybeCustom === 'function' &&
         // Filter out the util module, its inspect function is special
-        maybeCustomInspect !== exports.inspect &&
+        maybeCustom !== exports.inspect &&
         // Also filter out any prototype objects using the circular check.
         !(value.constructor && value.constructor.prototype === value)) {
-      const ret = maybeCustomInspect.call(value, recurseTimes, ctx);
+      const ret = maybeCustom.call(value, recurseTimes, ctx);
 
       // If the custom inspection method returned `this`, don't go into
       // infinite recursion.
@@ -440,57 +481,83 @@ function formatValue(ctx, value, recurseTimes, ln) {
     }
   }
 
-  var keys;
-  var symbols = Object.getOwnPropertySymbols(value);
+  // Using an array here is actually better for the average case than using
+  // a Set. `seen` will only check for the depth and will never grow too large.
+  if (ctx.seen.indexOf(value) !== -1)
+    return ctx.stylize('[Circular]', 'special');
+
+  let keys;
+  let symbols = Object.getOwnPropertySymbols(value);
 
   // Look up the keys of the object.
   if (ctx.showHidden) {
     keys = Object.getOwnPropertyNames(value);
   } else {
-    keys = Object.keys(value);
+    // This might throw if `value` is a Module Namespace Object from an
+    // unevaluated module, but we don't want to perform the actual type
+    // check because it's expensive.
+    // TODO(devsnek): track https://github.com/tc39/ecma262/issues/1209
+    // and modify this logic as needed.
+    try {
+      keys = Object.keys(value);
+    } catch (err) {
+      if (types.isNativeError(err) &&
+          err.name === 'ReferenceError' &&
+          types.isModuleNamespaceObject(value)) {
+        keys = Object.getOwnPropertyNames(value);
+      } else {
+        throw err;
+      }
+    }
+
     if (symbols.length !== 0)
       symbols = symbols.filter((key) => propertyIsEnumerable.call(value, key));
   }
 
   const keyLength = keys.length + symbols.length;
-  const constructor = getConstructorOf(value);
-  const ctorName = constructor && constructor.name ?
-    `${constructor.name} ` : '';
 
-  var base = '';
-  var formatter = formatObject;
-  var braces;
-  var noIterator = true;
-  var raw;
+  const constructor = getConstructorName(value);
+  let tag = value[Symbol.toStringTag];
+  if (typeof tag !== 'string')
+    tag = '';
+  let base = '';
+  let formatter = formatObject;
+  let braces;
+  let noIterator = true;
+  let raw;
+  let extra;
 
   // Iterators and the rest are split to reduce checks
   if (value[Symbol.iterator]) {
     noIterator = false;
     if (Array.isArray(value)) {
       // Only set the constructor for non ordinary ("Array [...]") arrays.
-      braces = [`${ctorName === 'Array ' ? '' : ctorName}[`, ']'];
+      const prefix = getPrefix(constructor, tag);
+      braces = [`${prefix === 'Array ' ? '' : prefix}[`, ']'];
       if (value.length === 0 && keyLength === 0)
         return `${braces[0]}]`;
       formatter = formatArray;
     } else if (isSet(value)) {
+      const prefix = getPrefix(constructor, tag);
       if (value.size === 0 && keyLength === 0)
-        return `${ctorName}{}`;
-      braces = [`${ctorName}{`, '}'];
+        return `${prefix}{}`;
+      braces = [`${prefix}{`, '}'];
       formatter = formatSet;
     } else if (isMap(value)) {
+      const prefix = getPrefix(constructor, tag);
       if (value.size === 0 && keyLength === 0)
-        return `${ctorName}{}`;
-      braces = [`${ctorName}{`, '}'];
+        return `${prefix}{}`;
+      braces = [`${prefix}{`, '}'];
       formatter = formatMap;
     } else if (isTypedArray(value)) {
-      braces = [`${ctorName}[`, ']'];
+      braces = [`${getPrefix(constructor, tag)}[`, ']'];
       formatter = formatTypedArray;
     } else if (isMapIterator(value)) {
-      braces = ['MapIterator {', '}'];
-      formatter = formatCollectionIterator;
+      braces = [`[${tag}] {`, '}'];
+      formatter = formatMapIterator;
     } else if (isSetIterator(value)) {
-      braces = ['SetIterator {', '}'];
-      formatter = formatCollectionIterator;
+      braces = [`[${tag}] {`, '}'];
+      formatter = formatSetIterator;
     } else {
       // Check for boxed strings with valueOf()
       // The .valueOf() call can fail for a multitude of reasons
@@ -499,10 +566,10 @@ function formatValue(ctx, value, recurseTimes, ln) {
       } catch (e) { /* ignore */ }
 
       if (typeof raw === 'string') {
-        const formatted = formatPrimitive(stylizeNoColor, raw);
+        const formatted = formatPrimitive(stylizeNoColor, raw, ctx);
         if (keyLength === raw.length)
           return ctx.stylize(`[String: ${formatted}]`, 'string');
-        base = ` [String: ${formatted}]`;
+        base = `[String: ${formatted}]`;
         // For boxed Strings, we have to remove the 0-n indexed entries,
         // since they just noisy up the output and are redundant
         // Make boxed primitive Strings look like such
@@ -515,20 +582,30 @@ function formatValue(ctx, value, recurseTimes, ln) {
   }
   if (noIterator) {
     braces = ['{', '}'];
-    if (ctorName === 'Object ') {
-      // Object fast path
-      if (keyLength === 0)
+    if (constructor === 'Object') {
+      if (isArgumentsObject(value)) {
+        braces[0] = '[Arguments] {';
+        if (keyLength === 0)
+          return '[Arguments] {}';
+      } else if (tag !== '') {
+        braces[0] = `${getPrefix(constructor, tag)}{`;
+        if (keyLength === 0) {
+          return `${braces[0]}}`;
+        }
+      } else if (keyLength === 0) {
         return '{}';
+      }
     } else if (typeof value === 'function') {
-      const name = `${(constructor && constructor.name) ? constructor.name : 'Function'}${value.name ? `: ${value.name}` : ''}`;
+      const name =
+        `${constructor || tag}${value.name ? `: ${value.name}` : ''}`;
       if (keyLength === 0)
         return ctx.stylize(`[${name}]`, 'special');
-      base = ` [${name}]`;
+      base = `[${name}]`;
     } else if (isRegExp(value)) {
       // Make RegExps say that they are RegExps
       if (keyLength === 0 || recurseTimes < 0)
         return ctx.stylize(regExpToString.call(value), 'regexp');
-      base = ` ${regExpToString.call(value)}`;
+      base = `${regExpToString.call(value)}`;
     } else if (isDate(value)) {
       if (keyLength === 0) {
         if (Number.isNaN(value.getTime()))
@@ -536,28 +613,61 @@ function formatValue(ctx, value, recurseTimes, ln) {
         return ctx.stylize(dateToISOString.call(value), 'date');
       }
       // Make dates with properties first say the date
-      base = ` ${dateToISOString.call(value)}`;
+      base = dateToISOString.call(value);
     } else if (isError(value)) {
       // Make error with message first say the error
+      base = formatError(value);
+      // Wrap the error in brackets in case it has no stack trace.
+      const stackStart = base.indexOf('\n    at');
+      if (stackStart === -1) {
+        base = `[${base}]`;
+      }
+      // The message and the stack have to be indented as well!
+      if (ctx.indentationLvl !== 0) {
+        const indentation = ' '.repeat(ctx.indentationLvl);
+        base = formatError(value).replace(/\n/g, `\n${indentation}`);
+      }
       if (keyLength === 0)
-        return formatError(value);
-      base = ` ${formatError(value)}`;
+        return base;
+
+      if (ctx.compact === false && stackStart !== -1) {
+        braces[0] += `${base.slice(stackStart)}`;
+        base = `[${base.slice(0, stackStart)}]`;
+      }
     } else if (isAnyArrayBuffer(value)) {
       // Fast path for ArrayBuffer and SharedArrayBuffer.
       // Can't do the same for DataView because it has a non-primitive
       // .buffer property that we need to recurse for.
+      const prefix = getPrefix(constructor, tag);
       if (keyLength === 0)
-        return ctorName +
+        return prefix +
               `{ byteLength: ${formatNumber(ctx.stylize, value.byteLength)} }`;
-      braces[0] = `${ctorName}{`;
+      braces[0] = `${prefix}{`;
       keys.unshift('byteLength');
     } else if (isDataView(value)) {
-      braces[0] = `${ctorName}{`;
+      braces[0] = `${getPrefix(constructor, tag)}{`;
       // .buffer goes last, it's not a primitive like the others.
       keys.unshift('byteLength', 'byteOffset', 'buffer');
     } else if (isPromise(value)) {
-      braces[0] = `${ctorName}{`;
+      braces[0] = `${getPrefix(constructor, tag)}{`;
       formatter = formatPromise;
+    } else if (isWeakSet(value)) {
+      braces[0] = `${getPrefix(constructor, tag)}{`;
+      if (ctx.showHidden) {
+        formatter = formatWeakSet;
+      } else {
+        extra = '[items unknown]';
+      }
+    } else if (isWeakMap(value)) {
+      braces[0] = `${getPrefix(constructor, tag)}{`;
+      if (ctx.showHidden) {
+        formatter = formatWeakMap;
+      } else {
+        extra = '[items unknown]';
+      }
+    } else if (types.isModuleNamespaceObject(value)) {
+      braces[0] = `[${tag}] {`;
+      formatter = formatNamespaceObject;
     } else {
       // Check boxed primitives other than string with valueOf()
       // NOTE: `Date` has to be checked first!
@@ -571,49 +681,69 @@ function formatValue(ctx, value, recurseTimes, ln) {
         const formatted = formatPrimitive(stylizeNoColor, raw);
         if (keyLength === 0)
           return ctx.stylize(`[Number: ${formatted}]`, 'number');
-        base = ` [Number: ${formatted}]`;
+        base = `[Number: ${formatted}]`;
       } else if (typeof raw === 'boolean') {
         // Make boxed primitive Booleans look like such
         const formatted = formatPrimitive(stylizeNoColor, raw);
         if (keyLength === 0)
           return ctx.stylize(`[Boolean: ${formatted}]`, 'boolean');
-        base = ` [Boolean: ${formatted}]`;
+        base = `[Boolean: ${formatted}]`;
+        // eslint-disable-next-line valid-typeof
+      } else if (typeof raw === 'bigint') {
+        // Make boxed primitive BigInts look like such
+        const formatted = formatPrimitive(stylizeNoColor, raw);
+        if (keyLength === 0)
+          return ctx.stylize(`[BigInt: ${formatted}]`, 'bigint');
+        base = `[BigInt: ${formatted}]`;
       } else if (typeof raw === 'symbol') {
         const formatted = formatPrimitive(stylizeNoColor, raw);
         return ctx.stylize(`[Symbol: ${formatted}]`, 'symbol');
       } else if (keyLength === 0) {
         if (isExternal(value))
           return ctx.stylize('[External]', 'special');
-        return `${ctorName}{}`;
+        return `${getPrefix(constructor, tag)}{}`;
       } else {
-        braces[0] = `${ctorName}{`;
+        braces[0] = `${getPrefix(constructor, tag)}{`;
       }
     }
   }
 
-  // Using an array here is actually better for the average case than using
-  // a Set. `seen` will only check for the depth and will never grow to large.
-  if (ctx.seen.indexOf(value) !== -1)
-    return ctx.stylize('[Circular]', 'special');
-
   if (recurseTimes != null) {
-    if (recurseTimes < 0) {
-      if (Array.isArray(value))
-        return ctx.stylize('[Array]', 'special');
-      return ctx.stylize('[Object]', 'special');
-    }
+    if (recurseTimes < 0)
+      return ctx.stylize(`[${constructor || tag || 'Object'}]`, 'special');
     recurseTimes -= 1;
   }
 
   ctx.seen.push(value);
-  const output = formatter(ctx, value, recurseTimes, keys);
+  let output;
+  // This corresponds to a depth of at least 333 and likely 500.
+  if (ctx.indentationLvl < 1000) {
+    output = formatter(ctx, value, recurseTimes, keys);
+  } else {
+    try {
+      output = formatter(ctx, value, recurseTimes, keys);
+    } catch (err) {
+      if (errors.isStackOverflowError(err)) {
+        ctx.seen.pop();
+        return ctx.stylize(
+          `[${constructor || tag || 'Object'}: Inspection interrupted ` +
+            'prematurely. Maximum call stack size exceeded.]',
+          'special'
+        );
+      }
+      throw err;
+    }
+  }
+  if (extra !== undefined)
+    output.unshift(extra);
 
   for (var i = 0; i < symbols.length; i++) {
     output.push(formatProperty(ctx, value, recurseTimes, symbols[i], 0));
   }
+
   ctx.seen.pop();
 
-  return reduceToSingleString(ctx, output, base, braces, ln);
+  return reduceToSingleString(ctx, output, base, braces);
 }
 
 function formatNumber(fn, value) {
@@ -623,11 +753,47 @@ function formatNumber(fn, value) {
   return fn(`${value}`, 'number');
 }
 
-function formatPrimitive(fn, value) {
-  if (typeof value === 'string')
+function formatPrimitive(fn, value, ctx) {
+  if (typeof value === 'string') {
+    if (ctx.compact === false &&
+      ctx.indentationLvl + value.length > ctx.breakLength &&
+      value.length > MIN_LINE_LENGTH) {
+      // eslint-disable-next-line max-len
+      const minLineLength = Math.max(ctx.breakLength - ctx.indentationLvl, MIN_LINE_LENGTH);
+      // eslint-disable-next-line max-len
+      const averageLineLength = Math.ceil(value.length / Math.ceil(value.length / minLineLength));
+      const divisor = Math.max(averageLineLength, MIN_LINE_LENGTH);
+      let res = '';
+      if (readableRegExps[divisor] === undefined) {
+        // Build a new RegExp that naturally breaks text into multiple lines.
+        //
+        // Rules
+        // 1. Greedy match all text up the max line length that ends with a
+        //    whitespace or the end of the string.
+        // 2. If none matches, non-greedy match any text up to a whitespace or
+        //    the end of the string.
+        //
+        // eslint-disable-next-line max-len, node-core/no-unescaped-regexp-dot
+        readableRegExps[divisor] = new RegExp(`(.|\\n){1,${divisor}}(\\s|$)|(\\n|.)+?(\\s|$)`, 'gm');
+      }
+      const matches = value.match(readableRegExps[divisor]);
+      if (matches.length > 1) {
+        const indent = ' '.repeat(ctx.indentationLvl);
+        res += `${fn(strEscape(matches[0]), 'string')} +\n`;
+        for (var i = 1; i < matches.length - 1; i++) {
+          res += `${indent}  ${fn(strEscape(matches[i]), 'string')} +\n`;
+        }
+        res += `${indent}  ${fn(strEscape(matches[i]), 'string')}`;
+        return res;
+      }
+    }
     return fn(strEscape(value), 'string');
+  }
   if (typeof value === 'number')
     return formatNumber(fn, value);
+  // eslint-disable-next-line valid-typeof
+  if (typeof value === 'bigint')
+    return fn(`${value}n`, 'bigint');
   if (typeof value === 'boolean')
     return fn(`${value}`, 'boolean');
   if (typeof value === 'undefined')
@@ -637,7 +803,7 @@ function formatPrimitive(fn, value) {
 }
 
 function formatError(value) {
-  return value.stack || `[${errorToString.call(value)}]`;
+  return value.stack || errorToString.call(value);
 }
 
 function formatObject(ctx, value, recurseTimes, keys) {
@@ -648,12 +814,37 @@ function formatObject(ctx, value, recurseTimes, keys) {
   return output;
 }
 
+function formatNamespaceObject(ctx, value, recurseTimes, keys) {
+  const len = keys.length;
+  const output = new Array(len);
+  for (var i = 0; i < len; i++) {
+    try {
+      output[i] = formatProperty(ctx, value, recurseTimes, keys[i], 0);
+    } catch (err) {
+      if (!(types.isNativeError(err) && err.name === 'ReferenceError')) {
+        throw err;
+      }
+      // Use the existing functionality. This makes sure the indentation and
+      // line breaks are always correct. Otherwise it is very difficult to keep
+      // this aligned, even though this is a hacky way of dealing with this.
+      const tmp = { [keys[i]]: '' };
+      output[i] = formatProperty(ctx, tmp, recurseTimes, keys[i], 0);
+      const pos = output[i].lastIndexOf(' ');
+      // We have to find the last whitespace and have to replace that value as
+      // it will be visualized as a regular string.
+      output[i] = output[i].slice(0, pos + 1) +
+                  ctx.stylize('<uninitialized>', 'special');
+    }
+  }
+  return output;
+}
+
 // The array is sparse and/or has extra keys
 function formatSpecialArray(ctx, value, recurseTimes, keys, maxLength, valLen) {
   const output = [];
   const keyLen = keys.length;
-  var visibleLength = 0;
-  var i = 0;
+  let visibleLength = 0;
+  let i = 0;
   if (keyLen !== 0 && numberRegExp.test(keys[0])) {
     for (const key of keys) {
       if (visibleLength === maxLength)
@@ -702,7 +893,7 @@ function formatSpecialArray(ctx, value, recurseTimes, keys, maxLength, valLen) {
   } else if (keys[keyLen - 1] !== `${valLen - 1}`) {
     const extra = [];
     // Only handle special keys
-    var key;
+    let key;
     for (i = keys.length - 1; i >= 0; i--) {
       key = keys[i];
       if (numberRegExp.test(key) && +key < 2 ** 32 - 1)
@@ -766,7 +957,7 @@ function formatTypedArray(ctx, value, recurseTimes, keys) {
 
 function formatSet(ctx, value, recurseTimes, keys) {
   const output = new Array(value.size + keys.length + (ctx.showHidden ? 1 : 0));
-  var i = 0;
+  let i = 0;
   for (const v of value)
     output[i++] = formatValue(ctx, v, recurseTimes);
   // With `showHidden`, `length` will display as a hidden property for
@@ -782,7 +973,7 @@ function formatSet(ctx, value, recurseTimes, keys) {
 
 function formatMap(ctx, value, recurseTimes, keys) {
   const output = new Array(value.size + keys.length + (ctx.showHidden ? 1 : 0));
-  var i = 0;
+  let i = 0;
   for (const [k, v] of value)
     output[i++] = `${formatValue(ctx, k, recurseTimes)} => ` +
       formatValue(ctx, v, recurseTimes);
@@ -795,19 +986,87 @@ function formatMap(ctx, value, recurseTimes, keys) {
   return output;
 }
 
-function formatCollectionIterator(ctx, value, recurseTimes, keys) {
-  ensureDebugIsInitialized();
-  const mirror = Debug.MakeMirror(value, true);
-  const vals = mirror.preview();
-  const output = [];
-  for (const o of vals) {
-    output.push(formatValue(ctx, o, recurseTimes));
+function formatSetIterInner(ctx, value, recurseTimes, keys, entries, state) {
+  const maxArrayLength = Math.max(ctx.maxArrayLength, 0);
+  const maxLength = Math.min(maxArrayLength, entries.length);
+  let output = new Array(maxLength);
+  for (var i = 0; i < maxLength; ++i)
+    output[i] = formatValue(ctx, entries[i], recurseTimes);
+  if (state === kWeak) {
+    // Sort all entries to have a halfway reliable output (if more entries than
+    // retrieved ones exist, we can not reliably return the same output).
+    output = output.sort();
   }
+  const remaining = entries.length - maxLength;
+  if (remaining > 0) {
+    output.push(`... ${remaining} more item${remaining > 1 ? 's' : ''}`);
+  }
+  for (i = 0; i < keys.length; i++)
+    output.push(formatProperty(ctx, value, recurseTimes, keys[i], 0));
   return output;
 }
 
+function formatMapIterInner(ctx, value, recurseTimes, keys, entries, state) {
+  const maxArrayLength = Math.max(ctx.maxArrayLength, 0);
+  // Entries exist as [key1, val1, key2, val2, ...]
+  const len = entries.length / 2;
+  const remaining = len - maxArrayLength;
+  const maxLength = Math.min(maxArrayLength, len);
+  let output = new Array(maxLength);
+  let start = '';
+  let end = '';
+  let middle = ' => ';
+  let i = 0;
+  if (state === kMapEntries) {
+    start = '[ ';
+    end = ' ]';
+    middle = ', ';
+  }
+  for (; i < maxLength; i++) {
+    const pos = i * 2;
+    output[i] = `${start}${formatValue(ctx, entries[pos], recurseTimes)}` +
+      `${middle}${formatValue(ctx, entries[pos + 1], recurseTimes)}${end}`;
+  }
+  if (state === kWeak) {
+    // Sort all entries to have a halfway reliable output (if more entries
+    // than retrieved ones exist, we can not reliably return the same output).
+    output = output.sort();
+  }
+  if (remaining > 0) {
+    output.push(`... ${remaining} more item${remaining > 1 ? 's' : ''}`);
+  }
+  for (i = 0; i < keys.length; i++)
+    output.push(formatProperty(ctx, value, recurseTimes, keys[i], 0));
+  return output;
+}
+
+function formatWeakSet(ctx, value, recurseTimes, keys) {
+  const entries = previewEntries(value);
+  return formatSetIterInner(ctx, value, recurseTimes, keys, entries, kWeak);
+}
+
+function formatWeakMap(ctx, value, recurseTimes, keys) {
+  const entries = previewEntries(value);
+  return formatMapIterInner(ctx, value, recurseTimes, keys, entries, kWeak);
+}
+
+function formatSetIterator(ctx, value, recurseTimes, keys) {
+  const entries = previewEntries(value);
+  return formatSetIterInner(ctx, value, recurseTimes, keys, entries, kIterator);
+}
+
+function formatMapIterator(ctx, value, recurseTimes, keys) {
+  const [entries, isKeyValue] = previewEntries(value, true);
+  if (isKeyValue) {
+    return formatMapIterInner(
+      ctx, value, recurseTimes, keys, entries, kMapEntries);
+  }
+
+  return formatSetIterInner(ctx, value, recurseTimes, keys, entries, kIterator);
+}
+
 function formatPromise(ctx, value, recurseTimes, keys) {
-  var output;
+  let output;
   const [state, result] = getPromiseDetails(value);
   if (state === kPending) {
     output = ['<pending>'];
@@ -822,13 +1081,20 @@ function formatPromise(ctx, value, recurseTimes, keys) {
 }
 
 function formatProperty(ctx, value, recurseTimes, key, array) {
-  var name, str;
+  let name, str;
+  let extra = ' ';
   const desc = Object.getOwnPropertyDescriptor(value, key) ||
     { value: value[key], enumerable: true };
   if (desc.value !== undefined) {
-    const diff = array === 0 ? 3 : 2;
+    const diff = array !== 0 || ctx.compact === false ? 2 : 3;
     ctx.indentationLvl += diff;
-    str = formatValue(ctx, desc.value, recurseTimes, array === 0);
+    str = formatValue(ctx, desc.value, recurseTimes);
+    if (diff === 3) {
+      const len = ctx.colors ? removeColors(str).length : str.length;
+      if (ctx.breakLength < len) {
+        extra = `\n${' '.repeat(ctx.indentationLvl)}`;
+      }
+    }
     ctx.indentationLvl -= diff;
   } else if (desc.get !== undefined) {
     if (desc.set !== undefined) {
@@ -851,35 +1117,44 @@ function formatProperty(ctx, value, recurseTimes, key, array) {
   } else if (keyStrRegExp.test(key)) {
     name = ctx.stylize(key, 'name');
   } else {
-    name = ctx.stylize(keyEscape(key), 'string');
+    name = ctx.stylize(strEscape(key), 'string');
   }
-
-  return `${name}: ${str}`;
+  return `${name}:${extra}${str}`;
 }
 
-function reduceToSingleString(ctx, output, base, braces, addLn) {
+function reduceToSingleString(ctx, output, base, braces) {
   const breakLength = ctx.breakLength;
+  let i = 0;
+  if (ctx.compact === false) {
+    const indentation = ' '.repeat(ctx.indentationLvl);
+    let res = `${base ? `${base} ` : ''}${braces[0]}\n${indentation}  `;
+    for (; i < output.length - 1; i++) {
+      res += `${output[i]},\n${indentation}  `;
+    }
+    res += `${output[i]}\n${indentation}${braces[1]}`;
+    return res;
+  }
   if (output.length * 2 <= breakLength) {
-    var length = 0;
-    for (var i = 0; i < output.length && length <= breakLength; i++) {
+    let length = 0;
+    for (; i < output.length && length <= breakLength; i++) {
       if (ctx.colors) {
-        length += output[i].replace(colorRegExp, '').length + 1;
+        length += removeColors(output[i]).length + 1;
       } else {
         length += output[i].length + 1;
       }
     }
     if (length <= breakLength)
-      return `${braces[0]}${base} ${join(output, ', ')} ${braces[1]}`;
+      return `${braces[0]}${base ? ` ${base}` : ''} ${join(output, ', ')} ` +
+        braces[1];
   }
   // If the opening "brace" is too large, like in the case of "Set {",
   // we need to force the first item to be on the next line or the
   // items will not line up correctly.
   const indentation = ' '.repeat(ctx.indentationLvl);
-  const extraLn = addLn === true ? `\n${indentation}` : '';
   const ln = base === '' && braces[0].length === 1 ?
-    ' ' : `${base}\n${indentation}  `;
+    ' ' : `${base ? ` ${base}` : ''}\n${indentation}  `;
   const str = join(output, `,\n${indentation}  `);
-  return `${extraLn}${braces[0]}${ln}${str} ${braces[1]}`;
+  return `${braces[0]}${ln}${str} ${braces[1]}`;
 }
 
 function isBoolean(arg) {
@@ -932,10 +1207,10 @@ const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
 
 // 26 Feb 16:19:34
 function timestamp() {
-  var d = new Date();
-  var time = [pad(d.getHours()),
-              pad(d.getMinutes()),
-              pad(d.getSeconds())].join(':');
+  const d = new Date();
+  const time = [pad(d.getHours()),
+                pad(d.getMinutes()),
+                pad(d.getSeconds())].join(':');
   return [d.getDate(), months[d.getMonth()], time].join(' ');
 }
 
@@ -962,18 +1237,15 @@ function log() {
 function inherits(ctor, superCtor) {
 
   if (ctor === undefined || ctor === null)
-    throw new TypeError('The constructor to "inherits" must not be ' +
-                        'null or undefined');
+    throw new ERR_INVALID_ARG_TYPE('ctor', 'Function', ctor);
 
   if (superCtor === undefined || superCtor === null)
-    throw new TypeError('The super constructor to "inherits" must not ' +
-                        'be null or undefined');
+    throw new ERR_INVALID_ARG_TYPE('superCtor', 'Function', superCtor);
 
   if (superCtor.prototype === undefined) {
-    throw new TypeError('The super constructor to "inherits" must ' +
-                        'have a prototype');
+    throw new ERR_INVALID_ARG_TYPE('superCtor.prototype',
+                                   'Function', superCtor.prototype);
   }
-
   ctor.super_ = superCtor;
   Object.setPrototypeOf(ctor.prototype, superCtor.prototype);
 }
@@ -982,8 +1254,8 @@ function _extend(target, source) {
   // Don't do anything if source isn't an object
   if (source === null || typeof source !== 'object') return target;
 
-  var keys = Object.keys(source);
-  var i = keys.length;
+  const keys = Object.keys(source);
+  let i = keys.length;
   while (i--) {
     target[keys[i]] = source[keys[i]];
   }
@@ -1014,48 +1286,13 @@ function error(...args) {
   }
 }
 
-function _errnoException(err, syscall, original) {
-  var name = errname(err);
-  var message = `${syscall} ${name}`;
-  if (original)
-    message += ` ${original}`;
-  var e = new Error(message);
-  e.code = name;
-  e.errno = name;
-  e.syscall = syscall;
-  return e;
-}
-
-function _exceptionWithHostPort(err,
-                                syscall,
-                                address,
-                                port,
-                                additional) {
-  var details;
-  if (port && port > 0) {
-    details = `${address}:${port}`;
-  } else {
-    details = address;
-  }
-
-  if (additional) {
-    details += ` - Local (${additional})`;
-  }
-  var ex = exports._errnoException(err, syscall, details);
-  ex.address = address;
-  if (port) {
-    ex.port = port;
-  }
-  return ex;
-}
-
 function callbackifyOnRejected(reason, cb) {
   // `!reason` guard inspired by bluebird (Ref: https://goo.gl/t5IS6M).
   // Because `null` is a special error value in callbacks which means "no error
   // occurred", we error-wrap so the callback consumer can distinguish between
   // "the promise rejected with null" or "the promise fulfilled with undefined".
   if (!reason) {
-    const newReason = new errors.Error('ERR_FALSY_VALUE_REJECTION');
+    const newReason = new ERR_FALSY_VALUE_REJECTION();
     newReason.reason = reason;
     reason = newReason;
     Error.captureStackTrace(reason, callbackifyOnRejected);
@@ -1065,10 +1302,7 @@ function callbackifyOnRejected(reason, cb) {
 
 function callbackify(original) {
   if (typeof original !== 'function') {
-    throw new errors.TypeError(
-      'ERR_INVALID_ARG_TYPE',
-      'original',
-      'function');
+    throw new ERR_INVALID_ARG_TYPE('original', 'Function', original);
   }
 
   // We DO NOT return the promise as it gives the user a false sense that
@@ -1077,10 +1311,7 @@ function callbackify(original) {
   function callbackified(...args) {
     const maybeCb = args.pop();
     if (typeof maybeCb !== 'function') {
-      throw new errors.TypeError(
-        'ERR_INVALID_ARG_TYPE',
-        'last argument',
-        'function');
+      throw new ERR_INVALID_ARG_TYPE('last argument', 'Function', maybeCb);
     }
     const cb = (...args) => { Reflect.apply(maybeCb, this, args); };
     // In true node style we process the callback on `nextTick` with all the
@@ -1096,20 +1327,39 @@ function callbackify(original) {
   return callbackified;
 }
 
+function getSystemErrorName(err) {
+  if (typeof err !== 'number') {
+    throw new ERR_INVALID_ARG_TYPE('err', 'number', err);
+  }
+  if (err >= 0 || !Number.isSafeInteger(err)) {
+    throw new ERR_OUT_OF_RANGE('err', 'a negative integer', err);
+  }
+  return internalErrorName(err);
+}
+
 // Keep the `exports =` so that various functions can still be monkeypatched
 module.exports = exports = {
-  _errnoException,
-  _exceptionWithHostPort,
+  _errnoException: errors.errnoException,
+  _exceptionWithHostPort: errors.exceptionWithHostPort,
   _extend,
   callbackify,
   debuglog,
   deprecate,
   format,
+  formatWithOptions,
+  getSystemErrorName,
   inherits,
   inspect,
   isArray: Array.isArray,
   isBoolean,
   isBuffer,
+  isDeepStrictEqual(a, b) {
+    if (internalDeepEqual === undefined) {
+      internalDeepEqual = require('internal/util/comparisons')
+        .isDeepStrictEqual;
+    }
+    return internalDeepEqual(a, b);
+  },
   isNull,
   isNullOrUndefined,
   isNumber,
@@ -1126,6 +1376,7 @@ module.exports = exports = {
   promisify,
   TextDecoder,
   TextEncoder,
+  types,
 
   // Deprecated Old Stuff
   debug: deprecate(debug,

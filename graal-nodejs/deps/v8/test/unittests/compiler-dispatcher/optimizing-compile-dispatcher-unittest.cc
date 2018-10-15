@@ -6,11 +6,11 @@
 
 #include "src/base/atomic-utils.h"
 #include "src/base/platform/semaphore.h"
-#include "src/compilation-info.h"
 #include "src/compiler.h"
 #include "src/handles.h"
 #include "src/isolate.h"
 #include "src/objects-inl.h"
+#include "src/optimized-compilation-info.h"
 #include "src/parsing/parse-info.h"
 #include "test/unittests/test-helpers.h"
 #include "test/unittests/test-utils.h"
@@ -19,19 +19,19 @@
 namespace v8 {
 namespace internal {
 
-typedef TestWithContext OptimizingCompileDispatcherTest;
+typedef TestWithNativeContext OptimizingCompileDispatcherTest;
 
 namespace {
 
-class BlockingCompilationJob : public CompilationJob {
+class BlockingCompilationJob : public OptimizedCompilationJob {
  public:
   BlockingCompilationJob(Isolate* isolate, Handle<JSFunction> function)
-      : CompilationJob(isolate, &parse_info_, &info_, "BlockingCompilationJob",
-                       State::kReadyToExecute),
+      : OptimizedCompilationJob(isolate->stack_guard()->real_climit(), &info_,
+                                "BlockingCompilationJob",
+                                State::kReadyToExecute),
         shared_(function->shared()),
-        parse_info_(shared_),
-        info_(parse_info_.zone(), function->GetIsolate(), parse_info_.script(),
-              shared_, function),
+        zone_(isolate->allocator(), ZONE_NAME),
+        info_(&zone_, function->GetIsolate(), shared_, function),
         blocking_(false),
         semaphore_(0) {}
   ~BlockingCompilationJob() override = default;
@@ -39,10 +39,8 @@ class BlockingCompilationJob : public CompilationJob {
   bool IsBlocking() const { return blocking_.Value(); }
   void Signal() { semaphore_.Signal(); }
 
-  // CompilationJob implementation.
-  Status PrepareJobImpl() override {
-    UNREACHABLE();
-  }
+  // OptimiziedCompilationJob implementation.
+  Status PrepareJobImpl(Isolate* isolate) override { UNREACHABLE(); }
 
   Status ExecuteJobImpl() override {
     blocking_.SetValue(true);
@@ -51,12 +49,12 @@ class BlockingCompilationJob : public CompilationJob {
     return SUCCEEDED;
   }
 
-  Status FinalizeJobImpl() override { return SUCCEEDED; }
+  Status FinalizeJobImpl(Isolate* isolate) override { return SUCCEEDED; }
 
  private:
   Handle<SharedFunctionInfo> shared_;
-  ParseInfo parse_info_;
-  CompilationInfo info_;
+  Zone zone_;
+  OptimizedCompilationInfo info_;
   base::AtomicValue<bool> blocking_;
   base::Semaphore semaphore_;
 
@@ -72,8 +70,8 @@ TEST_F(OptimizingCompileDispatcherTest, Construct) {
 }
 
 TEST_F(OptimizingCompileDispatcherTest, NonBlockingFlush) {
-  Handle<JSFunction> fun = Handle<JSFunction>::cast(test::RunJS(
-      isolate(), "function f() { function g() {}; return g;}; f();"));
+  Handle<JSFunction> fun =
+      RunJS<JSFunction>("function f() { function g() {}; return g;}; f();");
   BlockingCompilationJob* job = new BlockingCompilationJob(i_isolate(), fun);
 
   OptimizingCompileDispatcher dispatcher(i_isolate());
@@ -86,7 +84,7 @@ TEST_F(OptimizingCompileDispatcherTest, NonBlockingFlush) {
   }
 
   // Should not block.
-  dispatcher.Flush(OptimizingCompileDispatcher::BlockingBehavior::kDontBlock);
+  dispatcher.Flush(BlockingBehavior::kDontBlock);
 
   // Unblock the job & finish.
   job->Signal();

@@ -28,6 +28,7 @@
 #include "unicode/utf.h"
 #include "unicode/utf8.h"
 #include "unicode/utf16.h"
+#include "uassert.h"
 #include "ucnv_bld.h"
 #include "ucnv_cnv.h"
 #include "cmemory.h"
@@ -75,7 +76,7 @@ static void  U_CALLCONV ucnv_toUnicode_UTF8 (UConverterToUnicodeArgs * args,
     int32_t i, inBytes;
 
     /* Restore size of current sequence */
-    if (cnv->toUnicodeStatus && myTarget < targetLimit)
+    if (cnv->toULength > 0 && myTarget < targetLimit)
     {
         inBytes = cnv->mode;            /* restore # of bytes to consume */
         i = cnv->toULength;             /* restore # of bytes consumed */
@@ -193,7 +194,7 @@ static void  U_CALLCONV ucnv_toUnicode_UTF8_OFFSETS_LOGIC (UConverterToUnicodeAr
     int32_t i, inBytes;
 
     /* Restore size of current sequence */
-    if (cnv->toUnicodeStatus && myTarget < targetLimit)
+    if (cnv->toULength > 0 && myTarget < targetLimit)
     {
         inBytes = cnv->mode;            /* restore # of bytes to consume */
         i = cnv->toULength;             /* restore # of bytes consumed */
@@ -669,12 +670,13 @@ ucnv_UTF8FromUTF8(UConverterFromUnicodeArgs *pFromUArgs,
     targetCapacity=(int32_t)(pFromUArgs->targetLimit-pFromUArgs->target);
 
     /* get the converter state from the UTF-8 UConverter */
-    c=(UChar32)utf8->toUnicodeStatus;
-    if(c!=0) {
+    if(utf8->toULength > 0) {
         toULength=oldToULength=utf8->toULength;
         toULimit=(int8_t)utf8->mode;
+        c=(UChar32)utf8->toUnicodeStatus;
     } else {
         toULength=oldToULength=toULimit=0;
+        c = 0;
     }
 
     count=(int32_t)(sourceLimit-source)+oldToULength;
@@ -698,30 +700,16 @@ ucnv_UTF8FromUTF8(UConverterFromUnicodeArgs *pFromUArgs,
             count=targetCapacity;
         }
 
-        // The conversion loop checks count>0 only once per 1/2/3-byte character.
-        // If the buffer ends with a truncated 2- or 3-byte sequence,
+        // The conversion loop checks count>0 only once per character.
+        // If the buffer ends with a truncated sequence,
         // then we reduce the count to stop before that,
         // and collect the remaining bytes after the conversion loop.
-        {
-            // Do not go back into the bytes that will be read for finishing a partial
-            // sequence from the previous buffer.
-            int32_t length=count-toULimit;
-            if(length>0) {
-                uint8_t b1=*(sourceLimit-1);
-                if(U8_IS_SINGLE(b1)) {
-                    // common ASCII character
-                } else if(U8_IS_TRAIL(b1) && length>=2) {
-                    uint8_t b2=*(sourceLimit-2);
-                    if(0xe0<=b2 && b2<0xf0 && U8_IS_VALID_LEAD3_AND_T1(b2, b1)) {
-                        // truncated 3-byte sequence
-                        count-=2;
-                    }
-                } else if(0xc2<=b1 && b1<0xf0) {
-                    // truncated 2- or 3-byte sequence
-                    --count;
-                }
-            }
-        }
+
+        // Do not go back into the bytes that will be read for finishing a partial
+        // sequence from the previous buffer.
+        int32_t length=count-toULimit;
+        U8_TRUNCATE_IF_INCOMPLETE(source, 0, length);
+        count=toULimit+length;
     }
 
     if(c!=0) {
@@ -825,6 +813,7 @@ moreBytes:
             }
         }
     }
+    U_ASSERT(count>=0);
 
     if(U_SUCCESS(*pErrorCode) && source<sourceLimit) {
         if(target==(const uint8_t *)pFromUArgs->targetLimit) {
@@ -844,8 +833,7 @@ moreBytes:
                         utf8->toULength=toULength;
                         utf8->mode=toULimit;
                         break;
-                    } else if(!U8_IS_TRAIL(b=*source)) {
-                        /* lead byte in trail byte position */
+                    } else if(!icu::UTF8::isValidTrail(c, b=*source, toULength, toULimit)) {
                         utf8->toULength=toULength;
                         *pErrorCode=U_ILLEGAL_CHAR_FOUND;
                         break;

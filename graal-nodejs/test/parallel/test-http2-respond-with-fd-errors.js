@@ -1,5 +1,5 @@
-// Flags: --expose-http2
 'use strict';
+// Flags: --expose-internals
 
 const common = require('../common');
 
@@ -15,6 +15,7 @@ const {
   Http2Stream,
   nghttp2ErrorString
 } = process.binding('http2');
+const { NghttpError } = require('internal/http2/util');
 
 // tests error handling within processRespondWithFD
 // (called by respondWithFD & respondWithFile)
@@ -33,7 +34,8 @@ const genericTests = Object.getOwnPropertyNames(constants)
     ngError: constants[key],
     error: {
       code: 'ERR_HTTP2_ERROR',
-      type: Error,
+      type: NghttpError,
+      name: 'Error [ERR_HTTP2_ERROR]',
       message: nghttp2ErrorString(constants[key])
     },
     type: 'stream'
@@ -44,8 +46,8 @@ const tests = specificTests.concat(genericTests);
 
 let currentError;
 
-// mock respondFD because we only care about testing error handling
-Http2Stream.prototype.respondFD = () => currentError.ngError;
+// mock `respond` because we only care about testing error handling
+Http2Stream.prototype.respond = () => currentError.ngError;
 
 const server = http2.createServer();
 server.on('stream', common.mustCall((stream, headers) => {
@@ -83,12 +85,18 @@ function runTest(test) {
   const client = http2.connect(url);
   const req = client.request(headers);
 
+  req.on('error', common.expectsError({
+    code: 'ERR_HTTP2_STREAM_ERROR',
+    type: Error,
+    message: 'Stream closed with error code NGHTTP2_INTERNAL_ERROR'
+  }));
+
   currentError = test;
   req.resume();
   req.end();
 
   req.on('end', common.mustCall(() => {
-    client.destroy();
+    client.close();
 
     if (!tests.length) {
       server.close();

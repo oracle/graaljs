@@ -5,12 +5,13 @@
 #ifndef V8_HEAP_MARK_COMPACT_H_
 #define V8_HEAP_MARK_COMPACT_H_
 
-#include <deque>
 #include <vector>
 
+#include "src/heap/concurrent-marking.h"
 #include "src/heap/marking.h"
-#include "src/heap/sequential-marking-deque.h"
+#include "src/heap/objects-visiting.h"
 #include "src/heap/spaces.h"
+#include "src/heap/sweeper.h"
 #include "src/heap/worklist.h"
 
 namespace v8 {
@@ -60,14 +61,6 @@ class MarkingStateBase {
 
   V8_INLINE bool IsBlackOrGrey(HeapObject* obj) {
     return Marking::IsBlackOrGrey<access_mode>(MarkBitFrom(obj));
-  }
-
-  V8_INLINE bool BlackToGrey(HeapObject* obj) {
-    MemoryChunk* p = MemoryChunk::FromAddress(obj->address());
-    MarkBit markbit = MarkBitFrom(p, obj->address());
-    if (!Marking::BlackToGrey<access_mode>(markbit)) return false;
-    static_cast<ConcreteState*>(this)->IncrementLiveBytes(p, -obj->Size());
-    return true;
   }
 
   V8_INLINE bool WhiteToGrey(HeapObject* obj) {
@@ -123,7 +116,7 @@ class MarkBitCellIterator {
     return cell_base_;
   }
 
-  MUST_USE_RESULT inline bool Advance() {
+  V8_WARN_UNUSED_RESULT inline bool Advance() {
     cell_base_ += Bitmap::kBitsPerCell * kPointerSize;
     return ++cell_index_ != last_cell_index_;
   }
@@ -251,7 +244,6 @@ class LiveObjectVisitor : AllStatic {
 };
 
 enum PageEvacuationMode { NEW_TO_NEW, NEW_TO_OLD };
-enum FreeSpaceTreatmentMode { IGNORE_FREE_SPACE, ZAP_FREE_SPACE };
 enum MarkingTreatmentMode { KEEP, CLEAR };
 enum class RememberedSetUpdatingMode { ALL, OLD_TO_NEW_ONLY };
 
@@ -268,14 +260,14 @@ class MarkCompactCollectorBase {
   inline Isolate* isolate() { return heap()->isolate(); }
 
  protected:
+  static const int kMainThread = 0;
   explicit MarkCompactCollectorBase(Heap* heap)
       : heap_(heap), old_to_new_slots_(0) {}
 
   // Marking operations for objects reachable from roots.
   virtual void MarkLiveObjects() = 0;
   // Mark objects reachable (transitively) from objects in the marking
-  // stack.
-  virtual void EmptyMarkingWorklist() = 0;
+  // work list.
   virtual void ProcessMarkingWorklist() = 0;
   // Clear non-live references held in side data structures.
   virtual void ClearNonLiveReferences() = 0;
@@ -362,75 +354,26 @@ class MinorNonAtomicMarkingState final
   }
 };
 
-// Collector for young-generation only.
-class MinorMarkCompactCollector final : public MarkCompactCollectorBase {
+// This marking state is used when concurrent marking is running.
+class IncrementalMarkingState final
+    : public MarkingStateBase<IncrementalMarkingState, AccessMode::ATOMIC> {
  public:
-  using MarkingState = MinorMarkingState;
-  using NonAtomicMarkingState = MinorNonAtomicMarkingState;
-
-  explicit MinorMarkCompactCollector(Heap* heap);
-  ~MinorMarkCompactCollector();
-
-  MarkingState* marking_state() { return &marking_state_; }
-
-  NonAtomicMarkingState* non_atomic_marking_state() {
-    return &non_atomic_marking_state_;
+  Bitmap* bitmap(const MemoryChunk* chunk) const {
+    return Bitmap::FromAddress(chunk->address() + MemoryChunk::kHeaderSize);
   }
 
-  void SetUp() override;
-  void TearDown() override;
-  void CollectGarbage() override;
-
-  void MakeIterable(Page* page, MarkingTreatmentMode marking_mode,
-                    FreeSpaceTreatmentMode free_space_mode);
-  void CleanupSweepToIteratePages();
-
- private:
-  using MarkingWorklist = Worklist<HeapObject*, 64 /* segment size */>;
-  class RootMarkingVisitor;
-
-  static const int kNumMarkers = 8;
-  static const int kMainMarker = 0;
-
-  inline MarkingWorklist* worklist() { return worklist_; }
-
-  inline YoungGenerationMarkingVisitor* main_marking_visitor() {
-    return main_marking_visitor_;
+  // Concurrent marking uses local live bytes.
+  void IncrementLiveBytes(MemoryChunk* chunk, intptr_t by) {
+    chunk->live_byte_count_ += by;
   }
 
-  void MarkLiveObjects() override;
-  void MarkRootSetInParallel();
-  void ProcessMarkingWorklist() override;
-  void EmptyMarkingWorklist() override;
-  void ClearNonLiveReferences() override;
+  intptr_t live_bytes(MemoryChunk* chunk) const {
+    return chunk->live_byte_count_;
+  }
 
-  void EvacuatePrologue() override;
-  void EvacuateEpilogue() override;
-  void Evacuate() override;
-  void EvacuatePagesInParallel() override;
-  void UpdatePointersAfterEvacuation() override;
-
-  UpdatingItem* CreateToSpaceUpdatingItem(MemoryChunk* chunk, Address start,
-                                          Address end) override;
-  UpdatingItem* CreateRememberedSetUpdatingItem(
-      MemoryChunk* chunk, RememberedSetUpdatingMode updating_mode) override;
-
-  void CollectNewSpaceArrayBufferTrackerItems(ItemParallelJob* job);
-
-  int NumberOfParallelMarkingTasks(int pages);
-
-  MarkingWorklist* worklist_;
-
-  YoungGenerationMarkingVisitor* main_marking_visitor_;
-  base::Semaphore page_parallel_job_semaphore_;
-  std::vector<Page*> new_space_evacuation_pages_;
-  std::vector<Page*> sweep_to_iterate_pages_;
-
-  MarkingState marking_state_;
-  NonAtomicMarkingState non_atomic_marking_state_;
-
-  friend class YoungGenerationMarkingTask;
-  friend class YoungGenerationMarkingVisitor;
+  void SetLiveBytes(MemoryChunk* chunk, intptr_t value) {
+    chunk->live_byte_count_ = value;
+  }
 };
 
 class MajorAtomicMarkingState final
@@ -482,14 +425,21 @@ class MajorNonAtomicMarkingState final
 struct WeakObjects {
   Worklist<WeakCell*, 64> weak_cells;
   Worklist<TransitionArray*, 64> transition_arrays;
+  // TODO(marja): For old space, we only need the slot, not the host
+  // object. Optimize this by adding a different storage for old space.
+  Worklist<std::pair<HeapObject*, HeapObjectReference**>, 64> weak_references;
+  Worklist<std::pair<HeapObject*, Code*>, 64> weak_objects_in_code;
 };
 
 // Collector for young and old generation.
 class MarkCompactCollector final : public MarkCompactCollectorBase {
  public:
+#ifdef V8_CONCURRENT_MARKING
+  using MarkingState = IncrementalMarkingState;
+#else
+  using MarkingState = MajorNonAtomicMarkingState;
+#endif  // V8_CONCURRENT_MARKING
   using NonAtomicMarkingState = MajorNonAtomicMarkingState;
-
-  static const int kMainThread = 0;
   // Wrapper for the shared and bailout worklists.
   class MarkingWorklist {
    public:
@@ -498,10 +448,16 @@ class MarkCompactCollector final : public MarkCompactCollectorBase {
     // The heap parameter is not used but needed to match the sequential case.
     explicit MarkingWorklist(Heap* heap) {}
 
-    bool Push(HeapObject* object) { return shared_.Push(kMainThread, object); }
+    void Push(HeapObject* object) {
+      bool success = shared_.Push(kMainThread, object);
+      USE(success);
+      DCHECK(success);
+    }
 
-    bool PushBailout(HeapObject* object) {
-      return bailout_.Push(kMainThread, object);
+    void PushBailout(HeapObject* object) {
+      bool success = bailout_.Push(kMainThread, object);
+      USE(success);
+      DCHECK(success);
     }
 
     HeapObject* Pop() {
@@ -510,25 +466,42 @@ class MarkCompactCollector final : public MarkCompactCollectorBase {
       if (bailout_.Pop(kMainThread, &result)) return result;
 #endif
       if (shared_.Pop(kMainThread, &result)) return result;
+#ifdef V8_CONCURRENT_MARKING
+      // The expectation is that this work list is empty almost all the time
+      // and we can thus avoid the emptiness checks by putting it last.
+      if (on_hold_.Pop(kMainThread, &result)) return result;
+#endif
+      return nullptr;
+    }
+
+    HeapObject* PopBailout() {
+      HeapObject* result;
+#ifdef V8_CONCURRENT_MARKING
+      if (bailout_.Pop(kMainThread, &result)) return result;
+#endif
       return nullptr;
     }
 
     void Clear() {
       bailout_.Clear();
       shared_.Clear();
+      on_hold_.Clear();
     }
 
-    bool IsFull() { return false; }
+    bool IsBailoutEmpty() { return bailout_.IsLocalEmpty(kMainThread); }
 
     bool IsEmpty() {
       return bailout_.IsLocalEmpty(kMainThread) &&
              shared_.IsLocalEmpty(kMainThread) &&
-             bailout_.IsGlobalPoolEmpty() && shared_.IsGlobalPoolEmpty();
+             on_hold_.IsLocalEmpty(kMainThread) &&
+             bailout_.IsGlobalPoolEmpty() && shared_.IsGlobalPoolEmpty() &&
+             on_hold_.IsGlobalPoolEmpty();
     }
 
     int Size() {
       return static_cast<int>(bailout_.LocalSize(kMainThread) +
-                              shared_.LocalSize(kMainThread));
+                              shared_.LocalSize(kMainThread) +
+                              on_hold_.LocalSize(kMainThread));
     }
 
     // Calls the specified callback on each element of the deques and replaces
@@ -539,138 +512,37 @@ class MarkCompactCollector final : public MarkCompactCollectorBase {
     void Update(Callback callback) {
       bailout_.Update(callback);
       shared_.Update(callback);
+      on_hold_.Update(callback);
     }
 
     ConcurrentMarkingWorklist* shared() { return &shared_; }
     ConcurrentMarkingWorklist* bailout() { return &bailout_; }
-
-    // These empty functions are needed to match the interface
-    // of the sequential marking deque.
-    void SetUp() {}
-    void TearDown() { Clear(); }
-    void StartUsing() {}
-    void StopUsing() {}
-    void ClearOverflowed() {}
-    void SetOverflowed() {}
-    bool overflowed() const { return false; }
+    ConcurrentMarkingWorklist* on_hold() { return &on_hold_; }
 
     void Print() {
       PrintWorklist("shared", &shared_);
       PrintWorklist("bailout", &bailout_);
+      PrintWorklist("on_hold", &on_hold_);
     }
 
    private:
     // Prints the stats about the global pool of the worklist.
     void PrintWorklist(const char* worklist_name,
-                       ConcurrentMarkingWorklist* worklist) {
-      std::map<InstanceType, int> count;
-      int total_count = 0;
-      worklist->IterateGlobalPool([&count, &total_count](HeapObject* obj) {
-        ++total_count;
-        count[obj->map()->instance_type()]++;
-      });
-      std::vector<std::pair<int, InstanceType>> rank;
-      for (auto i : count) {
-        rank.push_back(std::make_pair(i.second, i.first));
-      }
-      std::map<InstanceType, std::string> instance_type_name;
-#define INSTANCE_TYPE_NAME(name) instance_type_name[name] = #name;
-      INSTANCE_TYPE_LIST(INSTANCE_TYPE_NAME)
-#undef INSTANCE_TYPE_NAME
-      std::sort(rank.begin(), rank.end(),
-                std::greater<std::pair<int, InstanceType>>());
-      PrintF("Worklist %s: %d\n", worklist_name, total_count);
-      for (auto i : rank) {
-        PrintF("  [%s]: %d\n", instance_type_name[i.second].c_str(), i.first);
-      }
-    }
+                       ConcurrentMarkingWorklist* worklist);
     ConcurrentMarkingWorklist shared_;
     ConcurrentMarkingWorklist bailout_;
+    ConcurrentMarkingWorklist on_hold_;
   };
 
   class RootMarkingVisitor;
   class CustomRootBodyMarkingVisitor;
 
-  class Sweeper {
-   public:
-    enum FreeListRebuildingMode { REBUILD_FREE_LIST, IGNORE_FREE_LIST };
-    enum ClearOldToNewSlotsMode {
-      DO_NOT_CLEAR,
-      CLEAR_REGULAR_SLOTS,
-      CLEAR_TYPED_SLOTS
-    };
-
-    typedef std::deque<Page*> SweepingList;
-    typedef std::vector<Page*> SweptList;
-
-    int RawSweep(Page* p, FreeListRebuildingMode free_list_mode,
-                 FreeSpaceTreatmentMode free_space_mode);
-
-    explicit Sweeper(Heap* heap,
-                     MarkCompactCollector::NonAtomicMarkingState* marking_state)
-        : heap_(heap),
-          marking_state_(marking_state),
-          num_tasks_(0),
-          pending_sweeper_tasks_semaphore_(0),
-          sweeping_in_progress_(false),
-          num_sweeping_tasks_(0) {}
-
-    bool sweeping_in_progress() { return sweeping_in_progress_; }
-
-    void AddPage(AllocationSpace space, Page* page);
-
-    int ParallelSweepSpace(AllocationSpace identity, int required_freed_bytes,
-                           int max_pages = 0);
-    int ParallelSweepPage(Page* page, AllocationSpace identity);
-
-    // After calling this function sweeping is considered to be in progress
-    // and the main thread can sweep lazily, but the background sweeper tasks
-    // are not running yet.
-    void StartSweeping();
-    void StartSweeperTasks();
-    void EnsureCompleted();
-    void EnsureNewSpaceCompleted();
-    bool AreSweeperTasksRunning();
-    void SweepOrWaitUntilSweepingCompleted(Page* page);
-
-    void AddSweptPageSafe(PagedSpace* space, Page* page);
-    Page* GetSweptPageSafe(PagedSpace* space);
-
-   private:
-    class SweeperTask;
-
-    static const int kAllocationSpaces = LAST_PAGED_SPACE + 1;
-    static const int kMaxSweeperTasks = kAllocationSpaces;
-
-    template <typename Callback>
-    void ForAllSweepingSpaces(Callback callback) {
-      for (int i = 0; i < kAllocationSpaces; i++) {
-        callback(static_cast<AllocationSpace>(i));
-      }
-    }
-
-    Page* GetSweepingPageSafe(AllocationSpace space);
-
-    void PrepareToBeSweptPage(AllocationSpace space, Page* page);
-
-    Heap* const heap_;
-    MarkCompactCollector::NonAtomicMarkingState* marking_state_;
-    int num_tasks_;
-    CancelableTaskManager::Id task_ids_[kMaxSweeperTasks];
-    base::Semaphore pending_sweeper_tasks_semaphore_;
-    base::Mutex mutex_;
-    SweptList swept_list_[kAllocationSpaces];
-    SweepingList sweeping_list_[kAllocationSpaces];
-    bool sweeping_in_progress_;
-    // Counter is actively maintained by the concurrent tasks to avoid querying
-    // the semaphore for maintaining a task counter on the main thread.
-    base::AtomicNumber<intptr_t> num_sweeping_tasks_;
-  };
-
   enum IterationMode {
     kKeepMarking,
     kClearMarkbits,
   };
+
+  MarkingState* marking_state() { return &marking_state_; }
 
   NonAtomicMarkingState* non_atomic_marking_state() {
     return &non_atomic_marking_state_;
@@ -689,11 +561,20 @@ class MarkCompactCollector final : public MarkCompactCollectorBase {
   // choosing spaces to compact.
   void Prepare();
 
+  // Stop concurrent marking (either by preempting it right away or waiting for
+  // it to complete as requested by |stop_request|).
+  void FinishConcurrentMarking(ConcurrentMarking::StopRequest stop_request);
+
   bool StartCompaction();
 
   void AbortCompaction();
 
-  static inline bool IsOnEvacuationCandidate(HeapObject* obj) {
+  static inline bool IsOnEvacuationCandidate(Object* obj) {
+    return Page::FromAddress(reinterpret_cast<Address>(obj))
+        ->IsEvacuationCandidate();
+  }
+
+  static inline bool IsOnEvacuationCandidate(MaybeObject* obj) {
     return Page::FromAddress(reinterpret_cast<Address>(obj))
         ->IsEvacuationCandidate();
   }
@@ -701,6 +582,8 @@ class MarkCompactCollector final : public MarkCompactCollectorBase {
   void RecordRelocSlot(Code* host, RelocInfo* rinfo, Object* target);
   V8_INLINE static void RecordSlot(HeapObject* object, Object** slot,
                                    Object* target);
+  V8_INLINE static void RecordSlot(HeapObject* object,
+                                   HeapObjectReference** slot, Object* target);
   void RecordLiveSlotsOnPage(Page* page);
 
   void UpdateSlots(SlotsBuffer* buffer);
@@ -715,14 +598,8 @@ class MarkCompactCollector final : public MarkCompactCollectorBase {
   // Note: Can only be called safely from main thread.
   void EnsureSweepingCompleted();
 
-  // Help out in sweeping the corresponding space and refill memory that has
-  // been regained.
-  //
-  // Note: Thread-safe.
-  void SweepAndRefill(CompactionSpace* space);
-
   // Checks if sweeping is in progress right now on any space.
-  bool sweeping_in_progress() { return sweeper().sweeping_in_progress(); }
+  bool sweeping_in_progress() const { return sweeper_->sweeping_in_progress(); }
 
   void set_evacuation(bool evacuation) { evacuation_ = evacuation; }
 
@@ -740,7 +617,16 @@ class MarkCompactCollector final : public MarkCompactCollectorBase {
     weak_objects_.transition_arrays.Push(kMainThread, array);
   }
 
-  Sweeper& sweeper() { return sweeper_; }
+  void AddWeakReference(HeapObject* host, HeapObjectReference** slot) {
+    weak_objects_.weak_references.Push(kMainThread, std::make_pair(host, slot));
+  }
+
+  void AddWeakObjectInCode(HeapObject* object, Code* code) {
+    weak_objects_.weak_objects_in_code.Push(kMainThread,
+                                            std::make_pair(object, code));
+  }
+
+  Sweeper* sweeper() { return sweeper_; }
 
 #ifdef DEBUG
   // Checks whether performing mark-compact collection.
@@ -748,16 +634,18 @@ class MarkCompactCollector final : public MarkCompactCollectorBase {
   bool are_map_pointers_encoded() { return state_ == UPDATE_POINTERS; }
 #endif
 
+  void VerifyMarking();
 #ifdef VERIFY_HEAP
   void VerifyValidStoreAndSlotsBufferEntries();
   void VerifyMarkbitsAreClean();
+  void VerifyMarkbitsAreDirty(PagedSpace* space);
   void VerifyMarkbitsAreClean(PagedSpace* space);
   void VerifyMarkbitsAreClean(NewSpace* space);
-  void VerifyWeakEmbeddedObjectsInCode();
 #endif
 
  private:
   explicit MarkCompactCollector(Heap* heap);
+  ~MarkCompactCollector();
 
   bool WillBeDeoptimized(Code* code);
 
@@ -765,17 +653,12 @@ class MarkCompactCollector final : public MarkCompactCollectorBase {
                                    int* target_fragmentation_percent,
                                    size_t* max_evacuated_bytes);
 
-  void VisitAllObjects(HeapObjectVisitor* visitor);
-
   void RecordObjectStats();
 
   // Finishes GC, performs heap verification if enabled.
   void Finish();
 
   void MarkLiveObjects() override;
-
-  // Pushes a black object onto the marking work list.
-  V8_INLINE void PushBlack(HeapObject* obj);
 
   // Marks the object black and adds it to the marking work list.
   // This is for non-incremental marking only.
@@ -796,15 +679,8 @@ class MarkCompactCollector final : public MarkCompactCollectorBase {
   // the string table are weak.
   void MarkStringTable(ObjectVisitor* visitor);
 
-  void ProcessMarkingWorklist() override;
-
-  // Mark objects reachable (transitively) from objects in the marking stack
-  // or overflowed in the heap.  This respects references only considered in
-  // the final atomic marking pause including the following:
-  //    - Processing of objects reachable through Harmony WeakMaps.
-  //    - Objects reachable due to host application logic like object groups,
-  //      implicit references' groups, or embedder heap tracing.
-  void ProcessEphemeralMarking(bool only_process_harmony_weak_collections);
+  // Marks object reachable from harmony weak maps and wrapper tracing.
+  void ProcessEphemeralMarking();
 
   // If the call-site of the top optimized code was not prepared for
   // deoptimization, then treat embedded pointers in the code as strong as
@@ -814,22 +690,9 @@ class MarkCompactCollector final : public MarkCompactCollectorBase {
   // Collects a list of dependent code from maps embedded in optimize code.
   DependentCode* DependentCodeListFromNonLiveMaps();
 
-  // This function empties the marking stack, but may leave overflowed objects
-  // in the heap, in which case the marking stack's overflow flag will be set.
-  void EmptyMarkingWorklist() override;
-
-  // Refill the marking stack with overflowed objects from the heap.  This
-  // function either leaves the marking stack full or clears the overflow
-  // flag on the marking stack.
-  void RefillMarkingWorklist();
-
-  // Helper methods for refilling the marking stack by discovering grey objects
-  // on various pages of the heap. Used by {RefillMarkingWorklist} only.
-  template <class T>
-  void DiscoverGreyObjectsWithIterator(T* it);
-  void DiscoverGreyObjectsOnPage(MemoryChunk* p);
-  void DiscoverGreyObjectsInSpace(PagedSpace* space);
-  void DiscoverGreyObjectsInNewSpace();
+  // Drains the main thread marking work list. Will mark all pending objects
+  // if no concurrent threads are running.
+  void ProcessMarkingWorklist() override;
 
   // Callback function for telling whether the object *p is an unmarked
   // heap object.
@@ -838,13 +701,12 @@ class MarkCompactCollector final : public MarkCompactCollectorBase {
   // Clear non-live references in weak cells, transition and descriptor arrays,
   // and deoptimize dependent code of non-live maps.
   void ClearNonLiveReferences() override;
-  void MarkDependentCodeForDeoptimization(DependentCode* list);
+  void MarkDependentCodeForDeoptimization();
   // Checks if the given weak cell is a simple transition from the parent map
   // of the given dead target. If so it clears the transition and trims
   // the descriptor array of the parent if needed.
-  void ClearSimpleMapTransition(WeakCell* potential_transition,
-                                Map* dead_target);
-  void ClearSimpleMapTransition(Map* map, Map* dead_target);
+  void ClearPotentialSimpleMapTransition(Map* dead_target);
+  void ClearPotentialSimpleMapTransition(Map* map, Map* dead_target);
   // Compact every array in the global list of transition arrays and
   // trim the corresponding descriptor array if a transition target is non-live.
   void ClearFullMapTransitions();
@@ -871,8 +733,8 @@ class MarkCompactCollector final : public MarkCompactCollectorBase {
   // dead values. If the value is a dead map and the parent map transitions to
   // the dead map via weak cell, then this function also clears the map
   // transition.
-  void ClearWeakCellsAndSimpleMapTransitions(
-      DependentCode** dependent_code_list);
+  void ClearWeakCells();
+  void ClearWeakReferences();
   void AbortWeakObjects();
 
   // Starts sweeping of spaces by contributing on the main thread and setting
@@ -891,8 +753,8 @@ class MarkCompactCollector final : public MarkCompactCollectorBase {
   UpdatingItem* CreateRememberedSetUpdatingItem(
       MemoryChunk* chunk, RememberedSetUpdatingMode updating_mode) override;
 
-  void CollectNewSpaceArrayBufferTrackerItems(ItemParallelJob* job);
-  void CollectOldSpaceArrayBufferTrackerItems(ItemParallelJob* job);
+  int CollectNewSpaceArrayBufferTrackerItems(ItemParallelJob* job);
+  int CollectOldSpaceArrayBufferTrackerItems(ItemParallelJob* job);
 
   void ReleaseEvacuationCandidates();
   void PostProcessEvacuationCandidates();
@@ -941,15 +803,79 @@ class MarkCompactCollector final : public MarkCompactCollectorBase {
   std::vector<Page*> new_space_evacuation_pages_;
   std::vector<std::pair<HeapObject*, Page*>> aborted_evacuation_candidates_;
 
-  Sweeper sweeper_;
+  Sweeper* sweeper_;
 
+  MarkingState marking_state_;
   NonAtomicMarkingState non_atomic_marking_state_;
 
   friend class FullEvacuator;
   friend class Heap;
-  friend class IncrementalMarkingMarkingVisitor;
-  friend class MarkCompactMarkingVisitor;
   friend class RecordMigratedSlotVisitor;
+};
+
+template <FixedArrayVisitationMode fixed_array_mode,
+          TraceRetainingPathMode retaining_path_mode, typename MarkingState>
+class MarkingVisitor final
+    : public HeapVisitor<
+          int,
+          MarkingVisitor<fixed_array_mode, retaining_path_mode, MarkingState>> {
+ public:
+  typedef HeapVisitor<
+      int, MarkingVisitor<fixed_array_mode, retaining_path_mode, MarkingState>>
+      Parent;
+
+  V8_INLINE MarkingVisitor(MarkCompactCollector* collector,
+                           MarkingState* marking_state);
+
+  V8_INLINE bool ShouldVisitMapPointer() { return false; }
+
+  V8_INLINE int VisitAllocationSite(Map* map, AllocationSite* object);
+  V8_INLINE int VisitBytecodeArray(Map* map, BytecodeArray* object);
+  V8_INLINE int VisitCodeDataContainer(Map* map, CodeDataContainer* object);
+  V8_INLINE int VisitFixedArray(Map* map, FixedArray* object);
+  V8_INLINE int VisitJSApiObject(Map* map, JSObject* object);
+  V8_INLINE int VisitJSFunction(Map* map, JSFunction* object);
+  V8_INLINE int VisitJSWeakCollection(Map* map, JSWeakCollection* object);
+  V8_INLINE int VisitMap(Map* map, Map* object);
+  V8_INLINE int VisitNativeContext(Map* map, Context* object);
+  V8_INLINE int VisitTransitionArray(Map* map, TransitionArray* object);
+  V8_INLINE int VisitWeakCell(Map* map, WeakCell* object);
+
+  // ObjectVisitor implementation.
+  V8_INLINE void VisitPointer(HeapObject* host, Object** p) final;
+  V8_INLINE void VisitPointer(HeapObject* host, MaybeObject** p) final;
+  V8_INLINE void VisitPointers(HeapObject* host, Object** start,
+                               Object** end) final;
+  V8_INLINE void VisitPointers(HeapObject* host, MaybeObject** start,
+                               MaybeObject** end) final;
+  V8_INLINE void VisitEmbeddedPointer(Code* host, RelocInfo* rinfo) final;
+  V8_INLINE void VisitCodeTarget(Code* host, RelocInfo* rinfo) final;
+
+ private:
+  // Granularity in which FixedArrays are scanned if |fixed_array_mode|
+  // is true.
+  static const int kProgressBarScanningChunk = 32 * 1024;
+
+  V8_INLINE int VisitFixedArrayIncremental(Map* map, FixedArray* object);
+
+  V8_INLINE void MarkMapContents(Map* map);
+
+  // Marks the object black without pushing it on the marking work list. Returns
+  // true if the object needed marking and false otherwise.
+  V8_INLINE bool MarkObjectWithoutPush(HeapObject* host, HeapObject* object);
+
+  // Marks the object grey and pushes it on the marking work list.
+  V8_INLINE void MarkObject(HeapObject* host, HeapObject* obj);
+
+  MarkingState* marking_state() { return marking_state_; }
+
+  MarkCompactCollector::MarkingWorklist* marking_worklist() const {
+    return collector_->marking_worklist();
+  }
+
+  Heap* const heap_;
+  MarkCompactCollector* const collector_;
+  MarkingState* const marking_state_;
 };
 
 class EvacuationScope {
@@ -964,6 +890,81 @@ class EvacuationScope {
  private:
   MarkCompactCollector* collector_;
 };
+
+#ifdef ENABLE_MINOR_MC
+
+// Collector for young-generation only.
+class MinorMarkCompactCollector final : public MarkCompactCollectorBase {
+ public:
+  using MarkingState = MinorMarkingState;
+  using NonAtomicMarkingState = MinorNonAtomicMarkingState;
+
+  explicit MinorMarkCompactCollector(Heap* heap);
+  ~MinorMarkCompactCollector();
+
+  MarkingState* marking_state() { return &marking_state_; }
+
+  NonAtomicMarkingState* non_atomic_marking_state() {
+    return &non_atomic_marking_state_;
+  }
+
+  void SetUp() override;
+  void TearDown() override;
+  void CollectGarbage() override;
+
+  void MakeIterable(Page* page, MarkingTreatmentMode marking_mode,
+                    FreeSpaceTreatmentMode free_space_mode);
+  void CleanupSweepToIteratePages();
+
+ private:
+  using MarkingWorklist = Worklist<HeapObject*, 64 /* segment size */>;
+  class RootMarkingVisitor;
+
+  static const int kNumMarkers = 8;
+  static const int kMainMarker = 0;
+
+  inline MarkingWorklist* worklist() { return worklist_; }
+
+  inline YoungGenerationMarkingVisitor* main_marking_visitor() {
+    return main_marking_visitor_;
+  }
+
+  void MarkLiveObjects() override;
+  void MarkRootSetInParallel(RootMarkingVisitor* root_visitor);
+  V8_INLINE void MarkRootObject(HeapObject* obj);
+  void ProcessMarkingWorklist() override;
+  void ClearNonLiveReferences() override;
+
+  void EvacuatePrologue() override;
+  void EvacuateEpilogue() override;
+  void Evacuate() override;
+  void EvacuatePagesInParallel() override;
+  void UpdatePointersAfterEvacuation() override;
+
+  UpdatingItem* CreateToSpaceUpdatingItem(MemoryChunk* chunk, Address start,
+                                          Address end) override;
+  UpdatingItem* CreateRememberedSetUpdatingItem(
+      MemoryChunk* chunk, RememberedSetUpdatingMode updating_mode) override;
+
+  int CollectNewSpaceArrayBufferTrackerItems(ItemParallelJob* job);
+
+  int NumberOfParallelMarkingTasks(int pages);
+
+  MarkingWorklist* worklist_;
+
+  YoungGenerationMarkingVisitor* main_marking_visitor_;
+  base::Semaphore page_parallel_job_semaphore_;
+  std::vector<Page*> new_space_evacuation_pages_;
+  std::vector<Page*> sweep_to_iterate_pages_;
+
+  MarkingState marking_state_;
+  NonAtomicMarkingState non_atomic_marking_state_;
+
+  friend class YoungGenerationMarkingTask;
+  friend class YoungGenerationMarkingVisitor;
+};
+
+#endif  // ENABLE_MINOR_MC
 
 }  // namespace internal
 }  // namespace v8

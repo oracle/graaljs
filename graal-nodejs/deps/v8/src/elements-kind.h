@@ -49,17 +49,19 @@ enum ElementsKind {
   FLOAT32_ELEMENTS,
   FLOAT64_ELEMENTS,
   UINT8_CLAMPED_ELEMENTS,
+  BIGUINT64_ELEMENTS,
+  BIGINT64_ELEMENTS,
 
   // Sentinel ElementsKind for objects with no elements.
   NO_ELEMENTS,
 
   // Derived constants from ElementsKind.
   FIRST_ELEMENTS_KIND = PACKED_SMI_ELEMENTS,
-  LAST_ELEMENTS_KIND = UINT8_CLAMPED_ELEMENTS,
+  LAST_ELEMENTS_KIND = BIGINT64_ELEMENTS,
   FIRST_FAST_ELEMENTS_KIND = PACKED_SMI_ELEMENTS,
   LAST_FAST_ELEMENTS_KIND = HOLEY_DOUBLE_ELEMENTS,
   FIRST_FIXED_TYPED_ARRAY_ELEMENTS_KIND = UINT8_ELEMENTS,
-  LAST_FIXED_TYPED_ARRAY_ELEMENTS_KIND = UINT8_CLAMPED_ELEMENTS,
+  LAST_FIXED_TYPED_ARRAY_ELEMENTS_KIND = BIGINT64_ELEMENTS,
   TERMINAL_FAST_ELEMENTS_KIND = HOLEY_ELEMENTS
 };
 
@@ -191,6 +193,45 @@ inline ElementsKind GetHoleyElementsKind(ElementsKind packed_kind) {
   return packed_kind;
 }
 
+inline bool UnionElementsKindUptoPackedness(ElementsKind* a_out,
+                                            ElementsKind b) {
+  // Assert that the union of two ElementKinds can be computed via std::max.
+  static_assert(PACKED_SMI_ELEMENTS < HOLEY_SMI_ELEMENTS,
+                "ElementsKind union not computable via std::max.");
+  static_assert(PACKED_ELEMENTS < HOLEY_ELEMENTS,
+                "ElementsKind union not computable via std::max.");
+  static_assert(PACKED_DOUBLE_ELEMENTS < HOLEY_DOUBLE_ELEMENTS,
+                "ElementsKind union not computable via std::max.");
+  ElementsKind a = *a_out;
+  switch (a) {
+    case HOLEY_SMI_ELEMENTS:
+    case PACKED_SMI_ELEMENTS:
+      if (b == PACKED_SMI_ELEMENTS || b == HOLEY_SMI_ELEMENTS) {
+        *a_out = std::max(a, b);
+        return true;
+      }
+      break;
+    case PACKED_ELEMENTS:
+    case HOLEY_ELEMENTS:
+      if (b == PACKED_ELEMENTS || b == HOLEY_ELEMENTS) {
+        *a_out = std::max(a, b);
+        return true;
+      }
+      break;
+    case PACKED_DOUBLE_ELEMENTS:
+    case HOLEY_DOUBLE_ELEMENTS:
+      if (b == PACKED_DOUBLE_ELEMENTS || b == HOLEY_DOUBLE_ELEMENTS) {
+        *a_out = std::max(a, b);
+        return true;
+      }
+      break;
+    default:
+      break;
+  }
+  return false;
+}
+
+bool UnionElementsKindUptoSize(ElementsKind* a_out, ElementsKind b);
 
 inline ElementsKind FastSmiToObjectElementsKind(ElementsKind from_kind) {
   DCHECK(IsSmiElementsKind(from_kind));
@@ -223,6 +264,7 @@ inline bool IsTransitionableFastElementsKind(ElementsKind from_kind) {
          from_kind != TERMINAL_FAST_ELEMENTS_KIND;
 }
 
+inline bool ElementsKindEqual(ElementsKind a, ElementsKind b) { return a == b; }
 
 }  // namespace internal
 }  // namespace v8

@@ -7,6 +7,9 @@
 #include <stack>
 #include <unordered_map>
 
+#include "include/v8config.h"
+#include "src/base/template-utils.h"
+#include "src/heap/gc-tracer.h"
 #include "src/heap/heap-inl.h"
 #include "src/heap/heap.h"
 #include "src/heap/mark-compact-inl.h"
@@ -80,16 +83,70 @@ class ConcurrentMarkingVisitor final
         marking_state_(live_bytes),
         task_id_(task_id) {}
 
+  template <typename T>
+  static V8_INLINE T* Cast(HeapObject* object) {
+    return T::cast(object);
+  }
+
   bool ShouldVisit(HeapObject* object) {
     return marking_state_.GreyToBlack(object);
+  }
+
+  bool AllowDefaultJSObjectVisit() { return false; }
+
+  void ProcessStrongHeapObject(HeapObject* host, Object** slot,
+                               HeapObject* heap_object) {
+    MarkObject(heap_object);
+    MarkCompactCollector::RecordSlot(host, slot, heap_object);
+  }
+
+  void ProcessWeakHeapObject(HeapObject* host, HeapObjectReference** slot,
+                             HeapObject* heap_object) {
+#ifdef THREAD_SANITIZER
+    // Perform a dummy acquire load to tell TSAN that there is no data race
+    // in mark-bit initialization. See MemoryChunk::Initialize for the
+    // corresponding release store.
+    MemoryChunk* chunk = MemoryChunk::FromAddress(heap_object->address());
+    CHECK_NOT_NULL(chunk->synchronized_heap());
+#endif
+    if (marking_state_.IsBlackOrGrey(heap_object)) {
+      // Weak references with live values are directly processed here to
+      // reduce the processing time of weak cells during the main GC
+      // pause.
+      MarkCompactCollector::RecordSlot(host, slot, heap_object);
+    } else {
+      // If we do not know about liveness of the value, we have to process
+      // the reference when we know the liveness of the whole transitive
+      // closure.
+      weak_objects_->weak_references.Push(task_id_, std::make_pair(host, slot));
+    }
   }
 
   void VisitPointers(HeapObject* host, Object** start, Object** end) override {
     for (Object** slot = start; slot < end; slot++) {
       Object* object = base::AsAtomicPointer::Relaxed_Load(slot);
-      if (!object->IsHeapObject()) continue;
-      MarkObject(HeapObject::cast(object));
-      MarkCompactCollector::RecordSlot(host, slot, object);
+      DCHECK(!HasWeakHeapObjectTag(object));
+      if (object->IsHeapObject()) {
+        ProcessStrongHeapObject(host, slot, HeapObject::cast(object));
+      }
+    }
+  }
+
+  void VisitPointers(HeapObject* host, MaybeObject** start,
+                     MaybeObject** end) override {
+    for (MaybeObject** slot = start; slot < end; slot++) {
+      MaybeObject* object = base::AsAtomicPointer::Relaxed_Load(slot);
+      HeapObject* heap_object;
+      if (object->ToStrongHeapObject(&heap_object)) {
+        // If the reference changes concurrently from strong to weak, the write
+        // barrier will treat the weak reference as strong, so we won't miss the
+        // weak reference.
+        ProcessStrongHeapObject(host, reinterpret_cast<Object**>(slot),
+                                heap_object);
+      } else if (object->ToWeakHeapObject(&heap_object)) {
+        ProcessWeakHeapObject(
+            host, reinterpret_cast<HeapObjectReference**>(slot), heap_object);
+      }
     }
   }
 
@@ -97,6 +154,7 @@ class ConcurrentMarkingVisitor final
     for (int i = 0; i < snapshot.number_of_slots(); i++) {
       Object** slot = snapshot.slot(i);
       Object* object = snapshot.value(i);
+      DCHECK(!HasWeakHeapObjectTag(object));
       if (!object->IsHeapObject()) continue;
       MarkObject(HeapObject::cast(object));
       MarkCompactCollector::RecordSlot(host, slot, object);
@@ -108,29 +166,84 @@ class ConcurrentMarkingVisitor final
   // ===========================================================================
 
   int VisitJSObject(Map* map, JSObject* object) {
-    int size = JSObject::BodyDescriptor::SizeOf(map, object);
+    return VisitJSObjectSubclass(map, object);
+  }
+
+  int VisitJSObjectFast(Map* map, JSObject* object) {
+    return VisitJSObjectSubclass(map, object);
+  }
+
+  int VisitJSArrayBuffer(Map* map, JSArrayBuffer* object) {
+    return VisitJSObjectSubclass(map, object);
+  }
+
+  int VisitWasmInstanceObject(Map* map, WasmInstanceObject* object) {
+    return VisitJSObjectSubclass(map, object);
+  }
+
+  int VisitJSApiObject(Map* map, JSObject* object) {
+    if (marking_state_.IsGrey(object)) {
+      // The main thread will do wrapper tracing in Blink.
+      bailout_.Push(object);
+    }
+    return 0;
+  }
+
+  int VisitJSFunction(Map* map, JSFunction* object) {
+    int size = JSFunction::BodyDescriptorWeak::SizeOf(map, object);
+    int used_size = map->UsedInstanceSize();
+    DCHECK_LE(used_size, size);
+    DCHECK_GE(used_size, JSObject::kHeaderSize);
+    const SlotSnapshot& snapshot = MakeSlotSnapshotWeak(map, object, used_size);
+    if (!ShouldVisit(object)) return 0;
+    VisitPointersInSnapshot(object, snapshot);
+    return size;
+  }
+
+  // ===========================================================================
+  // Strings with pointers =====================================================
+  // ===========================================================================
+
+  int VisitConsString(Map* map, ConsString* object) {
+    int size = ConsString::BodyDescriptor::SizeOf(map, object);
     const SlotSnapshot& snapshot = MakeSlotSnapshot(map, object, size);
     if (!ShouldVisit(object)) return 0;
     VisitPointersInSnapshot(object, snapshot);
     return size;
   }
 
-  int VisitJSObjectFast(Map* map, JSObject* object) {
-    return VisitJSObject(map, object);
+  int VisitSlicedString(Map* map, SlicedString* object) {
+    int size = SlicedString::BodyDescriptor::SizeOf(map, object);
+    const SlotSnapshot& snapshot = MakeSlotSnapshot(map, object, size);
+    if (!ShouldVisit(object)) return 0;
+    VisitPointersInSnapshot(object, snapshot);
+    return size;
   }
 
-  int VisitJSApiObject(Map* map, JSObject* object) {
-    if (marking_state_.IsGrey(object)) {
-      int size = JSObject::BodyDescriptor::SizeOf(map, object);
-      VisitMapPointer(object, object->map_slot());
-      // It is OK to iterate body of JS API object here because they do not have
-      // unboxed double fields.
-      DCHECK_IMPLIES(FLAG_unbox_double_fields, map->HasFastPointerLayout());
-      JSObject::BodyDescriptor::IterateBody(object, size, this);
-      // The main thread will do wrapper tracing in Blink.
-      bailout_.Push(object);
-    }
-    return 0;
+  int VisitThinString(Map* map, ThinString* object) {
+    int size = ThinString::BodyDescriptor::SizeOf(map, object);
+    const SlotSnapshot& snapshot = MakeSlotSnapshot(map, object, size);
+    if (!ShouldVisit(object)) return 0;
+    VisitPointersInSnapshot(object, snapshot);
+    return size;
+  }
+
+  // ===========================================================================
+  // Strings without pointers ==================================================
+  // ===========================================================================
+
+  int VisitSeqOneByteString(Map* map, SeqOneByteString* object) {
+    int size = SeqOneByteString::SizeFor(object->synchronized_length());
+    if (!ShouldVisit(object)) return 0;
+    VisitMapPointer(object, object->map_slot());
+    return size;
+  }
+
+  int VisitSeqTwoByteString(Map* map, SeqTwoByteString* object) {
+    int size = SeqTwoByteString::SizeFor(object->synchronized_length());
+    if (!ShouldVisit(object)) return 0;
+    VisitMapPointer(object, object->map_slot());
+    return size;
   }
 
   // ===========================================================================
@@ -138,12 +251,11 @@ class ConcurrentMarkingVisitor final
   // ===========================================================================
 
   int VisitFixedArray(Map* map, FixedArray* object) {
-    int length = object->synchronized_length();
-    int size = FixedArray::SizeFor(length);
-    if (!ShouldVisit(object)) return 0;
-    VisitMapPointer(object, object->map_slot());
-    FixedArray::BodyDescriptor::IterateBody(object, size, this);
-    return size;
+    return VisitLeftTrimmableArray(map, object);
+  }
+
+  int VisitFixedDoubleArray(Map* map, FixedDoubleArray* object) {
+    return VisitLeftTrimmableArray(map, object);
   }
 
   // ===========================================================================
@@ -163,7 +275,7 @@ class ConcurrentMarkingVisitor final
     if (!ShouldVisit(object)) return 0;
     int size = BytecodeArray::BodyDescriptorWeak::SizeOf(map, object);
     VisitMapPointer(object, object->map_slot());
-    BytecodeArray::BodyDescriptorWeak::IterateBody(object, size, this);
+    BytecodeArray::BodyDescriptorWeak::IterateBody(map, object, size, this);
     object->MakeOlder();
     return size;
   }
@@ -172,15 +284,15 @@ class ConcurrentMarkingVisitor final
     if (!ShouldVisit(object)) return 0;
     int size = AllocationSite::BodyDescriptorWeak::SizeOf(map, object);
     VisitMapPointer(object, object->map_slot());
-    AllocationSite::BodyDescriptorWeak::IterateBody(object, size, this);
+    AllocationSite::BodyDescriptorWeak::IterateBody(map, object, size, this);
     return size;
   }
 
-  int VisitJSFunction(Map* map, JSFunction* object) {
+  int VisitCodeDataContainer(Map* map, CodeDataContainer* object) {
     if (!ShouldVisit(object)) return 0;
-    int size = JSFunction::BodyDescriptorWeak::SizeOf(map, object);
+    int size = CodeDataContainer::BodyDescriptorWeak::SizeOf(map, object);
     VisitMapPointer(object, object->map_slot());
-    JSFunction::BodyDescriptorWeak::IterateBody(object, size, this);
+    CodeDataContainer::BodyDescriptorWeak::IterateBody(map, object, size, this);
     return size;
   }
 
@@ -193,7 +305,7 @@ class ConcurrentMarkingVisitor final
       VisitPointer(map, HeapObject::RawField(map, Map::kPrototypeOffset));
       VisitPointer(
           map, HeapObject::RawField(map, Map::kConstructorOrBackPointerOffset));
-      VisitPointer(map, HeapObject::RawField(
+      VisitPointer(map, HeapObject::RawMaybeWeakField(
                             map, Map::kTransitionsOrPrototypeInfoOffset));
       VisitPointer(map, HeapObject::RawField(map, Map::kDependentCodeOffset));
       VisitPointer(map, HeapObject::RawField(map, Map::kWeakCellCacheOffset));
@@ -203,23 +315,20 @@ class ConcurrentMarkingVisitor final
   }
 
   int VisitNativeContext(Map* map, Context* object) {
-    if (marking_state_.IsGrey(object)) {
-      int size = Context::BodyDescriptorWeak::SizeOf(map, object);
-      VisitMapPointer(object, object->map_slot());
-      Context::BodyDescriptorWeak::IterateBody(object, size, this);
-      // TODO(ulan): implement proper weakness for normalized map cache
-      // and remove this bailout.
-      bailout_.Push(object);
-    }
-    return 0;
+    if (!ShouldVisit(object)) return 0;
+    int size = Context::BodyDescriptorWeak::SizeOf(map, object);
+    VisitMapPointer(object, object->map_slot());
+    Context::BodyDescriptorWeak::IterateBody(map, object, size, this);
+    return size;
   }
 
   int VisitTransitionArray(Map* map, TransitionArray* array) {
-    if (marking_state_.IsGrey(array)) {
-      // TODO(ulan): process transition arrays.
-      bailout_.Push(array);
-    }
-    return 0;
+    if (!ShouldVisit(array)) return 0;
+    VisitMapPointer(array, array->map_slot());
+    int size = TransitionArray::BodyDescriptor::SizeOf(map, array);
+    TransitionArray::BodyDescriptor::IterateBody(map, array, size, this);
+    weak_objects_->transition_arrays.Push(task_id_, array);
+    return size;
   }
 
   int VisitWeakCell(Map* map, WeakCell* object) {
@@ -279,17 +388,59 @@ class ConcurrentMarkingVisitor final
       }
     }
 
+    void VisitPointers(HeapObject* host, MaybeObject** start,
+                       MaybeObject** end) override {
+      // This should never happen, because we don't use snapshotting for objects
+      // which contain weak references.
+      UNREACHABLE();
+    }
+
    private:
     SlotSnapshot* slot_snapshot_;
   };
 
-  const SlotSnapshot& MakeSlotSnapshot(Map* map, HeapObject* object, int size) {
-    // TODO(ulan): Iterate only the existing fields and skip slack at the end
-    // of the object.
+  template <typename T>
+  int VisitJSObjectSubclass(Map* map, T* object) {
+    int size = T::BodyDescriptor::SizeOf(map, object);
+    int used_size = map->UsedInstanceSize();
+    DCHECK_LE(used_size, size);
+    DCHECK_GE(used_size, T::kHeaderSize);
+    const SlotSnapshot& snapshot = MakeSlotSnapshot(map, object, used_size);
+    if (!ShouldVisit(object)) return 0;
+    VisitPointersInSnapshot(object, snapshot);
+    return size;
+  }
+
+  template <typename T>
+  int VisitLeftTrimmableArray(Map* map, T* object) {
+    // The synchronized_length() function checks that the length is a Smi.
+    // This is not necessarily the case if the array is being left-trimmed.
+    Object* length = object->unchecked_synchronized_length();
+    if (!ShouldVisit(object)) return 0;
+    // The cached length must be the actual length as the array is not black.
+    // Left trimming marks the array black before over-writing the length.
+    DCHECK(length->IsSmi());
+    int size = T::SizeFor(Smi::ToInt(length));
+    VisitMapPointer(object, object->map_slot());
+    T::BodyDescriptor::IterateBody(map, object, size, this);
+    return size;
+  }
+
+  template <typename T>
+  const SlotSnapshot& MakeSlotSnapshot(Map* map, T* object, int size) {
     SlotSnapshottingVisitor visitor(&slot_snapshot_);
     visitor.VisitPointer(object,
                          reinterpret_cast<Object**>(object->map_slot()));
-    JSObject::BodyDescriptor::IterateBody(object, size, &visitor);
+    T::BodyDescriptor::IterateBody(map, object, size, &visitor);
+    return slot_snapshot_;
+  }
+
+  template <typename T>
+  const SlotSnapshot& MakeSlotSnapshotWeak(Map* map, T* object, int size) {
+    SlotSnapshottingVisitor visitor(&slot_snapshot_);
+    visitor.VisitPointer(object,
+                         reinterpret_cast<Object**>(object->map_slot()));
+    T::BodyDescriptorWeak::IterateBody(map, object, size, &visitor);
     return slot_snapshot_;
   }
   ConcurrentMarking::MarkingWorklist::View shared_;
@@ -299,6 +450,39 @@ class ConcurrentMarkingVisitor final
   int task_id_;
   SlotSnapshot slot_snapshot_;
 };
+
+// Strings can change maps due to conversion to thin string or external strings.
+// Use reinterpret cast to avoid data race in slow dchecks.
+template <>
+ConsString* ConcurrentMarkingVisitor::Cast(HeapObject* object) {
+  return reinterpret_cast<ConsString*>(object);
+}
+
+template <>
+SlicedString* ConcurrentMarkingVisitor::Cast(HeapObject* object) {
+  return reinterpret_cast<SlicedString*>(object);
+}
+
+template <>
+ThinString* ConcurrentMarkingVisitor::Cast(HeapObject* object) {
+  return reinterpret_cast<ThinString*>(object);
+}
+
+template <>
+SeqOneByteString* ConcurrentMarkingVisitor::Cast(HeapObject* object) {
+  return reinterpret_cast<SeqOneByteString*>(object);
+}
+
+template <>
+SeqTwoByteString* ConcurrentMarkingVisitor::Cast(HeapObject* object) {
+  return reinterpret_cast<SeqTwoByteString*>(object);
+}
+
+// Fixed array can become a free space during left trimming.
+template <>
+FixedArray* ConcurrentMarkingVisitor::Cast(HeapObject* object) {
+  return reinterpret_cast<FixedArray*>(object);
+}
 
 class ConcurrentMarking::Task : public CancelableTask {
  public:
@@ -325,45 +509,40 @@ class ConcurrentMarking::Task : public CancelableTask {
 
 ConcurrentMarking::ConcurrentMarking(Heap* heap, MarkingWorklist* shared,
                                      MarkingWorklist* bailout,
+                                     MarkingWorklist* on_hold,
                                      WeakObjects* weak_objects)
     : heap_(heap),
       shared_(shared),
       bailout_(bailout),
-      weak_objects_(weak_objects),
-      pending_task_count_(0) {
+      on_hold_(on_hold),
+      weak_objects_(weak_objects) {
 // The runtime flag should be set only if the compile time flag was set.
 #ifndef V8_CONCURRENT_MARKING
   CHECK(!FLAG_concurrent_marking);
 #endif
-  for (int i = 0; i <= kTasks; i++) {
-    is_pending_[i] = false;
-  }
 }
 
 void ConcurrentMarking::Run(int task_id, TaskState* task_state) {
+  TRACE_BACKGROUND_GC(heap_->tracer(),
+                      GCTracer::BackgroundScope::MC_BACKGROUND_MARKING);
   size_t kBytesUntilInterruptCheck = 64 * KB;
   int kObjectsUntilInterrupCheck = 1000;
-  LiveBytesMap* live_bytes = nullptr;
-  {
-    base::LockGuard<base::Mutex> guard(&task_state->lock);
-    live_bytes = &task_state->live_bytes;
-  }
-  ConcurrentMarkingVisitor visitor(shared_, bailout_, live_bytes, weak_objects_,
-                                   task_id);
+  ConcurrentMarkingVisitor visitor(shared_, bailout_, &task_state->live_bytes,
+                                   weak_objects_, task_id);
   double time_ms;
-  size_t total_bytes_marked = 0;
+  size_t marked_bytes = 0;
   if (FLAG_trace_concurrent_marking) {
     heap_->isolate()->PrintWithTimestamp(
         "Starting concurrent marking task %d\n", task_id);
   }
   {
     TimedScope scope(&time_ms);
+
     bool done = false;
     while (!done) {
-      base::LockGuard<base::Mutex> guard(&task_state->lock);
-      size_t bytes_marked = 0;
+      size_t current_marked_bytes = 0;
       int objects_processed = 0;
-      while (bytes_marked < kBytesUntilInterruptCheck &&
+      while (current_marked_bytes < kBytesUntilInterruptCheck &&
              objects_processed < kObjectsUntilInterrupCheck) {
         HeapObject* object;
         if (!shared_->Pop(task_id, &object)) {
@@ -375,25 +554,30 @@ void ConcurrentMarking::Run(int task_id, TaskState* task_state) {
         Address new_space_limit = heap_->new_space()->original_limit();
         Address addr = object->address();
         if (new_space_top <= addr && addr < new_space_limit) {
-          bailout_->Push(task_id, object);
+          on_hold_->Push(task_id, object);
         } else {
           Map* map = object->synchronized_map();
-          bytes_marked += visitor.Visit(map, object);
+          current_marked_bytes += visitor.Visit(map, object);
         }
       }
-      total_bytes_marked += bytes_marked;
-      if (task_state->interrupt_request.Value()) {
-        task_state->interrupt_condition.Wait(&task_state->lock);
+      marked_bytes += current_marked_bytes;
+      base::AsAtomicWord::Relaxed_Store<size_t>(&task_state->marked_bytes,
+                                                marked_bytes);
+      if (task_state->preemption_request.Value()) {
+        TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("v8.gc"),
+                     "ConcurrentMarking::Run Preempted");
+        break;
       }
     }
-    {
-      // Take the lock to synchronize with worklist update after
-      // young generation GC.
-      base::LockGuard<base::Mutex> guard(&task_state->lock);
-      bailout_->FlushToGlobal(task_id);
-    }
+    shared_->FlushToGlobal(task_id);
+    bailout_->FlushToGlobal(task_id);
+    on_hold_->FlushToGlobal(task_id);
+
     weak_objects_->weak_cells.FlushToGlobal(task_id);
     weak_objects_->transition_arrays.FlushToGlobal(task_id);
+    weak_objects_->weak_references.FlushToGlobal(task_id);
+    base::AsAtomicWord::Relaxed_Store<size_t>(&task_state->marked_bytes, 0);
+    total_marked_bytes_ += marked_bytes;
     {
       base::LockGuard<base::Mutex> guard(&pending_lock_);
       is_pending_[task_id] = false;
@@ -404,34 +588,51 @@ void ConcurrentMarking::Run(int task_id, TaskState* task_state) {
   if (FLAG_trace_concurrent_marking) {
     heap_->isolate()->PrintWithTimestamp(
         "Task %d concurrently marked %dKB in %.2fms\n", task_id,
-        static_cast<int>(total_bytes_marked / KB), time_ms);
+        static_cast<int>(marked_bytes / KB), time_ms);
   }
 }
 
 void ConcurrentMarking::ScheduleTasks() {
+  DCHECK(!heap_->IsTearingDown());
   if (!FLAG_concurrent_marking) return;
   base::LockGuard<base::Mutex> guard(&pending_lock_);
-  if (pending_task_count_ < kTasks) {
-    // Task id 0 is for the main thread.
-    for (int i = 1; i <= kTasks; i++) {
-      if (!is_pending_[i]) {
-        if (FLAG_trace_concurrent_marking) {
-          heap_->isolate()->PrintWithTimestamp(
-              "Scheduling concurrent marking task %d\n", i);
-        }
-        task_state_[i].interrupt_request.SetValue(false);
-        is_pending_[i] = true;
-        ++pending_task_count_;
-        V8::GetCurrentPlatform()->CallOnBackgroundThread(
-            new Task(heap_->isolate(), this, &task_state_[i], i),
-            v8::Platform::kShortRunningTask);
+  DCHECK_EQ(0, pending_task_count_);
+  if (task_count_ == 0) {
+    static const int num_cores =
+        V8::GetCurrentPlatform()->NumberOfWorkerThreads() + 1;
+#if defined(V8_OS_MACOSX)
+    // Mac OSX 10.11 and prior seems to have trouble when doing concurrent
+    // marking on competing hyper-threads (regresses Octane/Splay). As such,
+    // only use num_cores/2, leaving one of those for the main thread.
+    // TODO(ulan): Use all cores on Mac 10.12+.
+    task_count_ = Max(1, Min(kMaxTasks, (num_cores / 2) - 1));
+#else   // defined(OS_MACOSX)
+    // On other platforms use all logical cores, leaving one for the main
+    // thread.
+    task_count_ = Max(1, Min(kMaxTasks, num_cores - 1));
+#endif  // defined(OS_MACOSX)
+  }
+  // Task id 0 is for the main thread.
+  for (int i = 1; i <= task_count_; i++) {
+    if (!is_pending_[i]) {
+      if (FLAG_trace_concurrent_marking) {
+        heap_->isolate()->PrintWithTimestamp(
+            "Scheduling concurrent marking task %d\n", i);
       }
+      task_state_[i].preemption_request.SetValue(false);
+      is_pending_[i] = true;
+      ++pending_task_count_;
+      auto task =
+          base::make_unique<Task>(heap_->isolate(), this, &task_state_[i], i);
+      cancelable_id_[i] = task->id();
+      V8::GetCurrentPlatform()->CallOnWorkerThread(std::move(task));
     }
   }
+  DCHECK_EQ(task_count_, pending_task_count_);
 }
 
 void ConcurrentMarking::RescheduleTasksIfNeeded() {
-  if (!FLAG_concurrent_marking) return;
+  if (!FLAG_concurrent_marking || heap_->IsTearingDown()) return;
   {
     base::LockGuard<base::Mutex> guard(&pending_lock_);
     if (pending_task_count_ > 0) return;
@@ -441,18 +642,40 @@ void ConcurrentMarking::RescheduleTasksIfNeeded() {
   }
 }
 
-void ConcurrentMarking::EnsureCompleted() {
-  if (!FLAG_concurrent_marking) return;
+bool ConcurrentMarking::Stop(StopRequest stop_request) {
+  if (!FLAG_concurrent_marking) return false;
   base::LockGuard<base::Mutex> guard(&pending_lock_);
+
+  if (pending_task_count_ == 0) return false;
+
+  if (stop_request != StopRequest::COMPLETE_TASKS_FOR_TESTING) {
+    CancelableTaskManager* task_manager =
+        heap_->isolate()->cancelable_task_manager();
+    for (int i = 1; i <= task_count_; i++) {
+      if (is_pending_[i]) {
+        if (task_manager->TryAbort(cancelable_id_[i]) ==
+            CancelableTaskManager::kTaskAborted) {
+          is_pending_[i] = false;
+          --pending_task_count_;
+        } else if (stop_request == StopRequest::PREEMPT_TASKS) {
+          task_state_[i].preemption_request.SetValue(true);
+        }
+      }
+    }
+  }
   while (pending_task_count_ > 0) {
     pending_condition_.Wait(&pending_lock_);
   }
+  for (int i = 1; i <= task_count_; i++) {
+    DCHECK(!is_pending_[i]);
+  }
+  return true;
 }
 
 void ConcurrentMarking::FlushLiveBytes(
     MajorNonAtomicMarkingState* marking_state) {
   DCHECK_EQ(pending_task_count_, 0);
-  for (int i = 1; i <= kTasks; i++) {
+  for (int i = 1; i <= task_count_; i++) {
     LiveBytesMap& live_bytes = task_state_[i].live_bytes;
     for (auto pair : live_bytes) {
       // ClearLiveness sets the live bytes to zero.
@@ -462,37 +685,38 @@ void ConcurrentMarking::FlushLiveBytes(
       }
     }
     live_bytes.clear();
+    task_state_[i].marked_bytes = 0;
   }
+  total_marked_bytes_ = 0;
 }
 
 void ConcurrentMarking::ClearLiveness(MemoryChunk* chunk) {
-  for (int i = 1; i <= kTasks; i++) {
+  for (int i = 1; i <= task_count_; i++) {
     if (task_state_[i].live_bytes.count(chunk)) {
       task_state_[i].live_bytes[chunk] = 0;
     }
   }
 }
 
+size_t ConcurrentMarking::TotalMarkedBytes() {
+  size_t result = 0;
+  for (int i = 1; i <= task_count_; i++) {
+    result +=
+        base::AsAtomicWord::Relaxed_Load<size_t>(&task_state_[i].marked_bytes);
+  }
+  result += total_marked_bytes_;
+  return result;
+}
+
 ConcurrentMarking::PauseScope::PauseScope(ConcurrentMarking* concurrent_marking)
-    : concurrent_marking_(concurrent_marking) {
-  if (!FLAG_concurrent_marking) return;
-  // Request task_state for all tasks.
-  for (int i = 1; i <= kTasks; i++) {
-    concurrent_marking_->task_state_[i].interrupt_request.SetValue(true);
-  }
-  // Now take a lock to ensure that the tasks are waiting.
-  for (int i = 1; i <= kTasks; i++) {
-    concurrent_marking_->task_state_[i].lock.Lock();
-  }
+    : concurrent_marking_(concurrent_marking),
+      resume_on_exit_(concurrent_marking_->Stop(
+          ConcurrentMarking::StopRequest::PREEMPT_TASKS)) {
+  DCHECK_IMPLIES(resume_on_exit_, FLAG_concurrent_marking);
 }
 
 ConcurrentMarking::PauseScope::~PauseScope() {
-  if (!FLAG_concurrent_marking) return;
-  for (int i = kTasks; i >= 1; i--) {
-    concurrent_marking_->task_state_[i].interrupt_request.SetValue(false);
-    concurrent_marking_->task_state_[i].interrupt_condition.NotifyAll();
-    concurrent_marking_->task_state_[i].lock.Unlock();
-  }
+  if (resume_on_exit_) concurrent_marking_->RescheduleTasksIfNeeded();
 }
 
 }  // namespace internal

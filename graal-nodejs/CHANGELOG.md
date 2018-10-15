@@ -1,31 +1,49 @@
 # Node.js Changelog
 
+<!--lint disable maximum-line-length-->
+
 To make the changelog easier to both use and manage, it has been split into
 multiple files organized according to significant major and minor Node.js
 release lines.
 
 Select a Node.js version below to view the changelog history:
 
-* [Node.js 8](doc/changelogs/CHANGELOG_V8.md)
-* [Node.js 7](doc/changelogs/CHANGELOG_V7.md)
-* [Node.js 6](doc/changelogs/CHANGELOG_V6.md)
-* [Node.js 4](doc/changelogs/CHANGELOG_V4.md)
-* [Node.js 5](doc/changelogs/CHANGELOG_V5.md),
-  [0.12](doc/changelogs/CHANGELOG_V012.md),
-  [0.10](doc/changelogs/CHANGELOG_V010.md),
-  [io.js](doc/changelogs/CHANGELOG_IOJS.md) and [Archive](doc/changelogs/CHANGELOG_ARCHIVE.md)
+* [Node.js 10](doc/changelogs/CHANGELOG_V10.md) — **Current**
+* [Node.js 9](doc/changelogs/CHANGELOG_V9.md) — End-of-Life
+* [Node.js 8](doc/changelogs/CHANGELOG_V8.md) — **Long Term Support**
+* [Node.js 7](doc/changelogs/CHANGELOG_V7.md) — End-of-Life
+* [Node.js 6](doc/changelogs/CHANGELOG_V6.md) — Long Term Support
+* [Node.js 5](doc/changelogs/CHANGELOG_V5.md) — End-of-Life
+* [Node.js 4](doc/changelogs/CHANGELOG_V4.md) — End-of-Life
+* [io.js](doc/changelogs/CHANGELOG_IOJS.md) — End-of-Life
+* [Node.js 0.12](doc/changelogs/CHANGELOG_V012.md) — End-of-Life
+* [Node.js 0.10](doc/changelogs/CHANGELOG_V010.md) — End-of-Life
+* [Archive](doc/changelogs/CHANGELOG_ARCHIVE.md)
 
 Please use the following table to find the changelog for a specific Node.js
 release.
 
 <table>
 <tr>
+  <th title="Current"><a href="doc/changelogs/CHANGELOG_V10.md">10</a><sup>Current</sup></th>
   <th title="LTS Until 2019-12"><a href="doc/changelogs/CHANGELOG_V8.md">8</a><sup>LTS</sup></th>
-  <th title="Supported until 2016-07-01"><a href="doc/changelogs/CHANGELOG_V7.md">7</a><sup>-</sup></th>
   <th title="LTS Until 2019-04"><a href="doc/changelogs/CHANGELOG_V6.md">6</a><sup>LTS</sup></th>
-  <th title="LTS Until 2018-04"><a href="doc/changelogs/CHANGELOG_V4.md">4</a><sup>LTS</sup></th>
 </tr>
 <tr>
+    <td valign="top">
+<b><a href="doc/changelogs/CHANGELOG_V10.md#10.9.0">10.9.0</a></b><br/>
+<a href="doc/changelogs/CHANGELOG_V10.md#10.8.0">10.8.0</a><br/>
+<a href="doc/changelogs/CHANGELOG_V10.md#10.7.0">10.7.0</a><br/>
+<a href="doc/changelogs/CHANGELOG_V10.md#10.6.0">10.6.0</a><br/>
+<a href="doc/changelogs/CHANGELOG_V10.md#10.5.0">10.5.0</a><br/>
+<a href="doc/changelogs/CHANGELOG_V10.md#10.4.1">10.4.1</a><br/>
+<a href="doc/changelogs/CHANGELOG_V10.md#10.4.0">10.4.0</a><br/>
+<a href="doc/changelogs/CHANGELOG_V10.md#10.3.0">10.3.0</a><br/>
+<a href="doc/changelogs/CHANGELOG_V10.md#10.2.1">10.2.1</a><br/>
+<a href="doc/changelogs/CHANGELOG_V10.md#10.2.0">10.2.0</a><br/>
+<a href="doc/changelogs/CHANGELOG_V10.md#10.1.0">10.1.0</a><br/>
+<a href="doc/changelogs/CHANGELOG_V10.md#10.0.0">10.0.0</a><br/>
+    </td>
     <td valign="top">
 <b><a href="doc/changelogs/CHANGELOG_V8.md#8.11.1">8.11.1</a></b><br/>
 <a href="doc/changelogs/CHANGELOG_V8.md#8.11.0">8.11.0</a><br/>
@@ -51,26 +69,22 @@ release.
 <a href="doc/changelogs/CHANGELOG_V8.md#8.1.0">8.1.0</a><br/>
 <a href="doc/changelogs/CHANGELOG_V8.md#8.0.0">8.0.0</a><br/>
     </td>
-    <td valign="top">
-<b><a href="doc/changelogs/CHANGELOG_V7.md#7.10.0">7.10.0</a></b><br/>
-<a href="doc/changelogs/CHANGELOG_V7.md#7.9.0">7.9.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V7.md#7.8.0">7.8.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V7.md#7.7.4">7.7.4</a><br/>
-<a href="doc/changelogs/CHANGELOG_V7.md#7.7.3">7.7.3</a><br/>
-<a href="doc/changelogs/CHANGELOG_V7.md#7.7.2">7.7.2</a><br/>
-<a href="doc/changelogs/CHANGELOG_V7.md#7.7.1">7.7.1</a><br/>
-<a href="doc/changelogs/CHANGELOG_V7.md#7.7.0">7.7.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V7.md#7.6.0">7.6.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V7.md#7.5.0">7.5.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V7.md#7.4.0">7.4.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V7.md#7.3.0">7.3.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V7.md#7.2.1">7.2.1</a><br/>
-<a href="doc/changelogs/CHANGELOG_V7.md#7.2.0">7.2.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V7.md#7.1.0">7.1.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V7.md#7.0.0">7.0.0</a><br/>
-    </td>
   <td valign="top">
-<b><a href="doc/changelogs/CHANGELOG_V6.md#6.10.3">6.10.3</a></b><br/>
+<b><a href="doc/changelogs/CHANGELOG_V6.md#6.14.1">6.14.1</a></b><br/>
+<a href="doc/changelogs/CHANGELOG_V6.md#6.14.0">6.14.0</a><br/>
+<a href="doc/changelogs/CHANGELOG_V6.md#6.13.1">6.13.1</a><br/>
+<a href="doc/changelogs/CHANGELOG_V6.md#6.13.0">6.13.0</a><br/>
+<a href="doc/changelogs/CHANGELOG_V6.md#6.12.3">6.12.3</a><br/>
+<a href="doc/changelogs/CHANGELOG_V6.md#6.12.2">6.12.2</a><br/>
+<a href="doc/changelogs/CHANGELOG_V6.md#6.12.1">6.12.1</a><br/>
+<a href="doc/changelogs/CHANGELOG_V6.md#6.12.0">6.12.0</a><br/>
+<a href="doc/changelogs/CHANGELOG_V6.md#6.11.5">6.11.5</a><br/>
+<a href="doc/changelogs/CHANGELOG_V6.md#6.11.4">6.11.4</a><br/>
+<a href="doc/changelogs/CHANGELOG_V6.md#6.11.3">6.11.3</a><br/>
+<a href="doc/changelogs/CHANGELOG_V6.md#6.11.2">6.11.2</a><br/>
+<a href="doc/changelogs/CHANGELOG_V6.md#6.11.1">6.11.1</a><br/>
+<a href="doc/changelogs/CHANGELOG_V6.md#6.11.0">6.11.0</a><br/>
+<a href="doc/changelogs/CHANGELOG_V6.md#6.10.3">6.10.3</a><br/>
 <a href="doc/changelogs/CHANGELOG_V6.md#6.10.2">6.10.2</a><br/>
 <a href="doc/changelogs/CHANGELOG_V6.md#6.10.1">6.10.1</a><br/>
 <a href="doc/changelogs/CHANGELOG_V6.md#6.10.0">6.10.0</a><br/>
@@ -94,49 +108,13 @@ release.
 <a href="doc/changelogs/CHANGELOG_V6.md#6.1.0">6.1.0</a><br/>
 <a href="doc/changelogs/CHANGELOG_V6.md#6.0.0">6.0.0</a><br/>
   </td>
-  <td valign="top">
-<b><a href="doc/changelogs/CHANGELOG_V4.md#4.8.3">4.8.3</a></b><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.8.2">4.8.2</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.8.1">4.8.1</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.8.0">4.8.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.7.3">4.7.3</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.7.2">4.7.2</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.7.1">4.7.1</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.7.0">4.7.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.6.1">4.6.2</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.6.1">4.6.1</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.6.0">4.6.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.5.0">4.5.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.4.7">4.4.7</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.4.6">4.4.6</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.4.5">4.4.5</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.4.4">4.4.4</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.4.3">4.4.3</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.4.2">4.4.2</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.4.1">4.4.1</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.4.0">4.4.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.3.2">4.3.2</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.3.1">4.3.1</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.3.0">4.3.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.2.6">4.2.6</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.2.5">4.2.5</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.2.4">4.2.4</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.2.3">4.2.3</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.2.2">4.2.2</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.2.1">4.2.1</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.2.0">4.2.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.1.2">4.1.2</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.1.1">4.1.1</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.1.0">4.1.0</a><br/>
-<a href="doc/changelogs/CHANGELOG_V4.md#4.0.0">4.0.0</a><br/>
-  </td>
 </tr>
 </table>
 
 ### Notes
 
 * Release streams marked with `LTS` are currently covered by the
-  [Node.js Long Term Support plan](https://github.com/nodejs/LTS).
+  [Node.js Long Term Support plan](https://github.com/nodejs/Release).
 * Release versions displayed in **bold** text represent the most
   recent actively supported release.
 

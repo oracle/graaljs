@@ -1189,10 +1189,6 @@
     "filePath" : "mjsunit/regress/regress-319722-ArrayBuffer.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/regress/regress-319722-TypedArrays.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
     "filePath" : "mjsunit/regress/regress-3404.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"

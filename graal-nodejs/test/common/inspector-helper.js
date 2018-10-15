@@ -5,7 +5,9 @@ const fs = require('fs');
 const http = require('http');
 const fixtures = require('../common/fixtures');
 const { spawn } = require('child_process');
-const url = require('url');
+const { parse: parseURL } = require('url');
+const { getURLFromFilePath } = require('internal/url');
+const { EventEmitter } = require('events');
 
 const _MAINSCRIPT = fixtures.path('loop.js');
 const DEBUG = false;
@@ -23,6 +25,7 @@ function spawnChildProcess(inspectorFlags, scriptContents, scriptFile) {
   const handler = tearDown.bind(null, child);
   process.on('exit', handler);
   process.on('uncaughtException', handler);
+  common.disableCrashOnUnhandledRejection();
   process.on('unhandledRejection', handler);
   process.on('SIGINT', handler);
 
@@ -153,8 +156,9 @@ class InspectorSession {
     return this._terminationPromise;
   }
 
-  disconnect() {
+  async disconnect() {
     this._socket.destroy();
+    return this.waitForServerDisconnect();
   }
 
   _onMessage(message) {
@@ -167,12 +171,13 @@ class InspectorSession {
         reject(message.error);
     } else {
       if (message.method === 'Debugger.scriptParsed') {
-        const script = message['params'];
-        const scriptId = script['scriptId'];
-        const url = script['url'];
+        const { scriptId, url } = message.params;
         this._scriptsIdsByUrl.set(scriptId, url);
-        if (url === _MAINSCRIPT)
+        const fileUrl = url.startsWith('file:') ?
+          url : getURLFromFilePath(url).toString();
+        if (fileUrl === this.scriptURL().toString()) {
           this.mainScriptId = scriptId;
+        }
       }
 
       if (this._notificationCallback) {
@@ -188,12 +193,12 @@ class InspectorSession {
 
   _sendMessage(message) {
     const msg = JSON.parse(JSON.stringify(message)); // Clone!
-    msg['id'] = this._nextId++;
+    msg.id = this._nextId++;
     if (DEBUG)
       console.log('[sent]', JSON.stringify(msg));
 
     const responsePromise = new Promise((resolve, reject) => {
-      this._commandResponsePromises.set(msg['id'], { resolve, reject });
+      this._commandResponsePromises.set(msg.id, { resolve, reject });
     });
 
     return new Promise(
@@ -238,12 +243,15 @@ class InspectorSession {
     return notification;
   }
 
-  _isBreakOnLineNotification(message, line, url) {
-    if ('Debugger.paused' === message['method']) {
-      const callFrame = message['params']['callFrames'][0];
-      const location = callFrame['location'];
-      assert.strictEqual(url, this._scriptsIdsByUrl.get(location['scriptId']));
-      assert.strictEqual(line, location['lineNumber']);
+  _isBreakOnLineNotification(message, line, expectedScriptPath) {
+    if (message.method === 'Debugger.paused') {
+      const callFrame = message.params.callFrames[0];
+      const location = callFrame.location;
+      const scriptPath = this._scriptsIdsByUrl.get(location.scriptId);
+      assert.strictEqual(scriptPath.toString(),
+                         expectedScriptPath.toString(),
+                         `${scriptPath} !== ${expectedScriptPath}`);
+      assert.strictEqual(line, location.lineNumber);
       return true;
     }
   }
@@ -259,12 +267,12 @@ class InspectorSession {
   _matchesConsoleOutputNotification(notification, type, values) {
     if (!Array.isArray(values))
       values = [ values ];
-    if ('Runtime.consoleAPICalled' === notification['method']) {
-      const params = notification['params'];
-      if (params['type'] === type) {
+    if (notification.method === 'Runtime.consoleAPICalled') {
+      const params = notification.params;
+      if (params.type === type) {
         let i = 0;
-        for (const value of params['args']) {
-          if (value['value'] !== values[i++])
+        for (const value of params.args) {
+          if (value.value !== values[i++])
             return false;
         }
         return i === values.length;
@@ -291,12 +299,28 @@ class InspectorSession {
               'Waiting for the debugger to disconnect...');
     await this.disconnect();
   }
+
+  scriptPath() {
+    return this._instance.scriptPath();
+  }
+
+  script() {
+    return this._instance.script();
+  }
+
+  scriptURL() {
+    return getURLFromFilePath(this.scriptPath());
+  }
 }
 
-class NodeInstance {
+class NodeInstance extends EventEmitter {
   constructor(inspectorFlags = ['--inspect-brk=0'],
               scriptContents = '',
               scriptFile = _MAINSCRIPT) {
+    super();
+
+    this._scriptPath = scriptFile;
+    this._script = scriptFile ? null : scriptContents;
     this._portCallback = null;
     this.portPromise = new Promise((resolve) => this._portCallback = resolve);
     this._process = spawnChildProcess(inspectorFlags, scriptContents,
@@ -306,7 +330,10 @@ class NodeInstance {
     this._unprocessedStderrLines = [];
 
     this._process.stdout.on('data', makeBufferingDataCallback(
-      (line) => console.log('[out]', line)));
+      (line) => {
+        this.emit('stdout', line);
+        console.log('[out]', line);
+      }));
 
     this._process.stderr.on('data', makeBufferingDataCallback(
       (message) => this.onStderrLine(message)));
@@ -346,10 +373,11 @@ class NodeInstance {
     }
   }
 
-  httpGet(host, path) {
+  httpGet(host, path, hostHeaderValue) {
     console.log('[test]', `Testing ${path}`);
+    const headers = hostHeaderValue ? { 'Host': hostHeaderValue } : null;
     return this.portPromise.then((port) => new Promise((resolve, reject) => {
-      const req = http.get({ host, port, path }, (res) => {
+      const req = http.get({ host, port, path, headers }, (res) => {
         let response = '';
         res.setEncoding('utf8');
         res
@@ -369,28 +397,43 @@ class NodeInstance {
     });
   }
 
-  wsHandshake(devtoolsUrl) {
-    return this.portPromise.then((port) => new Promise((resolve) => {
-      http.get({
-        port,
-        path: url.parse(devtoolsUrl).path,
-        headers: {
-          'Connection': 'Upgrade',
-          'Upgrade': 'websocket',
-          'Sec-WebSocket-Version': 13,
-          'Sec-WebSocket-Key': 'key=='
-        }
-      }).on('upgrade', (message, socket) => {
-        resolve(new InspectorSession(socket, this));
-      }).on('response', common.mustNotCall('Upgrade was not received'));
-    }));
+  async sendUpgradeRequest() {
+    const response = await this.httpGet(null, '/json/list');
+    const devtoolsUrl = response[0].webSocketDebuggerUrl;
+    const port = await this.portPromise;
+    return http.get({
+      port,
+      path: parseURL(devtoolsUrl).path,
+      headers: {
+        'Connection': 'Upgrade',
+        'Upgrade': 'websocket',
+        'Sec-WebSocket-Version': 13,
+        'Sec-WebSocket-Key': 'key=='
+      }
+    });
   }
 
   async connectInspectorSession() {
     console.log('[test]', 'Connecting to a child Node process');
-    const response = await this.httpGet(null, '/json/list');
-    const url = response[0]['webSocketDebuggerUrl'];
-    return this.wsHandshake(url);
+    const upgradeRequest = await this.sendUpgradeRequest();
+    return new Promise((resolve, reject) => {
+      upgradeRequest
+        .on('upgrade',
+            (message, socket) => resolve(new InspectorSession(socket, this)))
+        .on('response', common.mustNotCall('Upgrade was not received'));
+    });
+  }
+
+  async expectConnectionDeclined() {
+    console.log('[test]', 'Checking upgrade is not possible');
+    const upgradeRequest = await this.sendUpgradeRequest();
+    return new Promise((resolve, reject) => {
+      upgradeRequest
+          .on('upgrade', common.mustNotCall('Upgrade was received'))
+          .on('response', (response) =>
+            response.on('data', () => {})
+                    .on('end', () => resolve(response.statusCode)));
+    });
   }
 
   expectShutdown() {
@@ -403,13 +446,24 @@ class NodeInstance {
     return new Promise((resolve) => this._stderrLineCallback = resolve);
   }
 
+  write(message) {
+    this._process.stdin.write(message);
+  }
+
   kill() {
     this._process.kill();
+    return this.expectShutdown();
   }
-}
 
-function readMainScriptSource() {
-  return fs.readFileSync(_MAINSCRIPT, 'utf8');
+  scriptPath() {
+    return this._scriptPath;
+  }
+
+  script() {
+    if (this._script === null)
+      this._script = fs.readFileSync(this.scriptPath(), 'utf8');
+    return this._script;
+  }
 }
 
 function onResolvedOrRejected(promise, callback) {
@@ -450,7 +504,5 @@ function fires(promise, error, timeoutMs) {
 }
 
 module.exports = {
-  mainScriptPath: _MAINSCRIPT,
-  readMainScriptSource,
   NodeInstance
 };

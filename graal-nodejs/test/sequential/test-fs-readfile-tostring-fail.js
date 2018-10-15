@@ -13,9 +13,10 @@ const kStringMaxLength = process.binding('buffer').kStringMaxLength;
 if (common.isAIX && (Number(cp.execSync('ulimit -f')) * 512) < kStringMaxLength)
   common.skip('intensive toString tests due to file size confinements');
 
-common.refreshTmpDir();
+const tmpdir = require('../common/tmpdir');
+tmpdir.refresh();
 
-const file = path.join(common.tmpDir, 'toobig.txt');
+const file = path.join(tmpdir.path, 'toobig.txt');
 const stream = fs.createWriteStream(file, {
   flags: 'a'
 });
@@ -29,11 +30,17 @@ for (let i = 0; i < 201; i++) {
 
 stream.end();
 stream.on('finish', common.mustCall(function() {
-  // make sure that the toString does not throw an error
   fs.readFile(file, 'utf8', common.mustCall(function(err, buf) {
     assert.ok(err instanceof Error);
-    assert(/^(Array buffer allocation failed|"toString\(\)" failed)$/
-             .test(err.message));
+    if (err.message !== 'Array buffer allocation failed') {
+      const stringLengthHex = kStringMaxLength.toString(16);
+      common.expectsError({
+        message: 'Cannot create a string longer than ' +
+                 `0x${stringLengthHex} characters`,
+        code: 'ERR_STRING_TOO_LONG',
+        type: Error
+      })(err);
+    }
     assert.strictEqual(buf, undefined);
   }));
 }));

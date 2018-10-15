@@ -5,7 +5,6 @@
 #include "src/compiler/js-inlining.h"
 
 #include "src/ast/ast.h"
-#include "src/compilation-info.h"
 #include "src/compiler.h"
 #include "src/compiler/all-nodes.h"
 #include "src/compiler/bytecode-graph-builder.h"
@@ -18,6 +17,7 @@
 #include "src/compiler/operator-properties.h"
 #include "src/compiler/simplified-operator.h"
 #include "src/isolate-inl.h"
+#include "src/optimized-compilation-info.h"
 #include "src/parsing/parse-info.h"
 
 namespace v8 {
@@ -258,71 +258,14 @@ Node* JSInliner::CreateArtificialFrameState(Node* node, Node* outer_frame_state,
 
 namespace {
 
-// TODO(bmeurer): Unify this with the witness helper functions in the
-// js-builtin-reducer.cc once we have a better understanding of the
-// map tracking we want to do, and eventually changed the CheckMaps
-// operator to carry map constants on the operator instead of inputs.
-// I.e. if the CheckMaps has some kind of SmallMapSet as operator
-// parameter, then this could be changed to call a generic
-//
-//   SmallMapSet NodeProperties::CollectMapWitness(receiver, effect)
-//
-// function, which either returns the map set from the CheckMaps or
-// a singleton set from a StoreField.
-bool NeedsConvertReceiver(Node* receiver, Node* effect) {
-  // Check if the {receiver} is already a JSReceiver.
-  switch (receiver->opcode()) {
-    case IrOpcode::kJSConstruct:
-    case IrOpcode::kJSConstructWithSpread:
-    case IrOpcode::kJSCreate:
-    case IrOpcode::kJSCreateArguments:
-    case IrOpcode::kJSCreateArray:
-    case IrOpcode::kJSCreateClosure:
-    case IrOpcode::kJSCreateIterResultObject:
-    case IrOpcode::kJSCreateKeyValueArray:
-    case IrOpcode::kJSCreateLiteralArray:
-    case IrOpcode::kJSCreateLiteralObject:
-    case IrOpcode::kJSCreateLiteralRegExp:
-    case IrOpcode::kJSConvertReceiver:
-    case IrOpcode::kJSGetSuperConstructor:
-    case IrOpcode::kJSToObject: {
-      return false;
-    }
-    default: {
-      // We don't really care about the exact maps here, just the instance
-      // types, which don't change across potential side-effecting operations.
-      ZoneHandleSet<Map> maps;
-      NodeProperties::InferReceiverMapsResult result =
-          NodeProperties::InferReceiverMaps(receiver, effect, &maps);
-      if (result != NodeProperties::kNoReceiverMaps) {
-        // Check if all {maps} are actually JSReceiver maps.
-        for (size_t i = 0; i < maps.size(); ++i) {
-          if (!maps[i]->IsJSReceiverMap()) return true;
-        }
-        return false;
-      }
-      return true;
-    }
-  }
-}
-
 // TODO(mstarzinger,verwaest): Move this predicate onto SharedFunctionInfo?
 bool NeedsImplicitReceiver(Handle<SharedFunctionInfo> shared_info) {
   DisallowHeapAllocation no_gc;
-  Isolate* const isolate = shared_info->GetIsolate();
-  Code* const construct_stub = shared_info->construct_stub();
-  if (construct_stub == *isolate->builtins()->JSConstructStubGeneric()) {
+  if (!shared_info->construct_as_builtin()) {
     return !IsDerivedConstructor(shared_info->kind());
   } else {
     return false;
   }
-}
-
-bool IsNonConstructible(Handle<SharedFunctionInfo> shared_info) {
-  DisallowHeapAllocation no_gc;
-  Isolate* const isolate = shared_info->GetIsolate();
-  Code* const construct_stub = shared_info->construct_stub();
-  return construct_stub == *BUILTIN_CODE(isolate, ConstructedNonConstructable);
 }
 
 }  // namespace
@@ -371,8 +314,7 @@ bool JSInliner::DetermineCallTarget(
     // target.
     // TODO(turbofan): We might consider to eagerly create the feedback vector
     // in such a case (in {DetermineCallContext} below) eventually.
-    FeedbackSlot slot = p.feedback().slot();
-    Handle<Cell> cell(Cell::cast(p.feedback().vector()->Get(slot)));
+    Handle<FeedbackCell> cell = p.feedback_cell();
     if (!cell->value()->IsFeedbackVector()) return false;
 
     shared_info_out = p.shared_info();
@@ -396,9 +338,9 @@ void JSInliner::DetermineCallContext(
   if (match.HasValue() && match.Value()->IsJSFunction()) {
     Handle<JSFunction> function = Handle<JSFunction>::cast(match.Value());
 
-    // If the target function was never invoked, its literals array might not
-    // contain a feedback vector. We ensure at this point that it is created.
-    JSFunction::EnsureLiterals(function);
+    // If the target function was never invoked, its feedback cell array might
+    // not contain a feedback vector. We ensure at this point that it's created.
+    JSFunction::EnsureFeedbackVector(function);
 
     // The inlinee specializes to the context from the JSFunction object.
     context_out = jsgraph()->Constant(handle(function->context()));
@@ -411,8 +353,7 @@ void JSInliner::DetermineCallContext(
 
     // Load the feedback vector of the target by looking up its vector cell at
     // the instantiation site (we only decide to inline if it's populated).
-    FeedbackSlot slot = p.feedback().slot();
-    Handle<Cell> cell(Cell::cast(p.feedback().vector()->Get(slot)));
+    Handle<FeedbackCell> cell = p.feedback_cell();
     DCHECK(cell->value()->IsFeedbackVector());
 
     // The inlinee uses the locally provided context at instantiation.
@@ -428,6 +369,10 @@ void JSInliner::DetermineCallContext(
 Reduction JSInliner::Reduce(Node* node) {
   if (!IrOpcode::IsInlineeOpcode(node->opcode())) return NoChange();
   return ReduceJSCall(node);
+}
+
+Handle<Context> JSInliner::native_context() const {
+  return handle(info_->context()->native_context());
 }
 
 Reduction JSInliner::ReduceJSCall(Node* node) {
@@ -448,7 +393,7 @@ Reduction JSInliner::ReduceJSCall(Node* node) {
 
   // Constructor must be constructable.
   if (node->opcode() == IrOpcode::kJSConstruct &&
-      IsNonConstructible(shared_info)) {
+      !IsConstructable(shared_info->kind())) {
     TRACE("Not inlining %s into %s because constructor is not constructable.\n",
           shared_info->DebugName()->ToCString().get(),
           info_->shared_info()->DebugName()->ToCString().get());
@@ -541,7 +486,8 @@ Reduction JSInliner::ReduceJSCall(Node* node) {
     }
     BytecodeGraphBuilder graph_builder(
         zone(), shared_info, feedback_vector, BailoutId::None(), jsgraph(),
-        call.frequency(), source_positions_, inlining_id, flags, false);
+        call.frequency(), source_positions_, native_context(), inlining_id,
+        flags, false, info_->is_analyze_environment_liveness());
     graph_builder.CreateGraph();
 
     // Extract the inlinee start/end nodes.
@@ -602,62 +548,18 @@ Reduction JSInliner::ReduceJSCall(Node* node) {
       uncaught_subcalls.push_back(create);  // Adds {IfSuccess} & {IfException}.
       NodeProperties::ReplaceControlInput(node, create);
       NodeProperties::ReplaceEffectInput(node, create);
-      Node* node_success =
-          NodeProperties::FindSuccessfulControlProjection(node);
       // Placeholder to hold {node}'s value dependencies while {node} is
       // replaced.
       Node* dummy = graph()->NewNode(common()->Dead());
       NodeProperties::ReplaceUses(node, dummy, node, node, node);
       Node* result;
-      if (FLAG_harmony_restrict_constructor_return &&
-          IsClassConstructor(shared_info->kind())) {
-        Node* is_undefined =
-            graph()->NewNode(simplified()->ReferenceEqual(), node,
-                             jsgraph()->UndefinedConstant());
-        Node* branch_is_undefined =
-            graph()->NewNode(common()->Branch(), is_undefined, node_success);
-        Node* branch_is_undefined_true =
-            graph()->NewNode(common()->IfTrue(), branch_is_undefined);
-        Node* branch_is_undefined_false =
-            graph()->NewNode(common()->IfFalse(), branch_is_undefined);
-        Node* is_receiver =
-            graph()->NewNode(simplified()->ObjectIsReceiver(), node);
-        Node* branch_is_receiver = graph()->NewNode(
-            common()->Branch(), is_receiver, branch_is_undefined_false);
-        Node* branch_is_receiver_true =
-            graph()->NewNode(common()->IfTrue(), branch_is_receiver);
-        Node* branch_is_receiver_false =
-            graph()->NewNode(common()->IfFalse(), branch_is_receiver);
-        branch_is_receiver_false =
-            graph()->NewNode(javascript()->CallRuntime(
-                                 Runtime::kThrowConstructorReturnedNonObject),
-                             context, NodeProperties::GetFrameStateInput(node),
-                             node, branch_is_receiver_false);
-        uncaught_subcalls.push_back(branch_is_receiver_false);
-        branch_is_receiver_false =
-            graph()->NewNode(common()->Throw(), branch_is_receiver_false,
-                             branch_is_receiver_false);
-        NodeProperties::MergeControlToEnd(graph(), common(),
-                                          branch_is_receiver_false);
-        Node* merge =
-            graph()->NewNode(common()->Merge(2), branch_is_undefined_true,
-                             branch_is_receiver_true);
-        result =
-            graph()->NewNode(common()->Phi(MachineRepresentation::kTagged, 2),
-                             create, node, merge);
-        ReplaceWithValue(node_success, node_success, node_success, merge);
-        // Fix input destroyed by the above {ReplaceWithValue} call.
-        NodeProperties::ReplaceControlInput(branch_is_undefined, node_success,
-                                            0);
-      } else {
-        // Insert a check of the return value to determine whether the return
-        // value or the implicit receiver should be selected as a result of the
-        // call.
-        Node* check = graph()->NewNode(simplified()->ObjectIsReceiver(), node);
-        result =
-            graph()->NewNode(common()->Select(MachineRepresentation::kTagged),
-                             check, node, create);
-      }
+      // Insert a check of the return value to determine whether the return
+      // value or the implicit receiver should be selected as a result of the
+      // call.
+      Node* check = graph()->NewNode(simplified()->ObjectIsReceiver(), node);
+      result =
+          graph()->NewNode(common()->Select(MachineRepresentation::kTagged),
+                           check, node, create);
       receiver = create;  // The implicit receiver.
       ReplaceWithValue(dummy, result);
     } else if (IsDerivedConstructor(shared_info->kind())) {
@@ -702,12 +604,14 @@ Reduction JSInliner::ReduceJSCall(Node* node) {
   if (node->opcode() == IrOpcode::kJSCall &&
       is_sloppy(shared_info->language_mode()) && !shared_info->native()) {
     Node* effect = NodeProperties::GetEffectInput(node);
-    if (NeedsConvertReceiver(call.receiver(), effect)) {
-      const CallParameters& p = CallParametersOf(node->op());
-      Node* convert = effect =
-          graph()->NewNode(javascript()->ConvertReceiver(p.convert_mode()),
-                           call.receiver(), context, effect, start);
-      NodeProperties::ReplaceValueInput(node, convert, 1);
+    if (NodeProperties::CanBePrimitive(call.receiver(), effect)) {
+      CallParameters const& p = CallParametersOf(node->op());
+      Node* global_proxy = jsgraph()->HeapConstant(
+          handle(info_->native_context()->global_proxy()));
+      Node* receiver = effect =
+          graph()->NewNode(simplified()->ConvertReceiver(p.convert_mode()),
+                           call.receiver(), global_proxy, effect, start);
+      NodeProperties::ReplaceValueInput(node, receiver, 1);
       NodeProperties::ReplaceEffectInput(node, effect);
     }
   }

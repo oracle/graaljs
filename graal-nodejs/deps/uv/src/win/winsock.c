@@ -256,8 +256,8 @@ int uv_ntstatus_to_winsock_error(NTSTATUS status) {
     default:
       if ((status & (FACILITY_NTWIN32 << 16)) == (FACILITY_NTWIN32 << 16) &&
           (status & (ERROR_SEVERITY_ERROR | ERROR_SEVERITY_WARNING))) {
-        /* It's a windows error that has been previously mapped to an */
-        /* ntstatus code. */
+        /* It's a windows error that has been previously mapped to an ntstatus
+         * code. */
         return (DWORD) (status & 0xffff);
       } else {
         /* The default fallback for unmappable ntstatus codes. */
@@ -519,8 +519,8 @@ int WSAAPI uv_msafd_poll(SOCKET socket, AFD_POLL_INFO* info_in,
                                   sizeof *info_out);
 
   if (overlapped == NULL) {
-    /* If this is a blocking operation, wait for the event to become */
-    /* signaled, and then grab the real status from the io status block. */
+    /* If this is a blocking operation, wait for the event to become signaled,
+     * and then grab the real status from the io status block. */
     if (status == STATUS_PENDING) {
       DWORD r = WaitForSingleObject(event, INFINITE);
 
@@ -580,8 +580,10 @@ int uv__convert_to_localhost_if_unspecified(const struct sockaddr* addr,
     memcpy(dest6, addr, sizeof(*dest6));
     if (memcmp(&dest6->sin6_addr,
                &uv_addr_ip6_any_.sin6_addr,
-               sizeof(uv_addr_ip6_any_.sin6_addr)) == 0)
-      dest6->sin6_addr = (struct in6_addr) IN6ADDR_LOOPBACK_INIT;
+               sizeof(uv_addr_ip6_any_.sin6_addr)) == 0) {
+      struct in6_addr init_sin6_addr = IN6ADDR_LOOPBACK_INIT;
+      dest6->sin6_addr = init_sin6_addr;
+    }
     return 0;
   default:
     return UV_EINVAL;

@@ -76,3 +76,12 @@ v8::Local<v8::ArrayBuffer> GraalArrayBuffer::New(v8::Isolate* isolate, void* dat
 bool GraalArrayBuffer::IsArrayBuffer() const {
     return true;
 }
+
+bool GraalArrayBuffer::IsExternal() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::array_buffer_is_external, Boolean, GetJavaObject());
+    return result;
+}
+
+void GraalArrayBuffer::Neuter() {
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::array_buffer_neuter, GetJavaObject());
+}

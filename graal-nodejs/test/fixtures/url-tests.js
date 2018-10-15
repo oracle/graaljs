@@ -2,7 +2,7 @@
 
 /* The following tests are copied from WPT. Modifications to them should be
    upstreamed first. Refs:
-   https://github.com/w3c/web-platform-tests/blob/11757f1/url/urltestdata.json
+   https://github.com/w3c/web-platform-tests/blob/88b75886e/url/urltestdata.json
    License: http://www.w3.org/Consortium/Legal/2008/04-testsuite-copyright.html
 */
 module.exports =
@@ -161,7 +161,7 @@ module.exports =
   {
     "input": "http://f:21/ b ? d # e ",
     "base": "http://example.org/foo/bar",
-    "href": "http://f:21/%20b%20?%20d%20# e",
+    "href": "http://f:21/%20b%20?%20d%20#%20e",
     "origin": "http://f:21",
     "protocol": "http:",
     "username": "",
@@ -171,12 +171,12 @@ module.exports =
     "port": "21",
     "pathname": "/%20b%20",
     "search": "?%20d%20",
-    "hash": "# e"
+    "hash": "#%20e"
   },
   {
     "input": "lolscheme:x x#x x",
     "base": "about:blank",
-    "href": "lolscheme:x x#x x",
+    "href": "lolscheme:x x#x%20x",
     "protocol": "lolscheme:",
     "username": "",
     "password": "",
@@ -185,7 +185,7 @@ module.exports =
     "port": "",
     "pathname": "x x",
     "search": "",
-    "hash": "#x x"
+    "hash": "#x%20x"
   },
   {
     "input": "http://f:/c",
@@ -2268,7 +2268,7 @@ module.exports =
   {
     "input": "http://www.google.com/foo?bar=baz# »",
     "base": "about:blank",
-    "href": "http://www.google.com/foo?bar=baz# %C2%BB",
+    "href": "http://www.google.com/foo?bar=baz#%20%C2%BB",
     "origin": "http://www.google.com",
     "protocol": "http:",
     "username": "",
@@ -2278,12 +2278,12 @@ module.exports =
     "port": "",
     "pathname": "/foo",
     "search": "?bar=baz",
-    "hash": "# %C2%BB"
+    "hash": "#%20%C2%BB"
   },
   {
     "input": "data:test# »",
     "base": "about:blank",
-    "href": "data:test# %C2%BB",
+    "href": "data:test#%20%C2%BB",
     "origin": "null",
     "protocol": "data:",
     "username": "",
@@ -2293,7 +2293,7 @@ module.exports =
     "port": "",
     "pathname": "test",
     "search": "",
-    "hash": "# %C2%BB"
+    "hash": "#%20%C2%BB"
   },
   {
     "input": "http://www.google.com",
@@ -4795,6 +4795,70 @@ module.exports =
     "searchParams": "qux=",
     "hash": "#foo%08bar"
   },
+  {
+    "input": "http://foo.bar/baz?qux#foo\"bar",
+    "base": "about:blank",
+    "href": "http://foo.bar/baz?qux#foo%22bar",
+    "origin": "http://foo.bar",
+    "protocol": "http:",
+    "username": "",
+    "password": "",
+    "host": "foo.bar",
+    "hostname": "foo.bar",
+    "port": "",
+    "pathname": "/baz",
+    "search": "?qux",
+    "searchParams": "qux=",
+    "hash": "#foo%22bar"
+  },
+  {
+    "input": "http://foo.bar/baz?qux#foo<bar",
+    "base": "about:blank",
+    "href": "http://foo.bar/baz?qux#foo%3Cbar",
+    "origin": "http://foo.bar",
+    "protocol": "http:",
+    "username": "",
+    "password": "",
+    "host": "foo.bar",
+    "hostname": "foo.bar",
+    "port": "",
+    "pathname": "/baz",
+    "search": "?qux",
+    "searchParams": "qux=",
+    "hash": "#foo%3Cbar"
+  },
+  {
+    "input": "http://foo.bar/baz?qux#foo>bar",
+    "base": "about:blank",
+    "href": "http://foo.bar/baz?qux#foo%3Ebar",
+    "origin": "http://foo.bar",
+    "protocol": "http:",
+    "username": "",
+    "password": "",
+    "host": "foo.bar",
+    "hostname": "foo.bar",
+    "port": "",
+    "pathname": "/baz",
+    "search": "?qux",
+    "searchParams": "qux=",
+    "hash": "#foo%3Ebar"
+  },
+  {
+    "input": "http://foo.bar/baz?qux#foo`bar",
+    "base": "about:blank",
+    "href": "http://foo.bar/baz?qux#foo%60bar",
+    "origin": "http://foo.bar",
+    "protocol": "http:",
+    "username": "",
+    "password": "",
+    "host": "foo.bar",
+    "hostname": "foo.bar",
+    "port": "",
+    "pathname": "/baz",
+    "search": "?qux",
+    "searchParams": "qux=",
+    "hash": "#foo%60bar"
+  },
   "# IPv4 parsing (via https://github.com/nodejs/node/pull/10317)",
   {
     "input": "http://192.168.257",
@@ -6465,27 +6529,34 @@ module.exports =
     "search": "?a",
     "hash": "#%GH"
   },
-  "Bad bases",
+  "URLs that require a non-about:blank base. (Also serve as invalid base tests.)",
   {
-    "input": "test-a.html",
-    "base": "a",
+    "input": "a",
+    "base": "about:blank",
     "failure": true
   },
   {
-    "input": "test-a-slash.html",
-    "base": "a/",
+    "input": "a/",
+    "base": "about:blank",
     "failure": true
   },
   {
-    "input": "test-a-slash-slash.html",
-    "base": "a//",
+    "input": "a//",
+    "base": "about:blank",
     "failure": true
   },
+  "Bases that don't fail to parse but fail to be bases",
   {
     "input": "test-a-colon.html",
     "base": "a:",
     "failure": true
   },
+  {
+    "input": "test-a-colon-b.html",
+    "base": "a:b",
+    "failure": true
+  },
+  "Other base URL tests, that must succeed",
   {
     "input": "test-a-colon-slash.html",
     "base": "a:/",
@@ -6513,11 +6584,6 @@ module.exports =
     "pathname": "/test-a-colon-slash-slash.html",
     "search": "",
     "hash": ""
-  },
-  {
-    "input": "test-a-colon-b.html",
-    "base": "a:b",
-    "failure": true
   },
   {
     "input": "test-a-colon-slash-b.html",

@@ -26,7 +26,7 @@ const assert = require('assert');
 if (process.argv[2] !== 'child') {
   const spawn = require('child_process').spawn;
   const child = spawn(process.execPath, [__filename, 'child'], {
-    stdio: 'pipe'//'inherit'
+    stdio: 'pipe'// 'inherit'
   });
   const timer = setTimeout(function() {
     throw new Error('child is hung');
@@ -39,7 +39,6 @@ if (process.argv[2] !== 'child') {
 
   const domain = require('domain');
   const d = domain.create();
-  process.maxTickDepth = 10;
 
   // in the error handler, we trigger several MakeCallback events
   d.on('error', function() {

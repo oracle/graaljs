@@ -23,37 +23,77 @@
 
 const EventEmitter = require('events');
 const stream = require('stream');
-const timers = require('timers');
 const util = require('util');
 const internalUtil = require('internal/util');
-const { isLegalPort, normalizedArgsSymbol } = require('internal/net');
+const {
+  isIP,
+  isIPv4,
+  isIPv6,
+  isLegalPort,
+  normalizedArgsSymbol,
+  makeSyncWrite
+} = require('internal/net');
 const assert = require('assert');
-const cares = process.binding('cares_wrap');
-const uv = process.binding('uv');
+const {
+  UV_EADDRINUSE,
+  UV_EINVAL,
+  UV_EOF
+} = process.binding('uv');
 
 const { Buffer } = require('buffer');
 const TTYWrap = process.binding('tty_wrap');
-const { TCP, constants: TCPConstants } = process.binding('tcp_wrap');
-const { Pipe, constants: PipeConstants } = process.binding('pipe_wrap');
-const { TCPConnectWrap } = process.binding('tcp_wrap');
-const { PipeConnectWrap } = process.binding('pipe_wrap');
-const { ShutdownWrap, WriteWrap } = process.binding('stream_wrap');
-const { async_id_symbol } = process.binding('async_wrap');
-const { newUid, defaultTriggerAsyncIdScope } = require('internal/async_hooks');
-const { nextTick } = require('internal/process/next_tick');
+const { ShutdownWrap } = process.binding('stream_wrap');
+const {
+  TCP,
+  TCPConnectWrap,
+  constants: TCPConstants
+} = process.binding('tcp_wrap');
+const {
+  Pipe,
+  PipeConnectWrap,
+  constants: PipeConstants
+} = process.binding('pipe_wrap');
+const {
+  newAsyncId,
+  defaultTriggerAsyncIdScope,
+  symbols: { async_id_symbol }
+} = require('internal/async_hooks');
+const {
+  createWriteWrap,
+  writevGeneric,
+  writeGeneric
+} = require('internal/stream_base_commons');
 const errors = require('internal/errors');
-const dns = require('dns');
+const {
+  ERR_INVALID_ADDRESS_FAMILY,
+  ERR_INVALID_ARG_TYPE,
+  ERR_INVALID_FD_TYPE,
+  ERR_INVALID_IP_ADDRESS,
+  ERR_INVALID_OPT_VALUE,
+  ERR_SERVER_ALREADY_LISTEN,
+  ERR_SERVER_NOT_RUNNING,
+  ERR_SOCKET_BAD_PORT,
+  ERR_SOCKET_CLOSED
+} = errors.codes;
+const { validateInt32, validateString } = require('internal/validators');
+const kLastWriteQueueSize = Symbol('lastWriteQueueSize');
 
-// `cluster` is only used by `listenInCluster` so for startup performance
-// reasons it's lazy loaded.
-var cluster = null;
+// Lazy loaded to improve startup performance.
+let cluster;
+let dns;
 
-const errnoException = util._errnoException;
-const exceptionWithHostPort = util._exceptionWithHostPort;
+const { errnoException, exceptionWithHostPort } = errors;
+
+const {
+  kTimeout,
+  setUnrefTimeout,
+  validateTimerDuration
+} = require('internal/timers');
 
 function noop() {}
 
 function createHandle(fd, is_server) {
+  validateInt32(fd, 'fd', 0);
   const type = TTYWrap.guessHandleType(fd);
   if (type === 'PIPE') {
     return new Pipe(
@@ -67,13 +107,13 @@ function createHandle(fd, is_server) {
     );
   }
 
-  throw new TypeError('Unsupported fd type: ' + type);
+  throw new ERR_INVALID_FD_TYPE(type);
 }
 
 
 function getNewAsyncId(handle) {
   return (!handle || typeof handle.getAsyncId !== 'function') ?
-    newUid() : handle.getAsyncId();
+    newAsyncId() : handle.getAsyncId();
 }
 
 
@@ -163,7 +203,6 @@ function normalizeArgs(args) {
 // called when creating new Socket, or when re-using a closed Socket
 function initSocketHandle(self) {
   self._undestroy();
-  self._bytesDispatched = 0;
   self._sockname = null;
 
   // Handle creation may be deferred to bind() or connect() time.
@@ -171,15 +210,12 @@ function initSocketHandle(self) {
     self._handle.owner = self;
     self._handle.onread = onread;
     self[async_id_symbol] = getNewAsyncId(self._handle);
-
-    // If handle doesn't support writev - neither do we
-    if (!self._handle.writev)
-      self._writev = null;
   }
 }
 
 
-const BYTES_READ = Symbol('bytesRead');
+const kBytesRead = Symbol('kBytesRead');
+const kBytesWritten = Symbol('kBytesWritten');
 
 
 function Socket(options) {
@@ -194,43 +230,65 @@ function Socket(options) {
   this._handle = null;
   this._parent = null;
   this._host = null;
+  this[kLastWriteQueueSize] = 0;
+  this[kTimeout] = null;
 
   if (typeof options === 'number')
     options = { fd: options }; // Legacy interface.
-  else if (options === undefined)
-    options = {};
+  else
+    options = util._extend({}, options);
 
+  options.readable = options.readable || false;
+  options.writable = options.writable || false;
+  const { allowHalfOpen } = options;
+
+  // Prevent the "no-half-open enforcer" from being inherited from `Duplex`.
+  options.allowHalfOpen = true;
+  // For backwards compat do not emit close on destroy.
+  options.emitClose = false;
   stream.Duplex.call(this, options);
+
+  // Default to *not* allowing half open sockets.
+  this.allowHalfOpen = Boolean(allowHalfOpen);
 
   if (options.handle) {
     this._handle = options.handle; // private
     this[async_id_symbol] = getNewAsyncId(this._handle);
   } else if (options.fd !== undefined) {
-    this._handle = createHandle(options.fd, false);
-    this._handle.open(options.fd);
+    const { fd } = options;
+    let err;
+
+    this._handle = createHandle(fd, false);
+
+    err = this._handle.open(fd);
+    if (err)
+      throw errnoException(err, 'open');
+
     this[async_id_symbol] = this._handle.getAsyncId();
     // options.fd can be string (since it is user-defined),
     // so changing this to === would be semver-major
     // See: https://github.com/nodejs/node/pull/11513
     // eslint-disable-next-line eqeqeq
-    if ((options.fd == 1 || options.fd == 2) &&
+    if ((fd == 1 || fd == 2) &&
         (this._handle instanceof Pipe) &&
         process.platform === 'win32') {
       // Make stdout and stderr blocking on Windows
-      var err = this._handle.setBlocking(true);
+      err = this._handle.setBlocking(true);
       if (err)
         throw errnoException(err, 'setBlocking');
+
+      this._writev = null;
+      this._write = makeSyncWrite(fd);
+      // makeSyncWrite adjusts this value like the original handle would, so
+      // we need to let it do that by turning it into a writable, own property.
+      Object.defineProperty(this._handle, 'bytesWritten', {
+        value: 0, writable: true
+      });
     }
-    this.readable = options.readable !== false;
-    this.writable = options.writable !== false;
-  } else {
-    // these will be set once there is a connection
-    this.readable = this.writable = false;
   }
 
   // shut down the socket when we're finished with it.
-  this.on('finish', onSocketFinish);
-  this.on('_socketEnd', onSocketEnd);
+  this.on('end', onReadableStreamEnd);
 
   initSocketHandle(this);
 
@@ -240,9 +298,6 @@ function Socket(options) {
   // handle strings directly
   this._writableState.decodeStrings = false;
 
-  // default to *not* allowing half open sockets
-  this.allowHalfOpen = options && options.allowHalfOpen || false;
-
   // if we have a handle, then start the flow of data into the
   // buffer.  if not, then this will happen when we connect
   if (this._handle && options.readable !== false) {
@@ -250,7 +305,7 @@ function Socket(options) {
       // stop the handle from reading and pause the stream
       this._handle.reading = false;
       this._handle.readStop();
-      this._readableState.flowing = false;
+      this.readableFlowing = false;
     } else if (!options.manualStart) {
       this.read(0);
     }
@@ -261,58 +316,67 @@ function Socket(options) {
   this._server = null;
 
   // Used after `.destroy()`
-  this[BYTES_READ] = 0;
+  this[kBytesRead] = 0;
+  this[kBytesWritten] = 0;
 }
 util.inherits(Socket, stream.Duplex);
 
+// Refresh existing timeouts.
 Socket.prototype._unrefTimer = function _unrefTimer() {
-  for (var s = this; s !== null; s = s._parent)
-    timers._unrefActive(s);
+  for (var s = this; s !== null; s = s._parent) {
+    if (s[kTimeout])
+      s[kTimeout].refresh();
+  }
 };
 
 
 function shutdownSocket(self, callback) {
   var req = new ShutdownWrap();
-  req.oncomplete = callback;
+  req.oncomplete = afterShutdown;
   req.handle = self._handle;
+  req.callback = callback;
   return self._handle.shutdown(req);
 }
 
 // the user has called .end(), and all the bytes have been
 // sent out to the other side.
-function onSocketFinish() {
-  // If still connecting - defer handling 'finish' until 'connect' will happen
+Socket.prototype._final = function(cb) {
+  // If still connecting - defer handling `_final` until 'connect' will happen
   if (this.connecting) {
-    debug('osF: not yet connected');
-    return this.once('connect', onSocketFinish);
+    debug('_final: not yet connected');
+    return this.once('connect', () => this._final(cb));
   }
 
-  debug('onSocketFinish');
   if (!this.readable || this._readableState.ended) {
-    debug('oSF: ended, destroy', this._readableState);
+    debug('_final: ended, destroy', this._readableState);
+    cb();
     return this.destroy();
   }
 
-  debug('oSF: not ended, call shutdown()');
+  debug('_final: not ended, call shutdown()');
 
   // otherwise, just shutdown, or destroy() if not possible
-  if (!this._handle || !this._handle.shutdown)
+  if (!this._handle || !this._handle.shutdown) {
+    cb();
     return this.destroy();
+  }
 
   var err = defaultTriggerAsyncIdScope(
-    this[async_id_symbol], shutdownSocket, this, afterShutdown
+    this[async_id_symbol], shutdownSocket, this, cb
   );
 
   if (err)
     return this.destroy(errnoException(err, 'shutdown'));
-}
+};
 
 
-function afterShutdown(status, handle, req) {
+function afterShutdown(status, handle) {
   var self = handle.owner;
 
   debug('afterShutdown destroyed=%j', self.destroyed,
         self._readableState);
+
+  this.callback();
 
   // callback may come after call to destroy.
   if (self.destroyed)
@@ -321,34 +385,6 @@ function afterShutdown(status, handle, req) {
   if (self._readableState.ended) {
     debug('readableState ended, destroying');
     self.destroy();
-  } else {
-    self.once('_socketEnd', self.destroy);
-  }
-}
-
-// the EOF has been received, and no more bytes are coming.
-// if the writable side has ended already, then clean everything
-// up.
-function onSocketEnd() {
-  // XXX Should not have to do as much in this function.
-  // ended should already be true, since this is called *after*
-  // the EOF errno and onread has eof'ed
-  debug('onSocketEnd', this._readableState);
-  this._readableState.ended = true;
-  if (this._readableState.endEmitted) {
-    this.readable = false;
-    maybeDestroy(this);
-  } else {
-    this.once('end', function end() {
-      this.readable = false;
-      maybeDestroy(this);
-    });
-    this.read(0);
-  }
-
-  if (!this.allowHalfOpen) {
-    this.write = writeAfterFIN;
-    this.destroySoon();
   }
 }
 
@@ -361,42 +397,32 @@ function writeAfterFIN(chunk, encoding, cb) {
     encoding = null;
   }
 
+  // eslint-disable-next-line no-restricted-syntax
   var er = new Error('This socket has been ended by the other party');
   er.code = 'EPIPE';
   // TODO: defer error events consistently everywhere, not just the cb
   this.emit('error', er);
   if (typeof cb === 'function') {
-    nextTick(this[async_id_symbol], cb, er);
+    defaultTriggerAsyncIdScope(this[async_id_symbol], process.nextTick, cb, er);
   }
 }
 
-Socket.prototype.read = function(n) {
-  if (n === 0)
-    return stream.Readable.prototype.read.call(this, n);
-
-  this.read = stream.Readable.prototype.read;
-  this._consuming = true;
-  return this.read(n);
-};
-
-
-// FIXME(joyeecheung): this method is neither documented nor tested
-Socket.prototype.listen = function() {
-  debug('socket.listen');
-  this.on('connection', arguments[0]);
-  listenInCluster(this, null, null, null);
-};
-
-
 Socket.prototype.setTimeout = function(msecs, callback) {
+  this.timeout = msecs;
+  // Type checking identical to timers.enroll()
+  msecs = validateTimerDuration(msecs);
+
+  // Attempt to clear an existing timer in both cases -
+  //  even if it will be rescheduled we don't want to leak an existing timer.
+  clearTimeout(this[kTimeout]);
+
   if (msecs === 0) {
-    timers.unenroll(this);
     if (callback) {
       this.removeListener('timeout', callback);
     }
   } else {
-    timers.enroll(this, msecs);
-    timers._unrefActive(this);
+    this[kTimeout] = setUnrefTimeout(this._onTimeout.bind(this), msecs);
+
     if (callback) {
       this.once('timeout', callback);
     }
@@ -406,12 +432,14 @@ Socket.prototype.setTimeout = function(msecs, callback) {
 
 
 Socket.prototype._onTimeout = function() {
-  if (this._handle) {
-    // `.prevWriteQueueSize` !== `.updateWriteQueueSize()` means there is
+  const handle = this._handle;
+  const lastWriteQueueSize = this[kLastWriteQueueSize];
+  if (lastWriteQueueSize > 0 && handle) {
+    // `lastWriteQueueSize !== writeQueueSize` means there is
     // an active write in progress, so we suppress the timeout.
-    const prevWriteQueueSize = this._handle.writeQueueSize;
-    if (prevWriteQueueSize > 0 &&
-        prevWriteQueueSize !== this._handle.updateWriteQueueSize()) {
+    const { writeQueueSize } = handle;
+    if (lastWriteQueueSize !== writeQueueSize) {
+      this[kLastWriteQueueSize] = writeQueueSize;
       this._unrefTimer();
       return;
     }
@@ -481,7 +509,7 @@ Object.defineProperty(Socket.prototype, 'readyState', {
 Object.defineProperty(Socket.prototype, 'bufferSize', {
   get: function() {
     if (this._handle) {
-      return this._handle.writeQueueSize + this._writableState.length;
+      return this[kLastWriteQueueSize] + this.writableLength;
     }
   }
 });
@@ -505,20 +533,22 @@ Socket.prototype._read = function(n) {
 };
 
 
-Socket.prototype.end = function(data, encoding) {
-  stream.Duplex.prototype.end.call(this, data, encoding);
-  this.writable = false;
+Socket.prototype.end = function(data, encoding, callback) {
+  stream.Duplex.prototype.end.call(this, data, encoding, callback);
   DTRACE_NET_STREAM_END(this);
-  LTTNG_NET_STREAM_END(this);
-
-  // just in case we're waiting for an EOF.
-  if (this.readable && !this._readableState.endEmitted)
-    this.read(0);
-  else
-    maybeDestroy(this);
-
   return this;
 };
+
+
+// Called when the 'end' event is emitted.
+function onReadableStreamEnd() {
+  if (!this.allowHalfOpen) {
+    this.write = writeAfterFIN;
+    if (this.writable)
+      this.end();
+  }
+  maybeDestroy(this);
+}
 
 
 // Call whenever we set writable=false or readable=false
@@ -527,7 +557,7 @@ function maybeDestroy(socket) {
       !socket.writable &&
       !socket.destroyed &&
       !socket.connecting &&
-      !socket._writableState.length) {
+      !socket.writableLength) {
     socket.destroy();
   }
 }
@@ -551,16 +581,18 @@ Socket.prototype._destroy = function(exception, cb) {
 
   this.readable = this.writable = false;
 
-  for (var s = this; s !== null; s = s._parent)
-    timers.unenroll(s);
+  for (var s = this; s !== null; s = s._parent) {
+    clearTimeout(s[kTimeout]);
+  }
 
   debug('close');
   if (this._handle) {
     if (this !== process.stderr)
       debug('close handle');
     var isException = exception ? true : false;
-    // `bytesRead` should be accessible after `.destroy()`
-    this[BYTES_READ] = this._handle.bytesRead;
+    // `bytesRead` and `kBytesWritten` should be accessible after `.destroy()`
+    this[kBytesRead] = this._handle.bytesRead;
+    this[kBytesWritten] = this._handle.bytesWritten;
 
     this._handle.close(() => {
       debug('emit close');
@@ -624,7 +656,7 @@ function onread(nread, buffer) {
   }
 
   // Error, possibly EOF.
-  if (nread !== uv.UV_EOF) {
+  if (nread !== UV_EOF) {
     return self.destroy(errnoException(nread, 'read'));
   }
 
@@ -634,16 +666,7 @@ function onread(nread, buffer) {
   // Do it before `maybeDestroy` for correct order of events:
   // `end` -> `close`
   self.push(null);
-
-  if (self._readableState.length === 0) {
-    self.readable = false;
-    maybeDestroy(self);
-  }
-
-  // internal end event so that we know that the actual socket
-  // is no longer readable, and we can start the shutdown
-  // procedure. No need to wait for all the data to be consumed.
-  self.emit('_socketEnd');
+  self.read(0);
 }
 
 
@@ -669,7 +692,7 @@ function protoGetter(name, callback) {
 }
 
 protoGetter('bytesRead', function bytesRead() {
-  return this._handle ? this._handle.bytesRead : this[BYTES_READ];
+  return this._handle ? this._handle.bytesRead : this[kBytesRead];
 });
 
 protoGetter('remoteAddress', function remoteAddress() {
@@ -709,15 +732,6 @@ protoGetter('localPort', function localPort() {
 });
 
 
-Socket.prototype.write = function(chunk, encoding, cb) {
-  if (typeof chunk !== 'string' && !(chunk instanceof Buffer)) {
-    throw new TypeError(
-      'Invalid data, chunk must be a string or buffer, not ' + typeof chunk);
-  }
-  return stream.Duplex.prototype.write.apply(this, arguments);
-};
-
-
 Socket.prototype._writeGeneric = function(writev, data, encoding, cb) {
   // If we are still connecting, then buffer this for later.
   // The Writable logic will buffer up any more writes while
@@ -733,60 +747,20 @@ Socket.prototype._writeGeneric = function(writev, data, encoding, cb) {
   this._pendingData = null;
   this._pendingEncoding = '';
 
-  this._unrefTimer();
-
   if (!this._handle) {
-    this.destroy(new Error('This socket is closed'), cb);
+    this.destroy(new ERR_SOCKET_CLOSED(), cb);
     return false;
   }
 
-  var req = new WriteWrap();
-  req.handle = this._handle;
-  req.oncomplete = afterWrite;
-  req.async = false;
-  var err;
+  this._unrefTimer();
 
-  if (writev) {
-    var allBuffers = data.allBuffers;
-    var chunks;
-    var i;
-    if (allBuffers) {
-      chunks = data;
-      for (i = 0; i < data.length; i++)
-        data[i] = data[i].chunk;
-    } else {
-      chunks = new Array(data.length << 1);
-      for (i = 0; i < data.length; i++) {
-        var entry = data[i];
-        chunks[i * 2] = entry.chunk;
-        chunks[i * 2 + 1] = entry.encoding;
-      }
-    }
-    err = this._handle.writev(req, chunks, allBuffers);
-
-    // Retain chunks
-    if (err === 0) req._chunks = chunks;
-  } else {
-    var enc;
-    if (data instanceof Buffer) {
-      enc = 'buffer';
-    } else {
-      enc = encoding;
-    }
-    err = createWriteReq(req, this._handle, data, enc);
-  }
-
-  if (err)
-    return this.destroy(errnoException(err, 'write', req.error), cb);
-
-  this._bytesDispatched += req.bytes;
-
-  // If it was entirely flushed, we can write some more right now.
-  // However, if more is left in the queue, then wait until that clears.
-  if (req.async && this._handle.writeQueueSize !== 0)
-    req.cb = cb;
+  var req = createWriteWrap(this._handle, afterWrite);
+  if (writev)
+    writevGeneric(this, req, data, cb);
   else
-    cb();
+    writeGeneric(this, req, data, encoding, cb);
+  if (req.async)
+    this[kLastWriteQueueSize] = req.bytes;
 };
 
 
@@ -799,33 +773,12 @@ Socket.prototype._write = function(data, encoding, cb) {
   this._writeGeneric(false, data, encoding, cb);
 };
 
-function createWriteReq(req, handle, data, encoding) {
-  switch (encoding) {
-    case 'latin1':
-    case 'binary':
-      return handle.writeLatin1String(req, data);
 
-    case 'buffer':
-      return handle.writeBuffer(req, data);
-
-    case 'utf8':
-    case 'utf-8':
-      return handle.writeUtf8String(req, data);
-
-    case 'ascii':
-      return handle.writeAsciiString(req, data);
-
-    case 'ucs2':
-    case 'ucs-2':
-    case 'utf16le':
-    case 'utf-16le':
-      return handle.writeUcs2String(req, data);
-
-    default:
-      return handle.writeBuffer(req, Buffer.from(data, encoding));
-  }
-}
-
+// Legacy alias. Having this is probably being overly cautious, but it doesn't
+// really hurt anyone either. This can probably be removed safely if desired.
+protoGetter('_bytesDispatched', function _bytesDispatched() {
+  return this._handle ? this._handle.bytesWritten : this[kBytesWritten];
+});
 
 protoGetter('bytesWritten', function bytesWritten() {
   var bytes = this._bytesDispatched;
@@ -836,7 +789,7 @@ protoGetter('bytesWritten', function bytesWritten() {
   if (!state)
     return undefined;
 
-  state.getBuffer().forEach(function(el) {
+  this.writableBuffer.forEach(function(el) {
     if (el.chunk instanceof Buffer)
       bytes += el.chunk.length;
     else
@@ -865,10 +818,13 @@ protoGetter('bytesWritten', function bytesWritten() {
 });
 
 
-function afterWrite(status, handle, req, err) {
+function afterWrite(status, handle, err) {
   var self = handle.owner;
   if (self !== process.stderr && self !== process.stdout)
     debug('afterWrite', status);
+
+  if (this.async)
+    self[kLastWriteQueueSize] = 0;
 
   // callback may come after call to destroy.
   if (self.destroyed) {
@@ -877,9 +833,9 @@ function afterWrite(status, handle, req, err) {
   }
 
   if (status < 0) {
-    var ex = errnoException(status, 'write', req.error);
+    var ex = errnoException(status, 'write', this.error);
     debug('write failure', ex);
-    self.destroy(ex, req.cb);
+    self.destroy(ex, this.callback);
     return;
   }
 
@@ -888,8 +844,8 @@ function afterWrite(status, handle, req, err) {
   if (self !== process.stderr && self !== process.stdout)
     debug('afterWrite call cb');
 
-  if (req.cb)
-    req.cb.call(self);
+  if (this.callback)
+    this.callback.call(undefined);
 }
 
 
@@ -907,7 +863,7 @@ function checkBindError(err, port, handle) {
     err = handle.getsockname(out);
     if (err === 0 && port !== out.port) {
       debug(`checkBindError, bound to ${out.port} instead of ${port}`);
-      err = uv.UV_EADDRINUSE;
+      err = UV_EADDRINUSE;
     }
   }
   return err;
@@ -931,7 +887,7 @@ function internalConnect(
       localAddress = localAddress || '::';
       err = self._handle.bind6(localAddress, localPort);
     } else {
-      self.destroy(new TypeError('Invalid addressType: ' + addressType));
+      self.destroy(new ERR_INVALID_ADDRESS_FAMILY(addressType));
       return;
     }
     debug('binding to localAddress: %s and localPort: %d (addressType: %d)',
@@ -1003,7 +959,7 @@ Socket.prototype.connect = function(...args) {
     this._sockname = null;
   }
 
-  const path = options.path;
+  const { path } = options;
   var pipe = !!path;
   debug('pipe', pipe, path);
 
@@ -1024,12 +980,7 @@ Socket.prototype.connect = function(...args) {
   this.writable = true;
 
   if (pipe) {
-    if (typeof path !== 'string') {
-      throw new errors.TypeError('ERR_INVALID_ARG_TYPE',
-                                 'options.path',
-                                 'string',
-                                 path);
-    }
+    validateString(path, 'options.path');
     defaultTriggerAsyncIdScope(
       this[async_id_symbol], internalConnect, this, path
     );
@@ -1041,35 +992,32 @@ Socket.prototype.connect = function(...args) {
 
 
 function lookupAndConnect(self, options) {
+  var { port, localAddress, localPort } = options;
   var host = options.host || 'localhost';
-  var port = options.port;
-  var localAddress = options.localAddress;
-  var localPort = options.localPort;
 
-  if (localAddress && !cares.isIP(localAddress)) {
-    throw new TypeError('"localAddress" option must be a valid IP: ' +
-                        localAddress);
+  if (localAddress && !isIP(localAddress)) {
+    throw new ERR_INVALID_IP_ADDRESS(localAddress);
   }
 
   if (localPort && typeof localPort !== 'number') {
-    throw new TypeError('"localPort" option should be a number: ' + localPort);
+    throw new ERR_INVALID_ARG_TYPE('options.localPort', 'number', localPort);
   }
 
   if (typeof port !== 'undefined') {
     if (typeof port !== 'number' && typeof port !== 'string') {
-      throw new TypeError('"port" option should be a number or string: ' +
-                          port);
+      throw new ERR_INVALID_ARG_TYPE('options.port',
+                                     ['number', 'string'], port);
     }
     if (!isLegalPort(port)) {
-      throw new RangeError('"port" option should be >= 0 and < 65536: ' + port);
+      throw new ERR_SOCKET_BAD_PORT(port);
     }
   }
   port |= 0;
 
   // If host is an IP, skip performing a lookup
-  var addressType = cares.isIP(host);
+  var addressType = isIP(host);
   if (addressType) {
-    nextTick(self[async_id_symbol], function() {
+    defaultTriggerAsyncIdScope(self[async_id_symbol], process.nextTick, () => {
       if (self.connecting)
         defaultTriggerAsyncIdScope(
           self[async_id_symbol],
@@ -1081,8 +1029,11 @@ function lookupAndConnect(self, options) {
   }
 
   if (options.lookup && typeof options.lookup !== 'function')
-    throw new TypeError('"lookup" option should be a function');
+    throw new ERR_INVALID_ARG_TYPE('options.lookup',
+                                   'Function', options.lookup);
 
+
+  if (dns === undefined) dns = require('dns');
   var dnsopts = {
     family: options.family,
     hints: options.hints || 0
@@ -1117,6 +1068,12 @@ function lookupAndConnect(self, options) {
         err.port = options.port;
         err.message = err.message + ' ' + options.host + ':' + options.port;
         process.nextTick(connectErrorNT, self, err);
+      } else if (addressType !== 4 && addressType !== 6) {
+        err = new ERR_INVALID_ADDRESS_FAMILY(addressType);
+        err.host = options.host;
+        err.port = options.port;
+        err.message = err.message + ' ' + options.host + ':' + options.port;
+        process.nextTick(connectErrorNT, self, err);
       } else {
         self._unrefTimer();
         defaultTriggerAsyncIdScope(
@@ -1141,7 +1098,9 @@ Socket.prototype.ref = function() {
     return this;
   }
 
-  this._handle.ref();
+  if (typeof this._handle.ref === 'function') {
+    this._handle.ref();
+  }
 
   return this;
 };
@@ -1153,7 +1112,9 @@ Socket.prototype.unref = function() {
     return this;
   }
 
-  this._handle.unref();
+  if (typeof this._handle.unref === 'function') {
+    this._handle.unref();
+  }
 
   return this;
 };
@@ -1179,10 +1140,12 @@ function afterConnect(status, handle, req, readable, writable) {
 
   if (status === 0) {
     self.readable = readable;
-    self.writable = writable;
+    if (!self._writableState.ended)
+      self.writable = writable;
     self._unrefTimer();
 
     self.emit('connect');
+    self.emit('ready');
 
     // start the first read, or get an immediate EOF.
     // this doesn't actually consume any bytes, because len=0.
@@ -1226,7 +1189,7 @@ function Server(options, connectionListener) {
       this.on('connection', connectionListener);
     }
   } else {
-    throw new TypeError('options must be an object');
+    throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
   }
 
   this._connections = 0;
@@ -1234,7 +1197,7 @@ function Server(options, connectionListener) {
   Object.defineProperty(this, 'connections', {
     get: internalUtil.deprecate(() => {
 
-      if (this._usingSlaves) {
+      if (this._usingWorkers) {
         return null;
       }
       return this._connections;
@@ -1248,8 +1211,8 @@ function Server(options, connectionListener) {
 
   this[async_id_symbol] = -1;
   this._handle = null;
-  this._usingSlaves = false;
-  this._slaves = [];
+  this._usingWorkers = false;
+  this._workers = [];
   this._unref = false;
 
   this.allowHalfOpen = options.allowHalfOpen || false;
@@ -1273,9 +1236,13 @@ function createServerHandle(address, port, addressType, fd) {
     } catch (e) {
       // Not a fd we can listen on.  This will trigger an error.
       debug('listen invalid fd=%d:', fd, e.message);
-      return uv.UV_EINVAL;
+      return UV_EINVAL;
     }
-    handle.open(fd);
+
+    err = handle.open(fd);
+    if (err)
+      return err;
+
     handle.readable = true;
     handle.writable = true;
     assert(!address && !port);
@@ -1283,7 +1250,7 @@ function createServerHandle(address, port, addressType, fd) {
     handle = new Pipe(PipeConstants.SERVER);
     if (process.platform === 'win32') {
       var instances = parseInt(process.env.NODE_PENDING_PIPE_INSTANCES);
-      if (!isNaN(instances)) {
+      if (!Number.isNaN(instances)) {
         handle.setPendingInstances(instances);
       }
     }
@@ -1367,7 +1334,11 @@ function setupListenHandle(address, port, addressType, backlog, fd) {
     var ex = exceptionWithHostPort(err, 'listen', address, port);
     this._handle.close();
     this._handle = null;
-    nextTick(this[async_id_symbol], emitErrorNT, this, ex);
+    defaultTriggerAsyncIdScope(this[async_id_symbol],
+                               process.nextTick,
+                               emitErrorNT,
+                               this,
+                               ex);
     return;
   }
 
@@ -1378,7 +1349,10 @@ function setupListenHandle(address, port, addressType, backlog, fd) {
   if (this._unref)
     this.unref();
 
-  nextTick(this[async_id_symbol], emitListeningNT, this);
+  defaultTriggerAsyncIdScope(this[async_id_symbol],
+                             process.nextTick,
+                             emitListeningNT,
+                             this);
 }
 
 Server.prototype._listen2 = setupListenHandle;  // legacy alias
@@ -1399,7 +1373,7 @@ function listenInCluster(server, address, port, addressType,
                          backlog, fd, exclusive) {
   exclusive = !!exclusive;
 
-  if (cluster === null) cluster = require('cluster');
+  if (cluster === undefined) cluster = require('cluster');
 
   if (cluster.isMaster || exclusive) {
     // Will create a new handle
@@ -1442,8 +1416,11 @@ Server.prototype.listen = function(...args) {
   var options = normalized[0];
   var cb = normalized[1];
 
-  var hasCallback = (cb !== null);
-  if (hasCallback) {
+  if (this._handle) {
+    throw new ERR_SERVER_ALREADY_LISTEN();
+  }
+
+  if (cb !== null) {
     this.once('listening', cb);
   }
   var backlogFromArgs =
@@ -1480,7 +1457,7 @@ Server.prototype.listen = function(...args) {
   var backlog;
   if (typeof options.port === 'number' || typeof options.port === 'string') {
     if (!isLegalPort(options.port)) {
-      throw new RangeError('"port" argument must be >= 0 and < 65536');
+      throw new ERR_SOCKET_BAD_PORT(options.port);
     }
     backlog = options.backlog || backlogFromArgs;
     // start TCP server listening on host:port
@@ -1502,13 +1479,27 @@ Server.prototype.listen = function(...args) {
     backlog = options.backlog || backlogFromArgs;
     listenInCluster(this, pipeName, -1, -1,
                     backlog, undefined, options.exclusive);
+    let mode = 0;
+    if (options.readableAll === true)
+      mode |= PipeConstants.UV_READABLE;
+    if (options.writableAll === true)
+      mode |= PipeConstants.UV_WRITABLE;
+    if (mode !== 0) {
+      const err = this._handle.fchmod(mode);
+      if (err) {
+        this._handle.close();
+        this._handle = null;
+        throw errnoException(err, 'uv_pipe_chmod');
+      }
+    }
     return this;
   }
 
-  throw new Error('Invalid listen argument: ' + util.inspect(options));
+  throw new ERR_INVALID_OPT_VALUE('options', util.inspect(options));
 };
 
 function lookupAndListen(self, port, address, backlog, exclusive) {
+  if (dns === undefined) dns = require('dns');
   dns.lookup(address, function doListen(err, ip, addressType) {
     if (err) {
       self.emit('error', err);
@@ -1562,17 +1553,16 @@ function onconnection(err, clientHandle) {
   var socket = new Socket({
     handle: clientHandle,
     allowHalfOpen: self.allowHalfOpen,
-    pauseOnCreate: self.pauseOnConnect
+    pauseOnCreate: self.pauseOnConnect,
+    readable: true,
+    writable: true
   });
-  socket.readable = socket.writable = true;
-
 
   self._connections++;
   socket.server = self;
   socket._server = self;
 
   DTRACE_NET_SERVER_CONNECTION(socket);
-  LTTNG_NET_SERVER_CONNECTION(socket);
   COUNTER_NET_SERVER_CONNECTION(socket);
   self.emit('connection', socket);
 }
@@ -1582,17 +1572,20 @@ Server.prototype.getConnections = function(cb) {
   const self = this;
 
   function end(err, connections) {
-    const asyncId = self._handle ? self[async_id_symbol] : null;
-    nextTick(asyncId, cb, err, connections);
+    defaultTriggerAsyncIdScope(self[async_id_symbol],
+                               process.nextTick,
+                               cb,
+                               err,
+                               connections);
   }
 
-  if (!this._usingSlaves) {
+  if (!this._usingWorkers) {
     end(null, this._connections);
     return this;
   }
 
-  // Poll slaves
-  var left = this._slaves.length;
+  // Poll workers
+  var left = this._workers.length;
   var total = this._connections;
 
   function oncount(err, count) {
@@ -1605,8 +1598,8 @@ Server.prototype.getConnections = function(cb) {
     if (--left === 0) return end(null, total);
   }
 
-  for (var n = 0; n < this._slaves.length; n++) {
-    this._slaves[n].getConnections(oncount);
+  for (var n = 0; n < this._workers.length; n++) {
+    this._workers[n].getConnections(oncount);
   }
 
   return this;
@@ -1617,7 +1610,7 @@ Server.prototype.close = function(cb) {
   if (typeof cb === 'function') {
     if (!this._handle) {
       this.once('close', function close() {
-        cb(new Error('Not running'));
+        cb(new ERR_SERVER_NOT_RUNNING());
       });
     } else {
       this.once('close', cb);
@@ -1629,9 +1622,9 @@ Server.prototype.close = function(cb) {
     this._handle = null;
   }
 
-  if (this._usingSlaves) {
-    var left = this._slaves.length;
-    const onSlaveClose = () => {
+  if (this._usingWorkers) {
+    var left = this._workers.length;
+    const onWorkerClose = () => {
       if (--left !== 0) return;
 
       this._connections = 0;
@@ -1639,12 +1632,12 @@ Server.prototype.close = function(cb) {
     };
 
     // Increment connections to be sure that, even if all sockets will be closed
-    // during polling of slaves, `close` event will be emitted only once.
+    // during polling of workers, `close` event will be emitted only once.
     this._connections++;
 
-    // Poll slaves
-    for (var n = 0; n < this._slaves.length; n++)
-      this._slaves[n].close(onSlaveClose);
+    // Poll workers
+    for (var n = 0; n < this._workers.length; n++)
+      this._workers[n].close(onWorkerClose);
   } else {
     this._emitCloseIfDrained();
   }
@@ -1661,8 +1654,10 @@ Server.prototype._emitCloseIfDrained = function() {
     return;
   }
 
-  const asyncId = this._handle ? this[async_id_symbol] : null;
-  nextTick(asyncId, emitCloseNT, this);
+  defaultTriggerAsyncIdScope(this[async_id_symbol],
+                             process.nextTick,
+                             emitCloseNT,
+                             this);
 };
 
 
@@ -1677,12 +1672,12 @@ Server.prototype.listenFD = internalUtil.deprecate(function(fd, type) {
 }, 'Server.listenFD is deprecated. Use Server.listen({fd: <number>}) instead.',
                                                    'DEP0021');
 
-Server.prototype._setupSlave = function(socketList) {
-  this._usingSlaves = true;
-  this._slaves.push(socketList);
+Server.prototype._setupWorker = function(socketList) {
+  this._usingWorkers = true;
+  this._workers.push(socketList);
   socketList.once('exit', (socketList) => {
-    const index = this._slaves.indexOf(socketList);
-    this._slaves.splice(index, 1);
+    const index = this._workers.indexOf(socketList);
+    this._workers.splice(index, 1);
   });
 };
 
@@ -1725,7 +1720,7 @@ if (process.platform === 'win32') {
     }
   };
 } else {
-  _setSimultaneousAccepts = function(handle) {};
+  _setSimultaneousAccepts = function() {};
 }
 
 module.exports = {
@@ -1735,9 +1730,9 @@ module.exports = {
   connect,
   createConnection: connect,
   createServer,
-  isIP: cares.isIP,
-  isIPv4: cares.isIPv4,
-  isIPv6: cares.isIPv6,
+  isIP: isIP,
+  isIPv4: isIPv4,
+  isIPv6: isIPv6,
   Server,
   Socket,
   Stream: Socket, // Legacy naming

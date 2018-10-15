@@ -84,13 +84,13 @@ EXPORT_TO_JS(Utf8Length) {
 // String::Utf8Value
 
 EXPORT_TO_JS(Utf8Value) {
-    String::Utf8Value utf8(args[0]);
+    String::Utf8Value utf8(args.GetIsolate(), args[0]);
     args.GetReturnValue().Set(utf8.length());
 }
 
 EXPORT_TO_JS(Utf8ValueEmpty) {
     Local<String> empty;
-    String::Utf8Value utf8(empty);
+    String::Utf8Value utf8(args.GetIsolate(), empty);
     bool result = utf8.length() == 0 && *utf8 == nullptr;
     args.GetReturnValue().Set(result);
 }

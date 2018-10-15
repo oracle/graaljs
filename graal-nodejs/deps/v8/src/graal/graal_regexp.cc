@@ -79,5 +79,5 @@ v8::RegExp::Flags GraalRegExp::GetFlags() const {
     GraalIsolate* graal_isolate = Isolate();
     jobject java_regexp = GetJavaObject();
     JNI_CALL(jint, java_flags, graal_isolate, GraalAccessMethod::regexp_get_flags, Int, java_regexp);
-    static_cast<v8::RegExp::Flags> (java_flags);
+    return static_cast<v8::RegExp::Flags> (java_flags);
 }

@@ -19,22 +19,7 @@ const TCPConnectWrap = process.binding('tcp_wrap').TCPConnectWrap;
 const WriteWrap = process.binding('stream_wrap').WriteWrap;
 const PORT = common.PORT;
 
-var dur;
-var len;
-var type;
-
-function main(conf) {
-  dur = +conf.dur;
-  len = +conf.len;
-  type = conf.type;
-  server();
-}
-
-function fail(err, syscall) {
-  throw util._errnoException(err, syscall);
-}
-
-function server() {
+function main({ dur, len, type }) {
   const serverHandle = new TCP(TCPConstants.SERVER);
   var err = serverHandle.bind('127.0.0.1', PORT);
   if (err)
@@ -89,24 +74,28 @@ function server() {
         fail(err, 'write');
       } else if (!writeReq.async) {
         process.nextTick(function() {
-          afterWrite(null, clientHandle, writeReq);
+          afterWrite(0, clientHandle);
         });
       }
     }
 
-    function afterWrite(status, handle, req, err) {
-      if (err)
-        fail(err, 'write');
+    function afterWrite(status, handle) {
+      if (status)
+        fail(status, 'write');
 
       while (clientHandle.writeQueueSize === 0)
         write();
     }
   };
 
-  client();
+  client(dur);
 }
 
-function client() {
+function fail(err, syscall) {
+  throw util._errnoException(err, syscall);
+}
+
+function client(dur) {
   const clientHandle = new TCP(TCPConstants.SOCKET);
   const connectReq = new TCPConnectWrap();
   const err = clientHandle.connect(connectReq, '127.0.0.1', PORT);

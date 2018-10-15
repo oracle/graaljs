@@ -36,20 +36,32 @@ class V8_EXPORT_PRIVATE TypedOptimization final
   Reduction Reduce(Node* node) final;
 
  private:
+  Reduction ReduceConvertReceiver(Node* node);
   Reduction ReduceCheckHeapObject(Node* node);
   Reduction ReduceCheckMaps(Node* node);
   Reduction ReduceCheckNumber(Node* node);
   Reduction ReduceCheckString(Node* node);
-  Reduction ReduceCheckSeqString(Node* node);
+  Reduction ReduceCheckEqualsInternalizedString(Node* node);
+  Reduction ReduceCheckEqualsSymbol(Node* node);
   Reduction ReduceLoadField(Node* node);
   Reduction ReduceNumberFloor(Node* node);
   Reduction ReduceNumberRoundop(Node* node);
   Reduction ReduceNumberToUint8Clamped(Node* node);
   Reduction ReducePhi(Node* node);
   Reduction ReduceReferenceEqual(Node* node);
+  Reduction ReduceStringComparison(Node* node);
+  Reduction ReduceSameValue(Node* node);
   Reduction ReduceSelect(Node* node);
   Reduction ReduceSpeculativeToNumber(Node* node);
   Reduction ReduceCheckNotTaggedHole(Node* node);
+  Reduction ReduceTypeOf(Node* node);
+  Reduction ReduceToBoolean(Node* node);
+
+  Reduction TryReduceStringComparisonOfStringFromSingleCharCode(
+      Node* comparison, Node* from_char_code, Node* constant, bool inverted);
+  Reduction TryReduceStringComparisonOfStringFromSingleCharCodeToConstant(
+      Node* comparison, Handle<String> string, bool inverted);
+  const Operator* NumberComparisonFor(const Operator* op);
 
   CompilationDependencies* dependencies() const { return dependencies_; }
   Factory* factory() const;
@@ -60,8 +72,8 @@ class V8_EXPORT_PRIVATE TypedOptimization final
 
   CompilationDependencies* const dependencies_;
   JSGraph* const jsgraph_;
-  Type* const true_type_;
-  Type* const false_type_;
+  Type const true_type_;
+  Type const false_type_;
   TypeCache const& type_cache_;
 
   DISALLOW_COPY_AND_ASSIGN(TypedOptimization);

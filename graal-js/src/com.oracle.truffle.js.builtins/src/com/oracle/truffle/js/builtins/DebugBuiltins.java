@@ -109,6 +109,7 @@ import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -117,7 +118,6 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
-import com.oracle.truffle.js.runtime.builtins.JSDebug;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -132,11 +132,11 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.object.DynamicObjectImpl;
 
 /**
- * Contains builtins for {@linkplain JSDebug}.
+ * Contains builtins for {@code Debug} object.
  */
 public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBuiltins.Debug> {
     protected DebugBuiltins() {
-        super(JSDebug.CLASS_NAME, Debug.class);
+        super(JSRealm.DEBUG_CLASS_NAME, Debug.class);
     }
 
     public enum Debug implements BuiltinEnum<Debug> {

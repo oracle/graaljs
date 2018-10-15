@@ -21,13 +21,13 @@ for (encoding in expected) {
   const expected_value = expected[encoding];
   let result;
 
-  result = fs.realpathSync(string_dir, { encoding: encoding });
+  result = fs.realpathSync(string_dir, { encoding });
   assert.strictEqual(result, expected_value);
 
   result = fs.realpathSync(string_dir, encoding);
   assert.strictEqual(result, expected_value);
 
-  result = fs.realpathSync(buffer_dir, { encoding: encoding });
+  result = fs.realpathSync(buffer_dir, { encoding });
   assert.strictEqual(result, expected_value);
 
   result = fs.realpathSync(buffer_dir, encoding);
@@ -51,20 +51,26 @@ assert.deepStrictEqual(buffer_result, buffer_dir);
 for (encoding in expected) {
   const expected_value = expected[encoding];
 
-  fs.realpath(string_dir, { encoding: encoding },
-              common.mustCall((err, res) => {
-                assert.ifError(err);
-                assert.strictEqual(res, expected_value);
-              }));
+  fs.realpath(
+    string_dir,
+    { encoding },
+    common.mustCall((err, res) => {
+      assert.ifError(err);
+      assert.strictEqual(res, expected_value);
+    })
+  );
   fs.realpath(string_dir, encoding, common.mustCall((err, res) => {
     assert.ifError(err);
     assert.strictEqual(res, expected_value);
   }));
-  fs.realpath(buffer_dir, { encoding: encoding },
-              common.mustCall((err, res) => {
-                assert.ifError(err);
-                assert.strictEqual(res, expected_value);
-              }));
+  fs.realpath(
+    buffer_dir,
+    { encoding },
+    common.mustCall((err, res) => {
+      assert.ifError(err);
+      assert.strictEqual(res, expected_value);
+    })
+  );
   fs.realpath(buffer_dir, encoding, common.mustCall((err, res) => {
     assert.ifError(err);
     assert.strictEqual(res, expected_value);

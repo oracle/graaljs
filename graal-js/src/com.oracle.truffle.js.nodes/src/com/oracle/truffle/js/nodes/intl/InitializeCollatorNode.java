@@ -40,15 +40,19 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.MissingResourceException;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.intl.InitializeCollatorNodeGen.CreateOptionsObjectNodeGen;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
  * https://tc39.github.io/ecma402/#sec-initializecollator
@@ -96,7 +100,13 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
         String sensitivity = getSensitivityOption.executeValue(options);
         Boolean ignorePunctuation = getIgnorePunctuationOption.executeValue(options);
 
-        JSCollator.initializeCollator(state, locales, usage, optLocaleMatcher, optkn, optkf, sensitivity, ignorePunctuation);
+        IntlUtil.ensureICU4JDataPathSet();
+        try {
+            JSCollator.initializeCollator(state, locales, usage, optLocaleMatcher, optkn, optkf, sensitivity, ignorePunctuation);
+
+        } catch (MissingResourceException e) {
+            throw Errors.createICU4JDataError();
+        }
 
         return collatorObj;
     }

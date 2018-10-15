@@ -31,39 +31,42 @@ void GeneratorBuiltinsAssembler::GeneratorPrototypeResume(
   Label if_receiverisincompatible(this, Label::kDeferred);
   GotoIf(TaggedIsSmi(receiver), &if_receiverisincompatible);
   Node* receiver_instance_type = LoadInstanceType(receiver);
-  GotoIfNot(Word32Equal(receiver_instance_type,
-                        Int32Constant(JS_GENERATOR_OBJECT_TYPE)),
+  GotoIfNot(InstanceTypeEqual(receiver_instance_type, JS_GENERATOR_OBJECT_TYPE),
             &if_receiverisincompatible);
 
   // Check if the {receiver} is running or already closed.
-  Node* receiver_continuation =
-      LoadObjectField(receiver, JSGeneratorObject::kContinuationOffset);
+  TNode<Smi> receiver_continuation =
+      CAST(LoadObjectField(receiver, JSGeneratorObject::kContinuationOffset));
   Label if_receiverisclosed(this, Label::kDeferred),
       if_receiverisrunning(this, Label::kDeferred);
-  Node* closed = SmiConstant(JSGeneratorObject::kGeneratorClosed);
+  TNode<Smi> closed = SmiConstant(JSGeneratorObject::kGeneratorClosed);
   GotoIf(SmiEqual(receiver_continuation, closed), &if_receiverisclosed);
   DCHECK_LT(JSGeneratorObject::kGeneratorExecuting,
             JSGeneratorObject::kGeneratorClosed);
   GotoIf(SmiLessThan(receiver_continuation, closed), &if_receiverisrunning);
 
+  // Remember the {resume_mode} for the {receiver}.
+  StoreObjectFieldNoWriteBarrier(receiver, JSGeneratorObject::kResumeModeOffset,
+                                 SmiConstant(resume_mode));
+
   // Resume the {receiver} using our trampoline.
   VARIABLE(var_exception, MachineRepresentation::kTagged, UndefinedConstant());
   Label if_exception(this, Label::kDeferred), if_final_return(this);
   Node* result = CallStub(CodeFactory::ResumeGenerator(isolate()), context,
-                          value, receiver, SmiConstant(resume_mode));
+                          value, receiver);
   // Make sure we close the generator if there was an exception.
   GotoIfException(result, &if_exception, &var_exception);
 
   // If the generator is not suspended (i.e., its state is 'executing'),
   // close it and wrap the return value in IteratorResult.
-  Node* result_continuation =
-      LoadObjectField(receiver, JSGeneratorObject::kContinuationOffset);
+  TNode<Smi> result_continuation =
+      CAST(LoadObjectField(receiver, JSGeneratorObject::kContinuationOffset));
 
   // The generator function should not close the generator by itself, let's
   // check it is indeed not closed yet.
   CSA_ASSERT(this, SmiNotEqual(result_continuation, closed));
 
-  Node* executing = SmiConstant(JSGeneratorObject::kGeneratorExecuting);
+  TNode<Smi> executing = SmiConstant(JSGeneratorObject::kGeneratorExecuting);
   GotoIf(SmiEqual(result_continuation, executing), &if_final_return);
 
   args->PopAndReturn(result);
@@ -81,9 +84,8 @@ void GeneratorBuiltinsAssembler::GeneratorPrototypeResume(
   BIND(&if_receiverisincompatible);
   {
     // The {receiver} is not a valid JSGeneratorObject.
-    CallRuntime(Runtime::kThrowIncompatibleMethodReceiver, context,
-                StringConstant(method_name), receiver);
-    Unreachable();
+    ThrowTypeError(context, MessageTemplate::kIncompatibleMethodReceiver,
+                   StringConstant(method_name), receiver);
   }
 
   BIND(&if_receiverisclosed);
@@ -107,10 +109,7 @@ void GeneratorBuiltinsAssembler::GeneratorPrototypeResume(
   }
 
   BIND(&if_receiverisrunning);
-  {
-    CallRuntime(Runtime::kThrowGeneratorRunning, context);
-    Unreachable();
-  }
+  { ThrowTypeError(context, MessageTemplate::kGeneratorRunning); }
 
   BIND(&if_exception);
   {

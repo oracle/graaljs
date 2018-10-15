@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef V8_HEAP_WORKLIST_
-#define V8_HEAP_WORKLIST_
+#ifndef V8_HEAP_WORKLIST_H_
+#define V8_HEAP_WORKLIST_H_
 
 #include <cstddef>
+#include <utility>
 
 #include "src/base/atomic-utils.h"
 #include "src/base/logging.h"
@@ -168,6 +169,11 @@ class Worklist {
     PublishPopSegmentToGlobal(task_id);
   }
 
+  void MergeGlobalPool(Worklist* other) {
+    auto pair = other->global_pool_.Extract();
+    global_pool_.MergeList(pair.first, pair.second);
+  }
+
  private:
   FRIEND_TEST(WorkListTest, SegmentCreate);
   FRIEND_TEST(WorkListTest, SegmentPush);
@@ -305,6 +311,28 @@ class Worklist {
       }
     }
 
+    std::pair<Segment*, Segment*> Extract() {
+      Segment* top = nullptr;
+      {
+        base::LockGuard<base::Mutex> guard(&lock_);
+        if (top_ == nullptr) return std::make_pair(nullptr, nullptr);
+        top = top_;
+        set_top(nullptr);
+      }
+      Segment* end = top;
+      while (end->next() != nullptr) end = end->next();
+      return std::make_pair(top, end);
+    }
+
+    void MergeList(Segment* start, Segment* end) {
+      if (start == nullptr) return;
+      {
+        base::LockGuard<base::Mutex> guard(&lock_);
+        end->set_next(top_);
+        set_top(start);
+      }
+    }
+
    private:
     void set_top(Segment* segment) {
       base::AsAtomicPointer::Relaxed_Store(&top_, segment);
@@ -360,4 +388,4 @@ class Worklist {
 }  // namespace internal
 }  // namespace v8
 
-#endif  // V8_HEAP_WORKLIST_
+#endif  // V8_HEAP_WORKLIST_H_

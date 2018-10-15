@@ -44,7 +44,6 @@ class V8_EXPORT_PRIVATE JSIntrinsicLowering final
   Reduction ReduceDeoptimizeNow(Node* node);
   Reduction ReduceCreateJSGeneratorObject(Node* node);
   Reduction ReduceGeneratorClose(Node* node);
-  Reduction ReduceGeneratorGetContext(Node* node);
   Reduction ReduceGeneratorGetInputOrDebugPos(Node* node);
   Reduction ReduceAsyncGeneratorReject(Node* node);
   Reduction ReduceAsyncGeneratorResolve(Node* node);
@@ -54,7 +53,8 @@ class V8_EXPORT_PRIVATE JSIntrinsicLowering final
   Reduction ReduceIsInstanceType(Node* node, InstanceType instance_type);
   Reduction ReduceIsJSReceiver(Node* node);
   Reduction ReduceIsSmi(Node* node);
-  Reduction ReduceSubString(Node* node);
+  Reduction ReduceRejectPromise(Node* node);
+  Reduction ReduceResolvePromise(Node* node);
   Reduction ReduceToInteger(Node* node);
   Reduction ReduceToLength(Node* node);
   Reduction ReduceToNumber(Node* node);
@@ -68,15 +68,11 @@ class V8_EXPORT_PRIVATE JSIntrinsicLowering final
   Reduction ReduceArrayBufferViewField(Node* node, FieldAccess const& access);
   Reduction ReduceArrayBufferViewWasNeutered(Node* node);
   Reduction ReduceMaxSmi(Node* node);
-  Reduction ReduceTypedArrayMaxSizeInHeap(Node* node);
 
   // TODO(turbofan): collection.js support; drop once Maps and Sets are
   // converted to proper CodeStubAssembler based builtins.
   Reduction ReduceTheHole(Node* node);
 
-  // TODO(turbofan): JavaScript builtins support; drop once all uses of
-  // %_ClassOf in JavaScript builtins are eliminated.
-  Reduction ReduceClassOf(Node* node);
   Reduction ReduceStringMaxLength(Node* node);
 
   Reduction Change(Node* node, const Operator* op);

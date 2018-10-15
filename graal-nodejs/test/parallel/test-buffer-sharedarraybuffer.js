@@ -1,6 +1,4 @@
-/*global SharedArrayBuffer*/
 'use strict';
-// Flags: --harmony-sharedarraybuffer
 
 require('../common');
 const assert = require('assert');
@@ -23,8 +21,7 @@ arr2[1] = 6000;
 
 assert.deepStrictEqual(arr_buf, ar_buf);
 
-// Checks for calling Buffer.byteLength on a SharedArrayBuffer
-
+// Checks for calling Buffer.byteLength on a SharedArrayBuffer.
 assert.strictEqual(Buffer.byteLength(sab), sab.byteLength);
 
-assert.doesNotThrow(() => Buffer.from({ buffer: sab }));
+Buffer.from({ buffer: sab }); // Should not throw.

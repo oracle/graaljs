@@ -101,7 +101,6 @@ const int kIp1Code = 17;
 const int kFramePointerRegCode = 29;
 const int kLinkRegCode = 30;
 const int kZeroRegCode = 31;
-const int kJSSPCode = 28;
 const int kSPRegInternalCode = 63;
 const unsigned kRegCodeMask = 0x1f;
 const unsigned kShiftAmountWRegMask = 0x1f;
@@ -408,12 +407,13 @@ enum Extend {
 };
 
 enum SystemHint {
-  NOP   = 0,
+  NOP = 0,
   YIELD = 1,
-  WFE   = 2,
-  WFI   = 3,
-  SEV   = 4,
-  SEVL  = 5
+  WFE = 2,
+  WFI = 3,
+  SEV = 4,
+  SEVL = 5,
+  CSDB = 20
 };
 
 enum BarrierDomain {

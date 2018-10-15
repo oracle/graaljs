@@ -221,6 +221,18 @@ EXPORT_TO_JS(IsFloat64Array) {
     args.GetReturnValue().Set(args[0]->IsFloat64Array());
 }
 
+// Value::IsBigInt64Array
+
+EXPORT_TO_JS(IsBigInt64Array) {
+    args.GetReturnValue().Set(args[0]->IsBigInt64Array());
+}
+
+// Value::IsBigUint64Array
+
+EXPORT_TO_JS(IsBigUint64Array) {
+    args.GetReturnValue().Set(args[0]->IsBigUint64Array());
+}
+
 // Value::IsExternal
 
 EXPORT_TO_JS(IsExternal) {
@@ -311,7 +323,14 @@ EXPORT_TO_JS(StrictEquals) {
 
 EXPORT_TO_JS(IntegerValue) {
     Isolate* isolate = args.GetIsolate();
-    args.GetReturnValue().Set(Integer::New(isolate, args[0]->IntegerValue()));
+    args.GetReturnValue().Set(BigInt::New(isolate, args[0]->IntegerValue()));
+}
+
+EXPORT_TO_JS(IntegerValueContext) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    int64_t result = args[0]->IntegerValue(context).FromJust();
+    args.GetReturnValue().Set(BigInt::New(isolate, result));
 }
 
 EXPORT_TO_JS(BooleanValue) {
@@ -341,7 +360,9 @@ EXPORT_TO_JS(ToBoolean) {
 }
 
 EXPORT_TO_JS(ToNumber) {
-    args.GetReturnValue().Set(args[0]->ToNumber());
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    args.GetReturnValue().Set(args[0]->ToNumber(context).ToLocalChecked());
 }
 
 EXPORT_TO_JS(ToString) {
@@ -353,19 +374,25 @@ EXPORT_TO_JS(ToInteger) {
 }
 
 EXPORT_TO_JS(ToUint32) {
-    args.GetReturnValue().Set(args[0]->ToUint32());
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    args.GetReturnValue().Set(args[0]->ToUint32(context).ToLocalChecked());
 }
 
 EXPORT_TO_JS(ToInt32) {
-    args.GetReturnValue().Set(args[0]->ToInt32());
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    args.GetReturnValue().Set(args[0]->ToInt32(context).ToLocalChecked());
 }
 
 EXPORT_TO_JS(ToArrayIndex) {
-    Local<Uint32> result = args[0]->ToArrayIndex();
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    MaybeLocal<Uint32> result = args[0]->ToArrayIndex(context);
     if (result.IsEmpty()) {
         args.GetReturnValue().SetUndefined();
     } else {
-        args.GetReturnValue().Set(result);
+        args.GetReturnValue().Set(result.ToLocalChecked());
     }
 }
 

@@ -21,6 +21,7 @@
 namespace v8 {
 namespace internal {
 
+class FeedbackVectorSpec;
 class Isolate;
 
 namespace interpreter {
@@ -31,12 +32,11 @@ class BytecodeRegisterOptimizer;
 class BytecodeJumpTable;
 class Register;
 
-class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
-    : public NON_EXPORTED_BASE(ZoneObject) {
+class V8_EXPORT_PRIVATE BytecodeArrayBuilder final {
  public:
   BytecodeArrayBuilder(
-      Isolate* isolate, Zone* zone, int parameter_count, int locals_count,
-      FunctionLiteral* literal = nullptr,
+      Zone* zone, int parameter_count, int locals_count,
+      FeedbackVectorSpec* feedback_vector_spec = nullptr,
       SourcePositionTableBuilder::RecordingMode source_position_mode =
           SourcePositionTableBuilder::RECORD_SOURCE_POSITIONS);
 
@@ -71,9 +71,11 @@ class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
   // Constant loads to accumulator.
   BytecodeArrayBuilder& LoadConstantPoolEntry(size_t entry);
   BytecodeArrayBuilder& LoadLiteral(v8::internal::Smi* value);
+  BytecodeArrayBuilder& LoadLiteral(double value);
   BytecodeArrayBuilder& LoadLiteral(const AstRawString* raw_string);
   BytecodeArrayBuilder& LoadLiteral(const Scope* scope);
-  BytecodeArrayBuilder& LoadLiteral(const AstValue* ast_value);
+  BytecodeArrayBuilder& LoadLiteral(AstBigInt bigint);
+  BytecodeArrayBuilder& LoadLiteral(AstSymbol symbol);
   BytecodeArrayBuilder& LoadUndefined();
   BytecodeArrayBuilder& LoadNull();
   BytecodeArrayBuilder& LoadTheHole();
@@ -84,8 +86,8 @@ class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
   // Global loads to the accumulator and stores from the accumulator.
   BytecodeArrayBuilder& LoadGlobal(const AstRawString* name, int feedback_slot,
                                    TypeofMode typeof_mode);
-  BytecodeArrayBuilder& StoreGlobal(const AstRawString* name, int feedback_slot,
-                                    LanguageMode language_mode);
+  BytecodeArrayBuilder& StoreGlobal(const AstRawString* name,
+                                    int feedback_slot);
 
   // Load the object at |slot_index| at |depth| in the context chain starting
   // with |context| into the accumulator.
@@ -159,11 +161,24 @@ class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
   BytecodeArrayBuilder& StoreKeyedProperty(Register object, Register key,
                                            int feedback_slot,
                                            LanguageMode language_mode);
+  // Store an own element in an array literal. The value to be stored should be
+  // in the accumulator.
+  BytecodeArrayBuilder& StoreInArrayLiteral(Register array, Register index,
+                                            int feedback_slot);
   // Store the home object property. The value to be stored should be in the
   // accumulator.
   BytecodeArrayBuilder& StoreHomeObjectProperty(Register object,
                                                 int feedback_slot,
                                                 LanguageMode language_mode);
+
+  // Store the class fields property. The initializer to be stored should
+  // be in the accumulator.
+  BytecodeArrayBuilder& StoreClassFieldsInitializer(Register constructor,
+                                                    int feedback_slot);
+
+  // Load class fields property.
+  BytecodeArrayBuilder& LoadClassFieldsInitializer(Register constructor,
+                                                   int feedback_slot);
 
   // Lookup the variable with |name|.
   BytecodeArrayBuilder& LoadLookupSlot(const AstRawString* name,
@@ -193,24 +208,21 @@ class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
   BytecodeArrayBuilder& CreateClosure(size_t shared_function_info_entry,
                                       int slot, int flags);
 
-  // Create a new local context for a |scope| and a closure which should be
-  // in the accumulator.
+  // Create a new local context for a |scope|.
   BytecodeArrayBuilder& CreateBlockContext(const Scope* scope);
 
-  // Create a new context for a catch block with |exception|, |name|,
-  // |scope|, and the closure in the accumulator.
+  // Create a new context for a catch block with |exception| and |scope|.
   BytecodeArrayBuilder& CreateCatchContext(Register exception,
-                                           const AstRawString* name,
                                            const Scope* scope);
 
-  // Create a new context with size |slots|.
-  BytecodeArrayBuilder& CreateFunctionContext(int slots);
+  // Create a new context with the given |scope| and size |slots|.
+  BytecodeArrayBuilder& CreateFunctionContext(const Scope* scope, int slots);
 
-  // Create a new eval context with size |slots|.
-  BytecodeArrayBuilder& CreateEvalContext(int slots);
+  // Create a new eval context with the given |scope| and size |slots|.
+  BytecodeArrayBuilder& CreateEvalContext(const Scope* scope, int slots);
 
   // Creates a new context with the given |scope| for a with-statement
-  // with the |object| in a register and the closure in the accumulator.
+  // with the |object| in a register.
   BytecodeArrayBuilder& CreateWithContext(Register object, const Scope* scope);
 
   // Create a new arguments object in the accumulator.
@@ -226,6 +238,11 @@ class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
                                             int literal_index, int flags,
                                             Register output);
   BytecodeArrayBuilder& CreateEmptyObjectLiteral();
+
+  // Gets or creates the template for a TemplateObjectDescription which will
+  // be inserted at constant pool index |template_object_description_entry|.
+  BytecodeArrayBuilder& GetTemplateObject(
+      size_t template_object_description_entry, int feedback_slot);
 
   // Push the context in accumulator as the new context, and store in register
   // |context|.
@@ -304,20 +321,22 @@ class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
                                            Register arg,
                                            RegisterList return_pair);
 
-  // Call the JS runtime function with |context_index| and arguments |args|.
+  // Call the JS runtime function with |context_index| and arguments |args|,
+  // with no receiver as it is implicitly set to undefined.
   BytecodeArrayBuilder& CallJSRuntime(int context_index, RegisterList args);
 
   // Operators (register holds the lhs value, accumulator holds the rhs value).
   // Type feedback will be recorded in the |feedback_slot|
   BytecodeArrayBuilder& BinaryOperation(Token::Value binop, Register reg,
                                         int feedback_slot);
+  // Same as above, but lhs in the accumulator and rhs in |literal|.
   BytecodeArrayBuilder& BinaryOperationSmiLiteral(Token::Value binop,
                                                   Smi* literal,
                                                   int feedback_slot);
 
-  // Count Operators (value stored in accumulator).
+  // Unary and Count Operators (value stored in accumulator).
   // Type feedback will be recorded in the |feedback_slot|
-  BytecodeArrayBuilder& CountOperation(Token::Value op, int feedback_slot);
+  BytecodeArrayBuilder& UnaryOperation(Token::Value op, int feedback_slot);
 
   enum class ToBooleanMode {
     kConvertToBoolean,  // Perform ToBoolean conversion on accumulator.
@@ -337,10 +356,14 @@ class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
   // the key to be deleted and the register contains a reference to the object.
   BytecodeArrayBuilder& Delete(Register object, LanguageMode language_mode);
 
+  // JavaScript defines two kinds of 'nil'.
+  enum NilValue { kNullValue, kUndefinedValue };
+
   // Tests.
   BytecodeArrayBuilder& CompareOperation(Token::Value op, Register reg,
                                          int feedback_slot);
   BytecodeArrayBuilder& CompareOperation(Token::Value op, Register reg);
+  BytecodeArrayBuilder& CompareReference(Register reg);
   BytecodeArrayBuilder& CompareUndetectable();
   BytecodeArrayBuilder& CompareUndefined();
   BytecodeArrayBuilder& CompareNull();
@@ -351,7 +374,11 @@ class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
   // Converts accumulator and stores result in register |out|.
   BytecodeArrayBuilder& ToObject(Register out);
   BytecodeArrayBuilder& ToName(Register out);
-  BytecodeArrayBuilder& ToNumber(Register out, int feedback_slot);
+  BytecodeArrayBuilder& ToString();
+
+  // Converts accumulator and stores result back in accumulator.
+  BytecodeArrayBuilder& ToNumber(int feedback_slot);
+  BytecodeArrayBuilder& ToNumeric(int feedback_slot);
 
   // Flow Control.
   BytecodeArrayBuilder& Bind(BytecodeLabel* label);
@@ -384,6 +411,7 @@ class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
 
   BytecodeArrayBuilder& Throw();
   BytecodeArrayBuilder& ReThrow();
+  BytecodeArrayBuilder& Abort(AbortReason reason);
   BytecodeArrayBuilder& Return();
   BytecodeArrayBuilder& ThrowReferenceErrorIfHole(const AstRawString* name);
   BytecodeArrayBuilder& ThrowSuperNotCalledIfHole();
@@ -396,8 +424,9 @@ class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
   BytecodeArrayBuilder& IncBlockCounter(int slot);
 
   // Complex flow control.
-  BytecodeArrayBuilder& ForInPrepare(Register receiver,
-                                     RegisterList cache_info_triple);
+  BytecodeArrayBuilder& ForInEnumerate(Register receiver);
+  BytecodeArrayBuilder& ForInPrepare(RegisterList cache_info_triple,
+                                     int feedback_slot);
   BytecodeArrayBuilder& ForInContinue(Register index, Register cache_length);
   BytecodeArrayBuilder& ForInNext(Register receiver, Register index,
                                   RegisterList cache_type_array_pair,
@@ -408,9 +437,10 @@ class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
   BytecodeArrayBuilder& SuspendGenerator(Register generator,
                                          RegisterList registers,
                                          int suspend_id);
-  BytecodeArrayBuilder& RestoreGeneratorState(Register generator);
-  BytecodeArrayBuilder& RestoreGeneratorRegisters(Register generator,
-                                                  RegisterList registers);
+  BytecodeArrayBuilder& SwitchOnGeneratorState(Register generator,
+                                               BytecodeJumpTable* jump_table);
+  BytecodeArrayBuilder& ResumeGenerator(Register generator,
+                                        RegisterList registers);
 
   // Exception handling.
   BytecodeArrayBuilder& MarkHandler(int handler_id,
@@ -428,8 +458,9 @@ class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
 
   // Gets a constant pool entry.
   size_t GetConstantPoolEntry(const AstRawString* raw_string);
-  size_t GetConstantPoolEntry(const AstValue* heap_number);
+  size_t GetConstantPoolEntry(AstBigInt bigint);
   size_t GetConstantPoolEntry(const Scope* scope);
+  size_t GetConstantPoolEntry(double number);
 #define ENTRY_GETTER(NAME, ...) size_t NAME##ConstantPoolEntry();
   SINGLETON_CONSTANT_ENTRY_TYPES(ENTRY_GETTER)
 #undef ENTRY_GETTER
@@ -447,11 +478,15 @@ class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
   }
 
   void SetExpressionPosition(Expression* expr) {
-    if (expr->position() == kNoSourcePosition) return;
+    SetExpressionPosition(expr->position());
+  }
+
+  void SetExpressionPosition(int position) {
+    if (position == kNoSourcePosition) return;
     if (!latest_source_info_.is_statement()) {
       // Ensure the current expression position is overwritten with the
       // latest value.
-      latest_source_info_.MakeExpressionPosition(expr->position());
+      latest_source_info_.MakeExpressionPosition(position);
     }
   }
 
@@ -498,7 +533,7 @@ class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
   friend class BytecodeNodeBuilder;
 
   const FeedbackVectorSpec* feedback_vector_spec() const {
-    return literal_->feedback_vector_spec();
+    return feedback_vector_spec_;
   }
 
   // Returns the current source position for the given |bytecode|.
@@ -555,7 +590,7 @@ class V8_EXPORT_PRIVATE BytecodeArrayBuilder final
   }
 
   Zone* zone_;
-  FunctionLiteral* literal_;
+  FeedbackVectorSpec* feedback_vector_spec_;
   bool bytecode_generated_;
   ConstantArrayBuilder constant_array_builder_;
   HandlerTableBuilder handler_table_builder_;

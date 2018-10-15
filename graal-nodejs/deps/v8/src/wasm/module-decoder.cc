@@ -21,14 +21,11 @@ namespace v8 {
 namespace internal {
 namespace wasm {
 
-#if DEBUG
 #define TRACE(...)                                    \
   do {                                                \
     if (FLAG_trace_wasm_decoder) PrintF(__VA_ARGS__); \
   } while (false)
-#else
-#define TRACE(...)
-#endif
+
 namespace {
 
 constexpr char kNameString[] = "name";
@@ -38,6 +35,20 @@ constexpr char kUnknownString[] = "<unknown>";
 template <size_t N>
 constexpr size_t num_chars(const char (&)[N]) {
   return N - 1;  // remove null character at end.
+}
+
+const char* ExternalKindName(ImportExportKindCode kind) {
+  switch (kind) {
+    case kExternalFunction:
+      return "function";
+    case kExternalTable:
+      return "table";
+    case kExternalMemory:
+      return "memory";
+    case kExternalGlobal:
+      return "global";
+  }
+  return "unknown";
 }
 
 }  // namespace
@@ -80,6 +91,12 @@ const char* SectionName(SectionCode code) {
 
 namespace {
 
+bool validate_utf8(Decoder* decoder, WireBytesRef string) {
+  return unibrow::Utf8::ValidateEncoding(
+      decoder->start() + decoder->GetBufferRelativeOffset(string.offset()),
+      string.length());
+}
+
 ValueType TypeOf(const WasmModule* module, const WasmInitExpr& expr) {
   switch (expr.kind) {
     case WasmInitExpr::kNone:
@@ -96,6 +113,8 @@ ValueType TypeOf(const WasmModule* module, const WasmInitExpr& expr) {
       return kWasmF32;
     case WasmInitExpr::kF64Const:
       return kWasmF64;
+    case WasmInitExpr::kAnyRefConst:
+      return kWasmAnyRef;
     default:
       UNREACHABLE();
   }
@@ -201,25 +220,11 @@ class WasmSectionIterator {
 
     if (section_code == kUnknownSectionCode) {
       // Check for the known "name" section.
-      WireBytesRef string =
-          wasm::consume_string(decoder_, true, "section name");
-      if (decoder_.failed() || decoder_.pc() > section_end_) {
-        section_code_ = kUnknownSectionCode;
-        return;
-      }
-      const byte* section_name_start =
-          decoder_.start() + decoder_.GetBufferRelativeOffset(string.offset());
+      section_code =
+          ModuleDecoder::IdentifyUnknownSection(decoder_, section_end_);
+      // As a side effect, the above function will forward the decoder to after
+      // the identifier string.
       payload_start_ = decoder_.pc();
-
-      TRACE("  +%d  section name        : \"%.*s\"\n",
-            static_cast<int>(section_name_start - decoder_.start()),
-            string.length() < 20 ? string.length() : 20, section_name_start);
-
-      if (string.length() == num_chars(kNameString) &&
-          strncmp(reinterpret_cast<const char*>(section_name_start),
-                  kNameString, num_chars(kNameString)) == 0) {
-        section_code = kNameSectionCode;
-      }
     } else if (!IsValidSectionCode(section_code)) {
       decoder_.errorf(decoder_.pc(), "unknown section code #0x%02x",
                       section_code);
@@ -228,7 +233,6 @@ class WasmSectionIterator {
     section_code_ = decoder_.failed() ? kUnknownSectionCode
                                       : static_cast<SectionCode>(section_code);
 
-    TRACE("Section: %s\n", SectionName(section_code_));
     if (section_code_ == kUnknownSectionCode && section_end_ > decoder_.pc()) {
       // skip to the end of the unknown section.
       uint32_t remaining = static_cast<uint32_t>(section_end_ - decoder_.pc());
@@ -237,11 +241,17 @@ class WasmSectionIterator {
   }
 };
 
+}  // namespace
+
 // The main logic for decoding the bytes of a module.
-class ModuleDecoder : public Decoder {
+class ModuleDecoderImpl : public Decoder {
  public:
-  ModuleDecoder(const byte* module_start, const byte* module_end,
-                ModuleOrigin origin)
+  explicit ModuleDecoderImpl(ModuleOrigin origin)
+      : Decoder(nullptr, nullptr),
+        origin_(FLAG_assume_asmjs_origin ? kAsmJsOrigin : origin) {}
+
+  ModuleDecoderImpl(const byte* module_start, const byte* module_end,
+                    ModuleOrigin origin)
       : Decoder(module_start, module_end),
         origin_(FLAG_assume_asmjs_origin ? kAsmJsOrigin : origin) {
     if (end_ < start_) {
@@ -254,7 +264,7 @@ class ModuleDecoder : public Decoder {
     pc_ = end_;  // On error, terminate section decoding loop.
   }
 
-  void DumpModule(const ModuleResult& result) {
+  void DumpModule(const Vector<const byte> module_bytes) {
     std::string path;
     if (FLAG_dump_wasm_module_path) {
       path = FLAG_dump_wasm_module_path;
@@ -264,16 +274,13 @@ class ModuleDecoder : public Decoder {
       }
     }
     // File are named `HASH.{ok,failed}.wasm`.
-    size_t hash = base::hash_range(start_, end_);
-    char buf[32] = {'\0'};
-#if V8_OS_WIN && _MSC_VER < 1900
-#define snprintf sprintf_s
-#endif
-    snprintf(buf, sizeof(buf) - 1, "%016zx.%s.wasm", hash,
-             result.ok() ? "ok" : "failed");
-    std::string name(buf);
+    size_t hash = base::hash_range(module_bytes.start(), module_bytes.end());
+    EmbeddedVector<char, 32> buf;
+    SNPrintF(buf, "%016zx.%s.wasm", hash, ok() ? "ok" : "failed");
+    std::string name(buf.start());
     if (FILE* wasm_file = base::OS::FOpen((path + name).c_str(), "wb")) {
-      if (fwrite(start_, end_ - start_, 1, wasm_file) != 1) {
+      if (fwrite(module_bytes.start(), module_bytes.length(), 1, wasm_file) !=
+          1) {
         OFStream os(stderr);
         os << "Error while dumping wasm file" << std::endl;
       }
@@ -298,7 +305,7 @@ class ModuleDecoder : public Decoder {
 
     const byte* pos = pc_;
     uint32_t magic_word = consume_u32("wasm magic");
-#define BYTES(x) (x & 0xff), (x >> 8) & 0xff, (x >> 16) & 0xff, (x >> 24) & 0xff
+#define BYTES(x) (x & 0xFF), (x >> 8) & 0xFF, (x >> 16) & 0xFF, (x >> 24) & 0xFF
     if (magic_word != kWasmMagic) {
       errorf(pos,
              "expected magic word %02x %02x %02x %02x, "
@@ -316,12 +323,16 @@ class ModuleDecoder : public Decoder {
                BYTES(kWasmVersion), BYTES(magic_version));
       }
     }
+#undef BYTES
   }
 
   void DecodeSection(SectionCode section_code, Vector<const uint8_t> bytes,
                      uint32_t offset, bool verify_functions = true) {
     if (failed()) return;
     Reset(bytes, offset);
+    TRACE("Section: %s\n", SectionName(section_code));
+    TRACE("Decode Section %p - %p\n", static_cast<const void*>(bytes.begin()),
+          static_cast<const void*>(bytes.end()));
 
     // Check if the section is out-of-order.
     if (section_code < next_section_) {
@@ -417,7 +428,10 @@ class ModuleDecoder : public Decoder {
             static_cast<int>(pc_ - start_));
       FunctionSig* s = consume_sig(module_->signature_zone.get());
       module_->signatures.push_back(s);
+      uint32_t id = s ? module_->signature_map.FindOrInsert(s) : 0;
+      module_->signature_ids.push_back(id);
     }
+    module_->signature_map.Freeze();
   }
 
   void DecodeImportSection() {
@@ -438,7 +452,8 @@ class ModuleDecoder : public Decoder {
       const byte* pos = pc_;
       import->module_name = consume_string(true, "module name");
       import->field_name = consume_string(true, "field name");
-      import->kind = static_cast<WasmExternalKind>(consume_u8("import kind"));
+      import->kind =
+          static_cast<ImportExportKindCode>(consume_u8("import kind"));
       switch (import->kind) {
         case kExternalFunction: {
           // ===== Imported function =======================================
@@ -447,7 +462,6 @@ class ModuleDecoder : public Decoder {
           module_->functions.push_back({nullptr,        // sig
                                         import->index,  // func_index
                                         0,              // sig_index
-                                        {0, 0},         // name_offset
                                         {0, 0},         // code
                                         true,           // imported
                                         false});        // exported
@@ -464,7 +478,7 @@ class ModuleDecoder : public Decoder {
           module_->function_tables.emplace_back();
           WasmIndirectFunctionTable* table = &module_->function_tables.back();
           table->imported = true;
-          expect_u8("element type", kWasmAnyFunctionTypeForm);
+          expect_u8("element type", kWasmAnyFunctionTypeCode);
           consume_resizable_limits(
               "element count", "elements", FLAG_wasm_max_table_size,
               &table->initial_size, &table->has_maximum_size,
@@ -477,18 +491,19 @@ class ModuleDecoder : public Decoder {
           consume_resizable_limits(
               "memory", "pages", FLAG_wasm_max_mem_pages,
               &module_->initial_pages, &module_->has_maximum_pages,
-              kSpecMaxWasmMemoryPages, &module_->maximum_pages);
+              kSpecMaxWasmMemoryPages, &module_->maximum_pages,
+              &module_->has_shared_memory);
           break;
         }
         case kExternalGlobal: {
           // ===== Imported global =========================================
           import->index = static_cast<uint32_t>(module_->globals.size());
           module_->globals.push_back(
-              {kWasmStmt, false, WasmInitExpr(), 0, true, false});
+              {kWasmStmt, false, WasmInitExpr(), {0}, true, false});
           WasmGlobal* global = &module_->globals.back();
           global->type = consume_value_type();
           global->mutability = consume_mutability();
-          if (global->mutability) {
+          if (!FLAG_experimental_wasm_mut_global && global->mutability) {
             error("mutable globals cannot be imported");
           }
           break;
@@ -513,7 +528,6 @@ class ModuleDecoder : public Decoder {
       module_->functions.push_back({nullptr,     // sig
                                     func_index,  // func_index
                                     0,           // sig_index
-                                    {0, 0},      // name
                                     {0, 0},      // code
                                     false,       // imported
                                     false});     // exported
@@ -529,7 +543,7 @@ class ModuleDecoder : public Decoder {
       if (!AddTable(module_.get())) break;
       module_->function_tables.emplace_back();
       WasmIndirectFunctionTable* table = &module_->function_tables.back();
-      expect_u8("table type", kWasmAnyFunctionTypeForm);
+      expect_u8("table type", kWasmAnyFunctionTypeCode);
       consume_resizable_limits("table elements", "elements",
                                FLAG_wasm_max_table_size, &table->initial_size,
                                &table->has_maximum_size,
@@ -545,7 +559,7 @@ class ModuleDecoder : public Decoder {
       consume_resizable_limits(
           "memory", "pages", FLAG_wasm_max_mem_pages, &module_->initial_pages,
           &module_->has_maximum_pages, kSpecMaxWasmMemoryPages,
-          &module_->maximum_pages);
+          &module_->maximum_pages, &module_->has_shared_memory);
     }
   }
 
@@ -557,15 +571,16 @@ class ModuleDecoder : public Decoder {
       TRACE("DecodeGlobal[%d] module+%d\n", i, static_cast<int>(pc_ - start_));
       // Add an uninitialized global and pass a pointer to it.
       module_->globals.push_back(
-          {kWasmStmt, false, WasmInitExpr(), 0, false, false});
+          {kWasmStmt, false, WasmInitExpr(), {0}, false, false});
       WasmGlobal* global = &module_->globals.back();
       DecodeGlobalInModule(module_.get(), i + imported_globals, global);
     }
+    if (ok()) CalculateGlobalOffsets(module_.get());
   }
 
   void DecodeExportSection() {
     uint32_t export_table_count =
-        consume_count("exports count", kV8MaxWasmImports);
+        consume_count("exports count", kV8MaxWasmExports);
     module_->export_table.reserve(export_table_count);
     for (uint32_t i = 0; ok() && i < export_table_count; ++i) {
       TRACE("DecodeExportTable[%d] module+%d\n", i,
@@ -581,7 +596,7 @@ class ModuleDecoder : public Decoder {
       exp->name = consume_string(true, "field name");
 
       const byte* pos = pc();
-      exp->kind = static_cast<WasmExternalKind>(consume_u8("export kind"));
+      exp->kind = static_cast<ImportExportKindCode>(consume_u8("export kind"));
       switch (exp->kind) {
         case kExternalFunction: {
           WasmFunction* func = nullptr;
@@ -610,7 +625,7 @@ class ModuleDecoder : public Decoder {
           WasmGlobal* global = nullptr;
           exp->index = consume_global_index(module_.get(), &global);
           if (global) {
-            if (global->mutability) {
+            if (!FLAG_experimental_wasm_mut_global && global->mutability) {
               error("mutable globals cannot be exported");
             }
             global->exported = true;
@@ -676,12 +691,10 @@ class ModuleDecoder : public Decoder {
       if (table_index != 0) {
         errorf(pos, "illegal table index %u != 0", table_index);
       }
-      WasmIndirectFunctionTable* table = nullptr;
       if (table_index >= module_->function_tables.size()) {
         errorf(pos, "out of bounds table index %u", table_index);
         break;
       }
-      table = &module_->function_tables[table_index];
       WasmInitExpr offset = consume_init_expr(module_.get(), kWasmI32);
       uint32_t num_elem =
           consume_count("number of elements", kV8MaxWasmTableEntries);
@@ -694,33 +707,49 @@ class ModuleDecoder : public Decoder {
         if (!ok()) break;
         DCHECK_EQ(index, func->func_index);
         init->entries.push_back(index);
-        // Canonicalize signature indices during decoding.
-        table->map.FindOrInsert(func->sig);
       }
     }
   }
 
   void DecodeCodeSection(bool verify_functions) {
-    const byte* pos = pc_;
+    uint32_t pos = pc_offset();
     uint32_t functions_count = consume_u32v("functions count");
-    if (functions_count != module_->num_declared_functions) {
-      errorf(pos, "function body count %u mismatch (%u expected)",
-             functions_count, module_->num_declared_functions);
-    }
-    for (uint32_t i = 0; i < functions_count; ++i) {
+    CheckFunctionsCount(functions_count, pos);
+    for (uint32_t i = 0; ok() && i < functions_count; ++i) {
+      const byte* pos = pc();
       uint32_t size = consume_u32v("body size");
+      if (size > kV8MaxWasmFunctionSize) {
+        errorf(pos, "size %u > maximum function size %zu", size,
+               kV8MaxWasmFunctionSize);
+        return;
+      }
       uint32_t offset = pc_offset();
       consume_bytes(size, "function body");
       if (failed()) break;
-      WasmFunction* function =
-          &module_->functions[i + module_->num_imported_functions];
-      function->code = {offset, size};
-      if (verify_functions) {
-        ModuleWireBytes bytes(start_, end_);
-        VerifyFunctionBody(module_->signature_zone->allocator(),
-                           i + module_->num_imported_functions, bytes,
-                           module_.get(), function);
-      }
+      DecodeFunctionBody(i, size, offset, verify_functions);
+    }
+  }
+
+  bool CheckFunctionsCount(uint32_t functions_count, uint32_t offset) {
+    if (functions_count != module_->num_declared_functions) {
+      Reset(nullptr, nullptr, offset);
+      errorf(nullptr, "function body count %u mismatch (%u expected)",
+             functions_count, module_->num_declared_functions);
+      return false;
+    }
+    return true;
+  }
+
+  void DecodeFunctionBody(uint32_t index, uint32_t length, uint32_t offset,
+                          bool verify_functions) {
+    WasmFunction* function =
+        &module_->functions[index + module_->num_imported_functions];
+    function->code = {offset, length};
+    if (verify_functions) {
+      ModuleWireBytes bytes(start_, end_);
+      VerifyFunctionBody(module_->signature_zone->allocator(),
+                         index + module_->num_imported_functions, bytes,
+                         module_.get(), function);
     }
   }
 
@@ -757,35 +786,13 @@ class ModuleDecoder : public Decoder {
       uint32_t name_payload_len = inner.consume_u32v("name payload length");
       if (!inner.checkAvailable(name_payload_len)) break;
 
-      // Decode function names, ignore the rest.
-      // Local names will be decoded when needed.
-      switch (name_type) {
-        case NameSectionType::kModule: {
-          WireBytesRef name = wasm::consume_string(inner, false, "module name");
-          if (inner.ok() && validate_utf8(&inner, name)) module_->name = name;
-          break;
-        }
-        case NameSectionType::kFunction: {
-          uint32_t functions_count = inner.consume_u32v("functions count");
-
-          for (; inner.ok() && functions_count > 0; --functions_count) {
-            uint32_t function_index = inner.consume_u32v("function index");
-            WireBytesRef name =
-                wasm::consume_string(inner, false, "function name");
-
-            // Be lenient with errors in the name section: Ignore illegal
-            // or out-of-order indexes and non-UTF8 names. You can even assign
-            // to the same function multiple times (last valid one wins).
-            if (inner.ok() && function_index < module_->functions.size() &&
-                validate_utf8(&inner, name)) {
-              module_->functions[function_index].name = name;
-            }
-          }
-          break;
-        }
-        default:
-          inner.consume_bytes(name_payload_len, "name subsection payload");
-          break;
+      // Decode module name, ignore the rest.
+      // Function and local names will be decoded when needed.
+      if (name_type == NameSectionKindCode::kModule) {
+        WireBytesRef name = wasm::consume_string(inner, false, "module name");
+        if (inner.ok() && validate_utf8(&inner, name)) module_->name = name;
+      } else {
+        inner.consume_bytes(name_payload_len, "name subsection payload");
       }
     }
     // Skip the whole names section in the outer decoder.
@@ -812,7 +819,6 @@ class ModuleDecoder : public Decoder {
       // Copy error code and location.
       result.MoveErrorFrom(intermediate_result_);
     }
-    if (FLAG_dump_wasm_module) DumpModule(result);
     return result;
   }
 
@@ -820,6 +826,7 @@ class ModuleDecoder : public Decoder {
   ModuleResult DecodeModule(Isolate* isolate, bool verify_functions = true) {
     StartDecoding(isolate);
     uint32_t offset = 0;
+    Vector<const byte> orig_bytes(start(), end() - start());
     DecodeModuleHeader(Vector<const uint8_t>(start(), end() - start()), offset);
     if (failed()) {
       return FinishDecoding(verify_functions);
@@ -842,6 +849,8 @@ class ModuleDecoder : public Decoder {
       section_iter.advance(true);
     }
 
+    if (FLAG_dump_wasm_module) DumpModule(orig_bytes);
+
     if (decoder.failed()) {
       return decoder.toResult<std::unique_ptr<WasmModule>>(nullptr);
     }
@@ -856,7 +865,6 @@ class ModuleDecoder : public Decoder {
                                       std::unique_ptr<WasmFunction> function) {
     pc_ = start_;
     function->sig = consume_sig(zone);
-    function->name = {0, 0};
     function->code = {off(pc_), static_cast<uint32_t>(end_ - pc_)};
 
     if (ok())
@@ -881,6 +889,8 @@ class ModuleDecoder : public Decoder {
     return consume_init_expr(nullptr, kWasmStmt);
   }
 
+  WasmModule* module() { return module_.get(); }
+
   bool IsWasm() { return origin_ == kWasmOrigin; }
 
   Counters* GetCounters() {
@@ -902,7 +912,7 @@ class ModuleDecoder : public Decoder {
   // We store next_section_ as uint8_t instead of SectionCode so that we can
   // increment it. This static_assert should make sure that SectionCode does not
   // get bigger than uint8_t accidentially.
-  static_assert(sizeof(ModuleDecoder::next_section_) == sizeof(SectionCode),
+  static_assert(sizeof(ModuleDecoderImpl::next_section_) == sizeof(SectionCode),
                 "type mismatch");
   Result<bool> intermediate_result_;
   ModuleOrigin origin_;
@@ -937,30 +947,26 @@ class ModuleDecoder : public Decoder {
     global->mutability = consume_mutability();
     const byte* pos = pc();
     global->init = consume_init_expr(module, kWasmStmt);
-    switch (global->init.kind) {
-      case WasmInitExpr::kGlobalIndex: {
-        uint32_t other_index = global->init.val.global_index;
-        if (other_index >= index) {
-          errorf(pos,
-                 "invalid global index in init expression, "
-                 "index %u, other_index %u",
-                 index, other_index);
-        } else if (module->globals[other_index].type != global->type) {
-          errorf(pos,
-                 "type mismatch in global initialization "
-                 "(from global #%u), expected %s, got %s",
-                 other_index, WasmOpcodes::TypeName(global->type),
-                 WasmOpcodes::TypeName(module->globals[other_index].type));
-        }
-        break;
+    if (global->init.kind == WasmInitExpr::kGlobalIndex) {
+      uint32_t other_index = global->init.val.global_index;
+      if (other_index >= index) {
+        errorf(pos,
+               "invalid global index in init expression, "
+               "index %u, other_index %u",
+               index, other_index);
+      } else if (module->globals[other_index].type != global->type) {
+        errorf(pos,
+               "type mismatch in global initialization "
+               "(from global #%u), expected %s, got %s",
+               other_index, ValueTypes::TypeName(global->type),
+               ValueTypes::TypeName(module->globals[other_index].type));
       }
-      default:
-        if (global->type != TypeOf(module, global->init)) {
-          errorf(pos,
-                 "type error in global initialization, expected %s, got %s",
-                 WasmOpcodes::TypeName(global->type),
-                 WasmOpcodes::TypeName(TypeOf(module, global->init)));
-        }
+    } else {
+      if (global->type != TypeOf(module, global->init)) {
+        errorf(pos, "type error in global initialization, expected %s, got %s",
+               ValueTypes::TypeName(global->type),
+               ValueTypes::TypeName(TypeOf(module, global->init)));
+      }
     }
   }
 
@@ -982,14 +988,19 @@ class ModuleDecoder : public Decoder {
     uint32_t offset = 0;
     if (module->globals.size() == 0) {
       module->globals_size = 0;
+      module->num_imported_mutable_globals = 0;
       return;
     }
     for (WasmGlobal& global : module->globals) {
-      byte size =
-          WasmOpcodes::MemSize(WasmOpcodes::MachineTypeFor(global.type));
-      offset = (offset + size - 1) & ~(size - 1);  // align
-      global.offset = offset;
-      offset += size;
+      byte size = ValueTypes::MemSize(ValueTypes::MachineTypeFor(global.type));
+      if (global.mutability && global.imported) {
+        DCHECK(FLAG_experimental_wasm_mut_global);
+        global.index = module->num_imported_mutable_globals++;
+      } else {
+        offset = (offset + size - 1) & ~(size - 1);  // align
+        global.offset = offset;
+        offset += size;
+      }
     }
     module->globals_size = offset;
   }
@@ -998,7 +1009,8 @@ class ModuleDecoder : public Decoder {
   void VerifyFunctionBody(AccountingAllocator* allocator, uint32_t func_num,
                           const ModuleWireBytes& wire_bytes,
                           const WasmModule* module, WasmFunction* function) {
-    WasmFunctionName func_name(function, wire_bytes.GetNameOrNull(function));
+    WasmFunctionName func_name(function,
+                               wire_bytes.GetNameOrNull(function, module));
     if (FLAG_trace_wasm_decoder || FLAG_trace_wasm_decode_time) {
       OFStream os(stdout);
       os << "Verifying wasm function " << func_name << std::endl;
@@ -1024,12 +1036,6 @@ class ModuleDecoder : public Decoder {
 
   WireBytesRef consume_string(bool validate_utf8, const char* name) {
     return wasm::consume_string(*this, validate_utf8, name);
-  }
-
-  bool validate_utf8(Decoder* decoder, WireBytesRef string) {
-    return unibrow::Utf8::ValidateEncoding(
-        decoder->start() + decoder->GetBufferRelativeOffset(string.offset()),
-        string.length());
   }
 
   uint32_t consume_sig_index(WasmModule* module, FunctionSig** sig) {
@@ -1085,9 +1091,30 @@ class ModuleDecoder : public Decoder {
   void consume_resizable_limits(const char* name, const char* units,
                                 uint32_t max_initial, uint32_t* initial,
                                 bool* has_max, uint32_t max_maximum,
-                                uint32_t* maximum) {
-    uint32_t flags = consume_u32v("resizable limits flags");
+                                uint32_t* maximum,
+                                bool* has_shared_memory = nullptr) {
+    uint8_t flags = consume_u8("resizable limits flags");
     const byte* pos = pc();
+
+    if (FLAG_experimental_wasm_threads) {
+      bool is_memory = (strcmp(name, "memory") == 0);
+      if (flags & 0xFC || (!is_memory && (flags & 0xFE))) {
+        errorf(pos - 1, "invalid %s limits flags", name);
+      }
+      if (flags == 3) {
+        DCHECK_NOT_NULL(has_shared_memory);
+        *has_shared_memory = true;
+      } else if (flags == 2) {
+        errorf(pos - 1,
+               "%s limits flags should have maximum defined if shared is true",
+               name);
+      }
+    } else {
+      if (flags & 0xFE) {
+        errorf(pos - 1, "invalid %s limits flags", name);
+      }
+    }
+
     *initial = consume_u32v("initial size");
     *has_max = false;
     if (*initial > max_initial) {
@@ -1132,14 +1159,14 @@ class ModuleDecoder : public Decoder {
     unsigned len = 0;
     switch (opcode) {
       case kExprGetGlobal: {
-        GlobalIndexOperand<true> operand(this, pc() - 1);
-        if (module->globals.size() <= operand.index) {
+        GlobalIndexImmediate<Decoder::kValidate> imm(this, pc() - 1);
+        if (module->globals.size() <= imm.index) {
           error("global index is out of bounds");
           expr.kind = WasmInitExpr::kNone;
           expr.val.i32_const = 0;
           break;
         }
-        WasmGlobal* global = &module->globals[operand.index];
+        WasmGlobal* global = &module->globals[imm.index];
         if (global->mutability || !global->imported) {
           error(
               "only immutable imported globals can be used in initializer "
@@ -1149,37 +1176,45 @@ class ModuleDecoder : public Decoder {
           break;
         }
         expr.kind = WasmInitExpr::kGlobalIndex;
-        expr.val.global_index = operand.index;
-        len = operand.length;
+        expr.val.global_index = imm.index;
+        len = imm.length;
         break;
       }
       case kExprI32Const: {
-        ImmI32Operand<true> operand(this, pc() - 1);
+        ImmI32Immediate<Decoder::kValidate> imm(this, pc() - 1);
         expr.kind = WasmInitExpr::kI32Const;
-        expr.val.i32_const = operand.value;
-        len = operand.length;
+        expr.val.i32_const = imm.value;
+        len = imm.length;
         break;
       }
       case kExprF32Const: {
-        ImmF32Operand<true> operand(this, pc() - 1);
+        ImmF32Immediate<Decoder::kValidate> imm(this, pc() - 1);
         expr.kind = WasmInitExpr::kF32Const;
-        expr.val.f32_const = operand.value;
-        len = operand.length;
+        expr.val.f32_const = imm.value;
+        len = imm.length;
         break;
       }
       case kExprI64Const: {
-        ImmI64Operand<true> operand(this, pc() - 1);
+        ImmI64Immediate<Decoder::kValidate> imm(this, pc() - 1);
         expr.kind = WasmInitExpr::kI64Const;
-        expr.val.i64_const = operand.value;
-        len = operand.length;
+        expr.val.i64_const = imm.value;
+        len = imm.length;
         break;
       }
       case kExprF64Const: {
-        ImmF64Operand<true> operand(this, pc() - 1);
+        ImmF64Immediate<Decoder::kValidate> imm(this, pc() - 1);
         expr.kind = WasmInitExpr::kF64Const;
-        expr.val.f64_const = operand.value;
-        len = operand.length;
+        expr.val.f64_const = imm.value;
+        len = imm.length;
         break;
+      }
+      case kExprRefNull: {
+        if (FLAG_experimental_wasm_anyref) {
+          expr.kind = WasmInitExpr::kAnyRefConst;
+          len = 0;
+          break;
+        }
+        V8_FALLTHROUGH;
       }
       default: {
         error("invalid opcode in initialization expression");
@@ -1193,8 +1228,8 @@ class ModuleDecoder : public Decoder {
     }
     if (expected != kWasmStmt && TypeOf(module, expr) != kWasmI32) {
       errorf(pos, "type error in init expression, expected %s, got %s",
-             WasmOpcodes::TypeName(expected),
-             WasmOpcodes::TypeName(TypeOf(module, expr)));
+             ValueTypes::TypeName(expected),
+             ValueTypes::TypeName(TypeOf(module, expr)));
     }
     return expr;
   }
@@ -1220,10 +1255,14 @@ class ModuleDecoder : public Decoder {
       case kLocalF64:
         return kWasmF64;
       default:
-        if (IsWasm() && FLAG_experimental_wasm_simd) {
+        if (IsWasm()) {
           switch (t) {
             case kLocalS128:
-              return kWasmS128;
+              if (FLAG_experimental_wasm_simd) return kWasmS128;
+              break;
+            case kLocalAnyRef:
+              if (FLAG_experimental_wasm_anyref) return kWasmAnyRef;
+              break;
             default:
               break;
           }
@@ -1245,7 +1284,7 @@ class ModuleDecoder : public Decoder {
 
  private:
   FunctionSig* consume_sig_internal(Zone* zone, bool has_return_values) {
-    if (has_return_values && !expect_u8("type form", kWasmFunctionTypeForm))
+    if (has_return_values && !expect_u8("type form", kWasmFunctionTypeCode))
       return nullptr;
     // parse parameter types
     uint32_t param_count =
@@ -1301,7 +1340,7 @@ ModuleResult DecodeWasmModule(Isolate* isolate, const byte* module_start,
   size_counter->AddSample(static_cast<int>(size));
   // Signatures are stored in zone memory, which have the same lifetime
   // as the {module}.
-  ModuleDecoder decoder(module_start, module_end, origin);
+  ModuleDecoderImpl decoder(module_start, module_end, origin);
   ModuleResult result = decoder.DecodeModule(isolate, verify_functions);
   // TODO(bradnelson): Improve histogram handling of size_t.
   // TODO(titzer): this isn't accurate, since it doesn't count the data
@@ -1318,7 +1357,64 @@ ModuleResult DecodeWasmModule(Isolate* isolate, const byte* module_start,
   return result;
 }
 
-}  // namespace
+ModuleDecoder::ModuleDecoder() = default;
+ModuleDecoder::~ModuleDecoder() = default;
+
+WasmModule* ModuleDecoder::module() const { return impl_->module(); }
+
+void ModuleDecoder::StartDecoding(Isolate* isolate, ModuleOrigin origin) {
+  DCHECK_NULL(impl_);
+  impl_.reset(new ModuleDecoderImpl(origin));
+  impl_->StartDecoding(isolate);
+}
+
+void ModuleDecoder::DecodeModuleHeader(Vector<const uint8_t> bytes,
+                                       uint32_t offset) {
+  impl_->DecodeModuleHeader(bytes, offset);
+}
+
+void ModuleDecoder::DecodeSection(SectionCode section_code,
+                                  Vector<const uint8_t> bytes, uint32_t offset,
+                                  bool verify_functions) {
+  impl_->DecodeSection(section_code, bytes, offset, verify_functions);
+}
+
+void ModuleDecoder::DecodeFunctionBody(uint32_t index, uint32_t length,
+                                       uint32_t offset, bool verify_functions) {
+  impl_->DecodeFunctionBody(index, length, offset, verify_functions);
+}
+
+bool ModuleDecoder::CheckFunctionsCount(uint32_t functions_count,
+                                        uint32_t offset) {
+  return impl_->CheckFunctionsCount(functions_count, offset);
+}
+
+ModuleResult ModuleDecoder::FinishDecoding(bool verify_functions) {
+  return impl_->FinishDecoding(verify_functions);
+}
+
+SectionCode ModuleDecoder::IdentifyUnknownSection(Decoder& decoder,
+                                                  const byte* end) {
+  WireBytesRef string = wasm::consume_string(decoder, true, "section name");
+  if (decoder.failed() || decoder.pc() > end) {
+    return kUnknownSectionCode;
+  }
+  const byte* section_name_start =
+      decoder.start() + decoder.GetBufferRelativeOffset(string.offset());
+
+  TRACE("  +%d  section name        : \"%.*s\"\n",
+        static_cast<int>(section_name_start - decoder.start()),
+        string.length() < 20 ? string.length() : 20, section_name_start);
+
+  if (string.length() == num_chars(kNameString) &&
+      strncmp(reinterpret_cast<const char*>(section_name_start), kNameString,
+              num_chars(kNameString)) == 0) {
+    return kNameSectionCode;
+  }
+  return kUnknownSectionCode;
+}
+
+bool ModuleDecoder::ok() { return impl_->ok(); }
 
 ModuleResult SyncDecodeWasmModule(Isolate* isolate, const byte* module_start,
                                   const byte* module_end, bool verify_functions,
@@ -1337,13 +1433,13 @@ ModuleResult AsyncDecodeWasmModule(
 
 FunctionSig* DecodeWasmSignatureForTesting(Zone* zone, const byte* start,
                                            const byte* end) {
-  ModuleDecoder decoder(start, end, kWasmOrigin);
+  ModuleDecoderImpl decoder(start, end, kWasmOrigin);
   return decoder.DecodeFunctionSignature(zone, start);
 }
 
 WasmInitExpr DecodeWasmInitExprForTesting(const byte* start, const byte* end) {
   AccountingAllocator allocator;
-  ModuleDecoder decoder(start, end, kWasmOrigin);
+  ModuleDecoderImpl decoder(start, end, kWasmOrigin);
   return decoder.DecodeInitExpr(start);
 }
 
@@ -1358,9 +1454,14 @@ FunctionResult DecodeWasmFunction(Isolate* isolate, Zone* zone,
   size_t size = function_end - function_start;
   if (function_start > function_end)
     return FunctionResult::Error("start > end");
+  auto size_histogram = module->is_wasm()
+                            ? counters->wasm_wasm_function_size_bytes()
+                            : counters->wasm_asm_function_size_bytes();
+  // TODO(bradnelson): Improve histogram handling of ptrdiff_t.
+  size_histogram->AddSample(static_cast<int>(size));
   if (size > kV8MaxWasmFunctionSize)
     return FunctionResult::Error("size > maximum function size: %zu", size);
-  ModuleDecoder decoder(function_start, function_end, kWasmOrigin);
+  ModuleDecoderImpl decoder(function_start, function_end, kWasmOrigin);
   decoder.SetCounters(counters);
   return decoder.DecodeSingleFunction(zone, wire_bytes, module,
                                       base::make_unique<WasmFunction>());
@@ -1456,8 +1557,13 @@ std::vector<CustomSectionOffset> DecodeCustomSections(const byte* start,
     uint32_t name_offset = decoder.pc_offset();
     decoder.consume_bytes(name_length, "section name");
     uint32_t payload_offset = decoder.pc_offset();
+    if (section_length < (payload_offset - section_start)) {
+      decoder.error("invalid section length");
+      break;
+    }
     uint32_t payload_length = section_length - (payload_offset - section_start);
     decoder.consume_bytes(payload_length);
+    if (decoder.failed()) break;
     result.push_back({{section_start, section_length},
                       {name_offset, name_length},
                       {payload_offset, payload_length}});
@@ -1466,13 +1572,10 @@ std::vector<CustomSectionOffset> DecodeCustomSections(const byte* start,
   return result;
 }
 
-void DecodeLocalNames(const byte* module_start, const byte* module_end,
-                      LocalNames* result) {
-  DCHECK_NOT_NULL(result);
-  DCHECK(result->names.empty());
+namespace {
 
+bool FindSection(Decoder& decoder, SectionCode section_code) {
   static constexpr int kModuleHeaderSize = 8;
-  Decoder decoder(module_start, module_end);
   decoder.consume_bytes(kModuleHeaderSize, "module header");
 
   WasmSectionIterator section_iter(decoder);
@@ -1481,10 +1584,22 @@ void DecodeLocalNames(const byte* module_start, const byte* module_end,
          section_iter.section_code() != kNameSectionCode) {
     section_iter.advance(true);
   }
-  if (!section_iter.more()) return;
+  if (!section_iter.more()) return false;
 
   // Reset the decoder to not read beyond the name section end.
   decoder.Reset(section_iter.payload(), decoder.pc_offset());
+  return true;
+}
+
+}  // namespace
+
+void DecodeFunctionNames(const byte* module_start, const byte* module_end,
+                         std::unordered_map<uint32_t, WireBytesRef>* names) {
+  DCHECK_NOT_NULL(names);
+  DCHECK(names->empty());
+
+  Decoder decoder(module_start, module_end);
+  if (!FindSection(decoder, kNameSectionCode)) return;
 
   while (decoder.ok() && decoder.more()) {
     uint8_t name_type = decoder.consume_u8("name type");
@@ -1493,7 +1608,42 @@ void DecodeLocalNames(const byte* module_start, const byte* module_end,
     uint32_t name_payload_len = decoder.consume_u32v("name payload length");
     if (!decoder.checkAvailable(name_payload_len)) break;
 
-    if (name_type != NameSectionType::kLocal) {
+    if (name_type != NameSectionKindCode::kFunction) {
+      decoder.consume_bytes(name_payload_len, "name subsection payload");
+      continue;
+    }
+    uint32_t functions_count = decoder.consume_u32v("functions count");
+
+    for (; decoder.ok() && functions_count > 0; --functions_count) {
+      uint32_t function_index = decoder.consume_u32v("function index");
+      WireBytesRef name = wasm::consume_string(decoder, false, "function name");
+
+      // Be lenient with errors in the name section: Ignore non-UTF8 names. You
+      // can even assign to the same function multiple times (last valid one
+      // wins).
+      if (decoder.ok() && validate_utf8(&decoder, name)) {
+        names->insert(std::make_pair(function_index, name));
+      }
+    }
+  }
+}
+
+void DecodeLocalNames(const byte* module_start, const byte* module_end,
+                      LocalNames* result) {
+  DCHECK_NOT_NULL(result);
+  DCHECK(result->names.empty());
+
+  Decoder decoder(module_start, module_end);
+  if (!FindSection(decoder, kNameSectionCode)) return;
+
+  while (decoder.ok() && decoder.more()) {
+    uint8_t name_type = decoder.consume_u8("name type");
+    if (name_type & 0x80) break;  // no varuint7
+
+    uint32_t name_payload_len = decoder.consume_u32v("name payload length");
+    if (!decoder.checkAvailable(name_payload_len)) break;
+
+    if (name_type != NameSectionKindCode::kLocal) {
       decoder.consume_bytes(name_payload_len, "name subsection payload");
       continue;
     }

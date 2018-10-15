@@ -6,17 +6,18 @@
 
 #include "src/assert-scope.h"
 #include "src/base/optional.h"
-#include "src/compilation-info.h"
 #include "src/compiler-dispatcher/compiler-dispatcher-tracer.h"
 #include "src/compiler.h"
 #include "src/flags.h"
 #include "src/global-handles.h"
+#include "src/interpreter/interpreter.h"
 #include "src/isolate.h"
 #include "src/objects-inl.h"
 #include "src/parsing/parse-info.h"
 #include "src/parsing/parser.h"
 #include "src/parsing/scanner-character-streams.h"
 #include "src/unicode-cache.h"
+#include "src/unoptimized-compilation-info.h"
 #include "src/utils.h"
 
 namespace v8 {
@@ -66,14 +67,17 @@ UnoptimizedCompileJob::UnoptimizedCompileJob(Isolate* isolate,
                                              CompilerDispatcherTracer* tracer,
                                              Handle<SharedFunctionInfo> shared,
                                              size_t max_stack_size)
-    : status_(Status::kInitial),
+    : CompilerDispatcherJob(Type::kUnoptimizedCompile),
       main_thread_id_(isolate->thread_id().ToInteger()),
       tracer_(tracer),
+      allocator_(isolate->allocator()),
       context_(isolate->global_handles()->Create(isolate->context())),
       shared_(isolate->global_handles()->Create(*shared)),
       max_stack_size_(max_stack_size),
       trace_compiler_dispatcher_jobs_(FLAG_trace_compiler_dispatcher_jobs) {
   DCHECK(!shared_->is_toplevel());
+  // TODO(rmcilroy): Handle functions with non-empty outer scope info.
+  DCHECK(!shared_->HasOuterScopeInfo());
   HandleScope scope(isolate);
   Handle<Script> script(Script::cast(shared_->script()), isolate);
   Handle<String> source(String::cast(script->source()), isolate);
@@ -85,8 +89,7 @@ UnoptimizedCompileJob::UnoptimizedCompileJob(Isolate* isolate,
 }
 
 UnoptimizedCompileJob::~UnoptimizedCompileJob() {
-  DCHECK(status_ == Status::kInitial ||
-         status_ == Status::kDone);
+  DCHECK(status() == Status::kInitial || status() == Status::kDone);
   if (!shared_.is_null()) {
     DCHECK_EQ(ThreadId::Current().ToInteger(), main_thread_id_);
     i::GlobalHandles::Destroy(Handle<Object>::cast(shared_).location());
@@ -102,71 +105,17 @@ bool UnoptimizedCompileJob::IsAssociatedWith(
   return *shared_ == *shared;
 }
 
-void UnoptimizedCompileJob::StepNextOnMainThread(Isolate* isolate) {
-  DCHECK_EQ(isolate->thread_id().ToInteger(), main_thread_id_);
-
-  // Ensure we are in the correct context for the job.
-  SaveContext save(isolate);
-  if (has_context()) {
-    isolate->set_context(context());
-  } else {
-    // Phases which can run off the main thread by definition can't execute any
-    // JS code, and so we don't need to enter their context.
-    DCHECK(CanStepNextOnAnyThread());
-  }
-
-  switch (status()) {
-    case Status::kInitial:
-      return PrepareToParseOnMainThread(isolate);
-
-    case Status::kReadyToParse:
-      return Parse();
-
-    case Status::kParsed:
-      return FinalizeParsingOnMainThread(isolate);
-
-    case Status::kReadyToAnalyze:
-      return AnalyzeOnMainThread(isolate);
-
-    case Status::kAnalyzed:
-      return PrepareToCompileOnMainThread(isolate);
-
-    case Status::kReadyToCompile:
-      return Compile();
-
-    case Status::kCompiled:
-      return FinalizeCompilingOnMainThread(isolate);
-
-    case Status::kFailed:
-    case Status::kDone:
-      return;
-  }
-  UNREACHABLE();
-}
-
-void UnoptimizedCompileJob::StepNextOnBackgroundThread() {
-  DCHECK(CanStepNextOnAnyThread());
-  switch (status()) {
-    case Status::kReadyToParse:
-      return Parse();
-
-    case Status::kReadyToCompile:
-      return Compile();
-
-    default:
-      UNREACHABLE();
-  }
-}
-
-void UnoptimizedCompileJob::PrepareToParseOnMainThread(Isolate* isolate) {
+void UnoptimizedCompileJob::PrepareOnMainThread(Isolate* isolate) {
   DCHECK_EQ(ThreadId::Current().ToInteger(), main_thread_id_);
   DCHECK_EQ(isolate->thread_id().ToInteger(), main_thread_id_);
-  DCHECK(status() == Status::kInitial);
-  COMPILER_DISPATCHER_TRACE_SCOPE(tracer_, kPrepareToParse);
+  DCHECK_EQ(status(), Status::kInitial);
+  COMPILER_DISPATCHER_TRACE_SCOPE(tracer_, kPrepare);
+
   if (trace_compiler_dispatcher_jobs_) {
     PrintF("UnoptimizedCompileJob[%p]: Preparing to parse\n",
            static_cast<void*>(this));
   }
+
   HandleScope scope(isolate);
   unicode_cache_.reset(new UnicodeCache());
   Handle<Script> script(Script::cast(shared_->script()), isolate);
@@ -177,7 +126,7 @@ void UnoptimizedCompileJob::PrepareToParseOnMainThread(Isolate* isolate) {
   parse_info_->InitFromIsolate(isolate);
   if (source->IsExternalTwoByteString() || source->IsExternalOneByteString()) {
     std::unique_ptr<Utf16CharacterStream> stream(ScannerStream::For(
-        source, shared_->start_position(), shared_->end_position()));
+        source, shared_->StartPosition(), shared_->EndPosition()));
     parse_info_->set_character_stream(std::move(stream));
   } else {
     source = String::Flatten(source);
@@ -201,8 +150,8 @@ void UnoptimizedCompileJob::PrepareToParseOnMainThread(Isolate* isolate) {
     } else {
       // Otherwise, create a copy of the part of the string we'll parse in the
       // zone.
-      length = (shared_->end_position() - shared_->start_position());
-      offset = shared_->start_position();
+      length = (shared_->EndPosition() - shared_->StartPosition());
+      offset = shared_->StartPosition();
 
       int byte_len = length * (source->IsOneByteRepresentation() ? 1 : 2);
       data = parse_info_->zone()->New(byte_len);
@@ -212,12 +161,11 @@ void UnoptimizedCompileJob::PrepareToParseOnMainThread(Isolate* isolate) {
       DCHECK(content.IsFlat());
       if (content.IsOneByte()) {
         MemCopy(const_cast<void*>(data),
-                &content.ToOneByteVector().at(shared_->start_position()),
+                &content.ToOneByteVector().at(shared_->StartPosition()),
                 byte_len);
       } else {
         MemCopy(const_cast<void*>(data),
-                &content.ToUC16Vector().at(shared_->start_position()),
-                byte_len);
+                &content.ToUC16Vector().at(shared_->StartPosition()), byte_len);
       }
     }
     Handle<String> wrapper;
@@ -238,15 +186,15 @@ void UnoptimizedCompileJob::PrepareToParseOnMainThread(Isolate* isolate) {
     }
     wrapper_ = isolate->global_handles()->Create(*wrapper);
     std::unique_ptr<Utf16CharacterStream> stream(
-        ScannerStream::For(wrapper_, shared_->start_position() - offset,
-                           shared_->end_position() - offset));
+        ScannerStream::For(wrapper_, shared_->StartPosition() - offset,
+                           shared_->EndPosition() - offset));
     parse_info_->set_character_stream(std::move(stream));
   }
   parse_info_->set_hash_seed(isolate->heap()->HashSeed());
   parse_info_->set_is_named_expression(shared_->is_named_expression());
-  parse_info_->set_compiler_hints(shared_->compiler_hints());
-  parse_info_->set_start_position(shared_->start_position());
-  parse_info_->set_end_position(shared_->end_position());
+  parse_info_->set_function_flags(shared_->flags());
+  parse_info_->set_start_position(shared_->StartPosition());
+  parse_info_->set_end_position(shared_->EndPosition());
   parse_info_->set_unicode_cache(unicode_cache_.get());
   parse_info_->set_language_mode(shared_->language_mode());
   parse_info_->set_function_literal_id(shared_->function_literal_id());
@@ -257,150 +205,83 @@ void UnoptimizedCompileJob::PrepareToParseOnMainThread(Isolate* isolate) {
 
   parser_.reset(new Parser(parse_info_.get()));
   MaybeHandle<ScopeInfo> outer_scope_info;
-  if (!shared_->outer_scope_info()->IsTheHole(isolate) &&
-      ScopeInfo::cast(shared_->outer_scope_info())->length() > 0) {
-    outer_scope_info = handle(ScopeInfo::cast(shared_->outer_scope_info()));
+  if (shared_->HasOuterScopeInfo()) {
+    outer_scope_info = handle(shared_->GetOuterScopeInfo());
   }
   parser_->DeserializeScopeChain(parse_info_.get(), outer_scope_info);
 
-  Handle<String> name(shared_->name());
+  Handle<String> name(shared_->Name());
   parse_info_->set_function_name(
       parse_info_->ast_value_factory()->GetString(name));
-  status_ = Status::kReadyToParse;
+  set_status(Status::kPrepared);
 }
 
-void UnoptimizedCompileJob::Parse() {
-  DCHECK(status() == Status::kReadyToParse);
+void UnoptimizedCompileJob::Compile(bool on_background_thread) {
+  DCHECK_EQ(status(), Status::kPrepared);
   COMPILER_DISPATCHER_TRACE_SCOPE_WITH_NUM(
-      tracer_, kParse,
+      tracer_, kCompile,
       parse_info_->end_position() - parse_info_->start_position());
   if (trace_compiler_dispatcher_jobs_) {
-    PrintF("UnoptimizedCompileJob[%p]: Parsing\n", static_cast<void*>(this));
+    PrintF("UnoptimizedCompileJob[%p]: Compiling\n", static_cast<void*>(this));
   }
 
   DisallowHeapAllocation no_allocation;
   DisallowHandleAllocation no_handles;
   DisallowHandleDereference no_deref;
 
+  parse_info_->set_on_background_thread(on_background_thread);
   uintptr_t stack_limit = GetCurrentStackPosition() - max_stack_size_ * KB;
-
   parser_->set_stack_limit(stack_limit);
+  parse_info_->set_stack_limit(stack_limit);
   parser_->ParseOnBackground(parse_info_.get());
-  status_ = Status::kParsed;
-}
-
-void UnoptimizedCompileJob::FinalizeParsingOnMainThread(Isolate* isolate) {
-  DCHECK_EQ(ThreadId::Current().ToInteger(), main_thread_id_);
-  DCHECK_EQ(isolate->thread_id().ToInteger(), main_thread_id_);
-  DCHECK(status() == Status::kParsed);
-  COMPILER_DISPATCHER_TRACE_SCOPE(tracer_, kFinalizeParsing);
-  if (trace_compiler_dispatcher_jobs_) {
-    PrintF("UnoptimizedCompileJob[%p]: Finalizing parsing\n",
-           static_cast<void*>(this));
-  }
-
-  if (!source_.is_null()) {
-    i::GlobalHandles::Destroy(Handle<Object>::cast(source_).location());
-    source_ = Handle<String>::null();
-  }
-  if (!wrapper_.is_null()) {
-    i::GlobalHandles::Destroy(Handle<Object>::cast(wrapper_).location());
-    wrapper_ = Handle<String>::null();
-  }
-
-  Handle<Script> script(Script::cast(shared_->script()), isolate);
-  parse_info_->set_script(script);
-
-  if (!shared_->outer_scope_info()->IsTheHole(isolate) &&
-      ScopeInfo::cast(shared_->outer_scope_info())->length() > 0) {
-    Handle<ScopeInfo> outer_scope_info(
-        handle(ScopeInfo::cast(shared_->outer_scope_info())));
-    parse_info_->set_outer_scope_info(outer_scope_info);
-  }
 
   if (parse_info_->literal() == nullptr) {
-    parser_->ReportErrors(isolate, script);
-    status_ = Status::kFailed;
-  } else {
-    parse_info_->literal()->scope()->AttachOuterScopeInfo(parse_info_.get(),
-                                                          isolate);
-    status_ = Status::kReadyToAnalyze;
-  }
-  parser_->UpdateStatistics(isolate, script);
-  parse_info_->UpdateStatisticsAfterBackgroundParse(isolate);
-
-  parser_->HandleSourceURLComments(isolate, script);
-
-  parse_info_->set_unicode_cache(nullptr);
-  parser_.reset();
-  unicode_cache_.reset();
-}
-
-void UnoptimizedCompileJob::AnalyzeOnMainThread(Isolate* isolate) {
-  DCHECK_EQ(ThreadId::Current().ToInteger(), main_thread_id_);
-  DCHECK_EQ(isolate->thread_id().ToInteger(), main_thread_id_);
-  DCHECK(status() == Status::kReadyToAnalyze);
-  COMPILER_DISPATCHER_TRACE_SCOPE(tracer_, kAnalyze);
-  if (trace_compiler_dispatcher_jobs_) {
-    PrintF("UnoptimizedCompileJob[%p]: Analyzing\n", static_cast<void*>(this));
-  }
-
-  if (Compiler::Analyze(parse_info_.get())) {
-    status_ = Status::kAnalyzed;
-  } else {
-    status_ = Status::kFailed;
-    if (!isolate->has_pending_exception()) isolate->StackOverflow();
-  }
-}
-
-void UnoptimizedCompileJob::PrepareToCompileOnMainThread(Isolate* isolate) {
-  DCHECK_EQ(ThreadId::Current().ToInteger(), main_thread_id_);
-  DCHECK_EQ(isolate->thread_id().ToInteger(), main_thread_id_);
-  DCHECK(status() == Status::kAnalyzed);
-  COMPILER_DISPATCHER_TRACE_SCOPE(tracer_, kPrepareToCompile);
-
-  compilation_job_.reset(
-      Compiler::PrepareUnoptimizedCompilationJob(parse_info_.get(), isolate));
-  if (!compilation_job_.get()) {
-    if (!isolate->has_pending_exception()) isolate->StackOverflow();
-    status_ = Status::kFailed;
+    // Parser sets error in pending error handler.
+    set_status(Status::kHasErrorsToReport);
     return;
   }
 
-  CHECK(compilation_job_->can_execute_on_background_thread());
-  status_ = Status::kReadyToCompile;
-}
-
-void UnoptimizedCompileJob::Compile() {
-  DCHECK(status() == Status::kReadyToCompile);
-  COMPILER_DISPATCHER_TRACE_SCOPE(tracer_, kCompile);
-  if (trace_compiler_dispatcher_jobs_) {
-    PrintF("UnoptimizedCompileJob[%p]: Compiling\n", static_cast<void*>(this));
+  if (!Compiler::Analyze(parse_info_.get())) {
+    parse_info_->pending_error_handler()->set_stack_overflow();
+    set_status(Status::kHasErrorsToReport);
+    return;
   }
 
-  // Disallowing of handle dereference and heap access dealt with in
-  // CompilationJob::ExecuteJob.
+  compilation_job_.reset(interpreter::Interpreter::NewCompilationJob(
+      parse_info_.get(), parse_info_->literal(), allocator_, nullptr));
 
-  uintptr_t stack_limit = GetCurrentStackPosition() - max_stack_size_ * KB;
-  compilation_job_->set_stack_limit(stack_limit);
+  if (!compilation_job_.get()) {
+    parse_info_->pending_error_handler()->set_stack_overflow();
+    set_status(Status::kHasErrorsToReport);
+    return;
+  }
 
-  CompilationJob::Status status = compilation_job_->ExecuteJob();
-  USE(status);
+  if (compilation_job_->ExecuteJob() != CompilationJob::SUCCEEDED) {
+    parse_info_->pending_error_handler()->set_stack_overflow();
+    set_status(Status::kHasErrorsToReport);
+    return;
+  }
 
-  // Always transition to kCompiled - errors will be reported by
-  // FinalizeCompilingOnMainThread.
-  status_ = Status::kCompiled;
+  set_status(Status::kCompiled);
 }
 
-void UnoptimizedCompileJob::FinalizeCompilingOnMainThread(Isolate* isolate) {
+void UnoptimizedCompileJob::FinalizeOnMainThread(Isolate* isolate) {
   DCHECK_EQ(ThreadId::Current().ToInteger(), main_thread_id_);
   DCHECK_EQ(isolate->thread_id().ToInteger(), main_thread_id_);
-  DCHECK(status() == Status::kCompiled);
-  COMPILER_DISPATCHER_TRACE_SCOPE(tracer_, kFinalizeCompiling);
+  DCHECK_EQ(status(), Status::kCompiled);
+  DCHECK_NOT_NULL(parse_info_->literal());
+  DCHECK_NOT_NULL(compilation_job_.get());
+  COMPILER_DISPATCHER_TRACE_SCOPE(tracer_, kFinalize);
   if (trace_compiler_dispatcher_jobs_) {
     PrintF("UnoptimizedCompileJob[%p]: Finalizing compiling\n",
            static_cast<void*>(this));
   }
+
+  Handle<Script> script(Script::cast(shared_->script()), isolate);
+  parse_info_->set_script(script);
+  parser_->UpdateStatistics(isolate, script);
+  parse_info_->UpdateBackgroundParseStatisticsOnMainThread(isolate);
+  parser_->HandleSourceURLComments(isolate, script);
 
   {
     HandleScope scope(isolate);
@@ -409,25 +290,44 @@ void UnoptimizedCompileJob::FinalizeCompilingOnMainThread(Isolate* isolate) {
     // Allocate scope infos for the literal.
     DeclarationScope::AllocateScopeInfos(parse_info_.get(), isolate,
                                          AnalyzeMode::kRegular);
-    compilation_job_->compilation_info()->set_shared_info(shared_);
     if (compilation_job_->state() == CompilationJob::State::kFailed ||
-        !Compiler::FinalizeCompilationJob(compilation_job_.release())) {
+        !Compiler::FinalizeCompilationJob(compilation_job_.release(), shared_,
+                                          isolate)) {
       if (!isolate->has_pending_exception()) isolate->StackOverflow();
-      status_ = Status::kFailed;
+      set_status(Status::kFailed);
       return;
     }
   }
 
-  compilation_job_.reset();
-  parse_info_.reset();
-
-  status_ = Status::kDone;
+  ResetDataOnMainThread(isolate);
+  set_status(Status::kDone);
 }
 
-void UnoptimizedCompileJob::ResetOnMainThread(Isolate* isolate) {
+void UnoptimizedCompileJob::ReportErrorsOnMainThread(Isolate* isolate) {
+  DCHECK_EQ(ThreadId::Current().ToInteger(), main_thread_id_);
+  DCHECK_EQ(isolate->thread_id().ToInteger(), main_thread_id_);
+  DCHECK_EQ(status(), Status::kHasErrorsToReport);
+
   if (trace_compiler_dispatcher_jobs_) {
-    PrintF("UnoptimizedCompileJob[%p]: Resetting\n", static_cast<void*>(this));
+    PrintF("UnoptimizedCompileJob[%p]: Reporting Errors\n",
+           static_cast<void*>(this));
   }
+
+  // Ensure we report errors in the correct context for the job.
+  SaveContext save(isolate);
+  isolate->set_context(context());
+
+  Handle<Script> script(Script::cast(shared_->script()), isolate);
+  parse_info_->pending_error_handler()->ReportErrors(
+      isolate, script, parse_info_->ast_value_factory());
+
+  ResetDataOnMainThread(isolate);
+  set_status(Status::kFailed);
+}
+
+void UnoptimizedCompileJob::ResetDataOnMainThread(Isolate* isolate) {
+  DCHECK_EQ(ThreadId::Current().ToInteger(), main_thread_id_);
+  DCHECK_EQ(isolate->thread_id().ToInteger(), main_thread_id_);
 
   compilation_job_.reset();
   parser_.reset();
@@ -446,34 +346,28 @@ void UnoptimizedCompileJob::ResetOnMainThread(Isolate* isolate) {
     i::GlobalHandles::Destroy(Handle<Object>::cast(wrapper_).location());
     wrapper_ = Handle<String>::null();
   }
+}
 
-  status_ = Status::kInitial;
+void UnoptimizedCompileJob::ResetOnMainThread(Isolate* isolate) {
+  if (trace_compiler_dispatcher_jobs_) {
+    PrintF("UnoptimizedCompileJob[%p]: Resetting\n", static_cast<void*>(this));
+  }
+
+  ResetDataOnMainThread(isolate);
+  set_status(Status::kInitial);
 }
 
 double UnoptimizedCompileJob::EstimateRuntimeOfNextStepInMs() const {
   switch (status()) {
     case Status::kInitial:
-      return tracer_->EstimatePrepareToParseInMs();
-
-    case Status::kReadyToParse:
-      return tracer_->EstimateParseInMs(parse_info_->end_position() -
-                                        parse_info_->start_position());
-
-    case Status::kParsed:
-      return tracer_->EstimateFinalizeParsingInMs();
-
-    case Status::kReadyToAnalyze:
-      return tracer_->EstimateAnalyzeInMs();
-
-    case Status::kAnalyzed:
-      return tracer_->EstimatePrepareToCompileInMs();
-
-    case Status::kReadyToCompile:
-      return tracer_->EstimateCompileInMs();
-
+      return tracer_->EstimatePrepareInMs();
+    case Status::kPrepared:
+      return tracer_->EstimateCompileInMs(parse_info_->end_position() -
+                                          parse_info_->start_position());
     case Status::kCompiled:
-      return tracer_->EstimateFinalizeCompilingInMs();
+      return tracer_->EstimateFinalizeInMs();
 
+    case Status::kHasErrorsToReport:
     case Status::kFailed:
     case Status::kDone:
       return 0.0;

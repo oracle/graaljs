@@ -2215,6 +2215,8 @@
         <in>graal_array.cc</in>
         <in>graal_array_buffer.cc</in>
         <in>graal_array_buffer_view.cc</in>
+        <in>graal_big_int.cc</in>
+        <in>graal_big_int.h</in>
         <in>graal_boolean.cc</in>
         <in>graal_context.cc</in>
         <in>graal_data.cc</in>
@@ -11602,6 +11604,10 @@
             flavor2="8">
         <ccTool flags="8">
         </ccTool>
+      </item>
+      <item path="deps/v8/src/graal/graal_big_int.cc" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="deps/v8/src/graal/graal_big_int.h" ex="false" tool="3" flavor2="0">
       </item>
       <item path="deps/v8/src/graal/graal_boolean.cc" ex="false" tool="1" flavor2="8">
         <ccTool flags="8">

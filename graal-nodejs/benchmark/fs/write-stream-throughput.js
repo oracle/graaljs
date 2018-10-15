@@ -13,10 +13,7 @@ const bench = common.createBenchmark(main, {
   size: [2, 1024, 65535, 1024 * 1024]
 });
 
-function main(conf) {
-  const dur = +conf.dur;
-  const encodingType = conf.encodingType;
-  const size = +conf.size;
+function main({ dur, encodingType, size }) {
   var encoding;
 
   var chunk;
@@ -39,7 +36,6 @@ function main(conf) {
   try { fs.unlinkSync(filename); } catch (e) {}
 
   var started = false;
-  var ending = false;
   var ended = false;
 
   var f = fs.createWriteStream(filename);
@@ -55,15 +51,9 @@ function main(conf) {
 
 
   function write() {
-    // don't try to write after we end, even if a 'drain' event comes.
-    // v0.8 streams are so sloppy!
-    if (ending)
-      return;
-
     if (!started) {
       started = true;
       setTimeout(function() {
-        ending = true;
         f.end();
       }, dur * 1000);
       bench.start();

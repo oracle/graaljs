@@ -1,10 +1,16 @@
 'use strict';
 
-const errors = require('internal/errors');
+const {
+  ERR_STDERR_CLOSE,
+  ERR_STDOUT_CLOSE,
+  ERR_UNKNOWN_STDIN_TYPE,
+  ERR_UNKNOWN_STREAM_TYPE
+} = require('internal/errors').codes;
 
-exports.setup = setupStdio;
+exports.setupProcessStdio = setupProcessStdio;
+exports.getMainThreadStdio = getMainThreadStdio;
 
-function setupStdio() {
+function getMainThreadStdio() {
   var stdin;
   var stdout;
   var stderr;
@@ -15,7 +21,7 @@ function setupStdio() {
     stdout.destroySoon = stdout.destroy;
     stdout._destroy = function(er, cb) {
       // Avoid errors if we already emitted
-      er = er || new errors.Error('ERR_STDOUT_CLOSE');
+      er = er || new ERR_STDOUT_CLOSE();
       cb(er);
     };
     if (stdout.isTTY) {
@@ -30,7 +36,7 @@ function setupStdio() {
     stderr.destroySoon = stderr.destroy;
     stderr._destroy = function(er, cb) {
       // Avoid errors if we already emitted
-      er = er || new errors.Error('ERR_STDERR_CLOSE');
+      er = er || new ERR_STDERR_CLOSE();
       cb(er);
     };
     if (stderr.isTTY) {
@@ -41,7 +47,6 @@ function setupStdio() {
 
   function getStdin() {
     if (stdin) return stdin;
-
     const tty_wrap = process.binding('tty_wrap');
     const fd = 0;
 
@@ -72,13 +77,15 @@ function setupStdio() {
           stdin = new net.Socket({
             handle: process.channel,
             readable: true,
-            writable: false
+            writable: false,
+            manualStart: true
           });
         } else {
           stdin = new net.Socket({
             fd: fd,
             readable: true,
-            writable: false
+            writable: false,
+            manualStart: true
           });
         }
         // Make sure the stdin can't be `.end()`-ed
@@ -87,7 +94,7 @@ function setupStdio() {
 
       default:
         // Probably an error on in uv_guess_handle()
-        throw new errors.Error('ERR_UNKNOWN_STDIN_TYPE');
+        throw new ERR_UNKNOWN_STDIN_TYPE();
     }
 
     // For supporting legacy API we put the FD here.
@@ -102,19 +109,34 @@ function setupStdio() {
       stdin._handle.readStop();
     }
 
-    // if the user calls stdin.pause(), then we need to stop reading
-    // immediately, so that the process can close down.
+    // If the user calls stdin.pause(), then we need to stop reading
+    // once the stream implementation does so (one nextTick later),
+    // so that the process can close down.
     stdin.on('pause', () => {
+      process.nextTick(onpause);
+    });
+
+    function onpause() {
       if (!stdin._handle)
         return;
-      stdin._readableState.reading = false;
-      stdin._handle.reading = false;
-      stdin._handle.readStop();
-    });
+      if (stdin._handle.reading && !stdin._readableState.flowing) {
+        stdin._readableState.reading = false;
+        stdin._handle.reading = false;
+        stdin._handle.readStop();
+      }
+    }
 
     return stdin;
   }
 
+  return {
+    getStdout,
+    getStderr,
+    getStdin
+  };
+}
+
+function setupProcessStdio({ getStdout, getStdin, getStderr }) {
   Object.defineProperty(process, 'stdout', {
     configurable: true,
     enumerable: true,
@@ -153,25 +175,38 @@ function createWritableStdioStream(fd) {
       break;
 
     case 'FILE':
-      var fs = require('internal/fs');
-      stream = new fs.SyncWriteStream(fd, { autoClose: false });
+      const SyncWriteStream = require('internal/fs/sync_write_stream');
+      stream = new SyncWriteStream(fd, { autoClose: false });
       stream._type = 'fs';
       break;
 
     case 'PIPE':
     case 'TCP':
       var net = require('net');
-      stream = new net.Socket({
-        fd: fd,
-        readable: false,
-        writable: true
-      });
+
+      // If fd is already being used for the IPC channel, libuv will return
+      // an error when trying to use it again. In that case, create the socket
+      // using the existing handle instead of the fd.
+      if (process.channel && process.channel.fd === fd) {
+        stream = new net.Socket({
+          handle: process.channel,
+          readable: false,
+          writable: true
+        });
+      } else {
+        stream = new net.Socket({
+          fd,
+          readable: false,
+          writable: true
+        });
+      }
+
       stream._type = 'pipe';
       break;
 
     default:
       // Probably an error on in uv_guess_handle()
-      throw new errors.Error('ERR_UNKNOWN_STREAM_TYPE');
+      throw new ERR_UNKNOWN_STREAM_TYPE();
   }
 
   // For supporting legacy API we put the FD here.

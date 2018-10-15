@@ -19,8 +19,9 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-/* eslint-disable required-modules, crypto-check */
+/* eslint-disable node-core/required-modules, node-core/crypto-check */
 'use strict';
+const process = global.process;  // Some tests tamper with the process global.
 const path = require('path');
 const fs = require('fs');
 const assert = require('assert');
@@ -29,18 +30,31 @@ const { exec, execSync, spawn, spawnSync } = require('child_process');
 const stream = require('stream');
 const util = require('util');
 const Timer = process.binding('timer_wrap').Timer;
+const { hasTracing } = process.binding('config');
 const { fixturesDir } = require('./fixtures');
-
-const testRoot = process.env.NODE_TEST_DIR ?
-  fs.realpathSync(process.env.NODE_TEST_DIR) : path.resolve(__dirname, '..');
+const tmpdir = require('./tmpdir');
 
 const noop = () => {};
 
-// Using a `.` prefixed name, which is the convention for "hidden" on POSIX,
-// gets tools to ignore it by default or by simple rules, especially eslint.
-let tmpDirName = '.tmp';
-// PORT should match the definition in test/testpy/__init__.py.
-exports.PORT = +process.env.NODE_COMMON_PORT || 12346;
+Object.defineProperty(exports, 'PORT', {
+  get: () => {
+    if (+process.env.TEST_PARALLEL) {
+      throw new Error('common.PORT cannot be used in a parallelized test');
+    }
+    return +process.env.NODE_COMMON_PORT || 12346;
+  },
+  enumerable: true
+});
+
+exports.isMainThread = (() => {
+  try {
+    return require('worker_threads').isMainThread;
+  } catch {
+    // Worker module not enabled → only a single main thread exists.
+    return true;
+  }
+})();
+
 exports.isWindows = process.platform === 'win32';
 exports.isWOW64 = exports.isWindows &&
                   (process.env.PROCESSOR_ARCHITEW6432 !== undefined);
@@ -50,8 +64,26 @@ exports.isLinuxPPCBE = (process.platform === 'linux') &&
                        (os.endianness() === 'BE');
 exports.isSunOS = process.platform === 'sunos';
 exports.isFreeBSD = process.platform === 'freebsd';
+exports.isOpenBSD = process.platform === 'openbsd';
 exports.isLinux = process.platform === 'linux';
 exports.isOSX = process.platform === 'darwin';
+
+let isGlibc;
+exports.isGlibc = () => {
+  if (isGlibc !== undefined)
+    return isGlibc;
+  try {
+    const lddOut = spawnSync('ldd', [process.execPath]).stdout;
+    const libcInfo = lddOut.toString().split('\n').map(
+      (line) => line.match(/libc\.so.+=>\s*(\S+)\s/)).filter((info) => info);
+    if (libcInfo.length === 0)
+      return isGlibc = false;
+    const nmOut = spawnSync('nm', ['-D', libcInfo[0][1]]).stdout;
+    if (/gnu_get_libc_version/.test(nmOut))
+      return isGlibc = true;
+  } catch {}
+  return isGlibc = false;
+};
 
 exports.enoughTestMem = os.totalmem() > 0x70000000; /* 1.75 Gb */
 const cpus = os.cpus();
@@ -60,20 +92,8 @@ exports.enoughTestCpu = Array.isArray(cpus) &&
                         (cpus.length === 1 && cpus[0].speed > 999));
 
 exports.rootDir = exports.isWindows ? 'c:\\' : '/';
-exports.projectDir = path.resolve(__dirname, '..', '..');
 
 exports.buildType = process.config.target_defaults.default_configuration;
-
-// Always enable async_hooks checks in tests
-{
-  const async_wrap = process.binding('async_wrap');
-  const { kCheck } = async_wrap.constants;
-  async_wrap.async_hook_fields[kCheck] += 1;
-
-  exports.revert_force_async_hooks_checks = function() {
-    async_wrap.async_hook_fields[kCheck] -= 1;
-  };
-}
 
 // If env var is set then enable async_hook hooks for all tests.
 if (process.env.NODE_TEST_WITH_ASYNC_HOOKS) {
@@ -83,7 +103,7 @@ if (process.env.NODE_TEST_WITH_ASYNC_HOOKS) {
   const async_wrap = process.binding('async_wrap');
 
   process.on('exit', () => {
-    // itterate through handles to make sure nothing crashes
+    // iterate through handles to make sure nothing crashes
     for (const k in initHandles)
       util.inspect(initHandles[k]);
   });
@@ -121,63 +141,6 @@ if (process.env.NODE_TEST_WITH_ASYNC_HOOKS) {
     },
   }).enable();
 }
-
-function rimrafSync(p) {
-  let st;
-  try {
-    st = fs.lstatSync(p);
-  } catch (e) {
-    if (e.code === 'ENOENT')
-      return;
-  }
-
-  try {
-    if (st && st.isDirectory())
-      rmdirSync(p, null);
-    else
-      fs.unlinkSync(p);
-  } catch (e) {
-    if (e.code === 'ENOENT')
-      return;
-    if (e.code === 'EPERM')
-      return rmdirSync(p, e);
-    if (e.code !== 'EISDIR')
-      throw e;
-    rmdirSync(p, e);
-  }
-}
-
-function rmdirSync(p, originalEr) {
-  try {
-    fs.rmdirSync(p);
-  } catch (e) {
-    if (e.code === 'ENOTDIR')
-      throw originalEr;
-    if (e.code === 'ENOTEMPTY' || e.code === 'EEXIST' || e.code === 'EPERM') {
-      const enc = exports.isLinux ? 'buffer' : 'utf8';
-      fs.readdirSync(p, enc).forEach((f) => {
-        if (f instanceof Buffer) {
-          const buf = Buffer.concat([Buffer.from(p), Buffer.from(path.sep), f]);
-          rimrafSync(buf);
-        } else {
-          rimrafSync(path.join(p, f));
-        }
-      });
-      fs.rmdirSync(p);
-    }
-  }
-}
-
-exports.refreshTmpDir = function() {
-  rimrafSync(exports.tmpDir);
-  fs.mkdirSync(exports.tmpDir);
-};
-
-if (process.env.TEST_THREAD_ID) {
-  exports.PORT += process.env.TEST_THREAD_ID * 100;
-  tmpDirName += `.${process.env.TEST_THREAD_ID}`;
-}
-exports.tmpDir = path.join(testRoot, tmpDirName);
 
 let opensslCli = null;
 let inFreeBSDJail = null;
@@ -265,6 +228,12 @@ Object.defineProperty(exports, 'hasCrypto', {
   }
 });
 
+Object.defineProperty(exports, 'hasTracing', {
+  get: function() {
+    return Boolean(hasTracing);
+  }
+});
+
 Object.defineProperty(exports, 'hasFipsCrypto', {
   get: function() {
     return exports.hasCrypto && require('crypto').fips;
@@ -272,7 +241,7 @@ Object.defineProperty(exports, 'hasFipsCrypto', {
 });
 
 {
-  const localRelative = path.relative(process.cwd(), `${exports.tmpDir}/`);
+  const localRelative = path.relative(process.cwd(), `${tmpdir.path}/`);
   const pipePrefix = exports.isWindows ? '\\\\.\\pipe\\' : localRelative;
   const pipeName = `node-test.${process.pid}.sock`;
   exports.PIPE = path.join(pipePrefix, pipeName);
@@ -367,8 +336,6 @@ let knownGlobals = [
   clearImmediate,
   clearInterval,
   clearTimeout,
-  console,
-  constructor, // Enumerable in V8 3.21.
   global,
   process,
   setImmediate,
@@ -398,38 +365,6 @@ if (global.COUNTER_NET_SERVER_CONNECTION) {
   knownGlobals.push(COUNTER_HTTP_CLIENT_RESPONSE);
 }
 
-if (global.LTTNG_HTTP_SERVER_RESPONSE) {
-  knownGlobals.push(LTTNG_HTTP_SERVER_RESPONSE);
-  knownGlobals.push(LTTNG_HTTP_SERVER_REQUEST);
-  knownGlobals.push(LTTNG_HTTP_CLIENT_RESPONSE);
-  knownGlobals.push(LTTNG_HTTP_CLIENT_REQUEST);
-  knownGlobals.push(LTTNG_NET_STREAM_END);
-  knownGlobals.push(LTTNG_NET_SERVER_CONNECTION);
-}
-
-if (global.ArrayBuffer) {
-  knownGlobals.push(ArrayBuffer);
-  knownGlobals.push(Int8Array);
-  knownGlobals.push(Uint8Array);
-  knownGlobals.push(Uint8ClampedArray);
-  knownGlobals.push(Int16Array);
-  knownGlobals.push(Uint16Array);
-  knownGlobals.push(Int32Array);
-  knownGlobals.push(Uint32Array);
-  knownGlobals.push(Float32Array);
-  knownGlobals.push(Float64Array);
-  knownGlobals.push(DataView);
-}
-
-// Harmony features.
-if (global.Proxy) {
-  knownGlobals.push(Proxy);
-}
-
-if (global.Symbol) {
-  knownGlobals.push(Symbol);
-}
-
 if (process.env.NODE_TEST_KNOWN_GLOBALS) {
   const knownFromEnv = process.env.NODE_TEST_KNOWN_GLOBALS.split(',');
   allowGlobals(...knownFromEnv);
@@ -457,20 +392,14 @@ function leakedGlobals() {
 }
 exports.leakedGlobals = leakedGlobals;
 
-// Turn this off if the test should not check for global leaks.
-exports.globalCheck = true;
-
 process.on('exit', function() {
-  if (!exports.globalCheck) return;
   const leaked = leakedGlobals();
   if (leaked.length > 0) {
     assert.fail(`Unexpected global(s) found: ${leaked.join(', ')}`);
   }
 });
 
-
 const mustCallChecks = [];
-
 
 function runCallChecks(exitCode) {
   if (exitCode !== 0) return;
@@ -502,6 +431,12 @@ exports.mustCall = function(fn, exact) {
 
 exports.mustCallAtLeast = function(fn, minimum) {
   return _mustCallInner(fn, minimum, 'minimum');
+};
+
+exports.mustCallAsync = function(fn, exact) {
+  return exports.mustCall((...args) => {
+    return Promise.resolve(fn(...args)).then(exports.mustCall((val) => val));
+  }, exact);
 };
 
 function _mustCallInner(fn, criteria = 1, field) {
@@ -543,18 +478,9 @@ exports.hasMultiLocalhost = function hasMultiLocalhost() {
   return ret === 0;
 };
 
-exports.fileExists = function(pathname) {
-  try {
-    fs.accessSync(pathname);
-    return true;
-  } catch (err) {
-    return false;
-  }
-};
-
 exports.skipIfEslintMissing = function() {
-  if (!exports.fileExists(
-    path.join('..', '..', 'tools', 'node_modules', 'eslint')
+  if (!fs.existsSync(
+    path.join(__dirname, '..', '..', 'tools', 'node_modules', 'eslint')
   )) {
     exports.skip('missing ESLint');
   }
@@ -568,23 +494,17 @@ exports.canCreateSymLink = function() {
     // whoami.exe needs to be the one from System32
     // If unix tools are in the path, they can shadow the one we want,
     // so use the full path while executing whoami
-    const whoamiPath = path.join(process.env['SystemRoot'],
+    const whoamiPath = path.join(process.env.SystemRoot,
                                  'System32', 'whoami.exe');
 
-    let err = false;
-    let output = '';
-
     try {
-      output = execSync(`${whoamiPath} /priv`, { timout: 1000 });
+      const output = execSync(`${whoamiPath} /priv`, { timout: 1000 });
+      return output.includes('SeCreateSymbolicLinkPrivilege');
     } catch (e) {
-      err = true;
-    } finally {
-      if (err || !output.includes('SeCreateSymbolicLinkPrivilege')) {
-        return false;
-      }
+      return false;
     }
   }
-
+  // On non-Windows platforms, this always returns `true`
   return true;
 };
 
@@ -652,10 +572,10 @@ exports.nodeProcessAborted = function nodeProcessAborted(exitCode, signal) {
   // On Windows, 'aborts' are of 2 types, depending on the context:
   // (i) Forced access violation, if --abort-on-uncaught-exception is on
   // which corresponds to exit code 3221225477 (0xC0000005)
-  // (ii) raise(SIGABRT) or abort(), which lands up in CRT library calls
-  // which corresponds to exit code 3.
+  // (ii) Otherwise, _exit(134) which is called in place of abort() due to
+  // raising SIGABRT exiting with ambiguous exit code '3' by default
   if (exports.isWindows)
-    expectedExitCodes = [3221225477, 3];
+    expectedExitCodes = [0xC0000005, 134];
 
   // When using --abort-on-uncaught-exception, V8 will use
   // base::OS::Abort to terminate the process.
@@ -686,20 +606,25 @@ exports.isAlive = function isAlive(pid) {
   }
 };
 
-function expectWarning(name, expectedMessages) {
+exports.noWarnCode = undefined;
+
+function expectWarning(name, expected) {
+  const map = new Map(expected);
   return exports.mustCall((warning) => {
     assert.strictEqual(warning.name, name);
-    assert.ok(expectedMessages.includes(warning.message),
+    assert.ok(map.has(warning.message),
               `unexpected error message: "${warning.message}"`);
+    const code = map.get(warning.message);
+    assert.strictEqual(warning.code, code);
     // Remove a warning message after it is seen so that we guarantee that we
     // get each message only once.
-    expectedMessages.splice(expectedMessages.indexOf(warning.message), 1);
-  }, expectedMessages.length);
+    map.delete(expected);
+  }, expected.length);
 }
 
-function expectWarningByName(name, expected) {
+function expectWarningByName(name, expected, code) {
   if (typeof expected === 'string') {
-    expected = [expected];
+    expected = [[expected, code]];
   }
   process.on('warning', expectWarning(name, expected));
 }
@@ -708,8 +633,15 @@ function expectWarningByMap(warningMap) {
   const catchWarning = {};
   Object.keys(warningMap).forEach((name) => {
     let expected = warningMap[name];
-    if (typeof expected === 'string') {
-      expected = [expected];
+    if (!Array.isArray(expected)) {
+      throw new Error('warningMap entries must be arrays consisting of two ' +
+      'entries: [message, warningCode]');
+    }
+    if (!(Array.isArray(expected[0]))) {
+      if (expected.length === 0) {
+        return;
+      }
+      expected = [[expected[0], expected[1]]];
     }
     catchWarning[name] = expectWarning(name, expected);
   });
@@ -719,9 +651,9 @@ function expectWarningByMap(warningMap) {
 // accepts a warning name and description or array of descriptions or a map
 // of warning names to description(s)
 // ensures a warning is generated for each name/description pair
-exports.expectWarning = function(nameOrMap, expected) {
+exports.expectWarning = function(nameOrMap, expected, code) {
   if (typeof nameOrMap === 'string') {
-    expectWarningByName(nameOrMap, expected);
+    expectWarningByName(nameOrMap, expected, code);
   } else {
     expectWarningByMap(nameOrMap);
   }
@@ -739,6 +671,15 @@ Object.defineProperty(exports, 'hasSmallICU', {
   }
 });
 
+class Comparison {
+  constructor(obj, keys) {
+    for (const key of keys) {
+      if (key in obj)
+        this[key] = obj[key];
+    }
+  }
+}
+
 // Useful for testing expected internal/error objects
 exports.expectsError = function expectsError(fn, settings, exact) {
   if (typeof fn !== 'function') {
@@ -746,37 +687,68 @@ exports.expectsError = function expectsError(fn, settings, exact) {
     settings = fn;
     fn = undefined;
   }
+
   function innerFn(error) {
-    assert.strictEqual(error.code, settings.code);
+    if (arguments.length !== 1) {
+      // Do not use `assert.strictEqual()` to prevent `util.inspect` from
+      // always being called.
+      assert.fail(`Expected one argument, got ${util.inspect(arguments)}`);
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(error, 'message');
+    // The error message should be non-enumerable
+    assert.strictEqual(descriptor.enumerable, false);
+
+    let innerSettings = settings;
     if ('type' in settings) {
       const type = settings.type;
       if (type !== Error && !Error.isPrototypeOf(type)) {
         throw new TypeError('`settings.type` must inherit from `Error`');
       }
-      assert(error instanceof type,
-             `${error.name} is not instance of ${type.name}`);
-    }
-    if ('message' in settings) {
-      const message = settings.message;
-      if (typeof message === 'string') {
-        assert.strictEqual(error.message, message);
-      } else {
-        assert(message.test(error.message),
-               `${error.message} does not match ${message}`);
+      let constructor = error.constructor;
+      if (constructor.name === 'NodeError' && type.name !== 'NodeError') {
+        constructor = Object.getPrototypeOf(error.constructor);
       }
+      // Add the `type` to the error to properly compare and visualize it.
+      if (!('type' in error))
+        error.type = constructor;
     }
-    if ('name' in settings) {
-      assert.strictEqual(error.name, settings.name);
+
+    if ('message' in settings &&
+        typeof settings.message === 'object' &&
+        settings.message.test(error.message)) {
+      // Make a copy so we are able to modify the settings.
+      innerSettings = Object.create(
+        settings, Object.getOwnPropertyDescriptors(settings));
+      // Visualize the message as identical in case of other errors.
+      innerSettings.message = error.message;
     }
-    if (error.constructor.name === 'AssertionError') {
-      ['generatedMessage', 'actual', 'expected', 'operator'].forEach((key) => {
-        if (key in settings) {
-          const actual = error[key];
-          const expected = settings[key];
-          assert.strictEqual(actual, expected,
-                             `${key}: expected ${expected}, not ${actual}`);
-        }
-      });
+
+    // Check all error properties.
+    const keys = Object.keys(settings);
+    for (const key of keys) {
+      if (!util.isDeepStrictEqual(error[key], innerSettings[key])) {
+        // Create placeholder objects to create a nice output.
+        const a = new Comparison(error, keys);
+        const b = new Comparison(innerSettings, keys);
+
+        const tmpLimit = Error.stackTraceLimit;
+        Error.stackTraceLimit = 0;
+        const err = new assert.AssertionError({
+          actual: a,
+          expected: b,
+          operator: 'strictEqual',
+          stackStartFn: assert.throws
+        });
+        Error.stackTraceLimit = tmpLimit;
+
+        throw new assert.AssertionError({
+          actual: error,
+          expected: settings,
+          operator: 'common.expectsError',
+          message: err.message
+        });
+      }
+
     }
     return true;
   }
@@ -790,6 +762,10 @@ exports.expectsError = function expectsError(fn, settings, exact) {
 exports.skipIfInspectorDisabled = function skipIfInspectorDisabled() {
   if (process.config.variables.v8_enable_inspector === 0) {
     exports.skip('V8 inspector is disabled');
+  }
+  if (!exports.isMainThread) {
+    // TODO(addaleax): Fix me.
+    exports.skip('V8 inspector is not available in Workers');
   }
 };
 
@@ -826,27 +802,32 @@ exports.getArrayBufferViews = function getArrayBufferViews(buf) {
   return out;
 };
 
+exports.getBufferSources = function getBufferSources(buf) {
+  return [...exports.getArrayBufferViews(buf), new Uint8Array(buf).buffer];
+};
+
 // Crash the process on unhandled rejections.
-exports.crashOnUnhandledRejection = function() {
-  process.on('unhandledRejection',
-             (err) => process.nextTick(() => { throw err; }));
+const crashOnUnhandledRejection = (err) => { throw err; };
+process.on('unhandledRejection', crashOnUnhandledRejection);
+exports.disableCrashOnUnhandledRejection = function() {
+  process.removeListener('unhandledRejection', crashOnUnhandledRejection);
 };
 
 exports.getTTYfd = function getTTYfd() {
+  // Do our best to grab a tty fd.
   const tty = require('tty');
-  let tty_fd = 0;
-  if (!tty.isatty(tty_fd)) tty_fd++;
-  else if (!tty.isatty(tty_fd)) tty_fd++;
-  else if (!tty.isatty(tty_fd)) tty_fd++;
-  else {
+  // Don't attempt fd 0 as it is not writable on Windows.
+  // Ref: ef2861961c3d9e9ed6972e1e84d969683b25cf95
+  const ttyFd = [1, 2, 4, 5].find(tty.isatty);
+  if (ttyFd === undefined) {
     try {
-      tty_fd = fs.openSync('/dev/tty');
+      return fs.openSync('/dev/tty');
     } catch (e) {
       // There aren't any tty fd's available to use.
       return -1;
     }
   }
-  return tty_fd;
+  return ttyFd;
 };
 
 // Hijack stdout and stderr
@@ -873,16 +854,52 @@ function restoreWritable(name) {
   delete process[name].writeTimes;
 }
 
+exports.runWithInvalidFD = function(func) {
+  let fd = 1 << 30;
+  // Get first known bad file descriptor. 1 << 30 is usually unlikely to
+  // be an valid one.
+  try {
+    while (fs.fstatSync(fd--) && fd > 0);
+  } catch (e) {
+    return func(fd);
+  }
+
+  exports.printSkipMessage('Could not generate an invalid fd');
+};
+
 exports.hijackStdout = hijackStdWritable.bind(null, 'stdout');
 exports.hijackStderr = hijackStdWritable.bind(null, 'stderr');
 exports.restoreStdout = restoreWritable.bind(null, 'stdout');
 exports.restoreStderr = restoreWritable.bind(null, 'stderr');
+exports.isCPPSymbolsNotMapped = exports.isWindows ||
+                                exports.isSunOS ||
+                                exports.isAIX ||
+                                exports.isLinuxPPCBE ||
+                                exports.isFreeBSD;
 
-let fd = 2;
-exports.firstInvalidFD = function firstInvalidFD() {
-  // Get first known bad file descriptor.
-  try {
-    while (fs.fstatSync(++fd));
-  } catch (e) {}
-  return fd;
+const gcTrackerMap = new WeakMap();
+const gcTrackerTag = 'NODE_TEST_COMMON_GC_TRACKER';
+
+exports.onGC = function(obj, gcListener) {
+  const async_hooks = require('async_hooks');
+
+  const onGcAsyncHook = async_hooks.createHook({
+    init: exports.mustCallAtLeast(function(id, type, trigger, resource) {
+      if (this.trackedId === undefined) {
+        assert.strictEqual(type, gcTrackerTag);
+        this.trackedId = id;
+      }
+    }),
+    destroy(id) {
+      assert.notStrictEqual(this.trackedId, -1);
+      if (id === this.trackedId) {
+        this.gcListener.ongc();
+        onGcAsyncHook.disable();
+      }
+    }
+  }).enable();
+  onGcAsyncHook.gcListener = gcListener;
+
+  gcTrackerMap.set(obj, new async_hooks.AsyncResource(gcTrackerTag));
+  obj = null;
 };

@@ -125,6 +125,14 @@ bool GraalArrayBufferView::IsFloat64Array() const {
     return type_ == kFloat64Array;
 }
 
+bool GraalArrayBufferView::IsBigInt64Array() const {
+    return type_ == kBigInt64Array;
+}
+
+bool GraalArrayBufferView::IsBigUint64Array() const {
+    return type_ == kBigUint64Array;
+}
+
 bool GraalArrayBufferView::IsDataView() const {
     return type_ == kDataView;
 }

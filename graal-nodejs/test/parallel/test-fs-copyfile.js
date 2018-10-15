@@ -1,12 +1,21 @@
 'use strict';
 const common = require('../common');
 const fixtures = require('../common/fixtures');
+const tmpdir = require('../common/tmpdir');
 const assert = require('assert');
 const fs = require('fs');
+const uv = process.binding('uv');
 const path = require('path');
 const src = fixtures.path('a.js');
-const dest = path.join(common.tmpDir, 'copyfile.out');
-const { COPYFILE_EXCL, UV_FS_COPYFILE_EXCL } = fs.constants;
+const dest = path.join(tmpdir.path, 'copyfile.out');
+const {
+  COPYFILE_EXCL,
+  COPYFILE_FICLONE,
+  COPYFILE_FICLONE_FORCE,
+  UV_FS_COPYFILE_EXCL,
+  UV_FS_COPYFILE_FICLONE,
+  UV_FS_COPYFILE_FICLONE_FORCE
+} = fs.constants;
 
 function verify(src, dest) {
   const srcData = fs.readFileSync(src, 'utf8');
@@ -19,12 +28,18 @@ function verify(src, dest) {
   assert.strictEqual(srcStat.size, destStat.size);
 }
 
-common.refreshTmpDir();
+tmpdir.refresh();
 
 // Verify that flags are defined.
 assert.strictEqual(typeof COPYFILE_EXCL, 'number');
+assert.strictEqual(typeof COPYFILE_FICLONE, 'number');
+assert.strictEqual(typeof COPYFILE_FICLONE_FORCE, 'number');
 assert.strictEqual(typeof UV_FS_COPYFILE_EXCL, 'number');
+assert.strictEqual(typeof UV_FS_COPYFILE_FICLONE, 'number');
+assert.strictEqual(typeof UV_FS_COPYFILE_FICLONE_FORCE, 'number');
 assert.strictEqual(COPYFILE_EXCL, UV_FS_COPYFILE_EXCL);
+assert.strictEqual(COPYFILE_FICLONE, UV_FS_COPYFILE_FICLONE);
+assert.strictEqual(COPYFILE_FICLONE_FORCE, UV_FS_COPYFILE_FICLONE_FORCE);
 
 // Verify that files are overwritten when no flags are provided.
 fs.writeFileSync(dest, '', 'utf8');
@@ -36,27 +51,47 @@ verify(src, dest);
 fs.copyFileSync(src, dest, 0);
 verify(src, dest);
 
-// Throws if destination exists and the COPYFILE_EXCL flag is provided.
-assert.throws(() => {
-  fs.copyFileSync(src, dest, COPYFILE_EXCL);
-}, /^Error: EEXIST|ENOENT:.+, copyfile/);
+// Verify that UV_FS_COPYFILE_FICLONE can be used.
+fs.unlinkSync(dest);
+fs.copyFileSync(src, dest, UV_FS_COPYFILE_FICLONE);
+verify(src, dest);
 
-// Throws if the source does not exist.
-assert.throws(() => {
-  fs.copyFileSync(`${src}__does_not_exist`, dest, COPYFILE_EXCL);
-}, /^Error: ENOENT: no such file or directory, copyfile/);
+// Verify that COPYFILE_FICLONE_FORCE can be used.
+try {
+  fs.unlinkSync(dest);
+  fs.copyFileSync(src, dest, COPYFILE_FICLONE_FORCE);
+  verify(src, dest);
+} catch (err) {
+  assert.strictEqual(err.syscall, 'copyfile');
+  assert(err.code === 'ENOTSUP' || err.code === 'ENOTTY' ||
+    err.code === 'ENOSYS' || err.code === 'EXDEV');
+  assert.strictEqual(err.path, src);
+  assert.strictEqual(err.dest, dest);
+}
 
 // Copies asynchronously.
-fs.unlinkSync(dest);
+tmpdir.refresh(); // Don't use unlinkSync() since the last test may fail.
 fs.copyFile(src, dest, common.mustCall((err) => {
   assert.ifError(err);
   verify(src, dest);
 
   // Copy asynchronously with flags.
   fs.copyFile(src, dest, COPYFILE_EXCL, common.mustCall((err) => {
-    assert(
-      /^Error: EEXIST: file already exists, copyfile/.test(err.toString())
-    );
+    if (err.code === 'ENOENT') {  // Could be ENOENT or EEXIST
+      assert.strictEqual(err.message,
+                         'ENOENT: no such file or directory, copyfile ' +
+                         `'${src}' -> '${dest}'`);
+      assert.strictEqual(err.errno, uv.UV_ENOENT);
+      assert.strictEqual(err.code, 'ENOENT');
+      assert.strictEqual(err.syscall, 'copyfile');
+    } else {
+      assert.strictEqual(err.message,
+                         'EEXIST: file already exists, copyfile ' +
+                         `'${src}' -> '${dest}'`);
+      assert.strictEqual(err.errno, uv.UV_EEXIST);
+      assert.strictEqual(err.code, 'EEXIST');
+      assert.strictEqual(err.syscall, 'copyfile');
+    }
   }));
 }));
 
@@ -64,32 +99,38 @@ fs.copyFile(src, dest, common.mustCall((err) => {
 common.expectsError(() => {
   fs.copyFile(src, dest, 0, 0);
 }, {
-  code: 'ERR_INVALID_ARG_TYPE',
-  type: TypeError,
-  message: 'The "callback" argument must be of type function'
+  code: 'ERR_INVALID_CALLBACK',
+  type: TypeError
 });
 
 // Throws if the source path is not a string.
-assert.throws(() => {
-  fs.copyFileSync(null, dest);
-}, /^TypeError: src must be a string$/);
-
-// Throws if the source path is an invalid path.
-assert.throws(() => {
-  fs.copyFileSync('\u0000', dest);
-}, /^Error: Path must be a string without null bytes$/);
-
-// Throws if the destination path is not a string.
-assert.throws(() => {
-  fs.copyFileSync(src, null);
-}, /^TypeError: dest must be a string$/);
-
-// Throws if the destination path is an invalid path.
-assert.throws(() => {
-  fs.copyFileSync(src, '\u0000');
-}, /^Error: Path must be a string without null bytes$/);
-
-// Errors if invalid flags are provided.
-assert.throws(() => {
-  fs.copyFileSync(src, dest, -1);
-}, /^Error: EINVAL: invalid argument, copyfile/);
+[false, 1, {}, [], null, undefined].forEach((i) => {
+  common.expectsError(
+    () => fs.copyFile(i, dest, common.mustNotCall()),
+    {
+      code: 'ERR_INVALID_ARG_TYPE',
+      type: TypeError
+    }
+  );
+  common.expectsError(
+    () => fs.copyFile(src, i, common.mustNotCall()),
+    {
+      code: 'ERR_INVALID_ARG_TYPE',
+      type: TypeError
+    }
+  );
+  common.expectsError(
+    () => fs.copyFileSync(i, dest),
+    {
+      code: 'ERR_INVALID_ARG_TYPE',
+      type: TypeError
+    }
+  );
+  common.expectsError(
+    () => fs.copyFileSync(src, i),
+    {
+      code: 'ERR_INVALID_ARG_TYPE',
+      type: TypeError
+    }
+  );
+});

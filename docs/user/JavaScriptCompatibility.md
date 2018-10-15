@@ -113,13 +113,26 @@ Source can be of type:
 * a JavaScript object: the object is queried for a `name` and a `script` property, which represent the source name and code, respectively.
 * all other types: the source is converted to a String.
 
-#### `print(...arg)` and `console.log(...arg)`
+#### `print(...arg)`
 
 Prints the arguments on the console.
 Provides a best-effort human readable output.
 
-Note that `console.log` behaves differently when Graal JavaScript is executed in Node.js mode (i.e., the `node` executable is started instead of `js`).
-While normally, `console.log` is just an alias for `print`, on Node.js Node's own implementation is executed.
+#### Methods of the `console` global object
+
+A global `console` object is provided that offers several methods for debugging purposes.
+These methods strive to provide similar functionality as provided in other engines, but do not guarantee identical results.
+
+Note that those methods behave differently when Graal JavaScript is executed in Node.js mode (i.e., the `node` executable is started instead of `js`).
+Node.js provides its own implementation that is used instead.
+
+* `console.log`, `console.info`, and `console.debug`: an alias for `print(...arg)`
+* `console.error`, and `console.warn`: similar to `print`, but using the error IO stream
+* `console.assert(check, message)`: prints `message` when `check` is falsy
+* `console.clear`: clears the console window if possible
+* `console.count()`, and `console.countReset()`: counts and print how many times it has been called, or resets this counter
+* `console.group`, and `console.groupEnd`: increases or decreases the indentation for succeeding outputs to the console
+* `console.time()`, `console.timeLog()`, and `console.timeEnd()`: starts a timer, prints the duration the timer has been active, or prints the duration and stops the timer, respectively
 
 #### `read(file)` or `readFully(file)`
 
@@ -242,14 +255,20 @@ In many cases, this is not necessary, you can typically use the Java datastructu
 #### `Java.to(jsData, toType)`
 
 The `to` function converts the argument to a Java dataype.
-When no `toType` is provided, `Object[]` is assumed.
+The source object `jsData` is expected to be a JavaScript array, or object with a `length` property.
+The target `toType` can either be a String (e.g. `"int[]"`) or a type object (e.g., `Java.type("int[]")`).
+Valid target types are Java arrays.
+When no target type is provided, `Object[]` is assumed.
 
 ```js
-var jsArr = ["a", "b", "c"]
-var strArrType = Java.type("java.lang.String[]")
-var javaArr = Java.to(jsArr, strArrType)
+var jsArr = ["a", "b", "c"];
+var strArrType = Java.type("java.lang.String[]");
+var javaArr = Java.to(jsArr, strArrType);
 assertEquals('class [Ljava.lang.String;', String(javaArr.getClass()));
 ```
+
+The conversion methods as defined by ECMAScript (e.g., `ToString`, `ToDouble`) are executed when a JavaScript value has to be converted to a Java type.
+Lossy conversion is disallowed and results in a TypeError.
 
 #### `Java.isJavaObject(obj)`
 

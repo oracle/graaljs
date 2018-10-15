@@ -149,8 +149,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createSyntaxError(String message, SourceSection sourceLocation) {
-        return JSException.create(JSErrorType.SyntaxError, message, sourceLocation);
+    public static JSException createSyntaxError(String message, SourceSection sourceLocation, boolean isIncompleteSource) {
+        return JSException.create(JSErrorType.SyntaxError, message, sourceLocation, isIncompleteSource);
     }
 
     @TruffleBoundary
@@ -170,7 +170,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createReferenceError(String message, SourceSection sourceLocation) {
-        return JSException.create(JSErrorType.ReferenceError, message, sourceLocation);
+        return JSException.create(JSErrorType.ReferenceError, message, sourceLocation, false);
     }
 
     @TruffleBoundary
@@ -533,5 +533,15 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createNotAFileError(String path) {
         return Errors.createTypeError("Not a file: " + path);
+    }
+
+    @TruffleBoundary
+    public static JSException createICU4JDataError() {
+        return Errors.createError("ICU4J library not properly configured to work with native image. " +
+                        "Please either set system property, " +
+                        "com.ibm.icu.impl.ICUBinary.dataPath" +
+                        ", or environment variable, " +
+                        "ICU4J_DATA_PATH" +
+                        ", to contain path to your ICU4J icudt directory (should come bundled with GraalVM in jre/languages/js/icu4j/icudt subdirectory).");
     }
 }

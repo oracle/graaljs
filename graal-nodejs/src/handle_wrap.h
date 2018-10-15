@@ -70,19 +70,39 @@ class HandleWrap : public AsyncWrap {
 
   inline uv_handle_t* GetHandle() const { return handle_; }
 
+  virtual void Close(
+      v8::Local<v8::Value> close_callback = v8::Local<v8::Value>());
+
+  static void AddWrapMethods(Environment* env,
+                             v8::Local<v8::FunctionTemplate> constructor);
+
  protected:
   HandleWrap(Environment* env,
              v8::Local<v8::Object> object,
              uv_handle_t* handle,
              AsyncWrap::ProviderType provider);
-  ~HandleWrap() override;
+  virtual void OnClose() {}
+
+  void MarkAsInitialized();
+  void MarkAsUninitialized();
+
+  inline bool IsHandleClosing() const {
+    return state_ == kClosing || state_ == kClosed;
+  }
 
  private:
   friend class Environment;
   friend void GetActiveHandles(const v8::FunctionCallbackInfo<v8::Value>&);
   static void OnClose(uv_handle_t* handle);
+
+  // handle_wrap_queue_ needs to be at a fixed offset from the start of the
+  // class because it is used by src/node_postmortem_metadata.cc to calculate
+  // offsets and generate debug symbols for HandleWrap, which assumes that the
+  // position of members in memory are predictable. For more information please
+  // refer to `doc/guides/node-postmortem-support.md`
+  friend int GenDebugSymbols();
   ListNode<HandleWrap> handle_wrap_queue_;
-  enum { kInitialized, kClosing, kClosingWithCallback, kClosed } state_;
+  enum { kInitialized, kClosing, kClosed } state_;
   uv_handle_t* const handle_;
 };
 

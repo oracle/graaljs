@@ -21,7 +21,7 @@ void IncrementalMarkingJob::Start(Heap* heap) {
 }
 
 void IncrementalMarkingJob::ScheduleTask(Heap* heap) {
-  if (!task_pending_) {
+  if (!task_pending_ && !heap->IsTearingDown()) {
     v8::Isolate* isolate = reinterpret_cast<v8::Isolate*>(heap->isolate());
     task_pending_ = true;
     auto task = new Task(heap->isolate(), this);
@@ -35,7 +35,7 @@ void IncrementalMarkingJob::Task::Step(Heap* heap) {
       heap->MonotonicallyIncreasingTimeInMs() + kIncrementalMarkingDelayMs;
   heap->incremental_marking()->AdvanceIncrementalMarking(
       deadline, i::IncrementalMarking::NO_GC_VIA_STACK_GUARD,
-      i::IncrementalMarking::FORCE_COMPLETION, i::StepOrigin::kTask);
+      i::StepOrigin::kTask);
   heap->FinalizeIncrementalMarkingIfComplete(
       GarbageCollectionReason::kFinalizeMarkingViaTask);
 }
@@ -49,7 +49,7 @@ void IncrementalMarkingJob::Task::RunInternal() {
   if (incremental_marking->IsStopped()) {
     if (heap->IncrementalMarkingLimitReached() !=
         Heap::IncrementalMarkingLimit::kNoLimit) {
-      heap->StartIncrementalMarking(Heap::kNoGCFlags,
+      heap->StartIncrementalMarking(heap->GCFlagsForIncrementalMarking(),
                                     GarbageCollectionReason::kIdleTask,
                                     kGCCallbackScheduleIdleGarbageCollection);
     }

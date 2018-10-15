@@ -109,8 +109,11 @@ class ConsoleHelper {
     return m_info[0]->BooleanValue(m_context).FromMaybe(defaultValue);
   }
 
-  String16 firstArgToString(const String16& defaultValue) {
-    if (m_info.Length() < 1) return defaultValue;
+  String16 firstArgToString(const String16& defaultValue,
+                            bool allowUndefined = true) {
+    if (m_info.Length() < 1 || (!allowUndefined && m_info[0]->IsUndefined())) {
+      return defaultValue;
+    }
     v8::Local<v8::String> titleValue;
     v8::TryCatch tryCatch(m_context->GetIsolate());
     if (m_info[0]->IsObject()) {
@@ -159,16 +162,16 @@ void returnDataCallback(const v8::FunctionCallbackInfo<v8::Value>& info) {
   info.GetReturnValue().Set(info.Data());
 }
 
-void createBoundFunctionProperty(v8::Local<v8::Context> context,
-                                 v8::Local<v8::Object> console,
-                                 v8::Local<v8::Value> data, const char* name,
-                                 v8::FunctionCallback callback,
-                                 const char* description = nullptr) {
+void createBoundFunctionProperty(
+    v8::Local<v8::Context> context, v8::Local<v8::Object> console,
+    v8::Local<v8::Value> data, const char* name, v8::FunctionCallback callback,
+    const char* description = nullptr,
+    v8::SideEffectType side_effect_type = v8::SideEffectType::kHasSideEffect) {
   v8::Local<v8::String> funcName =
       toV8StringInternalized(context->GetIsolate(), name);
   v8::Local<v8::Function> func;
   if (!v8::Function::New(context, callback, data, 0,
-                         v8::ConstructorBehavior::kThrow)
+                         v8::ConstructorBehavior::kThrow, side_effect_type)
            .ToLocal(&func))
     return;
   func->SetName(funcName);
@@ -177,7 +180,8 @@ void createBoundFunctionProperty(v8::Local<v8::Context> context,
         toV8String(context->GetIsolate(), description);
     v8::Local<v8::Function> toStringFunction;
     if (v8::Function::New(context, returnDataCallback, returnValue, 0,
-                          v8::ConstructorBehavior::kThrow)
+                          v8::ConstructorBehavior::kThrow,
+                          v8::SideEffectType::kHasNoSideEffect)
             .ToLocal(&toStringFunction))
       createDataProperty(context, func, toV8StringInternalized(
                                             context->GetIsolate(), "toString"),
@@ -278,14 +282,14 @@ void V8Console::Clear(const v8::debug::ConsoleCallArguments& info,
                                        String16("console.clear"));
 }
 
-void V8Console::Count(const v8::debug::ConsoleCallArguments& info,
-                      const v8::debug::ConsoleContext& consoleContext) {
-  ConsoleHelper helper(info, consoleContext, m_inspector);
-  String16 title = helper.firstArgToString(String16());
+static String16 identifierFromTitleOrStackTrace(
+    const String16& title, const ConsoleHelper& helper,
+    const v8::debug::ConsoleContext& consoleContext,
+    V8InspectorImpl* inspector) {
   String16 identifier;
   if (title.isEmpty()) {
     std::unique_ptr<V8StackTraceImpl> stackTrace =
-        V8StackTraceImpl::capture(m_inspector->debugger(), helper.groupId(), 1);
+        V8StackTraceImpl::capture(inspector->debugger(), helper.groupId(), 1);
     if (stackTrace && !stackTrace->isEmpty()) {
       identifier = toString16(stackTrace->topSourceURL()) + ":" +
                    String16::fromInteger(stackTrace->topLineNumber());
@@ -295,12 +299,36 @@ void V8Console::Count(const v8::debug::ConsoleCallArguments& info,
   }
   identifier = consoleContextToString(consoleContext) + "@" + identifier;
 
+  return identifier;
+}
+
+void V8Console::Count(const v8::debug::ConsoleCallArguments& info,
+                      const v8::debug::ConsoleContext& consoleContext) {
+  ConsoleHelper helper(info, consoleContext, m_inspector);
+  String16 title = helper.firstArgToString(String16("default"), false);
+  String16 identifier = identifierFromTitleOrStackTrace(
+      title, helper, consoleContext, m_inspector);
+
   int count =
       helper.consoleMessageStorage()->count(helper.contextId(), identifier);
   String16 countString = String16::fromInteger(count);
   helper.reportCallWithArgument(
       ConsoleAPIType::kCount,
       title.isEmpty() ? countString : (title + ": " + countString));
+}
+
+void V8Console::CountReset(const v8::debug::ConsoleCallArguments& info,
+                           const v8::debug::ConsoleContext& consoleContext) {
+  ConsoleHelper helper(info, consoleContext, m_inspector);
+  String16 title = helper.firstArgToString(String16("default"), false);
+  String16 identifier = identifierFromTitleOrStackTrace(
+      title, helper, consoleContext, m_inspector);
+
+  if (!helper.consoleMessageStorage()->countReset(helper.contextId(),
+                                                  identifier)) {
+    helper.reportCallWithArgument(ConsoleAPIType::kWarning,
+                                  "Count for '" + title + "' does not exist");
+  }
 }
 
 void V8Console::Assert(const v8::debug::ConsoleCallArguments& info,
@@ -349,20 +377,34 @@ static void timeFunction(const v8::debug::ConsoleCallArguments& info,
                          const v8::debug::ConsoleContext& consoleContext,
                          bool timelinePrefix, V8InspectorImpl* inspector) {
   ConsoleHelper helper(info, consoleContext, inspector);
-  String16 protocolTitle = helper.firstArgToString("default");
+  String16 protocolTitle = helper.firstArgToString("default", false);
   if (timelinePrefix) protocolTitle = "Timeline '" + protocolTitle + "'";
+  const String16& timerId =
+      protocolTitle + "@" + consoleContextToString(consoleContext);
+  if (helper.consoleMessageStorage()->hasTimer(helper.contextId(), timerId)) {
+    helper.reportCallWithArgument(
+        ConsoleAPIType::kWarning,
+        "Timer '" + protocolTitle + "' already exists");
+    return;
+  }
   inspector->client()->consoleTime(toStringView(protocolTitle));
-  helper.consoleMessageStorage()->time(
-      helper.contextId(),
-      protocolTitle + "@" + consoleContextToString(consoleContext));
+  helper.consoleMessageStorage()->time(helper.contextId(), timerId);
 }
 
 static void timeEndFunction(const v8::debug::ConsoleCallArguments& info,
                             const v8::debug::ConsoleContext& consoleContext,
                             bool timelinePrefix, V8InspectorImpl* inspector) {
   ConsoleHelper helper(info, consoleContext, inspector);
-  String16 protocolTitle = helper.firstArgToString("default");
+  String16 protocolTitle = helper.firstArgToString("default", false);
   if (timelinePrefix) protocolTitle = "Timeline '" + protocolTitle + "'";
+  const String16& timerId =
+      protocolTitle + "@" + consoleContextToString(consoleContext);
+  if (!helper.consoleMessageStorage()->hasTimer(helper.contextId(), timerId)) {
+    helper.reportCallWithArgument(
+        ConsoleAPIType::kWarning,
+        "Timer '" + protocolTitle + "' does not exist");
+    return;
+  }
   inspector->client()->consoleTimeEnd(toStringView(protocolTitle));
   double elapsed = helper.consoleMessageStorage()->timeEnd(
       helper.contextId(),
@@ -467,23 +509,15 @@ void V8Console::valuesCallback(const v8::FunctionCallbackInfo<v8::Value>& info,
 static void setFunctionBreakpoint(ConsoleHelper& helper, int sessionId,
                                   v8::Local<v8::Function> function,
                                   V8DebuggerAgentImpl::BreakpointSource source,
-                                  const String16& condition, bool enable) {
-  String16 scriptId = String16::fromInteger(function->ScriptId());
-  int lineNumber = function->GetScriptLineNumber();
-  int columnNumber = function->GetScriptColumnNumber();
-  if (lineNumber == v8::Function::kLineOffsetNotFound ||
-      columnNumber == v8::Function::kLineOffsetNotFound)
-    return;
-
-  if (V8InspectorSessionImpl* session = helper.session(sessionId)) {
-    if (!session->debuggerAgent()->enabled()) return;
-    if (enable) {
-      session->debuggerAgent()->setBreakpointAt(
-          scriptId, lineNumber, columnNumber, source, condition);
-    } else {
-      session->debuggerAgent()->removeBreakpointAt(scriptId, lineNumber,
-                                                   columnNumber, source);
-    }
+                                  v8::Local<v8::String> condition,
+                                  bool enable) {
+  V8InspectorSessionImpl* session = helper.session(sessionId);
+  if (session == nullptr) return;
+  if (!session->debuggerAgent()->enabled()) return;
+  if (enable) {
+    session->debuggerAgent()->setBreakpointFor(function, condition, source);
+  } else {
+    session->debuggerAgent()->removeBreakpointFor(function, source);
   }
 }
 
@@ -492,10 +526,14 @@ void V8Console::debugFunctionCallback(
   v8::debug::ConsoleCallArguments args(info);
   ConsoleHelper helper(args, v8::debug::ConsoleContext(), m_inspector);
   v8::Local<v8::Function> function;
+  v8::Local<v8::String> condition;
   if (!helper.firstArgAsFunction().ToLocal(&function)) return;
+  if (args.Length() > 1 && args[1]->IsString()) {
+    condition = args[1].As<v8::String>();
+  }
   setFunctionBreakpoint(helper, sessionId, function,
                         V8DebuggerAgentImpl::DebugCommandBreakpointSource,
-                        String16(), true);
+                        condition, true);
 }
 
 void V8Console::undebugFunctionCallback(
@@ -506,7 +544,7 @@ void V8Console::undebugFunctionCallback(
   if (!helper.firstArgAsFunction().ToLocal(&function)) return;
   setFunctionBreakpoint(helper, sessionId, function,
                         V8DebuggerAgentImpl::DebugCommandBreakpointSource,
-                        String16(), false);
+                        v8::Local<v8::String>(), false);
 }
 
 void V8Console::monitorFunctionCallback(
@@ -530,7 +568,8 @@ void V8Console::monitorFunctionCallback(
       "Array.prototype.join.call(arguments, \", \") : \"\")) && false");
   setFunctionBreakpoint(helper, sessionId, function,
                         V8DebuggerAgentImpl::MonitorCommandBreakpointSource,
-                        builder.toString(), true);
+                        toV8String(info.GetIsolate(), builder.toString()),
+                        true);
 }
 
 void V8Console::unmonitorFunctionCallback(
@@ -541,7 +580,7 @@ void V8Console::unmonitorFunctionCallback(
   if (!helper.firstArgAsFunction().ToLocal(&function)) return;
   setFunctionBreakpoint(helper, sessionId, function,
                         V8DebuggerAgentImpl::MonitorCommandBreakpointSource,
-                        String16(), false);
+                        v8::Local<v8::String>(), false);
 }
 
 void V8Console::lastEvaluationResultCallback(
@@ -618,7 +657,7 @@ void V8Console::queryObjectsCallback(
 
 void V8Console::inspectedObject(const v8::FunctionCallbackInfo<v8::Value>& info,
                                 int sessionId, unsigned num) {
-  DCHECK(num < V8InspectorSessionImpl::kInspectedObjectBufferSize);
+  DCHECK_GT(V8InspectorSessionImpl::kInspectedObjectBufferSize, num);
   v8::debug::ConsoleCallArguments args(info);
   ConsoleHelper helper(args, v8::debug::ConsoleContext(), m_inspector);
   if (V8InspectorSessionImpl* session = helper.session(sessionId)) {
@@ -637,9 +676,9 @@ void V8Console::installMemoryGetter(v8::Local<v8::Context> context,
   v8::Local<v8::External> data = v8::External::New(isolate, this);
   console->SetAccessorProperty(
       toV8StringInternalized(isolate, "memory"),
-      v8::Function::New(context,
-                        &V8Console::call<&V8Console::memoryGetterCallback>,
-                        data, 0, v8::ConstructorBehavior::kThrow)
+      v8::Function::New(
+          context, &V8Console::call<&V8Console::memoryGetterCallback>, data, 0,
+          v8::ConstructorBehavior::kThrow, v8::SideEffectType::kHasNoSideEffect)
           .ToLocalChecked(),
       v8::Function::New(context,
                         &V8Console::call<&V8Console::memorySetterCallback>,
@@ -660,9 +699,10 @@ v8::Local<v8::Object> V8Console::createCommandLineAPI(
   DCHECK(success);
   USE(success);
 
-  // TODO(dgozman): this CommandLineAPIData instance leaks. Use PodArray maybe?
-  v8::Local<v8::External> data =
-      v8::External::New(isolate, new CommandLineAPIData(this, sessionId));
+  v8::Local<v8::ArrayBuffer> data =
+      v8::ArrayBuffer::New(isolate, sizeof(CommandLineAPIData));
+  *static_cast<CommandLineAPIData*>(data->GetContents().Data()) =
+      CommandLineAPIData(this, sessionId);
   createBoundFunctionProperty(context, commandLineAPI, data, "dir",
                               &V8Console::call<&V8Console::Dir>,
                               "function dir(value) { [Command Line API] }");
@@ -686,14 +726,16 @@ v8::Local<v8::Object> V8Console::createCommandLineAPI(
 
   createBoundFunctionProperty(context, commandLineAPI, data, "keys",
                               &V8Console::call<&V8Console::keysCallback>,
-                              "function keys(object) { [Command Line API] }");
+                              "function keys(object) { [Command Line API] }",
+                              v8::SideEffectType::kHasNoSideEffect);
   createBoundFunctionProperty(context, commandLineAPI, data, "values",
                               &V8Console::call<&V8Console::valuesCallback>,
-                              "function values(object) { [Command Line API] }");
+                              "function values(object) { [Command Line API] }",
+                              v8::SideEffectType::kHasNoSideEffect);
   createBoundFunctionProperty(
       context, commandLineAPI, data, "debug",
       &V8Console::call<&V8Console::debugFunctionCallback>,
-      "function debug(function) { [Command Line API] }");
+      "function debug(function, condition) { [Command Line API] }");
   createBoundFunctionProperty(
       context, commandLineAPI, data, "undebug",
       &V8Console::call<&V8Console::undebugFunctionCallback>,
@@ -719,17 +761,23 @@ v8::Local<v8::Object> V8Console::createCommandLineAPI(
       "function queryObjects(constructor) { [Command Line API] }");
   createBoundFunctionProperty(
       context, commandLineAPI, data, "$_",
-      &V8Console::call<&V8Console::lastEvaluationResultCallback>);
+      &V8Console::call<&V8Console::lastEvaluationResultCallback>, nullptr,
+      v8::SideEffectType::kHasNoSideEffect);
   createBoundFunctionProperty(context, commandLineAPI, data, "$0",
-                              &V8Console::call<&V8Console::inspectedObject0>);
+                              &V8Console::call<&V8Console::inspectedObject0>,
+                              nullptr, v8::SideEffectType::kHasNoSideEffect);
   createBoundFunctionProperty(context, commandLineAPI, data, "$1",
-                              &V8Console::call<&V8Console::inspectedObject1>);
+                              &V8Console::call<&V8Console::inspectedObject1>,
+                              nullptr, v8::SideEffectType::kHasNoSideEffect);
   createBoundFunctionProperty(context, commandLineAPI, data, "$2",
-                              &V8Console::call<&V8Console::inspectedObject2>);
+                              &V8Console::call<&V8Console::inspectedObject2>,
+                              nullptr, v8::SideEffectType::kHasNoSideEffect);
   createBoundFunctionProperty(context, commandLineAPI, data, "$3",
-                              &V8Console::call<&V8Console::inspectedObject3>);
+                              &V8Console::call<&V8Console::inspectedObject3>,
+                              nullptr, v8::SideEffectType::kHasNoSideEffect);
   createBoundFunctionProperty(context, commandLineAPI, data, "$4",
-                              &V8Console::call<&V8Console::inspectedObject4>);
+                              &V8Console::call<&V8Console::inspectedObject4>,
+                              nullptr, v8::SideEffectType::kHasNoSideEffect);
 
   m_inspector->client()->installAdditionalCommandLineAPI(context,
                                                          commandLineAPI);
@@ -812,7 +860,8 @@ V8Console::CommandLineAPIScope::CommandLineAPIScope(
              ->SetAccessor(context, v8::Local<v8::Name>::Cast(name),
                            CommandLineAPIScope::accessorGetterCallback,
                            CommandLineAPIScope::accessorSetterCallback,
-                           externalThis, v8::DEFAULT, v8::DontEnum)
+                           externalThis, v8::DEFAULT, v8::DontEnum,
+                           v8::SideEffectType::kHasNoSideEffect)
              .FromMaybe(false)) {
       bool removed = m_installedMethods->Delete(context, name).FromMaybe(false);
       DCHECK(removed);

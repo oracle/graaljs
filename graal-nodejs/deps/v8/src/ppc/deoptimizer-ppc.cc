@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "src/codegen.h"
+#include "src/assembler-inl.h"
 #include "src/deoptimizer.h"
 #include "src/register-configuration.h"
 #include "src/safepoint-table.h"
@@ -56,8 +56,8 @@ void Deoptimizer::TableEntryGenerator::Generate() {
     }
   }
 
-  __ mov(ip, Operand(ExternalReference(IsolateAddressId::kCEntryFPAddress,
-                                       isolate())));
+  __ mov(ip, Operand(ExternalReference::Create(
+                 IsolateAddressId::kCEntryFPAddress, isolate())));
   __ StoreP(fp, MemOperand(ip));
 
   const int kSavedRegistersAreaSize =
@@ -91,7 +91,7 @@ void Deoptimizer::TableEntryGenerator::Generate() {
   // Call Deoptimizer::New().
   {
     AllowExternalCallThatCantCauseGC scope(masm());
-    __ CallCFunction(ExternalReference::new_deoptimizer_function(isolate()), 6);
+    __ CallCFunction(ExternalReference::new_deoptimizer_function(), 6);
   }
 
   // Preserve "deoptimizer" object in register r3 and get the input
@@ -99,7 +99,7 @@ void Deoptimizer::TableEntryGenerator::Generate() {
   __ LoadP(r4, MemOperand(r3, Deoptimizer::input_offset()));
 
   // Copy core registers into FrameDescription::registers_[kNumRegisters].
-  DCHECK(Register::kNumRegisters == kNumberOfRegisters);
+  DCHECK_EQ(Register::kNumRegisters, kNumberOfRegisters);
   for (int i = 0; i < kNumberOfRegisters; i++) {
     int offset = (i * kPointerSize) + FrameDescription::registers_offset();
     __ LoadP(r5, MemOperand(sp, i * kPointerSize));
@@ -157,8 +157,7 @@ void Deoptimizer::TableEntryGenerator::Generate() {
   // Call Deoptimizer::ComputeOutputFrames().
   {
     AllowExternalCallThatCantCauseGC scope(masm());
-    __ CallCFunction(
-        ExternalReference::compute_output_frames_function(isolate()), 1);
+    __ CallCFunction(ExternalReference::compute_output_frames_function(), 1);
   }
   __ pop(r3);  // Restore deoptimizer object (class Deoptimizer).
 
@@ -203,9 +202,7 @@ void Deoptimizer::TableEntryGenerator::Generate() {
     __ lfd(dreg, MemOperand(r4, src_offset));
   }
 
-  // Push state, pc, and continuation from the last output frame.
-  __ LoadP(r9, MemOperand(r5, FrameDescription::state_offset()));
-  __ push(r9);
+  // Push pc, and continuation from the last output frame.
   __ LoadP(r9, MemOperand(r5, FrameDescription::pc_offset()));
   __ push(r9);
   __ LoadP(r9, MemOperand(r5, FrameDescription::continuation_offset()));
@@ -248,6 +245,7 @@ void Deoptimizer::TableEntryGenerator::GeneratePrologue() {
   __ push(ip);
 }
 
+bool Deoptimizer::PadTopOfStackRegister() { return false; }
 
 void FrameDescription::SetCallerPc(unsigned offset, intptr_t value) {
   SetFrameSlot(offset, value);

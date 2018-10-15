@@ -4,7 +4,7 @@ const common = require('../common');
 
 common.skipIfEslintMissing();
 
-const RuleTester = require('../../tools/eslint').RuleTester;
+const RuleTester = require('../../tools/node_modules/eslint').RuleTester;
 const rule = require('../../tools/eslint-rules/no-let-in-for-declaration');
 
 const ruleTester = new RuleTester({ parserOptions: { ecmaVersion: 6 } });

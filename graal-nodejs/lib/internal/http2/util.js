@@ -1,7 +1,13 @@
 'use strict';
 
 const binding = process.binding('http2');
-const errors = require('internal/errors');
+const {
+  ERR_HTTP2_HEADER_SINGLE_VALUE,
+  ERR_HTTP2_INVALID_CONNECTION_HEADERS,
+  ERR_HTTP2_INVALID_PSEUDOHEADER,
+  ERR_HTTP2_INVALID_SETTING_VALUE,
+  ERR_INVALID_ARG_TYPE
+} = require('internal/errors').codes;
 
 const kSocket = Symbol('socket');
 
@@ -174,7 +180,9 @@ const IDX_OPTIONS_PEER_MAX_CONCURRENT_STREAMS = 3;
 const IDX_OPTIONS_PADDING_STRATEGY = 4;
 const IDX_OPTIONS_MAX_HEADER_LIST_PAIRS = 5;
 const IDX_OPTIONS_MAX_OUTSTANDING_PINGS = 6;
-const IDX_OPTIONS_FLAGS = 7;
+const IDX_OPTIONS_MAX_OUTSTANDING_SETTINGS = 7;
+const IDX_OPTIONS_MAX_SESSION_MEMORY = 8;
+const IDX_OPTIONS_FLAGS = 9;
 
 function updateOptionsBuffer(options) {
   var flags = 0;
@@ -212,6 +220,16 @@ function updateOptionsBuffer(options) {
     flags |= (1 << IDX_OPTIONS_MAX_OUTSTANDING_PINGS);
     optionsBuffer[IDX_OPTIONS_MAX_OUTSTANDING_PINGS] =
       options.maxOutstandingPings;
+  }
+  if (typeof options.maxOutstandingSettings === 'number') {
+    flags |= (1 << IDX_OPTIONS_MAX_OUTSTANDING_SETTINGS);
+    optionsBuffer[IDX_OPTIONS_MAX_OUTSTANDING_SETTINGS] =
+      Math.max(1, options.maxOutstandingSettings);
+  }
+  if (typeof options.maxSessionMemory === 'number') {
+    flags |= (1 << IDX_OPTIONS_MAX_SESSION_MEMORY);
+    optionsBuffer[IDX_OPTIONS_MAX_SESSION_MEMORY] =
+      Math.max(1, options.maxSessionMemory);
   }
   optionsBuffer[IDX_OPTIONS_FLAGS] = flags;
 }
@@ -370,7 +388,7 @@ function isIllegalConnectionSpecificHeader(name, value) {
 
 function assertValidPseudoHeader(key) {
   if (!kValidPseudoHeaders.has(key)) {
-    const err = new errors.Error('ERR_HTTP2_INVALID_PSEUDOHEADER', key);
+    const err = new ERR_HTTP2_INVALID_PSEUDOHEADER(key);
     Error.captureStackTrace(err, assertValidPseudoHeader);
     return err;
   }
@@ -378,14 +396,14 @@ function assertValidPseudoHeader(key) {
 
 function assertValidPseudoHeaderResponse(key) {
   if (key !== ':status') {
-    const err = new errors.Error('ERR_HTTP2_INVALID_PSEUDOHEADER', key);
+    const err = new ERR_HTTP2_INVALID_PSEUDOHEADER(key);
     Error.captureStackTrace(err, assertValidPseudoHeaderResponse);
     return err;
   }
 }
 
 function assertValidPseudoHeaderTrailer(key) {
-  const err = new errors.Error('ERR_HTTP2_INVALID_PSEUDOHEADER', key);
+  const err = new ERR_HTTP2_INVALID_PSEUDOHEADER(key);
   Error.captureStackTrace(err, assertValidPseudoHeaderTrailer);
   return err;
 }
@@ -414,14 +432,14 @@ function mapToHeaders(map,
           break;
         default:
           if (isSingleValueHeader)
-            return new errors.Error('ERR_HTTP2_HEADER_SINGLE_VALUE', key);
+            return new ERR_HTTP2_HEADER_SINGLE_VALUE(key);
       }
     } else {
       value = String(value);
     }
     if (isSingleValueHeader) {
       if (singles.has(key))
-        return new errors.Error('ERR_HTTP2_HEADER_SINGLE_VALUE', key);
+        return new ERR_HTTP2_HEADER_SINGLE_VALUE(key);
       singles.add(key);
     }
     if (key[0] === ':') {
@@ -432,7 +450,7 @@ function mapToHeaders(map,
       count++;
     } else {
       if (isIllegalConnectionSpecificHeader(key, value)) {
-        return new errors.Error('ERR_HTTP2_INVALID_CONNECTION_HEADERS', key);
+        return new ERR_HTTP2_INVALID_CONNECTION_HEADERS(key);
       }
       if (isArray) {
         for (var k = 0; k < value.length; k++) {
@@ -459,12 +477,12 @@ class NghttpError extends Error {
   }
 }
 
-function assertIsObject(value, name, types = 'object') {
+function assertIsObject(value, name, types = 'Object') {
   if (value !== undefined &&
       (value === null ||
        typeof value !== 'object' ||
        Array.isArray(value))) {
-    const err = new errors.TypeError('ERR_INVALID_ARG_TYPE', name, types);
+    const err = new ERR_INVALID_ARG_TYPE(name, types, value);
     Error.captureStackTrace(err, assertIsObject);
     throw err;
   }
@@ -473,8 +491,7 @@ function assertIsObject(value, name, types = 'object') {
 function assertWithinRange(name, value, min = 0, max = Infinity) {
   if (value !== undefined &&
       (typeof value !== 'number' || value < min || value > max)) {
-    const err = new errors.RangeError('ERR_HTTP2_INVALID_SETTING_VALUE',
-                                      name, value);
+    const err = new ERR_HTTP2_INVALID_SETTING_VALUE.RangeError(name, value);
     err.min = min;
     err.max = max;
     err.actual = value;
@@ -492,7 +509,7 @@ function toHeaderObject(headers) {
       value |= 0;
     var existing = obj[name];
     if (existing === undefined) {
-      obj[name] = value;
+      obj[name] = name === HTTP2_HEADER_SET_COOKIE ? [value] : value;
     } else if (!kSingleValueHeaders.has(name)) {
       switch (name) {
         case HTTP2_HEADER_COOKIE:
@@ -511,10 +528,7 @@ function toHeaderObject(headers) {
           // fields with the same name.  Since it cannot be combined into a
           // single field-value, recipients ought to handle "Set-Cookie" as a
           // special case while processing header fields."
-          if (Array.isArray(existing))
-            existing.push(value);
-          else
-            obj[name] = [existing, value];
+          existing.push(value);
           break;
         default:
           // https://tools.ietf.org/html/rfc7230#section-3.2.2

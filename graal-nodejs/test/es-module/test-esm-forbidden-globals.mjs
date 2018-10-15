@@ -1,6 +1,7 @@
 // Flags: --experimental-modules
-/* eslint-disable required-modules */
+import '../common';
 
+// eslint-disable-next-line no-undef
 if (typeof arguments !== 'undefined') {
   throw new Error('not an ESM');
 }

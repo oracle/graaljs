@@ -307,25 +307,6 @@ describe('Object', function () {
             assert.strictEqual(proto, null);
         });
     });
-    describe('ForceSet', function () {
-        it('should force-set simple properties by name', function () {
-            var called = false;
-            var o = {a: 42, b: 100, set c(x) {
-                    called = true;
-                }, get c() {
-                    return 666;
-                }};
-            assert.strictEqual(module.Object_ForceSet(o, "c", 200), true);
-
-            assert.strictEqual(o.c, 200);
-            assert.strictEqual(called, false);
-        });
-        it('should force-set a property given a non-string key', function () {
-            var o = {123: 321};
-            assert.strictEqual(module.Object_ForceSet(o, 123, 456), true);
-            assert.strictEqual(o[123], 456);
-        });
-    });
     describe('CreationContext', function () {
         it('should be the current context for simple objects', function () {
             var o = {a: 42, b: 100};
@@ -371,6 +352,20 @@ describe('Object', function () {
             o.myAccess = 1000;
             assert.strictEqual(o.mySetValue, 1000);
             assert.strictEqual(o.hasOwnProperty("mySetValue"), true);
+        });
+        it('should create a getter with a no-op setter (when setter is not provided and the property is writable)', function () {
+            "use strict";
+            var o = {mySetValue : 42};
+            assert.strictEqual(module.Object_SetAccessorNoSetterWritable(o, "myAccess"), true);
+            o.myAccess = 211; // No TypeError here
+            assert.strictEqual(o.mySetValue, 42);
+        });
+        it('should create a getter with no setter (when setter is not provided and the property is read-only)', function () {
+            "use strict";
+            var o = {mySetValue : 42};
+            assert.strictEqual(module.Object_SetAccessorNoSetterReadOnly(o, "myAccess"), true);
+            assert.throws(function() { o.myAccess = 211; }, TypeError);
+            assert.strictEqual(o.mySetValue, 42);
         });
     });
 });

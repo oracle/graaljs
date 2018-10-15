@@ -81,7 +81,6 @@ def _build(args, debug, shared_library, threading, parallelism, debug_mode, outp
             '--build-only-native',
             '--without-dtrace',
             '--without-snapshot',
-            '--shared-zlib',
             '--shared-graalvm', _getJdkHome(),
             '--shared-trufflejs', mx.distribution('graal-js:GRAALJS').path
         ] + debug + shared_library + threading,
@@ -181,7 +180,6 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
                          'tools/js2c.py',
                          'tools/expand-js-macros.py',
                          'tools/snapshot2c.py',
-                         'src/nolttng_macros.py',
                          'src/notrace_macros.py',
                          'src/noperfctr_macros.py']
         absInputPaths = [join(_suite.dir, p) for p in relInputPaths]
@@ -205,14 +203,12 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
             return []
 
         brokenModules = [
-            'internal/errors.js',               # Uses JSFunction.HOME_OBJECT_ID
-            'internal/loader/ModuleJob.js',     # Uses await
-            'internal/loader/ModuleMap.js',     # Uses JSFunction.HOME_OBJECT_ID
-            'internal/loader/ModuleRequest.js', # Uses await
-            'internal/loader/Loader.js',        # Uses await
-            'internal/readline.js',             # Uses yield
-            'internal/v8_prof_processor.js',    # Uses eval
-            'module.js',                        # Uses await
+            'assert.js',                          # Uses await
+            'internal/errors.js',                 # Uses JSFunction.HOME_OBJECT_ID
+            'internal/fs/promises.js',            # Uses await
+            'internal/modules/esm/module_map.js', # Uses JSFunction.HOME_OBJECT_ID
+            'internal/readline.js',               # Uses yield
+            'vm.js',                              # Uses JSFunction.HOME_OBJECT_ID
         ]
 
         allModules = []
@@ -235,8 +231,6 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         mx.ensure_dir_exists(outputDirBin)
 
         macroFiles = []
-        # Lttng is disabled by default on all platforms
-        macroFiles.append('src/nolttng_macros.py')
         # performance counters are enabled by default only on Windows
         if _currentOs is not 'windows':
             macroFiles.append('src/noperfctr_macros.py')
@@ -493,8 +487,7 @@ def buildSvmImage(args):
     _js_version = VC.get_vc(_suite.vc_dir).parent(_suite.vc_dir)
     mx.logv('Fetch JS version {}'.format(_js_version))
     for _lang in ['js', 'nodejs']:
-        _svm.fetch_languages(['--language:{}=version={}'.format(_lang, _js_version)])
-    _svm.fetch_languages(['--tool:regex'])
+        _svm.truffle_language_ensure(_lang, _js_version)
     _svm.native_image_on_jvm(['-H:+EnforceMaxRuntimeCompileMethods', '--language:nodejs', '-H:JNIConfigurationResources=svmnodejs.jniconfig'] + args)
 
 def _prepare_svm_env():

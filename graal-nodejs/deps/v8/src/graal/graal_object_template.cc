@@ -128,6 +128,8 @@ void GraalObjectTemplate::SetHandler(const v8::NamedPropertyHandlerConfiguration
             (jlong) configuration.query,
             (jlong) configuration.deleter,
             (jlong) configuration.enumerator,
+            (jlong) configuration.definer,
+            (jlong) configuration.descriptor,
             java_data,
             true,
             configuration.flags == v8::PropertyHandlerFlags::kOnlyInterceptStrings);
@@ -143,6 +145,8 @@ void GraalObjectTemplate::SetHandler(const v8::IndexedPropertyHandlerConfigurati
             (jlong) configuration.query,
             (jlong) configuration.deleter,
             (jlong) configuration.enumerator,
+            (jlong) configuration.definer,
+            (jlong) configuration.descriptor,
             java_data,
             false,
             false);

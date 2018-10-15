@@ -1,10 +1,9 @@
 'use strict';
 
 const common = require('../common');
-
 common.skipIfEslintMissing();
 
-const RuleTester = require('../../tools/eslint').RuleTester;
+const RuleTester = require('../../tools/node_modules/eslint').RuleTester;
 const rule = require('../../tools/eslint-rules/buffer-constructor');
 
 const message = 'Use of the Buffer() constructor has been deprecated. ' +

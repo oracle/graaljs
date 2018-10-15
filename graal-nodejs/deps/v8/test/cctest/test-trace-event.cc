@@ -22,14 +22,16 @@ struct MockTraceObject {
   uint64_t bind_id;
   int num_args;
   unsigned int flags;
+  int64_t timestamp;
   MockTraceObject(char phase, std::string name, uint64_t id, uint64_t bind_id,
-                  int num_args, int flags)
+                  int num_args, int flags, int64_t timestamp)
       : phase(phase),
         name(name),
         id(id),
         bind_id(bind_id),
         num_args(num_args),
-        flags(flags) {}
+        flags(flags),
+        timestamp(timestamp) {}
 };
 
 typedef std::vector<MockTraceObject*> MockTraceObjectList;
@@ -51,8 +53,20 @@ class MockTracingController : public v8::TracingController {
       const uint64_t* arg_values,
       std::unique_ptr<v8::ConvertableToTraceFormat>* arg_convertables,
       unsigned int flags) override {
-    MockTraceObject* to = new MockTraceObject(phase, std::string(name), id,
-                                              bind_id, num_args, flags);
+    return AddTraceEventWithTimestamp(
+        phase, category_enabled_flag, name, scope, id, bind_id, num_args,
+        arg_names, arg_types, arg_values, arg_convertables, flags, 0);
+  }
+
+  uint64_t AddTraceEventWithTimestamp(
+      char phase, const uint8_t* category_enabled_flag, const char* name,
+      const char* scope, uint64_t id, uint64_t bind_id, int num_args,
+      const char** arg_names, const uint8_t* arg_types,
+      const uint64_t* arg_values,
+      std::unique_ptr<v8::ConvertableToTraceFormat>* arg_convertables,
+      unsigned int flags, int64_t timestamp) override {
+    MockTraceObject* to = new MockTraceObject(
+        phase, std::string(name), id, bind_id, num_args, flags, timestamp);
     trace_object_list_.push_back(to);
     return 0;
   }
@@ -61,7 +75,7 @@ class MockTracingController : public v8::TracingController {
                                 const char* name, uint64_t handle) override {}
 
   const uint8_t* GetCategoryGroupEnabled(const char* name) override {
-    if (strcmp(name, "v8-cat")) {
+    if (strncmp(name, "v8-cat", 6)) {
       static uint8_t no = 0;
       return &no;
     } else {
@@ -238,4 +252,165 @@ TEST(TestEventInContext) {
   CHECK_EQ(TRACE_EVENT_PHASE_LEAVE_CONTEXT, GET_TRACE_OBJECT(2)->phase);
   CHECK_EQ("Isolate", GET_TRACE_OBJECT(2)->name);
   CHECK_EQ(isolate_id, GET_TRACE_OBJECT(2)->id);
+}
+
+TEST(TestEventWithTimestamp) {
+  MockTracingPlatform platform;
+
+  TRACE_EVENT_INSTANT_WITH_TIMESTAMP0("v8-cat", "0arg",
+                                      TRACE_EVENT_SCOPE_GLOBAL, 1729);
+  TRACE_EVENT_INSTANT_WITH_TIMESTAMP1("v8-cat", "1arg",
+                                      TRACE_EVENT_SCOPE_GLOBAL, 4104, "val", 1);
+  TRACE_EVENT_MARK_WITH_TIMESTAMP2("v8-cat", "mark", 13832, "a", 1, "b", 2);
+
+  TRACE_EVENT_COPY_NESTABLE_ASYNC_BEGIN_WITH_TIMESTAMP0("v8-cat", "begin", 5,
+                                                        20683);
+  TRACE_EVENT_COPY_NESTABLE_ASYNC_END_WITH_TIMESTAMP0("v8-cat", "end", 5,
+                                                      32832);
+
+  CHECK_EQ(5, GET_TRACE_OBJECTS_LIST->size());
+
+  CHECK_EQ(1729, GET_TRACE_OBJECT(0)->timestamp);
+  CHECK_EQ(0, GET_TRACE_OBJECT(0)->num_args);
+
+  CHECK_EQ(4104, GET_TRACE_OBJECT(1)->timestamp);
+  CHECK_EQ(1, GET_TRACE_OBJECT(1)->num_args);
+
+  CHECK_EQ(13832, GET_TRACE_OBJECT(2)->timestamp);
+  CHECK_EQ(2, GET_TRACE_OBJECT(2)->num_args);
+
+  CHECK_EQ(20683, GET_TRACE_OBJECT(3)->timestamp);
+  CHECK_EQ(32832, GET_TRACE_OBJECT(4)->timestamp);
+}
+
+TEST(BuiltinsIsTraceCategoryEnabled) {
+  CcTest::InitializeVM();
+  MockTracingPlatform platform;
+
+  v8::Isolate* isolate = CcTest::isolate();
+  v8::HandleScope handle_scope(isolate);
+  LocalContext env;
+
+  v8::Local<v8::Object> binding = env->GetExtrasBindingObject();
+  CHECK(!binding.IsEmpty());
+
+  auto undefined = v8::Undefined(isolate);
+  auto isTraceCategoryEnabled =
+      binding->Get(env.local(), v8_str("isTraceCategoryEnabled"))
+          .ToLocalChecked()
+          .As<v8::Function>();
+
+  {
+    // Test with an enabled category
+    v8::Local<v8::Value> argv[] = {v8_str("v8-cat")};
+    auto result = isTraceCategoryEnabled->Call(env.local(), undefined, 1, argv)
+                      .ToLocalChecked()
+                      .As<v8::Boolean>();
+
+    CHECK(result->BooleanValue());
+  }
+
+  {
+    // Test with a disabled category
+    v8::Local<v8::Value> argv[] = {v8_str("cat")};
+    auto result = isTraceCategoryEnabled->Call(env.local(), undefined, 1, argv)
+                      .ToLocalChecked()
+                      .As<v8::Boolean>();
+
+    CHECK(!result->BooleanValue());
+  }
+
+  {
+    // Test with an enabled utf8 category
+    v8::Local<v8::Value> argv[] = {v8_str("v8-cat\u20ac")};
+    auto result = isTraceCategoryEnabled->Call(env.local(), undefined, 1, argv)
+                      .ToLocalChecked()
+                      .As<v8::Boolean>();
+
+    CHECK(result->BooleanValue());
+  }
+}
+
+TEST(BuiltinsTrace) {
+  CcTest::InitializeVM();
+  MockTracingPlatform platform;
+
+  v8::Isolate* isolate = CcTest::isolate();
+  v8::HandleScope handle_scope(isolate);
+  LocalContext env;
+
+  v8::Local<v8::Object> binding = env->GetExtrasBindingObject();
+  CHECK(!binding.IsEmpty());
+
+  auto undefined = v8::Undefined(isolate);
+  auto trace = binding->Get(env.local(), v8_str("trace"))
+                   .ToLocalChecked()
+                   .As<v8::Function>();
+
+  // Test with disabled category
+  {
+    v8::Local<v8::String> category = v8_str("cat");
+    v8::Local<v8::String> name = v8_str("name");
+    v8::Local<v8::Value> argv[] = {
+        v8::Integer::New(isolate, 'b'),                // phase
+        category, name, v8::Integer::New(isolate, 0),  // id
+        undefined                                      // data
+    };
+    auto result = trace->Call(env.local(), undefined, 5, argv)
+                      .ToLocalChecked()
+                      .As<v8::Boolean>();
+
+    CHECK(!result->BooleanValue());
+    CHECK_EQ(0, GET_TRACE_OBJECTS_LIST->size());
+  }
+
+  // Test with enabled category
+  {
+    v8::Local<v8::String> category = v8_str("v8-cat");
+    v8::Local<v8::String> name = v8_str("name");
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+    v8::Local<v8::Object> data = v8::Object::New(isolate);
+    data->Set(context, v8_str("foo"), v8_str("bar")).FromJust();
+    v8::Local<v8::Value> argv[] = {
+        v8::Integer::New(isolate, 'b'),                  // phase
+        category, name, v8::Integer::New(isolate, 123),  // id
+        data                                             // data arg
+    };
+    auto result = trace->Call(env.local(), undefined, 5, argv)
+                      .ToLocalChecked()
+                      .As<v8::Boolean>();
+
+    CHECK(result->BooleanValue());
+    CHECK_EQ(1, GET_TRACE_OBJECTS_LIST->size());
+
+    CHECK_EQ(123, GET_TRACE_OBJECT(0)->id);
+    CHECK_EQ('b', GET_TRACE_OBJECT(0)->phase);
+    CHECK_EQ("name", GET_TRACE_OBJECT(0)->name);
+    CHECK_EQ(1, GET_TRACE_OBJECT(0)->num_args);
+  }
+
+  // Test with enabled utf8 category
+  {
+    v8::Local<v8::String> category = v8_str("v8-cat\u20ac");
+    v8::Local<v8::String> name = v8_str("name\u20ac");
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+    v8::Local<v8::Object> data = v8::Object::New(isolate);
+    data->Set(context, v8_str("foo"), v8_str("bar")).FromJust();
+    v8::Local<v8::Value> argv[] = {
+        v8::Integer::New(isolate, 'b'),                  // phase
+        category, name, v8::Integer::New(isolate, 123),  // id
+        data                                             // data arg
+    };
+    auto result = trace->Call(env.local(), undefined, 5, argv)
+                      .ToLocalChecked()
+                      .As<v8::Boolean>();
+
+    CHECK(result->BooleanValue());
+    CHECK_EQ(2, GET_TRACE_OBJECTS_LIST->size());
+
+    CHECK_EQ(123, GET_TRACE_OBJECT(1)->id);
+    CHECK_EQ('b', GET_TRACE_OBJECT(1)->phase);
+    CHECK_EQ("name\u20ac", GET_TRACE_OBJECT(1)->name);
+    CHECK_EQ(1, GET_TRACE_OBJECT(1)->num_args);
+  }
 }

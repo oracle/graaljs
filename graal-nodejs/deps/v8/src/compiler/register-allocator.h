@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef V8_REGISTER_ALLOCATOR_H_
-#define V8_REGISTER_ALLOCATOR_H_
+#ifndef V8_COMPILER_REGISTER_ALLOCATOR_H_
+#define V8_COMPILER_REGISTER_ALLOCATOR_H_
 
 #include "src/base/bits.h"
 #include "src/base/compiler-specific.h"
@@ -106,7 +106,7 @@ class LifetimePosition final {
   // Returns the lifetime position for the beginning of the previous START.
   LifetimePosition PrevStart() const {
     DCHECK(IsValid());
-    DCHECK(value_ >= kHalfStep);
+    DCHECK_LE(kHalfStep, value_);
     return LifetimePosition(Start().value_ - kHalfStep);
   }
 
@@ -229,9 +229,12 @@ class UseInterval final : public ZoneObject {
   DISALLOW_COPY_AND_ASSIGN(UseInterval);
 };
 
-
-enum class UsePositionType : uint8_t { kAny, kRequiresRegister, kRequiresSlot };
-
+enum class UsePositionType : uint8_t {
+  kRegisterOrSlot,
+  kRegisterOrSlotOrConstant,
+  kRequiresRegister,
+  kRequiresSlot
+};
 
 enum class UsePositionHintType : uint8_t {
   kNone,
@@ -531,17 +534,17 @@ class V8_EXPORT_PRIVATE TopLevelLiveRange final : public LiveRange {
   }
   SpillType spill_type() const { return SpillTypeField::decode(bits_); }
   InstructionOperand* GetSpillOperand() const {
-    DCHECK(spill_type() == SpillType::kSpillOperand);
+    DCHECK_EQ(SpillType::kSpillOperand, spill_type());
     return spill_operand_;
   }
 
   SpillRange* GetAllocatedSpillRange() const {
-    DCHECK(spill_type() != SpillType::kSpillOperand);
+    DCHECK_NE(SpillType::kSpillOperand, spill_type());
     return spill_range_;
   }
 
   SpillRange* GetSpillRange() const {
-    DCHECK(spill_type() == SpillType::kSpillRange);
+    DCHECK_EQ(SpillType::kSpillRange, spill_type());
     return spill_range_;
   }
   bool HasNoSpillType() const {
@@ -1213,4 +1216,4 @@ class LiveRangeConnector final : public ZoneObject {
 }  // namespace internal
 }  // namespace v8
 
-#endif  // V8_REGISTER_ALLOCATOR_H_
+#endif  // V8_COMPILER_REGISTER_ALLOCATOR_H_

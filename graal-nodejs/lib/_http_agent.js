@@ -25,8 +25,7 @@ const net = require('net');
 const util = require('util');
 const EventEmitter = require('events');
 const debug = util.debuglog('http');
-const { async_id_symbol } = process.binding('async_wrap');
-const { nextTick } = require('internal/process/next_tick');
+const { async_id_symbol } = require('internal/async_hooks').symbols;
 
 // New Agent code.
 
@@ -67,7 +66,8 @@ function Agent(options) {
 
     if (socket.writable &&
         this.requests[name] && this.requests[name].length) {
-      this.requests[name].shift().onSocket(socket);
+      const req = this.requests[name].shift();
+      setRequestSocket(this, req, socket);
       if (this.requests[name].length === 0) {
         // don't leak
         delete this.requests[name];
@@ -135,8 +135,8 @@ Agent.prototype.getName = function getName(options) {
   return name;
 };
 
-Agent.prototype.addRequest = function addRequest(req, options, port/*legacy*/,
-                                                 localAddress/*legacy*/) {
+Agent.prototype.addRequest = function addRequest(req, options, port/* legacy */,
+                                                 localAddress/* legacy */) {
   // Legacy API: addRequest(req, host, port, localAddress)
   if (typeof options === 'string') {
     options = {
@@ -177,12 +177,12 @@ Agent.prototype.addRequest = function addRequest(req, options, port/*legacy*/,
       delete this.freeSockets[name];
 
     this.reuseSocket(socket, req);
-    req.onSocket(socket);
+    setRequestSocket(this, req, socket);
     this.sockets[name].push(socket);
   } else if (sockLen < this.maxSockets) {
     debug('call onSocket', sockLen, freeLen);
     // If we are under maxSockets create a new one.
-    this.createSocket(req, options, handleSocketCreation(req, true));
+    this.createSocket(req, options, handleSocketCreation(this, req, true));
   } else {
     debug('wait for socket');
     // We are over limit so we'll add it to the queue.
@@ -306,9 +306,10 @@ Agent.prototype.removeSocket = function removeSocket(s, options) {
 
   if (this.requests[name] && this.requests[name].length) {
     debug('removeSocket, have a request, make a socket');
-    var req = this.requests[name][0];
+    const req = this.requests[name][0];
     // If we have pending requests and a socket gets closed make a new one
-    this.createSocket(req, options, handleSocketCreation(req, false));
+    const socketCreationHandler = handleSocketCreation(this, req, false);
+    this.createSocket(req, options, socketCreationHandler);
   }
 };
 
@@ -338,20 +339,38 @@ Agent.prototype.destroy = function destroy() {
   }
 };
 
-function handleSocketCreation(request, informRequest) {
+function handleSocketCreation(agent, request, informRequest) {
   return function handleSocketCreation_Inner(err, socket) {
     if (err) {
-      const asyncId = (socket && socket._handle && socket._handle.getAsyncId) ?
-        socket._handle.getAsyncId() :
-        null;
-      nextTick(asyncId, () => request.emit('error', err));
+      process.nextTick(emitErrorNT, request, err);
       return;
     }
     if (informRequest)
-      request.onSocket(socket);
+      setRequestSocket(agent, request, socket);
     else
       socket.emit('free');
   };
+}
+
+function setRequestSocket(agent, req, socket) {
+  req.onSocket(socket);
+  const agentTimeout = agent.options.timeout || 0;
+  if (req.timeout === undefined || req.timeout === agentTimeout) {
+    return;
+  }
+  socket.setTimeout(req.timeout);
+  // reset timeout after response end
+  req.once('response', (res) => {
+    res.once('end', () => {
+      if (socket.timeout !== agentTimeout) {
+        socket.setTimeout(agentTimeout);
+      }
+    });
+  });
+}
+
+function emitErrorNT(emitter, err) {
+  emitter.emit('error', err);
 }
 
 module.exports = {

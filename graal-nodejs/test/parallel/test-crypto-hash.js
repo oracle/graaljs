@@ -82,15 +82,15 @@ assert.deepStrictEqual(
 );
 
 // stream interface should produce the same result.
-assert.deepStrictEqual(a5, a3, 'stream interface is consistent');
-assert.deepStrictEqual(a6, a3, 'stream interface is consistent');
-assert.notStrictEqual(a7, undefined, 'no data should return data');
-assert.notStrictEqual(a8, undefined, 'empty string should generate data');
+assert.deepStrictEqual(a5, a3);
+assert.deepStrictEqual(a6, a3);
+assert.notStrictEqual(a7, undefined);
+assert.notStrictEqual(a8, undefined);
 
 // Test multiple updates to same hash
 const h1 = crypto.createHash('sha1').update('Test123').digest('hex');
 const h2 = crypto.createHash('sha1').update('Test').update('123').digest('hex');
-assert.strictEqual(h1, h2, 'multipled updates');
+assert.strictEqual(h1, h2);
 
 // Test hashing for binary files
 const fn = fixtures.path('sample.png');
@@ -100,12 +100,13 @@ fileStream.on('data', function(data) {
   sha1Hash.update(data);
 });
 fileStream.on('close', common.mustCall(function() {
+  // Test SHA1 of sample.png
   assert.strictEqual(sha1Hash.digest('hex'),
-                     '22723e553129a336ad96e10f6aecdf0f45e4149e',
-                     'Test SHA1 of sample.png');
+                     '22723e553129a336ad96e10f6aecdf0f45e4149e');
 }));
 
-// Issue #2227: unknown digest method should throw an error.
+// Issue https://github.com/nodejs/node-v0.x-archive/issues/2227: unknown digest
+// method should throw an error.
 assert.throws(function() {
   crypto.createHash('xyzzy');
 }, /Digest method not supported/);
@@ -123,14 +124,42 @@ assert.notStrictEqual(
 
 const h3 = crypto.createHash('sha256');
 h3.digest();
-assert.throws(function() {
-  h3.digest();
-}, /Digest already called/);
 
-assert.throws(function() {
-  h3.update('foo');
-}, /Digest already called/);
+common.expectsError(
+  () => h3.digest(),
+  {
+    code: 'ERR_CRYPTO_HASH_FINALIZED',
+    type: Error
+  });
 
-assert.throws(function() {
-  crypto.createHash('sha256').digest('ucs2');
-}, /^Error: hash\.digest\(\) does not support UTF-16$/);
+common.expectsError(
+  () => h3.update('foo'),
+  {
+    code: 'ERR_CRYPTO_HASH_FINALIZED',
+    type: Error
+  });
+
+common.expectsError(
+  () => crypto.createHash('sha256').digest('ucs2'),
+  {
+    code: 'ERR_CRYPTO_HASH_DIGEST_NO_UTF16',
+    type: Error
+  }
+);
+
+common.expectsError(
+  () => crypto.createHash(),
+  {
+    code: 'ERR_INVALID_ARG_TYPE',
+    type: TypeError,
+    message: 'The "algorithm" argument must be of type string. ' +
+             'Received type undefined'
+  }
+);
+
+{
+  const Hash = crypto.Hash;
+  const instance = crypto.Hash('sha256');
+  assert(instance instanceof Hash, 'Hash is expected to return a new instance' +
+                                   ' when called without `new`');
+}

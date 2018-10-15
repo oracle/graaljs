@@ -4,6 +4,7 @@
 
 #include "src/v8.h"
 
+#include "src/api.h"
 #include "src/compiler/pipeline.h"
 #include "src/handles.h"
 #include "src/interpreter/bytecode-generator.h"
@@ -170,7 +171,7 @@ Handle<BytecodeArray> OptimizedBytecodeSourcePositionTester::MakeBytecode(
           .ToLocalChecked());
   Handle<JSFunction> function =
       Handle<JSFunction>::cast(v8::Utils::OpenHandle(*api_function));
-  return handle(function->shared()->bytecode_array());
+  return handle(function->shared()->GetBytecodeArray());
 }
 
 void OptimizedBytecodeSourcePositionTester::SetOptimizationFlags(

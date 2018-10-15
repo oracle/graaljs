@@ -56,7 +56,7 @@ public final class JSTest262 {
 
     public static DynamicObject create(JSRealm realm) {
         JSContext ctx = realm.getContext();
-        DynamicObject obj = JSUserObject.create(ctx, realm);
+        DynamicObject obj = JSUserObject.createInit(realm);
         JSObjectUtil.putDataProperty(ctx, obj, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(realm, obj, CLASS_NAME);
         return obj;

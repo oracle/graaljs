@@ -17,6 +17,7 @@ const goog = [
     resolver.resolve('localhost', common.mustCall());
 
     common.expectsError(resolver.setServers.bind(resolver, goog), {
+      code: 'ERR_DNS_SET_SERVERS_FAILED',
       message: /^c-ares failed to set servers: "There are pending queries\." \[.+\]$/g
     });
   }

@@ -51,8 +51,8 @@ void FunctionTemplate_Child(const FunctionCallbackInfo<Value>& args) {
     args.GetReturnValue().Set(args[0]);
 }
 
-void SimpleAccessorGetter(Local<String> property, const PropertyCallbackInfo<Value>& info);
-void SimpleAccessorSetter(Local<String> property, Local<Value> value, const PropertyCallbackInfo<void>& info);
+void SimpleAccessorGetter(Local<Name> property, const PropertyCallbackInfo<Value>& info);
+void SimpleAccessorSetter(Local<Name> property, Local<Value> value, const PropertyCallbackInfo<void>& info);
 
 #endif
 
@@ -62,7 +62,7 @@ EXPORT_TO_JS(HasInstanceIsInstance) {
     Isolate* isolate = args.GetIsolate();
     Local<FunctionTemplate> functionTemplate = FunctionTemplate::New(isolate, FunctionTemplate_Function);
     Local<Function> function = functionTemplate->GetFunction();
-    Local<Object> instance = function->NewInstance();
+    Local<Object> instance = function->NewInstance(isolate->GetCurrentContext()).ToLocalChecked();
     bool result = functionTemplate->HasInstance(instance);
     args.GetReturnValue().Set(result);
 }
@@ -81,7 +81,7 @@ EXPORT_TO_JS(HasInstanceSamePrototype) {
     Local<Function> function = functionTemplate->GetFunction();
     Local<Value> prototype = function->Get(String::NewFromUtf8(isolate, "prototype"));
     Local<Object> instance = Object::New(isolate);
-    instance->SetPrototype(prototype);
+    instance->SetPrototype(isolate->GetCurrentContext(), prototype);
     bool result = functionTemplate->HasInstance(instance);
     args.GetReturnValue().Set(result);
 }
@@ -92,7 +92,7 @@ EXPORT_TO_JS(HasInstanceInherits) {
     Local<FunctionTemplate> childTemplate = FunctionTemplate::New(isolate, FunctionTemplate_Child);
     childTemplate->Inherit(parentTemplate);
     Local<Function> function = childTemplate->GetFunction();
-    Local<Object> instance = function->NewInstance();
+    Local<Object> instance = function->NewInstance(isolate->GetCurrentContext()).ToLocalChecked();
     bool result = parentTemplate->HasInstance(instance) && childTemplate->HasInstance(instance);
     args.GetReturnValue().Set(result);
 }
@@ -164,7 +164,7 @@ EXPORT_TO_JS(SetOnInstanceTemplate) {
     instanceTemplate->Set(name, value); //TODO also set PropertyAttributes
 
     Local<Function> function = functionTemplate->GetFunction();
-    Local<Object> instance = function->NewInstance();
+    Local<Object> instance = function->NewInstance(isolate->GetCurrentContext()).ToLocalChecked();
 
     args.GetReturnValue().Set(instance);
 }
@@ -179,7 +179,7 @@ EXPORT_TO_JS(CreateWithAccessor) {
     Local<String> name = args[0].As<String>(); //TODO should be Local<Name>
     instanceTemplate->SetAccessor(name, SimpleAccessorGetter, SimpleAccessorSetter);
     Local<Function> function = functionTemplate->GetFunction();
-    Local<Object> instance = function->NewInstance();
+    Local<Object> instance = function->NewInstance(isolate->GetCurrentContext()).ToLocalChecked();
     args.GetReturnValue().Set(instance);
 }
 

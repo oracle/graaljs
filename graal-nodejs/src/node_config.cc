@@ -29,6 +29,18 @@ using v8::Value;
                               True(isolate), ReadOnly).FromJust();            \
   } while (0)
 
+#define READONLY_STRING_PROPERTY(obj, str, val)                                \
+  do {                                                                         \
+    (obj)->DefineOwnProperty(context,                                          \
+                             FIXED_ONE_BYTE_STRING(isolate, str),              \
+                             String::NewFromUtf8(                              \
+                                 isolate,                                      \
+                                 val.data(),                                   \
+                                 v8::NewStringType::kNormal).ToLocalChecked(), \
+                             ReadOnly).FromJust();                             \
+  } while (0)
+
+
 #define READONLY_PROPERTY(obj, name, value)                                   \
   do {                                                                        \
     obj->DefineOwnProperty(env->context(),                                    \
@@ -36,11 +48,17 @@ using v8::Value;
                            value, ReadOnly).FromJust();                       \
   } while (0)
 
-static void InitConfig(Local<Object> target,
+static void Initialize(Local<Object> target,
                        Local<Value> unused,
                        Local<Context> context) {
   Environment* env = Environment::GetCurrent(context);
   Isolate* isolate = env->isolate();
+
+#ifdef NODE_FIPS_MODE
+  READONLY_BOOLEAN_PROPERTY("fipsMode");
+  if (force_fips_crypto)
+    READONLY_BOOLEAN_PROPERTY("fipsForced");
+#endif
 
 #ifdef NODE_HAVE_I18N_SUPPORT
 
@@ -50,31 +68,34 @@ static void InitConfig(Local<Object> target,
   READONLY_BOOLEAN_PROPERTY("hasSmallICU");
 #endif  // NODE_HAVE_SMALL_ICU
 
-  target->DefineOwnProperty(
-      context,
-      FIXED_ONE_BYTE_STRING(isolate, "icuDataDir"),
-      String::NewFromUtf8(isolate,
-                          icu_data_dir.data(),
-                          v8::NewStringType::kNormal).ToLocalChecked(),
-      ReadOnly).FromJust();
+#if NODE_USE_V8_PLATFORM
+  READONLY_BOOLEAN_PROPERTY("hasTracing");
+#endif
+
+  READONLY_STRING_PROPERTY(target, "icuDataDir", icu_data_dir);
 
 #endif  // NODE_HAVE_I18N_SUPPORT
 
   if (config_preserve_symlinks)
     READONLY_BOOLEAN_PROPERTY("preserveSymlinks");
+  if (config_preserve_symlinks_main)
+    READONLY_BOOLEAN_PROPERTY("preserveSymlinksMain");
 
   if (config_experimental_modules) {
     READONLY_BOOLEAN_PROPERTY("experimentalModules");
     if (!config_userland_loader.empty()) {
-      target->DefineOwnProperty(
-          context,
-          FIXED_ONE_BYTE_STRING(isolate, "userLoader"),
-          String::NewFromUtf8(isolate,
-                              config_userland_loader.data(),
-                              v8::NewStringType::kNormal).ToLocalChecked(),
-          ReadOnly).FromJust();
+      READONLY_STRING_PROPERTY(target, "userLoader",  config_userland_loader);
     }
   }
+
+  if (config_experimental_vm_modules)
+    READONLY_BOOLEAN_PROPERTY("experimentalVMModules");
+
+  if (config_experimental_worker)
+    READONLY_BOOLEAN_PROPERTY("experimentalWorker");
+
+  if (config_experimental_repl_await)
+    READONLY_BOOLEAN_PROPERTY("experimentalREPLAwait");
 
   if (config_pending_deprecation)
     READONLY_BOOLEAN_PROPERTY("pendingDeprecation");
@@ -82,51 +103,31 @@ static void InitConfig(Local<Object> target,
   if (config_expose_internals)
     READONLY_BOOLEAN_PROPERTY("exposeInternals");
 
-  if (config_expose_http2)
-    READONLY_BOOLEAN_PROPERTY("exposeHTTP2");
+  if (env->abort_on_uncaught_exception())
+    READONLY_BOOLEAN_PROPERTY("shouldAbortOnUncaughtException");
 
   READONLY_PROPERTY(target,
                     "bits",
                     Number::New(env->isolate(), 8 * sizeof(intptr_t)));
 
   if (!config_warning_file.empty()) {
-    target->DefineOwnProperty(
-        context,
-        FIXED_ONE_BYTE_STRING(isolate, "warningFile"),
-        String::NewFromUtf8(isolate,
-                            config_warning_file.data(),
-                            v8::NewStringType::kNormal).ToLocalChecked(),
-        ReadOnly).FromJust();
+    READONLY_STRING_PROPERTY(target, "warningFile", config_warning_file);
   }
 
   Local<Object> debugOptions = Object::New(isolate);
+  READONLY_PROPERTY(target, "debugOptions", debugOptions);
 
-  target->DefineOwnProperty(
-      context,
-      FIXED_ONE_BYTE_STRING(isolate, "debugOptions"),
-      debugOptions, ReadOnly).FromJust();
+  READONLY_STRING_PROPERTY(debugOptions, "host", debug_options.host_name());
 
-  debugOptions->DefineOwnProperty(
-      context,
-      FIXED_ONE_BYTE_STRING(isolate, "host"),
-      String::NewFromUtf8(isolate,
-                          debug_options.host_name().c_str(),
-                          v8::NewStringType::kNormal).ToLocalChecked(),
-      ReadOnly).FromJust();
+  READONLY_PROPERTY(debugOptions,
+                    "port",
+                    Integer::New(isolate, debug_options.port()));
 
-  debugOptions->DefineOwnProperty(
-      context,
-      env->port_string(),
-      Integer::New(isolate, debug_options.port()),
-      ReadOnly).FromJust();
-
-  debugOptions->DefineOwnProperty(
-      context,
-      FIXED_ONE_BYTE_STRING(isolate, "inspectorEnabled"),
-      Boolean::New(isolate, debug_options.inspector_enabled()), ReadOnly)
-          .FromJust();
+  READONLY_PROPERTY(debugOptions,
+                    "inspectorEnabled",
+                    Boolean::New(isolate, debug_options.inspector_enabled()));
 }  // InitConfig
 
 }  // namespace node
 
-NODE_BUILTIN_MODULE_CONTEXT_AWARE(config, node::InitConfig)
+NODE_BUILTIN_MODULE_CONTEXT_AWARE(config, node::Initialize)

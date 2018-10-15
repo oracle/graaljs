@@ -1,8 +1,8 @@
+// Flags: --expose-internals
 'use strict';
 const common = require('../common');
 common.skipIfInspectorDisabled();
 common.skipIf32Bits();
-common.crashOnUnhandledRejection();
 const { NodeInstance } = require('../common/inspector-helper.js');
 const assert = require('assert');
 
@@ -17,7 +17,7 @@ function waitUntilDebugged() {
   // call stack depth is 0. We need a chance to call
   // Debugger.setAsyncCallStackDepth *before* activating the actual timer for
   // async stack traces to work. Directly using a debugger statement would be
-  // too brittle, and using a longer timeout would unnecesarily slow down the
+  // too brittle, and using a longer timeout would unnecessarily slow down the
   // test on most machines. Triggering a debugger break through an interval is
   // a faster and more reliable way.
   process._rawDebug('Signal received, waiting for debugger setup');

@@ -1,4 +1,4 @@
-#include "base-object-inl.h"
+#include "base_object-inl.h"
 #include "inspector_agent.h"
 #include "inspector_io.h"
 #include "node_internals.h"
@@ -9,6 +9,7 @@ namespace node {
 namespace inspector {
 namespace {
 
+using v8::Boolean;
 using v8::Context;
 using v8::Function;
 using v8::FunctionCallbackInfo;
@@ -19,7 +20,6 @@ using v8::Local;
 using v8::MaybeLocal;
 using v8::NewStringType;
 using v8::Object;
-using v8::Persistent;
 using v8::String;
 using v8::Value;
 
@@ -42,10 +42,6 @@ class JSBindingsConnection : public AsyncWrap {
                                 connection_(connection) {
     }
 
-    bool WaitForFrontendMessageWhilePaused() override {
-      return false;
-    }
-
     void SendMessageToFrontend(const v8_inspector::StringView& message)
         override {
       Isolate* isolate = env_->isolate();
@@ -58,12 +54,6 @@ class JSBindingsConnection : public AsyncWrap {
       connection_->OnMessage(argument);
     }
 
-    void Disconnect() {
-      Agent* agent = env_->inspector_agent();
-      if (agent->delegate() == this)
-        agent->Disconnect();
-    }
-
    private:
     Environment* env_;
     JSBindingsConnection* connection_;
@@ -73,47 +63,25 @@ class JSBindingsConnection : public AsyncWrap {
                        Local<Object> wrap,
                        Local<Function> callback)
                        : AsyncWrap(env, wrap, PROVIDER_INSPECTORJSBINDING),
-                         delegate_(env, this),
                          callback_(env->isolate(), callback) {
-    Wrap(wrap, this);
-
     Agent* inspector = env->inspector_agent();
-    if (inspector->delegate() != nullptr) {
-      env->ThrowTypeError("Session is already attached");
-      return;
-    }
-    inspector->Connect(&delegate_);
-  }
-
-  ~JSBindingsConnection() override {
-    callback_.Reset();
+    session_ = inspector->Connect(std::unique_ptr<JSBindingsSessionDelegate>(
+        new JSBindingsSessionDelegate(env, this)), false);
   }
 
   void OnMessage(Local<Value> value) {
     MakeCallback(callback_.Get(env()->isolate()), 1, &value);
   }
 
-  void CheckIsCurrent() {
-    Agent* inspector = env()->inspector_agent();
-    CHECK_EQ(&delegate_, inspector->delegate());
-  }
-
   static void New(const FunctionCallbackInfo<Value>& info) {
     Environment* env = Environment::GetCurrent(info);
-    if (!info[0]->IsFunction()) {
-      env->ThrowTypeError("Message callback is required");
-      return;
-    }
+    CHECK(info[0]->IsFunction());
     Local<Function> callback = info[0].As<Function>();
     new JSBindingsConnection(env, info.This(), callback);
   }
 
   void Disconnect() {
-    delegate_.Disconnect();
-    if (!persistent().IsEmpty()) {
-      ClearWrap(object());
-      persistent().Reset();
-    }
+    session_.reset();
     delete this;
   }
 
@@ -127,32 +95,39 @@ class JSBindingsConnection : public AsyncWrap {
     Environment* env = Environment::GetCurrent(info);
     JSBindingsConnection* session;
     ASSIGN_OR_RETURN_UNWRAP(&session, info.Holder());
-    if (!info[0]->IsString()) {
-      env->ThrowTypeError("Inspector message must be a string");
-      return;
-    }
+    CHECK(info[0]->IsString());
 
-    session->CheckIsCurrent();
-    Agent* inspector = env->inspector_agent();
-    inspector->Dispatch(ToProtocolString(env->isolate(), info[0])->string());
+    if (session->session_) {
+      session->session_->Dispatch(
+          ToProtocolString(env->isolate(), info[0])->string());
+    }
   }
 
-  size_t self_size() const override { return sizeof(*this); }
+  void MemoryInfo(MemoryTracker* tracker) const override {
+    tracker->TrackThis(this);
+    tracker->TrackField("callback", callback_);
+    tracker->TrackFieldWithSize("session", sizeof(*session_));
+  }
+
+  ADD_MEMORY_INFO_NAME(JSBindingsConnection)
 
  private:
-  JSBindingsSessionDelegate delegate_;
+  std::unique_ptr<InspectorSession> session_;
   Persistent<Function> callback_;
 };
 
+static bool InspectorEnabled(Environment* env) {
+  Agent* agent = env->inspector_agent();
+  return agent->IsActive();
+}
 
 void AddCommandLineAPI(const FunctionCallbackInfo<Value>& info) {
   auto env = Environment::GetCurrent(info);
   Local<Context> context = env->context();
 
-  if (info.Length() != 2 || !info[0]->IsString()) {
-    return env->ThrowTypeError("inspector.addCommandLineAPI takes "
-        "exactly 2 arguments: a string and a value.");
-  }
+  // inspector.addCommandLineAPI takes 2 arguments: a string and a value.
+  CHECK_EQ(info.Length(), 2);
+  CHECK(info[0]->IsString());
 
   Local<Object> console_api = env->inspector_console_api_object();
   console_api->Set(context, info[0], info[1]).FromJust();
@@ -162,11 +137,7 @@ void CallAndPauseOnStart(const FunctionCallbackInfo<v8::Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   CHECK_GT(args.Length(), 1);
   CHECK(args[0]->IsFunction());
-  std::vector<v8::Local<v8::Value>> call_args;
-  for (int i = 2; i < args.Length(); i++) {
-    call_args.push_back(args[i]);
-  }
-
+  SlicedArguments call_args(args, /* start */ 2);
   env->inspector_agent()->PauseOnNextJavascriptStatement("Break on start");
   v8::MaybeLocal<v8::Value> retval =
       args[0].As<v8::Function>()->Call(env->context(), args[1],
@@ -181,12 +152,9 @@ void InspectorConsoleCall(const FunctionCallbackInfo<Value>& info) {
   HandleScope handle_scope(isolate);
   Local<Context> context = isolate->GetCurrentContext();
   CHECK_LT(2, info.Length());
-  std::vector<Local<Value>> call_args;
-  for (int i = 3; i < info.Length(); ++i) {
-    call_args.push_back(info[i]);
-  }
+  SlicedArguments call_args(info, /* start */ 3);
   Environment* env = Environment::GetCurrent(isolate);
-  if (env->inspector_agent()->enabled()) {
+  if (InspectorEnabled(env)) {
     Local<Value> inspector_method = info[0];
     CHECK(inspector_method->IsFunction());
     Local<Value> config_value = info[2];
@@ -225,7 +193,7 @@ static void* GetAsyncTask(int64_t asyncId) {
   return reinterpret_cast<void*>(asyncId << 1);
 }
 
-template<void (Agent::*asyncTaskFn)(void*)>
+template <void (Agent::*asyncTaskFn)(void*)>
 static void InvokeAsyncTaskFnWithId(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   CHECK(args[0]->IsNumber());
@@ -238,7 +206,7 @@ static void AsyncTaskScheduledWrapper(const FunctionCallbackInfo<Value>& args) {
 
   CHECK(args[0]->IsString());
   Local<String> task_name = args[0].As<String>();
-  String::Value task_name_value(task_name);
+  String::Value task_name_value(args.GetIsolate(), task_name);
   StringView task_name_view(*task_name_value, task_name_value.length());
 
   CHECK(args[1]->IsNumber());
@@ -264,7 +232,7 @@ static void RegisterAsyncHookWrapper(const FunctionCallbackInfo<Value>& args) {
 
 void IsEnabled(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
-  args.GetReturnValue().Set(env->inspector_agent()->enabled());
+  args.GetReturnValue().Set(InspectorEnabled(env));
 }
 
 void Open(const FunctionCallbackInfo<Value>& args) {
@@ -285,8 +253,9 @@ void Open(const FunctionCallbackInfo<Value>& args) {
   if (args.Length() > 2 && args[2]->IsBoolean()) {
     wait_for_connect = args[2]->BooleanValue(env->context()).FromJust();
   }
-
-  agent->StartIoThread(wait_for_connect);
+  agent->StartIoThread();
+  if (wait_for_connect)
+    agent->WaitForConnect();
 }
 
 void Url(const FunctionCallbackInfo<Value>& args) {
@@ -304,8 +273,8 @@ void Url(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(OneByteString(env->isolate(), url.c_str()));
 }
 
-void InitInspectorBindings(Local<Object> target, Local<Value> unused,
-                           Local<Context> context, void* priv) {
+void Initialize(Local<Object> target, Local<Value> unused,
+                Local<Context> context, void* priv) {
   Environment* env = Environment::GetCurrent(context);
   {
     auto obj = Object::New(env->isolate());
@@ -317,10 +286,10 @@ void InitInspectorBindings(Local<Object> target, Local<Value> unused,
   Agent* agent = env->inspector_agent();
   env->SetMethod(target, "consoleCall", InspectorConsoleCall);
   env->SetMethod(target, "addCommandLineAPI", AddCommandLineAPI);
-  if (agent->IsWaitingForConnect())
+  if (agent->WillWaitForConnect())
     env->SetMethod(target, "callAndPauseOnStart", CallAndPauseOnStart);
   env->SetMethod(target, "open", Open);
-  env->SetMethod(target, "url", Url);
+  env->SetMethodNoSideEffect(target, "url", Url);
 
   env->SetMethod(target, "asyncTaskScheduled", AsyncTaskScheduledWrapper);
   env->SetMethod(target, "asyncTaskCanceled",
@@ -331,7 +300,7 @@ void InitInspectorBindings(Local<Object> target, Local<Value> unused,
       InvokeAsyncTaskFnWithId<&Agent::AsyncTaskFinished>);
 
   env->SetMethod(target, "registerAsyncHook", RegisterAsyncHookWrapper);
-  env->SetMethod(target, "isEnabled", IsEnabled);
+  env->SetMethodNoSideEffect(target, "isEnabled", IsEnabled);
 
   auto conn_str = FIXED_ONE_BYTE_STRING(env->isolate(), "Connection");
   Local<FunctionTemplate> tmpl =
@@ -349,4 +318,4 @@ void InitInspectorBindings(Local<Object> target, Local<Value> unused,
 }  // namespace node
 
 NODE_BUILTIN_MODULE_CONTEXT_AWARE(inspector,
-                                  node::inspector::InitInspectorBindings);
+                                  node::inspector::Initialize);

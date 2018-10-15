@@ -50,6 +50,11 @@ class GraalTemplate : public GraalData {
 public:
     GraalTemplate(GraalIsolate* isolate, jobject java_template);
     void Set(v8::Local<v8::Value> key, v8::Local<v8::Data> value, v8::PropertyAttribute attributes);
+    void SetAccessorProperty(
+            v8::Local<v8::Name> name,
+            v8::Local<v8::FunctionTemplate> getter,
+            v8::Local<v8::FunctionTemplate> setter,
+            v8::PropertyAttribute attribute);
 };
 
 #endif /* GRAAL_TEMPLATE_H_ */

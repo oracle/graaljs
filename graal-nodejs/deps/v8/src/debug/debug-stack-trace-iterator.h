@@ -21,9 +21,9 @@ class DebugStackTraceIterator final : public debug::StackTraceIterator {
   void Advance() override;
 
   int GetContextId() const override;
-  v8::Local<v8::Value> GetReceiver() const override;
+  v8::MaybeLocal<v8::Value> GetReceiver() const override;
   v8::Local<v8::Value> GetReturnValue() const override;
-  v8::Local<v8::String> GetFunctionName() const override;
+  v8::Local<v8::String> GetFunctionDebugName() const override;
   v8::Local<v8::debug::Script> GetScript() const override;
   debug::Location GetSourceLocation() const override;
   v8::Local<v8::Function> GetFunction() const override;

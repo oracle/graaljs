@@ -45,7 +45,7 @@
 
 EXPORT_TO_JS(New) {
     Isolate* isolate = args.GetIsolate();
-    int32_t value = (int32_t) args[0]->ToInt32()->Value();
+    int32_t value = (int32_t) args[0]->ToInt32(isolate->GetCurrentContext()).ToLocalChecked()->Value();
     args.GetReturnValue().Set(Integer::New(isolate, value));
 }
 
@@ -53,7 +53,7 @@ EXPORT_TO_JS(New) {
 
 EXPORT_TO_JS(NewFromUnsigned) {
     Isolate* isolate = args.GetIsolate();
-    uint32_t value = (uint32_t) args[0]->ToUint32()->Value();
+    uint32_t value = (uint32_t) args[0]->ToUint32(isolate->GetCurrentContext()).ToLocalChecked()->Value();
     args.GetReturnValue().Set(Integer::NewFromUnsigned(isolate, value));
 }
 

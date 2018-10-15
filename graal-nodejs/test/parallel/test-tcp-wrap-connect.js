@@ -23,17 +23,15 @@ function makeConnection() {
     const err = client.shutdown(shutdownReq);
     assert.strictEqual(err, 0);
 
-    shutdownReq.oncomplete = function(status, client_, req_) {
+    shutdownReq.oncomplete = function(status, client_, error) {
       assert.strictEqual(0, status);
       assert.strictEqual(client, client_);
-      assert.strictEqual(shutdownReq, req_);
+      assert.strictEqual(error, undefined);
       shutdownCount++;
       client.close();
     };
   };
 }
-
-/////
 
 let connectCount = 0;
 let endCount = 0;

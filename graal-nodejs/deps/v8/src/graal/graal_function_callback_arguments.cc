@@ -47,7 +47,6 @@
 GraalFunctionCallbackArguments::GraalFunctionCallbackArguments(
         GraalIsolate* isolate,
         GraalValue* graal_this,
-        GraalValue* graal_callee,
         GraalValue* graal_new_target,
         GraalValue* graal_data,
         GraalValue** argv,
@@ -58,14 +57,12 @@ GraalFunctionCallbackArguments::GraalFunctionCallbackArguments(
     if (construct_call) {
         graal_this->ReferenceAdded(); /* reference in return value */
     }
-    graal_callee->ReferenceAdded();
     graal_new_target->ReferenceAdded();
     graal_data->ReferenceAdded();
     implicit_args_[GraalFunctionCallbackInfo::kHolderIndex] = graal_this;
     implicit_args_[GraalFunctionCallbackInfo::kIsolateIndex] = isolate;
     implicit_args_[GraalFunctionCallbackInfo::kReturnValueIndex] = construct_call ? graal_this : nullptr;
     implicit_args_[GraalFunctionCallbackInfo::kDataIndex] = graal_data;
-    implicit_args_[GraalFunctionCallbackInfo::kCalleeIndex] = graal_callee;
     implicit_args_[GraalFunctionCallbackInfo::kNewTargetIndex] = graal_new_target;
     argv_[argc_] = graal_this;
     for (int i = 0; i < argc_; i++) {
@@ -75,7 +72,6 @@ GraalFunctionCallbackArguments::GraalFunctionCallbackArguments(
 
 GraalFunctionCallbackArguments::~GraalFunctionCallbackArguments() {
     reinterpret_cast<GraalValue*> (implicit_args_[GraalFunctionCallbackInfo::kDataIndex])->ReferenceRemoved();
-    reinterpret_cast<GraalValue*> (implicit_args_[GraalFunctionCallbackInfo::kCalleeIndex])->ReferenceRemoved();
     GraalValue* return_value = reinterpret_cast<GraalValue*> (implicit_args_[GraalFunctionCallbackInfo::kReturnValueIndex]);
     if (return_value) {
         return_value->ReferenceRemoved();

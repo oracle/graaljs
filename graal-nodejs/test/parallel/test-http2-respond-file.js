@@ -19,7 +19,7 @@ const data = fs.readFileSync(fname);
 const stat = fs.statSync(fname);
 
 const server = http2.createServer();
-server.on('stream', (stream) => {
+server.on('stream', common.mustCall((stream) => {
   stream.respondWithFile(fname, {
     [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain'
   }, {
@@ -28,9 +28,9 @@ server.on('stream', (stream) => {
       headers[HTTP2_HEADER_CONTENT_LENGTH] = stat.size;
     }
   });
-});
-server.listen(0, () => {
+}));
 
+server.listen(0, common.mustCall(() => {
   const client = http2.connect(`http://localhost:${server.address().port}`);
   const req = client.request();
 
@@ -45,8 +45,8 @@ server.listen(0, () => {
   req.on('data', (chunk) => check += chunk);
   req.on('end', common.mustCall(() => {
     assert.strictEqual(check, data.toString('utf8'));
-    client.destroy();
+    client.close();
     server.close();
   }));
   req.end();
-});
+}));

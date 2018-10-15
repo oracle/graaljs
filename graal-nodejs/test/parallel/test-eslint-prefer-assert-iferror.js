@@ -4,7 +4,7 @@ const common = require('../common');
 
 common.skipIfEslintMissing();
 
-const RuleTester = require('../../tools/eslint').RuleTester;
+const RuleTester = require('../../tools/node_modules/eslint').RuleTester;
 const rule = require('../../tools/eslint-rules/prefer-assert-iferror');
 
 new RuleTester().run('prefer-assert-iferror', rule, {
@@ -16,12 +16,18 @@ new RuleTester().run('prefer-assert-iferror', rule, {
   ],
   invalid: [
     {
-      code: 'if (err) throw err;',
-      errors: [{ message: 'Use assert.ifError(err) instead.' }]
+      code: 'require("assert");\n' +
+            'if (err) throw err;',
+      errors: [{ message: 'Use assert.ifError(err) instead.' }],
+      output: 'require("assert");\n' +
+              'assert.ifError(err);'
     },
     {
-      code: 'if (error) { throw error; }',
-      errors: [{ message: 'Use assert.ifError(error) instead.' }]
+      code: 'require("assert");\n' +
+            'if (error) { throw error; }',
+      errors: [{ message: 'Use assert.ifError(error) instead.' }],
+      output: 'require("assert");\n' +
+              'assert.ifError(error);'
     }
   ]
 });

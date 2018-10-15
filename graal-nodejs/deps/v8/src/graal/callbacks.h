@@ -112,6 +112,10 @@ jboolean GraalExecutePropertyHandlerDeleter(JNIEnv* env, jclass nativeAccess, jl
 
 jobject GraalExecutePropertyHandlerEnumerator(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobjectArray arguments, jobject data);
 
+void GraalExecutePropertyHandlerDefiner(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobject value, jobject get, jobject set, int flags, jobjectArray arguments, jobject data, jboolean named);
+
+jobject GraalExecutePropertyHandlerDescriptor(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobjectArray arguments, jobject data, jboolean named);
+
 void GraalDeallocate(JNIEnv* env, jclass nativeAccess, jlong pointer);
 
 void GraalWeakCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jlong data, jint type);
@@ -143,5 +147,7 @@ jobject GraalReadHostObject(JNIEnv* env, jclass nativeAccess, jlong delegate);
 void GraalThrowDataCloneError(JNIEnv* env, jclass nativeAccess, jlong delegate, jstring java_message);
 
 jint GraalGetSharedArrayBufferId(JNIEnv* env, jclass nativeAccess, jlong delegate, jobject sharedArrayBuffer);
+
+jobject GraalGetSharedArrayBufferFromId(JNIEnv* env, jclass nativeAccess, jlong delegate, jint id);
 
 #endif /* CALLBACKS_H_ */

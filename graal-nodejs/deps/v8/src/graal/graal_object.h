@@ -61,11 +61,11 @@ public:
     bool HasRealNamedProperty(v8::Local<v8::Name> key);
     bool Delete(v8::Local<v8::Value> key);
     bool Delete(uint32_t index);
-    bool SetAccessor(
-            v8::Local<v8::String> name,
-            void (*getter)(v8::Local<v8::String>, v8::PropertyCallbackInfo<v8::Value> const&),
-            void (*setter)(v8::Local<v8::String>, v8::Local<v8::Value>, v8::PropertyCallbackInfo<void> const&),
-            v8::Local<v8::Value> data,
+    v8::Maybe<bool> SetAccessor(
+            v8::Local<v8::Name> name,
+            v8::AccessorNameGetterCallback getter,
+            v8::AccessorNameSetterCallback setter,
+            v8::MaybeLocal<v8::Value> data,
             v8::AccessControl settings,
             v8::PropertyAttribute attributes);
     int InternalFieldCount();
@@ -86,6 +86,7 @@ public:
     v8::Maybe<bool> DeletePrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key);
     v8::MaybeLocal<v8::Value> GetOwnPropertyDescriptor(v8::Local<v8::Context> context, v8::Local<v8::Name> key);
     v8::Maybe<bool> DefineProperty(v8::Local<v8::Context> context, v8::Local<v8::Name> key, v8::PropertyDescriptor& descriptor);
+    v8::MaybeLocal<v8::Array> PreviewEntries(bool* is_key_value);
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 private:

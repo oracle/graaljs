@@ -52,6 +52,7 @@ import java.util.SplittableRandom;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -75,7 +76,6 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
-import com.oracle.truffle.js.runtime.builtins.JSDebug;
 import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -90,7 +90,6 @@ import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.JSON;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
-import com.oracle.truffle.js.runtime.builtins.JSPerformance;
 import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -133,6 +132,8 @@ public class JSRealm {
     public static final String JAVA_CLASS_NAME = "Java";
     public static final String JAVA_CLASS_NAME_NASHORN_COMPAT = "JavaNashornCompat";
     private static final String JAVA_WORKER_PROPERTY_NAME = "Worker";
+    public static final String PERFORMANCE_CLASS_NAME = "performance";
+    public static final String DEBUG_CLASS_NAME = "Debug";
 
     private static final String ALT_GRAALVM_VERSION_PROPERTY = "graalvm.version";
     private static final String GRAALVM_VERSION_PROPERTY = "org.graalvm.version";
@@ -264,6 +265,8 @@ public class JSRealm {
     private PrintWriterWrapper outputWriter;
     private PrintWriterWrapper errorWriter;
 
+    @CompilationFinal private JSConsoleUtil consoleUtil;
+
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
         this.truffleLanguageEnv = env; // can be null
@@ -287,7 +290,7 @@ public class JSRealm {
         }
 
         this.globalObject = JSGlobalObject.create(this, objectPrototype);
-        this.globalScope = JSObject.createNoTrack(context.getGlobalScopeShape());
+        this.globalScope = JSObject.createInit(context.getGlobalScopeShape());
 
         this.objectConstructor = createObjectConstructor(this, objectPrototype);
         JSObjectUtil.putDataProperty(context, this.objectPrototype, JSObject.CONSTRUCTOR, objectConstructor, JSAttributes.getDefaultNotEnumerable());
@@ -788,7 +791,7 @@ public class JSRealm {
             setupJavaInterop(global);
         }
         if (context.isOptionDebugBuiltin()) {
-            putGlobalProperty(global, JSTruffleOptions.DebugPropertyName, JSDebug.create(this));
+            putGlobalProperty(global, JSTruffleOptions.DebugPropertyName, createDebugObject());
         }
         if (JSTruffleOptions.Test262Mode) {
             putGlobalProperty(global, JSTest262.CLASS_NAME, JSTest262.create(this));
@@ -832,7 +835,7 @@ public class JSRealm {
         }
         if (JSTruffleOptions.Extensions) {
             putConsoleObject(global);
-            putGlobalProperty(global, JSPerformance.CLASS_NAME, JSPerformance.create(this));
+            putGlobalProperty(global, PERFORMANCE_CLASS_NAME, createPerformance());
         }
         if (JSTruffleOptions.ProfileTime) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
@@ -852,7 +855,7 @@ public class JSRealm {
     }
 
     private void putGraalObject(DynamicObject global) {
-        DynamicObject graalObject = JSUserObject.create(context, this);
+        DynamicObject graalObject = JSUserObject.createInit(this);
         int flags = JSAttributes.notConfigurableEnumerableNotWritable();
         JSObjectUtil.putDataProperty(context, graalObject, "language", AbstractJavaScriptLanguage.NAME, flags);
         JSObjectUtil.putDataProperty(context, graalObject, "versionJS", AbstractJavaScriptLanguage.VERSION_NUMBER, flags);
@@ -931,13 +934,13 @@ public class JSRealm {
 
         if (getEnv() != null && getEnv().isHostLookupAllowed()) {
             if (JSContextOptions.JAVA_PACKAGE_GLOBALS.getValue(getEnv().getOptions())) {
-                putGlobalProperty(global, "Packages", JavaPackage.create(this, ""));
-                putGlobalProperty(global, "java", JavaPackage.create(this, "java"));
-                putGlobalProperty(global, "javafx", JavaPackage.create(this, "javafx"));
-                putGlobalProperty(global, "javax", JavaPackage.create(this, "javax"));
-                putGlobalProperty(global, "com", JavaPackage.create(this, "com"));
-                putGlobalProperty(global, "org", JavaPackage.create(this, "org"));
-                putGlobalProperty(global, "edu", JavaPackage.create(this, "edu"));
+                putGlobalProperty(global, "Packages", JavaPackage.createInit(this, ""));
+                putGlobalProperty(global, "java", JavaPackage.createInit(this, "java"));
+                putGlobalProperty(global, "javafx", JavaPackage.createInit(this, "javafx"));
+                putGlobalProperty(global, "javax", JavaPackage.createInit(this, "javax"));
+                putGlobalProperty(global, "com", JavaPackage.createInit(this, "com"));
+                putGlobalProperty(global, "org", JavaPackage.createInit(this, "org"));
+                putGlobalProperty(global, "edu", JavaPackage.createInit(this, "edu"));
             }
 
             if (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop) {
@@ -957,9 +960,15 @@ public class JSRealm {
     }
 
     private void putConsoleObject(DynamicObject global) {
-        DynamicObject console = JSUserObject.create(context, this);
-        putGlobalProperty(console, "log", JSObject.get(global, "print"));
+        DynamicObject console = JSUserObject.createInit(this);
+        JSObjectUtil.putFunctionsFromContainer(this, console, "Console");
         putGlobalProperty(global, "console", console);
+    }
+
+    private DynamicObject createPerformance() {
+        DynamicObject obj = JSUserObject.createInit(this);
+        JSObjectUtil.putFunctionsFromContainer(this, obj, PERFORMANCE_CLASS_NAME);
+        return obj;
     }
 
     /**
@@ -1108,9 +1117,16 @@ public class JSRealm {
     }
 
     private DynamicObject createRealmBuiltinObject() {
-        DynamicObject obj = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        DynamicObject obj = JSUserObject.createInit(this);
         JSObjectUtil.putDataProperty(getContext(), obj, Symbol.SYMBOL_TO_STRING_TAG, REALM_BUILTIN_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, obj, REALM_BUILTIN_CLASS_NAME);
+        return obj;
+    }
+
+    private DynamicObject createDebugObject() {
+        DynamicObject obj = JSUserObject.createInit(this);
+        JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_STRING_TAG, DEBUG_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putFunctionsFromContainer(this, obj, DEBUG_CLASS_NAME);
         return obj;
     }
 
@@ -1285,4 +1301,13 @@ public class JSRealm {
     public Shape getLazyRegexArrayShape() {
         return lazyRegexArrayShape;
     }
+
+    public JSConsoleUtil getConsoleUtil() {
+        if (consoleUtil == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            consoleUtil = new JSConsoleUtil();
+        }
+        return consoleUtil;
+    }
+
 }

@@ -59,7 +59,7 @@ ObjectDeserializer::DeserializeWasmCompiledModule(
   if (!d.Deserialize(isolate).ToHandle(&result))
     return MaybeHandle<WasmCompiledModule>();
 
-  if (!result->IsFixedArray()) return MaybeHandle<WasmCompiledModule>();
+  if (!result->IsWasmCompiledModule()) return MaybeHandle<WasmCompiledModule>();
 
   // Cast without type checks, as the module wrapper is not there yet.
   return handle(static_cast<WasmCompiledModule*>(*result), isolate);
@@ -67,7 +67,8 @@ ObjectDeserializer::DeserializeWasmCompiledModule(
 
 MaybeHandle<HeapObject> ObjectDeserializer::Deserialize(Isolate* isolate) {
   Initialize(isolate);
-  if (!ReserveSpace()) return MaybeHandle<HeapObject>();
+
+  if (!allocator()->ReserveSpace()) return MaybeHandle<HeapObject>();
 
   DCHECK(deserializing_user_code());
   HandleScope scope(isolate);
@@ -75,11 +76,12 @@ MaybeHandle<HeapObject> ObjectDeserializer::Deserialize(Isolate* isolate) {
   {
     DisallowHeapAllocation no_gc;
     Object* root;
-    VisitRootPointer(Root::kPartialSnapshotCache, &root);
+    VisitRootPointer(Root::kPartialSnapshotCache, nullptr, &root);
     DeserializeDeferredObjects();
     FlushICacheForNewCodeObjectsAndRecordEmbeddedObjects();
     result = Handle<HeapObject>(HeapObject::cast(root));
-    RegisterDeserializedObjectsForBlackAllocation();
+    Rehash();
+    allocator()->RegisterDeserializedObjectsForBlackAllocation();
   }
   CommitPostProcessedObjects();
   return scope.CloseAndEscape(result);
@@ -91,19 +93,20 @@ void ObjectDeserializer::
   for (Code* code : new_code_objects()) {
     // Record all references to embedded objects in the new code object.
     isolate()->heap()->RecordWritesIntoCode(code);
-    Assembler::FlushICache(isolate(), code->instruction_start(),
-                           code->instruction_size());
+    Assembler::FlushICache(code->raw_instruction_start(),
+                           code->raw_instruction_size());
   }
 }
 
 void ObjectDeserializer::CommitPostProcessedObjects() {
-  CHECK(new_internalized_strings().size() <= kMaxInt);
+  CHECK_LE(new_internalized_strings().size(), kMaxInt);
   StringTable::EnsureCapacityForDeserialization(
       isolate(), static_cast<int>(new_internalized_strings().size()));
   for (Handle<String> string : new_internalized_strings()) {
+    DisallowHeapAllocation no_gc;
     StringTableInsertionKey key(*string);
-    DCHECK_NULL(StringTable::LookupKeyIfExists(isolate(), &key));
-    StringTable::LookupKey(isolate(), &key);
+    DCHECK_NULL(StringTable::ForwardStringIfExists(isolate(), &key, *string));
+    StringTable::AddKeyNoResize(isolate(), &key);
   }
 
   Heap* heap = isolate()->heap();
@@ -112,7 +115,8 @@ void ObjectDeserializer::CommitPostProcessedObjects() {
     // Assign a new script id to avoid collision.
     script->set_id(isolate()->heap()->NextScriptId());
     // Add script to list.
-    Handle<Object> list = WeakFixedArray::Add(factory->script_list(), script);
+    Handle<Object> list =
+        FixedArrayOfWeakCells::Add(factory->script_list(), script);
     heap->SetRootScriptList(*list);
   }
 }

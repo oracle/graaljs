@@ -8,7 +8,8 @@ const { checkInvocations } = require('./hook-checks');
 
 const net = require('net');
 
-common.refreshTmpDir();
+const tmpdir = require('../common/tmpdir');
+tmpdir.refresh();
 
 const hooks = initHooks();
 hooks.enable();
@@ -53,7 +54,7 @@ function onlisten() {
 const awaitOnconnectCalls = new Set(['server', 'client']);
 function maybeOnconnect(source) {
   // both server and client must call onconnect. On most OS's waiting for
-  // the client is sufficient, but on CertOS 5 the sever needs to respond too.
+  // the client is sufficient, but on CentOS 5 the sever needs to respond too.
   assert.ok(awaitOnconnectCalls.size > 0);
   awaitOnconnectCalls.delete(source);
   if (awaitOnconnectCalls.size > 0) return;

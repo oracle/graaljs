@@ -8,9 +8,9 @@
 
 #include "src/debug/debug.h"
 
-#include "src/codegen.h"
 #include "src/debug/liveedit.h"
 #include "src/frames-inl.h"
+#include "src/macro-assembler.h"
 
 namespace v8 {
 namespace internal {
@@ -39,8 +39,13 @@ void DebugCodegen::GenerateFrameDropperTrampoline(MacroAssembler* masm) {
   __ LoadP(r3, MemOperand(fp, JavaScriptFrameConstants::kFunctionOffset));
   __ LeaveFrame(StackFrame::INTERNAL);
   __ LoadP(r2, FieldMemOperand(r3, JSFunction::kSharedFunctionInfoOffset));
+#if V8_TARGET_ARCH_S390X
+  __ LoadW(r2, FieldMemOperand(
+                   r2, SharedFunctionInfo::kFormalParameterCountOffset + 4));
+#else
   __ LoadP(
       r2, FieldMemOperand(r2, SharedFunctionInfo::kFormalParameterCountOffset));
+#endif
   __ LoadRR(r4, r2);
 
   ParameterCount dummy1(r4);

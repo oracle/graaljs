@@ -90,8 +90,8 @@ exec(SLEEP3_COMMAND, { timeout: 50 }, function(err, stdout, stderr) {
 
 
 const startSleep3 = new Date();
-const killMeTwice =
-  exec(SLEEP3_COMMAND, { timeout: 1000 }, killMeTwiceCallback);
+const killMeTwice = exec(SLEEP3_COMMAND, { timeout: 1000 },
+                         killMeTwiceCallback);
 
 process.nextTick(function() {
   console.log(`kill pid ${killMeTwice.pid}`);

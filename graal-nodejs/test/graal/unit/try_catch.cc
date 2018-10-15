@@ -52,7 +52,7 @@ void TryCatch_InvokeCallback(const FunctionCallbackInfo<Value>& args) {
 
 void TryCatch_ReThrowNestedHelper(const FunctionCallbackInfo<Value>& args, int depth) {
     if (depth == 0) {
-        TryCatch tryCatch;
+        TryCatch tryCatch(args.GetIsolate());
         TryCatch_ReThrowNestedHelper(args, depth - 1);
         tryCatch.ReThrow();
     } else {
@@ -65,32 +65,33 @@ void TryCatch_ReThrowNestedHelper(const FunctionCallbackInfo<Value>& args, int d
 // TryCatch::HasCaught
 
 EXPORT_TO_JS(HasCaughtNoException) {
-    TryCatch tryCatch;
+    TryCatch tryCatch(args.GetIsolate());
     bool result = tryCatch.HasCaught();
     args.GetReturnValue().Set(result);
 }
 
 EXPORT_TO_JS(HasCaughtNativeException) {
     Isolate* isolate = args.GetIsolate();
-    TryCatch tryCatch;
+    TryCatch tryCatch(isolate);
     isolate->ThrowException(args[0]);
     bool result = tryCatch.HasCaught();
     args.GetReturnValue().Set(result);
 }
 
 EXPORT_TO_JS(HasCaughtJSException) {
-    TryCatch tryCatch;
+    TryCatch tryCatch(args.GetIsolate());
     TryCatch_InvokeCallback(args);
     bool result = tryCatch.HasCaught();
     args.GetReturnValue().Set(result);
 }
 
 EXPORT_TO_JS(HasCaughtNestedOuter) {
+    Isolate* isolate = args.GetIsolate();
     bool ok = true;
-    TryCatch tryCatch;
+    TryCatch tryCatch(isolate);
     TryCatch_InvokeCallback(args);
     {
-        TryCatch innerCatch;
+        TryCatch innerCatch(isolate);
         ok &= !innerCatch.HasCaught();
     }
     ok &= tryCatch.HasCaught();
@@ -99,10 +100,11 @@ EXPORT_TO_JS(HasCaughtNestedOuter) {
 
 
 EXPORT_TO_JS(HasCaughtNestedInner) {
+    Isolate* isolate = args.GetIsolate();
     bool ok = true;
-    TryCatch tryCatch;
+    TryCatch tryCatch(isolate);
     {
-        TryCatch innerCatch;
+        TryCatch innerCatch(isolate);
         TryCatch_InvokeCallback(args);
         ok &= innerCatch.HasCaught();
     }
@@ -111,11 +113,12 @@ EXPORT_TO_JS(HasCaughtNestedInner) {
 }
 
 EXPORT_TO_JS(HasCaughtNestedBoth) {
+    Isolate* isolate = args.GetIsolate();
     bool ok = true;
-    TryCatch tryCatch;
+    TryCatch tryCatch(isolate);
     TryCatch_InvokeCallback(args);
     {
-        TryCatch innerCatch;
+        TryCatch innerCatch(isolate);
         TryCatch_InvokeCallback(args);
         ok &= innerCatch.HasCaught();
     }
@@ -126,7 +129,7 @@ EXPORT_TO_JS(HasCaughtNestedBoth) {
 // TryCatch::HasTerminated
 
 EXPORT_TO_JS(HasTerminatedNoException) {
-    TryCatch tryCatch;
+    TryCatch tryCatch(args.GetIsolate());
     //bool result = tryCatch.HasTerminated(); //TODO
     bool result = false;
     args.GetReturnValue().Set(result);
@@ -135,13 +138,13 @@ EXPORT_TO_JS(HasTerminatedNoException) {
 // TryCatch::Exception
 
 EXPORT_TO_JS(ExceptionForNoExceptionIsEmpty) {
-    TryCatch tryCatch;
+    TryCatch tryCatch(args.GetIsolate());
     bool result = tryCatch.Exception().IsEmpty();
     args.GetReturnValue().Set(result);
 }
 
 EXPORT_TO_JS(ExceptionForThrownException) {
-    TryCatch tryCatch;
+    TryCatch tryCatch(args.GetIsolate());
     TryCatch_InvokeCallback(args);
     args.GetReturnValue().Set(tryCatch.Exception());
 }
@@ -149,13 +152,13 @@ EXPORT_TO_JS(ExceptionForThrownException) {
 // TryCatch::ReThrow
 
 EXPORT_TO_JS(ReThrowException) {
-    TryCatch tryCatch;
+    TryCatch tryCatch(args.GetIsolate());
     TryCatch_InvokeCallback(args);
     tryCatch.ReThrow();
 }
 
 EXPORT_TO_JS(ReThrowNested) {
-    TryCatch tryCatch;
+    TryCatch tryCatch(args.GetIsolate());
     TryCatch_ReThrowNestedHelper(args, 3);
     args.GetReturnValue().Set(tryCatch.Exception());
 }
@@ -163,7 +166,7 @@ EXPORT_TO_JS(ReThrowNested) {
 // TryCatch::SetVerbose
 
 EXPORT_TO_JS(SetVerbose) {
-    TryCatch tryCatch;
+    TryCatch tryCatch(args.GetIsolate());
     bool b = args[0]->IsTrue();
     tryCatch.SetVerbose(b);
     args.GetReturnValue().Set(true);
@@ -172,10 +175,12 @@ EXPORT_TO_JS(SetVerbose) {
 // TryCatch::Message
 
 EXPORT_TO_JS(MessageGetSourceLine) {
-    TryCatch tryCatch;
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    TryCatch tryCatch(isolate);
     TryCatch_InvokeCallback(args);
     Local<Message> msg = tryCatch.Message();
-    args.GetReturnValue().Set(msg->GetSourceLine());
+    args.GetReturnValue().Set(msg->GetSourceLine(context).ToLocalChecked());
 }
 
 #undef SUITE

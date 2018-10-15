@@ -20,7 +20,7 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 'use strict';
-require('../common');
+const common = require('../common');
 const assert = require('assert');
 const inspect = require('util').inspect;
 
@@ -75,8 +75,8 @@ const qsTestCases = [
   ['foo&bar=baz', 'foo=&bar=baz', { foo: '', bar: 'baz' }],
   ['a=b&c&d=e', 'a=b&c=&d=e', { a: 'b', c: '', d: 'e' }],
   ['a=b&c=&d=e', 'a=b&c=&d=e', { a: 'b', c: '', d: 'e' }],
-  ['a=b&=c&d=e', 'a=b&=c&d=e', { a: 'b', '': 'c', d: 'e' }],
-  ['a=b&=&c=d', 'a=b&=&c=d', { a: 'b', '': '', c: 'd' }],
+  ['a=b&=c&d=e', 'a=b&=c&d=e', { 'a': 'b', '': 'c', 'd': 'e' }],
+  ['a=b&=&c=d', 'a=b&=&c=d', { 'a': 'b', '': '', 'c': 'd' }],
   ['&&foo=bar&&', 'foo=bar', { foo: 'bar' }],
   ['&', '', {}],
   ['&&&&', '', {}],
@@ -125,9 +125,9 @@ const qsColonTestCases = [
 function extendedFunction() {}
 extendedFunction.prototype = { a: 'b' };
 const qsWeirdObjects = [
-  // eslint-disable-next-line no-unescaped-regexp-dot
+  // eslint-disable-next-line node-core/no-unescaped-regexp-dot
   [{ regexp: /./g }, 'regexp=', { 'regexp': '' }],
-  // eslint-disable-next-line no-unescaped-regexp-dot
+  // eslint-disable-next-line node-core/no-unescaped-regexp-dot
   [{ regexp: new RegExp('.', 'g') }, 'regexp=', { 'regexp': '' }],
   [{ fn: () => {} }, 'fn=', { 'fn': '' }],
   [{ fn: new Function('') }, 'fn=', { 'fn': '' }],
@@ -135,8 +135,11 @@ const qsWeirdObjects = [
   [{ e: extendedFunction }, 'e=', { 'e': '' }],
   [{ d: new Date() }, 'd=', { 'd': '' }],
   [{ d: Date }, 'd=', { 'd': '' }],
-  [{ f: new Boolean(false), t: new Boolean(true) }, 'f=&t=',
-   { 'f': '', 't': '' }],
+  [
+    { f: new Boolean(false), t: new Boolean(true) },
+    'f=&t=',
+    { 'f': '', 't': '' }
+  ],
   [{ f: false, t: true }, 'f=false&t=true', { 'f': 'false', 't': 'true' }],
   [{ n: null }, 'n=', { 'n': '' }],
   [{ nan: NaN }, 'nan=', { 'nan': '' }],
@@ -268,9 +271,14 @@ qsWeirdObjects.forEach((testCase) => {
 });
 
 // invalid surrogate pair throws URIError
-assert.throws(function() {
-  qs.stringify({ foo: '\udc00' });
-}, /^URIError: URI malformed$/);
+common.expectsError(
+  () => qs.stringify({ foo: '\udc00' }),
+  {
+    code: 'ERR_INVALID_URI',
+    type: URIError,
+    message: 'URI malformed'
+  }
+);
 
 // coerce numbers to string
 assert.strictEqual('foo=0', qs.stringify({ foo: 0 }));
@@ -292,9 +300,7 @@ assert.strictEqual('foo=', qs.stringify({ foo: Infinity }));
   assert.strictEqual(f, 'a=b&q=x%3Dy%26y%3Dz');
 }
 
-assert.doesNotThrow(() => {
-  qs.parse(undefined);
-});
+qs.parse(undefined); // Should not throw.
 
 // nested in colon
 {
@@ -393,11 +399,12 @@ check(qs.parse('%\u0100=%\u0101'), { '%Ā': '%ā' });
     return str + str;
   }
 
-  check(qs.parse('a=a&b=b&c=c', null, null, { decodeURIComponent: demoDecode }),
-        { aa: 'aa', bb: 'bb', cc: 'cc' });
-  check(qs.parse('a=a&b=b&c=c', null, '==',
-                 { decodeURIComponent: (str) => str }),
-        { 'a=a': '', 'b=b': '', 'c=c': '' });
+  check(
+    qs.parse('a=a&b=b&c=c', null, null, { decodeURIComponent: demoDecode }),
+    { aa: 'aa', bb: 'bb', cc: 'cc' });
+  check(
+    qs.parse('a=a&b=b&c=c', null, '==', { decodeURIComponent: (str) => str }),
+    { 'a=a': '', 'b=b': '', 'c=c': '' });
 }
 
 // Test QueryString.unescape

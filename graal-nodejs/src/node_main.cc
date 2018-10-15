@@ -29,14 +29,14 @@
 #include <VersionHelpers.h>
 #include <WinError.h>
 
-int wmain(int argc, wchar_t *wargv[]) {
+int wmain(int argc, wchar_t* wargv[]) {
   if (!IsWindows7OrGreater()) {
     fprintf(stderr, "This application is only supported on Windows 7, "
                     "Windows Server 2008 R2, or higher.");
     exit(ERROR_EXE_MACHINE_TYPE_MISMATCH);
   }
 
-  // Convert argv to to UTF8
+  // Convert argv to UTF8
   char** argv = new char*[argc + 1];
   for (int i = 0; i < argc; i++) {
     // Compute the size of the required buffer
@@ -84,12 +84,30 @@ int wmain(int argc, wchar_t *wargv[]) {
 #endif  // __LP64__
 extern char** environ;
 #endif  // __linux__
+#if defined(__POSIX__) && defined(NODE_SHARED_MODE)
+#include <string.h>
+#include <signal.h>
+#endif
 
 namespace node {
   extern bool linux_at_secure;
 }  // namespace node
 
 int main_orig(int argc, char *argv[]) {
+#if defined(__POSIX__) && defined(NODE_SHARED_MODE)
+  // In node::PlatformInit(), we squash all signal handlers for non-shared lib
+  // build. In order to run test cases against shared lib build, we also need
+  // to do the same thing for shared lib build here, but only for SIGPIPE for
+  // now. If node::PlatformInit() is moved to here, then this section could be
+  // removed.
+  {
+    struct sigaction act;
+    memset(&act, 0, sizeof(act));
+    act.sa_handler = SIG_IGN;
+    sigaction(SIGPIPE, &act, nullptr);
+  }
+#endif
+
 #if defined(__linux__)
   char** envp = environ;
   while (*envp++ != nullptr) {}

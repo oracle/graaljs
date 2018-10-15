@@ -28,6 +28,10 @@
 
 #include <stdlib.h>
 
+// The C++ style guide recommends using <re2> instead of <regex>. However, the
+// former isn't available in V8.
+#include <regex>  // NOLINT(build/c++11)
+
 #include "src/assembler-inl.h"
 #include "src/boxed-float.h"
 #include "src/debug/debug.h"
@@ -40,10 +44,14 @@
 #include "src/v8.h"
 #include "test/cctest/cctest.h"
 
-using namespace v8::internal;
+namespace v8 {
+namespace internal {
+
+enum UseRegex { kRawString, kRegexString };
 
 template <typename... S>
-bool DisassembleAndCompare(byte* begin, S... expected_strings) {
+bool DisassembleAndCompare(byte* begin, UseRegex use_regex,
+                           S... expected_strings) {
   disasm::NameConverter converter;
   disasm::Disassembler disasm(converter);
   EmbeddedVector<char, 128> buffer;
@@ -61,15 +69,35 @@ bool DisassembleAndCompare(byte* begin, S... expected_strings) {
   bool test_passed = true;
 
   for (size_t i = 0; i < disassembly.size(); i++) {
-    if (expected_disassembly[i] != disassembly[i]) {
-      fprintf(stderr,
-              "expected: \n"
-              "%s\n"
-              "disassembled: \n"
-              "%s\n\n",
-              expected_disassembly[i].c_str(), disassembly[i].c_str());
-      test_passed = false;
+    if (use_regex == kRawString) {
+      if (expected_disassembly[i] != disassembly[i]) {
+        fprintf(stderr,
+                "expected: \n"
+                "%s\n"
+                "disassembled: \n"
+                "%s\n\n",
+                expected_disassembly[i].c_str(), disassembly[i].c_str());
+        test_passed = false;
+      }
+    } else {
+      DCHECK_EQ(use_regex, kRegexString);
+      if (!std::regex_match(disassembly[i],
+                            std::regex(expected_disassembly[i]))) {
+        fprintf(stderr,
+                "expected (regex): \n"
+                "%s\n"
+                "disassembled: \n"
+                "%s\n\n",
+                expected_disassembly[i].c_str(), disassembly[i].c_str());
+        test_passed = false;
+      }
     }
+  }
+
+  // Fail after printing expected disassembly if we expected a different number
+  // of instructions.
+  if (disassembly.size() != expected_disassembly.size()) {
+    return false;
   }
 
   return test_passed;
@@ -91,13 +119,19 @@ bool DisassembleAndCompare(byte* begin, S... expected_strings) {
 // disassembles the generated instruction, comparing the output to the expected
 // value. If the comparison fails an error message is printed, but the test
 // continues to run until the end.
-#define COMPARE(asm_, ...)                                                \
-  {                                                                       \
-    int pc_offset = assm.pc_offset();                                     \
-    byte* progcounter = &buffer[pc_offset];                               \
-    assm.asm_;                                                            \
-    if (!DisassembleAndCompare(progcounter, __VA_ARGS__)) failure = true; \
+#define BASE_COMPARE(asm_, use_regex, ...)                             \
+  {                                                                    \
+    int pc_offset = assm.pc_offset();                                  \
+    byte* progcounter = &buffer[pc_offset];                            \
+    assm.asm_;                                                         \
+    if (!DisassembleAndCompare(progcounter, use_regex, __VA_ARGS__)) { \
+      failure = true;                                                  \
+    }                                                                  \
   }
+
+#define COMPARE(asm_, ...) BASE_COMPARE(asm_, kRawString, __VA_ARGS__)
+
+#define COMPARE_REGEX(asm_, ...) BASE_COMPARE(asm_, kRegexString, __VA_ARGS__)
 
 // Force emission of any pending literals into a pool.
 #define EMIT_PENDING_LITERALS() \
@@ -267,7 +301,7 @@ TEST(Type0) {
           "e3e03000       mvn r3, #0");
   COMPARE(mov(r4, Operand(-2), SetCC, al),
           "e3f04001       mvns r4, #1");
-  COMPARE(mov(r5, Operand(0x0ffffff0), SetCC, ne),
+  COMPARE(mov(r5, Operand(0x0FFFFFF0), SetCC, ne),
           "13f052ff       mvnnes r5, #-268435441");
   COMPARE(mov(r6, Operand(-1), LeaveCC, ne),
           "13e06000       mvnne r6, #0");
@@ -277,7 +311,7 @@ TEST(Type0) {
           "e3a03000       mov r3, #0");
   COMPARE(mvn(r4, Operand(-2), SetCC, al),
           "e3b04001       movs r4, #1");
-  COMPARE(mvn(r5, Operand(0x0ffffff0), SetCC, ne),
+  COMPARE(mvn(r5, Operand(0x0FFFFFF0), SetCC, ne),
           "13b052ff       movnes r5, #-268435441");
   COMPARE(mvn(r6, Operand(-1), LeaveCC, ne),
           "13a06000       movne r6, #0");
@@ -305,20 +339,20 @@ TEST(Type0) {
 
     COMPARE(movt(r5, 0x4321, ne),
             "13445321       movtne r5, #17185");
-    COMPARE(movw(r5, 0xabcd, eq),
+    COMPARE(movw(r5, 0xABCD, eq),
             "030a5bcd       movweq r5, #43981");
   }
 
   // Eor doesn't have an eor-negative variant, but we can do an mvn followed by
   // an eor to get the same effect.
-  COMPARE(eor(r5, r4, Operand(0xffffff34), SetCC, ne),
+  COMPARE(eor(r5, r4, Operand(0xFFFFFF34), SetCC, ne),
           "13e050cb       mvnne r5, #203",
           "10345005       eornes r5, r4, r5");
 
   // and <-> bic.
-  COMPARE(and_(r3, r5, Operand(0xfc03ffff)),
+  COMPARE(and_(r3, r5, Operand(0xFC03FFFF)),
           "e3c537ff       bic r3, r5, #66846720");
-  COMPARE(bic(r3, r5, Operand(0xfc03ffff)),
+  COMPARE(bic(r3, r5, Operand(0xFC03FFFF)),
           "e20537ff       and r3, r5, #66846720");
 
   // sub <-> add.
@@ -338,7 +372,7 @@ TEST(Type0) {
           "e12fff3c       blx ip");
   COMPARE(bkpt(0),
           "e1200070       bkpt 0");
-  COMPARE(bkpt(0xffff),
+  COMPARE(bkpt(0xFFFF),
           "e12fff7f       bkpt 65535");
   COMPARE(clz(r6, r7),
           "e16f6f17       clz r6, r7");
@@ -509,7 +543,7 @@ TEST(msr_mrs_disasm) {
           "e169f007       msr SPSR_fc, r7");
   // MSR with no mask is UNPREDICTABLE, and checked by the assembler, but check
   // that the disassembler does something sensible.
-  COMPARE(dd(0xe120f008), "e120f008       msr CPSR_(none), r8");
+  COMPARE(dd(0xE120F008), "e120f008       msr CPSR_(none), r8");
 
   COMPARE(mrs(r0, CPSR),     "e10f0000       mrs r0, CPSR");
   COMPARE(mrs(r1, SPSR),     "e14f1000       mrs r1, SPSR");
@@ -1471,7 +1505,7 @@ static void TestLoadLiteral(byte* buffer, Assembler* assm, bool* failure,
                             int offset) {
   int pc_offset = assm->pc_offset();
   byte *progcounter = &buffer[pc_offset];
-  assm->ldr(r0, MemOperand(pc, offset));
+  assm->ldr_pcrel(r0, offset);
 
   const char *expected_string_template =
     (offset >= 0) ?
@@ -1481,7 +1515,9 @@ static void TestLoadLiteral(byte* buffer, Assembler* assm, bool* failure,
   snprintf(expected_string, sizeof(expected_string), expected_string_template,
            abs(offset), offset,
            progcounter + Instruction::kPCReadOffset + offset);
-  if (!DisassembleAndCompare(progcounter, expected_string)) *failure = true;
+  if (!DisassembleAndCompare(progcounter, kRawString, expected_string)) {
+    *failure = true;
+  }
 }
 
 
@@ -1561,6 +1597,9 @@ TEST(Barrier) {
   COMPARE(mcr(p15, 0, r0, cr7, cr10, 4, ne), "1e070f9a       mcrne (CP15DSB)");
   COMPARE(mcr(p15, 0, r0, cr7, cr5, 4, mi), "4e070f95       mcrmi (CP15ISB)");
 
+  // Conditional speculation barrier.
+  COMPARE(csdb(), "e320f014       csdb");
+
   VERIFY_RUN();
 }
 
@@ -1577,3 +1616,50 @@ TEST(LoadStoreExclusive) {
 
   VERIFY_RUN();
 }
+
+TEST(SplitAddImmediate) {
+  SET_UP();
+
+  if (CpuFeatures::IsSupported(ARMv7)) {
+    // Re-use the destination as a scratch.
+    COMPARE(add(r0, r1, Operand(0x12345678)),
+            "e3050678       movw r0, #22136",
+            "e3410234       movt r0, #4660",
+            "e0810000       add r0, r1, r0");
+
+    // Use ip as a scratch.
+    COMPARE(add(r0, r0, Operand(0x12345678)),
+            "e305c678       movw ip, #22136",
+            "e341c234       movt ip, #4660",
+            "e080000c       add r0, r0, ip");
+  } else {
+    // Re-use the destination as a scratch.
+    COMPARE_REGEX(add(r0, r1, Operand(0x12345678)),
+                  "e59f0[0-9a-f]{3}       "
+                      "ldr r0, \\[pc, #\\+[0-9]+\\] \\(addr 0x[0-9a-f]{8}\\)",
+                  "e0810000       add r0, r1, r0");
+
+    // Use ip as a scratch.
+    COMPARE_REGEX(add(r0, r0, Operand(0x12345678)),
+                  "e59fc[0-9a-f]{3}       "
+                      "ldr ip, \\[pc, #\\+[0-9]+\\] \\(addr 0x[0-9a-f]{8}\\)",
+                  "e080000c       add r0, r0, ip");
+  }
+
+  // If ip is not available, split the operation into multiple additions.
+  {
+    UseScratchRegisterScope temps(&assm);
+    Register reserved = temps.Acquire();
+    USE(reserved);
+    COMPARE(add(r2, r2, Operand(0x12345678)),
+            "e2822f9e       add r2, r2, #632",
+            "e2822b15       add r2, r2, #21504",
+            "e282278d       add r2, r2, #36962304",
+            "e2822201       add r2, r2, #268435456");
+  }
+
+  VERIFY_RUN();
+}
+
+}  // namespace internal
+}  // namespace v8

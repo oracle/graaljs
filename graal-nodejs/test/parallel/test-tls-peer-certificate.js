@@ -20,14 +20,22 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 'use strict';
-require('../common');
+const common = require('../common');
 const fixtures = require('../common/fixtures');
+if (!common.hasCrypto) {
+  common.skip('missing crypto');
+}
+const crypto = require('crypto');
 
 // Verify that detailed getPeerCertificate() return value has all certs.
 
 const {
   assert, connect, debug, keys
 } = require(fixtures.path('tls-connect'));
+
+function sha256(s) {
+  return crypto.createHash('sha256').update(s);
+}
 
 connect({
   client: { rejectUnauthorized: false },
@@ -43,18 +51,36 @@ connect({
 
   assert.ok(peerCert.issuerCertificate);
   assert.strictEqual(peerCert.subject.emailAddress, 'ry@tinyclouds.org');
-  assert.strictEqual(peerCert.serialNumber, '9A84ABCFB8A72AC0');
+  assert.strictEqual(peerCert.serialNumber, 'FAD50CC6A07F516C');
   assert.strictEqual(peerCert.exponent, '0x10001');
   assert.strictEqual(
     peerCert.fingerprint,
-    '8D:06:3A:B3:E5:8B:85:29:72:4F:7D:1B:54:CD:95:19:3C:EF:6F:AA'
+    '6E:C0:F0:78:84:56:93:02:C9:07:AD:0C:6D:96:80:CC:85:6D:CE:3B'
   );
+  assert.strictEqual(
+    peerCert.fingerprint256,
+    'CC:CC:38:43:CB:DF:CC:C6:DD:15:96:F3:3A:D2:44:F9:23:AE:43:C4:DF:A6:AC:E5:' +
+    '12:C8:9D:1C:8F:DE:41:ED'
+  );
+
+  // SHA256 fingerprint of the public key
+  assert.strictEqual(
+    sha256(peerCert.pubkey).digest('hex'),
+    '479b505833d21ee26565568def9b92b4771d052cdb2109db5ad6e3747075aa26'
+  );
+
+  // HPKP / RFC7469 "pin-sha256" of the public key
+  assert.strictEqual(
+    sha256(peerCert.pubkey).digest('base64'),
+    'R5tQWDPSHuJlZVaN75uStHcdBSzbIQnbWtbjdHB1qiY='
+  );
+
   assert.deepStrictEqual(peerCert.infoAccess['OCSP - URI'],
                          [ 'http://ocsp.nodejs.org/' ]);
 
   const issuer = peerCert.issuerCertificate;
   assert.strictEqual(issuer.issuerCertificate, issuer);
-  assert.strictEqual(issuer.serialNumber, '8DF21C01468AF393');
+  assert.strictEqual(issuer.serialNumber, 'EE586A7D0951D7B3');
 
   return cleanup();
 });

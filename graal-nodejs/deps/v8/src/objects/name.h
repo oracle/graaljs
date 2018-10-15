@@ -44,30 +44,33 @@ class Name : public HeapObject {
   // If the name is private, it can only name own properties.
   inline bool IsPrivate();
 
+  // If the name is a private field, it should behave like a private
+  // symbol but also throw on property access miss.
+  inline bool IsPrivateField();
+
   inline bool IsUniqueName() const;
 
   static inline bool ContainsCachedArrayIndex(uint32_t hash);
 
   // Return a string version of this name that is converted according to the
   // rules described in ES6 section 9.2.11.
-  MUST_USE_RESULT static MaybeHandle<String> ToFunctionName(Handle<Name> name);
-  MUST_USE_RESULT static MaybeHandle<String> ToFunctionName(
+  V8_WARN_UNUSED_RESULT static MaybeHandle<String> ToFunctionName(
+      Handle<Name> name);
+  V8_WARN_UNUSED_RESULT static MaybeHandle<String> ToFunctionName(
       Handle<Name> name, Handle<String> prefix);
 
   DECL_CAST(Name)
 
   DECL_PRINTER(Name)
-#if V8_TRACE_MAPS
   void NameShortPrint();
   int NameShortPrint(Vector<char> str);
-#endif
 
   // Layout description.
   static const int kHashFieldSlot = HeapObject::kHeaderSize;
 #if V8_TARGET_LITTLE_ENDIAN || !V8_HOST_ARCH_64_BIT
   static const int kHashFieldOffset = kHashFieldSlot;
 #else
-  static const int kHashFieldOffset = kHashFieldSlot + kIntSize;
+  static const int kHashFieldOffset = kHashFieldSlot + kInt32Size;
 #endif
   static const int kSize = kHashFieldSlot + kPointerSize;
 
@@ -162,6 +165,14 @@ class Symbol : public Name {
   // Symbol.keyFor on such a symbol simply needs to return the attached name.
   DECL_BOOLEAN_ACCESSORS(is_public)
 
+  // [is_private_field]: Whether this is a private field.  Private fields
+  // are the same as private symbols except they throw on missing
+  // property access.
+  //
+  // This also sets the is_private bit.
+  inline bool is_private_field() const;
+  inline void set_is_private_field();
+
   DECL_CAST(Symbol)
 
   // Dispatched behavior.
@@ -178,6 +189,7 @@ class Symbol : public Name {
   static const int kWellKnownSymbolBit = 1;
   static const int kPublicBit = 2;
   static const int kInterestingSymbolBit = 3;
+  static const int kPrivateFieldBit = 4;
 
   typedef FixedBodyDescriptor<kNameOffset, kFlagsOffset, kSize> BodyDescriptor;
   // No weak fields.
@@ -188,9 +200,8 @@ class Symbol : public Name {
  private:
   const char* PrivateSymbolToName() const;
 
-#if V8_TRACE_MAPS
+  // TODO(cbruni): remove once the new maptracer is in place.
   friend class Name;  // For PrivateSymbolToName.
-#endif
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(Symbol);
 };

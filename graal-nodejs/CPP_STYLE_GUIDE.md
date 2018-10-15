@@ -12,6 +12,7 @@
   * [CamelCase for methods, functions, and classes](#camelcase-for-methods-functions-and-classes)
   * [snake\_case for local variables and parameters](#snake_case-for-local-variables-and-parameters)
   * [snake\_case\_ for private class fields](#snake_case_-for-private-class-fields)
+  * [snake\_case\_ for C-like structs](#snake_case_-for-c-like-structs)
   * [Space after `template`](#space-after-template)
 * [Memory Management](#memory-management)
   * [Memory allocation](#memory-allocation)
@@ -147,6 +148,15 @@ class Foo {
 };
 ```
 
+## snake\_case\_ for C-like structs
+For plain C-like structs snake_case can be used.
+
+```c++
+struct foo_bar {
+  int name;
+}
+```
+
 ## Space after `template`
 
 ```c++
@@ -256,13 +266,13 @@ env->SetMethod(target, "foo", Foo);
 exports.foo = function(str) {
   // Prefer doing the type-checks in JavaScript
   if (typeof str !== 'string') {
-    throw new errors.TypeError('ERR_INVALID_ARG_TYPE', 'str', 'string');
+    throw new errors.codes.ERR_INVALID_ARG_TYPE('str', 'string');
   }
 
   const ctx = {};
   const result = binding.foo(str, ctx);
   if (ctx.code !== undefined) {
-    throw new errors.Error('ERR_ERROR_NAME', ctx.code);
+    throw new errors.codes.ERR_ERROR_NAME(ctx.code);
   }
   return result;
 };

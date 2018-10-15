@@ -30,12 +30,13 @@
 
 #include "src/inspector/v8-runtime-agent-impl.h"
 
+#include <inttypes.h>
+
 #include "src/debug/debug-interface.h"
 #include "src/inspector/injected-script.h"
 #include "src/inspector/inspected-context.h"
 #include "src/inspector/protocol/Protocol.h"
 #include "src/inspector/remote-object-id.h"
-#include "src/inspector/string-util.h"
 #include "src/inspector/v8-console-message.h"
 #include "src/inspector/v8-debugger-agent-impl.h"
 #include "src/inspector/v8-debugger.h"
@@ -104,6 +105,100 @@ bool wrapEvaluateResultAsync(InjectedScript* injectedScript,
   return false;
 }
 
+void innerCallFunctionOn(
+    V8InspectorSessionImpl* session, InjectedScript::Scope& scope,
+    v8::Local<v8::Value> recv, const String16& expression,
+    Maybe<protocol::Array<protocol::Runtime::CallArgument>> optionalArguments,
+    bool silent, bool returnByValue, bool generatePreview, bool userGesture,
+    bool awaitPromise, const String16& objectGroup,
+    std::unique_ptr<V8RuntimeAgentImpl::CallFunctionOnCallback> callback) {
+  V8InspectorImpl* inspector = session->inspector();
+
+  std::unique_ptr<v8::Local<v8::Value>[]> argv = nullptr;
+  int argc = 0;
+  if (optionalArguments.isJust()) {
+    protocol::Array<protocol::Runtime::CallArgument>* arguments =
+        optionalArguments.fromJust();
+    argc = static_cast<int>(arguments->length());
+    argv.reset(new v8::Local<v8::Value>[argc]);
+    for (int i = 0; i < argc; ++i) {
+      v8::Local<v8::Value> argumentValue;
+      Response response = scope.injectedScript()->resolveCallArgument(
+          arguments->get(i), &argumentValue);
+      if (!response.isSuccess()) {
+        callback->sendFailure(response);
+        return;
+      }
+      argv[i] = argumentValue;
+    }
+  }
+
+  if (silent) scope.ignoreExceptionsAndMuteConsole();
+  if (userGesture) scope.pretendUserGesture();
+
+  // Temporarily enable allow evals for inspector.
+  scope.allowCodeGenerationFromStrings();
+
+  v8::MaybeLocal<v8::Value> maybeFunctionValue;
+  v8::Local<v8::Script> functionScript;
+  if (inspector
+          ->compileScript(scope.context(), "(" + expression + ")", String16())
+          .ToLocal(&functionScript)) {
+    v8::MicrotasksScope microtasksScope(inspector->isolate(),
+                                        v8::MicrotasksScope::kRunMicrotasks);
+    maybeFunctionValue = functionScript->Run(scope.context());
+  }
+  // Re-initialize after running client's code, as it could have destroyed
+  // context or session.
+  Response response = scope.initialize();
+  if (!response.isSuccess()) {
+    callback->sendFailure(response);
+    return;
+  }
+
+  if (scope.tryCatch().HasCaught()) {
+    wrapEvaluateResultAsync(scope.injectedScript(), maybeFunctionValue,
+                            scope.tryCatch(), objectGroup, false, false,
+                            callback.get());
+    return;
+  }
+
+  v8::Local<v8::Value> functionValue;
+  if (!maybeFunctionValue.ToLocal(&functionValue) ||
+      !functionValue->IsFunction()) {
+    callback->sendFailure(
+        Response::Error("Given expression does not evaluate to a function"));
+    return;
+  }
+
+  v8::MaybeLocal<v8::Value> maybeResultValue;
+  {
+    v8::MicrotasksScope microtasksScope(inspector->isolate(),
+                                        v8::MicrotasksScope::kRunMicrotasks);
+    maybeResultValue = functionValue.As<v8::Function>()->Call(
+        scope.context(), recv, argc, argv.get());
+  }
+  // Re-initialize after running client's code, as it could have destroyed
+  // context or session.
+  response = scope.initialize();
+  if (!response.isSuccess()) {
+    callback->sendFailure(response);
+    return;
+  }
+
+  if (!awaitPromise || scope.tryCatch().HasCaught()) {
+    wrapEvaluateResultAsync(scope.injectedScript(), maybeResultValue,
+                            scope.tryCatch(), objectGroup, returnByValue,
+                            generatePreview, callback.get());
+    return;
+  }
+
+  scope.injectedScript()->addPromiseCallback(
+      session, maybeResultValue, objectGroup, returnByValue, generatePreview,
+      EvaluateCallbackWrapper<V8RuntimeAgentImpl::CallFunctionOnCallback>::wrap(
+          std::move(callback)));
+}
+
 Response ensureContext(V8InspectorImpl* inspector, int contextGroupId,
                        Maybe<int> executionContextId, int* contextId) {
   if (executionContextId.isJust()) {
@@ -137,7 +232,8 @@ void V8RuntimeAgentImpl::evaluate(
     Maybe<bool> includeCommandLineAPI, Maybe<bool> silent,
     Maybe<int> executionContextId, Maybe<bool> returnByValue,
     Maybe<bool> generatePreview, Maybe<bool> userGesture,
-    Maybe<bool> awaitPromise, std::unique_ptr<EvaluateCallback> callback) {
+    Maybe<bool> awaitPromise, Maybe<bool> throwOnSideEffect,
+    Maybe<double> timeout, std::unique_ptr<EvaluateCallback> callback) {
   TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("devtools.timeline"),
                "EvaluateScript");
   int contextId = 0;
@@ -160,20 +256,24 @@ void V8RuntimeAgentImpl::evaluate(
 
   if (includeCommandLineAPI.fromMaybe(false)) scope.installCommandLineAPI();
 
-  bool evalIsDisabled = !scope.context()->IsCodeGenerationFromStringsAllowed();
   // Temporarily enable allow evals for inspector.
-  if (evalIsDisabled) scope.context()->AllowCodeGenerationFromStrings(true);
-
+  scope.allowCodeGenerationFromStrings();
   v8::MaybeLocal<v8::Value> maybeResultValue;
-  v8::Local<v8::Script> script;
-  if (m_inspector->compileScript(scope.context(), expression, String16())
-          .ToLocal(&script)) {
+  {
+    V8InspectorImpl::EvaluateScope evaluateScope(m_inspector->isolate());
+    if (timeout.isJust()) {
+      response = evaluateScope.setTimeout(timeout.fromJust() / 1000.0);
+      if (!response.isSuccess()) {
+        callback->sendFailure(response);
+        return;
+      }
+    }
     v8::MicrotasksScope microtasksScope(m_inspector->isolate(),
                                         v8::MicrotasksScope::kRunMicrotasks);
-    maybeResultValue = script->Run(scope.context());
-  }
-
-  if (evalIsDisabled) scope.context()->AllowCodeGenerationFromStrings(false);
+    maybeResultValue = v8::debug::EvaluateGlobal(
+        m_inspector->isolate(), toV8String(m_inspector->isolate(), expression),
+        throwOnSideEffect.fromMaybe(false));
+  }  // Run microtasks before returning result.
 
   // Re-initialize after running client's code, as it could have destroyed
   // context or session.
@@ -218,100 +318,59 @@ void V8RuntimeAgentImpl::awaitPromise(
 }
 
 void V8RuntimeAgentImpl::callFunctionOn(
-    const String16& objectId, const String16& expression,
+    const String16& expression, Maybe<String16> objectId,
     Maybe<protocol::Array<protocol::Runtime::CallArgument>> optionalArguments,
     Maybe<bool> silent, Maybe<bool> returnByValue, Maybe<bool> generatePreview,
     Maybe<bool> userGesture, Maybe<bool> awaitPromise,
+    Maybe<int> executionContextId, Maybe<String16> objectGroup,
     std::unique_ptr<CallFunctionOnCallback> callback) {
-  InjectedScript::ObjectScope scope(m_session, objectId);
-  Response response = scope.initialize();
-  if (!response.isSuccess()) {
-    callback->sendFailure(response);
+  if (objectId.isJust() && executionContextId.isJust()) {
+    callback->sendFailure(Response::Error(
+        "ObjectId must not be specified together with executionContextId"));
     return;
   }
-
-  std::unique_ptr<v8::Local<v8::Value>[]> argv = nullptr;
-  int argc = 0;
-  if (optionalArguments.isJust()) {
-    protocol::Array<protocol::Runtime::CallArgument>* arguments =
-        optionalArguments.fromJust();
-    argc = static_cast<int>(arguments->length());
-    argv.reset(new v8::Local<v8::Value>[argc]);
-    for (int i = 0; i < argc; ++i) {
-      v8::Local<v8::Value> argumentValue;
-      response = scope.injectedScript()->resolveCallArgument(arguments->get(i),
-                                                             &argumentValue);
-      if (!response.isSuccess()) {
-        callback->sendFailure(response);
-        return;
-      }
-      argv[i] = argumentValue;
+  if (!objectId.isJust() && !executionContextId.isJust()) {
+    callback->sendFailure(Response::Error(
+        "Either ObjectId or executionContextId must be specified"));
+    return;
+  }
+  if (objectId.isJust()) {
+    InjectedScript::ObjectScope scope(m_session, objectId.fromJust());
+    Response response = scope.initialize();
+    if (!response.isSuccess()) {
+      callback->sendFailure(response);
+      return;
     }
+    innerCallFunctionOn(
+        m_session, scope, scope.object(), expression,
+        std::move(optionalArguments), silent.fromMaybe(false),
+        returnByValue.fromMaybe(false), generatePreview.fromMaybe(false),
+        userGesture.fromMaybe(false), awaitPromise.fromMaybe(false),
+        objectGroup.isJust() ? objectGroup.fromMaybe(String16())
+                             : scope.objectGroupName(),
+        std::move(callback));
+  } else {
+    int contextId = 0;
+    Response response =
+        ensureContext(m_inspector, m_session->contextGroupId(),
+                      std::move(executionContextId.fromJust()), &contextId);
+    if (!response.isSuccess()) {
+      callback->sendFailure(response);
+      return;
+    }
+    InjectedScript::ContextScope scope(m_session, contextId);
+    response = scope.initialize();
+    if (!response.isSuccess()) {
+      callback->sendFailure(response);
+      return;
+    }
+    innerCallFunctionOn(
+        m_session, scope, scope.context()->Global(), expression,
+        std::move(optionalArguments), silent.fromMaybe(false),
+        returnByValue.fromMaybe(false), generatePreview.fromMaybe(false),
+        userGesture.fromMaybe(false), awaitPromise.fromMaybe(false),
+        objectGroup.fromMaybe(""), std::move(callback));
   }
-
-  if (silent.fromMaybe(false)) scope.ignoreExceptionsAndMuteConsole();
-  if (userGesture.fromMaybe(false)) scope.pretendUserGesture();
-
-  v8::MaybeLocal<v8::Value> maybeFunctionValue;
-  v8::Local<v8::Script> functionScript;
-  if (m_inspector
-          ->compileScript(scope.context(), "(" + expression + ")", String16())
-          .ToLocal(&functionScript)) {
-    v8::MicrotasksScope microtasksScope(m_inspector->isolate(),
-                                        v8::MicrotasksScope::kRunMicrotasks);
-    maybeFunctionValue = functionScript->Run(scope.context());
-  }
-  // Re-initialize after running client's code, as it could have destroyed
-  // context or session.
-  response = scope.initialize();
-  if (!response.isSuccess()) {
-    callback->sendFailure(response);
-    return;
-  }
-
-  if (scope.tryCatch().HasCaught()) {
-    wrapEvaluateResultAsync(scope.injectedScript(), maybeFunctionValue,
-                            scope.tryCatch(), scope.objectGroupName(), false,
-                            false, callback.get());
-    return;
-  }
-
-  v8::Local<v8::Value> functionValue;
-  if (!maybeFunctionValue.ToLocal(&functionValue) ||
-      !functionValue->IsFunction()) {
-    callback->sendFailure(
-        Response::Error("Given expression does not evaluate to a function"));
-    return;
-  }
-
-  v8::MaybeLocal<v8::Value> maybeResultValue;
-  {
-    v8::MicrotasksScope microtasksScope(m_inspector->isolate(),
-                                        v8::MicrotasksScope::kRunMicrotasks);
-    maybeResultValue = functionValue.As<v8::Function>()->Call(
-        scope.context(), scope.object(), argc, argv.get());
-  }
-  // Re-initialize after running client's code, as it could have destroyed
-  // context or session.
-  response = scope.initialize();
-  if (!response.isSuccess()) {
-    callback->sendFailure(response);
-    return;
-  }
-
-  if (!awaitPromise.fromMaybe(false) || scope.tryCatch().HasCaught()) {
-    wrapEvaluateResultAsync(scope.injectedScript(), maybeResultValue,
-                            scope.tryCatch(), scope.objectGroupName(),
-                            returnByValue.fromMaybe(false),
-                            generatePreview.fromMaybe(false), callback.get());
-    return;
-  }
-
-  scope.injectedScript()->addPromiseCallback(
-      m_session, maybeResultValue, scope.objectGroupName(),
-      returnByValue.fromMaybe(false), generatePreview.fromMaybe(false),
-      EvaluateCallbackWrapper<CallFunctionOnCallback>::wrap(
-          std::move(callback)));
 }
 
 Response V8RuntimeAgentImpl::getProperties(
@@ -523,7 +582,7 @@ void V8RuntimeAgentImpl::runScript(
 }
 
 Response V8RuntimeAgentImpl::queryObjects(
-    const String16& prototypeObjectId,
+    const String16& prototypeObjectId, Maybe<String16> objectGroup,
     std::unique_ptr<protocol::Runtime::RemoteObject>* objects) {
   InjectedScript::ObjectScope scope(m_session, prototypeObjectId);
   Response response = scope.initialize();
@@ -534,7 +593,50 @@ Response V8RuntimeAgentImpl::queryObjects(
   v8::Local<v8::Array> resultArray = m_inspector->debugger()->queryObjects(
       scope.context(), v8::Local<v8::Object>::Cast(scope.object()));
   return scope.injectedScript()->wrapObject(
-      resultArray, scope.objectGroupName(), false, false, objects);
+      resultArray, objectGroup.fromMaybe(scope.objectGroupName()), false, false,
+      objects);
+}
+
+Response V8RuntimeAgentImpl::globalLexicalScopeNames(
+    Maybe<int> executionContextId,
+    std::unique_ptr<protocol::Array<String16>>* outNames) {
+  int contextId = 0;
+  Response response = ensureContext(m_inspector, m_session->contextGroupId(),
+                                    std::move(executionContextId), &contextId);
+  if (!response.isSuccess()) return response;
+
+  InjectedScript::ContextScope scope(m_session, contextId);
+  response = scope.initialize();
+  if (!response.isSuccess()) return response;
+
+  v8::PersistentValueVector<v8::String> names(m_inspector->isolate());
+  v8::debug::GlobalLexicalScopeNames(scope.context(), &names);
+  *outNames = protocol::Array<String16>::create();
+  for (size_t i = 0; i < names.Size(); ++i) {
+    (*outNames)->addItem(toProtocolString(names.Get(i)));
+  }
+  return Response::OK();
+}
+
+Response V8RuntimeAgentImpl::getIsolateId(String16* outIsolateId) {
+  char buf[40];
+  std::snprintf(buf, sizeof(buf), "%" PRIx64, m_inspector->isolateId());
+  *outIsolateId = buf;
+  return Response::OK();
+}
+
+Response V8RuntimeAgentImpl::getHeapUsage(double* out_usedSize,
+                                          double* out_totalSize) {
+  v8::HeapStatistics stats;
+  m_inspector->isolate()->GetHeapStatistics(&stats);
+  *out_usedSize = stats.used_heap_size();
+  *out_totalSize = stats.total_heap_size();
+  return Response::OK();
+}
+
+void V8RuntimeAgentImpl::terminateExecution(
+    std::unique_ptr<TerminateExecutionCallback> callback) {
+  m_inspector->debugger()->terminateExecution(std::move(callback));
 }
 
 void V8RuntimeAgentImpl::restore() {

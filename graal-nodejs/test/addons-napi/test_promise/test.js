@@ -43,8 +43,17 @@ const test_promise = require(`./build/${common.buildType}/test_promise`);
   test_promise.concludeCurrentPromise(Promise.resolve('chained answer'), true);
 }
 
-assert.strictEqual(test_promise.isPromise(test_promise.createPromise()), true);
-assert.strictEqual(test_promise.isPromise(Promise.reject(-1)), true);
+const promiseTypeTestPromise = test_promise.createPromise();
+assert.strictEqual(test_promise.isPromise(promiseTypeTestPromise), true);
+test_promise.concludeCurrentPromise(undefined, true);
+
+const rejectPromise = Promise.reject(-1);
+const expected_reason = -1;
+assert.strictEqual(test_promise.isPromise(rejectPromise), true);
+rejectPromise.catch((reason) => {
+  assert.strictEqual(reason, expected_reason);
+});
+
 assert.strictEqual(test_promise.isPromise(2.4), false);
 assert.strictEqual(test_promise.isPromise('I promise!'), false);
 assert.strictEqual(test_promise.isPromise(undefined), false);

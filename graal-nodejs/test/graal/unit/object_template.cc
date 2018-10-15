@@ -43,29 +43,29 @@
 
 #ifdef SUITE_INTERNALS
 
-void SimpleAccessorGetter(Local<String> property, const PropertyCallbackInfo<Value>& info);
-void SimpleAccessorSetter(Local<String> property, Local<Value> value, const PropertyCallbackInfo<void>& info);
+void SimpleAccessorGetter(Local<Name> property, const PropertyCallbackInfo<Value>& info);
+void SimpleAccessorSetter(Local<Name> property, Local<Value> value, const PropertyCallbackInfo<void>& info);
 
 #endif
 
 // ObjectTemplate::NewInstance
 
 EXPORT_TO_JS(NewInstance) {
-    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New();
+    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(args.GetIsolate());
     args.GetReturnValue().Set(objectTemplate->NewInstance());
 }
 
 // ObjectTemplate::InternalFieldCount
 
 EXPORT_TO_JS(DefaultInternalFieldCount) {
-    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New();
+    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(args.GetIsolate());
     args.GetReturnValue().Set(objectTemplate->InternalFieldCount());
 }
 
 // ObjectTemplate::SetInternalFieldCount
 
 EXPORT_TO_JS(SetAndCheckInternalFieldCount) {
-    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New();
+    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(args.GetIsolate());
 
     int count = objectTemplate->InternalFieldCount();
     if (count != 0) {
@@ -87,7 +87,7 @@ EXPORT_TO_JS(SetAndCheckInternalFieldCount) {
 // Template::Set
 
 EXPORT_TO_JS(Set) {
-    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New();
+    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(args.GetIsolate());
 
     Local<String> name = args[0].As<String>(); //TODO should be Local<Name>
     Local<Data> value = args[1];
@@ -100,7 +100,7 @@ EXPORT_TO_JS(Set) {
 // Template::SetAccessor
 
 EXPORT_TO_JS(CreateWithAccessor) {
-    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New();
+    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(args.GetIsolate());
     Local<String> name = args[0].As<String>(); //TODO should be Local<Name>
     objectTemplate->SetAccessor(name, SimpleAccessorGetter, SimpleAccessorSetter);
     args.GetReturnValue().Set(objectTemplate->NewInstance());

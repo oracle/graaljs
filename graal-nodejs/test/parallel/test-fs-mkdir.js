@@ -24,34 +24,52 @@ const common = require('../common');
 const assert = require('assert');
 const fs = require('fs');
 
-common.refreshTmpDir();
+const tmpdir = require('../common/tmpdir');
+tmpdir.refresh();
 
 {
-  const pathname = `${common.tmpDir}/test1`;
+  const pathname = `${tmpdir.path}/test1`;
 
   fs.mkdir(pathname, common.mustCall(function(err) {
     assert.strictEqual(err, null);
-    assert.strictEqual(common.fileExists(pathname), true);
+    assert.strictEqual(fs.existsSync(pathname), true);
   }));
 }
 
 {
-  const pathname = `${common.tmpDir}/test2`;
+  const pathname = `${tmpdir.path}/test2`;
 
   fs.mkdir(pathname, 0o777, common.mustCall(function(err) {
     assert.strictEqual(err, null);
-    assert.strictEqual(common.fileExists(pathname), true);
+    assert.strictEqual(fs.existsSync(pathname), true);
   }));
 }
 
 {
-  const pathname = `${common.tmpDir}/test3`;
+  const pathname = `${tmpdir.path}/test3`;
 
   fs.mkdirSync(pathname);
 
-  const exists = common.fileExists(pathname);
+  const exists = fs.existsSync(pathname);
   assert.strictEqual(exists, true);
 }
+
+[false, 1, {}, [], null, undefined].forEach((i) => {
+  common.expectsError(
+    () => fs.mkdir(i, common.mustNotCall()),
+    {
+      code: 'ERR_INVALID_ARG_TYPE',
+      type: TypeError
+    }
+  );
+  common.expectsError(
+    () => fs.mkdirSync(i),
+    {
+      code: 'ERR_INVALID_ARG_TYPE',
+      type: TypeError
+    }
+  );
+});
 
 // Keep the event loop alive so the async mkdir() requests
 // have a chance to run (since they don't ref the event loop).

@@ -252,6 +252,7 @@ public final class JSObjectUtil {
         if (obj == null) {
             return context.makeEmptyShapeWithPrototypeInObject(jsclass, JSObject.PROTO_PROPERTY);
         }
+        assert JSRuntime.isObject(obj);
         Shape protoChild = getProtoChildShapeMaybe(obj, jsclass);
         if (protoChild != null) {
             return protoChild;

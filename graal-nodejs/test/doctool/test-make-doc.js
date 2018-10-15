@@ -11,33 +11,53 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 
-const apiPath = path.resolve(common.projectDir, 'out', 'doc', 'api');
-const docs = fs.readdirSync(apiPath);
-assert.ok(docs.includes('_toc.html'));
+const apiPath = path.resolve(__dirname, '..', '..', 'out', 'doc', 'api');
+const mdPath = path.resolve(__dirname, '..', '..', 'doc', 'api');
+const allMD = fs.readdirSync(mdPath);
+const allDocs = fs.readdirSync(apiPath);
+assert.ok(allDocs.includes('index.html'));
 
-const toc = fs.readFileSync(path.resolve(apiPath, '_toc.html'), 'utf8');
+const actualDocs = allDocs.filter(
+  (name) => {
+    const extension = path.extname(name);
+    return extension === '.html' || extension === '.json';
+  }
+);
+
+for (const name of actualDocs) {
+  if (name.startsWith('all.')) continue;
+
+  assert.ok(
+    allMD.includes(name.replace(/\.\w+$/, '.md')),
+    `Unexpected output: out/doc/api/${name}, remove and rerun.`
+  );
+}
+
+const toc = fs.readFileSync(path.resolve(apiPath, 'index.html'), 'utf8');
 const re = /href="([^/]+\.html)"/;
 const globalRe = new RegExp(re, 'g');
 const links = toc.match(globalRe);
 assert.notStrictEqual(links, null);
 
-// Test that all the relative links in the TOC of the documentation
-// work and all the generated documents are linked in TOC.
-const linkedHtmls = links.map((link) => link.match(re)[1]);
-for (const html of linkedHtmls) {
-  assert.ok(docs.includes(html), `${html} does not exist`);
+// Filter out duplicate links, leave just filenames, add expected JSON files.
+const linkedHtmls = [...new Set(links)].map((link) => link.match(re)[1]);
+const expectedJsons = linkedHtmls
+                       .map((name) => name.replace('.html', '.json'));
+const expectedDocs = linkedHtmls.concat(expectedJsons);
+
+// Test that all the relative links in the TOC match to the actual documents.
+for (const expectedDoc of expectedDocs) {
+  assert.ok(actualDocs.includes(expectedDoc), `${expectedDoc} does not exist`);
 }
 
-const excludes = ['.json', '.md', '_toc', 'assets'];
-const generatedHtmls = docs.filter(function(doc) {
-  for (const exclude of excludes) {
-    if (doc.includes(exclude)) {
-      return false;
-    }
-  }
-  return true;
-});
+// Test that all the actual documents match to the relative links in the TOC
+// and that they are not empty files.
+for (const actualDoc of actualDocs) {
+  assert.ok(
+    expectedDocs.includes(actualDoc), `${actualDoc} does not match TOC`);
 
-for (const html of generatedHtmls) {
-  assert.ok(linkedHtmls.includes(html), `${html} is not linked in toc`);
+  assert.ok(
+    fs.statSync(path.join(apiPath, actualDoc)).size !== 0,
+    `${actualDoc} is empty`
+  );
 }

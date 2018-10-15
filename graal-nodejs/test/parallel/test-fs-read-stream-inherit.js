@@ -109,9 +109,19 @@ const rangeFile = fixtures.path('x.txt');
 }
 
 {
-  assert.throws(function() {
-    fs.createReadStream(rangeFile, Object.create({ start: 10, end: 2 }));
-  }, /"start" option must be <= "end" option/);
+  const message =
+    'The value of "start" is out of range. It must be <= "end". ' +
+    'Received {start: 10, end: 2}';
+
+  common.expectsError(
+    () => {
+      fs.createReadStream(rangeFile, Object.create({ start: 10, end: 2 }));
+    },
+    {
+      code: 'ERR_OUT_OF_RANGE',
+      message,
+      type: RangeError
+    });
 }
 
 {

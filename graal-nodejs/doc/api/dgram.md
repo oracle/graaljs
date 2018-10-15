@@ -1,4 +1,4 @@
-# UDP / Datagram Sockets
+# UDP/Datagram Sockets
 
 <!--introduced_in=v0.10.0-->
 
@@ -57,7 +57,7 @@ added: v0.1.99
 * `exception` {Error}
 
 The `'error'` event is emitted whenever any error occurs. The event handler
-function is passed a single Error object.
+function is passed a single `Error` object.
 
 ### Event: 'listening'
 <!-- YAML
@@ -100,6 +100,8 @@ available interface, call `addMembership` multiple times, once per interface.
 added: v0.1.99
 -->
 
+* Returns: {Object}
+
 Returns an object containing the address information for a socket.
 For UDP sockets, this object will contain `address`, `family` and `port`
 properties.
@@ -109,7 +111,7 @@ properties.
 added: v0.1.99
 -->
 
-* `port` {number} Integer.
+* `port` {integer}
 * `address` {string}
 * `callback` {Function} with no parameters. Called when binding is complete.
 
@@ -117,7 +119,7 @@ For UDP sockets, causes the `dgram.Socket` to listen for datagram
 messages on a named `port` and optional `address`. If `port` is not
 specified or is `0`, the operating system will attempt to bind to a
 random port. If `address` is not specified, the operating system will
-attempt to listen on all addresses.  Once binding is complete, a
+attempt to listen on all addresses. Once binding is complete, a
 `'listening'` event is emitted and the optional `callback` function is
 called.
 
@@ -171,7 +173,7 @@ messages on a named `port` and optional `address` that are passed as
 properties of an `options` object passed as the first argument. If
 `port` is not specified or is `0`, the operating system will attempt
 to bind to a random port. If `address` is not specified, the operating
-system will attempt to listen on all addresses.  Once binding is
+system will attempt to listen on all addresses. Once binding is
 complete, a `'listening'` event is emitted and the optional `callback`
 function is called.
 
@@ -206,6 +208,7 @@ socket.bind({
 <!-- YAML
 added: v0.1.99
 -->
+* `callback` {Function} Called when the socket has been closed.
 
 Close the underlying socket and stop listening for data on it. If a callback is
 provided, it is added as a listener for the [`'close'`][] event.
@@ -231,14 +234,14 @@ drop membership on all valid interfaces.
 added: v8.7.0
 -->
 
-* Returns {number} the `SO_RCVBUF` socket receive buffer size in bytes.
+* Returns: {number} the `SO_RCVBUF` socket receive buffer size in bytes.
 
 ### socket.getSendBufferSize()
 <!-- YAML
 added: v8.7.0
 -->
 
-* Returns {number} the `SO_SNDBUF` socket send buffer size in bytes.
+* Returns: {number} the `SO_SNDBUF` socket send buffer size in bytes.
 
 ### socket.ref()
 <!-- YAML
@@ -262,7 +265,7 @@ added: v0.1.99
 changes:
   - version: v8.0.0
     pr-url: https://github.com/nodejs/node/pull/11985
-    description: The `msg` parameter can be an Uint8Array now.
+    description: The `msg` parameter can be an `Uint8Array` now.
   - version: v8.0.0
     pr-url: https://github.com/nodejs/node/pull/10473
     description: The `address` parameter is always optional now.
@@ -277,9 +280,9 @@ changes:
 -->
 
 * `msg` {Buffer|Uint8Array|string|Array} Message to be sent.
-* `offset` {number} Integer. Offset in the buffer where the message starts.
-* `length` {number} Integer. Number of bytes in the message.
-* `port` {number} Integer. Destination port.
+* `offset` {integer} Offset in the buffer where the message starts.
+* `length` {integer} Number of bytes in the message.
+* `port` {integer} Destination port.
 * `address` {string} Destination hostname or IP address.
 * `callback` {Function} Called when the message has been sent.
 
@@ -293,12 +296,12 @@ the `offset` and `length` specify the offset within the `Buffer` where the
 message begins and the number of bytes in the message, respectively.
 If `msg` is a `String`, then it is automatically converted to a `Buffer`
 with `'utf8'` encoding. With messages that
-contain  multi-byte characters, `offset` and `length` will be calculated with
+contain multi-byte characters, `offset` and `length` will be calculated with
 respect to [byte length][] and not the character position.
 If `msg` is an array, `offset` and `length` must not be specified.
 
 The `address` argument is a string. If the value of `address` is a host name,
-DNS will be used to resolve the address of the host.  If `address` is not
+DNS will be used to resolve the address of the host. If `address` is not
 provided or otherwise falsy, `'127.0.0.1'` (for `udp4` sockets) or `'::1'`
 (for `udp6` sockets) will be used by default.
 
@@ -306,7 +309,7 @@ If the socket has not been previously bound with a call to `bind`, the socket
 is assigned a random port number and is bound to the "all interfaces" address
 (`'0.0.0.0'` for `udp4` sockets, `'::0'` for `udp6` sockets.)
 
-An optional `callback` function  may be specified to as a way of reporting
+An optional `callback` function may be specified to as a way of reporting
 DNS errors or for determining when it is safe to reuse the `buf` object.
 Note that DNS lookups delay the time to send for at least one tick of the
 Node.js event loop.
@@ -319,7 +322,7 @@ the error is emitted as an `'error'` event on the `socket` object.
 Offset and length are optional but both *must* be set if either are used.
 They are supported only when the first argument is a `Buffer` or `Uint8Array`.
 
-Example of sending a UDP packet to a random port on `localhost`;
+Example of sending a UDP packet to a port on `localhost`;
 
 ```js
 const dgram = require('dgram');
@@ -330,8 +333,8 @@ client.send(message, 41234, 'localhost', (err) => {
 });
 ```
 
-Example of sending a UDP packet composed of multiple buffers to a random port
-on `127.0.0.1`;
+Example of sending a UDP packet composed of multiple buffers to a port on
+`127.0.0.1`;
 
 ```js
 const dgram = require('dgram');
@@ -382,7 +385,7 @@ added: v0.6.9
 
 * `flag` {boolean}
 
-Sets or clears the `SO_BROADCAST` socket option.  When set to `true`, UDP
+Sets or clears the `SO_BROADCAST` socket option. When set to `true`, UDP
 packets may be sent to a local interface's broadcast address.
 
 ### socket.setMulticastInterface(multicastInterface)
@@ -394,8 +397,8 @@ added: v8.6.0
 
 *Note: All references to scope in this section are referring to
 [IPv6 Zone Indices][], which are defined by [RFC 4007][]. In string form, an IP
-with a scope index is written as `'IP%scope'` where scope is an interface name or
-interface number.*
+with a scope index is written as `'IP%scope'` where scope is an interface name
+or interface number.*
 
 Sets the default outgoing multicast interface of the socket to a chosen
 interface or back to system interface selection. The `multicastInterface` must
@@ -462,7 +465,6 @@ A socket's address family's ANY address (IPv4 `'0.0.0.0'` or IPv6 `'::'`) can be
 used to return control of the sockets default outgoing interface to the system
 for future multicast packets.
 
-
 ### socket.setMulticastLoopback(flag)
 <!-- YAML
 added: v0.3.8
@@ -470,7 +472,7 @@ added: v0.3.8
 
 * `flag` {boolean}
 
-Sets or clears the `IP_MULTICAST_LOOP` socket option.  When set to `true`,
+Sets or clears the `IP_MULTICAST_LOOP` socket option. When set to `true`,
 multicast packets will also be received on the local interface.
 
 ### socket.setMulticastTTL(ttl)
@@ -478,11 +480,11 @@ multicast packets will also be received on the local interface.
 added: v0.3.8
 -->
 
-* `ttl` {number} Integer.
+* `ttl` {integer}
 
-Sets the `IP_MULTICAST_TTL` socket option.  While TTL generally stands for
+Sets the `IP_MULTICAST_TTL` socket option. While TTL generally stands for
 "Time to Live", in this context it specifies the number of IP hops that a
-packet is allowed to travel through, specifically for multicast traffic.  Each
+packet is allowed to travel through, specifically for multicast traffic. Each
 router or gateway that forwards a packet decrements the TTL. If the TTL is
 decremented to 0 by a router, it will not be forwarded.
 
@@ -494,7 +496,7 @@ between 0 and 255. The default on most systems is `1` but can vary.
 added: v8.7.0
 -->
 
-* `size` {number} Integer
+* `size` {integer}
 
 Sets the `SO_RCVBUF` socket option. Sets the maximum socket receive buffer
 in bytes.
@@ -504,7 +506,7 @@ in bytes.
 added: v8.7.0
 -->
 
-* `size` {number} Integer
+* `size` {integer}
 
 Sets the `SO_SNDBUF` socket option. Sets the maximum socket send buffer
 in bytes.
@@ -514,12 +516,12 @@ in bytes.
 added: v0.1.101
 -->
 
-* `ttl` {number} Integer.
+* `ttl` {integer}
 
 Sets the `IP_TTL` socket option. While TTL generally stands for "Time to Live",
 in this context it specifies the number of IP hops that a packet is allowed to
-travel through.  Each router or gateway that forwards a packet decrements the
-TTL.  If the TTL is decremented to 0 by a router, it will not be forwarded.
+travel through. Each router or gateway that forwards a packet decrements the
+TTL. If the TTL is decremented to 0 by a router, it will not be forwarded.
 Changing TTL values is typically done for network probes or when multicasting.
 
 The argument to `socket.setTTL()` is a number of hops between 1 and 255.
@@ -583,16 +585,16 @@ changes:
     Required.
   * `reuseAddr` {boolean} When `true` [`socket.bind()`][] will reuse the
     address, even if another process has already bound a socket on it.
-    Defaults to `false`.
+    **Default:** `false`.
   * `recvBufferSize` {number} - Sets the `SO_RCVBUF` socket value.
   * `sendBufferSize` {number} - Sets the `SO_SNDBUF` socket value.
-  * `lookup` {Function} Custom lookup function. Defaults to [`dns.lookup()`][].
+  * `lookup` {Function} Custom lookup function. **Default:** [`dns.lookup()`][].
 * `callback` {Function} Attached as a listener for `'message'` events. Optional.
 * Returns: {dgram.Socket}
 
 Creates a `dgram.Socket` object. Once the socket is created, calling
 [`socket.bind()`][] will instruct the socket to begin listening for datagram
-messages. When `address` and `port` are not passed to  [`socket.bind()`][] the
+messages. When `address` and `port` are not passed to [`socket.bind()`][] the
 method will bind the socket to the "all interfaces" address on a random port
 (it does the right thing for both `udp4` and `udp6` sockets). The bound address
 and port can be retrieved using [`socket.address().address`][] and
@@ -603,17 +605,17 @@ and port can be retrieved using [`socket.address().address`][] and
 added: v0.1.99
 -->
 
-* `type` {string} - Either 'udp4' or 'udp6'.
+* `type` {string} - Either `'udp4'` or `'udp6'`.
 * `callback` {Function} - Attached as a listener to `'message'` events.
 * Returns: {dgram.Socket}
 
 Creates a `dgram.Socket` object of the specified `type`. The `type` argument
-can be either `udp4` or `udp6`. An optional `callback` function can be passed
-which is added as a listener for `'message'` events.
+can be either `'udp4'` or `'udp6'`. An optional `callback` function can be
+passed which is added as a listener for `'message'` events.
 
 Once the socket is created, calling [`socket.bind()`][] will instruct the
 socket to begin listening for datagram messages. When `address` and `port` are
-not passed to  [`socket.bind()`][] the method will bind the socket to the "all
+not passed to [`socket.bind()`][] the method will bind the socket to the "all
 interfaces" address on a random port (it does the right thing for both `udp4`
 and `udp6` sockets). The bound address and port can be retrieved using
 [`socket.address().address`][] and [`socket.address().port`][].
