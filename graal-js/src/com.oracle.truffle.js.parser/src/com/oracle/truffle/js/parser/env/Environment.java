@@ -341,7 +341,7 @@ public abstract class Environment {
                     scopeAccessNode = factory.createProperty(context, null, name);
                 }
                 JavaScriptNode globalScope = factory.createGlobalScope(context);
-                return factory.createGlobalVarWrapper(context, name, delegateNode, globalScope, scopeAccessNode);
+                return factory.createGlobalVarWrapper(name, delegateNode, globalScope, scopeAccessNode);
             }
         });
     }

@@ -1705,12 +1705,17 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static long propertyNameToArrayIndex(String propertyName) {
-        if (propertyName != null && propertyName.length() > 0 && propertyName.length() <= MAX_UINT32_DIGITS) {
+        if (propertyName != null && arrayIndexLengthInRange(propertyName)) {
             if (isAsciiDigit(propertyName.charAt(0))) {
                 return parseArrayIndexRaw(propertyName);
             }
         }
         return INVALID_ARRAY_INDEX;
+    }
+
+    public static boolean arrayIndexLengthInRange(String index) {
+        int len = index.length();
+        return 0 < len && len <= JSRuntime.MAX_UINT32_DIGITS;
     }
 
     public static long propertyKeyToArrayIndex(Object propertyKey) {

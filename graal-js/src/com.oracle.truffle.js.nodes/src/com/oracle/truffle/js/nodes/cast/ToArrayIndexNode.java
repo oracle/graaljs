@@ -118,7 +118,7 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization(guards = "indexLengthInRange(index)")
+    @Specialization(guards = "isArrayIndexLengthInRange(index)")
     protected static Object convertFromString(String index,
                     @Cached("create()") BranchProfile startsWithDigitBranch,
                     @Cached("create()") BranchProfile isArrayIndexBranch,
@@ -135,14 +135,9 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
         return index;
     }
 
-    @Specialization(guards = "!indexLengthInRange(index)")
+    @Specialization(guards = "!isArrayIndexLengthInRange(index)")
     protected static Object convertFromStringNotInRange(String index) {
         return index;
-    }
-
-    protected boolean indexLengthInRange(String index) {
-        int len = index.length();
-        return 0 < len && len <= JSRuntime.MAX_UINT32_DIGITS;
     }
 
     protected static boolean notArrayIndex(Object o) {

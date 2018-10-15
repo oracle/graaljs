@@ -3044,7 +3044,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true);
 
         JavaScriptNode classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
-                        members.toArray(new ObjectLiteralMemberNode[members.size()]), className);
+                        members.toArray(ObjectLiteralMemberNode.EMPTY), className);
 
         return tagExpression(classDefinition, classNode);
     }

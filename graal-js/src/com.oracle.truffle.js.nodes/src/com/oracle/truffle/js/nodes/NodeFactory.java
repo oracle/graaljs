@@ -527,8 +527,8 @@ public class NodeFactory {
         return GlobalScopeNode.createWithTDZCheck(context, name);
     }
 
-    public JavaScriptNode createGlobalVarWrapper(JSContext context, String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
-        return new GlobalScopeVarWrapperNode(context, varName, defaultDelegate, dynamicScope, scopeAccessNode);
+    public JavaScriptNode createGlobalVarWrapper(String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
+        return new GlobalScopeVarWrapperNode(varName, defaultDelegate, dynamicScope, scopeAccessNode);
     }
 
     public JavaScriptNode createThrow(JavaScriptNode expression) {
