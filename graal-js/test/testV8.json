@@ -452,22 +452,7 @@
     "filePath" : "mjsunit/es7/typed-array-includes.js",
     "status" : "SKIP"
   }, {
-    "filePath" : "mjsunit/es8/async-arrow-lexical-arguments.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es8/async-arrow-lexical-new.target.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es8/async-arrow-lexical-super.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es8/async-arrow-lexical-this.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es8/async-await-basic.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es8/async-await-no-constructor.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es8/async-await-species.js",
@@ -531,10 +516,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
   }, {
-    "filePath" : "mjsunit/harmony/async-generators-yield.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
-  }, {
     "filePath" : "mjsunit/harmony/atomics-value-check.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
@@ -554,6 +535,9 @@
     "filePath" : "mjsunit/harmony/do-expressions.js",
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
+  }, {
+    "filePath" : "mjsunit/harmony/for-await-of.js",
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/harmony/function-sent.js",
     "status" : "SKIP",
@@ -719,10 +703,6 @@
   }, {
     "filePath" : "mjsunit/harmony/private.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/harmony/promise-prototype-finally.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/harmony/regexp-lookbehind.js",
     "status" : "FAIL"

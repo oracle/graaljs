@@ -79,7 +79,7 @@ function v8ClearFunctionTypeFeedback() {
 }
 
 function v8RunMicrotasks() {
-    return undefined;
+    return TestV8.runMicrotasks();
 }
 
 function v8EnqueueMicrotask(a) {
@@ -676,7 +676,7 @@ function v8GetDeoptCount() {
 }
 
 function v8CreateAsyncFromSyncIterator(obj) {
-    return obj;
+    return TestV8.createAsyncFromSyncIterator(obj);
 }
 
 function v8InNewSpace(obj) {
