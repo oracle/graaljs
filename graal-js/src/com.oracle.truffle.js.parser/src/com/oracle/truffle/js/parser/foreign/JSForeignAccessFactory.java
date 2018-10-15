@@ -59,7 +59,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
@@ -73,6 +72,7 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropInvokeNode;
+import com.oracle.truffle.js.nodes.promise.UnwrapPromiseNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -80,7 +80,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -90,15 +89,14 @@ import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
-import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropAsyncFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
 
 @MessageResolution(receiverType = DynamicObject.class)
@@ -106,13 +104,11 @@ public class JSForeignAccessFactory {
 
     @Resolve(message = "EXECUTE")
     abstract static class ExecuteNode extends Node {
-
-        private final ConditionProfile rejected = ConditionProfile.createBinaryProfile();
-
         @Child private IsCallableNode isCallableNode = IsCallableNode.create();
         @Child private JSInteropExecuteNode callNode = JSInteropExecuteNode.createExecute();
         @Child private ExportValueNode export;
         @CompilationFinal ContextReference<JSRealm> contextRef;
+        @Child UnwrapPromiseNode unwrapPromise;
 
         public Object access(DynamicObject target, Object[] args) {
             if (isCallableNode.executeBoolean(target)) {
@@ -126,6 +122,21 @@ public class JSForeignAccessFactory {
             return common(target.getFunction(), target.getReceiver(), args);
         }
 
+        public Object access(InteropAsyncFunction target, Object[] args) {
+            assert JSTruffleOptions.InteropCompletePromises;
+            Object result = common(target.getFunction(), Undefined.instance, args);
+            /*
+             * InteropCompletePromises semantics: interop calls to async functions return the async
+             * resolved value (if any). If the promise resolves, its value is made available by
+             * flushing the queue of pending jobs.
+             */
+            if (unwrapPromise == null) {
+                JSContext context = contextRef.get().getContext();
+                unwrapPromise = insert(UnwrapPromiseNode.create(context));
+            }
+            return unwrapPromise.execute((DynamicObject) result);
+        }
+
         private Object common(DynamicObject function, Object receiver, Object[] args) {
             if (contextRef == null || export == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -136,38 +147,12 @@ public class JSForeignAccessFactory {
             JSContext context = contextRef.get().getContext();
             context.interopBoundaryEnter();
             Object result = null;
-            boolean asyncFunction = isAsyncFunction(function);
             try {
                 result = export.executeWithTarget(callNode.execute(function, receiver, args), Undefined.instance);
             } finally {
                 context.interopBoundaryExit();
             }
-            if (asyncFunction && result != null && JSPromise.isJSPromise(result)) {
-                /*
-                 * InteropCompletePromises semantics: interop calls to async functions return the
-                 * async resolved value (if any). If the promise resolves, its value is made
-                 * available by flushing the queue of pending jobs.
-                 */
-                DynamicObject promise = (DynamicObject) result;
-                if (rejected.profile(JSPromise.isRejected(promise))) {
-                    Object rejectReason = promise.get(JSPromise.PROMISE_RESULT);
-                    throw UserScriptException.create(rejectReason);
-                } else {
-                    assert JSPromise.isFulfilled(promise);
-                    return promise.get(JSPromise.PROMISE_RESULT);
-                }
-            }
             return result;
-        }
-
-        private static boolean isAsyncFunction(DynamicObject target) {
-            if (JSTruffleOptions.InteropCompletePromises) {
-                JSFunctionData functionData = JSRuntime.getFunctionData(target);
-                if (functionData != null) {
-                    return functionData.isAsync();
-                }
-            }
-            return false;
         }
     }
 
@@ -198,6 +183,10 @@ public class JSForeignAccessFactory {
         public Object access(InteropBoundFunction target, String id, Object[] args) {
             return access(target.getFunction(), id, args);
         }
+
+        public Object access(InteropAsyncFunction target, String id, Object[] args) {
+            return access(target.getFunction(), id, args);
+        }
     }
 
     @Resolve(message = "NEW")
@@ -226,6 +215,10 @@ public class JSForeignAccessFactory {
         public Object access(InteropBoundFunction target, Object[] args) {
             return access(target.getFunction(), args);
         }
+
+        public Object access(InteropAsyncFunction target, Object[] args) {
+            return access(target.getFunction(), args);
+        }
     }
 
     @Resolve(message = "READ")
@@ -248,6 +241,10 @@ public class JSForeignAccessFactory {
         public Object access(InteropBoundFunction target, Object key) {
             return access(target.getFunction(), key);
         }
+
+        public Object access(InteropAsyncFunction target, Object key) {
+            return access(target.getFunction(), key);
+        }
     }
 
     @Resolve(message = "WRITE")
@@ -268,6 +265,10 @@ public class JSForeignAccessFactory {
         }
 
         public Object access(InteropBoundFunction target, Object key, Object value) {
+            return access(target.getFunction(), key, value);
+        }
+
+        public Object access(InteropAsyncFunction target, Object key, Object value) {
             return access(target.getFunction(), key, value);
         }
     }
@@ -356,6 +357,10 @@ public class JSForeignAccessFactory {
         public Object access(InteropBoundFunction target) {
             return JSRuntime.isConstructor(target.getFunction());
         }
+
+        public Object access(InteropAsyncFunction target) {
+            return JSRuntime.isConstructor(target.getFunction());
+        }
     }
 
     @Resolve(message = "HAS_SIZE")
@@ -386,6 +391,10 @@ public class JSForeignAccessFactory {
         }
 
         public Object access(InteropBoundFunction target, boolean internal) {
+            return access(target.getFunction(), internal);
+        }
+
+        public Object access(InteropAsyncFunction target, boolean internal) {
             return access(target.getFunction(), internal);
         }
     }
@@ -425,6 +434,10 @@ public class JSForeignAccessFactory {
         public Object access(InteropBoundFunction target, Object key) {
             return access(target.getFunction(), key);
         }
+
+        public Object access(InteropAsyncFunction target, Object key) {
+            return access(target.getFunction(), key);
+        }
     }
 
     @Resolve(message = "REMOVE")
@@ -445,6 +458,10 @@ public class JSForeignAccessFactory {
         }
 
         public Object access(InteropBoundFunction target, Object key) {
+            return access(target.getFunction(), key);
+        }
+
+        public Object access(InteropAsyncFunction target, Object key) {
             return access(target.getFunction(), key);
         }
     }

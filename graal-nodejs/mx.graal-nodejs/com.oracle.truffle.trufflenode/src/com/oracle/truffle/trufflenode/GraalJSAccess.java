@@ -2271,14 +2271,7 @@ public final class GraalJSAccess {
     public void isolateRunMicrotasks() {
         pollWeakCallbackQueue(false);
         try {
-            boolean seenJob;
-            do {
-                seenJob = false;
-                if (mainJSContext.processAllPendingPromiseJobs()) {
-                    // the queue processed at least one job. We continue processing.
-                    seenJob = true;
-                }
-            } while (seenJob); // some job may trigger a job in a context processed already
+            mainJSContext.processAllPendingPromiseJobs();
         } catch (Exception ex) {
             ex.printStackTrace();
         }

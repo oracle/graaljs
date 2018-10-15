@@ -91,6 +91,6 @@ public final class InteropBoundFunction implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return JSObject.getJSContext(function).getInteropRuntime().getInteropObjectForeignAccess();
+        return JSObject.getJSContext(function).getInteropRuntime().getInteropBoundFunctionForeignAccess();
     }
 }

@@ -473,6 +473,10 @@ public final class JSFunction extends JSBuiltinObject {
         return isJSFunction(function) && getFunctionData(function).isBound();
     }
 
+    public static boolean isAsyncFunction(DynamicObject function) {
+        return isJSFunction(function) && getFunctionData(function).isAsync();
+    }
+
     public static Object getBoundThis(DynamicObject function) {
         assert isBoundFunction(function);
         return BOUND_THIS_PROPERTY.get(function, isBoundFunction(function));
