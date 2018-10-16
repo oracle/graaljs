@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -52,16 +53,13 @@ public class IteratorCloseIfNotDoneNode extends JavaScriptNode implements Resuma
     @Child private JavaScriptNode iterator;
     @Child private IteratorCloseNode iteratorClose;
     @Child private JavaScriptNode done;
+    private final JSContext context;
 
     protected IteratorCloseIfNotDoneNode(JSContext context, JavaScriptNode block, JavaScriptNode iterator, JavaScriptNode done) {
-        this(block, iterator, done, IteratorCloseNode.create(context));
-    }
-
-    private IteratorCloseIfNotDoneNode(JavaScriptNode block, JavaScriptNode iterator, JavaScriptNode done, IteratorCloseNode iteratorClose) {
+        this.context = context;
         this.block = block;
         this.iterator = iterator;
         this.done = done;
-        this.iteratorClose = iteratorClose;
     }
 
     public static JavaScriptNode create(JSContext context, JavaScriptNode block, JavaScriptNode iterator, JavaScriptNode done) {
@@ -76,27 +74,31 @@ public class IteratorCloseIfNotDoneNode extends JavaScriptNode implements Resuma
         } catch (YieldException e) {
             throw e;
         } catch (ControlFlowException e) {
-            IteratorRecord iteratorRecord = (IteratorRecord) iterator.execute(frame);
-            Object isDone = done.execute(frame);
-            if (isDone != Boolean.TRUE) {
-                iteratorClose.executeVoid(iteratorRecord.getIterator());
+            if (!isDone(frame)) {
+                iteratorClose().executeVoid(getIteratorRecord(frame).getIterator());
             }
             throw e;
         } catch (Throwable e) {
-            IteratorRecord iteratorRecord = (IteratorRecord) iterator.execute(frame);
-            Object isDone = done.execute(frame);
-            if (isDone != Boolean.TRUE) {
-                iteratorClose.executeAbrupt(iteratorRecord.getIterator());
+            if (TryCatchNode.shouldCatch(e)) {
+                if (!isDone(frame)) {
+                    iteratorClose().executeAbrupt(getIteratorRecord(frame).getIterator());
+                }
             }
             throw e;
         }
 
-        IteratorRecord iteratorRecord = (IteratorRecord) iterator.execute(frame);
-        Object isDone = done.execute(frame);
-        if (isDone != Boolean.TRUE) {
-            iteratorClose.executeVoid(iteratorRecord.getIterator());
+        if (!isDone(frame)) {
+            iteratorClose().executeVoid(getIteratorRecord(frame).getIterator());
         }
         return result;
+    }
+
+    private boolean isDone(VirtualFrame frame) {
+        return done.execute(frame) == Boolean.TRUE;
+    }
+
+    private IteratorRecord getIteratorRecord(VirtualFrame frame) {
+        return (IteratorRecord) iterator.execute(frame);
     }
 
     @Override
@@ -104,8 +106,16 @@ public class IteratorCloseIfNotDoneNode extends JavaScriptNode implements Resuma
         return execute(frame);
     }
 
+    private IteratorCloseNode iteratorClose() {
+        if (iteratorClose == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            iteratorClose = insert(IteratorCloseNode.create(context));
+        }
+        return iteratorClose;
+    }
+
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new IteratorCloseIfNotDoneNode(cloneUninitialized(block), cloneUninitialized(iterator), cloneUninitialized(done), cloneUninitialized(iteratorClose));
+        return new IteratorCloseIfNotDoneNode(context, cloneUninitialized(block), cloneUninitialized(iterator), cloneUninitialized(done));
     }
 }
