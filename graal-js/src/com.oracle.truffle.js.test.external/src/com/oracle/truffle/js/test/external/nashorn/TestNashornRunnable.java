@@ -96,7 +96,7 @@ public class TestNashornRunnable extends TestRunnable {
         assert ecmaVersion == null : "'ecmaVersion' should not be configured for " + testFile;
 
         // now run it
-        TestNashornCallable tc = new TestNashornCallable(suite, loadHarnessSources(-1), toSource(file), file);
+        TestNashornCallable tc = new TestNashornCallable(suite, loadHarnessSources(-1), toSource(file, false), file);
         try {
             tc.call();
         } catch (Throwable e) {

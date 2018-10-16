@@ -638,66 +638,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/harmony/modules-import-large.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-skip-1.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-skip-10.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-skip-11.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-skip-12.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-skip-2.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-skip-3.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-skip-4.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-skip-5.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-skip-6.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-skip-7.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-skip-8.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-skip-9.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-skip-large1.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-skip-large2.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
-  }, {
     "filePath" : "mjsunit/harmony/private-symbols.js",
     "status" : "FAIL"
   }, {
@@ -788,270 +728,42 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
   }, {
-    "filePath" : "mjsunit/modules-circular-valid.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-cycle.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/modules-default-name1.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-default-name2.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
     "filePath" : "mjsunit/modules-default-name3.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-default-name4.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-default-name5.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/modules-default-name6.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-default-name7.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/modules-default-name8.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/modules-default-name9.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-default.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-empty-import1.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-empty-import2.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-empty-import3.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-empty-import4.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/modules-error-trace.js",
     "status" : "SKIP",
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
   }, {
-    "filePath" : "mjsunit/modules-exports1.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-exports2.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-exports3.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-imports1.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-imports2.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-imports3.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-imports4.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
     "filePath" : "mjsunit/modules-imports5.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-imports6.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-imports7.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/modules-init1.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/modules-init2.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/modules-init3.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/modules-init4.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
   }, {
     "filePath" : "mjsunit/modules-namespace1.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-namespace2.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-namespace3.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-namespace4.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-relative-path.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-1.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-2.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-3.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-4.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-5.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-6.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-7.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-circular-valid.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-cycle.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/modules-skip-default-name1.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-default-name2.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-default-name3.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-default-name4.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-default-name5.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-default-name6.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-default-name7.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-default-name8.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-default-name9.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-empty-import-aux.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-empty-import.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-init1.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-init3.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-init4a.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
-  }, {
-    "filePath" : "mjsunit/modules-skip-init4b.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
-  }, {
-    "filePath" : "mjsunit/modules-skip-namespace.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-star-exports-conflict.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-skip-star-exports-cycle.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-star-exports-cycle.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-this.js",
-    "status" : "SKIP",
-    "comment" : "modules, import, export"
-  }, {
-    "filePath" : "mjsunit/modules-turbo1.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/modules-turbo2.js",
+    "filePath" : "mjsunit/modules-namespace4.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/number-tostring-big-integer.js",
@@ -1336,10 +1048,6 @@
     "comment" : "async"
   }, {
     "filePath" : "mjsunit/regress/regress-6677.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-6681.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
   }, {
