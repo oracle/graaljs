@@ -365,7 +365,8 @@ function v8MakeReferenceError(message) {
 }
 
 function v8AbortJS(message) {
-    exit(message);
+    printErr(message);
+    exit(1);
 }
 
 function v8HomeObjectSymbol() {
