@@ -76,7 +76,6 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
-import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -235,7 +234,6 @@ public class JSRealm {
     @CompilationFinal private DynamicObject simdTypePrototype;
 
     private volatile Map<List<String>, DynamicObject> templateRegistry;
-    private final Shape dictionaryShapeObjectPrototype;
 
     private final DynamicObject globalScope;
 
@@ -381,8 +379,6 @@ public class JSRealm {
         }
 
         this.mathObject = JSMath.create(this);
-
-        this.dictionaryShapeObjectPrototype = JSTruffleOptions.DictionaryObject ? JSDictionaryObject.makeDictionaryShape(context, objectPrototype) : null;
 
         boolean es8 = JSTruffleOptions.MaxECMAScriptVersion >= 8;
         this.asyncFunctionConstructor = es8 ? JSFunction.createAsyncFunctionConstructor(this) : null;
@@ -1133,10 +1129,6 @@ public class JSRealm {
     public void setArguments(Object[] arguments) {
         JSObjectUtil.putOrSetDataProperty(context, getGlobalObject(), ARGUMENTS_NAME, JSArray.createConstant(context, arguments),
                         context.isOptionV8CompatibilityMode() ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable());
-    }
-
-    public Shape getDictionaryShapeObjectPrototype() {
-        return dictionaryShapeObjectPrototype;
     }
 
     public JSConstructor getJSAdapterConstructor() {

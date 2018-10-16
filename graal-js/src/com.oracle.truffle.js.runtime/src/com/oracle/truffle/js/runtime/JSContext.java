@@ -197,8 +197,6 @@ public class JSContext {
     private final JSObjectFactory.BoundProto moduleNamespaceFactory;
     private final JSObjectFactory.BoundProto javaWrapperFactory;
 
-    private final Shape dictionaryShapeNullPrototype;
-
     /** The RegExp engine, as obtained from RegexLanguage. */
     private TruffleObject regexEngine;
 
@@ -366,6 +364,7 @@ public class JSContext {
     private final JSObjectFactory javaPackageFactory;
     private final JSObjectFactory javaInteropWorkerObjectFactory;
     private final JSObjectFactory jsAdapterFactory;
+    private final JSObjectFactory dictionaryObjectFactory;
 
     private final int factoryCount;
 
@@ -410,8 +409,6 @@ public class JSContext {
 
         this.timeProfiler = JSTruffleOptions.ProfileTime ? new TimeProfiler() : null;
         this.javaWrapperFactory = JSTruffleOptions.NashornJavaInterop ? JSObjectFactory.createBound(this, Null.instance, JSJavaWrapper.makeShape(this).createFactory()) : null;
-
-        this.dictionaryShapeNullPrototype = JSTruffleOptions.DictionaryObject ? JSDictionaryObject.makeDictionaryShape(this, null) : null;
 
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
         this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
@@ -511,6 +508,8 @@ public class JSContext {
         this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
         this.javaPackageFactory = JSRealm.isJavaInteropAvailable() ? builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape) : null;
         this.javaInteropWorkerObjectFactory = JSRealm.isJavaInteropAvailable() ? builder.create(JSJavaWorkerBuiltin.INSTANCE) : null;
+
+        this.dictionaryObjectFactory = JSTruffleOptions.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionaryObject::makeDictionaryShape) : null;
 
         this.factoryCount = builder.finish();
     }
@@ -909,6 +908,10 @@ public class JSContext {
         return getRealm().getSIMDTypeFactory(factory);
     }
 
+    public JSObjectFactory getDictionaryObjectFactory() {
+        return dictionaryObjectFactory;
+    }
+
     private static String createRegexEngineOptions() {
         StringBuilder options = new StringBuilder(30);
         if (JSTruffleOptions.U180EWhitespace) {
@@ -939,10 +942,6 @@ public class JSContext {
             }
         }
         return regexEngine;
-    }
-
-    public Shape getDictionaryShapeNullPrototype() {
-        return dictionaryShapeNullPrototype;
     }
 
     public JSModuleLoader getModuleLoader() {

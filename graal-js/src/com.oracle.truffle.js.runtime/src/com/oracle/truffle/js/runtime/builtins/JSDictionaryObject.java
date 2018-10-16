@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -257,9 +258,9 @@ public final class JSDictionaryObject extends JSBuiltinObject {
         Shape hashedShape;
         DynamicObject prototype = (DynamicObject) prototypeProperty.get(obj, false);
         Property hashMapProperty = null;
-        if (prototype == null) {
+        if (prototype == Null.instance) {
             JSContext context = JSObject.getJSContext(obj);
-            hashedShape = context.getDictionaryShapeNullPrototype();
+            hashedShape = context.makeEmptyShapeWithNullPrototype(INSTANCE);
             hashMapProperty = hashedShape.getProperty(HASHMAP_PROPERTY_NAME);
         } else {
             hashedShape = JSShape.makeUniqueRoot(currentShape.getLayout(), JSDictionaryObject.INSTANCE, JSShape.getJSContext(currentShape), prototypeProperty);
@@ -350,19 +351,11 @@ public final class JSDictionaryObject extends JSBuiltinObject {
     }
 
     public static Shape makeDictionaryShape(JSContext context, DynamicObject prototype) {
-        Shape emptyShape;
-        if (prototype == null) {
-            emptyShape = JSShape.makeEmptyRoot(JSObject.LAYOUT, JSDictionaryObject.INSTANCE, context);
-        } else {
-            emptyShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
-        }
+        Shape emptyShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         return emptyShape.addProperty(HASHMAP_PROPERTY);
     }
 
     public static DynamicObject create(JSContext context) {
-        Shape shape = context.getRealm().getDictionaryShapeObjectPrototype();
-        DynamicObject object = JSObject.create(context, shape);
-        HASHMAP_PROPERTY.setSafe(object, EconomicMap.create(), shape);
-        return object;
+        return JSObject.create(context, context.getDictionaryObjectFactory(), EconomicMap.create());
     }
 }
