@@ -262,7 +262,7 @@ public abstract class TestSuite {
         return new ArrayList<>(skippedTests.values());
     }
 
-    private boolean isSkipped(TestFile testFile) {
+    protected boolean isSkipped(TestFile testFile) {
         return skippedTests.containsKey(testFile.getFilePath());
     }
 
