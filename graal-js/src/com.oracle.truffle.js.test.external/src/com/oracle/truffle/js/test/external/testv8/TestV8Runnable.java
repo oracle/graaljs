@@ -82,6 +82,7 @@ public class TestV8Runnable extends TestRunnable {
         List<String> code = TestSuite.readFileContentList(file);
         boolean negative = isNegativeTest(code);
         boolean shouldThrow = shouldThrow(code);
+        boolean module = isModule(code);
         suite.logVerbose("Starting: " + getName());
 
         if (getConfig().isPrintScript()) {
@@ -93,10 +94,10 @@ public class TestV8Runnable extends TestRunnable {
         assert ecmaVersion != null : testFile;
 
         // now run it
-        testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, negative, shouldThrow)));
+        testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, negative, shouldThrow, module)));
     }
 
-    private TestFile.Result runInternal(int ecmaVersion, File file, boolean negative, boolean shouldThrow) {
+    private TestFile.Result runInternal(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module) {
         final String ecmaVersionSuffix = " (ES" + ecmaVersion + ")";
         suite.logVerbose(getName() + ecmaVersionSuffix);
         TestFile.Result testResult;
@@ -109,7 +110,7 @@ public class TestV8Runnable extends TestRunnable {
         sources[sources.length - 1] = testFileNamePrefixSource;
         sources[sources.length - 2] = ((TestV8) suite).getMockupSource();
 
-        TestCallable tc = new TestCallable(suite, sources, toSource(file), file, ecmaVersion, commonOptions);
+        TestCallable tc = new TestCallable(suite, sources, toSource(file, module), file, ecmaVersion, commonOptions);
         if (!suite.getConfig().isPrintFullOutput()) {
             tc.setOutput(DUMMY_OUTPUT_STREAM);
         }
@@ -198,6 +199,15 @@ public class TestV8Runnable extends TestRunnable {
     private static boolean shouldThrow(List<String> scriptCode) {
         for (String line : scriptCode) {
             if (line.contains("--throws")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isModule(List<String> scriptCode) {
+        for (String line : scriptCode) {
+            if (line.startsWith("// MODULE")) {
                 return true;
             }
         }

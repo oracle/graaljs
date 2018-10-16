@@ -93,9 +93,13 @@ public abstract class TestRunnable implements Runnable {
         return testResult;
     }
 
-    protected static Source toSource(File scriptFile) {
+    protected static Source toSource(File scriptFile, boolean module) {
         try {
-            return Source.newBuilder("js", scriptFile).build();
+            Source.Builder builder = Source.newBuilder("js", scriptFile);
+            if (module) {
+                builder.name("module:" + scriptFile.getPath());
+            }
+            return builder.build();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
