@@ -2721,22 +2721,6 @@
     "filePath" : "language/expressions/async-generator/expression-yield-star-before-newline.js",
     "status" : "SKIP"
   }, {
-    "filePath" : "language/expressions/async-generator/named-yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/async-generator/named-yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/expressions/async-generator/yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/async-generator/yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/expressions/call/eval-spread-empty-leading.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -2780,22 +2764,6 @@
     "filePath" : "language/expressions/class/accessor-name-static-computed-yield-expr.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/expressions/class/async-gen-method-static-yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/class/async-gen-method-static-yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/expressions/class/async-gen-method-yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/class/async-gen-method-yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
   }, {
     "filePath" : "language/expressions/class/class-name-ident-let-escaped.js",
     "status" : "FAIL",
@@ -3369,14 +3337,6 @@
     "status" : "SKIP",
     "comment" : "Tail Call Tests SKIPing due to StackOverflow"
   }, {
-    "filePath" : "language/expressions/object/method-definition/async-gen-yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/object/method-definition/async-gen-yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/expressions/object/scope-gen-meth-body-lex-distinct.js",
     "status" : "FAIL"
   }, {
@@ -3868,14 +3828,6 @@
     "status" : "FAIL",
     "comment" : "ES7 tests"
   }, {
-    "filePath" : "language/statements/async-generator/yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/statements/async-generator/yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/statements/block/tco-stmt-list.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
@@ -3891,22 +3843,6 @@
     "filePath" : "language/statements/class/accessor-name-static-computed-yield-expr.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/class/async-gen-method-static-yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/statements/class/async-gen-method-static-yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/statements/class/async-gen-method-yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/statements/class/async-gen-method-yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
   }, {
     "filePath" : "language/statements/class/class-name-ident-let-escaped.js",
     "status" : "FAIL",
@@ -4551,10 +4487,6 @@
   }, {
     "filePath" : "language/statements/for-of/iterator-next-error.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-of/iterator-next-reference.js",
-    "status" : "FAIL",
-    "comment" : "tests updated to add the latest version of intl402 tests"
   }, {
     "filePath" : "language/statements/for-of/iterator-next-result-value-attr-error.js",
     "status" : "FAIL"
