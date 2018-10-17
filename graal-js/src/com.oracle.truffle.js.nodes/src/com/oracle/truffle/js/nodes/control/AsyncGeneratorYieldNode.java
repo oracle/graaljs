@@ -95,38 +95,33 @@ public class AsyncGeneratorYieldNode extends AwaitNode {
         final int suspendedYield = 2;
         final int awaitResumptionValue = 3;
 
-        if (state <= awaitValue) {
-            Object awaited;
-            if (state == 0) {
-                Object value = expression.execute(frame);
-                setState(frame, awaitValue);
-                awaited = suspendAwait(frame, value);
-            } else {
-                assert state == awaitValue;
-                awaited = resumeAwait(frame);
-            }
+        if (state == 0) {
+            Object value = expression.execute(frame);
+            setState(frame, awaitValue);
+            return suspendAwait(frame, value);
+        } else if (state == awaitValue) {
+            Object awaited = resumeAwait(frame);
             setState(frame, suspendedYield);
             return suspendYield(frame, awaited);
         } else {
             assert state >= suspendedYield;
             setState(frame, 0);
-            Completion completion = resumeYield(frame);
-            if (completion.isNormal()) {
-                return completion.getValue();
-            } else if (completion.isThrow()) {
-                throw UserScriptException.create(completion.getValue(), this);
-            } else {
-                assert completion.isReturn();
-                // Let awaited be Await(resumptionValue.[[Value]]).
-                Object awaited;
-                if (state == suspendedYield) {
-                    setState(frame, awaitResumptionValue);
-                    awaited = suspendAwait(frame, completion.getValue());
+            if (state == suspendedYield) {
+                Completion completion = resumeYield(frame);
+                if (completion.isNormal()) {
+                    return completion.getValue();
+                } else if (completion.isThrow()) {
+                    throw UserScriptException.create(completion.getValue(), this);
                 } else {
-                    assert state == awaitResumptionValue;
-                    // If awaited.[[Type]] is throw return Completion(awaited).
-                    awaited = resumeAwait(frame);
+                    assert completion.isReturn();
+                    // Let awaited be Await(resumptionValue.[[Value]]).
+                    setState(frame, awaitResumptionValue);
+                    return suspendAwait(frame, completion.getValue());
                 }
+            } else {
+                assert state == awaitResumptionValue;
+                // If awaited.[[Type]] is throw return Completion(awaited).
+                Object awaited = resumeAwait(frame);
                 // Assert: awaited.[[Type]] is normal.
                 return returnValue(frame, awaited);
             }
