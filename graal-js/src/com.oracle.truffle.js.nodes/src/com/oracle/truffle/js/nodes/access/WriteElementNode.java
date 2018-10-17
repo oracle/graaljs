@@ -48,6 +48,7 @@ import java.lang.reflect.Array;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -214,7 +215,8 @@ public class WriteElementNode extends JSTargetableNode {
 
     @Override
     public Object executeWithTarget(VirtualFrame frame, Object target) {
-        if (indexState == 0) {
+        byte is = indexState;
+        if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Object index = indexNode.execute(frame);
             if (index instanceof Integer) {
@@ -224,8 +226,7 @@ public class WriteElementNode extends JSTargetableNode {
                 indexState = INDEX_OBJECT;
                 return executeWithTargetAndIndex(frame, target, index);
             }
-        }
-        if (indexState == INDEX_INT) {
+        } else if (is == INDEX_INT) {
             int index;
             try {
                 index = indexNode.executeInt(frame);
@@ -235,14 +236,15 @@ public class WriteElementNode extends JSTargetableNode {
             }
             return executeWithTargetAndIndex(frame, target, index);
         } else {
-            assert indexState == INDEX_OBJECT;
+            assert is == INDEX_OBJECT;
             Object index = indexNode.execute(frame);
             return executeWithTargetAndIndex(frame, target, index);
         }
     }
 
     public int executeWithTargetInt(VirtualFrame frame, Object target) throws UnexpectedResultException {
-        if (indexState == 0) {
+        byte is = indexState;
+        if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Object index = indexNode.execute(frame);
             if (index instanceof Integer) {
@@ -252,8 +254,7 @@ public class WriteElementNode extends JSTargetableNode {
                 indexState = INDEX_OBJECT;
                 return executeWithTargetAndIndexInt(frame, target, index);
             }
-        }
-        if (indexState == INDEX_INT) {
+        } else if (is == INDEX_INT) {
             int index;
             try {
                 index = indexNode.executeInt(frame);
@@ -263,14 +264,15 @@ public class WriteElementNode extends JSTargetableNode {
             }
             return executeWithTargetAndIndexInt(frame, target, index);
         } else {
-            assert indexState == INDEX_OBJECT;
+            assert is == INDEX_OBJECT;
             Object index = indexNode.execute(frame);
             return executeWithTargetAndIndexInt(frame, target, index);
         }
     }
 
     public double executeWithTargetDouble(VirtualFrame frame, Object target) throws UnexpectedResultException {
-        if (indexState == 0) {
+        byte is = indexState;
+        if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Object index = indexNode.execute(frame);
             if (index instanceof Integer) {
@@ -280,8 +282,7 @@ public class WriteElementNode extends JSTargetableNode {
                 indexState = INDEX_OBJECT;
                 return executeWithTargetAndIndexDouble(frame, target, index);
             }
-        }
-        if (indexState == INDEX_INT) {
+        } else if (is == INDEX_INT) {
             int index;
             try {
                 index = indexNode.executeInt(frame);
@@ -291,7 +292,7 @@ public class WriteElementNode extends JSTargetableNode {
             }
             return executeWithTargetAndIndexDouble(frame, target, index);
         } else {
-            assert indexState == INDEX_OBJECT;
+            assert is == INDEX_OBJECT;
             Object index = indexNode.execute(frame);
             return executeWithTargetAndIndexDouble(frame, target, index);
         }
@@ -822,8 +823,14 @@ public class WriteElementNode extends JSTargetableNode {
             } else {
                 selection = new ExactArrayWriteElementCacheNode(context, isStrict, array, writeOwn, this);
             }
-            purgeStaleCacheEntries(target);
-            this.replace(selection);
+            Lock lock = getLock();
+            try {
+                lock.lock();
+                purgeStaleCacheEntries(target);
+                this.replace(selection);
+            } finally {
+                lock.unlock();
+            }
             selection.executeWithTargetAndArrayAndIndexAndValue(target, array, index, value, false);
         }
 

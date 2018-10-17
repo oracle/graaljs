@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -192,7 +193,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public Object executeWithTarget(VirtualFrame frame, Object target) {
-        if (indexState == 0) {
+        byte is = indexState;
+        if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Object index = getIndexNode().execute(frame);
             if (index instanceof Integer) {
@@ -202,8 +204,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 indexState = INDEX_OBJECT;
                 return executeWithTargetAndIndex(target, index);
             }
-        }
-        if (indexState == INDEX_INT) {
+        } else if (is == INDEX_INT) {
             int index;
             try {
                 index = getIndexNode().executeInt(frame);
@@ -213,14 +214,15 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
             return executeWithTargetAndIndex(target, index);
         } else {
-            assert indexState == INDEX_OBJECT;
+            assert is == INDEX_OBJECT;
             Object index = getIndexNode().execute(frame);
             return executeWithTargetAndIndex(target, index);
         }
     }
 
     public int executeWithTargetInt(VirtualFrame frame, Object target) throws UnexpectedResultException {
-        if (indexState == 0) {
+        byte is = indexState;
+        if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Object index = getIndexNode().execute(frame);
             if (index instanceof Integer) {
@@ -230,8 +232,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 indexState = INDEX_OBJECT;
                 return executeWithTargetAndIndexInt(target, index);
             }
-        }
-        if (indexState == INDEX_INT) {
+        } else if (is == INDEX_INT) {
             int index;
             try {
                 index = getIndexNode().executeInt(frame);
@@ -241,14 +242,15 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
             return executeWithTargetAndIndexInt(target, index);
         } else {
-            assert indexState == INDEX_OBJECT;
+            assert is == INDEX_OBJECT;
             Object index = getIndexNode().execute(frame);
             return executeWithTargetAndIndexInt(target, index);
         }
     }
 
     public double executeWithTargetDouble(VirtualFrame frame, Object target) throws UnexpectedResultException {
-        if (indexState == 0) {
+        byte is = indexState;
+        if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Object index = getIndexNode().execute(frame);
             if (index instanceof Integer) {
@@ -258,8 +260,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 indexState = INDEX_OBJECT;
                 return executeWithTargetAndIndexDouble(target, index);
             }
-        }
-        if (indexState == INDEX_INT) {
+        } else if (is == INDEX_INT) {
             int index;
             try {
                 index = getIndexNode().executeInt(frame);
@@ -269,7 +270,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
             return executeWithTargetAndIndexDouble(target, index);
         } else {
-            assert indexState == INDEX_OBJECT;
+            assert is == INDEX_OBJECT;
             Object index = getIndexNode().execute(frame);
             return executeWithTargetAndIndexDouble(target, index);
         }
@@ -353,8 +354,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
 
             CachedReadElementTypeCacheNode specialized = makeTypeCacheNode(target);
-
-            return this.replace(specialized).executeWithTargetAndIndex(target, index);
+            this.replace(specialized);
+            return specialized.executeWithTargetAndIndex(target, index);
         }
 
         @SuppressWarnings("unchecked")
@@ -900,8 +901,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             } else {
                 selection = new ExactArrayReadElementCacheNode(context, array);
             }
-            purgeStaleCacheEntries(target);
-            this.replace(selection);
+            Lock lock = getLock();
+            try {
+                lock.lock();
+                purgeStaleCacheEntries(target);
+                this.replace(selection);
+            } finally {
+                lock.unlock();
+            }
             return selection.executeWithTargetAndArrayAndIndex(target, array, index, arrayCondition);
         }
 
