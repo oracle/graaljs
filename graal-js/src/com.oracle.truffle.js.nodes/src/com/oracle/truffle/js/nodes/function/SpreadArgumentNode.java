@@ -44,13 +44,13 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepSpecialNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 public final class SpreadArgumentNode extends JavaScriptNode {
     @Child private GetIteratorNode getIteratorNode;
@@ -71,11 +71,11 @@ public final class SpreadArgumentNode extends JavaScriptNode {
     }
 
     public Object[] executeFillObjectArray(VirtualFrame frame, Object[] arguments, int delta) {
-        DynamicObject iterator = getIteratorNode.execute(frame);
+        IteratorRecord iteratorRecord = getIteratorNode.execute(frame);
         Object[] args = arguments;
         int i = 0;
         for (;;) {
-            Object nextArg = iteratorStepNode.execute(frame, iterator);
+            Object nextArg = iteratorStepNode.execute(frame, iteratorRecord);
             if (nextArg == null) {
                 break;
             }
@@ -89,10 +89,10 @@ public final class SpreadArgumentNode extends JavaScriptNode {
 
     @Override
     public Object[] executeObjectArray(VirtualFrame frame) {
-        DynamicObject iterator = getIteratorNode.execute(frame);
+        IteratorRecord iteratorRecord = getIteratorNode.execute(frame);
         Object[] args = new Object[0];
         for (int i = 0;; i++) {
-            Object nextArg = iteratorStepNode.execute(frame, iterator);
+            Object nextArg = iteratorStepNode.execute(frame, iteratorRecord);
             if (nextArg == null) {
                 break;
             }
@@ -110,9 +110,9 @@ public final class SpreadArgumentNode extends JavaScriptNode {
     }
 
     public void executeToList(VirtualFrame frame, List<Object> argList) {
-        DynamicObject iterator = getIteratorNode.execute(frame);
+        IteratorRecord iteratorRecord = getIteratorNode.execute(frame);
         for (;;) {
-            Object nextArg = iteratorStepNode.execute(frame, iterator);
+            Object nextArg = iteratorStepNode.execute(frame, iteratorRecord);
             if (nextArg == null) {
                 break;
             }

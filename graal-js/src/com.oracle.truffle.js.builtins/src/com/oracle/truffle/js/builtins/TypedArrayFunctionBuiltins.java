@@ -56,6 +56,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 /**
  * Contains functions of the %TypedArray% constructor function object.
@@ -137,9 +138,9 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
         protected DynamicObject arrayFromIterable(Object thisObj, DynamicObject items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping) {
             ArrayList<Object> values = new ArrayList<>();
 
-            DynamicObject iterator = getIterator(items, usingIterator);
+            IteratorRecord iteratorRecord = getIterator(items, usingIterator);
             while (true) {
-                Object next = iteratorStep(iterator);
+                Object next = iteratorStep(iteratorRecord);
                 if (next instanceof Boolean && ((Boolean) next) == Boolean.FALSE) {
                     break;
                 }

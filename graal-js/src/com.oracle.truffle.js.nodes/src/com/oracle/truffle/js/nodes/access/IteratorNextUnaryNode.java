@@ -43,42 +43,42 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 /**
  * IteratorNext(iterator) unary expression.
  */
 public class IteratorNextUnaryNode extends JavaScriptNode {
-    @Child private PropertyGetNode getNextNode;
     @Child private JSFunctionCallNode methodCallNode;
     @Child private IsObjectNode isObjectNode;
     @Child private JavaScriptNode iteratorNode;
 
-    protected IteratorNextUnaryNode(JSContext context, JavaScriptNode iteratorNode) {
+    protected IteratorNextUnaryNode(JavaScriptNode iteratorNode) {
         this.iteratorNode = iteratorNode;
-        this.getNextNode = PropertyGetNode.create(JSRuntime.NEXT, false, context);
         this.methodCallNode = JSFunctionCallNode.createCall();
         this.isObjectNode = IsObjectNode.create();
     }
 
-    public static JavaScriptNode create(JSContext context, JavaScriptNode iteratorNode) {
-        return new IteratorNextUnaryNode(context, iteratorNode);
+    public static JavaScriptNode create(JavaScriptNode iteratorNode) {
+        return new IteratorNextUnaryNode(iteratorNode);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        Object iterator = iteratorNode.execute(frame);
+        IteratorRecord iterator = (IteratorRecord) iteratorNode.execute(frame);
         return execute(iterator);
     }
 
-    public Object execute(Object iterator) {
-        Object next = getNextNode.getValue(iterator);
+    public Object execute(IteratorRecord iteratorRecord) {
+        DynamicObject iterator = iteratorRecord.getIterator();
+        Object next = iteratorRecord.getNextMethod();
         Object nextResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, next));
         if (!isObjectNode.executeBoolean(nextResult)) {
             throw iteratorResultNotObject(nextResult);
@@ -93,7 +93,7 @@ public class IteratorNextUnaryNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(getNextNode.getContext(), cloneUninitialized(iteratorNode));
+        return create(cloneUninitialized(iteratorNode));
     }
 
     @Override

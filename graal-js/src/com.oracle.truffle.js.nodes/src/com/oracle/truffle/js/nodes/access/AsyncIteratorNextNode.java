@@ -50,7 +50,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
@@ -59,15 +59,11 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  * @see IteratorNextUnaryNode
  */
 public class AsyncIteratorNextNode extends AwaitNode {
-    private final JSContext context;
-    @Child private PropertyGetNode getNextNode;
     @Child private JSFunctionCallNode methodCallNode;
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected AsyncIteratorNextNode(JSContext context, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
         super(context, iterator, asyncContextNode, asyncResultNode);
-        this.context = context;
-        this.getNextNode = PropertyGetNode.create(JSRuntime.NEXT, false, context);
         this.methodCallNode = JSFunctionCallNode.createCall();
     }
 
@@ -77,8 +73,9 @@ public class AsyncIteratorNextNode extends AwaitNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        DynamicObject iterator = (DynamicObject) expression.execute(frame);
-        Object next = getNextNode.getValue(iterator);
+        IteratorRecord iteratorRecord = (IteratorRecord) expression.execute(frame);
+        Object next = iteratorRecord.getNextMethod();
+        DynamicObject iterator = iteratorRecord.getIterator();
         Object nextResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, next));
         setState(frame, 1);
         return suspendAwait(frame, nextResult);

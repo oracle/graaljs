@@ -68,7 +68,7 @@ public final class Completion {
         return type == Type.Normal;
     }
 
-    public boolean isAbruptCompletion() {
+    public boolean isAbrupt() {
         return type != Type.Normal;
     }
 

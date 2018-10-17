@@ -72,7 +72,6 @@ import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
-import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteUnaryNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextUnaryNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
@@ -162,7 +161,7 @@ import com.oracle.truffle.js.nodes.control.ForNode;
 import com.oracle.truffle.js.nodes.control.GeneratorBodyNode;
 import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
 import com.oracle.truffle.js.nodes.control.IfNode;
-import com.oracle.truffle.js.nodes.control.IteratorCloseIfNotDoneNode;
+import com.oracle.truffle.js.nodes.control.IteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.LabelNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode;
 import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
@@ -857,8 +856,8 @@ public class NodeFactory {
         return EnumerateNode.create(context, iteratedObject, values);
     }
 
-    public JavaScriptNode createIteratorNext(JSContext context, JavaScriptNode iterator) {
-        return IteratorNextUnaryNode.create(context, iterator);
+    public JavaScriptNode createIteratorNext(JavaScriptNode iterator) {
+        return IteratorNextUnaryNode.create(iterator);
     }
 
     public JavaScriptNode createIteratorComplete(JSContext context, JavaScriptNode iterResult) {
@@ -886,12 +885,8 @@ public class NodeFactory {
         return AsyncIteratorCloseWrapperNode.create(context, loopNode, iterator, asyncContextNode, asyncResultNode, doneNode);
     }
 
-    public JavaScriptNode createIteratorClose(JSContext context, JavaScriptNode iterator) {
-        return IteratorCloseNode.create(context, iterator);
-    }
-
     public JavaScriptNode createIteratorCloseIfNotDone(JSContext context, JavaScriptNode block, JavaScriptNode iterator, JavaScriptNode isDoneNode) {
-        return IteratorCloseIfNotDoneNode.create(context, block, iterator, isDoneNode);
+        return IteratorCloseWrapperNode.create(context, block, iterator, isDoneNode);
     }
 
     public IteratorToArrayNode createIteratorToArray(JSContext context, JavaScriptNode iterator, JavaScriptNode doneNode) {

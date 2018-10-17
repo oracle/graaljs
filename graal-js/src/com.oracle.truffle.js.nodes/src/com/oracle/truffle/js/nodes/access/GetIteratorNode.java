@@ -57,7 +57,9 @@ import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
@@ -67,12 +69,14 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 public abstract class GetIteratorNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode objectNode;
     @Child private GetMethodNode getIteratorMethodNode;
+    @Child protected PropertyGetNode getNextMethodNode;
 
     protected final JSContext context;
 
     protected GetIteratorNode(JSContext context, JavaScriptNode objectNode) {
         this.context = context;
         this.objectNode = objectNode;
+        this.getNextMethodNode = PropertyGetNode.create(JSRuntime.NEXT, context);
     }
 
     public static GetIteratorNode create(JSContext context) {
@@ -92,24 +96,29 @@ public abstract class GetIteratorNode extends JavaScriptNode {
     }
 
     @Specialization(guards = {"!isForeignObject(iteratedObject)"})
-    protected DynamicObject doGetIterator(Object iteratedObject,
+    protected IteratorRecord doGetIterator(Object iteratedObject,
                     @Cached("createCall()") JSFunctionCallNode methodCallNode,
                     @Cached("create()") IsObjectNode isObjectNode) {
         Object method = getIteratorMethodNode().executeWithTarget(iteratedObject);
-        return getIterator(iteratedObject, method, methodCallNode, isObjectNode, this);
+        return getIterator(iteratedObject, method, methodCallNode, isObjectNode);
     }
 
-    public static DynamicObject getIterator(Object iteratedObject, Object method, JSFunctionCallNode methodCallNode, IsObjectNode isObjectNode, JavaScriptBaseNode origin) {
+    protected final IteratorRecord getIterator(Object iteratedObject, Object method, JSFunctionCallNode methodCallNode, IsObjectNode isObjectNode) {
+        return getIterator(iteratedObject, method, methodCallNode, isObjectNode, getNextMethodNode, this);
+    }
+
+    public static IteratorRecord getIterator(Object iteratedObject, Object method, JSFunctionCallNode methodCallNode, IsObjectNode isObjectNode, PropertyGetNode getNextMethodNode,
+                    JavaScriptBaseNode origin) {
         Object iterator = methodCallNode.executeCall(JSArguments.createZeroArg(iteratedObject, method));
         if (isObjectNode.executeBoolean(iterator)) {
-            return (DynamicObject) iterator;
+            return IteratorRecord.create((DynamicObject) iterator, getNextMethodNode.getValue(iterator), false);
         } else {
             throw Errors.createTypeErrorNotAnObject(iterator, origin);
         }
     }
 
     @Specialization(guards = "isForeignObject(iteratedObject)")
-    protected DynamicObject doGetIteratorWithForeignObject(TruffleObject iteratedObject,
+    protected IteratorRecord doGetIteratorWithForeignObject(TruffleObject iteratedObject,
                     @Cached("createEnumerateValues()") EnumerateNode enumerateNode,
                     @Cached("createIsBoxed()") Node isBoxedNode,
                     @Cached("create()") JSUnboxOrGetNode unboxNode,
@@ -118,7 +127,8 @@ public abstract class GetIteratorNode extends JavaScriptNode {
             Object unboxed = unboxNode.executeWithTarget(iteratedObject);
             return getIteratorNode.execute(unboxed);
         } else {
-            return enumerateNode.execute(iteratedObject);
+            DynamicObject iterator = enumerateNode.execute(iteratedObject);
+            return IteratorRecord.create(iterator, getNextMethodNode.getValue(iterator), false);
         }
     }
 
@@ -127,9 +137,9 @@ public abstract class GetIteratorNode extends JavaScriptNode {
     }
 
     @Override
-    public abstract DynamicObject execute(VirtualFrame frame);
+    public abstract IteratorRecord execute(VirtualFrame frame);
 
-    public abstract DynamicObject execute(Object iteratedObject);
+    public abstract IteratorRecord execute(Object iteratedObject);
 
     @Override
     protected JavaScriptNode copyUninitialized() {

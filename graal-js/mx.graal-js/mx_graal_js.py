@@ -227,7 +227,8 @@ def _run_test_suite(location, library_names, custom_args, default_vm_args, max_h
     _fetch_test_suite(location, library_names)
     _vm_args, _prog_args = parse_js_args(custom_args)
     _vm_args = _append_default_js_vm_args(vm_args=_vm_args, max_heap=max_heap, stack_size=stack_size)
-    _vm_args = ['-ea', '-esa', '-cp', mx.classpath('TRUFFLE_JS_TESTS')] + default_vm_args + _vm_args
+    _cp = mx.classpath(['TRUFFLE_JS_TESTS'] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
+    _vm_args = ['-ea', '-esa', '-cp', _cp] + default_vm_args + _vm_args
     return mx.run_java(_vm_args + [main_class] + _prog_args, nonZeroIsFatal=nonZeroIsFatal, cwd=cwd)
 
 def test262(args, nonZeroIsFatal=True):

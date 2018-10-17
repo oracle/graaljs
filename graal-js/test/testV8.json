@@ -245,6 +245,10 @@
     "filePath" : "mjsunit/es6/block-sloppy-function.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/es6/call-with-spread-modify-next.js",
+    "status" : "FAIL",
+    "comment" : "Outdated test"
+  }, {
     "filePath" : "mjsunit/es6/class-computed-property-names-super.js",
     "status" : "FAIL"
   }, {
@@ -298,6 +302,10 @@
     "filePath" : "mjsunit/es6/global-proto-proxy.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/es6/iteration-semantics.js",
+    "status" : "FAIL",
+    "comment" : "Outdated test"
   }, {
     "filePath" : "mjsunit/es6/iteration-syntax.js",
     "status" : "FAIL"
@@ -387,6 +395,14 @@
   }, {
     "filePath" : "mjsunit/es6/sloppy-restrictive-block-function.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/spread-call.js",
+    "status" : "FAIL",
+    "comment" : "Outdated test"
+  }, {
+    "filePath" : "mjsunit/es6/super-with-spread-modify-next.js",
+    "status" : "FAIL",
+    "comment" : "Outdated test"
   }, {
     "filePath" : "mjsunit/es6/super.js",
     "status" : "FAIL"
@@ -504,6 +520,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
+    "filePath" : "mjsunit/harmony/async-from-sync-iterator.js",
+    "status" : "SKIP",
+    "comment" : "Incorrect test, runs into infinite loop."
+  }, {
     "filePath" : "mjsunit/harmony/async-generators-basic.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
@@ -535,9 +555,6 @@
     "filePath" : "mjsunit/harmony/do-expressions.js",
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
-  }, {
-    "filePath" : "mjsunit/harmony/for-await-of.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/harmony/function-sent.js",
     "status" : "SKIP",
