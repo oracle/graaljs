@@ -757,11 +757,35 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        private final ConditionProfile posNaN = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile searchStrZero = ConditionProfile.createBinaryProfile();
+        protected boolean isStringLength1(String str) {
+            return str.length() == 1;
+        }
 
-        @Specialization
-        protected int lastIndexOf(Object thisObj, Object searchString, Object position, @Cached("create()") JSToStringNode toString2Node) {
+        // search for a single-character string without position argument.
+        // Use-case: path.js:normalizeString
+        @Specialization(guards = {"isStringLength1(searchString)", "isUndefined(position)"})
+        protected int lastIndexOfString(String thisObj, String searchString, @SuppressWarnings("unused") DynamicObject position) {
+            return lastIndexOfChar(thisObj, searchString, thisObj.length() - 1);
+        }
+
+        private static int lastIndexOfChar(String thisStr, String searchStr, int startPos) {
+            assert searchStr.length() == 1;
+            char searchChar = searchStr.charAt(0);
+            int start = startPos < thisStr.length() ? startPos : thisStr.length() - 1;
+            for (int i = start; i >= 0; i--) {
+                if (thisStr.charAt(i) == searchChar) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        @Specialization(replaces = "lastIndexOfString")
+        protected int lastIndexOf(Object thisObj, Object searchString, Object position,
+                        @Cached("create()") JSToStringNode toString2Node,
+                        @Cached("createBinaryProfile()") ConditionProfile posNaN,
+                        @Cached("createBinaryProfile()") ConditionProfile searchStrZero,
+                        @Cached("createBinaryProfile()") ConditionProfile searchStrOne) {
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
             String searchStr = toString2Node.executeString(searchString);
@@ -783,6 +807,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             if (searchStrZero.profile(searchStr.length() == 0)) {
                 return pos;
+            } else if (searchStrOne.profile(searchStr.length() == 1)) {
+                return lastIndexOfChar(thisStr, searchStr, pos);
             } else {
                 return Boundaries.stringLastIndexOf(thisStr, searchStr, pos);
             }
