@@ -1378,6 +1378,10 @@ namespace v8 {
         return reinterpret_cast<const GraalMessage*> (this)->GetStartColumn();
     }
 
+    Local<String> Message::Get() const {
+        return reinterpret_cast<const GraalMessage*> (this)->Get();
+    }
+
     int StackFrame::GetColumn() const {
         return reinterpret_cast<const GraalStackFrame*> (this)->GetColumn();
     }

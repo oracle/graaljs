@@ -2028,6 +2028,10 @@ public final class GraalJSAccess {
         return new GraalJSException.JSStackTraceElement[0];
     }
 
+    public Object messageGet(Object exception) {
+        return "Uncaught " + ((Throwable) exception).getMessage();
+    }
+
     public Object stackTraceCurrentStackTrace() {
         return GraalJSException.getJSStackTrace(null);
     }

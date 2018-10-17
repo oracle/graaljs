@@ -81,3 +81,9 @@ int GraalMessage::GetLineNumber() const {
     JNI_CALL(jint, line_number, Isolate(), GraalAccessMethod::message_get_line_number, Int, GetJavaObject());
     return line_number;
 }
+
+v8::Local<v8::String> GraalMessage::Get() const {
+    JNI_CALL(jobject, java_message, Isolate(), GraalAccessMethod::message_get, Object, GetJavaObject());
+    GraalString* graal_message = new GraalString(Isolate(), (jstring) java_message);
+    return reinterpret_cast<v8::String*> (graal_message);
+}

@@ -103,6 +103,7 @@
       { "name": "makeWeak" },
       { "name": "mapNew" },
       { "name": "mapSet" },
+      { "name": "messageGet" },
       { "name": "messageGetLineNumber" },
       { "name": "messageGetScriptResourceName" },
       { "name": "messageGetSourceLine" },
