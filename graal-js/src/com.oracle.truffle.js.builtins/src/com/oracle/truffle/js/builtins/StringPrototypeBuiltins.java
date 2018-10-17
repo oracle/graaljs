@@ -2057,6 +2057,24 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
+        protected String sliceString(String str, int start, int end) {
+            int len = str.length();
+            int istart = JSRuntime.getOffset(start, len, offsetProfile1);
+            int iend = JSRuntime.getOffset(end, len, offsetProfile2);
+            if (canReturnEmpty.profile(iend > istart)) {
+                return Boundaries.substring(str, istart, iend);
+            } else {
+                return "";
+            }
+        }
+
+        @Specialization(replaces = "sliceString")
+        protected String sliceObject(Object thisObj, int start, int end) {
+            requireObjectCoercible(thisObj);
+            return sliceString(toString(thisObj), start, end);
+        }
+
+        @Specialization(replaces = {"sliceString", "sliceObject"})
         protected String slice(Object thisObj, Object start, Object end) {
             requireObjectCoercible(thisObj);
             String s = toString(thisObj);
@@ -2596,6 +2614,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached("create()") JSToStringNode toStringNode) {
             return doString(frame, toStringNode.executeString(requireObjectCoercibleNode.execute(thisObj)));
         }
+
     }
 
     static CreateHTMLNode createHTMLNode(JSContext context, JSBuiltin builtin, String tag, String attribute) {
