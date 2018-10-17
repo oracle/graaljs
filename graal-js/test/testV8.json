@@ -728,18 +728,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
   }, {
-    "filePath" : "mjsunit/modules-default-name3.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/modules-default-name6.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/modules-default-name8.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/modules-default-name9.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/modules-error-trace.js",
     "status" : "SKIP",
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"

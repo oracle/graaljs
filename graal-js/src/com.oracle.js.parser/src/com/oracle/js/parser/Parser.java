@@ -5869,7 +5869,8 @@ loop:
                 switch (type) {
                     case FUNCTION:
                         assignmentExpression = functionExpression(false, true);
-                        ident = ((FunctionNode) assignmentExpression).getIdent();
+                        FunctionNode functionNode = (FunctionNode) assignmentExpression;
+                        ident = functionNode.isAnonymous() ? null : functionNode.getIdent();
                         declaration = true;
                         break;
                     case CLASS:

@@ -71,6 +71,7 @@ import com.oracle.js.parser.ir.JoinPredecessorExpression;
 import com.oracle.js.parser.ir.LexicalContext;
 import com.oracle.js.parser.ir.LexicalContextNode;
 import com.oracle.js.parser.ir.LiteralNode;
+import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyNode;
@@ -1646,7 +1647,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode createVarAssignNode(VarNode varNode, String varName) {
         JavaScriptNode rhs = transform(varNode.getAssignmentSource());
-        setAnonymousFunctionName(rhs, varName);
+        String functionName = (varNode.isExport() && Module.DEFAULT_EXPORT_BINDING_NAME.equals(varName)) ? Module.DEFAULT_NAME : varName;
+        setAnonymousFunctionName(rhs, functionName);
         JavaScriptNode assignment = findScopeVar(varName, false).createWriteNode(rhs);
         tagExpression(assignment, varNode);
         if (varNode.isBlockScoped() && varNode.isFunctionDeclaration() && context.isOptionAnnexB()) {
