@@ -59,6 +59,22 @@ describe('Object', function () {
             var o = {123: 456};
             assert.strictEqual(module.Object_GetByName(o, 123), 456);
         });
+        it('should throw an error when the getter throws an error', function () {
+            var thrownError = new Error('some error');
+            var o = {};
+            Object.defineProperty(o, 'foo', {
+                get: function() {
+                    throw thrownError;
+                }
+            });
+            var caughtError;
+            try {
+                module.Object_GetByName(o, "foo");
+            } catch (err) {
+                caughtError = err;
+            }
+            assert.strictEqual(caughtError, thrownError);
+        });
     });
     describe('Get by index', function () {
         it('should return simple properties by index', function () {
