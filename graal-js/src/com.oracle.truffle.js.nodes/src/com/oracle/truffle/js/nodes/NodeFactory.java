@@ -161,7 +161,7 @@ import com.oracle.truffle.js.nodes.control.ForNode;
 import com.oracle.truffle.js.nodes.control.GeneratorBodyNode;
 import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
 import com.oracle.truffle.js.nodes.control.IfNode;
-import com.oracle.truffle.js.nodes.control.IteratorCloseIfNotDoneNode;
+import com.oracle.truffle.js.nodes.control.IteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.LabelNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode;
 import com.oracle.truffle.js.nodes.control.ReturnTargetNode;
@@ -886,7 +886,7 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createIteratorCloseIfNotDone(JSContext context, JavaScriptNode block, JavaScriptNode iterator, JavaScriptNode isDoneNode) {
-        return IteratorCloseIfNotDoneNode.create(context, block, iterator, isDoneNode);
+        return IteratorCloseWrapperNode.create(context, block, iterator, isDoneNode);
     }
 
     public IteratorToArrayNode createIteratorToArray(JSContext context, JavaScriptNode iterator, JavaScriptNode doneNode) {
