@@ -132,6 +132,7 @@ import com.oracle.truffle.js.runtime.builtins.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
@@ -564,6 +565,17 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         protected static boolean posInBounds(String thisStr, int pos) {
             return pos >= 0 && pos < thisStr.length();
+        }
+
+        @Specialization
+        protected Object charCodeAtLazyString(JSLazyString thisStr, int index,
+                        @Cached("createBinaryProfile()") ConditionProfile flatten) {
+            if (indexOutOfBounds.profile(0 > index || index >= thisStr.length())) {
+                return Double.NaN;
+            } else {
+                String s = thisStr.toString(flatten);
+                return Integer.valueOf(s.charAt(index));
+            }
         }
 
         @Specialization(guards = {"posInBounds(thisStr, pos)"})
