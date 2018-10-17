@@ -1266,9 +1266,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterReturnNode(com.oracle.js.parser.ir.ReturnNode returnNode) {
-        JavaScriptNode expression = returnNode.getExpression() != null ? transform(returnNode.getExpression()) : factory.createConstantUndefined();
-        if (currentFunction().isAsyncGeneratorFunction()) {
-            expression = createAwaitNode(expression);
+        JavaScriptNode expression;
+        if (returnNode.getExpression() != null) {
+            expression = transform(returnNode.getExpression());
+            if (currentFunction().isAsyncGeneratorFunction()) {
+                expression = createAwaitNode(expression);
+            }
+        } else {
+            expression = factory.createConstantUndefined();
         }
 
         if (returnNode.isInTerminalPosition()) {
