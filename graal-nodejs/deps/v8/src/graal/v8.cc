@@ -1515,6 +1515,13 @@ namespace v8 {
         }
     }
 
+    void TryCatch::Reset() {
+        if (!rethrow_) {
+            GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
+            graal_isolate->GetJNIEnv()->ExceptionClear();
+        }
+    }
+
     bool Value::Equals(Local<Value> that) const {
         return reinterpret_cast<const GraalValue*> (this)->Equals(that);
     }
