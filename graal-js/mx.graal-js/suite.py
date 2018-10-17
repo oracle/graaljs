@@ -244,7 +244,7 @@ suite = {
         "com.oracle.truffle.js.builtins",
         "com.oracle.js.parser",
       ],
-      "exports" : ["com.oracle.truffle.js.parser to com.oracle.truffle.truffle_api"],
+      "exports" : ["com.oracle.truffle.js.parser to org.graalvm.truffle"],
       "checkstyle" : "com.oracle.truffle.js.runtime",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
