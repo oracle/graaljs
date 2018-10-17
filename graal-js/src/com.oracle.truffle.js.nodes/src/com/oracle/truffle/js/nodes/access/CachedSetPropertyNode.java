@@ -47,9 +47,10 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -85,7 +86,11 @@ public abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     @Specialization(guards = {"isArrayIndex(index)"})
     void doIntIndex(DynamicObject target, int index, Object value,
                     @Cached("create()") JSClassProfile jsclassProfile) {
-        JSObject.set(target, index, value, strict, jsclassProfile);
+        if (setOwn) {
+            createDataPropertyOrThrow(target, Boundaries.stringValueOf(index), value);
+        } else {
+            JSObject.set(target, index, value, strict, jsclassProfile);
+        }
     }
 
     @Specialization(guards = {"toArrayIndexNode.isArrayIndex(key)"}, replaces = {"doIntIndex"})
@@ -93,15 +98,18 @@ public abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
                     @Cached("createNoToString()") ToArrayIndexNode toArrayIndexNode,
                     @Cached("create()") JSClassProfile jsclassProfile) {
         long index = (long) toArrayIndexNode.execute(key);
-        JSObject.set(target, index, value, strict, jsclassProfile);
+        if (setOwn) {
+            createDataPropertyOrThrow(target, Boundaries.stringValueOf(index), value);
+        } else {
+            JSObject.set(target, index, value, strict, jsclassProfile);
+        }
     }
 
     @Specialization(guards = {"isJSProxy(target)"})
     void doProxy(DynamicObject target, Object index, Object value,
                     @Cached("create(context, strict)") JSProxyPropertySetNode proxySet) {
         if (setOwn) {
-            PropertyDescriptor newDesc = PropertyDescriptor.createDataDefault(value);
-            JSProxy.INSTANCE.defineOwnProperty(target, proxySet.toPropertyKey(index), newDesc, true);
+            createDataPropertyOrThrow(target, proxySet.toPropertyKey(index), value);
         } else {
             proxySet.executeWithReceiverAndValue(target, target, value, index);
         }
@@ -113,7 +121,9 @@ public abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
                     @Cached("createBinaryProfile()") ConditionProfile getType,
                     @Cached("create()") JSClassProfile jsclassProfile) {
         Object arrayIndex = toArrayIndexNode.execute(key);
-        if (getType.profile(arrayIndex instanceof Long)) {
+        if (setOwn) {
+            createDataPropertyOrThrow(target, getType.profile(arrayIndex instanceof Long) ? Boundaries.stringValueOf(arrayIndex) : key, value);
+        } else if (getType.profile(arrayIndex instanceof Long)) {
             JSObject.set(target, (long) arrayIndex, value, strict, jsclassProfile);
         } else {
             assert JSRuntime.isPropertyKey(arrayIndex);
@@ -121,7 +131,11 @@ public abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
         }
     }
 
+    private static void createDataPropertyOrThrow(DynamicObject target, Object propertyKey, Object value) {
+        JSObject.defineOwnProperty(target, propertyKey, PropertyDescriptor.createDataDefault(value), true);
+    }
+
     PropertySetNode createSet(Object key) {
-        return PropertySetNode.create(key, false, context, strict);
+        return PropertySetNode.createImpl(key, false, context, strict, setOwn, JSAttributes.getDefault());
     }
 }
