@@ -106,7 +106,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
-import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -308,7 +307,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         return typeCacheNode;
     }
 
-    private abstract static class ReadElementCacheNode extends JavaScriptBaseNode {
+    abstract static class ReadElementCacheNode extends JavaScriptBaseNode {
         protected final JSContext context;
 
         protected ReadElementCacheNode(JSContext context) {
@@ -316,7 +315,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private abstract static class ReadElementTypeCacheNode extends ReadElementCacheNode {
+    abstract static class ReadElementTypeCacheNode extends ReadElementCacheNode {
         protected ReadElementTypeCacheNode(JSContext context) {
             super(context);
         }
@@ -360,9 +359,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @SuppressWarnings("unchecked")
         private CachedReadElementTypeCacheNode makeTypeCacheNode(Object target) {
-            if (JSProxy.isProxy(target)) {
-                return new ProxyReadElementNode(context);
-            } else if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSObject(target)) {
                 return new JSObjectReadElementTypeCacheNode(context);
             } else if (JSRuntime.isString(target)) {
                 return new StringReadElementTypeCacheNode(context, target.getClass());
@@ -387,43 +384,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private static class ProxyReadElementNode extends CachedReadElementTypeCacheNode {
-
-        @Child private JSProxyPropertyGetNode proxyGet;
-
-        protected ProxyReadElementNode(JSContext context) {
-            super(context);
-            this.proxyGet = JSProxyPropertyGetNode.create(context);
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
-            return proxyGet.executeWithReceiver(target, target, true, index);
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
-            return proxyGet.executeWithReceiverInt(target, target, true, index);
-        }
-
-        @Override
-        protected int executeWithTargetAndIndexUncheckedInt(Object target, int index) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(proxyGet.executeWithReceiverInt(target, target, true, index));
-        }
-
-        @Override
-        protected int executeWithTargetAndIndexUncheckedInt(Object target, Object index) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(proxyGet.executeWithReceiver(target, target, true, index));
-        }
-
-        @Override
-        public boolean guard(Object target) {
-            return JSProxy.isProxy(target);
-        }
-
-    }
-
-    private abstract static class CachedReadElementTypeCacheNode extends ReadElementTypeCacheNode {
+    abstract static class CachedReadElementTypeCacheNode extends ReadElementTypeCacheNode {
         @Child private ReadElementTypeCacheNode typeCacheNext;
 
         CachedReadElementTypeCacheNode(JSContext context) {
@@ -1529,7 +1490,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private static class TruffleObjectReadElementTypeCacheNode extends CachedReadElementTypeCacheNode {
+    static class TruffleObjectReadElementTypeCacheNode extends CachedReadElementTypeCacheNode {
         private final Class<? extends TruffleObject> targetClass;
 
         @Child private Node foreignIsNull;

@@ -49,7 +49,9 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 @ImportStatic({JSRuntime.class, CachedGetPropertyNode.class})
@@ -58,16 +60,18 @@ public abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
 
     protected final JSContext context;
     protected final boolean strict;
+    protected final boolean setOwn;
 
-    CachedSetPropertyNode(JSContext context, boolean strict) {
+    CachedSetPropertyNode(JSContext context, boolean strict, boolean setOwn) {
         this.context = context;
         this.strict = strict;
+        this.setOwn = setOwn;
     }
 
     public abstract void execute(DynamicObject target, Object propertyKey, Object value);
 
-    public static CachedSetPropertyNode create(JSContext context, boolean strict) {
-        return CachedSetPropertyNodeGen.create(context, strict);
+    public static CachedSetPropertyNode create(JSContext context, boolean strict, boolean setOwn) {
+        return CachedSetPropertyNodeGen.create(context, strict, setOwn);
     }
 
     @SuppressWarnings("unused")
@@ -92,7 +96,18 @@ public abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
         JSObject.set(target, index, value, strict, jsclassProfile);
     }
 
-    @Specialization(replaces = {"doCachedKey", "doArrayIndex"})
+    @Specialization(guards = {"isJSProxy(target)"})
+    void doProxy(DynamicObject target, Object index, Object value,
+                    @Cached("create(context, strict)") JSProxyPropertySetNode proxySet) {
+        if (setOwn) {
+            PropertyDescriptor newDesc = PropertyDescriptor.createDataDefault(value);
+            JSProxy.INSTANCE.defineOwnProperty(target, proxySet.toPropertyKey(index), newDesc, true);
+        } else {
+            proxySet.executeWithReceiverAndValue(target, target, value, index);
+        }
+    }
+
+    @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
     void doGeneric(DynamicObject target, Object key, Object value,
                     @Cached("create()") ToArrayIndexNode toArrayIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile getType,

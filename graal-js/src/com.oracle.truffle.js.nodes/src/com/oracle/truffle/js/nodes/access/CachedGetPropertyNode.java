@@ -91,7 +91,13 @@ public abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         return JSObject.get(target, index, jsclassProfile);
     }
 
-    @Specialization(replaces = {"doCachedKey", "doArrayIndex"})
+    @Specialization(guards = {"isJSProxy(target)"})
+    protected Object doProxy(DynamicObject target, Object index,
+                    @Cached("create(context)") JSProxyPropertyGetNode proxyGet) {
+        return proxyGet.executeWithReceiver(target, target, index);
+    }
+
+    @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
     Object doGeneric(DynamicObject target, Object key,
                     @Cached("create()") ToArrayIndexNode toArrayIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile getType,

@@ -76,18 +76,18 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
         return JSProxyPropertyGetNodeGen.create(context);
     }
 
-    public abstract Object executeWithReceiver(Object proxy, Object receiver, boolean floatingCondition, Object key);
+    public abstract Object executeWithReceiver(Object proxy, Object receiver, Object key);
 
-    public abstract Object executeWithReceiverInt(Object proxy, Object receiver, boolean floatingCondition, int key);
+    public abstract Object executeWithReceiverInt(Object proxy, Object receiver, int key);
 
     @Specialization
-    protected Object doGeneric(DynamicObject proxy, Object receiver, boolean floatingCondition, Object key,
+    protected Object doGeneric(DynamicObject proxy, Object receiver, Object key,
                     @Cached("createBinaryProfile()") ConditionProfile hasTrap) {
         assert JSProxy.isProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKey(key);
-        DynamicObject handler = JSProxy.getHandler(proxy, floatingCondition);
-        TruffleObject target = JSProxy.getTarget(proxy, floatingCondition);
+        DynamicObject handler = JSProxy.getHandler(proxy);
+        TruffleObject target = JSProxy.getTarget(proxy);
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
             if (JSObject.isJSObject(target)) {
