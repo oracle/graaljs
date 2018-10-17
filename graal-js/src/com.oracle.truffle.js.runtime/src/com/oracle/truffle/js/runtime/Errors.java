@@ -544,4 +544,9 @@ public final class Errors {
                         "ICU4J_DATA_PATH" +
                         ", to contain path to your ICU4J icudt directory (should come bundled with GraalVM in jre/languages/js/icu4j/icudt subdirectory).");
     }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorStringExpected() {
+        return Errors.createTypeError("string expected");
+    }
 }

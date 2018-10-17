@@ -2065,7 +2065,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String thisStr = toString(thisObj);
             if (isRegExpNode.executeBoolean(searchString)) {
                 noStringBranch.enter();
-                throw Errors.createTypeError("string expected");
+                throw Errors.createTypeErrorStringExpected();
             }
             String searchStr = toString2Node.executeString(searchString);
             int fromIndex = toInteger(position);
@@ -2098,7 +2098,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String thisStr = toString(thisObj);
             if (isRegExpNode.executeBoolean(searchString)) {
                 noStringBranch.enter();
-                throw Errors.createTypeError("string expected");
+                throw Errors.createTypeErrorStringExpected();
             }
             String searchStr = toString2Node.executeString(searchString);
             int fromIndex = toInteger(position);
@@ -2135,7 +2135,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String thisStr = toString(thisObj);
             if (isRegExpNode.executeBoolean(searchString)) {
                 noStringBranch.enter();
-                throw Errors.createTypeError("string expected");
+                throw Errors.createTypeErrorStringExpected();
             }
             String searchStr = toString2Node.executeString(searchString);
             int fromIndex = toInteger(position);
