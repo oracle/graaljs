@@ -1666,6 +1666,9 @@ public class WriteElementNode extends JSTargetableNode {
                 int intIndex = (int) index;
                 if (isImmutable.profile(intIndex >= 0 && intIndex < JSRuntime.length(charSequence))) {
                     // cannot set characters of immutable strings
+                    if (isStrict) {
+                        throw Errors.createTypeErrorNotWritableProperty(Boundaries.stringValueOf(index), charSequence, this);
+                    }
                     return;
                 }
             }
@@ -1678,6 +1681,10 @@ public class WriteElementNode extends JSTargetableNode {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
             if (isImmutable.profile(index >= 0 && index < JSRuntime.length(charSequence))) {
                 // cannot set characters of immutable strings
+                if (isStrict) {
+                    throw Errors.createTypeErrorNotWritableProperty(Boundaries.stringValueOf(index), charSequence, this);
+                }
+                return;
             } else {
                 JSObject.set(JSString.create(context, charSequence), index, value, isStrict, classProfile);
             }

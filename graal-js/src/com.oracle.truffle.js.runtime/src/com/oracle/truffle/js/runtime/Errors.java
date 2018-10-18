@@ -262,8 +262,13 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorNotWritableProperty(Object key, Object thisObj, Node originatingNode) {
+        return Errors.createTypeError(keyToString(key) + " is not a writable property of " + JSRuntime.safeToString(thisObj), originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorNotWritableProperty(Object key, Object thisObj) {
-        return Errors.createTypeError(keyToString(key) + " is not a writable property of " + JSRuntime.safeToString(thisObj));
+        return createTypeErrorNotWritableProperty(key, thisObj, null);
     }
 
     @TruffleBoundary

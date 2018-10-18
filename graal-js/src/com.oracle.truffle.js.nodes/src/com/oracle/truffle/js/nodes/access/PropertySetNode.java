@@ -789,7 +789,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         @Override
         public void setValueUnchecked(Object thisObj, Object value, Object receiver, boolean condition) {
             if (isStrict) {
-                throw Errors.createTypeErrorNotWritableProperty(key, thisObj);
+                throw Errors.createTypeErrorNotWritableProperty(key, thisObj, this);
             }
         }
     }
