@@ -40,16 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.lang.reflect.Array;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -70,7 +66,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -372,14 +367,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             } else if (target instanceof TruffleObject) {
                 assert !(target instanceof Symbol);
                 return new TruffleObjectReadElementTypeCacheNode(context, (Class<? extends TruffleObject>) target.getClass());
-            } else if (target instanceof Map) {
-                return new MapReadElementTypeCacheNode(context, (Class<? extends Map<?, ?>>) target.getClass());
-            } else if (target instanceof List) {
-                return new ListReadElementTypeCacheNode(context, (Class<? extends List<?>>) target.getClass());
-            } else if (JSGuards.isJavaArray(target)) {
-                return new JavaArrayReadElementTypeCacheNode(context, target.getClass());
             } else {
-                return new ObjectReadElementTypeCacheNode(context, target.getClass());
+                assert JSTruffleOptions.NashornJavaInterop : target;
+                return new JavaObjectReadElementTypeCacheNode(context, target.getClass());
             }
         }
     }
@@ -679,10 +669,10 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private static class ObjectReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+    private static class JavaObjectReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
         protected final Class<?> targetClass;
 
-        ObjectReadElementTypeCacheNode(JSContext context, Class<?> targetClass) {
+        JavaObjectReadElementTypeCacheNode(JSContext context, Class<?> targetClass) {
             super(context);
             this.targetClass = targetClass;
         }
@@ -693,113 +683,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
+            return JSObject.get(JSJavaWrapper.create(context, target), index);
+        }
+
+        @Override
         public final boolean guard(Object target) {
-            // return !(JSObject.isJSObject(target));
             return targetClass.isInstance(target);
         }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
-            return executeWithTargetAndIndex(target, (Object) index);
-        }
-    }
-
-    private static class MapReadElementTypeCacheNode extends ObjectReadElementTypeCacheNode {
-        MapReadElementTypeCacheNode(JSContext context, Class<? extends Map<?, ?>> targetClass) {
-            super(context, targetClass);
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
-            Map<?, ?> map = (Map<?, ?>) targetClass.cast(target);
-            Object key = JSRuntime.toJavaNull(index);
-            Object value = Boundaries.mapGet(map, key);
-            if (value == null && key instanceof CharSequence) {
-                // TODO optimize this
-                return super.executeWithTargetAndIndexUnchecked(target, index);
-            }
-            return JSRuntime.toJSNull(value);
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
-            return executeWithTargetAndIndex(target, (Object) index);
-        }
-    }
-
-    private static class ListReadElementTypeCacheNode extends ObjectReadElementTypeCacheNode {
-        @Child private ToArrayIndexNode toArrayIndexNode;
-        private final ConditionProfile indexProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile outOfBoundsProfile = ConditionProfile.createBinaryProfile();
-
-        ListReadElementTypeCacheNode(JSContext context, Class<? extends List<?>> targetClass) {
-            super(context, targetClass);
-            this.toArrayIndexNode = ToArrayIndexNode.create();
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
-            Object convertedIndex = toArrayIndexNode.execute(index);
-            if (indexProfile.profile(convertedIndex instanceof Long && ((Long) convertedIndex).intValue() >= 0)) {
-                List<?> list = ((List<?>) targetClass.cast(target));
-                Object value = Boundaries.listGet(list, ((Long) convertedIndex).intValue());
-                return JSRuntime.toJSNull(value);
-            } else {
-                if (outOfBoundsProfile.profile(index instanceof Double && Double.isInfinite(((Double) index).doubleValue()))) {
-                    indexOutOfBoundsException(target, index);
-                }
-                return super.executeWithTargetAndIndexUnchecked(target, index);
-            }
-        }
-
-        @TruffleBoundary
-        private void indexOutOfBoundsException(Object target, Object index) {
-            @SuppressWarnings("unchecked")
-            List<Object> list = (List<Object>) targetClass.cast(target);
-            throw new IndexOutOfBoundsException("Index: " + (((Double) index).doubleValue() > 0 ? "" : "-") + "Infinity, Size: " + list.size());
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
-            Object value = Boundaries.listGet(((List<?>) targetClass.cast(target)), index);
-            return JSRuntime.toJSNull(value);
-        }
-    }
-
-    private static class JavaArrayReadElementTypeCacheNode extends ObjectReadElementTypeCacheNode {
-        @Child private ToArrayIndexNode toArrayIndexNode;
-        private final ConditionProfile indexProfile = ConditionProfile.createBinaryProfile();
-
-        JavaArrayReadElementTypeCacheNode(JSContext context, Class<?> targetClass) {
-            super(context, targetClass);
-            this.toArrayIndexNode = ToArrayIndexNode.create();
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
-            Object convertedIndex = toArrayIndexNode.execute(index);
-            if (indexProfile.profile(convertedIndex instanceof Long && ((Long) convertedIndex).intValue() >= 0)) {
-                return arrayGet(target, ((Long) convertedIndex).intValue());
-            } else {
-                return super.executeWithTargetAndIndexUnchecked(target, index);
-            }
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
-            return arrayGet(target, index);
-        }
-
-        private static Object arrayGet(Object array, int index) {
-            if (index >= 0 && index < Array.getLength(array)) {
-                Object value = Array.get(array, index);
-                return JSRuntime.toJSNull(value);
-            } else {
-                // see GR-4172
-                return Undefined.instance;
-            }
-        }
-
     }
 
     abstract static class ArrayReadElementCacheNode extends ReadElementCacheNode {

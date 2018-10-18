@@ -44,15 +44,11 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetAll
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
 
-import java.lang.reflect.Array;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -71,11 +67,9 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -123,9 +117,9 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
-import com.oracle.truffle.js.runtime.interop.Converters;
+import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -412,18 +406,13 @@ public class WriteElementNode extends JSTargetableNode {
                 return new BooleanWriteElementTypeCacheNode(context, isStrict, writeOwn);
             } else if (target instanceof Number) {
                 return new NumberWriteElementTypeCacheNode(context, isStrict, target.getClass(), writeOwn);
-            } else if (target instanceof Symbol && isStrict) {
-                throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
+            } else if (target instanceof Symbol) {
+                return new SymbolWriteElementTypeCacheNode(context, isStrict, writeOwn);
             } else if (target instanceof TruffleObject && !(target instanceof Symbol)) {
                 return new TruffleObjectWriteElementTypeCacheNode(context, isStrict, (Class<? extends TruffleObject>) target.getClass(), writeOwn);
-            } else if (target instanceof Map) {
-                return new MapWriteElementTypeCacheNode(context, isStrict, (Class<? extends Map<Object, Object>>) target.getClass(), writeOwn);
-            } else if (target instanceof List) {
-                return new ListWriteElementTypeCacheNode(context, isStrict, target.getClass(), writeOwn);
-            } else if (JSGuards.isJavaArray(target)) {
-                return new JavaArrayWriteElementTypeCacheNode(context, isStrict, target.getClass(), writeOwn);
             } else {
-                return new ObjectWriteElementTypeCacheNode(context, isStrict, target.getClass(), writeOwn);
+                assert JSTruffleOptions.NashornJavaInterop : target;
+                return new JavaObjectWriteElementTypeCacheNode(context, isStrict, target.getClass(), writeOwn);
             }
         }
     }
@@ -555,197 +544,27 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class ObjectWriteElementTypeCacheNode extends CachedWriteElementTypeCacheNode {
+    private static class JavaObjectWriteElementTypeCacheNode extends CachedWriteElementTypeCacheNode {
         protected final Class<?> targetClass;
 
-        ObjectWriteElementTypeCacheNode(JSContext context, boolean isStrict, Class<?> targetClass, boolean writeOwn) {
+        JavaObjectWriteElementTypeCacheNode(JSContext context, boolean isStrict, Class<?> targetClass, boolean writeOwn) {
             super(context, isStrict, writeOwn);
             this.targetClass = targetClass;
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
-            // throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public final boolean guard(Object target) {
-            // return !(JSObject.isJSObject(target));
-            return targetClass.isInstance(target);
+            JSObject.set(JSJavaWrapper.create(context, target), index, value, isStrict);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
-            executeWithTargetAndIndexAndValue(target, (Object) index, value);
-        }
-    }
-
-    private static class MapWriteElementTypeCacheNode extends CachedWriteElementTypeCacheNode {
-        private final Class<? extends Map<Object, Object>> targetClass;
-        private final Converters.Converter converter;
-
-        MapWriteElementTypeCacheNode(JSContext context, boolean isStrict, Class<? extends Map<Object, Object>> targetClass, boolean writeOwn) {
-            super(context, isStrict, writeOwn);
-            this.targetClass = targetClass;
-            this.converter = Converters.JS_TO_JAVA_CONVERTER;
-        }
-
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
-            Map<Object, Object> map = targetClass.cast(target);
-            Boundaries.mapPut(map, converter.convert(index), converter.convert(value));
+            JSObject.set(JSJavaWrapper.create(context, target), index, value, isStrict);
         }
 
         @Override
         public final boolean guard(Object target) {
             return targetClass.isInstance(target);
-        }
-
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
-            executeWithTargetAndIndexAndValue(target, (Object) index, value);
-        }
-    }
-
-    private static class ListWriteElementTypeCacheNode extends ObjectWriteElementTypeCacheNode {
-        @Child private ToArrayIndexNode toArrayIndexNode;
-        private final ConditionProfile indexProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile outOfBoundsProfile = ConditionProfile.createBinaryProfile();
-
-        ListWriteElementTypeCacheNode(JSContext context, boolean isStrict, Class<?> targetClass, boolean writeOwn) {
-            super(context, isStrict, targetClass, writeOwn);
-            this.toArrayIndexNode = ToArrayIndexNode.create();
-        }
-
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
-            Object convertedIndex = toArrayIndexNode.execute(index);
-            if (indexProfile.profile(convertedIndex instanceof Long && ((Long) convertedIndex).intValue() >= 0)) {
-                @SuppressWarnings("unchecked")
-                List<Object> list = (List<Object>) targetClass.cast(target);
-                Boundaries.listSet(list, ((Long) convertedIndex).intValue(), value);
-            } else {
-                if (outOfBoundsProfile.profile(index instanceof Double && Double.isInfinite(((Double) index).doubleValue()))) {
-                    throwOutOfBoundsException(target, index);
-                }
-                super.executeWithTargetAndIndexUnguarded(target, index, value);
-            }
-        }
-
-        @TruffleBoundary
-        private void throwOutOfBoundsException(Object target, Object index) {
-            @SuppressWarnings("unchecked")
-            List<Object> list = (List<Object>) targetClass.cast(target);
-            throw new IndexOutOfBoundsException("Index: " + (((Double) index).doubleValue() > 0 ? "" : "-") + "Infinity, Size: " + list.size());
-        }
-
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
-            @SuppressWarnings("unchecked")
-            List<Object> list = (List<Object>) targetClass.cast(target);
-            Boundaries.listSet(list, index, value);
-        }
-    }
-
-    private static class JavaArrayWriteElementTypeCacheNode extends ObjectWriteElementTypeCacheNode {
-        @Child private ToArrayIndexNode toArrayIndexNode;
-        @Child private JSToNumberNode valueToNumberNode;
-        @Child private JSToStringNode valueToStringNode;
-        @Child private JSToBooleanNode valueToBooleanNode;
-
-        JavaArrayWriteElementTypeCacheNode(JSContext context, boolean isStrict, Class<?> targetClass, boolean writeOwn) {
-            super(context, isStrict, targetClass, writeOwn);
-            this.toArrayIndexNode = ToArrayIndexNode.create();
-        }
-
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
-            Object convertedIndex = toArrayIndexNode.execute(index);
-            if (convertedIndex instanceof Long && ((Long) convertedIndex).intValue() >= 0) {
-                convertAndSetJavaArray(target, ((Long) convertedIndex).intValue(), value);
-            } else {
-                super.executeWithTargetAndIndexUnguarded(target, index, value);
-            }
-        }
-
-        @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
-            convertAndSetJavaArray(target, index, value);
-        }
-
-        private Number valueToNumber(Object target) {
-            if (valueToNumberNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                valueToNumberNode = insert(JSToNumberNode.create());
-            }
-            return valueToNumberNode.executeNumber(target);
-        }
-
-        private String valueToString(Object target) {
-            if (valueToStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                valueToStringNode = insert(JSToStringNode.create());
-            }
-            return valueToStringNode.executeString(target);
-        }
-
-        private boolean valueToBoolean(Object target) {
-            if (valueToBooleanNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                valueToBooleanNode = insert(JSToBooleanNode.create());
-            }
-            return valueToBooleanNode.executeBoolean(target);
-        }
-
-        private void convertAndSetJavaArray(Object array, int index, Object value) {
-            Object valueConverted;
-            valueConverted = convertIntl(array, value);
-            setJavaArray(array, index, valueConverted);
-        }
-
-        private Object convertIntl(Object array, Object value) {
-            if (array instanceof int[] || array instanceof Integer[]) {
-                return JSRuntime.intValue(valueToNumber(value));
-            } else if (array instanceof long[] || array instanceof Long[]) {
-                return JSRuntime.longValue(valueToNumber(value));
-            } else if (array instanceof byte[] || array instanceof Byte[]) {
-                return valueToNumber(value).byteValue();
-            } else if (array instanceof double[] || array instanceof Double[]) {
-                return JSRuntime.doubleValue(valueToNumber(value));
-            } else if (array instanceof boolean[] || array instanceof Boolean[]) {
-                return valueToBoolean(value);
-            } else if (array instanceof char[] || array instanceof Character[]) {
-                if (value instanceof Number) {
-                    int nr = ((Number) value).intValue();
-                    if (nr >= 0 && nr <= 65535) {
-                        return (char) nr;
-                    } else {
-                        throw Errors.createTypeError("Cannot convert number to character; it is out of 0-65535 range", this);
-                    }
-                } else {
-                    String str = valueToString(value);
-                    if (str.length() == 1) {
-                        return str.charAt(0);
-                    } else {
-                        throw Errors.createTypeError("Cannot convert string to character; its length must be exactly 1", this);
-                    }
-                }
-            } else if (array instanceof short[] || array instanceof Short[]) {
-                return valueToNumber(value).shortValue();
-            } else if (array instanceof float[] || array instanceof Float[]) {
-                return JSRuntime.floatValue(valueToNumber(value));
-            } else if (array instanceof String[]) {
-                return valueToString(value);
-            } else {
-                return value == Null.instance ? null : (JSRuntime.isLazyString(value) ? Boundaries.javaToString(value) : value);
-            }
-        }
-
-        private static void setJavaArray(Object array, int index, Object value) {
-            // see GR-4172
-            if (index >= 0 && index < Array.getLength(array)) {
-                Array.set(array, index, value);
-            }
         }
     }
 
@@ -1699,21 +1518,21 @@ public class WriteElementNode extends JSTargetableNode {
     private static class NumberWriteElementTypeCacheNode extends IndexToStringCachedWriteElementTypeCacheNode {
         private final Class<?> numberClass;
 
-        NumberWriteElementTypeCacheNode(JSContext context, boolean isStrict, Class<?> stringClass, boolean writeOwn) {
+        NumberWriteElementTypeCacheNode(JSContext context, boolean isStrict, Class<?> numberClass, boolean writeOwn) {
             super(context, isStrict, writeOwn);
-            this.numberClass = stringClass;
+            this.numberClass = numberClass;
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
-            Number charSequence = (Number) target;
-            JSObject.set(JSNumber.create(context, charSequence), indexToString(index), value, isStrict, classProfile);
+            Number number = (Number) target;
+            JSObject.set(JSNumber.create(context, number), indexToString(index), value, isStrict, classProfile);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
-            Number charSequence = (Number) target;
-            JSObject.set(JSNumber.create(context, charSequence), index, value, isStrict, classProfile);
+            Number number = (Number) target;
+            JSObject.set(JSNumber.create(context, number), index, value, isStrict, classProfile);
         }
 
         @Override
@@ -1742,6 +1561,35 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         public boolean guard(Object target) {
             return target instanceof Boolean;
+        }
+    }
+
+    private static class SymbolWriteElementTypeCacheNode extends IndexToStringCachedWriteElementTypeCacheNode {
+        SymbolWriteElementTypeCacheNode(JSContext context, boolean isStrict, boolean writeOwn) {
+            super(context, isStrict, writeOwn);
+        }
+
+        @Override
+        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
+            if (isStrict) {
+                throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
+            }
+            Symbol symbol = (Symbol) target;
+            JSObject.set(JSSymbol.create(context, symbol), indexToString(index), value, isStrict, classProfile);
+        }
+
+        @Override
+        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
+            if (isStrict) {
+                throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
+            }
+            Symbol symbol = (Symbol) target;
+            JSObject.set(JSSymbol.create(context, symbol), index, value, isStrict, classProfile);
+        }
+
+        @Override
+        public boolean guard(Object target) {
+            return target instanceof Symbol;
         }
     }
 
