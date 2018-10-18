@@ -167,10 +167,8 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                 state.collator.setStrength(Collator.SECONDARY);
                 break;
             case "case":
-                state.collator.setStrength(Collator.TERTIARY);
-                break;
             case "variant":
-                state.collator.setStrength(state.ignorePunctuation ? Collator.TERTIARY : Collator.IDENTICAL);
+                state.collator.setStrength(Collator.TERTIARY);
                 break;
         }
         if (state.ignorePunctuation) {
