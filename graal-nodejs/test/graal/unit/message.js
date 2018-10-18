@@ -75,4 +75,16 @@ describe('Message', function () {
             assert.strictEqual(typeof line, "string");
         });
     });
+    describe('Get', function () {
+        it('querying simple message', function () {
+            var message = module.Message_Get(throwException);
+            assert.strictEqual(message, 'Uncaught exception');
+        });
+        it('querying RangeError', function () {
+            var message = module.Message_Get(function() {
+                throw new RangeError("out of bounds");
+            });
+            assert.strictEqual(message, 'Uncaught RangeError: out of bounds');
+        });
+    });
 });

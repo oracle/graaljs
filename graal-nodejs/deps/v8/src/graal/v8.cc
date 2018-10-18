@@ -1378,6 +1378,10 @@ namespace v8 {
         return reinterpret_cast<const GraalMessage*> (this)->GetStartColumn();
     }
 
+    Local<String> Message::Get() const {
+        return reinterpret_cast<const GraalMessage*> (this)->Get();
+    }
+
     int StackFrame::GetColumn() const {
         return reinterpret_cast<const GraalStackFrame*> (this)->GetColumn();
     }
@@ -1508,6 +1512,13 @@ namespace v8 {
             return reinterpret_cast<v8::Message*> (graal_message);
         } else {
             return Local<v8::Message>();
+        }
+    }
+
+    void TryCatch::Reset() {
+        if (!rethrow_) {
+            GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
+            graal_isolate->GetJNIEnv()->ExceptionClear();
         }
     }
 

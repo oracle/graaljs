@@ -91,4 +91,11 @@ EXPORT_TO_JS(GetScriptResourceName) {
     args.GetReturnValue().Set(message->GetScriptResourceName());
 }
 
+// Message::Get
+
+EXPORT_TO_JS(Get) {
+    Local<Message> message = createMessage(args);
+    args.GetReturnValue().Set(message->Get());
+}
+
 #undef SUITE

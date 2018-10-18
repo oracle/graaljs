@@ -133,9 +133,17 @@ jobject GraalExecuteFunction(JNIEnv* env, GraalIsolate* isolate, jint id, GraalF
         isolate->ContextEnter(*context);
     }
 
+    // Enter "dummy TryCatch" to ensure that TryCatchExists() returns true
+    // i.e. we do not invoke fatal error handler when the error can be caught
+    // by JavaScript code that invoked this native method
+    isolate->TryCatchEnter();
+
     GraalFunctionCallbackInfo info(args);
     v8::FunctionCallback callback = (v8::FunctionCallback) isolate->GetFunctionTemplateCallback(id);
     callback(info);
+
+    // Exit "dummy TryCatch"
+    isolate->TryCatchExit();
 
     if (context_mismatch) {
         isolate->ContextExit(*context);
