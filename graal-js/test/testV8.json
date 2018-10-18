@@ -552,10 +552,6 @@
     "status" : "SKIP",
     "comment" : "Function.sent"
   }, {
-    "filePath" : "mjsunit/harmony/function-tostring.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
     "filePath" : "mjsunit/harmony/futex.js",
     "status" : "SKIP",
     "comment" : "Some parts use %SetAllowAtomicsWait and %AtomicsNumWaitersForTesting, all other parts pass"
@@ -856,6 +852,10 @@
     "filePath" : "mjsunit/regress/regress-233.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-2470.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, will be fixed by the next update."
   }, {
     "filePath" : "mjsunit/regress/regress-2564.js",
     "status" : "SKIP",

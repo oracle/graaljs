@@ -120,9 +120,8 @@ public final class GraalJSEvaluator implements JSParser {
      */
     @Override
     public ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName) {
-        boolean paramListEndsWithLineComment = false;
         try {
-            paramListEndsWithLineComment = GraalJSParserHelper.checkFunctionSyntax((GraalJSParserOptions) context.getParserOptions(), parameterList, body, generatorFunction, asyncFunction);
+            GraalJSParserHelper.checkFunctionSyntax((GraalJSParserOptions) context.getParserOptions(), parameterList, body, generatorFunction, asyncFunction);
         } catch (com.oracle.js.parser.ParserException e) {
             throw parserToJSError(null, e);
         }
@@ -143,8 +142,8 @@ public final class GraalJSEvaluator implements JSParser {
         }
         code.append('(');
         code.append(parameterList);
-        if (paramListEndsWithLineComment) {
-            code.append('\n');
+        if (!JSTruffleOptions.NashornCompatibilityMode) {
+            code.append(JSRuntime.LINE_SEPARATOR);
         }
         code.append(") {");
         code.append(JSRuntime.LINE_SEPARATOR);

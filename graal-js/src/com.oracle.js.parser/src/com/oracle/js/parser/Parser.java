@@ -422,11 +422,8 @@ public class Parser extends AbstractParser {
      * Errors will be thrown and the error manager will contain information
      * if parsing should fail. This method is used to check if parameter Strings
      * passed to "Function" constructor is a valid or not.
-     *
-     * @return {@code true} if the parameter list ends with a line comment,
-     * returns {@code false} otherwise.
      */
-    public boolean parseFormalParameterList() {
+    public void parseFormalParameterList() {
         try {
             stream = new TokenStream();
             lexer  = new Lexer(source, stream, scripting && env.syntaxExtensions, env.es6, shebang && env.syntaxExtensions);
@@ -434,26 +431,9 @@ public class Parser extends AbstractParser {
             scanFirstToken();
 
             formalParameterList(TokenType.EOF, false, false);
-
-            return finishedWithLineComment();
         } catch (final Exception e) {
             handleParseException(e);
-            return false;
         }
-    }
-
-    private boolean finishedWithLineComment() {
-        assert Token.descType(token) == TokenType.EOF;
-        int index = stream.last();
-        if (index > 0) {
-            // lastButOneToken is not previousToken necessarily
-            // as token/previousToken do not track comments
-            long lastButOneToken = stream.get(index - 1);
-            if (Token.descType(lastButOneToken) == COMMENT) {
-                return source.getString(lastButOneToken).startsWith("//");
-            }
-        }
-        return false;
     }
 
     /**

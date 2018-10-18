@@ -332,7 +332,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @TruffleBoundary
-        private String toStringDefaultTarget(RootCallTarget dct, DynamicObject fnObj) {
+        private static String toStringDefaultTarget(RootCallTarget dct, DynamicObject fnObj) {
             RootNode rn = dct.getRootNode();
             SourceSection ssect = rn.getSourceSection();
             String result;
@@ -340,17 +340,6 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 result = "function " + JSFunction.getName(fnObj) + "() { [native code] }";
             } else {
                 result = ssect.getCharacters().toString();
-                if (getContext().isOptionV8CompatibilityMode() && result.startsWith("function")) {
-                    // Avoid application of this logic to arrow functions
-                    // with one argument whose name starts with "function"
-                    char c = result.charAt(8);
-                    if (Character.isWhitespace(c) || c == '(') {
-                        int index = result.indexOf('(');
-                        if (index != -1) {
-                            result = "function " + result.substring(8, index).trim() + result.substring(index);
-                        }
-                    }
-                }
             }
             return result;
         }
