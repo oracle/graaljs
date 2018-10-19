@@ -50,7 +50,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.truffleinterop.JSLazyStringForeignAccessFactoryForeign;
 
-public final class JSLazyString implements CharSequence, TruffleObject {
+public final class JSLazyString implements CharSequence, TruffleObject, JSLazyStringFlattened, JSLazyStringRaw {
     @TruffleBoundary
     public static CharSequence create(CharSequence left, CharSequence right) {
         assert JSRuntime.isString(left);
@@ -181,7 +181,7 @@ public final class JSLazyString implements CharSequence, TruffleObject {
         return (String) left;
     }
 
-    private boolean isFlat() {
+    public boolean isFlat() {
         return right == null;
     }
 
@@ -326,5 +326,11 @@ public final class JSLazyString implements CharSequence, TruffleObject {
     @Override
     public ForeignAccess getForeignAccess() {
         return JSLazyStringForeignAccessFactoryForeign.ACCESS;
+    }
+
+    @Override
+    public String getFlattenedString() {
+        assert isFlat();
+        return (String) left;
     }
 }
