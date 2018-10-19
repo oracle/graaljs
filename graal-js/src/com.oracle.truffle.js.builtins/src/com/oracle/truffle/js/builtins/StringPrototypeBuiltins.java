@@ -2113,6 +2113,23 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private final BranchProfile noStringBranch = BranchProfile.create();
 
+        @Specialization(guards = "isUndefined(position)")
+        protected boolean startsWithString(String thisObj, String searchStr, @SuppressWarnings("unused") DynamicObject position) {
+            if (searchStr.length() <= 0) {
+                return true;
+            }
+            if (thisObj.length() < searchStr.length()) {
+                return false;
+            }
+
+            for (int i = 0; i < searchStr.length(); i++) {
+                if (thisObj.charAt(i) != searchStr.charAt(i)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         @Specialization
         protected boolean startsWith(Object thisObj, Object searchString, Object position,
                         @Cached("create()") JSToStringNode toString2Node,
