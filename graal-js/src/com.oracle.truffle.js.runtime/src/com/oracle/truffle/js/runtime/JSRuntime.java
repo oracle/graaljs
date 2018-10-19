@@ -1980,6 +1980,14 @@ public final class JSRuntime {
         }
     }
 
+    public static int getOffset(int start, int length, ConditionProfile profile) {
+        if (profile.profile(start < 0)) {
+            return Math.max(start + length, 0);
+        } else {
+            return Math.min(start, length);
+        }
+    }
+
     @TruffleBoundary
     public static long parseSafeInteger(String s) {
         return parseSafeInteger(s, 0, s.length(), 10);

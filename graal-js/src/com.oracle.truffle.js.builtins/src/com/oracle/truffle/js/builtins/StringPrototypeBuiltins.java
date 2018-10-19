@@ -132,6 +132,7 @@ import com.oracle.truffle.js.runtime.builtins.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
@@ -566,6 +567,17 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return pos >= 0 && pos < thisStr.length();
         }
 
+        @Specialization
+        protected Object charCodeAtLazyString(JSLazyString thisStr, int index,
+                        @Cached("createBinaryProfile()") ConditionProfile flatten) {
+            if (indexOutOfBounds.profile(0 > index || index >= thisStr.length())) {
+                return Double.NaN;
+            } else {
+                String s = thisStr.toString(flatten);
+                return Integer.valueOf(s.charAt(index));
+            }
+        }
+
         @Specialization(guards = {"posInBounds(thisStr, pos)"})
         protected int charCodeAtInBounds(String thisStr, int pos) {
             return thisStr.charAt(pos);
@@ -757,11 +769,35 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        private final ConditionProfile posNaN = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile searchStrZero = ConditionProfile.createBinaryProfile();
+        protected boolean isStringLength1(String str) {
+            return str.length() == 1;
+        }
 
-        @Specialization
-        protected int lastIndexOf(Object thisObj, Object searchString, Object position, @Cached("create()") JSToStringNode toString2Node) {
+        // search for a single-character string without position argument.
+        // Use-case: path.js:normalizeString
+        @Specialization(guards = {"isStringLength1(searchString)", "isUndefined(position)"})
+        protected int lastIndexOfString(String thisObj, String searchString, @SuppressWarnings("unused") DynamicObject position) {
+            return lastIndexOfChar(thisObj, searchString, thisObj.length() - 1);
+        }
+
+        private static int lastIndexOfChar(String thisStr, String searchStr, int startPos) {
+            assert searchStr.length() == 1;
+            char searchChar = searchStr.charAt(0);
+            int start = startPos < thisStr.length() ? startPos : thisStr.length() - 1;
+            for (int i = start; i >= 0; i--) {
+                if (thisStr.charAt(i) == searchChar) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        @Specialization(replaces = "lastIndexOfString")
+        protected int lastIndexOf(Object thisObj, Object searchString, Object position,
+                        @Cached("create()") JSToStringNode toString2Node,
+                        @Cached("createBinaryProfile()") ConditionProfile posNaN,
+                        @Cached("createBinaryProfile()") ConditionProfile searchStrZero,
+                        @Cached("createBinaryProfile()") ConditionProfile searchStrOne) {
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
             String searchStr = toString2Node.executeString(searchString);
@@ -783,6 +819,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             if (searchStrZero.profile(searchStr.length() == 0)) {
                 return pos;
+            } else if (searchStrOne.profile(searchStr.length() == 1)) {
+                return lastIndexOfChar(thisStr, searchStr, pos);
             } else {
                 return Boundaries.stringLastIndexOf(thisStr, searchStr, pos);
             }
@@ -2031,6 +2069,24 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
+        protected String sliceString(String str, int start, int end) {
+            int len = str.length();
+            int istart = JSRuntime.getOffset(start, len, offsetProfile1);
+            int iend = JSRuntime.getOffset(end, len, offsetProfile2);
+            if (canReturnEmpty.profile(iend > istart)) {
+                return Boundaries.substring(str, istart, iend);
+            } else {
+                return "";
+            }
+        }
+
+        @Specialization(replaces = "sliceString")
+        protected String sliceObject(Object thisObj, int start, int end) {
+            requireObjectCoercible(thisObj);
+            return sliceString(toString(thisObj), start, end);
+        }
+
+        @Specialization(replaces = {"sliceString", "sliceObject"})
         protected String slice(Object thisObj, Object start, Object end) {
             requireObjectCoercible(thisObj);
             String s = toString(thisObj);
@@ -2057,6 +2113,23 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private final BranchProfile noStringBranch = BranchProfile.create();
 
+        @Specialization(guards = "isUndefined(position)")
+        protected boolean startsWithString(String thisObj, String searchStr, @SuppressWarnings("unused") DynamicObject position) {
+            if (searchStr.length() <= 0) {
+                return true;
+            }
+            if (thisObj.length() < searchStr.length()) {
+                return false;
+            }
+
+            for (int i = 0; i < searchStr.length(); i++) {
+                if (thisObj.charAt(i) != searchStr.charAt(i)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         @Specialization
         protected boolean startsWith(Object thisObj, Object searchString, Object position,
                         @Cached("create()") JSToStringNode toString2Node,
@@ -2065,7 +2138,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String thisStr = toString(thisObj);
             if (isRegExpNode.executeBoolean(searchString)) {
                 noStringBranch.enter();
-                throw Errors.createTypeError("string expected");
+                throw Errors.createTypeErrorStringExpected();
             }
             String searchStr = toString2Node.executeString(searchString);
             int fromIndex = toInteger(position);
@@ -2098,7 +2171,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String thisStr = toString(thisObj);
             if (isRegExpNode.executeBoolean(searchString)) {
                 noStringBranch.enter();
-                throw Errors.createTypeError("string expected");
+                throw Errors.createTypeErrorStringExpected();
             }
             String searchStr = toString2Node.executeString(searchString);
             int fromIndex = toInteger(position);
@@ -2135,7 +2208,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String thisStr = toString(thisObj);
             if (isRegExpNode.executeBoolean(searchString)) {
                 noStringBranch.enter();
-                throw Errors.createTypeError("string expected");
+                throw Errors.createTypeErrorStringExpected();
             }
             String searchStr = toString2Node.executeString(searchString);
             int fromIndex = toInteger(position);
@@ -2570,6 +2643,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached("create()") JSToStringNode toStringNode) {
             return doString(frame, toStringNode.executeString(requireObjectCoercibleNode.execute(thisObj)));
         }
+
     }
 
     static CreateHTMLNode createHTMLNode(JSContext context, JSBuiltin builtin, String tag, String attribute) {
