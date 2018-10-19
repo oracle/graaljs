@@ -64,7 +64,6 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -106,6 +105,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
+import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
@@ -356,6 +356,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         private CachedReadElementTypeCacheNode makeTypeCacheNode(Object target) {
             if (JSObject.isJSObject(target)) {
                 return new JSObjectReadElementTypeCacheNode(context);
+            } else if (target instanceof JSLazyString) {
+                return new LazyStringReadElementTypeCacheNode(context);
             } else if (JSRuntime.isString(target)) {
                 return new StringReadElementTypeCacheNode(context, target.getClass());
             } else if (target instanceof Boolean) {
@@ -1261,9 +1263,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     private static class StringReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
         private final Class<?> stringClass;
-        private final BranchProfile intIndexBranch = BranchProfile.create();
-        private final BranchProfile intIndexInBoundsBranch = BranchProfile.create();
-        private final BranchProfile stringIndexBranch = BranchProfile.create();
+        private final ConditionProfile arrayIndexProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile stringIndexInBounds = ConditionProfile.createBinaryProfile();
         @Child private ToArrayIndexNode toArrayIndexNode;
 
         StringReadElementTypeCacheNode(JSContext context, Class<?> stringClass) {
@@ -1276,26 +1277,21 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
             Object convertedIndex = toArrayIndexNode.execute(index);
-            if (convertedIndex instanceof Long) {
-                intIndexBranch.enter();
+            if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
                 int intIndex = ((Long) convertedIndex).intValue();
-                if (intIndex >= 0 && intIndex < charSequence.length()) {
-                    intIndexInBoundsBranch.enter();
+                if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < charSequence.length())) {
                     return String.valueOf(charSequence.charAt(intIndex));
                 }
             }
-            stringIndexBranch.enter();
             return JSObject.get(JSString.create(context, charSequence), toPropertyKey(convertedIndex), jsclassProfile);
         }
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
-            if (index >= 0 && index < charSequence.length()) {
-                intIndexInBoundsBranch.enter();
+            if (stringIndexInBounds.profile(index >= 0 && index < charSequence.length())) {
                 return String.valueOf(charSequence.charAt(index));
             } else {
-                stringIndexBranch.enter();
                 return JSObject.get(JSString.create(context, charSequence), index, jsclassProfile);
             }
         }
@@ -1303,6 +1299,46 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         public boolean guard(Object target) {
             return stringClass.isInstance(target);
+        }
+    }
+
+    private static class LazyStringReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+        private final ConditionProfile arrayIndexProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile stringIndexInBounds = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isFlatProfile = ConditionProfile.createBinaryProfile();
+        @Child private ToArrayIndexNode toArrayIndexNode;
+
+        LazyStringReadElementTypeCacheNode(JSContext context) {
+            super(context);
+            this.toArrayIndexNode = ToArrayIndexNode.create();
+        }
+
+        @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
+            String charSequence = ((JSLazyString) target).toString(isFlatProfile);
+            Object convertedIndex = toArrayIndexNode.execute(index);
+            if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
+                int intIndex = ((Long) convertedIndex).intValue();
+                if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < charSequence.length())) {
+                    return String.valueOf(charSequence.charAt(intIndex));
+                }
+            }
+            return JSObject.get(JSString.create(context, charSequence), toPropertyKey(convertedIndex), jsclassProfile);
+        }
+
+        @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
+            String charSequence = ((JSLazyString) target).toString(isFlatProfile);
+            if (stringIndexInBounds.profile(index >= 0 && index < charSequence.length())) {
+                return String.valueOf(charSequence.charAt(index));
+            } else {
+                return JSObject.get(JSString.create(context, charSequence), index, jsclassProfile);
+            }
+        }
+
+        @Override
+        public boolean guard(Object target) {
+            return target instanceof JSLazyString;
         }
     }
 
