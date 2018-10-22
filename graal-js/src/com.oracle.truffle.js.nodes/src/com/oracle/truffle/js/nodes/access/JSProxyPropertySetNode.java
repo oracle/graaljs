@@ -82,24 +82,24 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
         this.isStrict = isStrict;
     }
 
-    public abstract boolean executeWithReceiverAndValue(Object proxy, Object receiver, Object value, Object key, boolean floatingCondition);
+    public abstract boolean executeWithReceiverAndValue(Object proxy, Object receiver, Object value, Object key);
 
-    public abstract boolean executeWithReceiverAndValueInt(Object proxy, Object receiver, int value, Object key, boolean floatingCondition);
+    public abstract boolean executeWithReceiverAndValueInt(Object proxy, Object receiver, int value, Object key);
 
-    public abstract boolean executeWithReceiverAndValueIntKey(Object proxy, Object receiver, Object value, int key, boolean floatingCondition);
+    public abstract boolean executeWithReceiverAndValueIntKey(Object proxy, Object receiver, Object value, int key);
 
     public static JSProxyPropertySetNode create(JSContext context, boolean isStrict) {
         return JSProxyPropertySetNodeGen.create(context, isStrict);
     }
 
     @Specialization
-    protected boolean doGeneric(DynamicObject proxy, Object receiver, Object value, Object key, boolean floatingCondition,
+    protected boolean doGeneric(DynamicObject proxy, Object receiver, Object value, Object key,
                     @Cached("createBinaryProfile()") ConditionProfile hasTrap) {
         assert JSProxy.isProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKey(key);
-        DynamicObject handler = JSProxy.getHandler(proxy, floatingCondition);
-        TruffleObject target = JSProxy.getTarget(proxy, floatingCondition);
+        DynamicObject handler = JSProxy.getHandler(proxy);
+        TruffleObject target = JSProxy.getTarget(proxy);
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
             if (JSObject.isJSObject(target)) {
@@ -129,7 +129,7 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
         return JSInteropNodeUtil.write(obj, key, value, writeForeignNode);
     }
 
-    private Object toPropertyKey(Object key) {
+    Object toPropertyKey(Object key) {
         if (toPropertyKeyNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toPropertyKeyNode = insert(JSToPropertyKeyNode.create());

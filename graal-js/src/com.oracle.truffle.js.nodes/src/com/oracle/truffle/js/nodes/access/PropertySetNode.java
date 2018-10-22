@@ -789,7 +789,7 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
         @Override
         public void setValueUnchecked(Object thisObj, Object value, Object receiver, boolean condition) {
             if (isStrict) {
-                throw Errors.createTypeErrorNotWritableProperty(key, thisObj);
+                throw Errors.createTypeErrorNotWritableProperty(key, thisObj, this);
             }
         }
     }
@@ -878,7 +878,6 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
 
     public static final class JSProxyDispatcherPropertySetNode extends LinkedPropertySetNode {
 
-        private final boolean propagateFloatingCondition;
         @Child private JSProxyPropertySetNode proxySet;
         @Child private JSToPropertyKeyNode toPropertyKeyNode;
 
@@ -886,17 +885,16 @@ public abstract class PropertySetNode extends PropertyCacheNode<PropertySetNode>
             super(key, receiverCheckNode);
             this.proxySet = JSProxyPropertySetNode.create(context, isStrict);
             this.toPropertyKeyNode = JSToPropertyKeyNode.create();
-            this.propagateFloatingCondition = receiverCheck instanceof JSClassCheckNode;
         }
 
         @Override
         public void setValueUnchecked(Object thisObj, Object value, Object receiver, boolean condition) {
-            proxySet.executeWithReceiverAndValue(receiverCheck.getStore(thisObj), receiver, value, toPropertyKeyNode.execute(key), propagateFloatingCondition && condition);
+            proxySet.executeWithReceiverAndValue(receiverCheck.getStore(thisObj), receiver, value, toPropertyKeyNode.execute(key));
         }
 
         @Override
         public void setValueUncheckedInt(Object thisObj, int value, Object receiver, boolean condition) {
-            proxySet.executeWithReceiverAndValueInt(receiverCheck.getStore(thisObj), receiver, value, toPropertyKeyNode.execute(key), propagateFloatingCondition && condition);
+            proxySet.executeWithReceiverAndValueInt(receiverCheck.getStore(thisObj), receiver, value, toPropertyKeyNode.execute(key));
         }
     }
 

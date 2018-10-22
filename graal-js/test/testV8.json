@@ -1205,9 +1205,6 @@
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-584188.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-593282.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"

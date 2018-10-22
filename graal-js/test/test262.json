@@ -204,10 +204,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "built-ins/Array/prototype/filter/target-array-with-non-writable-property.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "built-ins/Array/prototype/flat/array-like-objects.js",
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
@@ -277,18 +273,6 @@
     "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "built-ins/Array/prototype/lastIndexOf/calls-only-has-on-prototype-after-length-zeroed.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Array/prototype/map/target-array-with-non-writable-property.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Array/prototype/slice/target-array-with-non-writable-property.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Array/prototype/splice/target-array-with-non-writable-property.js",
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
   }, {

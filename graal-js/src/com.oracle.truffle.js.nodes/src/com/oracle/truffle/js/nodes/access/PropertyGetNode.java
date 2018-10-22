@@ -1012,40 +1012,33 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
     public static final class JSProxyDispatcherPropertyGetNode extends LinkedPropertyGetNode {
 
-        private final boolean propagateFloatingCondition;
         @Child private JSProxyPropertyGetNode proxyGet;
 
         @SuppressWarnings("unused")
         public JSProxyDispatcherPropertyGetNode(JSContext context, Object key, ReceiverCheckNode receiverCheck, boolean isMethod) {
             super(key, receiverCheck);
-            // (db) when the check node is used to check whether the object is JSProxy
-            // (the object, not its prototype!) we can propagate the floating
-            // condition down to avoid the 2nd class check
-            this.propagateFloatingCondition = receiverCheck instanceof JSClassCheckNode;
             this.proxyGet = JSProxyPropertyGetNode.create(context);
         }
 
         @Override
         public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return proxyGet.executeWithReceiver(receiverCheck.getStore(thisObj), receiver, propagateFloatingCondition && floatingCondition, key);
+            return proxyGet.executeWithReceiver(receiverCheck.getStore(thisObj), receiver, key);
         }
 
         @Override
         public int getValueUncheckedInt(Object thisObj, Object receiver, boolean floatingCondition) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(proxyGet.executeWithReceiver(receiverCheck.getStore(thisObj), receiver, propagateFloatingCondition && floatingCondition, key));
+            return JSTypesGen.expectInteger(proxyGet.executeWithReceiver(receiverCheck.getStore(thisObj), receiver, key));
         }
     }
 
     public static final class JSProxyDispatcherRequiredPropertyGetNode extends LinkedPropertyGetNode {
 
-        private final boolean propagateFloatingCondition;
         @Child private JSProxyPropertyGetNode proxyGet;
         @Child private JSProxyHasPropertyNode proxyHas;
 
         @SuppressWarnings("unused")
         public JSProxyDispatcherRequiredPropertyGetNode(JSContext context, Object key, ReceiverCheckNode receiverCheck, boolean isMethod) {
             super(key, receiverCheck);
-            this.propagateFloatingCondition = receiverCheck instanceof JSClassCheckNode;
             this.proxyGet = JSProxyPropertyGetNode.create(context);
             this.proxyHas = JSProxyHasPropertyNode.create(context);
         }
@@ -1054,7 +1047,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
             DynamicObject proxy = receiverCheck.getStore(thisObj);
             if (proxyHas.executeWithTargetAndKeyBoolean(proxy, key)) {
-                return proxyGet.executeWithReceiver(proxy, receiver, propagateFloatingCondition && floatingCondition, key);
+                return proxyGet.executeWithReceiver(proxy, receiver, key);
             } else {
                 throw Errors.createReferenceErrorNotDefined(key, this);
             }

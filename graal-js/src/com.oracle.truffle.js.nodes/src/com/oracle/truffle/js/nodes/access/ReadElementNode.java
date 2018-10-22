@@ -40,15 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.lang.reflect.Array;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -67,9 +64,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -105,12 +100,12 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
-import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
+import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
@@ -192,7 +187,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public Object executeWithTarget(VirtualFrame frame, Object target) {
-        if (indexState == 0) {
+        byte is = indexState;
+        if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Object index = getIndexNode().execute(frame);
             if (index instanceof Integer) {
@@ -202,8 +198,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 indexState = INDEX_OBJECT;
                 return executeWithTargetAndIndex(target, index);
             }
-        }
-        if (indexState == INDEX_INT) {
+        } else if (is == INDEX_INT) {
             int index;
             try {
                 index = getIndexNode().executeInt(frame);
@@ -213,14 +208,15 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
             return executeWithTargetAndIndex(target, index);
         } else {
-            assert indexState == INDEX_OBJECT;
+            assert is == INDEX_OBJECT;
             Object index = getIndexNode().execute(frame);
             return executeWithTargetAndIndex(target, index);
         }
     }
 
     public int executeWithTargetInt(VirtualFrame frame, Object target) throws UnexpectedResultException {
-        if (indexState == 0) {
+        byte is = indexState;
+        if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Object index = getIndexNode().execute(frame);
             if (index instanceof Integer) {
@@ -230,8 +226,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 indexState = INDEX_OBJECT;
                 return executeWithTargetAndIndexInt(target, index);
             }
-        }
-        if (indexState == INDEX_INT) {
+        } else if (is == INDEX_INT) {
             int index;
             try {
                 index = getIndexNode().executeInt(frame);
@@ -241,14 +236,15 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
             return executeWithTargetAndIndexInt(target, index);
         } else {
-            assert indexState == INDEX_OBJECT;
+            assert is == INDEX_OBJECT;
             Object index = getIndexNode().execute(frame);
             return executeWithTargetAndIndexInt(target, index);
         }
     }
 
     public double executeWithTargetDouble(VirtualFrame frame, Object target) throws UnexpectedResultException {
-        if (indexState == 0) {
+        byte is = indexState;
+        if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Object index = getIndexNode().execute(frame);
             if (index instanceof Integer) {
@@ -258,8 +254,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 indexState = INDEX_OBJECT;
                 return executeWithTargetAndIndexDouble(target, index);
             }
-        }
-        if (indexState == INDEX_INT) {
+        } else if (is == INDEX_INT) {
             int index;
             try {
                 index = getIndexNode().executeInt(frame);
@@ -269,7 +264,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
             return executeWithTargetAndIndexDouble(target, index);
         } else {
-            assert indexState == INDEX_OBJECT;
+            assert is == INDEX_OBJECT;
             Object index = getIndexNode().execute(frame);
             return executeWithTargetAndIndexDouble(target, index);
         }
@@ -307,7 +302,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         return typeCacheNode;
     }
 
-    private abstract static class ReadElementCacheNode extends JavaScriptBaseNode {
+    abstract static class ReadElementCacheNode extends JavaScriptBaseNode {
         protected final JSContext context;
 
         protected ReadElementCacheNode(JSContext context) {
@@ -315,7 +310,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private abstract static class ReadElementTypeCacheNode extends ReadElementCacheNode {
+    abstract static class ReadElementTypeCacheNode extends ReadElementCacheNode {
         protected ReadElementTypeCacheNode(JSContext context) {
             super(context);
         }
@@ -353,16 +348,16 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
 
             CachedReadElementTypeCacheNode specialized = makeTypeCacheNode(target);
-
-            return this.replace(specialized).executeWithTargetAndIndex(target, index);
+            this.replace(specialized);
+            return specialized.executeWithTargetAndIndex(target, index);
         }
 
         @SuppressWarnings("unchecked")
         private CachedReadElementTypeCacheNode makeTypeCacheNode(Object target) {
-            if (JSProxy.isProxy(target)) {
-                return new ProxyReadElementNode(context);
-            } else if (JSObject.isJSObject(target)) {
+            if (JSObject.isJSObject(target)) {
                 return new JSObjectReadElementTypeCacheNode(context);
+            } else if (target instanceof JSLazyString) {
+                return new LazyStringReadElementTypeCacheNode(context);
             } else if (JSRuntime.isString(target)) {
                 return new StringReadElementTypeCacheNode(context, target.getClass());
             } else if (target instanceof Boolean) {
@@ -374,55 +369,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             } else if (target instanceof TruffleObject) {
                 assert !(target instanceof Symbol);
                 return new TruffleObjectReadElementTypeCacheNode(context, (Class<? extends TruffleObject>) target.getClass());
-            } else if (target instanceof Map) {
-                return new MapReadElementTypeCacheNode(context, (Class<? extends Map<?, ?>>) target.getClass());
-            } else if (target instanceof List) {
-                return new ListReadElementTypeCacheNode(context, (Class<? extends List<?>>) target.getClass());
-            } else if (JSGuards.isJavaArray(target)) {
-                return new JavaArrayReadElementTypeCacheNode(context, target.getClass());
             } else {
-                return new ObjectReadElementTypeCacheNode(context, target.getClass());
+                assert JSTruffleOptions.NashornJavaInterop : target;
+                return new JavaObjectReadElementTypeCacheNode(context, target.getClass());
             }
         }
     }
 
-    private static class ProxyReadElementNode extends CachedReadElementTypeCacheNode {
-
-        @Child private JSProxyPropertyGetNode proxyGet;
-
-        protected ProxyReadElementNode(JSContext context) {
-            super(context);
-            this.proxyGet = JSProxyPropertyGetNode.create(context);
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
-            return proxyGet.executeWithReceiver(target, target, true, index);
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
-            return proxyGet.executeWithReceiverInt(target, target, true, index);
-        }
-
-        @Override
-        protected int executeWithTargetAndIndexUncheckedInt(Object target, int index) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(proxyGet.executeWithReceiverInt(target, target, true, index));
-        }
-
-        @Override
-        protected int executeWithTargetAndIndexUncheckedInt(Object target, Object index) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(proxyGet.executeWithReceiver(target, target, true, index));
-        }
-
-        @Override
-        public boolean guard(Object target) {
-            return JSProxy.isProxy(target);
-        }
-
-    }
-
-    private abstract static class CachedReadElementTypeCacheNode extends ReadElementTypeCacheNode {
+    abstract static class CachedReadElementTypeCacheNode extends ReadElementTypeCacheNode {
         @Child private ReadElementTypeCacheNode typeCacheNext;
 
         CachedReadElementTypeCacheNode(JSContext context) {
@@ -717,10 +671,10 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private static class ObjectReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+    private static class JavaObjectReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
         protected final Class<?> targetClass;
 
-        ObjectReadElementTypeCacheNode(JSContext context, Class<?> targetClass) {
+        JavaObjectReadElementTypeCacheNode(JSContext context, Class<?> targetClass) {
             super(context);
             this.targetClass = targetClass;
         }
@@ -731,113 +685,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
+            return JSObject.get(JSJavaWrapper.create(context, target), index);
+        }
+
+        @Override
         public final boolean guard(Object target) {
-            // return !(JSObject.isJSObject(target));
             return targetClass.isInstance(target);
         }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
-            return executeWithTargetAndIndex(target, (Object) index);
-        }
-    }
-
-    private static class MapReadElementTypeCacheNode extends ObjectReadElementTypeCacheNode {
-        MapReadElementTypeCacheNode(JSContext context, Class<? extends Map<?, ?>> targetClass) {
-            super(context, targetClass);
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
-            Map<?, ?> map = (Map<?, ?>) targetClass.cast(target);
-            Object key = JSRuntime.toJavaNull(index);
-            Object value = Boundaries.mapGet(map, key);
-            if (value == null && key instanceof CharSequence) {
-                // TODO optimize this
-                return super.executeWithTargetAndIndexUnchecked(target, index);
-            }
-            return JSRuntime.toJSNull(value);
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
-            return executeWithTargetAndIndex(target, (Object) index);
-        }
-    }
-
-    private static class ListReadElementTypeCacheNode extends ObjectReadElementTypeCacheNode {
-        @Child private ToArrayIndexNode toArrayIndexNode;
-        private final ConditionProfile indexProfile = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile outOfBoundsProfile = ConditionProfile.createBinaryProfile();
-
-        ListReadElementTypeCacheNode(JSContext context, Class<? extends List<?>> targetClass) {
-            super(context, targetClass);
-            this.toArrayIndexNode = ToArrayIndexNode.create();
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
-            Object convertedIndex = toArrayIndexNode.execute(index);
-            if (indexProfile.profile(convertedIndex instanceof Long && ((Long) convertedIndex).intValue() >= 0)) {
-                List<?> list = ((List<?>) targetClass.cast(target));
-                Object value = Boundaries.listGet(list, ((Long) convertedIndex).intValue());
-                return JSRuntime.toJSNull(value);
-            } else {
-                if (outOfBoundsProfile.profile(index instanceof Double && Double.isInfinite(((Double) index).doubleValue()))) {
-                    indexOutOfBoundsException(target, index);
-                }
-                return super.executeWithTargetAndIndexUnchecked(target, index);
-            }
-        }
-
-        @TruffleBoundary
-        private void indexOutOfBoundsException(Object target, Object index) {
-            @SuppressWarnings("unchecked")
-            List<Object> list = (List<Object>) targetClass.cast(target);
-            throw new IndexOutOfBoundsException("Index: " + (((Double) index).doubleValue() > 0 ? "" : "-") + "Infinity, Size: " + list.size());
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
-            Object value = Boundaries.listGet(((List<?>) targetClass.cast(target)), index);
-            return JSRuntime.toJSNull(value);
-        }
-    }
-
-    private static class JavaArrayReadElementTypeCacheNode extends ObjectReadElementTypeCacheNode {
-        @Child private ToArrayIndexNode toArrayIndexNode;
-        private final ConditionProfile indexProfile = ConditionProfile.createBinaryProfile();
-
-        JavaArrayReadElementTypeCacheNode(JSContext context, Class<?> targetClass) {
-            super(context, targetClass);
-            this.toArrayIndexNode = ToArrayIndexNode.create();
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
-            Object convertedIndex = toArrayIndexNode.execute(index);
-            if (indexProfile.profile(convertedIndex instanceof Long && ((Long) convertedIndex).intValue() >= 0)) {
-                return arrayGet(target, ((Long) convertedIndex).intValue());
-            } else {
-                return super.executeWithTargetAndIndexUnchecked(target, index);
-            }
-        }
-
-        @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
-            return arrayGet(target, index);
-        }
-
-        private static Object arrayGet(Object array, int index) {
-            if (index >= 0 && index < Array.getLength(array)) {
-                Object value = Array.get(array, index);
-                return JSRuntime.toJSNull(value);
-            } else {
-                // see GR-4172
-                return Undefined.instance;
-            }
-        }
-
     }
 
     abstract static class ArrayReadElementCacheNode extends ReadElementCacheNode {
@@ -900,8 +755,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             } else {
                 selection = new ExactArrayReadElementCacheNode(context, array);
             }
-            purgeStaleCacheEntries(target);
-            this.replace(selection);
+            Lock lock = getLock();
+            try {
+                lock.lock();
+                purgeStaleCacheEntries(target);
+                this.replace(selection);
+            } finally {
+                lock.unlock();
+            }
             return selection.executeWithTargetAndArrayAndIndex(target, array, index, arrayCondition);
         }
 
@@ -1402,9 +1263,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     private static class StringReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
         private final Class<?> stringClass;
-        private final BranchProfile intIndexBranch = BranchProfile.create();
-        private final BranchProfile intIndexInBoundsBranch = BranchProfile.create();
-        private final BranchProfile stringIndexBranch = BranchProfile.create();
+        private final ConditionProfile arrayIndexProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile stringIndexInBounds = ConditionProfile.createBinaryProfile();
         @Child private ToArrayIndexNode toArrayIndexNode;
 
         StringReadElementTypeCacheNode(JSContext context, Class<?> stringClass) {
@@ -1417,26 +1277,21 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
             Object convertedIndex = toArrayIndexNode.execute(index);
-            if (convertedIndex instanceof Long) {
-                intIndexBranch.enter();
+            if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
                 int intIndex = ((Long) convertedIndex).intValue();
-                if (intIndex >= 0 && intIndex < charSequence.length()) {
-                    intIndexInBoundsBranch.enter();
+                if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < charSequence.length())) {
                     return String.valueOf(charSequence.charAt(intIndex));
                 }
             }
-            stringIndexBranch.enter();
             return JSObject.get(JSString.create(context, charSequence), toPropertyKey(convertedIndex), jsclassProfile);
         }
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
-            if (index >= 0 && index < charSequence.length()) {
-                intIndexInBoundsBranch.enter();
+            if (stringIndexInBounds.profile(index >= 0 && index < charSequence.length())) {
                 return String.valueOf(charSequence.charAt(index));
             } else {
-                stringIndexBranch.enter();
                 return JSObject.get(JSString.create(context, charSequence), index, jsclassProfile);
             }
         }
@@ -1444,6 +1299,46 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         public boolean guard(Object target) {
             return stringClass.isInstance(target);
+        }
+    }
+
+    private static class LazyStringReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+        private final ConditionProfile arrayIndexProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile stringIndexInBounds = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isFlatProfile = ConditionProfile.createBinaryProfile();
+        @Child private ToArrayIndexNode toArrayIndexNode;
+
+        LazyStringReadElementTypeCacheNode(JSContext context) {
+            super(context);
+            this.toArrayIndexNode = ToArrayIndexNode.create();
+        }
+
+        @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
+            String charSequence = ((JSLazyString) target).toString(isFlatProfile);
+            Object convertedIndex = toArrayIndexNode.execute(index);
+            if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
+                int intIndex = ((Long) convertedIndex).intValue();
+                if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < charSequence.length())) {
+                    return String.valueOf(charSequence.charAt(intIndex));
+                }
+            }
+            return JSObject.get(JSString.create(context, charSequence), toPropertyKey(convertedIndex), jsclassProfile);
+        }
+
+        @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
+            String charSequence = ((JSLazyString) target).toString(isFlatProfile);
+            if (stringIndexInBounds.profile(index >= 0 && index < charSequence.length())) {
+                return String.valueOf(charSequence.charAt(index));
+            } else {
+                return JSObject.get(JSString.create(context, charSequence), index, jsclassProfile);
+            }
+        }
+
+        @Override
+        public boolean guard(Object target) {
+            return target instanceof JSLazyString;
         }
     }
 
@@ -1522,7 +1417,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private static class TruffleObjectReadElementTypeCacheNode extends CachedReadElementTypeCacheNode {
+    static class TruffleObjectReadElementTypeCacheNode extends CachedReadElementTypeCacheNode {
         private final Class<? extends TruffleObject> targetClass;
 
         @Child private Node foreignIsNull;
