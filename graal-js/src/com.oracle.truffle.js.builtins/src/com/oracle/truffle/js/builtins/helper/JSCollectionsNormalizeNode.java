@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
@@ -66,8 +68,9 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    public String doJSLazyString(JSLazyString value) {
-        return value.toString();
+    public String doJSLazyString(JSLazyString value,
+                    @Cached("createBinaryProfile()") ConditionProfile flatten) {
+        return value.toString(flatten);
     }
 
     @Specialization

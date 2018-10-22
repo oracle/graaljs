@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -204,6 +205,26 @@ public final class Boundaries {
     @TruffleBoundary
     public static int stringCodePointAt(String s, int pos) {
         return s.codePointAt(pos);
+    }
+
+    @TruffleBoundary
+    public static String stringToLowerCase(String s) {
+        return s.toLowerCase();
+    }
+
+    @TruffleBoundary
+    public static String stringToLowerCase(String s, Locale locale) {
+        return s.toLowerCase(locale);
+    }
+
+    @TruffleBoundary
+    public static String stringToUpperCase(String s) {
+        return s.toUpperCase();
+    }
+
+    @TruffleBoundary
+    public static String stringToUpperCase(String s, Locale locale) {
+        return s.toUpperCase(locale);
     }
 
     @TruffleBoundary
