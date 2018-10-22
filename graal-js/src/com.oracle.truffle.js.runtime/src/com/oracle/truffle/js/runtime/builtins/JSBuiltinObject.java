@@ -245,7 +245,11 @@ public abstract class JSBuiltinObject extends JSClass {
     @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
-        return set(thisObj, String.valueOf(index), value, receiver, isStrict);
+        Object key = String.valueOf(index);
+        if (setOwn(thisObj, key, value, receiver, isStrict)) {
+            return true;
+        }
+        return setPropertySlow(thisObj, key, value, receiver, isStrict, true);
     }
 
     @TruffleBoundary
@@ -266,10 +270,10 @@ public abstract class JSBuiltinObject extends JSClass {
         if (setOwn(thisObj, key, value, receiver, isStrict)) {
             return true;
         }
-        return setPropertySlow(thisObj, key, value, receiver, isStrict);
+        return setPropertySlow(thisObj, key, value, receiver, isStrict, false);
     }
 
-    private static boolean setPropertySlow(DynamicObject thisObj, Object name, Object value, Object receiver, boolean isStrict) {
+    private static boolean setPropertySlow(DynamicObject thisObj, Object name, Object value, Object receiver, boolean isStrict, boolean isIndex) {
         if (setPropertyPrototypes(thisObj, name, value, receiver, isStrict)) {
             return true;
         }
@@ -283,7 +287,7 @@ public abstract class JSBuiltinObject extends JSClass {
 
         if (JSTruffleOptions.DictionaryObject) {
             boolean isDictionaryObject = JSDictionaryObject.isJSDictionaryObject(thisObj);
-            if (!isDictionaryObject && isDictionaryObjectCandidate(thisObj, name)) {
+            if (!isDictionaryObject && isDictionaryObjectCandidate(thisObj, isIndex)) {
                 JSDictionaryObject.makeDictionaryObject(thisObj, "set");
                 isDictionaryObject = true;
             }
@@ -338,7 +342,7 @@ public abstract class JSBuiltinObject extends JSClass {
         }
     }
 
-    private static boolean isDictionaryObjectCandidate(DynamicObject thisObj, Object name) {
+    private static boolean isDictionaryObjectCandidate(DynamicObject thisObj, boolean isIndex) {
         if (!JSTruffleOptions.DictionaryObject) {
             return false;
         }
@@ -348,7 +352,7 @@ public abstract class JSBuiltinObject extends JSClass {
         }
 
         int count = thisObj.getShape().getPropertyCount();
-        return (count == JSTruffleOptions.DictionaryObjectThreshold) || (count == 0 && JSRuntime.propertyKeyToIntegerIndex(name) != JSRuntime.INVALID_INTEGER_INDEX);
+        return (count == JSTruffleOptions.DictionaryObjectThreshold) || (count == 0 && isIndex);
     }
 
     @Override
