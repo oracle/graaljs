@@ -70,12 +70,6 @@ import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
 public abstract class JSBuiltinObject extends JSClass {
 
-    /**
-     * If more than {@code threshold} properties are added to object, transition to a hash map.
-     */
-    private static final int DICTIONARY_TRANSITION_THRESHOLD = 400;
-    private static final int DICTIONARY_TRANSITION_MAXIMUM = DICTIONARY_TRANSITION_THRESHOLD + 1;
-
     protected JSBuiltinObject() {
     }
 
@@ -354,7 +348,7 @@ public abstract class JSBuiltinObject extends JSClass {
         }
 
         int count = thisObj.getShape().getPropertyCount();
-        return (count >= DICTIONARY_TRANSITION_THRESHOLD && count < DICTIONARY_TRANSITION_MAXIMUM) || (count == 0 && JSRuntime.propertyKeyToIntegerIndex(name) != JSRuntime.INVALID_INTEGER_INDEX);
+        return (count == JSTruffleOptions.DictionaryObjectThreshold) || (count == 0 && JSRuntime.propertyKeyToIntegerIndex(name) != JSRuntime.INVALID_INTEGER_INDEX);
     }
 
     @Override

@@ -91,6 +91,8 @@ public class JSTruffleOptions {
     /** Try to cache by function object instead of call target. */
     public static final boolean FunctionCacheOnInstance = booleanOption("FunctionCacheOnInstance", true, 0);
     public static final boolean DictionaryObject = booleanOption("DictionaryObject", true, OPTION_PERFORMANCE);
+    /** Migrate objects to dictionary mode when the number of properties exceeds this threshold. */
+    public static final int DictionaryObjectThreshold = integerOption("DictionaryObjectThreshold", 256, OPTION_LIMIT);
     public static final boolean TraceDictionaryObject = booleanOption("TraceDictionaryObject", false, 0);
     public static final boolean MergeShapes = booleanOption("MergeShapes", true, 0);
 
