@@ -113,8 +113,7 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
 
     public boolean isSplitImmediately() {
         if (JSTruffleOptions.RestrictForceSplittingBuiltins) {
-            // TODO find a better way to identify builins we wanna split, name may not be reliable.
-            return functionData.isBuiltin() && functionData.getName().equals("call");
+            return false;
         }
         return functionData.isBuiltin();
 
