@@ -791,6 +791,11 @@ public final class JSFunction extends JSBuiltinObject {
         return source;
     }
 
+    @Override
+    public boolean hasOnlyShapeProperties(DynamicObject obj) {
+        return true;
+    }
+
     public static CallTarget getConstructTarget(DynamicObject obj) {
         return getFunctionData(obj).getConstructTarget();
     }
