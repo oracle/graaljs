@@ -115,6 +115,7 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static HiddenKey doHiddenKey(HiddenKey value) {
+        assert false : value;
         return value;
     }
 

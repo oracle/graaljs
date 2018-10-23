@@ -62,7 +62,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSTypesGen;
@@ -488,7 +487,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
             DynamicObject targetObject = (DynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
-            if (arrayProfile.profile(arrayCondition && !(index instanceof HiddenKey))) {
+            if (arrayProfile.profile(arrayCondition)) {
                 ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
                 Object objIndex = toArrayIndex(index);
 
@@ -542,7 +541,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected int executeWithTargetAndIndexUncheckedInt(Object target, Object index) throws UnexpectedResultException {
             DynamicObject targetObject = (DynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
-            if (arrayProfile.profile(arrayCondition && !(index instanceof HiddenKey))) {
+            if (arrayProfile.profile(arrayCondition)) {
                 ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
                 Object objIndex = toArrayIndex(index);
 
@@ -577,7 +576,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected double executeWithTargetAndIndexUncheckedDouble(Object target, Object index) throws UnexpectedResultException {
             DynamicObject targetObject = (DynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
-            if (arrayProfile.profile(arrayCondition && !(index instanceof HiddenKey))) {
+            if (arrayProfile.profile(arrayCondition)) {
                 ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
                 Object objIndex = toArrayIndex(index);
 

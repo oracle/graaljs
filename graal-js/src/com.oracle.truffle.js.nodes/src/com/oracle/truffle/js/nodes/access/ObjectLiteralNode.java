@@ -637,8 +637,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
     @Children private final ObjectLiteralMemberNode[] members;
     @Child private CreateObjectNode objectCreateNode;
 
-    private static final int DICTIONARY_OBJECT_THRESHOLD = 400;
-
     public ObjectLiteralNode(ObjectLiteralMemberNode[] members, CreateObjectNode objectCreateNode) {
         this.members = members;
         this.objectCreateNode = objectCreateNode;
@@ -648,7 +646,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         if (members.length > 0 && members[0] instanceof ObjectLiteralProtoMemberNode) {
             return new ObjectLiteralNode(Arrays.copyOfRange(members, 1, members.length),
                             CreateObjectNode.createWithCachedPrototype(context, ((ObjectLiteralProtoMemberNode) members[0]).valueNode));
-        } else if (JSTruffleOptions.DictionaryObject && members.length > DICTIONARY_OBJECT_THRESHOLD && onlyDataMembers(members)) {
+        } else if (JSTruffleOptions.DictionaryObject && members.length > JSTruffleOptions.DictionaryObjectThreshold && onlyDataMembers(members)) {
             return createDictionaryObject(context, members);
         } else {
             return new ObjectLiteralNode(members, CreateObjectNode.create(context));

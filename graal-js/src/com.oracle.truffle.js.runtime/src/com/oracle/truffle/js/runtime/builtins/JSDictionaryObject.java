@@ -244,7 +244,8 @@ public final class JSDictionaryObject extends JSBuiltinObject {
 
     public static void makeDictionaryObject(DynamicObject obj, String reason) {
         CompilerAsserts.neverPartOfCompilation();
-        if (!JSTruffleOptions.DictionaryObject) {
+        assert JSTruffleOptions.DictionaryObject;
+        if (!JSUserObject.isJSUserObject(obj)) {
             return;
         }
 
@@ -254,22 +255,14 @@ public final class JSDictionaryObject extends JSBuiltinObject {
 
         Shape currentShape = obj.getShape();
         assert !isJSDictionaryObject(obj) && currentShape.getProperty(HASHMAP_PROPERTY_NAME) == null;
-        Property prototypeProperty = JSShape.getPrototypeProperty(currentShape);
-        Shape hashedShape;
-        DynamicObject prototype = (DynamicObject) prototypeProperty.get(obj, false);
-        Property hashMapProperty = null;
-        if (prototype == Null.instance) {
-            JSContext context = JSObject.getJSContext(obj);
-            hashedShape = context.makeEmptyShapeWithNullPrototype(INSTANCE);
-            hashMapProperty = hashedShape.getProperty(HASHMAP_PROPERTY_NAME);
-        } else {
-            hashedShape = JSShape.makeUniqueRoot(currentShape.getLayout(), JSDictionaryObject.INSTANCE, JSShape.getJSContext(currentShape), prototypeProperty);
-        }
+        JSContext context = JSObject.getJSContext(obj);
+        Shape hashedShape = makeEmptyShapeForNewType(context, currentShape, JSDictionaryObject.INSTANCE);
 
+        EconomicMap<Object, PropertyDescriptor> hashMap = newHashMap();
         List<Property> properties = currentShape.getPropertyListInternal(true);
-        EconomicMap<Object, PropertyDescriptor> hashMap = EconomicMap.create();
         for (Property p : properties) {
-            if (p.equals(prototypeProperty)) {
+            if (JSObject.HIDDEN_PROTO.equals(p.getKey())) {
+                assert hashedShape.hasProperty(p.getKey());
                 continue; // has already been added
             } else if (p.isHidden() || p.getLocation().isValue()) {
                 hashedShape = hashedShape.addProperty(p);
@@ -280,10 +273,8 @@ public final class JSDictionaryObject extends JSBuiltinObject {
             }
         }
 
-        if (hashMapProperty == null) {
-            hashedShape = hashedShape.addProperty(JSObjectUtil.makeHiddenProperty(HASHMAP_PROPERTY_NAME, hashedShape.allocator().locationForType(hashMap.getClass()), true));
-            hashMapProperty = hashedShape.getLastProperty();
-        }
+        hashedShape = hashedShape.addProperty(JSObjectUtil.makeHiddenProperty(HASHMAP_PROPERTY_NAME, hashedShape.allocator().locationForType(hashMap.getClass()), true));
+        Property hashMapProperty = hashedShape.getLastProperty();
         assert isHashMapProperty(hashMapProperty);
 
         obj.setShapeAndResize(currentShape, hashedShape);
@@ -296,6 +287,20 @@ public final class JSDictionaryObject extends JSBuiltinObject {
         }
 
         assert isJSDictionaryObject(obj) && obj.getShape().getProperty(HASHMAP_PROPERTY_NAME) != null;
+    }
+
+    private static Shape makeEmptyShapeForNewType(JSContext context, Shape currentShape, JSClass jsclass) {
+        Property prototypeProperty = JSShape.getPrototypeProperty(currentShape);
+        if (!prototypeProperty.getLocation().isConstant()) {
+            return context.makeEmptyShapeWithPrototypeInObject(jsclass, prototypeProperty);
+        } else {
+            DynamicObject prototype = (DynamicObject) prototypeProperty.get(null, false);
+            if (prototype == Null.instance) {
+                return context.makeEmptyShapeWithNullPrototype(jsclass);
+            } else {
+                return JSObjectUtil.getProtoChildShape(prototype, jsclass, context);
+            }
+        }
     }
 
     private static PropertyDescriptor toPropertyDescriptor(Property p, Object value) {
@@ -319,14 +324,15 @@ public final class JSDictionaryObject extends JSBuiltinObject {
 
         EconomicMap<Object, PropertyDescriptor> hashMap = getHashMap(obj);
         Shape oldShape = obj.getShape();
-        Property prototypeProperty = JSShape.getPrototypeProperty(oldShape);
-        Shape newShape = JSShape.makeUniqueRoot(oldShape.getLayout(), JSUserObject.INSTANCE, JSShape.getJSContext(oldShape), prototypeProperty);
+        JSContext context = JSObject.getJSContext(obj);
+        Shape newShape = makeEmptyShapeForNewType(context, oldShape, JSUserObject.INSTANCE);
 
         List<Property> properties = oldShape.getPropertyListInternal(true);
         for (Property p : properties) {
-            if (p.equals(prototypeProperty)) {
+            if (JSObject.HIDDEN_PROTO.equals(p.getKey())) {
+                assert newShape.hasProperty(p.getKey());
                 continue; // has already been added
-            } else if (!p.getKey().equals(HASHMAP_PROPERTY_NAME)) {
+            } else if (!HASHMAP_PROPERTY_NAME.equals(p.getKey())) {
                 newShape = newShape.addProperty(p);
             }
         }
@@ -356,6 +362,10 @@ public final class JSDictionaryObject extends JSBuiltinObject {
     }
 
     public static DynamicObject create(JSContext context) {
-        return JSObject.create(context, context.getDictionaryObjectFactory(), EconomicMap.create());
+        return JSObject.create(context, context.getDictionaryObjectFactory(), newHashMap());
+    }
+
+    private static EconomicMap<Object, PropertyDescriptor> newHashMap() {
+        return EconomicMap.create();
     }
 }

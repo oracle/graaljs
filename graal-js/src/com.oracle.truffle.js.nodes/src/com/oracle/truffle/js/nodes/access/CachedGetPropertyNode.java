@@ -54,7 +54,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 @ImportStatic(JSRuntime.class)
-public abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
+abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     static final int MAX_DEPTH = 2;
 
     protected final JSContext context;
@@ -65,7 +65,7 @@ public abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
 
     public abstract Object execute(DynamicObject target, Object propertyKey);
 
-    public static CachedGetPropertyNode create(JSContext context) {
+    static CachedGetPropertyNode create(JSContext context) {
         return CachedGetPropertyNodeGen.create(context);
     }
 
