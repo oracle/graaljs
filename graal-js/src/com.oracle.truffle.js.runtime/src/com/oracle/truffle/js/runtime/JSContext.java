@@ -253,8 +253,8 @@ public class JSContext {
     private List<JSRealm> realmList;
 
     final Assumption noChildRealmsAssumption;
-    final Assumption singleRealmAssumption;
-    final boolean isMultiContext;
+    private final Assumption singleRealmAssumption;
+    private final boolean isMultiContext;
 
     private final AtomicInteger realmInit = new AtomicInteger();
     private static final int REALM_UNINITIALIZED = 0;

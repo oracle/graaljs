@@ -59,7 +59,6 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
     public static final JSPromise INSTANCE = new JSPromise();
 
     public static final String RESOLVE = "resolve";
-    public static final String REJECT = "reject";
     public static final String THEN = "then";
 
     public static final HiddenKey PROMISE_STATE = new HiddenKey("PromiseState");
