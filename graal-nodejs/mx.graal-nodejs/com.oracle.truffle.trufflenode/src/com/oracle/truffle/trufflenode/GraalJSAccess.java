@@ -1312,11 +1312,7 @@ public final class GraalJSAccess {
 
     private Object exceptionCreate(JSRealm realm, JSErrorType errorType, Object message) {
         DynamicObject error = JSError.create(errorType, realm, message);
-        Object stack = JSObject.get(error, JSError.STACK_NAME);
-        if (stack == Undefined.instance) {
-            stack = String.format("%s: %s\n    at %s (native)", errorType, message, errorType);
-            JSObject.set(error, JSError.STACK_NAME, stack);
-        }
+        assert JSError.getException(error) != null;
         return error;
     }
 

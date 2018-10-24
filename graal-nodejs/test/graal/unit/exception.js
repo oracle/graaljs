@@ -49,6 +49,20 @@ describe('Exception', function () {
             assert.strictEqual(err instanceof Error, true);
             assert.strictEqual(err.hasOwnProperty("message"), true);
         });
+        it('should not call Error.prepareStackTrace eagerly', function () {
+            try {
+                Error.prepareStackTrace = function() {
+                    return "someStack";
+                };
+                var err = module.Exception_Error("TestMessage");
+                Error.prepareStackTrace = function() {
+                    return "anotherStack";
+                };
+                assert.strictEqual(err.stack, "anotherStack");
+            } finally {
+                delete Error.prepareStackTrace;
+            }
+        });
     });
     describe('RangeError', function () {
         it('create a RangeError object', function () {
