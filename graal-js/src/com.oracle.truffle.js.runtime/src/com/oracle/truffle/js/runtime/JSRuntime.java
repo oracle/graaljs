@@ -2170,20 +2170,11 @@ public final class JSRuntime {
     /**
      * ES2016, 7.3.7 DefinePropertyOrThrow(O, P, desc).
      */
-    public static void definePropertyOrThrow(DynamicObject o, Object key, PropertyDescriptor desc, JSContext context) {
-        definePropertyOrThrow(o, key, desc, context, "Cannot DefineOwnProperty");
-    }
-
-    @TruffleBoundary
-    public static void definePropertyOrThrow(DynamicObject o, Object key, PropertyDescriptor desc, JSContext context, String message) {
+    public static void definePropertyOrThrow(DynamicObject o, Object key, PropertyDescriptor desc) {
         assert JSRuntime.isObject(o);
         assert JSRuntime.isPropertyKey(key);
-        if (context.isOptionV8CompatibilityMode()) {
-            boolean success = JSObject.getJSClass(o).defineOwnProperty(o, key, desc, true);
-            assert success; // we should have thrown instead of returning false
-        } else if (!JSObject.getJSClass(o).defineOwnProperty(o, key, desc, false)) {
-            throw Errors.createTypeError(message);
-        }
+        boolean success = JSObject.getJSClass(o).defineOwnProperty(o, key, desc, true);
+        assert success; // we should have thrown instead of returning false
     }
 
     public static boolean isPrototypeOf(DynamicObject object, DynamicObject prototype) {
