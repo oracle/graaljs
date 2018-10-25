@@ -282,10 +282,17 @@ public abstract class JSNewNode extends JavaScriptNode {
         return JSInteropUtil.createNew();
     }
 
+    @TruffleBoundary
     @Specialization(guards = {"!isJSFunction(target)", "!isJavaClass(target)", "!isJSAdapter(target)", "!isProxy(target)", "!isJavaPackage(target)", "!isJavaConstructor(target)",
                     "!isForeignObject(target)"})
     public Object createFunctionTypeError(Object target) {
-        throw Errors.createTypeErrorNotAFunction(target, this);
+        String targetStr = getTarget().expressionToString();
+        Object targetForError = targetStr == null ? target : targetStr;
+        if (context.isOptionNashornCompatibilityMode()) {
+            throw Errors.createTypeErrorNotAFunction(targetForError, this);
+        } else {
+            throw Errors.createTypeErrorNotAConstructor(targetForError, this);
+        }
     }
 
     private Object[] getAbstractFunctionArguments(VirtualFrame frame) {
