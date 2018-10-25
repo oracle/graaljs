@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.CompiledRegexObject;
 import com.oracle.truffle.regex.RegexExecRootNode;
-import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.RegexSource;
@@ -68,11 +67,6 @@ public abstract class JoniRegexExecRootNode extends RegexExecRootNode {
     public JoniRegexExecRootNode(RegexLanguage language, RegexSource source, boolean sticky) {
         super(language, source);
         this.sticky = sticky;
-    }
-
-    @Override
-    protected boolean sourceIsUnicode(RegexObject regex) {
-        return regex.getSource().getFlags().isUnicode();
     }
 
     @Override
@@ -110,7 +104,7 @@ public abstract class JoniRegexExecRootNode extends RegexExecRootNode {
 
     private static RegexSource createPseudoSource(String name) {
         String pattern = "/[" + name + "]/";
-        return new RegexSource(pattern, RegexFlags.DEFAULT);
+        return new RegexSource(pattern);
     }
 
     public static class Simple extends JoniRegexExecRootNode {

@@ -141,6 +141,7 @@ import com.oracle.truffle.js.runtime.util.TimeProfiler;
 import com.oracle.truffle.regex.CachingRegexEngine;
 import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexOptions;
 
 public class JSContext {
     private final Evaluator evaluator;
@@ -938,7 +939,8 @@ public class JSContext {
                     throw ex.raise();
                 }
             } else {
-                regexEngine = new CachingRegexEngine(joniCompiler, JSTruffleOptions.RegexRegressionTestMode);
+                RegexOptions regexOptions = RegexOptions.newBuilder().u180eWhitespace(JSTruffleOptions.U180EWhitespace).regressionTestMode(JSTruffleOptions.RegexRegressionTestMode).build();
+                regexEngine = new CachingRegexEngine(joniCompiler, regexOptions);
             }
         }
         return regexEngine;
