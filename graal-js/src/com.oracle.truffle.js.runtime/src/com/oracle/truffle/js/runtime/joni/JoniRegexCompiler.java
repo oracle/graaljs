@@ -104,9 +104,7 @@ public final class JoniRegexCompiler extends RegexCompiler {
     @Override
     public TruffleObject compile(RegexSource source) throws UnsupportedRegexException {
         try {
-            // TODO: Switch to source.getFlags() once RegexSource#getFlags is updated to return
-            // String.
-            RegexFlags flags = RegexFlags.parseFlags(source.getGeneralFlags());
+            RegexFlags flags = RegexFlags.parseFlags(source.getFlags());
             Regex implementation = createJoniRegex(source.getPattern(), flags);
             CallTarget callTarget;
             boolean group = PatternAnalyzer.containsGroup(source.getPattern());
