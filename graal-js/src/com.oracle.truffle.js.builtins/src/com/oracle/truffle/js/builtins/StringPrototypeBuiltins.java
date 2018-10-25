@@ -2057,7 +2057,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * 15.5.4.13.
      */
     public abstract static class JSStringSliceNode extends JSStringOperation {
-        private final ConditionProfile returnSameContent = ConditionProfile.createBinaryProfile();
         private final ConditionProfile canReturnEmpty = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isUndefined = ConditionProfile.createBinaryProfile();
         private final ConditionProfile offsetProfile1 = ConditionProfile.createBinaryProfile();
@@ -2070,9 +2069,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         protected String sliceString(String str, int start, int end) {
             int len = str.length();
-            if (returnSameContent.profile(start == 0 && end == len)) {
-                return str;
-            }
             int istart = JSRuntime.getOffset(start, len, offsetProfile1);
             int iend = JSRuntime.getOffset(end, len, offsetProfile2);
             if (canReturnEmpty.profile(iend > istart)) {
@@ -2096,9 +2092,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             long len = s.length();
             long istart = JSRuntime.getOffset(toInteger(start), len, offsetProfile1);
             long iend = isUndefined.profile(end == Undefined.instance) ? len : JSRuntime.getOffset(toInteger(end), len, offsetProfile2);
-            if (returnSameContent.profile(istart == 0 && iend == len)) {
-                return s;
-            } else if (canReturnEmpty.profile(iend > istart)) {
+            if (canReturnEmpty.profile(iend > istart)) {
                 return Boundaries.substring(s, (int) istart, (int) iend);
             } else {
                 return "";
