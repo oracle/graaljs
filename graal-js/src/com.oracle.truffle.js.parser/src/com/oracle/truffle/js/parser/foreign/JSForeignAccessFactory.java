@@ -408,12 +408,14 @@ public class JSForeignAccessFactory {
         public Object access(DynamicObject target, Object key) {
             Object propertyKey = toKey.execute(cast.executeWithTarget(key));
             PropertyDescriptor desc = null;
+            boolean isProxy = false;
             for (DynamicObject proto = target; proto != Null.instance; proto = JSObject.getPrototype(proto)) {
                 desc = JSObject.getOwnProperty(proto, propertyKey);
-                if (desc != null) {
+                if (JSProxy.isProxy(proto)) {
+                    isProxy = true;
                     break;
                 }
-                if (JSProxy.isProxy(proto)) {
+                if (desc != null) {
                     break;
                 }
             }
@@ -424,11 +426,17 @@ public class JSForeignAccessFactory {
                 return 0;
             }
 
-            boolean readable = true;
-            boolean writable = desc.getIfHasWritable(true);
+            boolean hasGet = desc.hasGet() && desc.getGet() != Undefined.instance;
+            boolean hasSet = desc.hasSet() && desc.getSet() != Undefined.instance;
+            boolean readable = hasGet || !hasSet;
+            boolean writable = hasSet || (!hasGet && desc.getIfHasWritable(true));
+            boolean readSideEffects = isProxy || hasGet;
+            boolean writeSideEffects = isProxy || hasSet;
             boolean invocable = desc.isDataDescriptor() & JSRuntime.isCallable(desc.getValue());
             boolean removable = desc.getConfigurable();
-            return (readable ? KeyInfo.READABLE : 0) | (writable ? KeyInfo.MODIFIABLE : 0) | (invocable ? KeyInfo.INVOCABLE : 0) | (removable ? KeyInfo.REMOVABLE : 0);
+            return (readable ? KeyInfo.READABLE : 0) | (writable ? KeyInfo.MODIFIABLE : 0) |
+                            (readSideEffects ? KeyInfo.READ_SIDE_EFFECTS : 0) | (writeSideEffects ? KeyInfo.WRITE_SIDE_EFFECTS : 0) |
+                            (invocable ? KeyInfo.INVOCABLE : 0) | (removable ? KeyInfo.REMOVABLE : 0);
         }
 
         public Object access(InteropBoundFunction target, Object key) {
