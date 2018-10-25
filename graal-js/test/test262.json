@@ -244,30 +244,6 @@
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "built-ins/Array/prototype/flatMap/array-like-objects.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
-    "filePath" : "built-ins/Array/prototype/flatMap/bound-function-argument.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
-    "filePath" : "built-ins/Array/prototype/flatMap/depth-always-one.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
-    "filePath" : "built-ins/Array/prototype/flatMap/length.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
-    "filePath" : "built-ins/Array/prototype/flatMap/name.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
-    "filePath" : "built-ins/Array/prototype/flatMap/thisArg-argument.js",
-    "status" : "SKIP",
-    "comment" : "Array.prototype.flatten() and .flatMap() (GR-8870)"
-  }, {
     "filePath" : "built-ins/Array/prototype/indexOf/calls-only-has-on-prototype-after-length-zeroed.js",
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"

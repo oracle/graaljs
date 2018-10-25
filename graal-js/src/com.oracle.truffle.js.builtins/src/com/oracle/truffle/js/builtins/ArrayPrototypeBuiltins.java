@@ -64,6 +64,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.DeleteAndSetLengthNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.FlattenIntoArrayNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayConcatNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayCopyWithinNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayEveryNodeGen;
@@ -71,6 +72,8 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFillN
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFilterNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFindIndexNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFindNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFlatNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFlatMapNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayForEachNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIncludesNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIndexOfNodeGen;
@@ -184,6 +187,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         splice(2),
         every(1),
         filter(1),
+        flat(0),
+        flatMap(1),
         forEach(1),
         some(1),
         map(1),
@@ -221,6 +226,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return 6;
             } else if (this == includes) {
                 return 7;
+            } else if (EnumSet.of(flat, flatMap).contains(this)) {
+                return 10;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -289,6 +296,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             case includes:
                 return JSArrayIncludesNodeGen.create(context, builtin, false, args().withThis().fixedArgs(2).createArgumentNodes(context));
+
+            case flatMap:
+                return JSArrayFlatMapNodeGen.create(context, builtin, false, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case flat:
+                return JSArrayFlatNodeGen.create(context, builtin, false, args().withThis().fixedArgs(3).createArgumentNodes(context));
         }
         return null;
     }
@@ -1954,6 +1966,140 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
+    public abstract static class FlattenIntoArrayNode extends JavaScriptBaseNode {
+
+// private final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
+// private final ValueProfile resultArrayTypeProfile = ValueProfile.createClassProfile();
+
+        protected final JSContext context;
+        protected final boolean isTypedArray;
+        protected final boolean withCallback;
+
+        @Child private ForEachIndexCallNode forEachIndexNode;
+        @Child private JSToObjectNode toObjectNode;
+        @Child private JSGetLengthNode getLengthNode;
+
+        private final ValueProfile typedArrayTypeProfile;
+        protected final BranchProfile errorBranch = BranchProfile.create();
+
+        protected FlattenIntoArrayNode(JSContext context, boolean isTypedArray, boolean withCallback) {
+            this.context = context;
+            this.isTypedArray = isTypedArray;
+            this.typedArrayTypeProfile = isTypedArray ? ValueProfile.createClassProfile() : null;
+            this.withCallback = withCallback;
+        }
+
+        public static FlattenIntoArrayNode create(JSContext context, boolean isTypedArray, boolean withCallback) {
+            return FlattenIntoArrayNodeGen.create(context, isTypedArray, withCallback);
+        }
+
+        protected abstract int executeInt(DynamicObject target, Object source, long sourceLen, int start, int depth, TruffleObject callback, Object thisArg);
+
+        @Specialization
+        protected int flatten(DynamicObject target, Object source, long sourceLen, int start, int depth, TruffleObject callback, Object thisArg) {
+
+            boolean callbackUndefined = callback == null || JSRuntime.isNullOrUndefined(callback);
+
+            FlattenState flattenState = new FlattenState(target, start, depth, callbackUndefined);
+
+            TruffleObject thisJSObj = toObject(source);
+            long length = sourceLen;
+
+            forEachIndexCall(thisJSObj, callback, thisArg, 0, length, flattenState);
+
+            return flattenState.targetIndex;
+        }
+
+        protected final Object forEachIndexCall(TruffleObject arrayObj, TruffleObject callbackObj, Object thisArg, long fromIndex, long length, Object initialResult) {
+            if (forEachIndexNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                forEachIndexNode = insert(makeForEachIndexCallNode());
+            }
+            return forEachIndexNode.executeForEachIndex(arrayObj, callbackObj, thisArg, fromIndex, length, initialResult);
+        }
+
+        private ForEachIndexCallNode makeForEachIndexCallNode() {
+            return ForEachIndexCallNode.create(context, makeCallbackNode(), makeMaybeResultNode(), true);
+        }
+
+        protected CallbackNode makeCallbackNode() {
+            return withCallback ? new ArrayForEachIndexCallOperation.DefaultCallbackNode() : null;
+        }
+
+        protected final TruffleObject toObject(Object target) {
+            if (toObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toObjectNode = insert(JSToObjectNode.createToObject(context));
+            }
+            return toObjectNode.executeTruffleObject(target);
+        }
+
+        protected long getLength(TruffleObject thisObject) {
+            if (isTypedArray) {
+                // %TypedArray%.prototype.* don't access the "length" property
+                if (!JSArrayBufferView.isJSArrayBufferView(thisObject)) {
+                    errorBranch.enter();
+                    throw Errors.createTypeError("typed array expected");
+                }
+                DynamicObject dynObj = (DynamicObject) thisObject;
+                if (JSArrayBufferView.hasDetachedBuffer(dynObj, context)) {
+                    errorBranch.enter();
+                    throw Errors.createTypeErrorDetachedBuffer();
+                }
+                TypedArray typedArray = typedArrayTypeProfile.profile(JSArrayBufferView.typedArrayGetArrayType(dynObj));
+                return typedArray.length(dynObj);
+            } else {
+                if (getLengthNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getLengthNode = insert(JSGetLengthNode.create(context));
+                }
+                return getLengthNode.executeLong(thisObject);
+            }
+        }
+
+        static final class FlattenState {
+            final DynamicObject resultArray;
+            final boolean callbackUndefined;
+            final int depth;
+            int targetIndex;
+
+            FlattenState(DynamicObject result, int toIndex, int depth, boolean callbackUndefined) {
+                this.resultArray = result;
+                this.callbackUndefined = callbackUndefined;
+                this.targetIndex = toIndex;
+                this.depth = depth;
+            }
+        }
+
+        protected MaybeResultNode makeMaybeResultNode() {
+            return new ForEachIndexCallNode.MaybeResultNode() {
+                @Child private JSToBooleanNode toBooleanNode = JSToBooleanNode.create();
+                @Child private WriteElementNode writeOwnNode = NodeFactory.getInstance(context).createWriteElementNode(context, true, true);
+                @Child private FlattenIntoArrayNode innerFlattenIntoArrayNode = FlattenIntoArrayNode.create(context, isTypedArray, false);
+
+                @Override
+                public MaybeResult<Object> apply(long index, Object originalValue, Object callbackResult, Object resultState) {
+                    boolean shouldFlatten = false;
+                    FlattenState state = (FlattenState) resultState;
+                    Object value = state.callbackUndefined ? originalValue : callbackResult;
+                    if (state.depth > 0) {
+                        shouldFlatten = JSRuntime.isArray(callbackResult);
+                    }
+                    if (shouldFlatten) {
+                        long elementLen = getLength(toObject(callbackResult));
+                        state.targetIndex = innerFlattenIntoArrayNode.flatten(state.resultArray, value, elementLen, state.targetIndex, state.depth - 1, null, null);
+                    } else {
+                        if (state.targetIndex >= 9007199254740991d) { // 2^53-1
+                            throw Errors.createTypeError("Index out of bounds in flatten into array");
+                        }
+                        writeOwnNode.executeWithTargetAndIndexAndValue(state.resultArray, state.targetIndex++, value);
+                    }
+                    return MaybeResult.continueResult(resultState);
+                }
+            };
+        }
+    }
+
     public abstract static class JSArrayForEachNode extends ArrayForEachIndexCallOperation {
         public JSArrayForEachNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -2039,6 +2185,63 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     return MaybeResult.continueResult(currentResult);
                 }
             };
+        }
+    }
+
+    public abstract static class JSArrayFlatMapNode extends JSArrayOperation {
+        public JSArrayFlatMapNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+            super(context, builtin, isTypedArrayImplementation);
+        }
+
+        @Specialization
+// protected Object flatMap(Object thisObj, Object callback, Object thisArg,
+// @Cached("create(getContext(), getBuiltin(), isTypedArrayImplementation)") FlattenIntoArrayNode
+// flattenIntoArrayNode) {
+        protected Object flatMap(Object thisObj, Object callback, Object thisArg) {
+// @Cached("create(getContext(), getBuiltin(), isTypedArrayImplementation)") FlattenIntoArrayNode
+// flattenIntoArrayNode) {
+            FlattenIntoArrayNode flattenIntoArrayNode = FlattenIntoArrayNode.create(getContext(), isTypedArrayImplementation, true);
+
+            TruffleObject thisJSObj = toObject(thisObj);
+            if (isTypedArrayImplementation) {
+                validateTypedArray(thisJSObj);
+            }
+            long length = getLength(thisJSObj);
+            TruffleObject callbackFn = checkCallbackIsFunction(callback);
+
+            Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisJSObj, 0);
+            flattenIntoArrayNode.flatten((DynamicObject) resultArray, thisJSObj, length, 0, 1, callbackFn, thisArg);
+            return resultArray;
+        }
+    }
+
+    public abstract static class JSArrayFlatNode extends JSArrayOperation {
+
+        public JSArrayFlatNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+            super(context, builtin, isTypedArrayImplementation);
+        }
+
+        public JSArrayFlatNode(JSContext context, JSBuiltin builtin) {
+            this(context, builtin, false);
+        }
+
+        @Specialization
+        protected Object flat(Object thisObj, Object depth,
+                        @Cached("createFlattenIntoArrayNode(getContext(), isTypedArrayImplementation)") FlattenIntoArrayNode flattenIntoArrayNode) {
+            TruffleObject thisJSObj = toObject(thisObj);
+            if (isTypedArrayImplementation) {
+                validateTypedArray(thisJSObj);
+            }
+            long length = getLength(thisJSObj);
+            int depthNum = (int) (JSRuntime.isNullOrUndefined(depth) ? 1 : JSRuntime.toInteger(depth));
+
+            Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisJSObj, 0);
+            flattenIntoArrayNode.flatten((DynamicObject) resultArray, thisJSObj, length, 0, depthNum, null, null);
+            return resultArray;
+        }
+
+        protected static final FlattenIntoArrayNode createFlattenIntoArrayNode(JSContext context, boolean isTypedArrayImplementation) {
+            return FlattenIntoArrayNodeGen.create(context, isTypedArrayImplementation, false);
         }
     }
 
