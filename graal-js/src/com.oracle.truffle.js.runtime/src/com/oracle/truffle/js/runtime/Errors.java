@@ -129,6 +129,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorNotAConstructor(Object object, Node originatingNode) {
+        return JSException.create(JSErrorType.TypeError, String.format("%s is not a constructor", JSRuntime.safeToString(object)), originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorNumberFormatExpected() {
         return createTypeError("NumberFormat object expected.");
     }
