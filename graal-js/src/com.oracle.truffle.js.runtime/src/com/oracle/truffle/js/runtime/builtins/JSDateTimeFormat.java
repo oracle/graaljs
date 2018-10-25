@@ -563,7 +563,6 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
         public boolean initialized = false;
         public DateFormat dateFormat;
-        public Locale javaLocale;
 
         DynamicObject boundFormatFunction = null;
 

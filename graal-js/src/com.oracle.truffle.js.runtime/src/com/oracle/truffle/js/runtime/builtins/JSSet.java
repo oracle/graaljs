@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -99,6 +100,8 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
     public static Object normalize(Object value) {
         if (value instanceof Double) {
             return normalizeDouble((Double) value);
+        } else if (value instanceof JSLazyString) {
+            return ((JSLazyString) value).toString();
         }
         return value;
     }

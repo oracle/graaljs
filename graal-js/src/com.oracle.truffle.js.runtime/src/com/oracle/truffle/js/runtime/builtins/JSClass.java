@@ -330,7 +330,6 @@ public abstract class JSClass extends ObjectType {
             return false;
         }
         Iterable<Object> keys = ownPropertyKeys(obj);
-        JSContext context = JSObject.getJSContext(obj);
         if (freeze) {
             // FREEZE
             for (Object key : keys) {
@@ -342,13 +341,13 @@ public abstract class JSClass extends ObjectType {
                     } else {
                         newDesc = FREEZE_DATA_DESC;
                     }
-                    JSRuntime.definePropertyOrThrow(obj, key, newDesc, context);
+                    JSRuntime.definePropertyOrThrow(obj, key, newDesc);
                 }
             }
         } else {
             // SEAL
             for (Object key : keys) {
-                JSRuntime.definePropertyOrThrow(obj, key, FREEZE_ACC_DESC, context);
+                JSRuntime.definePropertyOrThrow(obj, key, FREEZE_ACC_DESC);
             }
         }
         return true;

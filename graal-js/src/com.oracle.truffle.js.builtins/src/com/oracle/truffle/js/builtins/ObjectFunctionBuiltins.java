@@ -349,9 +349,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     Boundaries.listAdd(descriptors, new Pair<>(key, desc));
                 }
             }
-            JSContext context = getContext();
             for (Pair<Object, PropertyDescriptor> descPair : descriptors) {
-                JSRuntime.definePropertyOrThrow(obj, descPair.getFirst(), descPair.getSecond(), context);
+                JSRuntime.definePropertyOrThrow(obj, descPair.getFirst(), descPair.getSecond());
             }
             return obj;
         }
@@ -428,7 +427,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             DynamicObject object = asObject(thisObj);
             PropertyDescriptor desc = toPropertyDescriptor(attributes);
             Object propertyKey = toPropertyKeyNode.execute(property);
-            JSRuntime.definePropertyOrThrow(object, propertyKey, desc, getContext());
+            JSRuntime.definePropertyOrThrow(object, propertyKey, desc);
             return object;
         }
 

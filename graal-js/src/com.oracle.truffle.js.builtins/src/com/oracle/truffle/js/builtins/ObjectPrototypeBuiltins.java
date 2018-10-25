@@ -557,7 +557,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             desc.setEnumerable(true);
             desc.setConfigurable(true);
-            JSRuntime.definePropertyOrThrow(object, key, desc, getContext());
+            JSRuntime.definePropertyOrThrow(object, key, desc);
             return Undefined.instance;
         }
 

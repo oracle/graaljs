@@ -47,7 +47,6 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 public class SetFunctionNameNode extends JavaScriptBaseNode {
@@ -83,7 +82,7 @@ public class SetFunctionNameNode extends JavaScriptBaseNode {
 
     private static Object setFunctionName(DynamicObject functionValue, String name) {
         PropertyDescriptor propDesc = PropertyDescriptor.createData(name, false, false, true);
-        JSRuntime.definePropertyOrThrow(functionValue, JSFunction.NAME, propDesc, JSObject.getJSContext(functionValue));
+        JSRuntime.definePropertyOrThrow(functionValue, JSFunction.NAME, propDesc);
         return functionValue;
     }
 }
