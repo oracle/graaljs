@@ -334,11 +334,11 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             functionName = rootNode.getName();
         }
         boolean eval = false;
-        if (functionName == null || isInternalFunctionName(functionName)) {
-            functionName = "";
-        } else if (isEvalSource(source, functionName)) {
+        if (isEvalSource(source)) {
             functionName = "eval";
             eval = true;
+        } else if (functionName == null || isInternalFunctionName(functionName)) {
+            functionName = "";
         }
         SourceSection targetSourceSection = null;
         if (!JSTruffleOptions.NashornCompatibilityMode) { // for V8
@@ -352,10 +352,8 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         return new JSStackTraceElement(fileName, functionName, callNodeSourceSection, thisObj, functionObj, targetSourceSection, inStrictMode, eval, global);
     }
 
-    private static boolean isEvalSource(Source source, String functionName) {
-        return (functionName.equals(DYNAMIC_FUNCTION_NAME) && source.getName().equals(Evaluator.FUNCTION_SOURCE_NAME)) ||
-                        (functionName.equals(JSFunction.PROGRAM_FUNCTION_NAME) &&
-                                        (source.getName().equals(Evaluator.EVAL_SOURCE_NAME) || source.getName().startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX)));
+    private static boolean isEvalSource(Source source) {
+        return source.getName().startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX);
     }
 
     private static boolean isInternalFunctionName(String functionName) {
@@ -742,6 +740,9 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                 String evalOrigin = getEvalOrigin();
                 String sourceName = evalOrigin != null ? evalOrigin : getFileName();
                 builder.append(sourceName);
+                if (eval) {
+                    builder.append(", <anonymous>");
+                }
                 builder.append(":");
                 builder.append(getLineNumber());
                 builder.append(":");
