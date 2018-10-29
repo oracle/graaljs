@@ -38,58 +38,60 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins.helper;
+package com.oracle.truffle.js.nodes.promise;
 
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.builtins.JSSet;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.UserScriptException;
+import com.oracle.truffle.js.runtime.builtins.JSPromise;
 
-/**
- * This implements behavior for Collections of ES6. Instead of adhering to the SameValueNull
- * algorithm, we normalize the key (e.g., transform the double value 1.0 to an integer value of 1).
- */
-public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
+@SuppressWarnings("unused")
+@ImportStatic(JSPromise.class)
+public abstract class UnwrapPromiseNode extends JavaScriptBaseNode {
+    @Child private PropertyGetNode getPromiseState;
+    @Child private PropertyGetNode getPromiseResult;
 
-    public abstract Object execute(Object operand);
-
-    @Specialization
-    public int doInt(int value) {
-        return value;
+    protected UnwrapPromiseNode(JSContext context) {
+        this.getPromiseState = PropertyGetNode.createGetHidden(JSPromise.PROMISE_STATE, context);
+        this.getPromiseResult = PropertyGetNode.createGetHidden(JSPromise.PROMISE_RESULT, context);
     }
 
-    @Specialization
-    public Object doDouble(double value) {
-        return JSSet.normalizeDouble(value);
+    public static UnwrapPromiseNode create(JSContext context) {
+        return UnwrapPromiseNodeGen.create(context);
     }
 
-    @Specialization
-    public String doJSLazyString(JSLazyString value,
-                    @Cached("createBinaryProfile()") ConditionProfile flatten) {
-        return value.toString(flatten);
+    public final Object execute(DynamicObject promise) {
+        int promiseState;
+        try {
+            promiseState = getPromiseState.getValueInt(promise);
+        } catch (UnexpectedResultException e) {
+            throw Errors.shouldNotReachHere();
+        }
+        Object promiseResult = getPromiseResult.getValue(promise);
+        return execute(promise, promiseState, promiseResult);
     }
 
-    @Specialization
-    public String doString(String value) {
-        return value;
+    protected abstract Object execute(DynamicObject promise, int promiseState, Object promiseResult);
+
+    @Specialization(guards = "promiseState == FULFILLED")
+    protected static Object fulfilled(DynamicObject promise, int promiseState, Object promiseResult) {
+        return promiseResult;
     }
 
-    @Specialization
-    public boolean doBoolean(boolean value) {
-        return value;
+    @Specialization(guards = "promiseState == REJECTED")
+    protected static Object rejected(DynamicObject promise, int promiseState, Object promiseResult) {
+        throw UserScriptException.create(promiseResult);
     }
 
-    @Specialization
-    public Object doDynamicObject(DynamicObject object) {
-        return object;
-    }
-
-    @Specialization
-    public Symbol doSymbol(Symbol value) {
-        return value;
+    @Specialization(guards = "promiseState == PENDING")
+    protected static Object pending(DynamicObject promise, int promiseState, Object promiseResult) {
+        throw Errors.createTypeError("Attempt to unwrap pending promise");
     }
 }

@@ -676,6 +676,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::message_get_source_line, "messageGetSourceLine", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::message_get_start_column, "messageGetStartColumn", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::message_get_stack_trace, "messageGetStackTrace", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::message_get, "messageGet", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::stack_trace_current_stack_trace, "stackTraceCurrentStackTrace", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::stack_frame_get_line_number, "stackFrameGetLineNumber", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::stack_frame_get_column, "stackFrameGetColumn", "(Ljava/lang/Object;)I")

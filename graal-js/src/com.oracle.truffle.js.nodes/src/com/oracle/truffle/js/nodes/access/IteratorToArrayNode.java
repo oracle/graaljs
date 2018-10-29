@@ -46,12 +46,12 @@ import java.util.List;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.ExprBlockNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 /**
  * Absorb iterator to new array.
@@ -73,16 +73,16 @@ public abstract class IteratorToArrayNode extends JavaScriptNode {
     }
 
     @Specialization
-    protected Object doIterator(VirtualFrame frame, DynamicObject iterator) {
+    protected Object doIterator(VirtualFrame frame, IteratorRecord iteratorRecord) {
         List<Object> elements = new ArrayList<>();
         Object value;
-        while ((value = iteratorStepNode.execute(frame, iterator)) != null) {
+        while ((value = iteratorStepNode.execute(frame, iteratorRecord)) != null) {
             Boundaries.listAdd(elements, value);
         }
         return JSArray.createZeroBasedObjectArray(context, Boundaries.listToArray(elements));
     }
 
-    public abstract Object execute(VirtualFrame frame, DynamicObject iterator);
+    public abstract Object execute(VirtualFrame frame, IteratorRecord iteratorRecord);
 
     @Override
     protected JavaScriptNode copyUninitialized() {

@@ -141,6 +141,7 @@ import com.oracle.truffle.js.runtime.util.TimeProfiler;
 import com.oracle.truffle.regex.CachingRegexEngine;
 import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexOptions;
 
 public class JSContext {
     private final Evaluator evaluator;
@@ -253,8 +254,8 @@ public class JSContext {
     private List<JSRealm> realmList;
 
     final Assumption noChildRealmsAssumption;
-    final Assumption singleRealmAssumption;
-    final boolean isMultiContext;
+    private final Assumption singleRealmAssumption;
+    private final boolean isMultiContext;
 
     private final AtomicInteger realmInit = new AtomicInteger();
     private static final int REALM_UNINITIALIZED = 0;
@@ -672,52 +673,48 @@ public class JSContext {
         }
     }
 
-    public final boolean processAllPendingPromiseJobs() {
-        if (promiseJobsQueueNotUsedAssumption.isValid()) {
-            return false;
-        } else {
-            return processAllPromises();
+    public final void processAllPendingPromiseJobs() {
+        if (!promiseJobsQueueNotUsedAssumption.isValid()) {
+            processAllPromises();
         }
     }
 
     @TruffleBoundary
-    private boolean processAllPromises() {
-        boolean queueContainsJobs = false;
-        Object thisArg = Undefined.instance;
-        while (promiseJobsQueue.size() > 0) {
-            DynamicObject nextJob = promiseJobsQueue.pollLast();
-            if (JSFunction.isJSFunction(nextJob)) {
-                JSRealm functionRealm = JSFunction.getRealm(nextJob);
-                Object prev = functionRealm.getTruffleContext().enter();
-                try {
-                    JSFunction.call(nextJob, thisArg, JSArguments.EMPTY_ARGUMENTS_ARRAY);
-                } finally {
-                    functionRealm.getTruffleContext().leave(prev);
+    private void processAllPromises() {
+        boolean queueContainsJobs;
+        do {
+            queueContainsJobs = false;
+            Object thisArg = Undefined.instance;
+            while (promiseJobsQueue.size() > 0) {
+                DynamicObject nextJob = promiseJobsQueue.pollLast();
+                if (JSFunction.isJSFunction(nextJob)) {
+                    JSRealm functionRealm = JSFunction.getRealm(nextJob);
+                    Object prev = functionRealm.getTruffleContext().enter();
+                    try {
+                        JSFunction.call(nextJob, thisArg, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                    } finally {
+                        functionRealm.getTruffleContext().leave(prev);
+                    }
+                    queueContainsJobs = true;
                 }
-                queueContainsJobs = true;
             }
-        }
 
-        // In node.js-mode, tasks are processed by the uv loop.
-        if (shouldProcessJavaInteropAsyncTasks) {
-            queueContainsJobs = processJavaInteropAsyncTasks();
-        }
+            // In node.js-mode, tasks are processed by the uv loop.
+            if (shouldProcessJavaInteropAsyncTasks) {
+                queueContainsJobs = processJavaInteropAsyncTasks();
+            }
 
-        // If a job was executed, it might have scheduled other tasks, so we let the caller know.
-        return queueContainsJobs;
+            // If a job was executed, it might have scheduled other tasks.
+        } while (queueContainsJobs);
     }
 
     public void interopBoundaryEnter() {
-        if (getEcmaScriptVersion() >= 6) {
-            interopCallStackDepth++;
-        }
+        interopCallStackDepth++;
     }
 
     public void interopBoundaryExit() {
-        if (getEcmaScriptVersion() >= 6 && --interopCallStackDepth == 0) {
-            while (processAllPendingPromiseJobs()) {
-                // we consume all pending jobs
-            }
+        if (--interopCallStackDepth == 0) {
+            processAllPendingPromiseJobs();
         }
     }
 
@@ -942,7 +939,8 @@ public class JSContext {
                     throw ex.raise();
                 }
             } else {
-                regexEngine = new CachingRegexEngine(joniCompiler, JSTruffleOptions.RegexRegressionTestMode);
+                RegexOptions regexOptions = RegexOptions.newBuilder().u180eWhitespace(JSTruffleOptions.U180EWhitespace).regressionTestMode(JSTruffleOptions.RegexRegressionTestMode).build();
+                regexEngine = new CachingRegexEngine(joniCompiler, regexOptions);
             }
         }
         return regexEngine;

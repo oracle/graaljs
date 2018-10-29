@@ -1312,11 +1312,7 @@ public final class GraalJSAccess {
 
     private Object exceptionCreate(JSRealm realm, JSErrorType errorType, Object message) {
         DynamicObject error = JSError.create(errorType, realm, message);
-        Object stack = JSObject.get(error, JSError.STACK_NAME);
-        if (stack == Undefined.instance) {
-            stack = String.format("%s: %s\n    at %s (native)", errorType, message, errorType);
-            JSObject.set(error, JSError.STACK_NAME, stack);
-        }
+        assert JSError.getException(error) != null;
         return error;
     }
 
@@ -2028,6 +2024,10 @@ public final class GraalJSAccess {
         return new GraalJSException.JSStackTraceElement[0];
     }
 
+    public Object messageGet(Object exception) {
+        return "Uncaught " + ((Throwable) exception).getMessage();
+    }
+
     public Object stackTraceCurrentStackTrace() {
         return GraalJSException.getJSStackTrace(null);
     }
@@ -2271,14 +2271,7 @@ public final class GraalJSAccess {
     public void isolateRunMicrotasks() {
         pollWeakCallbackQueue(false);
         try {
-            boolean seenJob;
-            do {
-                seenJob = false;
-                if (mainJSContext.processAllPendingPromiseJobs()) {
-                    // the queue processed at least one job. We continue processing.
-                    seenJob = true;
-                }
-            } while (seenJob); // some job may trigger a job in a context processed already
+            mainJSContext.processAllPendingPromiseJobs();
         } catch (Exception ex) {
             ex.printStackTrace();
         }

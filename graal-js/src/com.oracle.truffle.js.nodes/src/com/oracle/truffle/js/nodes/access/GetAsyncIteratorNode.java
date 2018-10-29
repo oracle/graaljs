@@ -50,6 +50,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -71,16 +72,17 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
 
     @Override
     @Specialization(guards = {"!isForeignObject(iteratedObject)"})
-    protected DynamicObject doGetIterator(Object iteratedObject,
+    protected IteratorRecord doGetIterator(Object iteratedObject,
                     @Cached("createCall()") JSFunctionCallNode methodCallNode,
                     @Cached("create()") IsObjectNode isObjectNode) {
         Object method = getAsyncIteratorMethodNode.executeWithTarget(iteratedObject);
         if (asyncToSync.profile(method == Undefined.instance)) {
             Object syncMethod = getIteratorMethodNode().executeWithTarget(iteratedObject);
-            Object syncIterator = getIterator(iteratedObject, syncMethod, methodCallNode, isObjectNode, this);
-            return createAsyncFromSyncIterator(syncIterator);
+            IteratorRecord syncIteratorRecord = getIterator(iteratedObject, syncMethod, methodCallNode, isObjectNode);
+            DynamicObject asyncIterator = createAsyncFromSyncIterator(syncIteratorRecord);
+            return IteratorRecord.create(asyncIterator, getNextMethodNode.getValue(asyncIterator), false);
         }
-        return getIterator(iteratedObject, method, methodCallNode, isObjectNode, this);
+        return getIterator(iteratedObject, method, methodCallNode, isObjectNode);
     }
 
     @Override
@@ -88,12 +90,13 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
         return GetAsyncIteratorNodeGen.create(context, cloneUninitialized(objectNode));
     }
 
-    private DynamicObject createAsyncFromSyncIterator(Object syncIterator) {
+    private DynamicObject createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord) {
+        DynamicObject syncIterator = syncIteratorRecord.getIterator();
         if (!JSObject.isJSObject(syncIterator)) {
             throw Errors.createTypeErrorNotAnObject(syncIterator, this);
         }
         DynamicObject obj = JSObject.create(context, context.getAsyncFromSyncIteratorFactory());
-        setState.setValue(obj, syncIterator);
+        setState.setValue(obj, syncIteratorRecord);
         return obj;
     }
 }

@@ -74,42 +74,52 @@ public abstract class JSClass extends ObjectType {
     /**
      * 9.1.1 [[GetPrototypeOf]] ().
      */
+    @TruffleBoundary
     public abstract DynamicObject getPrototypeOf(DynamicObject thisObj);
 
     /**
      * 9.1.2 [[SetPrototypeOf]] (V).
      */
+    @TruffleBoundary
     public abstract boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype);
 
     /**
      * 9.1.3 [[IsExtensible]] ().
      */
+    @TruffleBoundary
     public abstract boolean isExtensible(DynamicObject thisObj);
 
     /**
      * 9.1.4 [[PreventExtensions]] ().
      */
+    @TruffleBoundary
     public abstract boolean preventExtensions(DynamicObject thisObj);
 
     /**
      * 9.1.5 [[GetOwnProperty]] (P).
      */
+    @TruffleBoundary
     public abstract PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object propertyKey);
 
     /**
      * 9.1.6 [[DefineOwnProperty]] (P, Desc).
      */
+    @TruffleBoundary
     public abstract boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor value, boolean doThrow);
 
     /**
      * 9.1.7 [[HasProperty]] (P).
      */
+    @TruffleBoundary
     public abstract boolean hasProperty(DynamicObject thisObj, Object key);
 
+    @TruffleBoundary
     public abstract boolean hasProperty(DynamicObject thisObj, long index);
 
+    @TruffleBoundary
     public abstract boolean hasOwnProperty(DynamicObject thisObj, Object propName);
 
+    @TruffleBoundary
     public abstract boolean hasOwnProperty(DynamicObject thisObj, long index);
 
     /**
@@ -141,19 +151,25 @@ public abstract class JSClass extends ObjectType {
     /**
      * 9.1.9 [[Set]] (P, V, Receiver).
      */
+    @TruffleBoundary
     public abstract boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict);
 
+    @TruffleBoundary
     public abstract boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict);
 
+    @TruffleBoundary
     public abstract boolean setOwn(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict);
 
+    @TruffleBoundary
     public abstract boolean setOwn(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict);
 
     /**
      * 9.1.10 [[Delete]] (P).
      */
+    @TruffleBoundary
     public abstract boolean delete(DynamicObject thisObj, Object key, boolean isStrict);
 
+    @TruffleBoundary
     public abstract boolean delete(DynamicObject thisObj, long propIdx, boolean isStrict);
 
     /**
@@ -164,11 +180,13 @@ public abstract class JSClass extends ObjectType {
      *
      * @return an List<Object> of the keys of all own properties of that object
      */
+    @TruffleBoundary
     public abstract Iterable<Object> ownPropertyKeys(DynamicObject obj);
 
     /**
      * If true, {@link #ownPropertyKeys} and {@link JSShape#getProperties} enumerate the same keys.
      */
+    @TruffleBoundary
     public abstract boolean hasOnlyShapeProperties(DynamicObject obj);
 
     /**
@@ -179,9 +197,11 @@ public abstract class JSClass extends ObjectType {
      *
      * @param object object to be used
      */
+    @TruffleBoundary
     public abstract String getClassName(DynamicObject object);
 
     @Override
+    @TruffleBoundary
     public abstract String toString();
 
     /**
@@ -245,6 +265,7 @@ public abstract class JSClass extends ObjectType {
      *
      * Follows Nashorn's safeToString.
      */
+    @TruffleBoundary
     public abstract String safeToString(DynamicObject object);
 
     public final boolean isInstance(DynamicObject object) {
@@ -309,7 +330,6 @@ public abstract class JSClass extends ObjectType {
             return false;
         }
         Iterable<Object> keys = ownPropertyKeys(obj);
-        JSContext context = JSObject.getJSContext(obj);
         if (freeze) {
             // FREEZE
             for (Object key : keys) {
@@ -321,13 +341,13 @@ public abstract class JSClass extends ObjectType {
                     } else {
                         newDesc = FREEZE_DATA_DESC;
                     }
-                    JSRuntime.definePropertyOrThrow(obj, key, newDesc, context);
+                    JSRuntime.definePropertyOrThrow(obj, key, newDesc);
                 }
             }
         } else {
             // SEAL
             for (Object key : keys) {
-                JSRuntime.definePropertyOrThrow(obj, key, FREEZE_ACC_DESC, context);
+                JSRuntime.definePropertyOrThrow(obj, key, FREEZE_ACC_DESC);
             }
         }
         return true;

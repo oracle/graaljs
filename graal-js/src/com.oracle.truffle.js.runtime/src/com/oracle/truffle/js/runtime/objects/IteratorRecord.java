@@ -40,23 +40,31 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.object.DynamicObject;
 
+@ValueType
 public final class IteratorRecord {
     private final DynamicObject iterator;
+    private final Object nextMethod;
     private boolean done;
 
-    private IteratorRecord(DynamicObject iterator, boolean done) {
+    private IteratorRecord(DynamicObject iterator, Object nextMethod, boolean done) {
         this.iterator = iterator;
+        this.nextMethod = nextMethod;
         this.done = done;
     }
 
-    public static IteratorRecord create(DynamicObject iterator, boolean done) {
-        return new IteratorRecord(iterator, done);
+    public static IteratorRecord create(DynamicObject iterator, Object nextMethod, boolean done) {
+        return new IteratorRecord(iterator, nextMethod, done);
     }
 
     public DynamicObject getIterator() {
         return iterator;
+    }
+
+    public Object getNextMethod() {
+        return nextMethod;
     }
 
     public boolean isDone() {

@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorYieldNode extends AwaitNode {
@@ -94,38 +95,33 @@ public class AsyncGeneratorYieldNode extends AwaitNode {
         final int suspendedYield = 2;
         final int awaitResumptionValue = 3;
 
-        if (state <= awaitValue) {
-            Object awaited;
-            if (state == 0) {
-                Object value = expression.execute(frame);
-                setState(frame, awaitValue);
-                awaited = suspendAwait(frame, value);
-            } else {
-                assert state == awaitValue;
-                awaited = resumeAwait(frame);
-            }
+        if (state == 0) {
+            Object value = expression.execute(frame);
+            setState(frame, awaitValue);
+            return suspendAwait(frame, value);
+        } else if (state == awaitValue) {
+            Object awaited = resumeAwait(frame);
             setState(frame, suspendedYield);
             return suspendYield(frame, awaited);
         } else {
             assert state >= suspendedYield;
             setState(frame, 0);
-            Completion completion = resumeYield(frame);
-            if (completion.isNormal()) {
-                return completion.getValue();
-            } else if (completion.isThrow()) {
-                throw UserScriptException.create(completion.getValue(), this);
-            } else {
-                assert completion.isReturn();
-                // Let awaited be Await(resumptionValue.[[Value]]).
-                Object awaited;
-                if (state == suspendedYield) {
-                    setState(frame, awaitResumptionValue);
-                    awaited = suspendAwait(frame, completion.getValue());
+            if (state == suspendedYield) {
+                Completion completion = resumeYield(frame);
+                if (completion.isNormal()) {
+                    return completion.getValue();
+                } else if (completion.isThrow()) {
+                    throw UserScriptException.create(completion.getValue(), this);
                 } else {
-                    assert state == awaitResumptionValue;
-                    // If awaited.[[Type]] is throw return Completion(awaited).
-                    awaited = resumeAwait(frame);
+                    assert completion.isReturn();
+                    // Let awaited be Await(resumptionValue.[[Value]]).
+                    setState(frame, awaitResumptionValue);
+                    return suspendAwait(frame, completion.getValue());
                 }
+            } else {
+                assert state == awaitResumptionValue;
+                // If awaited.[[Type]] is throw return Completion(awaited).
+                Object awaited = resumeAwait(frame);
                 // Assert: awaited.[[Type]] is normal.
                 return returnValue(frame, awaited);
             }
@@ -174,7 +170,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         this.writeIteratorTemp = writeTemp;
 
         this.getIteratorNode = GetIteratorNode.createAsync(context, null);
-        this.iteratorNextNode = IteratorNextNode.create(context);
+        this.iteratorNextNode = IteratorNextNode.create();
         this.iteratorCompleteNode = IteratorCompleteNode.create(context);
         this.iteratorValueNode = IteratorValueNode.create(context, null);
         this.getThrowMethodNode = GetMethodNode.create(context, null, "throw");
@@ -195,14 +191,15 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         final int returnAwaitReceivedValue = 7;
         final int throwAwaitReturnResult = 8;
 
-        DynamicObject iterator;
+        IteratorRecord iteratorRecord;
         if (state == 0) {
-            iterator = getIteratorNode.execute(expression.execute(frame));
-            writeIteratorTemp.executeWrite(frame, iterator);
+            iteratorRecord = getIteratorNode.execute(expression.execute(frame));
+            writeIteratorTemp.executeWrite(frame, iteratorRecord);
             state = loopBegin;
         } else {
-            iterator = (DynamicObject) readIteratorTemp.execute(frame);
+            iteratorRecord = (IteratorRecord) readIteratorTemp.execute(frame);
         }
+        DynamicObject iterator = iteratorRecord.getIterator();
 
         Completion received = Completion.forNormal(Undefined.instance);
         Object awaited;
@@ -210,7 +207,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
             switch (state) {
                 case loopBegin: {
                     if (received.isNormal()) {
-                        DynamicObject innerResult = iteratorNextNode.execute(iterator, received.getValue());
+                        DynamicObject innerResult = iteratorNextNode.execute(iteratorRecord, received.getValue());
                         awaited = awaitWithNext(frame, innerResult, normalOrThrowAwaitInnerResult);
                     } else if (received.isThrow()) {
                         Object throwMethod = getThrowMethodNode.executeWithTarget(iterator);

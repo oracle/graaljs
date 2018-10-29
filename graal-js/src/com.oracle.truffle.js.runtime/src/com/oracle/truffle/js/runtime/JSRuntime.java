@@ -1705,12 +1705,17 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static long propertyNameToArrayIndex(String propertyName) {
-        if (propertyName != null && propertyName.length() > 0 && propertyName.length() <= MAX_UINT32_DIGITS) {
+        if (propertyName != null && arrayIndexLengthInRange(propertyName)) {
             if (isAsciiDigit(propertyName.charAt(0))) {
                 return parseArrayIndexRaw(propertyName);
             }
         }
         return INVALID_ARRAY_INDEX;
+    }
+
+    public static boolean arrayIndexLengthInRange(String index) {
+        int len = index.length();
+        return 0 < len && len <= JSRuntime.MAX_UINT32_DIGITS;
     }
 
     public static long propertyKeyToArrayIndex(Object propertyKey) {
@@ -1975,6 +1980,14 @@ public final class JSRuntime {
         }
     }
 
+    public static int getOffset(int start, int length, ConditionProfile profile) {
+        if (profile.profile(start < 0)) {
+            return Math.max(start + length, 0);
+        } else {
+            return Math.min(start, length);
+        }
+    }
+
     @TruffleBoundary
     public static long parseSafeInteger(String s) {
         return parseSafeInteger(s, 0, s.length(), 10);
@@ -2157,20 +2170,11 @@ public final class JSRuntime {
     /**
      * ES2016, 7.3.7 DefinePropertyOrThrow(O, P, desc).
      */
-    public static void definePropertyOrThrow(DynamicObject o, Object key, PropertyDescriptor desc, JSContext context) {
-        definePropertyOrThrow(o, key, desc, context, "Cannot DefineOwnProperty");
-    }
-
-    @TruffleBoundary
-    public static void definePropertyOrThrow(DynamicObject o, Object key, PropertyDescriptor desc, JSContext context, String message) {
+    public static void definePropertyOrThrow(DynamicObject o, Object key, PropertyDescriptor desc) {
         assert JSRuntime.isObject(o);
         assert JSRuntime.isPropertyKey(key);
-        if (context.isOptionV8CompatibilityMode()) {
-            boolean success = JSObject.getJSClass(o).defineOwnProperty(o, key, desc, true);
-            assert success; // we should have thrown instead of returning false
-        } else if (!JSObject.getJSClass(o).defineOwnProperty(o, key, desc, false)) {
-            throw Errors.createTypeError(message);
-        }
+        boolean success = JSObject.getJSClass(o).defineOwnProperty(o, key, desc, true);
+        assert success; // we should have thrown instead of returning false
     }
 
     public static boolean isPrototypeOf(DynamicObject object, DynamicObject prototype) {

@@ -63,6 +63,7 @@ import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.JSGetLengthNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
@@ -83,13 +84,14 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * The %TypedArray% intrinsic constructor function object (ES6 22.2.1).
  */
-@ImportStatic(JSArrayBuffer.class)
+@ImportStatic({JSArrayBuffer.class, JSRuntime.class})
 public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @Child private JSToIndexNode toIndexNode;
     // for TypedArray(factory)
@@ -350,7 +352,8 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @Cached("create(getContext())") IteratorStepNode iteratorStepNode,
                     @Cached("create(getContext())") IteratorValueNode getIteratorValueNode,
                     @Cached("createGetLength()") JSGetLengthNode getLengthNode,
-                    @Cached("create(getContext())") ReadElementNode readNode) {
+                    @Cached("create(getContext())") ReadElementNode readNode,
+                    @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode) {
         assert JSRuntime.isObject(object) && !JSArrayBufferView.isJSArrayBufferView(object) && !JSAbstractBuffer.isJSAbstractBuffer(object);
 
         DynamicObject proto = getPrototypeFromConstructorView(newTarget);
@@ -358,7 +361,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
         Object usingIterator = getIteratorMethodNode.executeWithTarget(object);
         if (isIterableProfile.profile(usingIterator != Undefined.instance)) {
-            ArrayList<Object> values = iterableToList(object, usingIterator, iteratorCallNode, isObjectNode, iteratorStepNode, getIteratorValueNode, this);
+            ArrayList<Object> values = iterableToList(object, usingIterator, iteratorCallNode, isObjectNode, iteratorStepNode, getIteratorValueNode, getNextMethodNode, this);
 
             int len = Boundaries.listSize(values);
             DynamicObject arrayBuffer = createTypedArrayBuffer(len);
@@ -385,9 +388,9 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     private static ArrayList<Object> iterableToList(DynamicObject object, Object usingIterator, JSFunctionCallNode iteratorCallNode, IsObjectNode isObjectNode,
-                    IteratorStepNode iteratorStepNode, IteratorValueNode getIteratorValueNode, JavaScriptBaseNode origin) {
+                    IteratorStepNode iteratorStepNode, IteratorValueNode getIteratorValueNode, PropertyGetNode getNextMethodNode, JavaScriptBaseNode origin) {
         ArrayList<Object> values = new ArrayList<>();
-        DynamicObject iterator = GetIteratorNode.getIterator(object, usingIterator, iteratorCallNode, isObjectNode, origin);
+        IteratorRecord iterator = GetIteratorNode.getIterator(object, usingIterator, iteratorCallNode, isObjectNode, getNextMethodNode, origin);
         while (true) {
             Object next = iteratorStepNode.execute(iterator);
             if (next instanceof Boolean && ((Boolean) next) == Boolean.FALSE) {

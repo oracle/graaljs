@@ -46,7 +46,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
-import com.oracle.truffle.js.runtime.JSContext;
 
 /**
  * Wrapper around a global property access that handles potential lexical declarations shadowing
@@ -59,15 +58,13 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
     @Child private JavaScriptNode defaultDelegate;
     @Child private JSTargetableNode scopeAccessNode;
     @Child private GlobalScopeLookupNode scopeHasBinding;
-    private final JSContext context;
 
-    public GlobalScopeVarWrapperNode(JSContext context, String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
+    public GlobalScopeVarWrapperNode(String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
         this.varName = varName;
         this.dynamicScopeNode = dynamicScope;
         this.defaultDelegate = Objects.requireNonNull(defaultDelegate);
         this.scopeAccessNode = scopeAccessNode;
-        this.context = context;
-        this.scopeHasBinding = GlobalScopeLookupNode.create(context, varName, isWrite());
+        this.scopeHasBinding = GlobalScopeLookupNode.create(varName, isWrite());
     }
 
     public JavaScriptNode getDelegateNode() {
@@ -120,7 +117,7 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new GlobalScopeVarWrapperNode(context, varName, cloneUninitialized(defaultDelegate), cloneUninitialized(dynamicScopeNode), cloneUninitialized(scopeAccessNode));
+        return new GlobalScopeVarWrapperNode(varName, cloneUninitialized(defaultDelegate), cloneUninitialized(dynamicScopeNode), cloneUninitialized(scopeAccessNode));
     }
 
     public void setMethod() {

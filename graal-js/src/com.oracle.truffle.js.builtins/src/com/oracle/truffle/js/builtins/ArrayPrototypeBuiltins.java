@@ -347,7 +347,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected final boolean isCallable(Object callback) {
             if (isCallableNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                isCallableNode = IsCallableNode.create();
+                isCallableNode = insert(IsCallableNode.create());
             }
             return isCallableNode.executeBoolean(callback);
         }
@@ -2164,7 +2164,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private void delete(TruffleObject obj, Object i) {
             if (deletePropertyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                deletePropertyNode = DeletePropertyNode.create(THROW_ERROR, getContext());
+                deletePropertyNode = insert(DeletePropertyNode.create(THROW_ERROR, getContext()));
             }
             deletePropertyNode.executeEvaluated(obj, i);
         }

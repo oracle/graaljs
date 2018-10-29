@@ -183,4 +183,13 @@ EXPORT_TO_JS(MessageGetSourceLine) {
     args.GetReturnValue().Set(msg->GetSourceLine(context).ToLocalChecked());
 }
 
+// TryCatch::Reset
+
+EXPORT_TO_JS(Reset) {
+    TryCatch tryCatch(args.GetIsolate());
+    TryCatch_InvokeCallback(args);
+    tryCatch.Reset();
+    args.GetReturnValue().Set(tryCatch.HasCaught());
+}
+
 #undef SUITE

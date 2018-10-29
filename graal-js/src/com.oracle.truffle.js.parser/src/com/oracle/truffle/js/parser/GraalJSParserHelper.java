@@ -179,15 +179,14 @@ public class GraalJSParserHelper {
         return builder.build();
     }
 
-    public static boolean checkFunctionSyntax(GraalJSParserOptions parserOptions, String parameterList, String body, boolean generator, boolean async) {
+    public static void checkFunctionSyntax(GraalJSParserOptions parserOptions, String parameterList, String body, boolean generator, boolean async) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         ScriptEnvironment env = makeScriptEnvironment(parserOptions);
         ErrorManager errors = new com.oracle.js.parser.ErrorManager.ThrowErrorManager();
         Parser parser = createParser(env, com.oracle.js.parser.Source.sourceFor(Evaluator.FUNCTION_SOURCE_NAME, parameterList), errors, parserOptions);
-        boolean endsWithLineComment = parser.parseFormalParameterList();
+        parser.parseFormalParameterList();
         parser = createParser(env, com.oracle.js.parser.Source.sourceFor(Evaluator.FUNCTION_SOURCE_NAME, body), errors, parserOptions);
         parser.parseFunctionBody(generator, async);
-        return endsWithLineComment;
     }
 
     private static void throwErrors(com.oracle.truffle.api.source.Source source, ErrorManager errors) {

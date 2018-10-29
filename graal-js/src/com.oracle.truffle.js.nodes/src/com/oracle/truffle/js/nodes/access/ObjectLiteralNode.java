@@ -270,7 +270,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         private void execute(DynamicObject obj, Object value, JSContext context) {
             for (CacheEntry resolved = cache; resolved != null; resolved = resolved.next) {
                 if (resolved == GENERIC) {
-                    executeGeneric(obj, value, context);
+                    executeGeneric(obj, value);
                     return;
                 }
                 if (resolved.oldShape.check(obj)) {
@@ -290,16 +290,16 @@ public class ObjectLiteralNode extends JavaScriptNode {
             rewrite(obj, value, context);
         }
 
-        private void executeGeneric(DynamicObject obj, Object value, JSContext context) {
+        private void executeGeneric(DynamicObject obj, Object value) {
             PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
-            JSRuntime.definePropertyOrThrow(obj, name, propDesc, context);
+            JSRuntime.definePropertyOrThrow(obj, name, propDesc);
         }
 
         private void rewrite(DynamicObject obj, Object value, JSContext context) {
             CompilerAsserts.neverPartOfCompilation();
             if (getCacheDepth() >= JSTruffleOptions.PropertyCacheLimit) {
                 setGeneric();
-                executeGeneric(obj, value, context);
+                executeGeneric(obj, value);
                 return;
             }
             Shape oldShape = obj.getShape();
@@ -357,7 +357,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         private void execute(DynamicObject obj, Object getterV, Object setterV, JSContext context) {
             for (CacheEntry resolved = cache; resolved != null; resolved = resolved.next) {
                 if (resolved == GENERIC) {
-                    executeGeneric(obj, getterV, setterV, context);
+                    executeGeneric(obj, getterV, setterV);
                     return;
                 }
                 if (resolved.oldShape.check(obj)) {
@@ -378,16 +378,16 @@ public class ObjectLiteralNode extends JavaScriptNode {
             rewrite(obj, getterV, setterV, context);
         }
 
-        private void executeGeneric(DynamicObject obj, Object getterV, Object setterV, JSContext context) {
+        private void executeGeneric(DynamicObject obj, Object getterV, Object setterV) {
             PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getterV, (DynamicObject) setterV, attributes);
-            JSRuntime.definePropertyOrThrow(obj, name, propDesc, context);
+            JSRuntime.definePropertyOrThrow(obj, name, propDesc);
         }
 
         private void rewrite(DynamicObject obj, Object getterV, Object setterV, JSContext context) {
             CompilerAsserts.neverPartOfCompilation();
             if (getCacheDepth() >= JSTruffleOptions.PropertyCacheLimit) {
                 setGeneric();
-                executeGeneric(obj, getterV, setterV, context);
+                executeGeneric(obj, getterV, setterV);
                 return;
             }
             Shape oldShape = obj.getShape();
@@ -438,7 +438,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             }
 
             PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
-            JSRuntime.definePropertyOrThrow(obj, key, propDesc, context);
+            JSRuntime.definePropertyOrThrow(obj, key, propDesc);
         }
 
         @Override
@@ -489,7 +489,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
             assert getterV != null || setterV != null;
             PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getterV, (DynamicObject) setterV, attributes);
-            JSRuntime.definePropertyOrThrow(obj, key, propDesc, context);
+            JSRuntime.definePropertyOrThrow(obj, key, propDesc);
         }
 
         @Override
@@ -637,8 +637,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
     @Children private final ObjectLiteralMemberNode[] members;
     @Child private CreateObjectNode objectCreateNode;
 
-    private static final int DICTIONARY_OBJECT_THRESHOLD = 400;
-
     public ObjectLiteralNode(ObjectLiteralMemberNode[] members, CreateObjectNode objectCreateNode) {
         this.members = members;
         this.objectCreateNode = objectCreateNode;
@@ -648,7 +646,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         if (members.length > 0 && members[0] instanceof ObjectLiteralProtoMemberNode) {
             return new ObjectLiteralNode(Arrays.copyOfRange(members, 1, members.length),
                             CreateObjectNode.createWithCachedPrototype(context, ((ObjectLiteralProtoMemberNode) members[0]).valueNode));
-        } else if (JSTruffleOptions.DictionaryObject && members.length > DICTIONARY_OBJECT_THRESHOLD && onlyDataMembers(members)) {
+        } else if (JSTruffleOptions.DictionaryObject && members.length > JSTruffleOptions.DictionaryObjectThreshold && onlyDataMembers(members)) {
             return createDictionaryObject(context, members);
         } else {
             return new ObjectLiteralNode(members, CreateObjectNode.create(context));

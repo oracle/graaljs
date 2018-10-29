@@ -195,7 +195,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     private Object convertToJSType(Object foreinResult) {
         if (toJSType == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.toJSType = JSForeignToJSTypeNodeGen.create();
+            this.toJSType = insert(JSForeignToJSTypeNodeGen.create());
         }
         return toJSType.executeWithTarget(foreinResult);
     }

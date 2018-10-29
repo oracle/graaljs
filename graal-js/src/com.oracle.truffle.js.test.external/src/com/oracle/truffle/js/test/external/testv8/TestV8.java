@@ -127,6 +127,11 @@ public class TestV8 extends TestSuite {
         return this.mockupSource;
     }
 
+    @Override
+    protected boolean isSkipped(TestFile testFile) {
+        return testFile.getFilePath().contains("-skip-") || super.isSkipped(testFile);
+    }
+
     public static void main(String[] args) {
         SuiteConfig config = new SuiteConfig(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
 

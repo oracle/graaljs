@@ -480,9 +480,6 @@
     "filePath" : "basic/JDK-8073653.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "basic/JDK-8073733.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "basic/JDK-8075207.js",
     "status" : "SKIP",
     "comment" : "nashorn class not found"

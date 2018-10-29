@@ -53,6 +53,8 @@ import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
+import com.oracle.truffle.js.runtime.objects.JSLazyStringFlattened;
+import com.oracle.truffle.js.runtime.objects.JSLazyStringRaw;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
 
@@ -88,8 +90,33 @@ public class JSTypes {
         return JSObject.isDynamicObject(value);
     }
 
+    @TypeCheck(JSLazyStringFlattened.class)
+    public static boolean isLazyStringFlattened(Object object) {
+        return object instanceof JSLazyString && ((JSLazyString) object).isFlat();
+    }
+
+    @TypeCast(JSLazyStringFlattened.class)
+    public static JSLazyStringFlattened asLazyStringFlattened(Object object) {
+        return (JSLazyString) object;
+    }
+
+    @TypeCheck(JSLazyStringRaw.class)
+    public static boolean isLazyStringRaw(Object object) {
+        return object instanceof JSLazyString && !((JSLazyString) object).isFlat();
+    }
+
+    @TypeCast(JSLazyStringRaw.class)
+    public static JSLazyStringRaw asLazyStringRaw(Object object) {
+        return (JSLazyString) object;
+    }
+
     @ImplicitCast
-    public static String castString(JSLazyString value) {
+    public static String convertLazyStringFlattened(JSLazyStringFlattened value) {
+        return value.getFlattenedString(); // avoid to have flatten() in the code
+    }
+
+    @ImplicitCast
+    public static String convertLazyStringRaw(JSLazyStringRaw value) {
         return value.toString();
     }
 

@@ -79,6 +79,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
 import com.oracle.truffle.regex.RegexEngine;
+import com.oracle.truffle.regex.RegexOptions;
 
 public final class JSRegExp extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
 
@@ -314,7 +315,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     private static Object compileEarly(String pattern, String flags) {
         // avoid getRealm() in context.getRegexEngine()
-        TruffleObject tempEngine = new RegexEngine(new JoniRegexCompiler(null), false);
+        TruffleObject tempEngine = new RegexEngine(new JoniRegexCompiler(null), RegexOptions.DEFAULT);
         try {
             return ForeignAccess.sendExecute(RegexCompilerInterface.createExecuteCompilerNode(), tempEngine, pattern, flags);
         } catch (InteropException ex) {

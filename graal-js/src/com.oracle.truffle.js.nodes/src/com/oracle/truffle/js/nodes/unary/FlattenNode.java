@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -58,8 +60,9 @@ public abstract class FlattenNode extends JavaScriptBaseNode {
     public abstract Object execute(Object value);
 
     @Specialization
-    protected static String doLazyString(JSLazyString value) {
-        return value.toString();
+    protected static String doLazyString(JSLazyString value,
+                    @Cached("createBinaryProfile()") ConditionProfile flatten) {
+        return value.toString(flatten);
     }
 
     @Specialization

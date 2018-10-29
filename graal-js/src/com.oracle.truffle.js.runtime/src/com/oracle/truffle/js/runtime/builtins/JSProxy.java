@@ -148,11 +148,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     public static TruffleObject getTarget(DynamicObject obj) {
-        if (isProxy(obj)) {
-            return getTarget(obj, isProxy(obj));
-        } else {
-            return Undefined.instance;
-        }
+        return getTarget(obj, isProxy(obj));
     }
 
     public static TruffleObject getTarget(DynamicObject obj, boolean floatingCondition) {
@@ -173,11 +169,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     public static DynamicObject getHandler(DynamicObject obj) {
-        if (isProxy(obj)) {
-            return getHandler(obj, isProxy(obj));
-        } else {
-            return Undefined.instance;
-        }
+        return getHandler(obj, isProxy(obj));
     }
 
     public static DynamicObject getHandlerChecked(DynamicObject obj) {

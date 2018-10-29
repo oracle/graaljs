@@ -473,6 +473,10 @@ public final class JSFunction extends JSBuiltinObject {
         return isJSFunction(function) && getFunctionData(function).isBound();
     }
 
+    public static boolean isAsyncFunction(DynamicObject function) {
+        return isJSFunction(function) && getFunctionData(function).isAsync();
+    }
+
     public static Object getBoundThis(DynamicObject function) {
         assert isBoundFunction(function);
         return BOUND_THIS_PROPERTY.get(function, isBoundFunction(function));
@@ -785,6 +789,11 @@ public final class JSFunction extends JSBuiltinObject {
             return source.substring(0, 195) + "...<omitted>...\n}";
         }
         return source;
+    }
+
+    @Override
+    public boolean hasOnlyShapeProperties(DynamicObject obj) {
+        return true;
     }
 
     public static CallTarget getConstructTarget(DynamicObject obj) {

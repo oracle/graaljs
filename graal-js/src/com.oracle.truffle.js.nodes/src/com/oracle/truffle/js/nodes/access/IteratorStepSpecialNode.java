@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 /**
  * (partially) implements ES6 7.4.5 IteratorStep(iterator).
@@ -60,7 +61,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
  */
 public abstract class IteratorStepSpecialNode extends JavaScriptNode {
     @Child @Executed JavaScriptNode iteratorNode;
-    @Child private PropertyGetNode getNextNode;
     @Child private PropertyGetNode getValueNode;
     @Child private PropertyGetNode getDoneNode;
     @Child private JSFunctionCallNode methodCallNode;
@@ -71,7 +71,6 @@ public abstract class IteratorStepSpecialNode extends JavaScriptNode {
 
     protected IteratorStepSpecialNode(JSContext context, JavaScriptNode iteratorNode, JavaScriptNode doneNode, boolean setDoneOnError) {
         this.iteratorNode = iteratorNode;
-        this.getNextNode = PropertyGetNode.create(JSRuntime.NEXT, false, context);
         this.getValueNode = PropertyGetNode.create(JSRuntime.VALUE, false, context);
         this.getDoneNode = PropertyGetNode.create(JSRuntime.DONE, false, context);
         this.methodCallNode = JSFunctionCallNode.createCall();
@@ -86,11 +85,11 @@ public abstract class IteratorStepSpecialNode extends JavaScriptNode {
     }
 
     @Specialization
-    protected Object doIteratorStep(VirtualFrame frame, DynamicObject iterator) {
-        Object next;
+    protected Object doIteratorStep(VirtualFrame frame, IteratorRecord iteratorRecord) {
+        Object next = iteratorRecord.getNextMethod();
+        DynamicObject iterator = iteratorRecord.getIterator();
         Object result;
         try {
-            next = getNextNode.getValue(iterator);
             result = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, next));
             if (!isObjectNode.executeBoolean(result)) {
                 throw Errors.createTypeErrorIterResultNotAnObject(result, this);
@@ -107,10 +106,10 @@ public abstract class IteratorStepSpecialNode extends JavaScriptNode {
         return done == Boolean.FALSE ? value : doneNode.execute(frame);
     }
 
-    public abstract Object execute(VirtualFrame frame, DynamicObject iterator);
+    public abstract Object execute(VirtualFrame frame, IteratorRecord iteratorRecord);
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(getNextNode.getContext(), cloneUninitialized(iteratorNode), cloneUninitialized(doneNode), setDoneOnError);
+        return create(getValueNode.getContext(), cloneUninitialized(iteratorNode), cloneUninitialized(doneNode), setDoneOnError);
     }
 }

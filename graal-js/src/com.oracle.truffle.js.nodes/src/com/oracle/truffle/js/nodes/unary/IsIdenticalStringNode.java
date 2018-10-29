@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
@@ -55,8 +57,9 @@ public abstract class IsIdenticalStringNode extends JSUnaryNode {
     }
 
     @Specialization
-    protected boolean doString(JSLazyString other) {
-        return string.equals(other.toString());
+    protected boolean doLazyString(JSLazyString other,
+                    @Cached("createBinaryProfile()") ConditionProfile flatten) {
+        return string.equals(other.toString(flatten));
     }
 
     @Specialization

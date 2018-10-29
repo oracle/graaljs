@@ -149,4 +149,12 @@ describe('TryCatch', function () {
             });
         });
     });
+    describe('Reset', function () {
+        it('HasCaught() should return false after Reset()', function () {
+            var hasCaught = module.TryCatch_Reset(function () {
+                throw new Error();
+            });
+            assert.strictEqual(hasCaught, false);
+        });
+    });
 });

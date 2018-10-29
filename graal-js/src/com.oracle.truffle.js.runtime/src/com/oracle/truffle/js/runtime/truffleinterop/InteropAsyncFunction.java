@@ -38,14 +38,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.parser.foreign;
+package com.oracle.truffle.js.runtime.truffleinterop;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
-public final class InteropBoundFunctionForeign extends InteropFunctionForeign {
-    public static final ForeignAccess ACCESS = ForeignAccess.create(InteropBoundFunction.class, new InteropBoundFunctionForeign());
+/**
+ * Interop wrapper for async functions that unwraps the returned promise.
+ */
+public final class InteropAsyncFunction implements TruffleObject {
 
-    private InteropBoundFunctionForeign() {
+    private final DynamicObject function;
+
+    public InteropAsyncFunction(DynamicObject function) {
+        this.function = function;
+    }
+
+    public DynamicObject getFunction() {
+        return function;
+    }
+
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof InteropAsyncFunction;
+    }
+
+    @Override
+    public int hashCode() {
+        return function.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        } else if (obj instanceof InteropAsyncFunction) {
+            InteropAsyncFunction other = (InteropAsyncFunction) obj;
+            return function.equals(other.function);
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return JSObject.getJSContext(function).getInteropRuntime().getInteropAsyncFunctionForeignAccess();
     }
 }

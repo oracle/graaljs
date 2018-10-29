@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendNode {
@@ -190,7 +191,7 @@ class YieldStarNode extends YieldNode {
     protected YieldStarNode(JSContext context, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
         super(context, expression, yieldValue, returnNode, writeYieldResultNode);
         this.getIteratorNode = GetIteratorNode.create(context);
-        this.iteratorNextNode = IteratorNextNode.create(context);
+        this.iteratorNextNode = IteratorNextNode.create();
         this.iteratorCompleteNode = IteratorCompleteNode.create(context);
         this.iteratorValueNode = IteratorValueNode.create(context, null);
         this.getThrowMethodNode = GetMethodNode.create(context, null, "throw");
@@ -202,48 +203,50 @@ class YieldStarNode extends YieldNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        DynamicObject iterator = getIteratorNode.execute(expression.execute(frame));
+        IteratorRecord iteratorRecord = getIteratorNode.execute(expression.execute(frame));
         Object received = Undefined.instance;
-        DynamicObject innerResult = iteratorNextNode.execute(iterator, received);
+        DynamicObject innerResult = iteratorNextNode.execute(iteratorRecord, received);
         if (iteratorCompleteNode.execute(innerResult)) {
             return iteratorValueNode.execute(innerResult);
         }
-        return saveStateAndYield(frame, iterator, innerResult);
+        return saveStateAndYield(frame, iteratorRecord, innerResult);
     }
 
-    private Object saveStateAndYield(VirtualFrame frame, DynamicObject iterator, DynamicObject innerResult) {
-        setState(frame, iterator);
+    private Object saveStateAndYield(VirtualFrame frame, IteratorRecord iteratorRecord, DynamicObject innerResult) {
+        setState(frame, iteratorRecord);
         return generatorYield(frame, innerResult);
     }
 
     @Override
     public Object resume(VirtualFrame frame) {
-        DynamicObject iterator = (DynamicObject) getState(frame);
-        if (iterator == Undefined.instance) {
+        Object state = getState(frame);
+        if (state == Undefined.instance) {
             return execute(frame);
         } else {
-            setState(frame, Undefined.instance);
+            resetState(frame);
+            IteratorRecord iteratorRecord = (IteratorRecord) state;
             Object received = yieldValue.execute(frame);
             if (!(received instanceof Completion)) {
-                DynamicObject innerResult = iteratorNextNode.execute(iterator, received);
+                DynamicObject innerResult = iteratorNextNode.execute(iteratorRecord, received);
                 if (iteratorCompleteNode.execute(innerResult)) {
                     return iteratorValueNode.execute(innerResult);
                 }
-                return saveStateAndYield(frame, iterator, innerResult);
+                return saveStateAndYield(frame, iteratorRecord, innerResult);
             } else {
                 Completion completion = (Completion) received;
                 received = completion.getValue();
                 if (completion.isThrow()) {
-                    return resumeThrow(frame, iterator, received);
+                    return resumeThrow(frame, iteratorRecord, received);
                 } else {
                     assert completion.isReturn();
-                    return resumeReturn(frame, iterator, received);
+                    return resumeReturn(frame, iteratorRecord, received);
                 }
             }
         }
     }
 
-    private Object resumeReturn(VirtualFrame frame, DynamicObject iterator, Object received) {
+    private Object resumeReturn(VirtualFrame frame, IteratorRecord iteratorRecord, Object received) {
+        DynamicObject iterator = iteratorRecord.getIterator();
         Object returnMethod = getReturnMethodNode.executeWithTarget(iterator);
         if (returnMethod == Undefined.instance) {
             return returnValue(frame, received);
@@ -252,18 +255,19 @@ class YieldStarNode extends YieldNode {
             if (iteratorCompleteNode.execute(innerReturnResult)) {
                 return returnValue(frame, iteratorValueNode.execute(innerReturnResult));
             }
-            return saveStateAndYield(frame, iterator, innerReturnResult);
+            return saveStateAndYield(frame, iteratorRecord, innerReturnResult);
         }
     }
 
-    private Object resumeThrow(VirtualFrame frame, DynamicObject iterator, Object received) {
+    private Object resumeThrow(VirtualFrame frame, IteratorRecord iteratorRecord, Object received) {
+        DynamicObject iterator = iteratorRecord.getIterator();
         Object throwMethod = getThrowMethodNode.executeWithTarget(iterator);
         if (throwMethod != Undefined.instance) {
             DynamicObject innerResult = callThrowMethod(iterator, received, throwMethod);
             if (iteratorCompleteNode.execute(innerResult)) {
                 return iteratorValueNode.execute(innerResult);
             }
-            return saveStateAndYield(frame, iterator, innerResult);
+            return saveStateAndYield(frame, iteratorRecord, innerResult);
         } else {
             iteratorCloseNode.executeVoid(iterator);
             throw Errors.createTypeErrorYieldStarThrowMethodMissing(this);

@@ -40,32 +40,34 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
-public class IteratorCloseIfNotDoneNode extends JavaScriptNode implements ResumableNode {
+public class IteratorCloseWrapperNode extends JavaScriptNode implements ResumableNode {
     @Child private JavaScriptNode block;
     @Child private JavaScriptNode iterator;
     @Child private IteratorCloseNode iteratorClose;
     @Child private JavaScriptNode done;
+    private final JSContext context;
+    private final BranchProfile throwBranch = BranchProfile.create();
+    private final BranchProfile exitBranch = BranchProfile.create();
+    private final BranchProfile notDoneBranch = BranchProfile.create();
 
-    protected IteratorCloseIfNotDoneNode(JSContext context, JavaScriptNode block, JavaScriptNode iterator, JavaScriptNode done) {
-        this(block, iterator, done, IteratorCloseNode.create(context));
-    }
-
-    private IteratorCloseIfNotDoneNode(JavaScriptNode block, JavaScriptNode iterator, JavaScriptNode done, IteratorCloseNode iteratorClose) {
+    protected IteratorCloseWrapperNode(JSContext context, JavaScriptNode block, JavaScriptNode iterator, JavaScriptNode done) {
+        this.context = context;
         this.block = block;
         this.iterator = iterator;
         this.done = done;
-        this.iteratorClose = iteratorClose;
     }
 
     public static JavaScriptNode create(JSContext context, JavaScriptNode block, JavaScriptNode iterator, JavaScriptNode done) {
-        return new IteratorCloseIfNotDoneNode(context, block, iterator, done);
+        return new IteratorCloseWrapperNode(context, block, iterator, done);
     }
 
     @Override
@@ -76,61 +78,51 @@ public class IteratorCloseIfNotDoneNode extends JavaScriptNode implements Resuma
         } catch (YieldException e) {
             throw e;
         } catch (ControlFlowException e) {
-            Object iteratorValue = iterator.execute(frame);
-            Object isDone = done.execute(frame);
-            if (isDone != Boolean.TRUE) {
-                iteratorClose.executeVoid((DynamicObject) iteratorValue);
+            exitBranch.enter();
+            if (!isDone(frame)) {
+                iteratorClose().executeVoid(getIteratorRecord(frame).getIterator());
             }
             throw e;
         } catch (Throwable e) {
-            Object iteratorValue = iterator.execute(frame);
-            Object isDone = done.execute(frame);
-            if (isDone != Boolean.TRUE) {
-                iteratorClose.executeAbrupt((DynamicObject) iteratorValue);
+            if (TryCatchNode.shouldCatch(e)) {
+                throwBranch.enter();
+                if (!isDone(frame)) {
+                    iteratorClose().executeAbrupt(getIteratorRecord(frame).getIterator());
+                }
             }
             throw e;
         }
 
-        Object iteratorValue = iterator.execute(frame);
-        Object isDone = done.execute(frame);
-        if (isDone != Boolean.TRUE) {
-            iteratorClose.executeVoid((DynamicObject) iteratorValue);
+        if (!isDone(frame)) {
+            notDoneBranch.enter();
+            iteratorClose().executeVoid(getIteratorRecord(frame).getIterator());
         }
         return result;
+    }
+
+    private boolean isDone(VirtualFrame frame) {
+        return done.execute(frame) == Boolean.TRUE;
+    }
+
+    private IteratorRecord getIteratorRecord(VirtualFrame frame) {
+        return (IteratorRecord) iterator.execute(frame);
     }
 
     @Override
     public Object resume(VirtualFrame frame) {
-        Object result;
-        try {
-            result = block.execute(frame);
-        } catch (YieldException e) {
-            throw e;
-        } catch (ControlFlowException e) {
-            Object iteratorValue = iterator.execute(frame);
-            Object isDone = done.execute(frame);
-            if (isDone != Boolean.TRUE) {
-                iteratorClose.executeVoid((DynamicObject) iteratorValue);
-            }
-            throw e;
-        } catch (Throwable e) {
-            Object iteratorValue = iterator.execute(frame);
-            Object isDone = done.execute(frame);
-            if (isDone != Boolean.TRUE) {
-                iteratorClose.executeAbrupt((DynamicObject) iteratorValue);
-            }
-            throw e;
+        return execute(frame);
+    }
+
+    private IteratorCloseNode iteratorClose() {
+        if (iteratorClose == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            iteratorClose = insert(IteratorCloseNode.create(context));
         }
-        Object iteratorValue = iterator.execute(frame);
-        Object isDone = done.execute(frame);
-        if (isDone != Boolean.TRUE) {
-            iteratorClose.executeVoid((DynamicObject) iteratorValue);
-        }
-        return result;
+        return iteratorClose;
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new IteratorCloseIfNotDoneNode(cloneUninitialized(block), cloneUninitialized(iterator), cloneUninitialized(done), cloneUninitialized(iteratorClose));
+        return new IteratorCloseWrapperNode(context, cloneUninitialized(block), cloneUninitialized(iterator), cloneUninitialized(done));
     }
 }

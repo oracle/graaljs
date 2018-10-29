@@ -40,11 +40,13 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.text.Collator;
 import java.text.Normalizer;
 import java.util.EnumSet;
 import java.util.Locale;
 import java.util.regex.Pattern;
+
+import com.ibm.icu.text.Collator;
+import com.ibm.icu.text.RuleBasedCollator;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -165,11 +167,14 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                 state.collator.setStrength(Collator.SECONDARY);
                 break;
             case "case":
+            case "variant":
                 state.collator.setStrength(Collator.TERTIARY);
                 break;
-            case "variant":
-                state.collator.setStrength(Collator.IDENTICAL);
-                break;
+        }
+        if (state.ignorePunctuation) {
+            if (state.collator instanceof RuleBasedCollator) {
+                ((RuleBasedCollator) state.collator).setAlternateHandlingShifted(true);
+            }
         }
     }
 

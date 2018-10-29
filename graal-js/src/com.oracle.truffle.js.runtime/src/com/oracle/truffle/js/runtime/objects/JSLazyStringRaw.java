@@ -38,14 +38,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.parser.foreign;
+package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
-
-public final class InteropBoundFunctionForeign extends InteropFunctionForeign {
-    public static final ForeignAccess ACCESS = ForeignAccess.create(InteropBoundFunction.class, new InteropBoundFunctionForeign());
-
-    private InteropBoundFunctionForeign() {
-    }
+/**
+ * Used for implicit conversion in the type system. Represents a {@link JSLazyString} that has not
+ * been flattened yet.
+ */
+public interface JSLazyStringRaw {
 }

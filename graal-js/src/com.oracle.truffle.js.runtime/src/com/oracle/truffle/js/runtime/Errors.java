@@ -129,6 +129,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorNotAConstructor(Object object, Node originatingNode) {
+        return JSException.create(JSErrorType.TypeError, String.format("%s is not a constructor", JSRuntime.safeToString(object)), originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorNumberFormatExpected() {
         return createTypeError("NumberFormat object expected.");
     }
@@ -262,8 +267,13 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorNotWritableProperty(Object key, Object thisObj, Node originatingNode) {
+        return Errors.createTypeError(keyToString(key) + " is not a writable property of " + JSRuntime.safeToString(thisObj), originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorNotWritableProperty(Object key, Object thisObj) {
-        return Errors.createTypeError(keyToString(key) + " is not a writable property of " + JSRuntime.safeToString(thisObj));
+        return createTypeErrorNotWritableProperty(key, thisObj, null);
     }
 
     @TruffleBoundary
@@ -543,5 +553,10 @@ public final class Errors {
                         ", or environment variable, " +
                         "ICU4J_DATA_PATH" +
                         ", to contain path to your ICU4J icudt directory (should come bundled with GraalVM in jre/languages/js/icu4j/icudt subdirectory).");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorStringExpected() {
+        return Errors.createTypeError("string expected");
     }
 }

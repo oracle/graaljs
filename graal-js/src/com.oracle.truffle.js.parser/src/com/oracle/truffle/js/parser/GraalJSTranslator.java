@@ -71,6 +71,7 @@ import com.oracle.js.parser.ir.JoinPredecessorExpression;
 import com.oracle.js.parser.ir.LexicalContext;
 import com.oracle.js.parser.ir.LexicalContextNode;
 import com.oracle.js.parser.ir.LiteralNode;
+import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyNode;
@@ -1265,9 +1266,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterReturnNode(com.oracle.js.parser.ir.ReturnNode returnNode) {
-        JavaScriptNode expression = returnNode.getExpression() != null ? transform(returnNode.getExpression()) : factory.createConstantUndefined();
-        if (currentFunction().isAsyncGeneratorFunction()) {
-            expression = createAwaitNode(expression);
+        JavaScriptNode expression;
+        if (returnNode.getExpression() != null) {
+            expression = transform(returnNode.getExpression());
+            if (currentFunction().isAsyncGeneratorFunction()) {
+                expression = createAwaitNode(expression);
+            }
+        } else {
+            expression = factory.createConstantUndefined();
         }
 
         if (returnNode.isInTerminalPosition()) {
@@ -1646,7 +1652,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode createVarAssignNode(VarNode varNode, String varName) {
         JavaScriptNode rhs = transform(varNode.getAssignmentSource());
-        setAnonymousFunctionName(rhs, varName);
+        String functionName = (varNode.isExport() && Module.DEFAULT_EXPORT_BINDING_NAME.equals(varName)) ? Module.DEFAULT_NAME : varName;
+        setAnonymousFunctionName(rhs, functionName);
         JavaScriptNode assignment = findScopeVar(varName, false).createWriteNode(rhs);
         tagExpression(assignment, varNode);
         if (varNode.isBlockScoped() && varNode.isFunctionDeclaration() && context.isOptionAnnexB()) {
@@ -1800,7 +1807,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assert forNode.isForIn() && !forNode.isForEach() && !forNode.isForOf();
             createIteratorNode = factory.createEnumerate(context, modify, false);
         }
-        return desugarForInOrOfBody(forNode, createIteratorNode, jumpTarget);
+        return desugarForInOrOfBody(forNode, factory.createGetIterator(context, createIteratorNode), jumpTarget);
     }
 
     private JavaScriptNode desugarForOf(ForNode forNode, JavaScriptNode modify, JumpTargetCloseable<ContinueTarget> jumpTarget) {
@@ -1814,7 +1821,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode iteratorInit = iteratorVar.createWriteNode(iterator);
         VarRef nextResultVar = environment.createTempVar();
         VarRef doneVar = environment.createTempVar();
-        JavaScriptNode iteratorNext = factory.createIteratorNext(context, iteratorVar.createReadNode());
+        JavaScriptNode iteratorNext = factory.createIteratorNext(iteratorVar.createReadNode());
         // nextResult = IteratorNext(iterator)
         // while(!(done = IteratorComplete(nextResult)))
         JavaScriptNode condition = factory.createUnary(UnaryOperation.NOT, doneVar.createWriteNode(factory.createIteratorComplete(context, nextResultVar.createWriteNode(iteratorNext))));
@@ -3044,7 +3051,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true);
 
         JavaScriptNode classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
-                        members.toArray(new ObjectLiteralMemberNode[members.size()]), className);
+                        members.toArray(ObjectLiteralMemberNode.EMPTY), className);
 
         return tagExpression(classDefinition, classNode);
     }

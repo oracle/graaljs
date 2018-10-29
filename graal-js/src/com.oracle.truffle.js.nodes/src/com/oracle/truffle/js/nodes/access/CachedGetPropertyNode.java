@@ -54,7 +54,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 @ImportStatic(JSRuntime.class)
-public abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
+abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     static final int MAX_DEPTH = 2;
 
     protected final JSContext context;
@@ -65,7 +65,7 @@ public abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
 
     public abstract Object execute(DynamicObject target, Object propertyKey);
 
-    public static CachedGetPropertyNode create(JSContext context) {
+    static CachedGetPropertyNode create(JSContext context) {
         return CachedGetPropertyNodeGen.create(context);
     }
 
@@ -91,7 +91,13 @@ public abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         return JSObject.get(target, index, jsclassProfile);
     }
 
-    @Specialization(replaces = {"doCachedKey", "doArrayIndex"})
+    @Specialization(guards = {"isJSProxy(target)"})
+    protected Object doProxy(DynamicObject target, Object index,
+                    @Cached("create(context)") JSProxyPropertyGetNode proxyGet) {
+        return proxyGet.executeWithReceiver(target, target, index);
+    }
+
+    @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
     Object doGeneric(DynamicObject target, Object key,
                     @Cached("create()") ToArrayIndexNode toArrayIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile getType,

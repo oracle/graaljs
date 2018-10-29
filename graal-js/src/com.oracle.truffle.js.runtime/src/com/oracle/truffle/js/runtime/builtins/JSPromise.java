@@ -59,7 +59,6 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
     public static final JSPromise INSTANCE = new JSPromise();
 
     public static final String RESOLVE = "resolve";
-    public static final String REJECT = "reject";
     public static final String THEN = "then";
 
     public static final HiddenKey PROMISE_STATE = new HiddenKey("PromiseState");
@@ -74,9 +73,9 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
     public static final HiddenKey PROMISE_FINALLY_CONSTRUCTOR = new HiddenKey("Constructor");
 
     // Promise states
-    public static final Integer PENDING = 0;
-    public static final Integer FULFILLED = 1;
-    public static final Integer REJECTED = 2;
+    public static final int PENDING = 0;
+    public static final int FULFILLED = 1;
+    public static final int REJECTED = 2;
 
     // HostPromiseRejectionTracker operations
     public static final int REJECTION_TRACKER_OPERATION_REJECT = 0;
@@ -109,17 +108,17 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
 
     public static boolean isRejected(DynamicObject promise) {
         assert isJSPromise(promise);
-        return REJECTED.equals(promise.get(JSPromise.PROMISE_STATE));
+        return REJECTED == (int) promise.get(JSPromise.PROMISE_STATE);
     }
 
     public static boolean isPending(DynamicObject promise) {
         assert isJSPromise(promise);
-        return PENDING.equals(promise.get(JSPromise.PROMISE_STATE));
+        return PENDING == (int) promise.get(JSPromise.PROMISE_STATE);
     }
 
     public static boolean isFulfilled(DynamicObject promise) {
         assert isJSPromise(promise);
-        return FULFILLED.equals(promise.get(JSPromise.PROMISE_STATE));
+        return FULFILLED == (int) promise.get(JSPromise.PROMISE_STATE);
     }
 
     @Override

@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -53,23 +54,19 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
 @SuppressWarnings("unused")
 @ImportStatic(JSRuntime.class)
-public abstract class JSConcatStringsNode extends JSBinaryNode {
+public abstract class JSConcatStringsNode extends JavaScriptBaseNode {
 
     protected final ConditionProfile leftProfile1 = ConditionProfile.createBinaryProfile();
     protected final ConditionProfile leftProfile2 = ConditionProfile.createBinaryProfile();
     protected final ConditionProfile rightProfile1 = ConditionProfile.createBinaryProfile();
     protected final ConditionProfile rightProfile2 = ConditionProfile.createBinaryProfile();
 
-    protected JSConcatStringsNode(JavaScriptNode left, JavaScriptNode right) {
-        super(left, right);
+    protected JSConcatStringsNode() {
+        super();
     }
 
     public static JSConcatStringsNode create() {
-        return create(null, null);
-    }
-
-    public static JSConcatStringsNode create(JavaScriptNode left, JavaScriptNode right) {
-        return JSConcatStringsNodeGen.create(left, right);
+        return JSConcatStringsNodeGen.create();
     }
 
     public abstract CharSequence executeCharSequence(CharSequence a, CharSequence b);
@@ -121,10 +118,5 @@ public abstract class JSConcatStringsNode extends JSBinaryNode {
 
     protected boolean concatStringLengthValid(CharSequence left, CharSequence right) {
         return (JSRuntime.length(left, leftProfile1, leftProfile2) + JSRuntime.length(right, rightProfile1, rightProfile2)) <= JSTruffleOptions.StringLengthLimit;
-    }
-
-    @Override
-    protected JavaScriptNode copyUninitialized() {
-        return JSConcatStringsNodeGen.create(cloneUninitialized(getLeft()), cloneUninitialized(getRight()));
     }
 }

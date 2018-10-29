@@ -122,7 +122,7 @@ public class TryFinallyNode extends StatementNode implements ResumableNode {
     }
 
     @SuppressWarnings({"unchecked"})
-    private static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
+    static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
         throw (E) ex;
     }
 }

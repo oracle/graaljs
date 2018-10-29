@@ -204,10 +204,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "built-ins/Array/prototype/filter/target-array-with-non-writable-property.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "built-ins/Array/prototype/flat/array-like-objects.js",
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
@@ -279,34 +275,6 @@
     "filePath" : "built-ins/Array/prototype/lastIndexOf/calls-only-has-on-prototype-after-length-zeroed.js",
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Array/prototype/map/target-array-with-non-writable-property.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Array/prototype/slice/target-array-with-non-writable-property.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Array/prototype/splice/target-array-with-non-writable-property.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/request-queue-order-state-executing.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-suspendedYield-promise.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-suspendedYield-try-finally.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/AsyncGeneratorPrototype/return/return-suspendedYield.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "built-ins/Atomics/wait/undefined-index-defaults-to-zero.js",
     "status" : "SKIP",
@@ -2026,14 +1994,6 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/BigInt/detached-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/BigInt/tonumber-value-throws.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -2729,22 +2689,6 @@
     "filePath" : "language/expressions/async-generator/expression-yield-star-before-newline.js",
     "status" : "SKIP"
   }, {
-    "filePath" : "language/expressions/async-generator/named-yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/async-generator/named-yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/expressions/async-generator/yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/async-generator/yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/expressions/call/eval-spread-empty-leading.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -2788,22 +2732,6 @@
     "filePath" : "language/expressions/class/accessor-name-static-computed-yield-expr.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/expressions/class/async-gen-method-static-yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/class/async-gen-method-static-yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/expressions/class/async-gen-method-yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/class/async-gen-method-yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
   }, {
     "filePath" : "language/expressions/class/class-name-ident-let-escaped.js",
     "status" : "FAIL",
@@ -3377,14 +3305,6 @@
     "status" : "SKIP",
     "comment" : "Tail Call Tests SKIPing due to StackOverflow"
   }, {
-    "filePath" : "language/expressions/object/method-definition/async-gen-yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/object/method-definition/async-gen-yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/expressions/object/scope-gen-meth-body-lex-distinct.js",
     "status" : "FAIL"
   }, {
@@ -3754,18 +3674,6 @@
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
   }, {
-    "filePath" : "language/module-code/eval-export-dflt-cls-anon.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/module-code/eval-export-dflt-expr-cls-anon.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/module-code/eval-export-dflt-expr-fn-anon.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/module-code/eval-export-dflt-expr-gen-anon.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/module-code/eval-gtbndng-indirect-update-dflt.js",
     "status" : "FAIL"
   }, {
@@ -3888,14 +3796,6 @@
     "status" : "FAIL",
     "comment" : "ES7 tests"
   }, {
-    "filePath" : "language/statements/async-generator/yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/statements/async-generator/yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
     "filePath" : "language/statements/block/tco-stmt-list.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
@@ -3911,22 +3811,6 @@
     "filePath" : "language/statements/class/accessor-name-static-computed-yield-expr.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/class/async-gen-method-static-yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/statements/class/async-gen-method-static-yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
-  }, {
-    "filePath" : "language/statements/class/async-gen-method-yield-star-async-next.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/statements/class/async-gen-method-yield-star-sync-next.js",
-    "status" : "FAIL",
-    "comment" : "proposal-async-iteration"
   }, {
     "filePath" : "language/statements/class/class-name-ident-let-escaped.js",
     "status" : "FAIL",
@@ -4571,10 +4455,6 @@
   }, {
     "filePath" : "language/statements/for-of/iterator-next-error.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-of/iterator-next-reference.js",
-    "status" : "FAIL",
-    "comment" : "tests updated to add the latest version of intl402 tests"
   }, {
     "filePath" : "language/statements/for-of/iterator-next-result-value-attr-error.js",
     "status" : "FAIL"

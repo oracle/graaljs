@@ -75,7 +75,7 @@ public class FulfillPromiseNode extends JavaScriptBaseNode {
         setPromiseResult.setValue(promise, value);
         setPromiseFulfillReactions.setValue(promise, Undefined.instance);
         setPromiseRejectReactions.setValue(promise, Undefined.instance);
-        setPromiseState.setValue(promise, JSPromise.FULFILLED);
+        setPromiseState.setValueInt(promise, JSPromise.FULFILLED);
         return triggerPromiseReactions.execute(reactions, value);
     }
 }
