@@ -72,6 +72,7 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,10 +93,13 @@ public class Deserializer {
     private Map<Integer, Object> objectMap = new HashMap<>();
     /** Maps transfer ID to the transferred object. */
     private Map<Integer, DynamicObject> transferMap = new HashMap<>();
+    /** VM-level communication channels used to share Java objects between threads. */
+    private final HostObjectsMessagePort hostMessagePort;
 
-    public Deserializer(long delegate, ByteBuffer buffer) {
+    public Deserializer(long delegate, HostObjectsMessagePort hostobjectsmessageport, ByteBuffer buffer) {
         this.delegate = delegate;
         this.buffer = buffer.order(ByteOrder.nativeOrder());
+        this.hostMessagePort = hostobjectsmessageport;
     }
 
     public void readHeader() {
@@ -170,6 +174,8 @@ public class Deserializer {
                 return readObjectReference();
             case HOST_OBJECT:
                 return readHostObject();
+            case SHARED_JAVA_OBJECT:
+                return readSharedJavaObject(context);
             default:
                 throw Errors.createError("Deserialization of a value tagged " + tag);
         }
@@ -474,6 +480,12 @@ public class Deserializer {
         assert JSSharedArrayBuffer.isJSSharedArrayBuffer(sharedArrayBuffer);
         assignId(sharedArrayBuffer);
         return (peekTag() == SerializationTag.ARRAY_BUFFER_VIEW) ? readJSArrayBufferView(context, (DynamicObject) sharedArrayBuffer) : sharedArrayBuffer;
+    }
+
+    public Object readSharedJavaObject(JSContext context) {
+        long id = readVarInt();
+        Deque<Object> queue = hostMessagePort.getQueueFromId(id);
+        return context.getRealm().getEnv().asGuestValue(queue.pollLast());
     }
 
     public int readBytes(int length) {

@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.trufflenode.serialization;
 
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -71,6 +73,7 @@ import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -95,9 +98,18 @@ public class Serializer {
     private final Map<Object, Integer> transferMap = new IdentityHashMap<>();
     /** Determines whether {@code ArrayBuffer}s should be serialized as host objects. */
     private boolean treatArrayBufferViewsAsHostObjects;
+    /** VM-level communication channels to share Java objects between threads. */
+    private final Deque<Object> channel;
+    /** Unique id of the shared-memory channel used to send Java host objects to workers. */
+    private final int channelId;
 
-    public Serializer(long delegate) {
+    private final Env env;
+
+    public Serializer(JSContext mainJSContext, Deque<Object> channel, long delegate) {
         this.delegate = delegate;
+        this.env = mainJSContext.getRealm().getEnv();
+        this.channel = channel;
+        this.channelId = System.identityHashCode(channel);
     }
 
     public void setTreatArrayBufferViewsAsHostObjects(boolean treatArrayBufferViewsAsHostObjects) {
@@ -159,6 +171,11 @@ public class Serializer {
         } else if (JSRuntime.isBigInt(value)) {
             writeTag(SerializationTag.BIG_INT);
             writeBigIntContents((BigInt) value);
+        } else if (env.isHostObject(value)) {
+            writeTag(SerializationTag.SHARED_JAVA_OBJECT);
+            writeVarInt(channelId);
+            assignId(value);
+            channel.push(env.asHostObject(value));
         } else {
             writeObject(value);
         }

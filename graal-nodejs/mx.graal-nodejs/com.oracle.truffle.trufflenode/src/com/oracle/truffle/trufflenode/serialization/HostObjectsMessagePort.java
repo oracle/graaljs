@@ -40,65 +40,56 @@
  */
 package com.oracle.truffle.trufflenode.serialization;
 
-/**
- * A tag that determines the type of the serialized value.
- */
-public enum SerializationTag {
-    TRUE('T'), // kTrue
-    FALSE('F'), // kFalse
-    UNDEFINED('_'), // kUndefined
-    NULL('0'), // kNull
-    INT32('I'), // kInt32
-    UINT32('U'), // kUint32
-    DOUBLE('N'), // kDouble
-    BIG_INT('Z'), // kBigInt
-    UTF8_STRING('S'), // kUtf8String
-    ONE_BYTE_STRING('"'), // kOneByteString
-    TWO_BYTE_STRING('c'), // kTwoByteString
-    PADDING('\0'), // kPadding
-    DATE('D'), // kDate
-    TRUE_OBJECT('y'), // kTrueObject
-    FALSE_OBJECT('x'), // kFalseObject
-    NUMBER_OBJECT('n'), // kNumberObject
-    BIG_INT_OBJECT('z'), // kBigIntObject
-    STRING_OBJECT('s'), // kStringObject
-    REGEXP('R'), // kRegExp
-    ARRAY_BUFFER('B'), // kArrayBuffer
-    SHARED_ARRAY_BUFFER('u'), // kSharedArrayBuffer
-    ARRAY_BUFFER_TRANSFER('t'), // kArrayBufferTransfer
-    ARRAY_BUFFER_VIEW('V'), // kArrayBufferView
-    BEGIN_JS_MAP(';'), // kBeginJSMap
-    END_JS_MAP(':'), // kEndJSMap
-    BEGIN_JS_SET('\''), // kBeginJSSet
-    END_JS_SET(','), // kEndJSSet
-    BEGIN_JS_OBJECT('o'), // kBeginJSObject
-    END_JS_OBJECT('{'), // kEndJSObject
-    BEGIN_SPARSE_JS_ARRAY('a'), // kBeginSparseJSArray
-    END_SPARSE_JS_ARRAY('@'), // kEndSparseJSArray
-    BEGIN_DENSE_JS_ARRAY('A'), // kBeginDenseJSArray
-    END_DENSE_JS_ARRAY('$'), // kEndDenseJSArray
-    THE_HOLE('-'), // kTheHole
-    OBJECT_REFERENCE('^'), // kObjectReference
-    HOST_OBJECT('\\'), // kHostObject
-    SHARED_JAVA_OBJECT('J'); // Custom, for shared interop Java objects
+import java.util.Deque;
+import java.util.Map;
+import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
-    private final byte tag;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.trufflenode.GraalJSAccess;
 
-    SerializationTag(char tag) {
-        this.tag = (byte) tag;
+public class HostObjectsMessagePort {
+
+    private final Lock guard;
+    private final Map<GraalJSAccess, Deque<Object>> channels;
+
+    public HostObjectsMessagePort() {
+        this.guard = new ReentrantLock();
+        this.channels = new WeakHashMap<>();
     }
 
-    public byte getTag() {
-        return tag;
-    }
-
-    public static SerializationTag fromTag(byte tag) {
-        for (SerializationTag t : values()) {
-            if (t.tag == tag) {
-                return t;
+    @TruffleBoundary
+    public Deque<Object> register(GraalJSAccess graalJSAccess) {
+        guard.lock();
+        try {
+            if (channels.containsKey(graalJSAccess)) {
+                return channels.get(graalJSAccess);
+            } else {
+                Deque<Object> channel = new ConcurrentLinkedDeque<>();
+                channels.put(graalJSAccess, channel);
+                return channel;
             }
+        } finally {
+            guard.unlock();
         }
-        return null;
+    }
+
+    @TruffleBoundary
+    public Deque<Object> getQueueFromId(long id) {
+        guard.lock();
+        try {
+            for (Deque<Object> q : channels.values()) {
+                if (System.identityHashCode(q) == id) {
+                    return q;
+                }
+            }
+            throw Errors.createError("Cannot receive host object message: unknown worker receiver!");
+        } finally {
+            guard.unlock();
+        }
     }
 
 }

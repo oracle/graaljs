@@ -207,6 +207,7 @@ import com.oracle.truffle.trufflenode.node.ExecuteNativeFunctionNode;
 import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
 import com.oracle.truffle.trufflenode.node.debug.SetBreakPointNode;
 import com.oracle.truffle.trufflenode.serialization.Deserializer;
+import com.oracle.truffle.trufflenode.serialization.HostObjectsMessagePort;
 import com.oracle.truffle.trufflenode.serialization.Serializer;
 
 /**
@@ -262,6 +263,17 @@ public final class GraalJSAccess {
      */
     private final Map<String, Reference<String>> sourceCodeCache = new WeakHashMap<>();
 
+    /**
+     * Communication channels factory. Used to establish a communication channels between node
+     * workers when they attempt to exchange Java host objects.
+     */
+    private static final HostObjectsMessagePort hostObjectsMessagePort = new HostObjectsMessagePort();
+
+    /**
+     * Per-isolate queue used to share host objects between workers.
+     */
+    private final Deque<Object> hostObjectsQueue;
+
     private final boolean exposeGC;
 
     // static accessors to JSRegExp properties (usually via nodes)
@@ -295,6 +307,7 @@ public final class GraalJSAccess {
         mainJSContext.setJSAgent(agent);
         deallocator = new Deallocator();
         envForInstruments = mainJSRealm.getEnv();
+        hostObjectsQueue = hostObjectsMessagePort.register(this);
     }
 
     private static String[] prepareArguments(String[] args) {
@@ -2809,7 +2822,7 @@ public final class GraalJSAccess {
     }
 
     public Object valueSerializerNew(long delegatePointer) {
-        return new Serializer(delegatePointer);
+        return new Serializer(mainJSContext, hostObjectsQueue, delegatePointer);
     }
 
     public int valueSerializerSize(Object serializer) {
@@ -2853,7 +2866,7 @@ public final class GraalJSAccess {
     }
 
     public Object valueDeserializerNew(long delegate, Object buffer) {
-        return new Deserializer(delegate, (ByteBuffer) buffer);
+        return new Deserializer(delegate, hostObjectsMessagePort, (ByteBuffer) buffer);
     }
 
     public void valueDeserializerReadHeader(Object deserializer) {
