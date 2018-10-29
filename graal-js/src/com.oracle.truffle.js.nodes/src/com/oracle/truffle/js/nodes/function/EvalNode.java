@@ -56,6 +56,7 @@ import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class EvalNode extends JavaScriptNode {
@@ -113,6 +114,9 @@ public abstract class EvalNode extends JavaScriptNode {
         SourceSection sourceSection = callNode.getEncapsulatingSourceSection();
         String sourceName = sourceSection.getSource().getName();
         String callerName = callNode.getRootNode().getName();
+        if (callerName == null || callerName.startsWith(":")) {
+            callerName = JSError.ANONYMOUS_FUNCTION_NAME_STACK_TRACE;
+        }
         if (sourceName.startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX)) {
             return Evaluator.EVAL_AT_SOURCE_NAME_PREFIX + callerName + " (" + sourceName + ")";
         } else {
