@@ -53,9 +53,6 @@ isInterpreted = function() {
 isOptimized = function() {
     return v8IgnoreResult;
 }
-isCrankshafted = function() {
-    return v8IgnoreResult;
-}
 isTurboFanned = function() {
     return v8IgnoreResult;
 }
@@ -727,4 +724,166 @@ function v8StringMaxLength() {
 
 function isOneByteString() {
     return v8IgnoreResult;
+}
+
+// new mockups from 2018-10-29 update
+
+function v8GetCallable() {
+    throw new Error("v8 internal method not implemented");
+}
+
+function v8GetDefaultICULocale() {
+    throw new Error("v8 internal method not implemented");
+}
+
+function v8SetForceSlowPath() {
+}
+
+function v8SetKeyedProperty(object, key, value, language_mode) {
+    object[key] = value;
+}
+
+function v8DebugGetLoadedScriptIds() {
+}
+
+function v8DebugTogglePreciseCoverage() {
+}
+
+function v8DebugTrace() {
+    throw new Error("v8 internal method not implemented");
+}
+
+function v8DisallowCodegenFromStrings() {
+}
+
+function v8DisallowWasmCodegen() {
+}
+
+function v8ICsAreEnabled() {
+    return true;
+}
+
+function v8IsLiftoffFunction() {
+    return v8IgnoreResult;
+}
+
+function v8regexp_internal_match(regexp, string) {
+    return regexp.exec(string);
+}
+
+function v8Typeof(object) {
+    return typeof(object);
+}
+
+function v8CompleteInobjectSlackTracking(object) {
+}
+
+function v8ArraySpeciesProtector() {
+    return v8IgnoreResult;
+}
+
+function v8MapIteratorProtector() {
+    return v8IgnoreResult;
+}
+
+function v8SetIteratorProtector() {
+    return v8IgnoreResult;
+}
+
+function v8StringIteratorProtector() {
+    return v8IgnoreResult;
+}
+
+function v8CreateIterResultObject() {
+    throw new Error("v8 internal method not implemented");
+}
+
+function v8ConstructSlicedString(string, index) {
+    return string.substring(index);
+}
+
+function v8StrictEqual(x, y) {
+    return x === y;
+}
+
+function v8StrictNotEqual(x, y) {
+    return x !== y;
+}
+
+function v8Equal(x, y) {
+    return x == y;
+}
+
+function v8NotEqual(x, y) {
+    return x != y;
+}
+
+function v8LessThan(x, y) {
+    return x < y;
+}
+
+function v8LessThanOrEqual(x, y) {
+    return x <= y;
+}
+
+function v8GreaterThan(x, y) {
+    return x > y;
+}
+
+function v8GreaterThanOrEqual(x, y) {
+    return x >= y;
+}
+
+function v8StringLessThan(x, y) {
+    return x < y;
+}
+
+function v8SetAllowAtomicsWait() {
+    throw new Error("v8 internal method not implemented");
+}
+
+function v8AtomicsNumWaitersForTesting() {
+    throw new Error("v8 internal method not implemented");
+}
+
+function v8SerializeWasmModule() {
+    throw new Error("v8 internal method not implemented");
+}
+
+function v8DeserializeWasmModule() {
+    throw new Error("v8 internal method not implemented");
+}
+
+function v8WasmGetNumberOfInstances() {
+    return v8IgnoreResult;
+}
+
+function v8GetWasmExceptionId() {
+    throw new Error("v8 internal method not implemented");
+}
+
+function v8GetWasmExceptionValues() {
+    throw new Error("v8 internal method not implemented");
+}
+
+function v8FreezeWasmLazyCompilation() {
+}
+
+function v8GetWasmRecoveredTrapCount() {
+    throw new Error("v8 internal method not implemented");
+}
+
+function v8IsWasmTrapHandlerEnabled() {
+    return v8IgnoreResult;
+}
+
+function v8WasmMemoryHasFullGuardRegion() {
+    return v8IgnoreResult;
+}
+
+function v8SetWasmThreadsEnabled() {
+    throw new Error("v8 internal method not implemented");
+}
+
+function v8WasmTierUpFunction() {
 }
