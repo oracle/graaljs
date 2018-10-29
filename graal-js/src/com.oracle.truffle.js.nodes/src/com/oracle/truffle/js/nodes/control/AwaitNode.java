@@ -72,7 +72,6 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     @Child protected JavaScriptNode expression;
     @Child protected JSReadFrameSlotNode readAsyncResultNode;
     @Child protected JSReadFrameSlotNode readAsyncContextNode;
-    @Child protected JSFunctionCallNode awaitTrampolineCall;
     @Child private NewPromiseCapabilityNode newPromiseCapability;
     @Child private PerformPromiseThenNode performPromiseThenNode;
     @Child private JSFunctionCallNode callPromiseResolveNode;
@@ -94,7 +93,6 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         this.expression = expression;
         this.readAsyncResultNode = readAsyncResultNode;
         this.readAsyncContextNode = readAsyncContextNode;
-        this.awaitTrampolineCall = JSFunctionCallNode.createCall();
 
         this.callPromiseResolveNode = JSFunctionCallNode.createCall();
         this.setPromiseIsHandled = PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context);
