@@ -53,11 +53,13 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -72,8 +74,8 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFillN
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFilterNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFindIndexNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFindNodeGen;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFlatNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFlatMapNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFlatNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayForEachNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIncludesNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIndexOfNodeGen;
@@ -140,6 +142,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
@@ -1968,6 +1971,26 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public abstract static class FlattenIntoArrayNode extends JavaScriptBaseNode {
 
+        private static final class InnerFlattenCallNode extends JavaScriptRootNode {
+
+            @Child private FlattenIntoArrayNode flattenNode;
+
+            InnerFlattenCallNode(JSContext context, FlattenIntoArrayNode flattenNode) {
+                super(context.getLanguage(), null, null);
+                this.flattenNode = flattenNode;
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                DynamicObject resultArray = (DynamicObject) frame.getArguments()[0];
+                Object element = frame.getArguments()[1];
+                long elementLen = (long) frame.getArguments()[2];
+                long targetIndex = (long) frame.getArguments()[3];
+                long depth = (long) frame.getArguments()[4];
+                return flattenNode.flatten(resultArray, element, elementLen, targetIndex, depth, null, null);
+            }
+        }
+
         protected final JSContext context;
         protected final boolean withMapCallback;
 
@@ -2051,7 +2074,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
                 @Child private JSToBooleanNode toBooleanNode = JSToBooleanNode.create();
                 @Child private WriteElementNode writeOwnNode = NodeFactory.getInstance(context).createWriteElementNode(context, true, true);
-                @Child private FlattenIntoArrayNode innerFlattenIntoArrayNode = withMapCallback ? FlattenIntoArrayNode.create(context, false) : null;
+                @Child private DirectCallNode innerFlattenCall = DirectCallNode.create(
+                                Truffle.getRuntime().createCallTarget(new InnerFlattenCallNode(context, FlattenIntoArrayNode.create(context, false))));
 
                 @Override
                 public MaybeResult<Object> apply(long index, Object originalValue, Object callbackResult, Object resultState) {
@@ -2063,8 +2087,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     }
                     if (shouldFlatten) {
                         long elementLen = getLength(toObject(value));
-                        FlattenIntoArrayNode flattenNode = withMapCallback ? innerFlattenIntoArrayNode : FlattenIntoArrayNode.this;
-                        state.targetIndex = flattenNode.flatten(state.resultArray, value, elementLen, state.targetIndex, state.depth - 1, null, null);
+                        state.targetIndex = (long) innerFlattenCall.call(new Object[]{state.resultArray, value, elementLen, state.targetIndex, state.depth - 1});
                     } else {
                         if (state.targetIndex >= JSRuntime.MAX_SAFE_INTEGER_LONG) { // 2^53-1
                             errorBranch.enter();
