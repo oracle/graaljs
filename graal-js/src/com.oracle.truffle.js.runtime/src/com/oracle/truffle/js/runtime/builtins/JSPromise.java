@@ -108,17 +108,17 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
 
     public static boolean isRejected(DynamicObject promise) {
         assert isJSPromise(promise);
-        return REJECTED == (int) promise.get(JSPromise.PROMISE_STATE);
+        return REJECTED == (int) promise.get(JSPromise.PROMISE_STATE, PENDING);
     }
 
     public static boolean isPending(DynamicObject promise) {
         assert isJSPromise(promise);
-        return PENDING == (int) promise.get(JSPromise.PROMISE_STATE);
+        return PENDING == (int) promise.get(JSPromise.PROMISE_STATE, PENDING);
     }
 
     public static boolean isFulfilled(DynamicObject promise) {
         assert isJSPromise(promise);
-        return FULFILLED == (int) promise.get(JSPromise.PROMISE_STATE);
+        return FULFILLED == (int) promise.get(JSPromise.PROMISE_STATE, PENDING);
     }
 
     @Override
