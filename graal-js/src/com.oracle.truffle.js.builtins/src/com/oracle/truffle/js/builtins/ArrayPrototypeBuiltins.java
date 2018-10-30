@@ -1984,12 +1984,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return FlattenIntoArrayNodeGen.create(context, withCallback);
         }
 
-        protected abstract int executeInt(DynamicObject target, Object source, long sourceLen, int start, long depth, TruffleObject callback, Object thisArg);
+        protected abstract long executeLong(DynamicObject target, Object source, long sourceLen, long start, long depth, TruffleObject callback, Object thisArg);
 
         @Specialization
-        protected int flatten(DynamicObject target, Object source, long sourceLen, int start, long depth, TruffleObject callback, Object thisArg) {
+        protected long flatten(DynamicObject target, Object source, long sourceLen, long start, long depth, TruffleObject callback, Object thisArg) {
 
-            boolean callbackUndefined = callback == null || JSRuntime.isNullOrUndefined(callback);
+            boolean callbackUndefined = callback == null;
 
             FlattenState flattenState = new FlattenState(target, start, depth, callbackUndefined);
             TruffleObject thisJSObj = toObject(source);
@@ -2034,9 +2034,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             final DynamicObject resultArray;
             final boolean callbackUndefined;
             final long depth;
-            int targetIndex;
+            long targetIndex;
 
-            FlattenState(DynamicObject result, int toIndex, long depth, boolean callbackUndefined) {
+            FlattenState(DynamicObject result, long toIndex, long depth, boolean callbackUndefined) {
                 this.resultArray = result;
                 this.callbackUndefined = callbackUndefined;
                 this.targetIndex = toIndex;
@@ -2066,7 +2066,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         FlattenIntoArrayNode flattenNode = withMapCallback ? innerFlattenIntoArrayNode : FlattenIntoArrayNode.this;
                         state.targetIndex = flattenNode.flatten(state.resultArray, value, elementLen, state.targetIndex, state.depth - 1, null, null);
                     } else {
-                        if (state.targetIndex >= 9007199254740991d) { // 2^53-1
+                        if (state.targetIndex >= JSRuntime.MAX_SAFE_INTEGER_LONG) { // 2^53-1
                             errorBranch.enter();
                             throw Errors.createTypeError("Index out of bounds in flatten into array");
                         }
