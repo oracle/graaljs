@@ -2069,414 +2069,415 @@
   }, {
     "filePath" : "mjsunit/regress/wasm/loop-stack-check.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-5800.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-5860.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-5884.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-6054.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-6164.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-651961.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-663994.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-666741.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-667745.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-670683.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-680938.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-684858.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-688876.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-689450.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-6931.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-694433.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-699485.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7033.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7035.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7049.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-708714.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-709684.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-710844.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-711203.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-712569.js",
-    "status" : "FAIL"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-715216b.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-717194.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-722445.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-724846.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-724851.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-724972.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-727222.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-727560.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-729991.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-734108.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-734246.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-734345.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7353.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7364.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-736584.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7366.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-737069.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-739768.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7422.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7499.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7508.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-752423.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7565.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-757217.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7579.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7582.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-763439.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-763697.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-766003.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-769637.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-769846.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-775366.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-776677.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7785.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-778917.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-782280.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-784050.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-789952.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7914.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-791810.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-793551.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-797846.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-799952.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-800756.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-801785.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-801850.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-802244.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-803427.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-803788.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-8059.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-808012.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-808848.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-8094.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-8095.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-812005.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-816226.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-817380.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-819869.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-820802.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-825087a.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-825087b.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-827806.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-831463.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-834619.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-834624.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-834693.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-836141.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-837417.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-840757.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-842501.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-843563.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-853453.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-854011.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-854050.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-864509.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-875556.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-894374.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/samevalue.js",
     "status" : "SKIP",
@@ -2622,107 +2623,107 @@
   }, {
     "filePath" : "mjsunit/wasm/adapter-frame.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/add-getters.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/anyref.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-copy.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-deopt.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-exception-in-tonumber.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-expr.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-f32.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-f64.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-heap.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-i32.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-literals.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-stack.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-stdlib.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-switch.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-u32.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/asm-with-wasm-off.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/async-compile.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/atomics-stress.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/atomics.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/atomics64-stress.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/bounds-check-64bit.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/calls.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/compare-exchange-stress.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/compare-exchange64-stress.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/compilation-limits.js",
     "status" : "SKIP",
@@ -2730,155 +2731,155 @@
   }, {
     "filePath" : "mjsunit/wasm/compiled-module-management.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/compiled-module-serialization.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/data-segments.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/disallow-codegen.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/divrem-trap.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/box2d.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/copy.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/corrections.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/fannkuch.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/fasta.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/lua_binarytrees.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/memops.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/primes.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/zlib.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/ensure-wasm-binaries-up-to-date.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/errors.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/exceptions-anyref.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/exceptions-catchall.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/exceptions-export.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/exceptions-import.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/exceptions-rethrow.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/exceptions-shared.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/exceptions.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/export-global.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/export-mutable-global.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/export-table.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/ffi-error.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/ffi.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/float-constant-folding.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/function-names.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/function-prototype.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/gc-buffer.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/gc-frame.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/gc-stress.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/globals.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/graceful_shutdown.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/graceful_shutdown_during_tierup.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/grow-memory-detaching.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/grow-memory-in-branch.js",
     "status" : "SKIP",
@@ -2894,31 +2895,31 @@
   }, {
     "filePath" : "mjsunit/wasm/grow-memory.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/huge-memory.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/import-function.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/import-memory.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/import-mutable-global.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/import-table.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/indirect-calls.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/indirect-sig-mismatch.js",
     "status" : "SKIP",
@@ -2926,23 +2927,23 @@
   }, {
     "filePath" : "mjsunit/wasm/indirect-tables.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/instance-gc.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/instance-memory-gc-stress.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/instantiate-module-basic.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/instantiate-run-basic.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/interpreter-mixed.js",
     "status" : "SKIP",
@@ -2954,27 +2955,27 @@
   }, {
     "filePath" : "mjsunit/wasm/js-api.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/large-offset.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/lazy-compilation.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/liftoff-trap-handler.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/liftoff.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/many-parameters.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/memory-external-call.js",
     "status" : "SKIP",
@@ -2982,55 +2983,55 @@
   }, {
     "filePath" : "mjsunit/wasm/memory-instance-validation.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/memory-size.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/memory.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/module-memory.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/multi-value.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/mutable-globals.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/names.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/origin-trial-flags.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/parallel_compilation.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/params.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/print-code.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/receiver.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/serialize-lazy-module.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/shared-memory.js",
     "status" : "SKIP",
@@ -3038,27 +3039,27 @@
   }, {
     "filePath" : "mjsunit/wasm/stack.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/stackwalk.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/start-function.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/streaming-compile.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/streaming-error-position.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/streaming-trap-location.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/table-grow.js",
     "status" : "SKIP",
@@ -3066,27 +3067,27 @@
   }, {
     "filePath" : "mjsunit/wasm/table.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/test-wasm-module-builder.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/tier-up-testing-flag.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/trap-handler-fallback.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/trap-location.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/unicode-validation.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/unicode.js",
     "status" : "SKIP",
@@ -3094,27 +3095,27 @@
   }, {
     "filePath" : "mjsunit/wasm/unreachable-validation.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/unreachable.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/user-properties-constructed.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/user-properties-exported.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/user-properties-module.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/user-properties-reexport.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/wasm-api-overloading.js",
     "status" : "SKIP",
@@ -3122,23 +3123,23 @@
   }, {
     "filePath" : "mjsunit/wasm/wasm-default.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/wasm-object-api.js",
     "status" : "SKIP",
-    "comment" : "WASM"
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/worker-interpreter.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/worker-memory.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/wasm/worker-module.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "WASM (GR-6494)"
   }, {
     "filePath" : "mjsunit/whitespaces0.js",
     "status" : "FAIL",
