@@ -28,6 +28,8 @@
 
 import mx, mx_gate, mx_subst, mx_sdk, mx_graal_js, os, shutil, tarfile, tempfile
 
+import mx_graal_nodejs_benchmark
+
 from mx import BinarySuite, VC
 from mx_gate import Task
 from argparse import ArgumentParser
@@ -262,8 +264,8 @@ def npm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
 def run_nodejs(vmArgs, runArgs, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     return node(vmArgs + runArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
-def node(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
-    return mx.run(prepareNodeCmdLine(args), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
+def node(args, add_graal_vm_args=True, nonZeroIsFatal=True, out=None, err=None, cwd=None):
+    return mx.run(prepareNodeCmdLine(args, add_graal_vm_args), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     mode, vmArgs, progArgs = setupNodeEnvironment(args)
@@ -294,7 +296,7 @@ def setLibraryPath(additionalPath=None):
 
     _setEnvVar('LD_LIBRARY_PATH', libraryPath)
 
-def setupNodeEnvironment(args):
+def setupNodeEnvironment(args, add_graal_vm_args=True):
     javaHome = _getJdkHome()
     _setEnvVar('JAVA_HOME', javaHome)
     if mx.suite('compiler', fatalIfMissing=False) is None:
@@ -312,11 +314,12 @@ def setupNodeEnvironment(args):
     args = args if args else []
     mode, vmArgs, progArgs = _parseArgs(args)
 
-    if mx.suite('graal-enterprise', fatalIfMissing=False):
-        # explicitly require the enterprise compiler configuration
-        vmArgs += ['-Dgraal.CompilerConfiguration=enterprise']
-    if mx.suite('compiler', fatalIfMissing=False):
-        vmArgs += ['-Djvmci.Compiler=graal', '-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI']
+    if add_graal_vm_args:
+        if mx.suite('graal-enterprise', fatalIfMissing=False):
+            # explicitly require the enterprise compiler configuration
+            vmArgs += ['-Dgraal.CompilerConfiguration=enterprise']
+        if mx.suite('compiler', fatalIfMissing=False):
+            vmArgs += ['-Djvmci.Compiler=graal', '-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI']
 
     if isinstance(_suite, BinarySuite):
         mx.logv('%s is a binary suite' % _suite.name)
@@ -342,11 +345,11 @@ def makeInNodeEnvironment(args):
     if _currentOs == 'solaris':
         _mxrun(['rm', 'cp'])
 
-def prepareNodeCmdLine(args):
+def prepareNodeCmdLine(args, add_graal_vm_args=True):
     '''run a Node.js program or shell
         --debug to run in debug mode (provided that you build it)
     '''
-    mode, vmArgs, progArgs = setupNodeEnvironment(args)
+    mode, vmArgs, progArgs = setupNodeEnvironment(args, add_graal_vm_args)
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(vmArgs))
     return [join(_suite.dir, 'out', mode, 'node')] + progArgs
 
@@ -421,9 +424,10 @@ def _parseArgs(args):
         import mx_compiler
         vmArgs = mx_compiler._parseVmArgs(vmArgs)
 
-    if '-d64' in vmArgs:
-        mx.logv('[_parseArgs] removing -d64 from vmArgs')
-        vmArgs.remove('-d64')
+    for arg in ['-d64', '-server']:
+        if arg in vmArgs:
+            mx.logv('[_parseArgs] removing {} from vmArgs'.format(arg))
+            vmArgs.remove(arg)
 
     mx.logv('[_parseArgs] mode: %s' % mode)
     mx.logv('[_parseArgs] vmArgs: %s' % vmArgs)
@@ -507,6 +511,8 @@ def svmnpm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     """run 'npm' with Graal.nodejs on SubstrateVM"""
     return svmnode([join(_suite.dir, 'deps', 'npm', 'bin', 'npm-cli.js')] + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
+def mx_post_parse_cmd_line(args):
+    mx_graal_nodejs_benchmark.register_nodejs_vms()
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
@@ -529,6 +535,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     ],
     has_polyglot_lib_entrypoints=True,
 ))
+
 
 mx.update_commands(_suite, {
     'node' : [node, ''],
