@@ -359,6 +359,8 @@ public final class GraalJSAccess {
             return SYMBOL_VALUE;
         } else if (value instanceof BigInt) {
             return BIG_INT_VALUE;
+        } else if (value instanceof Boolean) {
+            return ((Boolean) value).booleanValue() ? BOOLEAN_VALUE_TRUE : BOOLEAN_VALUE_FALSE;
         }
         if (JSTruffleOptions.NashornJavaInterop) {
             return ORDINARY_OBJECT;
