@@ -26,8 +26,6 @@
 
   local common = {
     packages+: {
-      git: '>=1.8.3',
-      maven: '==3.3.9',
       'pip:astroid': '==1.1.0',
       'pip:pylint': '==1.1.0',
     },
@@ -42,6 +40,8 @@
       'apache/ab': '==2.3',
       binutils: '==2.23.2',
       gcc: '==4.9.1',
+      git: '>=1.8.3',
+      maven: '==3.3.9',
       valgrind: '>=3.9.0',
     },
     capabilities+: ['linux', 'amd64'],
