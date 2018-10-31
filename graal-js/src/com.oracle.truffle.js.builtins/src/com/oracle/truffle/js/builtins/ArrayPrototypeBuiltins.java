@@ -158,6 +158,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -2070,11 +2071,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             @Override
             public Object execute(VirtualFrame frame) {
-                DynamicObject resultArray = (DynamicObject) frame.getArguments()[0];
-                Object element = frame.getArguments()[1];
-                long elementLen = (long) frame.getArguments()[2];
-                long targetIndex = (long) frame.getArguments()[3];
-                long depth = (long) frame.getArguments()[4];
+                Object[] arguments = frame.getArguments();
+                DynamicObject resultArray = (DynamicObject) arguments[0];
+                Object element = arguments[1];
+                long elementLen = (long) arguments[2];
+                long targetIndex = (long) arguments[3];
+                long depth = (long) arguments[4];
                 return flattenNode.flatten(resultArray, element, elementLen, targetIndex, depth, null, null);
             }
         }
@@ -2160,10 +2162,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
                 protected final BranchProfile errorBranch = BranchProfile.create();
 
-                @Child private JSToBooleanNode toBooleanNode = JSToBooleanNode.create();
                 @Child private WriteElementNode writeOwnNode = NodeFactory.getInstance(context).createWriteElementNode(context, true, true);
-                @Child private DirectCallNode innerFlattenCall = DirectCallNode.create(
-                                Truffle.getRuntime().createCallTarget(new InnerFlattenCallNode(context, FlattenIntoArrayNode.create(context, false))));
+                @Child private DirectCallNode innerFlattenCall;
 
                 @Override
                 public MaybeResult<Object> apply(long index, Object originalValue, Object callbackResult, Object resultState) {
@@ -2175,7 +2175,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     }
                     if (shouldFlatten) {
                         long elementLen = getLength(toObject(value));
-                        state.targetIndex = (long) innerFlattenCall.call(new Object[]{state.resultArray, value, elementLen, state.targetIndex, state.depth - 1});
+                        state.targetIndex = makeFlattenCall(state.resultArray, value, elementLen, state.targetIndex, state.depth - 1);
                     } else {
                         if (state.targetIndex >= JSRuntime.MAX_SAFE_INTEGER_LONG) { // 2^53-1
                             errorBranch.enter();
@@ -2185,7 +2185,21 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     }
                     return MaybeResult.continueResult(resultState);
                 }
+
+                private long makeFlattenCall(DynamicObject targetArray, Object element, long elementLength, long targetIndex, long depth) {
+                    if (innerFlattenCall == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        JSFunctionData flattenFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.ArrayFlattenIntoArray, c -> createOrGetFlattenCallFunctionData(c));
+                        innerFlattenCall = insert(DirectCallNode.create(flattenFunctionData.getCallTarget()));
+                    }
+                    return (long) innerFlattenCall.call(new Object[]{targetArray, element, elementLength, targetIndex, depth});
+                }
             };
+        }
+
+        private static JSFunctionData createOrGetFlattenCallFunctionData(JSContext context) {
+            return JSFunctionData.createCallOnly(context,
+                            Truffle.getRuntime().createCallTarget(new InnerFlattenCallNode(context, FlattenIntoArrayNode.create(context, false))), 0, "");
         }
     }
 
