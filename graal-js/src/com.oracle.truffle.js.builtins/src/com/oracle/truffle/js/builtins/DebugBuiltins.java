@@ -166,6 +166,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         systemProperty(1),
         systemProperties(0),
         neverPartOfCompilation(0),
+        dumpHeap(2),
 
         objectSize(1) {
             @Override
@@ -174,12 +175,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             }
         },
         objectSizeHistogram(3) {
-            @Override
-            public boolean isAOTSupported() {
-                return false;
-            }
-        },
-        dumpHeap(2) {
             @Override
             public boolean isAOTSupported() {
                 return false;
@@ -253,6 +248,9 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 return DebugCreateLargeIntegerNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case createLazyString:
                 return DebugCreateLazyStringNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+
+            case dumpHeap:
+                return DebugHeapDumpNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             default:
                 if (!JSTruffleOptions.SubstrateVM) {
                     switch (builtinEnum) {
@@ -260,8 +258,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                             return DebugObjectSizeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                         case objectSizeHistogram:
                             return DebugObjectSizeHistogramNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
-                        case dumpHeap:
-                            return DebugHeapDumpNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
                     }
                 }
         }
@@ -645,6 +641,8 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 HeapDump.dump(fileName, live);
             } catch (IOException e) {
                 throw JSException.create(JSErrorType.Error, e.getMessage(), e, this);
+            } catch (IllegalArgumentException e) {
+                throw JSException.create(JSErrorType.Error, getBuiltin().getFullName() + " unsupported", e, this);
             }
 
             return Undefined.instance;
