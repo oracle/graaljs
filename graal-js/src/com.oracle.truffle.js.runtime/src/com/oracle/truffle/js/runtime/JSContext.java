@@ -218,6 +218,7 @@ public class JSContext {
     private volatile CallTarget boundFunctionConstructNewTargetCache;
 
     public enum BuiltinFunctionKey {
+        ArrayFlattenIntoArray,
         AwaitFulfilled,
         AwaitRejected,
         AsyncGeneratorReturnFulfilled,

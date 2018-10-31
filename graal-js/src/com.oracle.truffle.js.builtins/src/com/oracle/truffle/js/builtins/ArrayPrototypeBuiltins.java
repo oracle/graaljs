@@ -53,17 +53,20 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.DeleteAndSetLengthNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.FlattenIntoArrayNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayConcatNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayCopyWithinNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayEveryNodeGen;
@@ -71,6 +74,8 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFillN
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFilterNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFindIndexNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFindNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFlatMapNodeGen;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFlatNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayForEachNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIncludesNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayIndexOfNodeGen;
@@ -137,6 +142,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
@@ -152,6 +158,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -184,6 +191,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         splice(2),
         every(1),
         filter(1),
+        flat(0),
+        flatMap(1),
         forEach(1),
         some(1),
         map(1),
@@ -221,6 +230,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return 6;
             } else if (this == includes) {
                 return 7;
+            } else if (EnumSet.of(flat, flatMap).contains(this)) {
+                return 10;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -289,6 +300,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             case includes:
                 return JSArrayIncludesNodeGen.create(context, builtin, false, args().withThis().fixedArgs(2).createArgumentNodes(context));
+
+            case flatMap:
+                return JSArrayFlatMapNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case flat:
+                return JSArrayFlatNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
         }
         return null;
     }
@@ -2039,6 +2055,197 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     return MaybeResult.continueResult(currentResult);
                 }
             };
+        }
+    }
+
+    public abstract static class FlattenIntoArrayNode extends JavaScriptBaseNode {
+
+        private static final class InnerFlattenCallNode extends JavaScriptRootNode {
+
+            @Child private FlattenIntoArrayNode flattenNode;
+
+            InnerFlattenCallNode(JSContext context, FlattenIntoArrayNode flattenNode) {
+                super(context.getLanguage(), null, null);
+                this.flattenNode = flattenNode;
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object[] arguments = frame.getArguments();
+                DynamicObject resultArray = (DynamicObject) arguments[0];
+                Object element = arguments[1];
+                long elementLen = (long) arguments[2];
+                long targetIndex = (long) arguments[3];
+                long depth = (long) arguments[4];
+                return flattenNode.flatten(resultArray, element, elementLen, targetIndex, depth, null, null);
+            }
+        }
+
+        protected final JSContext context;
+        protected final boolean withMapCallback;
+
+        @Child private ForEachIndexCallNode forEachIndexNode;
+        @Child private JSToObjectNode toObjectNode;
+        @Child private JSGetLengthNode getLengthNode;
+
+        protected FlattenIntoArrayNode(JSContext context, boolean withMapCallback) {
+            this.context = context;
+            this.withMapCallback = withMapCallback;
+        }
+
+        public static FlattenIntoArrayNode create(JSContext context, boolean withCallback) {
+            return FlattenIntoArrayNodeGen.create(context, withCallback);
+        }
+
+        protected abstract long executeLong(DynamicObject target, Object source, long sourceLen, long start, long depth, TruffleObject callback, Object thisArg);
+
+        @Specialization
+        protected long flatten(DynamicObject target, Object source, long sourceLen, long start, long depth, TruffleObject callback, Object thisArg) {
+
+            boolean callbackUndefined = callback == null;
+
+            FlattenState flattenState = new FlattenState(target, start, depth, callbackUndefined);
+            TruffleObject thisJSObj = toObject(source);
+            forEachIndexCall(thisJSObj, callback, thisArg, 0, sourceLen, flattenState);
+
+            return flattenState.targetIndex;
+        }
+
+        protected final Object forEachIndexCall(TruffleObject arrayObj, TruffleObject callbackObj, Object thisArg, long fromIndex, long length, Object initialResult) {
+            if (forEachIndexNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                forEachIndexNode = insert(makeForEachIndexCallNode());
+            }
+            return forEachIndexNode.executeForEachIndex(arrayObj, callbackObj, thisArg, fromIndex, length, initialResult);
+        }
+
+        private ForEachIndexCallNode makeForEachIndexCallNode() {
+            return ForEachIndexCallNode.create(context, makeCallbackNode(), makeMaybeResultNode(), true);
+        }
+
+        protected CallbackNode makeCallbackNode() {
+            return withMapCallback ? new ArrayForEachIndexCallOperation.DefaultCallbackNode() : null;
+        }
+
+        protected final TruffleObject toObject(Object target) {
+            if (toObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toObjectNode = insert(JSToObjectNode.createToObject(context));
+            }
+            return toObjectNode.executeTruffleObject(target);
+        }
+
+        protected long getLength(TruffleObject thisObject) {
+            if (getLengthNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getLengthNode = insert(JSGetLengthNode.create(context));
+            }
+            return getLengthNode.executeLong(thisObject);
+        }
+
+        static final class FlattenState {
+            final DynamicObject resultArray;
+            final boolean callbackUndefined;
+            final long depth;
+            long targetIndex;
+
+            FlattenState(DynamicObject result, long toIndex, long depth, boolean callbackUndefined) {
+                this.resultArray = result;
+                this.callbackUndefined = callbackUndefined;
+                this.targetIndex = toIndex;
+                this.depth = depth;
+            }
+        }
+
+        protected MaybeResultNode makeMaybeResultNode() {
+            return new ForEachIndexCallNode.MaybeResultNode() {
+
+                protected final BranchProfile errorBranch = BranchProfile.create();
+
+                @Child private WriteElementNode writeOwnNode = NodeFactory.getInstance(context).createWriteElementNode(context, true, true);
+                @Child private DirectCallNode innerFlattenCall;
+
+                @Override
+                public MaybeResult<Object> apply(long index, Object originalValue, Object callbackResult, Object resultState) {
+                    boolean shouldFlatten = false;
+                    FlattenState state = (FlattenState) resultState;
+                    Object value = state.callbackUndefined ? originalValue : callbackResult;
+                    if (state.depth > 0) {
+                        shouldFlatten = JSRuntime.isArray(value);
+                    }
+                    if (shouldFlatten) {
+                        long elementLen = getLength(toObject(value));
+                        state.targetIndex = makeFlattenCall(state.resultArray, value, elementLen, state.targetIndex, state.depth - 1);
+                    } else {
+                        if (state.targetIndex >= JSRuntime.MAX_SAFE_INTEGER_LONG) { // 2^53-1
+                            errorBranch.enter();
+                            throw Errors.createTypeError("Index out of bounds in flatten into array");
+                        }
+                        writeOwnNode.executeWithTargetAndIndexAndValue(state.resultArray, state.targetIndex++, value);
+                    }
+                    return MaybeResult.continueResult(resultState);
+                }
+
+                private long makeFlattenCall(DynamicObject targetArray, Object element, long elementLength, long targetIndex, long depth) {
+                    if (innerFlattenCall == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        JSFunctionData flattenFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.ArrayFlattenIntoArray, c -> createOrGetFlattenCallFunctionData(c));
+                        innerFlattenCall = insert(DirectCallNode.create(flattenFunctionData.getCallTarget()));
+                    }
+                    return (long) innerFlattenCall.call(new Object[]{targetArray, element, elementLength, targetIndex, depth});
+                }
+            };
+        }
+
+        private static JSFunctionData createOrGetFlattenCallFunctionData(JSContext context) {
+            return JSFunctionData.createCallOnly(context,
+                            Truffle.getRuntime().createCallTarget(new InnerFlattenCallNode(context, FlattenIntoArrayNode.create(context, false))), 0, "");
+        }
+    }
+
+    public abstract static class JSArrayFlatMapNode extends JSArrayOperation {
+        public JSArrayFlatMapNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin, false);
+        }
+
+        @Specialization
+        protected Object flatMap(Object thisObj, Object callback, Object thisArg,
+                        @Cached("createFlattenIntoArrayNode(getContext())") FlattenIntoArrayNode flattenIntoArrayNode) {
+
+            TruffleObject thisJSObj = toObject(thisObj);
+            long length = getLength(thisJSObj);
+            TruffleObject callbackFn = checkCallbackIsFunction(callback);
+
+            Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisJSObj, 0);
+            flattenIntoArrayNode.flatten((DynamicObject) resultArray, thisJSObj, length, 0, 1, callbackFn, thisArg);
+            return resultArray;
+        }
+
+        protected static final FlattenIntoArrayNode createFlattenIntoArrayNode(JSContext context) {
+            return FlattenIntoArrayNodeGen.create(context, true);
+        }
+    }
+
+    public abstract static class JSArrayFlatNode extends JSArrayOperation {
+
+        public JSArrayFlatNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin, false);
+        }
+
+        @Specialization
+        protected Object flat(Object thisObj, Object depth,
+                        @Cached("createFlattenIntoArrayNode(getContext())") FlattenIntoArrayNode flattenIntoArrayNode) {
+            TruffleObject thisJSObj = toObject(thisObj);
+            long length = getLength(thisJSObj);
+            long depthNum = depth == null || JSRuntime.isNullOrUndefined(depth) ? 1 : JSRuntime.toInteger(depth);
+
+            Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisJSObj, 0);
+            flattenIntoArrayNode.flatten((DynamicObject) resultArray, thisJSObj, length, 0, depthNum, null, null);
+            return resultArray;
+        }
+
+        protected static final FlattenIntoArrayNode createFlattenIntoArrayNode(JSContext context) {
+            return FlattenIntoArrayNodeGen.create(context, false);
         }
     }
 
