@@ -1969,6 +1969,94 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
+    public abstract static class JSArrayForEachNode extends ArrayForEachIndexCallOperation {
+        public JSArrayForEachNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object forEach(Object thisObj, Object callback, Object thisArg) {
+            TruffleObject thisJSObj = toObject(thisObj);
+            if (isTypedArrayImplementation) {
+                validateTypedArray(thisJSObj);
+            }
+            long length = getLength(thisJSObj);
+            TruffleObject callbackFn = checkCallbackIsFunction(callback);
+            return forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, Undefined.instance);
+        }
+
+        @Override
+        protected MaybeResultNode makeMaybeResultNode() {
+            return new ForEachIndexCallNode.MaybeResultNode() {
+                @Override
+                public MaybeResult<Object> apply(long index, Object value, Object callbackResult, Object currentResult) {
+                    return MaybeResult.continueResult(currentResult);
+                }
+            };
+        }
+    }
+
+    public abstract static class JSArraySomeNode extends ArrayForEachIndexCallOperation {
+        public JSArraySomeNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+            super(context, builtin, isTypedArrayImplementation);
+        }
+
+        @Specialization
+        protected boolean some(Object thisObj, Object callback, Object thisArg) {
+            TruffleObject thisJSObj = toObject(thisObj);
+            if (isTypedArrayImplementation) {
+                validateTypedArray(thisJSObj);
+            }
+            long length = getLength(thisJSObj);
+            TruffleObject callbackFn = checkCallbackIsFunction(callback);
+            return (boolean) forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, false);
+        }
+
+        @Override
+        protected MaybeResultNode makeMaybeResultNode() {
+            return new ForEachIndexCallNode.MaybeResultNode() {
+                @Child private JSToBooleanNode toBooleanNode = JSToBooleanNode.create();
+
+                @Override
+                public MaybeResult<Object> apply(long index, Object value, Object callbackResult, Object currentResult) {
+                    return toBooleanNode.executeBoolean(callbackResult) ? MaybeResult.returnResult(true) : MaybeResult.continueResult(currentResult);
+                }
+            };
+        }
+    }
+
+    public abstract static class JSArrayMapNode extends ArrayForEachIndexCallOperation {
+        public JSArrayMapNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+            super(context, builtin, isTypedArrayImplementation);
+        }
+
+        @Specialization
+        protected TruffleObject map(Object thisObj, Object callback, Object thisArg) {
+            TruffleObject thisJSObj = toObject(thisObj);
+            if (isTypedArrayImplementation) {
+                validateTypedArray(thisJSObj);
+            }
+            long length = getLength(thisJSObj);
+            TruffleObject callbackFn = checkCallbackIsFunction(callback);
+
+            Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisJSObj, length);
+            return (TruffleObject) forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, resultArray);
+        }
+
+        @Override
+        protected MaybeResultNode makeMaybeResultNode() {
+            return new ForEachIndexCallNode.MaybeResultNode() {
+                @Child private WriteElementNode writeOwnNode = NodeFactory.getInstance(getContext()).createWriteElementNode(getContext(), true, true);
+
+                @Override
+                public MaybeResult<Object> apply(long index, Object value, Object callbackResult, Object currentResult) {
+                    writeOwnNode.executeWithTargetAndIndexAndValue(currentResult, index, callbackResult);
+                    return MaybeResult.continueResult(currentResult);
+                }
+            };
+        }
+    }
+
     public abstract static class FlattenIntoArrayNode extends JavaScriptBaseNode {
 
         private static final class InnerFlattenCallNode extends JavaScriptRootNode {
@@ -2096,94 +2184,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         writeOwnNode.executeWithTargetAndIndexAndValue(state.resultArray, state.targetIndex++, value);
                     }
                     return MaybeResult.continueResult(resultState);
-                }
-            };
-        }
-    }
-
-    public abstract static class JSArrayForEachNode extends ArrayForEachIndexCallOperation {
-        public JSArrayForEachNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected Object forEach(Object thisObj, Object callback, Object thisArg) {
-            TruffleObject thisJSObj = toObject(thisObj);
-            if (isTypedArrayImplementation) {
-                validateTypedArray(thisJSObj);
-            }
-            long length = getLength(thisJSObj);
-            TruffleObject callbackFn = checkCallbackIsFunction(callback);
-            return forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, Undefined.instance);
-        }
-
-        @Override
-        protected MaybeResultNode makeMaybeResultNode() {
-            return new ForEachIndexCallNode.MaybeResultNode() {
-                @Override
-                public MaybeResult<Object> apply(long index, Object value, Object callbackResult, Object currentResult) {
-                    return MaybeResult.continueResult(currentResult);
-                }
-            };
-        }
-    }
-
-    public abstract static class JSArraySomeNode extends ArrayForEachIndexCallOperation {
-        public JSArraySomeNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
-            super(context, builtin, isTypedArrayImplementation);
-        }
-
-        @Specialization
-        protected boolean some(Object thisObj, Object callback, Object thisArg) {
-            TruffleObject thisJSObj = toObject(thisObj);
-            if (isTypedArrayImplementation) {
-                validateTypedArray(thisJSObj);
-            }
-            long length = getLength(thisJSObj);
-            TruffleObject callbackFn = checkCallbackIsFunction(callback);
-            return (boolean) forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, false);
-        }
-
-        @Override
-        protected MaybeResultNode makeMaybeResultNode() {
-            return new ForEachIndexCallNode.MaybeResultNode() {
-                @Child private JSToBooleanNode toBooleanNode = JSToBooleanNode.create();
-
-                @Override
-                public MaybeResult<Object> apply(long index, Object value, Object callbackResult, Object currentResult) {
-                    return toBooleanNode.executeBoolean(callbackResult) ? MaybeResult.returnResult(true) : MaybeResult.continueResult(currentResult);
-                }
-            };
-        }
-    }
-
-    public abstract static class JSArrayMapNode extends ArrayForEachIndexCallOperation {
-        public JSArrayMapNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
-            super(context, builtin, isTypedArrayImplementation);
-        }
-
-        @Specialization
-        protected TruffleObject map(Object thisObj, Object callback, Object thisArg) {
-            TruffleObject thisJSObj = toObject(thisObj);
-            if (isTypedArrayImplementation) {
-                validateTypedArray(thisJSObj);
-            }
-            long length = getLength(thisJSObj);
-            TruffleObject callbackFn = checkCallbackIsFunction(callback);
-
-            Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisJSObj, length);
-            return (TruffleObject) forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, resultArray);
-        }
-
-        @Override
-        protected MaybeResultNode makeMaybeResultNode() {
-            return new ForEachIndexCallNode.MaybeResultNode() {
-                @Child private WriteElementNode writeOwnNode = NodeFactory.getInstance(getContext()).createWriteElementNode(getContext(), true, true);
-
-                @Override
-                public MaybeResult<Object> apply(long index, Object value, Object callbackResult, Object currentResult) {
-                    writeOwnNode.executeWithTargetAndIndexAndValue(currentResult, index, callbackResult);
-                    return MaybeResult.continueResult(currentResult);
                 }
             };
         }
