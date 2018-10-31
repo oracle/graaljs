@@ -139,8 +139,8 @@ suite = {
     },
 
     "TEST262" : {
-      "sha1" : "fd6f842f715742397e3cb33f583128474fe1f911",
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/test262-0fde488.tar.bz2"],
+      "sha1" : "26f270d6220a3058abeac4707b52fd075e06fc3e",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/test262-f1e362d5.tar.bz2"],
     },
 
     "TESTNASHORN" : {
@@ -159,8 +159,8 @@ suite = {
     },
 
     "TESTV8" : {
-      "sha1" : "dd8107d045713ac6e880459ec7ae79531d23efb1",
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/testv8-20170906.tar.gz"],
+      "sha1" : "f1b8dedb25627696bcbe65b09cc50726d2a59eb2",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/testv8-20181029.tar.gz"],
     },
 
     "JACKSON_CORE" : {
