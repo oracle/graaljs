@@ -910,10 +910,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/harmony/async-from-sync-iterator.js",
-    "status" : "SKIP",
-    "comment" : "Incorrect test, runs into infinite loop."
-  }, {
     "filePath" : "mjsunit/harmony/async-generators-basic.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
@@ -1274,10 +1270,6 @@
     "status" : "SKIP",
     "comment" : "Ignition statistics - https://codereview.chromium.org/1899133004"
   }, {
-    "filePath" : "mjsunit/ignition/regress-599001-verifyheap.js",
-    "status" : "SKIP",
-    "comment" : "infinite loop"
-  }, {
     "filePath" : "mjsunit/indexed-accessors.js",
     "status" : "SKIP",
     "comment" : "__defineGetter__, __defineSetter__, __lookupSetter__, __lookupGetter__ not according to spec"
@@ -1429,10 +1421,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/regress/regress-1118.js",
-    "status" : "SKIP",
-    "comment" : "infinite loops caused by not compiling V8 style"
-  }, {
     "filePath" : "mjsunit/regress/regress-1119.js",
     "status" : "FAIL"
   }, {
@@ -1539,10 +1527,6 @@
     "status" : "SKIP",
     "runInIsolation" : true,
     "comment" : "these tests expect the stack limit to be reached"
-  }, {
-    "filePath" : "mjsunit/regress/regress-454725.js",
-    "status" : "SKIP",
-    "comment" : "timeout unknown"
   }, {
     "filePath" : "mjsunit/regress/regress-458987.js",
     "runInIsolation" : true,
@@ -1814,7 +1798,7 @@
     "comment" : "infinite loops caused by not compiling V8 style"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-160010.js",
-    "status" : "SKIP",
+    "status" : "FAIL",
     "comment" : "timeout unknown"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-245480.js",
@@ -2593,10 +2577,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/unbox-double-arrays.js",
-    "status" : "SKIP",
-    "comment" : "timeout unknown"
-  }, {
     "filePath" : "mjsunit/undetectable-compare.js",
     "status" : "SKIP",
     "comment" : "undetectable"
@@ -2604,10 +2584,6 @@
     "filePath" : "mjsunit/undetectable.js",
     "status" : "SKIP",
     "comment" : "undetectable"
-  }, {
-    "filePath" : "mjsunit/unicode-case-overoptimization.js",
-    "status" : "SKIP",
-    "comment" : "timeout unknown"
   }, {
     "filePath" : "mjsunit/value-wrapper-accessor.js",
     "status" : "SKIP",
