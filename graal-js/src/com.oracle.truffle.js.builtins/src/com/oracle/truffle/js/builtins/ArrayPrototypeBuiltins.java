@@ -124,6 +124,7 @@ import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerSpecialNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -2227,6 +2228,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class JSArrayFlatNode extends JSArrayOperation {
+        @Child private JSToIntegerNode toIntegerNode;
 
         public JSArrayFlatNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, false);
@@ -2237,11 +2239,19 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached("createFlattenIntoArrayNode(getContext())") FlattenIntoArrayNode flattenIntoArrayNode) {
             TruffleObject thisJSObj = toObject(thisObj);
             long length = getLength(thisJSObj);
-            long depthNum = depth == null || JSRuntime.isNullOrUndefined(depth) ? 1 : JSRuntime.toInteger(depth);
+            long depthNum = (depth == Undefined.instance) ? 1 : toInteger(depth);
 
             Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisJSObj, 0);
             flattenIntoArrayNode.flatten((DynamicObject) resultArray, thisJSObj, length, 0, depthNum, null, null);
             return resultArray;
+        }
+
+        private int toInteger(Object depth) {
+            if (toIntegerNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toIntegerNode = insert(JSToIntegerNode.create());
+            }
+            return toIntegerNode.executeInt(depth);
         }
 
         protected static final FlattenIntoArrayNode createFlattenIntoArrayNode(JSContext context) {
