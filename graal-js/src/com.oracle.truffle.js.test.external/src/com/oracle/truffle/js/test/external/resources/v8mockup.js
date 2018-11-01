@@ -166,18 +166,6 @@ function v8HaveSameMap(obj1, obj2) {
     return v8IgnoreResult;
 }
 
-function v8HasExternalArrayElements() {
-    return true;
-}
-
-function v8HasExternalByteElements() {
-    return true;
-}
-
-function v8HasExternalUnsignedByteElements() {
-    return true;
-}
-
 function v8HasFixedUint8Elements(ob) {
     return true;
 }
@@ -224,18 +212,6 @@ function v8IsMinusZero(a) {
 
 function v8RunningInSimulator() {
     return false;
-}
-
-function v8StringCharCode(st, idx) {
-    return st.charAt(idx);
-}
-
-function v8StringCharCodeAt(st, idx) {
-    return st.charCodeAt(idx);
-}
-
-function v8StringFromCharCode(code) {
-    return String.fromCharCode(code);
 }
 
 function v8UnblockConcurrentRecompilation() {
@@ -345,20 +321,12 @@ function v8ObjectFreeze(obj) {
     return obj.freeze();
 }
 
-function v8StringCharFromCode(str) {
-    return str;
-}
-
 function v8SmiLexicographicCompare(a, b) {
     return TestV8.stringCompare(a+"",b+"");
 }
 
 function v8StringCompare(a, b) {
     return TestV8.stringCompare(a+"",b+"");
-}
-
-function v8StringCompareRT(a, b) {
-    return v8StringCompare(a, b);
 }
 
 function v8HasFixedInt8Elements() {
