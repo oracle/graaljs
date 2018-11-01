@@ -126,6 +126,14 @@ function v8IsValidSmi(value) {
     return TestV8.class(value) === "java.lang.Integer";
 }
 
+function v8HasFastElements() {
+    return v8IgnoreResult;
+}
+
+function v8HasFastPackedElements() {
+    return v8IgnoreResult;
+}
+
 function v8HasFastObjectElements() {
     return v8IgnoreResult;
 }
@@ -886,4 +894,7 @@ function v8SetWasmThreadsEnabled() {
 }
 
 function v8WasmTierUpFunction() {
+}
+
+function v8HandleDebuggerStatement() {
 }
