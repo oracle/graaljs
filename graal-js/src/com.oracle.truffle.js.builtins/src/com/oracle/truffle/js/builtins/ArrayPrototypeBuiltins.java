@@ -2381,7 +2381,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private void delete(TruffleObject obj, Object i) {
             if (deletePropertyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                deletePropertyNode = insert(DeletePropertyNode.create(THROW_ERROR, getContext()));
+                JSContext context = getContext();
+                deletePropertyNode = insert(DeletePropertyNode.create(!context.isOptionV8CompatibilityMode(), context));
             }
             deletePropertyNode.executeEvaluated(obj, i);
         }
