@@ -2541,13 +2541,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 } else {
                     retObj = JSRuntime.call(compFnObj, Undefined.instance, new Object[]{arg0, arg1});
                 }
+                double d = JSRuntime.toDouble(retObj);
                 if (isTypedArrayImplementation) {
                     if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBufferObj)) {
                         errorBranch.enter();
                         throw Errors.createTypeErrorDetachedBuffer();
                     }
                 }
-                double d = JSRuntime.toDouble(retObj);
                 return d == 0 ? 0 : (d < 0 ? -1 : 1);
             }
         }
