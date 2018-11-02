@@ -2381,7 +2381,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private void delete(TruffleObject obj, Object i) {
             if (deletePropertyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                deletePropertyNode = insert(DeletePropertyNode.create(THROW_ERROR, getContext()));
+                JSContext context = getContext();
+                deletePropertyNode = insert(DeletePropertyNode.create(!context.isOptionV8CompatibilityMode(), context));
             }
             deletePropertyNode.executeEvaluated(obj, i);
         }
@@ -2432,9 +2433,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private void checkCompareFunction(Object compare) {
-            if (!(isCallable(compare) || getContext().isOptionV8CompatibilityMode() || compare == Undefined.instance)) {
+            if (!(isCallable(compare) || compare == Undefined.instance)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("illegal compare function");
+                throw Errors.createTypeError("The comparison function must be either a function or undefined");
             }
         }
 
@@ -2541,13 +2542,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 } else {
                     retObj = JSRuntime.call(compFnObj, Undefined.instance, new Object[]{arg0, arg1});
                 }
+                double d = JSRuntime.toDouble(retObj);
                 if (isTypedArrayImplementation) {
                     if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBufferObj)) {
                         errorBranch.enter();
                         throw Errors.createTypeErrorDetachedBuffer();
                     }
                 }
-                double d = JSRuntime.toDouble(retObj);
                 return d == 0 ? 0 : (d < 0 ? -1 : 1);
             }
         }

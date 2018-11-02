@@ -2290,10 +2290,6 @@
     },
     "comment" : "Fails on big endian and works on little endian"
   }, {
-    "filePath" : "built-ins/TypedArray/prototype/sort/sort-tonumber.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
     "filePath" : "built-ins/TypedArrayConstructors/internals/Get/BigInt/infinity-detached-buffer.js",
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
