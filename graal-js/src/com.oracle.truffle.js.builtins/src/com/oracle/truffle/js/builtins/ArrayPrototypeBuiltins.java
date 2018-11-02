@@ -2432,9 +2432,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private void checkCompareFunction(Object compare) {
-            if (!(isCallable(compare) || getContext().isOptionV8CompatibilityMode() || compare == Undefined.instance)) {
+            if (!(isCallable(compare) || compare == Undefined.instance)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("illegal compare function");
+                throw Errors.createTypeError("The comparison function must be either a function or undefined");
             }
         }
 
