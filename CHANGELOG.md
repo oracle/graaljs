@@ -3,7 +3,7 @@
 This changelog summarizes major changes between GraalVM versions of the Graal JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
-## Version 1.0.0 RC10
+## Version 1.0.0 RC9
 * Added support for `Array.prototype.{flat,flatMap}`, a Stage 3 proposal.
 
 ## Version 1.0.0 RC8
