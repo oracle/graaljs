@@ -415,7 +415,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
 
     private static void jsonQuote(DelimitedStringBuilder builder, String value) {
         builder.append('"');
-        for (int i = 0; i < value.length(); i++) {
+        for (int i = 0; i < value.length();) {
             char ch = value.charAt(i);
             if (ch < ' ') {
                 if (ch == '\b') {
@@ -436,16 +436,40 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
                     builder.append("\\\\");
                 } else if (ch == '"') {
                     builder.append("\\\"");
+                } else if (Character.isSurrogate(ch)) {
+                    if (Character.isHighSurrogate(ch)) {
+                        char nextCh;
+                        if (i + 1 < value.length() && (Character.isLowSurrogate(nextCh = value.charAt(i + 1)))) {
+                            // paired surrogates
+                            builder.append(ch);
+                            builder.append(nextCh);
+                            i++;
+                        } else {
+                            // unpaired high surrogate
+                            jsonQuoteSurrogate(builder, ch);
+                        }
+                    } else {
+                        // unpaired low surrogate
+                        jsonQuoteSurrogate(builder, ch);
+                    }
                 } else {
                     builder.append(ch);
                 }
             }
+            i++;
         }
         builder.append('"');
     }
 
     private static void jsonQuoteUnicode(DelimitedStringBuilder builder, char c) {
         builder.append("\\u00");
+        builder.append(Character.forDigit((c >> 4) & 0xF, 16));
+        builder.append(Character.forDigit(c & 0xF, 16));
+    }
+
+    private static void jsonQuoteSurrogate(DelimitedStringBuilder builder, char c) {
+        builder.append("\\ud");
+        builder.append(Character.forDigit((c >> 8) & 0xF, 16));
         builder.append(Character.forDigit((c >> 4) & 0xF, 16));
         builder.append(Character.forDigit(c & 0xF, 16));
     }
