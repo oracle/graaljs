@@ -305,7 +305,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     private static boolean isCached(AbstractCacheNode c) {
-        return c instanceof DirectCallCacheNode;
+        return c instanceof JSFunctionCacheNode || c instanceof JavaCacheNode;
     }
 
     private static boolean isGeneric(AbstractCacheNode c) {
@@ -336,39 +336,41 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private AbstractCacheNode specializeDirectCallInstance(DynamicObject functionObj, final JSFunctionData functionData, AbstractCacheNode head) {
-        FunctionInstanceCacheNode obsoleteNode = null;
+    private JSFunctionCacheNode specializeDirectCallInstance(DynamicObject functionObj, JSFunctionData functionData, AbstractCacheNode head) {
+        JSFunctionCacheNode obsoleteNode = null;
         AbstractCacheNode previousNode = null;
         for (AbstractCacheNode p = null, c = head; c != null; p = c, c = c.nextNode) {
-            if (c instanceof FunctionInstanceCacheNode) {
-                FunctionInstanceCacheNode current = (FunctionInstanceCacheNode) c;
-                JSFunctionData currentFunctionData = JSFunction.getFunctionData(current.functionObj);
-                if (currentFunctionData == functionData) {
-                    obsoleteNode = current;
-                    previousNode = p;
-                    break;
+            if (c instanceof JSFunctionCacheNode) {
+                JSFunctionCacheNode current = (JSFunctionCacheNode) c;
+                if (current.isInstanceCache()) {
+                    if (functionData == current.getFunctionData()) {
+                        obsoleteNode = current;
+                        previousNode = p;
+                        break;
+                    }
                 }
             }
         }
         if (obsoleteNode == null) {
-            final JSDirectCallNode current = createCallableNode(functionObj, isNew(flags), isNewTarget(flags), true);
-            return insertAtFront(new FunctionInstanceCacheNode(functionObj, current, null), head);
+            JSFunctionCacheNode directCall = createCallableNode(functionObj, functionData, isNew(flags), isNewTarget(flags), true);
+            return insertAtFront(directCall, head);
         } else {
             if (JSTruffleOptions.TraceFunctionCache) {
                 System.out.printf("FUNCTION CACHE changed function instance to function data cache %s (depth=%d)\n", getEncapsulatingSourceSection(), getCachedCount(head));
             }
-            JSDirectCallNode directCallNode = obsoleteNode.currentNode;
-            if (directCallNode instanceof BoundCallNode) {
-                directCallNode = createCallableNode(functionObj, isNew(flags), isNewTarget(flags), false);
+            JSFunctionCacheNode newNode;
+            if (obsoleteNode instanceof FunctionInstanceCacheNode) {
+                newNode = new FunctionDataCacheNode(functionData, ((FunctionInstanceCacheNode) obsoleteNode).callNode);
+            } else {
+                newNode = createCallableNode(functionObj, functionData, isNew(flags), isNewTarget(flags), false);
             }
-            AbstractCacheNode newNode = new FunctionDataCacheNode(functionData, directCallNode, null);
             return replaceCached(newNode, head, obsoleteNode, previousNode);
         }
     }
 
-    private AbstractCacheNode specializeDirectCallShared(DynamicObject functionObj, final JSFunctionData functionData, AbstractCacheNode head) {
-        final JSDirectCallNode directCall = createCallableNode(functionObj, isNew(flags), isNewTarget(flags), false);
-        return insertAtFront(new FunctionDataCacheNode(functionData, directCall, null), head);
+    private JSFunctionCacheNode specializeDirectCallShared(DynamicObject functionObj, JSFunctionData functionData, AbstractCacheNode head) {
+        final JSFunctionCacheNode directCall = createCallableNode(functionObj, functionData, isNew(flags), isNewTarget(flags), false);
+        return insertAtFront(directCall, head);
     }
 
     private AbstractCacheNode specializeGenericFunction(AbstractCacheNode head, boolean hasCached) {
@@ -397,28 +399,28 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
     private AbstractCacheNode specializeJavaCall(Object method, AbstractCacheNode head) {
         assert method instanceof JavaMethod || method instanceof JavaClass;
-        final JSDirectCallNode current;
+        final JavaDirectCallNode directCall;
         if (method instanceof JavaClass && ((JavaClass) method).getType().isArray()) {
-            current = new JavaClassCallNode((JavaClass) method);
+            directCall = new JavaClassCallNode((JavaClass) method);
         } else if (method instanceof JavaClass && ((JavaClass) method).isAbstract()) {
             JavaClass extendedClass = ((JavaClass) method).extend(null, null);
             if (JSTruffleOptions.JavaCallCache) {
-                current = JavaMethodCallNode.create(extendedClass);
+                directCall = JavaMethodCallNode.create(extendedClass);
             } else {
-                current = new JavaClassCallNode(extendedClass);
+                directCall = new JavaClassCallNode(extendedClass);
             }
         } else {
             if (JSTruffleOptions.JavaCallCache) {
-                current = JavaMethodCallNode.create(method);
+                directCall = JavaMethodCallNode.create(method);
             } else {
                 if (method instanceof JavaMethod) {
-                    current = new SlowJavaMethodCallNode((JavaMethod) method);
+                    directCall = new SlowJavaMethodCallNode((JavaMethod) method);
                 } else {
-                    current = new JavaClassCallNode((JavaClass) method);
+                    directCall = new JavaClassCallNode((JavaClass) method);
                 }
             }
         }
-        AbstractCacheNode newNode = new JavaCacheNode(method, current, null);
+        AbstractCacheNode newNode = new JavaCacheNode(method, directCall);
         return insertAtFront(newNode, head);
     }
 
@@ -439,7 +441,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         return insertAtFront(newNode, head);
     }
 
-    private AbstractCacheNode insertAtFront(AbstractCacheNode newNode, AbstractCacheNode head) {
+    private <T extends AbstractCacheNode> T insertAtFront(T newNode, AbstractCacheNode head) {
         insert(newNode);
         newNode.nextNode = head;
         this.cacheNode = newNode;
@@ -447,7 +449,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     @SuppressWarnings("unused")
-    private AbstractCacheNode replaceCached(AbstractCacheNode newNode, AbstractCacheNode head, FunctionInstanceCacheNode obsoleteNode, AbstractCacheNode previousNode) {
+    private <T extends AbstractCacheNode> T replaceCached(T newNode, AbstractCacheNode head, AbstractCacheNode obsoleteNode, AbstractCacheNode previousNode) {
         assert previousNode == null || previousNode.nextNode == obsoleteNode;
         insert(newNode);
         newNode.nextNode = obsoleteNode.nextNode;
@@ -953,22 +955,26 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    protected static JSDirectCallNode createCallableNode(DynamicObject function, boolean isNew, boolean isNewTarget, boolean cacheOnInstance) {
+    protected static JSFunctionCacheNode createCallableNode(DynamicObject function, JSFunctionData functionData, boolean isNew, boolean isNewTarget, boolean cacheOnInstance) {
         CallTarget callTarget = getCallTarget(function, isNew, isNewTarget);
         assert callTarget != null;
         if (JSFunction.isBoundFunction(function)) {
             if (cacheOnInstance) {
-                return new BoundCallNode(function, isNew, isNewTarget);
+                return new BoundFunctionInstanceCallNode(function, isNew, isNewTarget);
             } else {
-                return new DynamicBoundCallNode(isNew, isNewTarget);
+                return new DynamicBoundFunctionCallNode(isNew, isNewTarget, functionData);
             }
         } else {
-            JSDirectCallNode node = tryInlineBuiltinFunctionCall(callTarget);
+            JSFunctionCacheNode node = tryInlineBuiltinFunctionCall(function, functionData, callTarget, cacheOnInstance);
             if (node != null) {
                 return node;
             }
 
-            return new DispatchedCallNode(callTarget);
+            if (cacheOnInstance) {
+                return new FunctionInstanceCacheNode(function, callTarget);
+            } else {
+                return new FunctionDataCacheNode(functionData, callTarget);
+            }
         }
     }
 
@@ -982,7 +988,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private static JSDirectCallNode tryInlineBuiltinFunctionCall(CallTarget callTarget) {
+    private static JSFunctionCacheNode tryInlineBuiltinFunctionCall(DynamicObject function, JSFunctionData functionData, CallTarget callTarget, boolean cacheOnInstance) {
         if (!JSTruffleOptions.InlineTrivialBuiltins) {
             return null;
         }
@@ -994,7 +1000,11 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                     JSBuiltinNode builtinNode = (JSBuiltinNode) body;
                     JSBuiltinNode.Inlined inlined = builtinNode.tryCreateInlined();
                     if (inlined != null) {
-                        return new InlinedBuiltinCallNode(callTarget, inlined);
+                        if (cacheOnInstance) {
+                            return new InlinedBuiltinFunctionInstanceCacheNode(function, callTarget, inlined);
+                        } else {
+                            return new InlinedBuiltinFunctionDataCacheNode(functionData, callTarget, inlined);
+                        }
                     }
                 }
             }
@@ -1002,19 +1012,12 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         return null;
     }
 
-    public abstract static class JSDirectCallNode extends JavaScriptBaseNode {
-        protected JSDirectCallNode() {
-        }
-
-        public abstract Object executeCall(Object[] arguments);
-    }
-
-    private static final class FunctionInstanceCacheNode extends DirectCallCacheNode {
+    private static final class FunctionInstanceCacheNode extends UnboundJSFunctionCacheNode {
 
         private final DynamicObject functionObj;
 
-        FunctionInstanceCacheNode(DynamicObject functionObj, JSDirectCallNode current, AbstractCacheNode next) {
-            super(current, next);
+        FunctionInstanceCacheNode(DynamicObject functionObj, CallTarget callTarget) {
+            super(callTarget);
             assert JSFunction.isJSFunction(functionObj);
             this.functionObj = functionObj;
         }
@@ -1024,13 +1027,27 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             return functionObj == function;
         }
 
+        @Override
+        protected JSFunctionData getFunctionData() {
+            return JSFunction.getFunctionData(functionObj);
+        }
+
+        @Override
+        protected boolean isInstanceCache() {
+            return true;
+        }
     }
 
-    private static final class FunctionDataCacheNode extends DirectCallCacheNode {
+    private static final class FunctionDataCacheNode extends UnboundJSFunctionCacheNode {
         private final JSFunctionData functionData;
 
-        FunctionDataCacheNode(JSFunctionData functionData, JSDirectCallNode current, AbstractCacheNode next) {
-            super(current, next);
+        FunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget) {
+            super(callTarget);
+            this.functionData = functionData;
+        }
+
+        FunctionDataCacheNode(JSFunctionData functionData, DirectCallNode directCallNode) {
+            super(directCallNode);
             this.functionData = functionData;
         }
 
@@ -1038,15 +1055,28 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         protected boolean accept(Object thisObject, Object function) {
             return JSFunction.isJSFunction(function) && functionData == JSFunction.getFunctionData((DynamicObject) function);
         }
+
+        @Override
+        protected JSFunctionData getFunctionData() {
+            return functionData;
+        }
     }
 
-    private static final class JavaCacheNode extends DirectCallCacheNode {
-        private final Object method;
+    private abstract static class JavaDirectCallNode extends JavaScriptBaseNode {
+        protected JavaDirectCallNode() {
+        }
 
-        JavaCacheNode(Object method, JSDirectCallNode current, AbstractCacheNode next) {
-            super(current, next);
-            assert method instanceof JavaMethod || method instanceof JavaClass || JavaPackage.isJavaPackage(method);
+        public abstract Object executeCall(Object[] arguments);
+    }
+
+    private static final class JavaCacheNode extends AbstractCacheNode {
+        private final Object method;
+        @Child protected JavaDirectCallNode directCallNode;
+
+        JavaCacheNode(Object method, JavaDirectCallNode directCallNode) {
+            this.directCallNode = directCallNode;
             this.method = method;
+            assert method instanceof JavaMethod || method instanceof JavaClass || JavaPackage.isJavaPackage(method);
         }
 
         @Override
@@ -1054,6 +1084,10 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             return function == method;
         }
 
+        @Override
+        public Object executeCall(Object[] arguments) {
+            return directCallNode.executeCall(arguments);
+        }
     }
 
     private abstract static class AbstractCacheNode extends JavaScriptBaseNode {
@@ -1078,33 +1112,31 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private abstract static class DirectCallCacheNode extends AbstractCacheNode {
-
-        @Child protected JSDirectCallNode currentNode;
-
-        DirectCallCacheNode(JSDirectCallNode current, AbstractCacheNode next) {
-            this.currentNode = current;
-            this.nextNode = next;
+    private abstract static class JSFunctionCacheNode extends AbstractCacheNode {
+        JSFunctionCacheNode() {
         }
 
-        @Override
-        public final Object executeCall(Object[] arguments) {
-            return currentNode.executeCall(arguments);
+        protected boolean isInstanceCache() {
+            return false;
         }
+
+        protected abstract JSFunctionData getFunctionData();
     }
 
-    private static final class BoundCallNode extends JSDirectCallNode {
-        @Child private JSDirectCallNode boundNode;
+    private static final class BoundFunctionInstanceCallNode extends JSFunctionCacheNode {
+        @Child private AbstractCacheNode boundNode;
 
+        private final DynamicObject boundFunctionObj;
         private final Object boundThis;
         private final DynamicObject targetFunctionObj;
         private final Object[] addArguments;
         private final boolean useDynamicThis;
         private final boolean isNewTarget;
 
-        BoundCallNode(DynamicObject function, boolean isNew, boolean isNewTarget) {
+        BoundFunctionInstanceCallNode(DynamicObject function, boolean isNew, boolean isNewTarget) {
             super();
             assert JSFunction.isBoundFunction(function);
+            this.boundFunctionObj = function;
             Object lastReceiver;
             DynamicObject lastFunction = function;
             List<Object> prefixArguments = new ArrayList<>();
@@ -1130,7 +1162,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 this.boundThis = lastReceiver;
             }
             this.isNewTarget = isNewTarget;
-            this.boundNode = createCallableNode(lastFunction, isNew, isNewTarget, true);
+            this.boundNode = createCallableNode(lastFunction, JSFunction.getFunctionData(lastFunction), isNew, isNewTarget, true);
         }
 
         @Override
@@ -1168,22 +1200,35 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             }
             return targetFunctionObj == targetFunction;
         }
+
+        @Override
+        protected boolean accept(Object thisObject, Object function) {
+            return function == boundFunctionObj;
+        }
+
+        @Override
+        protected JSFunctionData getFunctionData() {
+            return JSFunction.getFunctionData(boundFunctionObj);
+        }
+
+        @Override
+        protected boolean isInstanceCache() {
+            return true;
+        }
     }
 
-    private static final class DynamicBoundCallNode extends JSDirectCallNode {
+    private static final class DynamicBoundFunctionCallNode extends JSFunctionCacheNode {
         @Child private JSFunctionCallNode boundTargetCallNode;
 
         private final boolean useDynamicThis;
         private final boolean isNewTarget;
+        private final JSFunctionData boundFunctionData;
 
-        DynamicBoundCallNode(boolean isNew, boolean isNewTarget) {
+        DynamicBoundFunctionCallNode(boolean isNew, boolean isNewTarget, JSFunctionData boundFunctionData) {
             super();
-            if (isNew || isNewTarget) {
-                this.useDynamicThis = true;
-            } else {
-                this.useDynamicThis = false;
-            }
+            this.useDynamicThis = (isNew || isNewTarget);
             this.isNewTarget = isNewTarget;
+            this.boundFunctionData = boundFunctionData;
             this.boundTargetCallNode = JSFunctionCallNode.create(isNew, isNewTarget);
         }
 
@@ -1215,13 +1260,23 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             }
             return arguments;
         }
+
+        @Override
+        protected boolean accept(Object thisObject, Object function) {
+            return JSFunction.isJSFunction(function) && boundFunctionData == JSFunction.getFunctionData((DynamicObject) function);
+        }
+
+        @Override
+        protected JSFunctionData getFunctionData() {
+            return boundFunctionData;
+        }
     }
 
-    private static final class DispatchedCallNode extends JSDirectCallNode {
+    private abstract static class UnboundJSFunctionCacheNode extends JSFunctionCacheNode {
 
-        @Child private DirectCallNode callNode;
+        @Child DirectCallNode callNode;
 
-        DispatchedCallNode(CallTarget callTarget) {
+        UnboundJSFunctionCacheNode(CallTarget callTarget) {
             this.callNode = Truffle.getRuntime().createDirectCallNode(callTarget);
 
             if (callTarget instanceof RootCallTarget) {
@@ -1234,13 +1289,17 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             }
         }
 
+        UnboundJSFunctionCacheNode(DirectCallNode callNode) {
+            this.callNode = callNode;
+        }
+
         @Override
-        public Object executeCall(Object[] arguments) {
+        public final Object executeCall(Object[] arguments) {
             return callNode.call(arguments);
         }
     }
 
-    static final class InlinedBuiltinCallNode extends JSDirectCallNode {
+    private abstract static class InlinedBuiltinCallNode extends JSFunctionCacheNode {
         private final CallTarget callTarget;
         @Child private JSBuiltinNode.Inlined builtinNode;
         @Child private DirectCallNode callNode;
@@ -1265,6 +1324,50 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 callNode.forceInlining();
                 return callNode.call(arguments);
             }
+        }
+    }
+
+    private static final class InlinedBuiltinFunctionInstanceCacheNode extends InlinedBuiltinCallNode {
+        private final DynamicObject functionObj;
+
+        InlinedBuiltinFunctionInstanceCacheNode(DynamicObject functionObj, CallTarget callTarget, JSBuiltinNode.Inlined builtinNode) {
+            super(callTarget, builtinNode);
+            assert JSFunction.isJSFunction(functionObj);
+            this.functionObj = functionObj;
+        }
+
+        @Override
+        protected boolean accept(Object thisObject, Object function) {
+            return functionObj == function;
+        }
+
+        @Override
+        protected JSFunctionData getFunctionData() {
+            return JSFunction.getFunctionData(functionObj);
+        }
+
+        @Override
+        protected boolean isInstanceCache() {
+            return true;
+        }
+    }
+
+    private static final class InlinedBuiltinFunctionDataCacheNode extends InlinedBuiltinCallNode {
+        private final JSFunctionData functionData;
+
+        InlinedBuiltinFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget, JSBuiltinNode.Inlined builtinNode) {
+            super(callTarget, builtinNode);
+            this.functionData = functionData;
+        }
+
+        @Override
+        protected boolean accept(Object thisObject, Object function) {
+            return JSFunction.isJSFunction(function) && functionData == JSFunction.getFunctionData((DynamicObject) function);
+        }
+
+        @Override
+        protected JSFunctionData getFunctionData() {
+            return functionData;
         }
     }
 
@@ -1323,7 +1426,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    public abstract static class JavaMethodCallNode extends JSDirectCallNode {
+    public abstract static class JavaMethodCallNode extends JavaDirectCallNode {
         protected final Object method;
 
         JavaMethodCallNode(Object method) {
@@ -1418,7 +1521,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private static class JavaClassCallNode extends JSDirectCallNode {
+    private static class JavaClassCallNode extends JavaDirectCallNode {
         private final JavaClass clazz;
 
         JavaClassCallNode(JavaClass clazz) {
@@ -1432,7 +1535,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private static class SlowJavaMethodCallNode extends JSDirectCallNode {
+    private static class SlowJavaMethodCallNode extends JavaDirectCallNode {
         private final JavaMethod method;
 
         SlowJavaMethodCallNode(JavaMethod method) {
