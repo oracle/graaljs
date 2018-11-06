@@ -4,7 +4,10 @@ This changelog summarizes major changes between GraalVM versions of the Graal Ja
 The main focus is on user-observable behavior of the engine.
 
 ## Version 1.0.0 RC10
-* Added support for `Array.prototype.{flat,flatMap}`, a Stage 3 proposal.
+* Added support for `Array.prototype.{flat,flatMap}`, [a Stage 3 proposal](https://github.com/tc39/proposal-flatMap).
+* `Atomics.wake` available under its new name (`Atomics.notify`) as well.
+* [Well-formed JSON.stringify](https://github.com/tc39/proposal-well-formed-stringify) proposal implemented.
+* [globalThis](https://github.com/tc39/proposal-global) proposal implemented.
 
 ## Version 1.0.0 RC8
 * Provide simplified implementations for methods of the global `console` object even outside Node.js mode.
