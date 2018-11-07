@@ -1429,7 +1429,7 @@ public class JSContext {
     }
 
     public final boolean isSingleRealm() {
-        return singleRealmAssumption.isValid();
+        return !isMultiContext() && singleRealmAssumption.isValid();
     }
 
     public final void assumeSingleRealm() throws InvalidAssumptionException {
