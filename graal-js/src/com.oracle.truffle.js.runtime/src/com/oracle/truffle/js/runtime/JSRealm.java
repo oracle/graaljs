@@ -826,6 +826,9 @@ public class JSRealm {
         if (getEnv() != null && JSContextOptions.GLOBAL_THIS.getValue(getEnv().getOptions()) && !context.isOptionV8CompatibilityMode()) {
             putGlobalProperty(global, "global", global);
         }
+        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
+            putGlobalProperty(global, "globalThis", global);
+        }
         if (JSTruffleOptions.GraalBuiltin) {
             putGraalObject(global);
         }
