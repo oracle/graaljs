@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
@@ -69,6 +70,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
 /**
  * Module Namespace Exotic Objects.
@@ -217,7 +219,15 @@ public final class JSModuleNamespace extends JSBuiltinObject {
 
     @Override
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
-        return false;
+        if (!(key instanceof String)) {
+            return super.defineOwnProperty(thisObj, key, desc, doThrow);
+        }
+        PropertyDescriptor current = getOwnProperty(thisObj, key);
+        if (current != null && !desc.isAccessorDescriptor() && desc.getIfHasWritable(true) && desc.getIfHasEnumerable(true) && !desc.getIfHasConfigurable(false) &&
+                        (!desc.hasValue() || JSRuntime.isSameValue(desc.getValue(), current.getValue()))) {
+            return true;
+        }
+        return DefinePropertyUtil.reject(doThrow, "not allowed to defineProperty on a namespace object");
     }
 
     @Override
