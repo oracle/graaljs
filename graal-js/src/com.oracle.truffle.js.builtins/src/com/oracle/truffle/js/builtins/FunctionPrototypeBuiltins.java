@@ -54,6 +54,7 @@ import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSApplyNo
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSBindNodeGen;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSCallNodeGen;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSFunctionToStringNodeGen;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -285,6 +286,8 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     public abstract static class JSFunctionToStringNode extends JSBuiltinNode {
 
+        private static final String NATIVE_CODE_STR = "function () { [native code] }";
+
         public JSFunctionToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -307,7 +310,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = {"isJSFunction(fnObj)", "isRootTarget(fnObj)", "isBoundTarget(fnObj)"})
         protected String toStringBound(DynamicObject fnObj) {
             if (getContext().isOptionV8CompatibilityMode()) {
-                return "function () { [native code] }";
+                return NATIVE_CODE_STR;
             } else {
                 String name = JSFunction.getName(fnObj);
                 return getNameIntl(name);
@@ -326,9 +329,26 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return ct.toString();
         }
 
-        @Specialization(guards = "!isJSFunction(fnObj)")
-        protected String toString(Object fnObj) {
+        @Specialization(guards = {"!isJSFunction(fnObj)", "isES2019Callable(fnObj)"})
+        protected String toStringCallable(@SuppressWarnings("unused") Object fnObj) {
+            return NATIVE_CODE_STR;
+        }
+
+        @Specialization(guards = "!isValid(fnObj)")
+        protected String toStringNotCallable(Object fnObj) {
             throw Errors.createTypeErrorNotAFunction(fnObj);
+        }
+
+        protected boolean isES2019Callable(Object fnObject) {
+            return getContext().getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019 && JSGuards.isCallable(fnObject);
+        }
+
+        protected boolean isValid(Object fnObject) {
+            if (getContext().getEcmaScriptVersion() <= JSTruffleOptions.ECMAScript2018) {
+                return JSFunction.isJSFunction(fnObject);
+            } else {
+                return JSRuntime.isCallable(fnObject);
+            }
         }
 
         @TruffleBoundary
