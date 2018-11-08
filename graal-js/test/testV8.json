@@ -1303,19 +1303,13 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
   }, {
-    "filePath" : "mjsunit/modules-namespace-getownproperty1.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/modules-namespace-getownproperty2.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/modules-namespace1.js",
-    "status" : "FAIL"
+    "status" : "SKIP",
+    "comment" : "An incorrect test - it even contains 'TODO(neis): The next two should be False.' comment before a failing assert."
   }, {
     "filePath" : "mjsunit/modules-namespace4.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "Our uninitialized binding check does not work for an uninitialized default binding."
   }, {
     "filePath" : "mjsunit/number-tostring-big-integer.js",
     "status" : "FAIL"
