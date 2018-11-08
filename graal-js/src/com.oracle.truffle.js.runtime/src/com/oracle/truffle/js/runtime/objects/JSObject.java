@@ -181,8 +181,14 @@ public final class JSObject {
     public static DynamicObject createInit(JSContext context, DynamicObject prototype, JSClass builtinObject) {
         CompilerAsserts.neverPartOfCompilation();
         assert prototype == Null.instance || JSRuntime.isObject(prototype);
-        if (context.isMultiContext() && builtinObject == JSUserObject.INSTANCE) {
-            Shape shape = context.getEmptyShapePrototypeInObject();
+        if (context.isMultiContext()) {
+            Shape shape;
+            if (builtinObject == JSUserObject.INSTANCE) {
+                shape = context.getEmptyShapePrototypeInObject();
+            } else {
+                shape = context.makeEmptyShapeWithPrototypeInObject(builtinObject, JSObject.PROTO_PROPERTY);
+            }
+            assert JSShape.getPrototypeProperty(shape) == JSObject.PROTO_PROPERTY;
             DynamicObject obj = JSObject.createInit(shape);
             JSObject.PROTO_PROPERTY.setSafe(obj, prototype, shape);
             return obj;
