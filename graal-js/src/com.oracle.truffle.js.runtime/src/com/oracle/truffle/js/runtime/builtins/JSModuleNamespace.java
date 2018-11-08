@@ -272,4 +272,25 @@ public final class JSModuleNamespace extends JSBuiltinObject {
         return keys;
     }
 
+    @Override
+    @TruffleBoundary
+    public boolean setIntegrityLevel(DynamicObject obj, boolean freeze) {
+        if (freeze) {
+            Map<String, ExportResolution> exports = getExports(obj);
+            if (!exports.isEmpty()) {
+                ExportResolution firstBinding = exports.values().iterator().next();
+                // Throw ReferenceError if the first binding is uninitialized,
+                // throw TypeError otherwise
+                getBindingValue(firstBinding); // checks for an uninitialized binding
+                throw Errors.createTypeError("not allowed to freeze a namespace object");
+            }
+        } else {
+            // Check for uninitalized bindings
+            for (ExportResolution binding : getExports(obj).values()) {
+                getBindingValue(binding); // can throw ReferenceError
+            }
+        }
+        return true;
+    }
+
 }
