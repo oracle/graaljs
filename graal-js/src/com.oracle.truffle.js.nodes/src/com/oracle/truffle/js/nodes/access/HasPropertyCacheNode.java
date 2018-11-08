@@ -227,13 +227,25 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
     }
 
     public static final class UnspecializedHasPropertyCacheNode extends LinkedHasPropertyCacheNode {
-        public UnspecializedHasPropertyCacheNode(Object key, ReceiverCheckNode receiverCheckNode) {
+        private final boolean hasOwnProperty;
+
+        public UnspecializedHasPropertyCacheNode(Object key, ReceiverCheckNode receiverCheckNode, boolean hasOwnProperty) {
             super(key, receiverCheckNode);
+            this.hasOwnProperty = hasOwnProperty;
         }
 
         @Override
         public boolean hasPropertyUnchecked(Object thisObj, boolean floatingCondition) {
-            return JSObject.hasOwnProperty((DynamicObject) thisObj, key);
+            if (isOwnProperty()) {
+                return JSObject.hasOwnProperty((DynamicObject) thisObj, key);
+            } else {
+                return JSObject.hasProperty((DynamicObject) thisObj, key);
+            }
+        }
+
+        @Override
+        protected boolean isOwnProperty() {
+            return hasOwnProperty;
         }
     }
 
@@ -427,7 +439,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
             } else if (JSProxy.isProxy(store)) {
                 return new JSProxyDispatcherPropertyHasNode(context, key, receiverCheck, isOwnProperty());
             } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
-                return new UnspecializedHasPropertyCacheNode(key, receiverCheck);
+                return new UnspecializedHasPropertyCacheNode(key, receiverCheck, isOwnProperty());
             } else {
                 return new AbsentHasPropertyCacheNode(key, shapeCheck);
             }
@@ -444,7 +456,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
         if (JavaPackage.isJavaPackage(thisObj)) {
             return new PresentHasPropertyCacheNode(key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
         } else if (JavaImporter.isJavaImporter(thisObj)) {
-            return new UnspecializedHasPropertyCacheNode(key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
+            return new UnspecializedHasPropertyCacheNode(key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)), isOwnProperty());
         }
         if (!JSTruffleOptions.NashornJavaInterop) {
             return null;
