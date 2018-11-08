@@ -226,46 +226,6 @@
     "filePath" : "built-ins/Function/prototype/toString/line-terminator-normalisation-CR.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "built-ins/Function/prototype/toString/proxy-arrow-function.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Function/prototype/toString/proxy-async-function.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Function/prototype/toString/proxy-async-generator-function.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Function/prototype/toString/proxy-async-generator-method-definition.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Function/prototype/toString/proxy-async-method-definition.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Function/prototype/toString/proxy-bound-function.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Function/prototype/toString/proxy-class.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Function/prototype/toString/proxy-function-expression.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Function/prototype/toString/proxy-generator-function.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Function/prototype/toString/proxy-method-definition.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "built-ins/Object/fromEntries/empty-iterable.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"

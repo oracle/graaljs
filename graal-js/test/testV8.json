@@ -708,10 +708,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/es6/proxy-function-tostring.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/es6/reflect-construct.js",
     "status" : "FAIL"
   }, {
