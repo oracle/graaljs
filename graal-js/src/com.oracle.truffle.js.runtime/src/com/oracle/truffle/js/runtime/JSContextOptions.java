@@ -147,7 +147,7 @@ public final class JSContextOptions {
     private static final String JAVA_PACKAGE_GLOBALS_HELP = helpWithDefault("provide Java package globals: Packages, java, javafx, javax, com, org, edu.", JAVA_PACKAGE_GLOBALS);
 
     public static final String GLOBAL_THIS_NAME = JS_OPTION_PREFIX + "global-this";
-    public static final OptionKey<Boolean> GLOBAL_THIS = new OptionKey<>(false);
+    public static final OptionKey<Boolean> GLOBAL_THIS = new OptionKey<>(true);
     private static final String GLOBAL_THIS_HELP = helpWithDefault("provide 'global' global property.", GLOBAL_THIS);
 
     private static final OptionKey<?>[] PREINIT_CONTEXT_OPTION_KEYS = {
