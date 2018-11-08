@@ -236,10 +236,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
     @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     public final Object executeCall(Object[] arguments) {
-        Object thisObject = JSArguments.getThisObject(arguments);
         Object function = JSArguments.getFunctionObject(arguments);
         for (AbstractCacheNode c = cacheNode; c != null; c = c.nextNode) {
-            if (c.accept(thisObject, function)) {
+            if (c.accept(function)) {
                 return c.executeCall(arguments);
             }
         }
@@ -249,7 +248,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
     private Object executeAndSpecialize(Object[] arguments) {
         CompilerAsserts.neverPartOfCompilation();
-        Object thisObject = JSArguments.getThisObject(arguments);
         Object function = JSArguments.getFunctionObject(arguments);
 
         AbstractCacheNode c;
@@ -262,7 +260,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             c = currentHead;
 
             while (c != null) {
-                if (c.accept(thisObject, function)) {
+                if (c.accept(function)) {
                     break;
                 }
                 if (isCached(c)) {
@@ -300,7 +298,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         } finally {
             lock.unlock();
         }
-        assert c.accept(thisObject, function);
+        assert c.accept(function);
         return c.executeCall(arguments);
     }
 
@@ -1016,7 +1014,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        protected boolean accept(Object thisObject, Object function) {
+        protected boolean accept(Object function) {
             return functionObj == function;
         }
 
@@ -1045,7 +1043,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        protected boolean accept(Object thisObject, Object function) {
+        protected boolean accept(Object function) {
             return JSFunction.isJSFunction(function) && functionData == JSFunction.getFunctionData((DynamicObject) function);
         }
 
@@ -1073,7 +1071,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        protected boolean accept(Object thisObject, Object function) {
+        protected boolean accept(Object function) {
             return function == method;
         }
 
@@ -1086,7 +1084,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     private abstract static class AbstractCacheNode extends JavaScriptBaseNode {
         @Child protected AbstractCacheNode nextNode;
 
-        protected abstract boolean accept(Object thisObject, Object function);
+        protected abstract boolean accept(Object function);
 
         public abstract Object executeCall(Object[] arguments);
 
@@ -1195,7 +1193,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        protected boolean accept(Object thisObject, Object function) {
+        protected boolean accept(Object function) {
             return function == boundFunctionObj;
         }
 
@@ -1255,7 +1253,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        protected boolean accept(Object thisObject, Object function) {
+        protected boolean accept(Object function) {
             return JSFunction.isJSFunction(function) && boundFunctionData == JSFunction.getFunctionData((DynamicObject) function);
         }
 
@@ -1330,7 +1328,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        protected boolean accept(Object thisObject, Object function) {
+        protected boolean accept(Object function) {
             return functionObj == function;
         }
 
@@ -1354,7 +1352,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        protected boolean accept(Object thisObject, Object function) {
+        protected boolean accept(Object function) {
             return JSFunction.isJSFunction(function) && functionData == JSFunction.getFunctionData((DynamicObject) function);
         }
 
@@ -1375,7 +1373,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        protected boolean accept(Object thisObject, Object function) {
+        protected boolean accept(Object function) {
             return JSGuards.isForeignObject(functionClassProfile.profile(function));
         }
 
@@ -1704,7 +1702,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        protected boolean accept(Object thisObject, Object function) {
+        protected boolean accept(Object function) {
             return JSFunction.isJSFunction(function);
         }
     }
@@ -1737,7 +1735,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        protected boolean accept(Object thisObject, Object function) {
+        protected boolean accept(Object function) {
             return JSProxy.isProxy(function);
         }
     }
@@ -1766,7 +1764,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        protected boolean accept(Object thisObject, Object function) {
+        protected boolean accept(Object function) {
             return function instanceof JSNoSuchMethodAdapter;
         }
     }
@@ -1790,7 +1788,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        protected boolean accept(Object thisObject, Object function) {
+        protected boolean accept(Object function) {
             return !JSFunction.isJSFunction(function) && !JSProxy.isProxy(function) &&
                             !(JSGuards.isForeignObject(function)) &&
                             !(function instanceof JSNoSuchMethodAdapter);
