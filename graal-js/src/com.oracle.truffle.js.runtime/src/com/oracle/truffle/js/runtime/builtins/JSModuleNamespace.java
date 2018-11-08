@@ -183,6 +183,15 @@ public final class JSModuleNamespace extends JSBuiltinObject {
     }
 
     @Override
+    public boolean hasProperty(DynamicObject thisObj, Object key) {
+        if (!(key instanceof String)) {
+            return super.hasProperty(thisObj, key);
+        }
+        Map<String, ExportResolution> exports = getExports(thisObj);
+        return Boundaries.mapContainsKey(exports, key);
+    }
+
+    @Override
     @TruffleBoundary
     public boolean hasOwnProperty(DynamicObject thisObj, Object key) {
         if (!(key instanceof String)) {
