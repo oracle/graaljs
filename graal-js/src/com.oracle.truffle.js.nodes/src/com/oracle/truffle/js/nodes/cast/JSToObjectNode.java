@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -68,6 +69,7 @@ import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
  * Implementation of ECMA 9.9 "ToObject" as Truffle node.
@@ -76,6 +78,8 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  */
 @ImportStatic(JSObject.class)
 public abstract class JSToObjectNode extends JavaScriptBaseNode {
+
+    protected static final int MAX_SHAPE_COUNT = 1;
     protected static final int MAX_CLASSES = 3;
 
     private final JSContext context;
@@ -182,12 +186,28 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         return JSJavaWrapper.create(context, value);
     }
 
-    @Specialization(guards = {"isJSObject(object)", "!isCheckForNullOrUndefined()"})
+    @Specialization(guards = {"shape.check(object)", "isJSObjectShape(shape)", "!isCheckForNullOrUndefined()"}, limit = "MAX_SHAPE_COUNT")
+    protected DynamicObject doJSObjectNoCheckShape(DynamicObject object,
+                    @Cached("object.getShape()") @SuppressWarnings("unused") Shape shape) {
+        return object;
+    }
+
+    @Specialization(guards = {"isJSObject(object)", "!isCheckForNullOrUndefined()"}, replaces = "doJSObjectNoCheckShape")
     protected DynamicObject doJSObjectNoCheck(DynamicObject object) {
         return object;
     }
 
-    @Specialization(guards = {"isJSObject(object)", "isCheckForNullOrUndefined()"})
+    @Specialization(guards = {"shape.check(object)", "isJSObjectShape(shape)", "isNotNullOrUndefined(shape)", "isCheckForNullOrUndefined()"}, limit = "MAX_SHAPE_COUNT")
+    protected DynamicObject doJSObjectCheckShape(DynamicObject object,
+                    @Cached("object.getShape()") @SuppressWarnings("unused") Shape shape) {
+        return object;
+    }
+
+    protected static boolean isNotNullOrUndefined(Shape shape) {
+        return shape.getObjectType() != Null.NULL_CLASS;
+    }
+
+    @Specialization(guards = {"isJSObject(object)", "isCheckForNullOrUndefined()"}, replaces = "doJSObjectCheckShape")
     protected DynamicObject doJSObjectCheck(DynamicObject object,
                     @Cached("create()") IsObjectNode isObjectNode) {
         if (!isObjectNode.executeBoolean(object)) {

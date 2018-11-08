@@ -49,17 +49,20 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNodeFactory.BuildGroupsObjectNodeGen;
+import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNodeFactory.JSRegExpExecBuiltinNodeGen;
+import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNodeFactory.JSRegExpExecIntlIgnoreLastIndexNodeGen;
+import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNodeFactory.JSRegExpExecIntlRunNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -71,13 +74,13 @@ import com.oracle.truffle.regex.UnsupportedRegexException;
 /**
  * Implements ES6 21.2.5.2.1 Runtime Semantics: RegExpExec ( R, S ).
  */
-public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
+public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
     private final JSContext context;
     @Child private JSRegExpExecBuiltinNode regExpBuiltinNode;
     @Child private PropertyGetNode getExecNode;
+    @Child private IsCallableNode isCallableNode = IsCallableNode.create();
     @Child private JSFunctionCallNode specialCallNode;
-    private final ConditionProfile isSpecialProfile = ConditionProfile.createBinaryProfile();
     private final ConditionProfile specialIsObject = ConditionProfile.createBinaryProfile();
     private final ConditionProfile specialIsNotUndefined = ConditionProfile.createBinaryProfile();
     private final ConditionProfile specialIsNull = ConditionProfile.createBinaryProfile();
@@ -87,34 +90,20 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         this.getExecNode = PropertyGetNode.create("exec", false, context);
     }
 
-    public static JSRegExpExecIntlNode create(JSContext context) {
-        return new JSRegExpExecIntlNode(context);
+    boolean ecmaScript6() {
+        return context.getEcmaScriptVersion() >= 6;
     }
 
-    public Object execute(DynamicObject regExp, String input) {
-        if (context.getEcmaScriptVersion() >= 6) {
-            Object exec = getExecNode.getValue(regExp);
-            if (isSpecialProfile.profile(JSFunction.isJSFunction(exec))) {
-                return executeSpecial(regExp, input, exec);
-            }
-        }
-        expectRegExp(regExp);
-        return callBuiltinExec(regExp, input);
+    Object getExecValue(DynamicObject regExp) {
+        return getExecNode.getValue(regExp);
     }
 
-    public Object executeIgnoreLastIndex(DynamicObject regExp, String input, long lastIndex) {
-        if (context.getEcmaScriptVersion() >= 6) {
-            Object exec = getExecNode.getValue(regExp);
-            if (isSpecialProfile.profile(JSFunction.isJSFunction(exec))) {
-                return executeSpecial(regExp, input, exec);
-            }
-        }
-        expectRegExp(regExp);
-        return callBuiltinExecIgnoreLastIndex(regExp, input, lastIndex);
+    boolean isJSFunction(Object exec) {
+        return isCallableNode.executeBoolean(exec);
     }
 
-    private Object executeSpecial(DynamicObject regExp, String input, Object exec) {
-        Object result = callSpecial(exec, regExp, input);
+    Object callJSFunction(DynamicObject regExp, String input, Object exec) {
+        Object result = doCallJSFunction(exec, regExp, input);
         if (specialIsNull.profile(result == Null.instance)) {
             return result;
         } else if (specialIsObject.profile(JSObject.isJSObject(result))) {
@@ -125,13 +114,19 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         throw Errors.createTypeError("object or null expected");
     }
 
-    private static void expectRegExp(DynamicObject regExp) {
-        if (!JSRegExp.isJSRegExp(regExp)) {
-            throw Errors.createTypeError("RegExp expected");
-        }
+    Object callBuiltinExec(DynamicObject regExp, String input) {
+        return getBuiltinNode().execute(regExp, input);
     }
 
-    private Object callSpecial(Object exec, DynamicObject regExp, String input) {
+    JSRegExpExecBuiltinNode getBuiltinNode() {
+        if (regExpBuiltinNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            regExpBuiltinNode = insert(JSRegExpExecBuiltinNode.create(context));
+        }
+        return regExpBuiltinNode;
+    }
+
+    private Object doCallJSFunction(Object exec, DynamicObject regExp, String input) {
         if (specialCallNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             specialCallNode = insert(JSFunctionCallNode.createCall());
@@ -139,20 +134,64 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         return specialCallNode.executeCall(JSArguments.createOneArg(regExp, exec, input));
     }
 
-    private Object callBuiltinExec(DynamicObject regExp, String input) {
-        return getBuiltinNode().execute(regExp, input);
-    }
-
-    private TruffleObject callBuiltinExecIgnoreLastIndex(DynamicObject regExp, String input, long lastIndex) {
-        return getBuiltinNode().executeIgnoreLastIndex(regExp, input, lastIndex);
-    }
-
-    private JSRegExpExecBuiltinNode getBuiltinNode() {
-        if (regExpBuiltinNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            regExpBuiltinNode = insert(JSRegExpExecBuiltinNode.create(context));
+    static void expectRegExp(DynamicObject regExp) {
+        if (!JSRegExp.isJSRegExp(regExp)) {
+            throw Errors.createTypeError("RegExp expected");
         }
-        return regExpBuiltinNode;
+    }
+
+    public abstract static class JSRegExpExecIntlRunNode extends JSRegExpExecIntlNode {
+
+        JSRegExpExecIntlRunNode(JSContext context) {
+            super(context);
+        }
+
+        public static JSRegExpExecIntlRunNode create(JSContext context) {
+            return JSRegExpExecIntlRunNodeGen.create(context);
+        }
+
+        public abstract Object execute(DynamicObject regExp, String input);
+
+        @Specialization
+        Object doGeneric(DynamicObject regExp, String input) {
+            if (ecmaScript6()) {
+                Object exec = getExecValue(regExp);
+                if (isJSFunction(exec)) {
+                    return callJSFunction(regExp, input, exec);
+                }
+            }
+            expectRegExp(regExp);
+            return callBuiltinExec(regExp, input);
+        }
+    }
+
+    public abstract static class JSRegExpExecIntlIgnoreLastIndexNode extends JSRegExpExecIntlNode {
+
+        JSRegExpExecIntlIgnoreLastIndexNode(JSContext context) {
+            super(context);
+        }
+
+        public static JSRegExpExecIntlIgnoreLastIndexNode create(JSContext context) {
+            return JSRegExpExecIntlIgnoreLastIndexNodeGen.create(context);
+        }
+
+        public abstract Object execute(DynamicObject regExp, String input, long lastIndex);
+
+        @Specialization
+        Object doGeneric(DynamicObject regExp, String input, long lastIndex) {
+            if (ecmaScript6()) {
+                Object exec = getExecValue(regExp);
+                if (isJSFunction(exec)) {
+                    return callJSFunction(regExp, input, exec);
+                }
+            }
+            expectRegExp(regExp);
+            return callBuiltinExecIgnoreLastIndex(regExp, input, lastIndex);
+        }
+
+        private TruffleObject callBuiltinExecIgnoreLastIndex(DynamicObject regExp, String input, long lastIndex) {
+            return getBuiltinNode().executeIgnoreLastIndex(regExp, input, lastIndex);
+        }
     }
 
     @ImportStatic(JSRegExp.class)
@@ -168,7 +207,7 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         // as the compiledRegex is the same. This can happen if a new RegExp instance is repeatedly
         // created for the same regular expression.
         @Specialization(guards = "getGroupsFactory(regExp) == cachedGroupsFactory || getCompiledRegex(regExp) == cachedCompiledRegex")
-        protected static DynamicObject doCachedGroupsFactory(JSContext context,
+        static DynamicObject doCachedGroupsFactory(JSContext context,
                         @SuppressWarnings("unused") DynamicObject regExp,
                         TruffleObject regexResult,
                         @Cached("getCompiledRegex(regExp)") @SuppressWarnings("unused") TruffleObject cachedCompiledRegex,
@@ -178,7 +217,7 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
         @Specialization
         @TruffleBoundary
-        protected static DynamicObject doVaryingGroupsFactory(JSContext context, DynamicObject regExp, TruffleObject regexResult) {
+        static DynamicObject doVaryingGroupsFactory(JSContext context, DynamicObject regExp, TruffleObject regexResult) {
             return doIt(context, JSRegExp.getGroupsFactory(regExp), regexResult);
         }
 
@@ -192,7 +231,8 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
     }
 
     // implements ES6 21.2.5.2.2 Runtime Semantics: RegExpBuiltinExec ( R, S )
-    public static final class JSRegExpExecBuiltinNode extends JavaScriptBaseNode {
+    @ImportStatic(JSRegExp.class)
+    public abstract static class JSRegExpExecBuiltinNode extends JavaScriptBaseNode {
 
         private final JSContext context;
         private final ConditionProfile invalidLastIndex = ConditionProfile.createBinaryProfile();
@@ -208,22 +248,34 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         @Child private TRegexUtil.TRegexResultAccessor regexResultAccessor = TRegexUtil.TRegexResultAccessor.create();
         @Child private BuildGroupsObjectNode groupsBuilder;
 
-        private JSRegExpExecBuiltinNode(JSContext context) {
+        JSRegExpExecBuiltinNode(JSContext context) {
             this.context = context;
             ecmaScriptVersion = context.getEcmaScriptVersion();
         }
 
         public static JSRegExpExecBuiltinNode create(JSContext context) {
-            return new JSRegExpExecBuiltinNode(context);
+            return JSRegExpExecBuiltinNodeGen.create(context);
         }
 
         private Object getEmptyResult() {
             return ecmaScriptVersion >= 6 ? Null.instance : TRegexUtil.getTRegexEmptyResult();
         }
 
+        public abstract Object execute(DynamicObject regExp, String input);
+
+        @Specialization(guards = "getCompiledRegex(regExp) == cachedCompiledRegex")
+        Object doCached(DynamicObject regExp, String input, @Cached("getCompiledRegex(regExp)") TruffleObject cachedCompiledRegex) {
+            return doExec(regExp, cachedCompiledRegex, input);
+        }
+
+        @Specialization(replaces = "doCached")
+        Object doDynamic(DynamicObject regExp, String input) {
+            return doExec(regExp, JSRegExp.getCompiledRegex(regExp), input);
+        }
+
         // Implements 21.2.5.2.2 Runtime Semantics: RegExpBuiltinExec ( R, S )
-        public Object execute(DynamicObject regExp, String input) {
-            TruffleObject flags = compiledRegexAccessor.flags(JSRegExp.getCompiledRegex(regExp));
+        private Object doExec(DynamicObject regExp, TruffleObject compiledRegex, String input) {
+            TruffleObject flags = compiledRegexAccessor.flags(compiledRegex);
             boolean global = flagsAccessor.global(flags);
             boolean sticky = ecmaScriptVersion >= 6 && flagsAccessor.sticky(flags);
             long lastIndex = getLastIndex(regExp);
@@ -236,7 +288,7 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 lastIndex = 0;
             }
 
-            TruffleObject result = executeIgnoreLastIndex(regExp, input, lastIndex);
+            TruffleObject result = executeIgnoreLastIndex(compiledRegex, input, lastIndex);
             if (match.profile(regexResultAccessor.isMatch(result))) {
                 setStaticResult(result);
                 if (stickyProfile.profile(sticky && regexResultAccessor.captureGroupStart(result, 0) != lastIndex)) {
@@ -265,17 +317,15 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
          * matching.
          */
         private TruffleObject executeIgnoreLastIndex(DynamicObject regExp, String input, long fromIndex) {
-            TruffleObject result = executeCompiledRegex(JSRegExp.getCompiledRegex(regExp), input, fromIndex);
+            return executeIgnoreLastIndex(JSRegExp.getCompiledRegex(regExp), input, fromIndex);
+        }
+
+        private TruffleObject executeIgnoreLastIndex(TruffleObject compiledRegex, String input, long fromIndex) {
+            TruffleObject result = executeCompiledRegex(compiledRegex, input, fromIndex);
             if (regexResultAccessor.isMatch(result)) {
                 setStaticResult(result);
             }
             return result;
-        }
-
-        private void setStaticResult(TruffleObject result) {
-            if (context.isOptionRegexpStaticResult()) {
-                context.getRealm().setRegexResult(result);
-            }
         }
 
         private TruffleObject executeCompiledRegex(TruffleObject compiledRegex, String input, long fromIndex) {
@@ -283,6 +333,12 @@ public final class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 return compiledRegexAccessor.exec(compiledRegex, input, fromIndex);
             } catch (UnsupportedRegexException e) {
                 throw Errors.createError(e.getMessage());
+            }
+        }
+
+        private void setStaticResult(TruffleObject result) {
+            if (context.isOptionRegexpStaticResult()) {
+                context.getRealm().setRegexResult(result);
             }
         }
 

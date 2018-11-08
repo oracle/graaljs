@@ -1432,6 +1432,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final ConditionProfile isOne = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isTwo = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isSparse = ConditionProfile.createBinaryProfile();
+        private final BranchProfile sbAppendProfile = BranchProfile.create();
 
         public JSArrayJoinNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
@@ -1497,10 +1498,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long i = 0;
             while (i < length) {
                 if (appendSep && i != 0) {
-                    res.append(joinSeparator);
+                    res.append(joinSeparator, sbAppendProfile);
                 }
                 Object value = read(thisJSObject, i);
-                res.append(toStringOrEmpty(thisJSObject, value));
+                res.append(toStringOrEmpty(thisJSObject, value), sbAppendProfile);
 
                 if (appendSep) {
                     i++;
@@ -1556,15 +1557,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 String value = (String) Boundaries.listGet(converted, j + 1);
                 if (appendSep) {
                     for (long k = lastIndex; k < index; k++) {
-                        res.append(joinSeparator);
+                        res.append(joinSeparator, sbAppendProfile);
                     }
                 }
-                res.append(value);
+                res.append(value, sbAppendProfile);
                 lastIndex = index;
             }
             if (appendSep) {
                 for (long k = lastIndex; k < length - 1; k++) {
-                    res.append(joinSeparator);
+                    res.append(joinSeparator, sbAppendProfile);
                 }
             }
             assert res.length() == calculatedLength;
@@ -1574,6 +1575,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public abstract static class JSArrayToLocaleStringNode extends JSArrayOperation {
 
+        private final BranchProfile sbAppendProfile = BranchProfile.create();
         @Child private PropertyGetNode getToLocaleString;
         @Child private JSFunctionCallNode callToLocaleString;
 
@@ -1594,13 +1596,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             DelimitedStringBuilder r = new DelimitedStringBuilder();
             while (k < len) {
                 if (k > 0) {
-                    r.append(',');
+                    r.append(',', sbAppendProfile);
                 }
                 Object nextElement = read(arrayObj, k);
                 if (nextElement != Null.instance && nextElement != Undefined.instance) {
                     Object result = callToLocaleString(nextElement, userArguments);
                     String executeString = toStringNode.executeString(result);
-                    r.append(executeString);
+                    r.append(executeString, sbAppendProfile);
                 }
                 k++;
             }

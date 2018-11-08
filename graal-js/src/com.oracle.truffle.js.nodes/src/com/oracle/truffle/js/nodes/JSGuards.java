@@ -40,13 +40,9 @@
  */
 package com.oracle.truffle.js.nodes;
 
-import java.nio.ByteBuffer;
-import java.util.List;
-
-import javax.script.Bindings;
-
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -82,6 +78,10 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import javax.script.Bindings;
+import java.nio.ByteBuffer;
+import java.util.List;
 
 public final class JSGuards {
 
@@ -153,6 +153,10 @@ public final class JSGuards {
 
     public static boolean isJSFunction(Object value) {
         return JSFunction.isJSFunction(value);
+    }
+
+    public static boolean isJSFunctionShape(Shape shape) {
+        return shape.getObjectType() == JSFunction.INSTANCE;
     }
 
     public static boolean isBoundJSFunction(Object value) {
