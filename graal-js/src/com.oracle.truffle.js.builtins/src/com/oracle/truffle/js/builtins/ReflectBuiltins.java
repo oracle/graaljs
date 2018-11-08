@@ -77,6 +77,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -377,6 +378,10 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             return args.length > 0 && JSProxy.isProxy(args[0]);
         }
 
+        protected static boolean isModuleNamespace(Object[] args) {
+            return args.length > 0 && JSModuleNamespace.isJSModuleNamespace(args[0]);
+        }
+
         @Specialization(guards = "isProxy(args)")
         protected boolean reflectSetProxy(Object[] args,
                         @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode,
@@ -401,7 +406,17 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             return JSProxy.checkProxySetTrapInvariants(proxyObj, key, value);
         }
 
-        @Specialization(guards = "!isProxy(args)")
+        @Specialization(guards = "isModuleNamespace(args)")
+        protected boolean reflectSetModuleNamespace(Object[] args,
+                        @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+            Object target = JSRuntime.getArgOrUndefined(args, 0);
+            Object propertyKey = JSRuntime.getArgOrUndefined(args, 1);
+            ensureObject(target);
+            toPropertyKeyNode.execute(propertyKey);
+            return false;
+        }
+
+        @Specialization(guards = {"!isProxy(args)", "!isModuleNamespace(args)"})
         protected boolean reflectSet(Object[] args,
                         @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
             Object target = JSRuntime.getArgOrUndefined(args, 0);
