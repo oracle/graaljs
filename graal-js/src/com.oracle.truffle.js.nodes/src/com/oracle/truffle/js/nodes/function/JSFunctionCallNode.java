@@ -313,7 +313,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     private static boolean isUncached(AbstractCacheNode c) {
-        return c instanceof JSProxyCacheNode || c instanceof ForeignExecuteNode || c instanceof JSNoSuchMethodAdapterCacheNode;
+        return c instanceof JSProxyCacheNode || c instanceof ForeignCallNode || c instanceof JSNoSuchMethodAdapterCacheNode;
     }
 
     private static int getCachedCount(AbstractCacheNode head) {
@@ -552,13 +552,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected Object getPropertyKey() {
-            JavaScriptNode propertyNode = functionNode;
-            if (propertyNode instanceof WrapperNode) {
-                propertyNode = (JavaScriptNode) ((WrapperNode) propertyNode).getDelegateNode();
-            }
-            if (propertyNode instanceof PropertyNode) {
-                return ((PropertyNode) propertyNode).getPropertyKey();
-            }
             return null;
         }
 
@@ -1371,40 +1364,61 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private static class ForeignExecuteNode extends AbstractCacheNode {
+    private abstract static class ForeignCallNode extends AbstractCacheNode {
         @Child private ExportArgumentsNode exportArgumentsNode;
         @Child private JSForeignToJSTypeNode typeConvertNode;
-        @Child protected Node callNode;
-        private final ValueProfile classProfile = ValueProfile.createClassProfile();
+        private final ValueProfile functionClassProfile = ValueProfile.createClassProfile();
 
-        ForeignExecuteNode(AbstractJavaScriptLanguage language, int expectedArgumentCount) {
+        ForeignCallNode(AbstractJavaScriptLanguage language, int expectedArgumentCount) {
             this.exportArgumentsNode = ExportArgumentsNode.create(expectedArgumentCount, language);
             this.typeConvertNode = JSForeignToJSTypeNode.create();
         }
 
         @Override
         protected boolean accept(Object thisObject, Object function) {
-            return JSGuards.isForeignObject(function);
+            return JSGuards.isForeignObject(functionClassProfile.profile(function));
+        }
+
+        protected final TruffleObject getForeignFunction(Object[] arguments) {
+            return (TruffleObject) functionClassProfile.profile(JSArguments.getFunctionObject(arguments));
+        }
+
+        protected final Object[] exportArguments(Object[] arguments) {
+            return exportArgumentsNode.export(JSArguments.extractUserArguments(arguments));
+        }
+
+        protected final Object convertForeignReturn(Object returnValue) {
+            return typeConvertNode.executeWithTarget(returnValue);
+        }
+    }
+
+    private static class ForeignExecuteNode extends ForeignCallNode {
+        @Child protected Node callNode;
+
+        ForeignExecuteNode(AbstractJavaScriptLanguage language, int expectedArgumentCount) {
+            super(language, expectedArgumentCount);
         }
 
         @Override
-        public final Object executeCall(Object[] arguments) {
-            Object[] extractedUserArguments = exportArgumentsNode.export(JSArguments.extractUserArguments(arguments));
-            TruffleObject function = (TruffleObject) classProfile.profile(JSArguments.getFunctionObject(arguments));
-            return typeConvertNode.executeWithTarget(executeCallImpl(function, extractedUserArguments));
+        public Object executeCall(Object[] arguments) {
+            TruffleObject function = getForeignFunction(arguments);
+            Object[] callArguments = exportArguments(arguments);
+            return convertForeignReturn(JSInteropNodeUtil.call(function, callArguments, callNode()));
         }
 
-        protected Object executeCallImpl(TruffleObject function, Object[] extractedUserArguments) {
+        protected Node callNode() {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callNode = insert(JSInteropUtil.createCall());
             }
-            return JSInteropNodeUtil.call(function, extractedUserArguments, callNode);
+            return callNode;
         }
     }
 
     private static final class ForeignInvokeNode extends ForeignExecuteNode {
         private final String functionName;
+        private final ValueProfile thisClassProfile = ValueProfile.createClassProfile();
+        @Child protected Node invokeNode;
 
         ForeignInvokeNode(AbstractJavaScriptLanguage language, String functionName, int expectedArgumentCount) {
             super(language, expectedArgumentCount);
@@ -1412,17 +1426,30 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        protected boolean accept(Object thisObject, Object function) {
-            return JSGuards.isForeignObject(function) && JSGuards.isForeignObject(thisObject);
+        public Object executeCall(Object[] arguments) {
+            Object receiver = thisClassProfile.profile(JSArguments.getThisObject(arguments));
+            Object[] callArguments = exportArguments(arguments);
+            Object callReturn;
+            /*
+             * If the receiver is a foreign object, the property node does not send the READ message
+             * but returns the receiver, in which case we send an INVOKE message here instead.
+             */
+            if (JSGuards.isForeignObject(receiver)) {
+                assert getForeignFunction(arguments) == receiver;
+                callReturn = JSInteropNodeUtil.invoke((TruffleObject) receiver, functionName, callArguments, invokeNode());
+            } else {
+                TruffleObject function = getForeignFunction(arguments);
+                callReturn = JSInteropNodeUtil.call(function, callArguments, callNode());
+            }
+            return convertForeignReturn(callReturn);
         }
 
-        @Override
-        protected Object executeCallImpl(TruffleObject receiver, Object[] extractedUserArguments) {
-            if (callNode == null) {
+        private Node invokeNode() {
+            if (invokeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                callNode = insert(JSInteropUtil.createInvoke());
+                invokeNode = insert(JSInteropUtil.createInvoke());
             }
-            return JSInteropNodeUtil.invoke(receiver, functionName, extractedUserArguments, callNode);
+            return invokeNode;
         }
     }
 
