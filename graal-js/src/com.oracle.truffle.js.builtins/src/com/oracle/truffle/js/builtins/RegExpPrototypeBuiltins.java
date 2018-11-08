@@ -40,6 +40,12 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import static com.oracle.truffle.js.runtime.builtins.JSRegExp.getCompiledRegex;
+
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -70,6 +76,7 @@ import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode.JSRegExpExecBu
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode.JSRegExpExecIntlRunNode;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.IsJSClassNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -102,12 +109,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
-
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-
-import static com.oracle.truffle.js.runtime.builtins.JSRegExp.getCompiledRegex;
 
 /**
  * Contains builtin methods for {@linkplain JSRegExp}.prototype.
@@ -684,6 +685,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private ReadElementNode readNamedCaptureGroupNode;
         @Child private JSToObjectNode toObjectNode;
 
+        @Child private HasHiddenKeyCacheNode hasLazyRegexResultNode;
+
         private final ConditionProfile unicodeProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile globalProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile functionalReplaceProfile = ConditionProfile.createBinaryProfile();
@@ -701,6 +704,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.toIntegerNode = JSToIntegerNode.create();
             this.isObjectNode = IsObjectNode.create();
             this.isCallableNode = IsCallableNode.create();
+            this.hasLazyRegexResultNode = HasHiddenKeyCacheNode.create(JSArray.LAZY_REGEX_RESULT_ID);
         }
 
         @Specialization(guards = {"cachedReplaceValue.equals(replaceValue)"}, limit = "1")
@@ -821,7 +825,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private boolean isLazyResultArray(DynamicObject result) {
-            return result.getShape() == getContext().getRealm().getLazyRegexArrayShape();
+            return hasLazyRegexResultNode.executeHasHiddenKey(result);
         }
 
         private int processResult(DelimitedStringBuilder accumulatedResult, DynamicObject result, String s, String replaceString,
