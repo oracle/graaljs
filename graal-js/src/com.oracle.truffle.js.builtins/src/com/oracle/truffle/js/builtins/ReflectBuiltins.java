@@ -386,7 +386,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         protected boolean reflectSetProxy(Object[] args,
                         @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode,
                         @Cached("create()") JSToBooleanNode toBooleanNode) {
-            Object proxy = JSRuntime.getArgOrUndefined(args, 0);
+            Object proxy = args[0];
             Object propertyKey = JSRuntime.getArgOrUndefined(args, 1);
             Object value = JSRuntime.getArgOrUndefined(args, 2);
 
