@@ -376,6 +376,10 @@
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
+    "filePath" : "mjsunit/array-join-invalid-string-length.js",
+    "runInIsolation" : true,
+    "comment" : "Out of memory when run together with other memory-intense tests"
+  }, {
     "filePath" : "mjsunit/array-join.js",
     "status" : "FAIL"
   }, {
@@ -1897,6 +1901,14 @@
     "filePath" : "mjsunit/regress/regress-crbug-754177.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-762874-1.js",
+    "runInIsolation" : true,
+    "comment" : "Out of memory when run together with other memory-intense tests"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-762874-2.js",
+    "runInIsolation" : true,
+    "comment" : "Out of memory when run together with other memory-intense tests"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-768875.js",
     "status" : "FAIL",
