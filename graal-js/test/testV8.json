@@ -76,6 +76,10 @@
     "filePath" : "intl/general/constructor.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "intl/general/empty-handle.js",
+    "status" : "SKIP",
+    "comment" : "Triggers stack-overflow, test fails randomly based on where the overflow occurs."
+  }, {
     "filePath" : "intl/general/getCanonicalLocales.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
