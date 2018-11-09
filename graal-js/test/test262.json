@@ -12165,16 +12165,13 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
-    "filePath" : "language/module-code/namespace/internals/define-own-property.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-09-06)"
-  }, {
     "filePath" : "language/module-code/namespace/internals/delete-exported-uninit.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "Our uninitialized binding check does not work for an uninitialized default binding."
   }, {
     "filePath" : "language/module-code/namespace/internals/enumerate-binding-uninit.js",
     "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "comment" : "Our uninitialized binding check does not work for an uninitialized default binding."
   }, {
     "filePath" : "language/module-code/namespace/internals/get-nested-namespace-dflt-skip.js",
     "status" : "FAIL",
@@ -12185,26 +12182,24 @@
     "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "language/module-code/namespace/internals/get-own-property-str-found-uninit.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "Our uninitialized binding check does not work for an uninitialized default binding."
   }, {
     "filePath" : "language/module-code/namespace/internals/get-str-found-uninit.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "Our uninitialized binding check does not work for an uninitialized default binding."
   }, {
     "filePath" : "language/module-code/namespace/internals/object-hasOwnProperty-binding-uninit.js",
     "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "comment" : "Our uninitialized binding check does not work for an uninitialized default binding."
   }, {
     "filePath" : "language/module-code/namespace/internals/object-keys-binding-uninit.js",
     "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "comment" : "Our uninitialized binding check does not work for an uninitialized default binding."
   }, {
     "filePath" : "language/module-code/namespace/internals/object-propertyIsEnumerable-binding-uninit.js",
     "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/module-code/namespace/internals/set.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-09-06)"
+    "comment" : "Our uninitialized binding check does not work for an uninitialized default binding."
   }, {
     "filePath" : "language/module-code/parse-err-hoist-lex-fun.js",
     "status" : "FAIL"

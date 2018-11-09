@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
@@ -69,6 +70,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
 /**
  * Module Namespace Exotic Objects.
@@ -181,12 +183,28 @@ public final class JSModuleNamespace extends JSBuiltinObject {
     }
 
     @Override
+    public boolean hasProperty(DynamicObject thisObj, Object key) {
+        if (!(key instanceof String)) {
+            return super.hasProperty(thisObj, key);
+        }
+        Map<String, ExportResolution> exports = getExports(thisObj);
+        return Boundaries.mapContainsKey(exports, key);
+    }
+
+    @Override
+    @TruffleBoundary
     public boolean hasOwnProperty(DynamicObject thisObj, Object key) {
         if (!(key instanceof String)) {
             return super.hasOwnProperty(thisObj, key);
         }
         Map<String, ExportResolution> exports = getExports(thisObj);
-        return Boundaries.mapContainsKey(exports, key);
+        ExportResolution binding = exports.get(key);
+        if (binding != null) {
+            getBindingValue(binding); // checks for uninitialized bindings
+            return true;
+        } else {
+            return false;
+        }
     }
 
     @Override
@@ -217,7 +235,15 @@ public final class JSModuleNamespace extends JSBuiltinObject {
 
     @Override
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
-        return false;
+        if (!(key instanceof String)) {
+            return super.defineOwnProperty(thisObj, key, desc, doThrow);
+        }
+        PropertyDescriptor current = getOwnProperty(thisObj, key);
+        if (current != null && !desc.isAccessorDescriptor() && desc.getIfHasWritable(true) && desc.getIfHasEnumerable(true) && !desc.getIfHasConfigurable(false) &&
+                        (!desc.hasValue() || JSRuntime.isSameValue(desc.getValue(), current.getValue()))) {
+            return true;
+        }
+        return DefinePropertyUtil.reject(doThrow, "not allowed to defineProperty on a namespace object");
     }
 
     @Override
@@ -253,6 +279,27 @@ public final class JSModuleNamespace extends JSBuiltinObject {
         keys.addAll(exports.keySet());
         keys.addAll(symbolKeys);
         return keys;
+    }
+
+    @Override
+    @TruffleBoundary
+    public boolean setIntegrityLevel(DynamicObject obj, boolean freeze) {
+        if (freeze) {
+            Map<String, ExportResolution> exports = getExports(obj);
+            if (!exports.isEmpty()) {
+                ExportResolution firstBinding = exports.values().iterator().next();
+                // Throw ReferenceError if the first binding is uninitialized,
+                // throw TypeError otherwise
+                getBindingValue(firstBinding); // checks for an uninitialized binding
+                throw Errors.createTypeError("not allowed to freeze a namespace object");
+            }
+        } else {
+            // Check for uninitalized bindings
+            for (ExportResolution binding : getExports(obj).values()) {
+                getBindingValue(binding); // can throw ReferenceError
+            }
+        }
+        return true;
     }
 
 }
