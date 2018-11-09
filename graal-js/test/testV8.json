@@ -496,10 +496,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/compiler/typed-array-constructor.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/console.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -1494,9 +1490,6 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
-    "filePath" : "mjsunit/regress/regress-4815.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-487981.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -1510,9 +1503,6 @@
     "filePath" : "mjsunit/regress/regress-5085.js",
     "status" : "SKIP",
     "comment" : "obj instanceof Proxy throws (as Proxy.prototype is not an object) but the test expects it to be false"
-  }, {
-    "filePath" : "mjsunit/regress/regress-5173.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/regress-5405.js",
     "status" : "SKIP",

@@ -510,7 +510,9 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                     return "global";
                 }
                 Object thisObject = getThis();
-                if (!JSRuntime.isNullOrUndefined(thisObject) && !global) {
+                if (thisObject == JSFunction.CONSTRUCT) {
+                    return getFunctionName();
+                } else if (!JSRuntime.isNullOrUndefined(thisObject) && !global) {
                     if (JSObject.isDynamicObject(thisObject)) {
                         return JSRuntime.getConstructorName((DynamicObject) thisObject);
                     } else if (JSRuntime.isJSPrimitive(thisObject)) {
@@ -674,7 +676,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             if (thisObj == Undefined.instance && JSFunction.isJSFunction(functionObj) && !JSFunction.isStrict((DynamicObject) functionObj)) {
                 return JSFunction.getRealm((DynamicObject) functionObj).getGlobalObject();
             }
-            return thisObj;
+            return (thisObj == JSFunction.CONSTRUCT) ? Undefined.instance : thisObj;
         }
 
         public Object getFunction() {
@@ -687,7 +689,9 @@ public abstract class GraalJSException extends RuntimeException implements Truff
 
         @TruffleBoundary
         public boolean isConstructor() {
-            if (!JSRuntime.isNullOrUndefined(thisObj) && JSObject.isJSObject(thisObj)) {
+            if (thisObj == JSFunction.CONSTRUCT) {
+                return true;
+            } else if (!JSRuntime.isNullOrUndefined(thisObj) && JSObject.isJSObject(thisObj)) {
                 Object constructor = JSRuntime.getDataProperty((DynamicObject) thisObj, JSObject.CONSTRUCTOR);
                 return constructor != null && constructor == functionObj;
             }
