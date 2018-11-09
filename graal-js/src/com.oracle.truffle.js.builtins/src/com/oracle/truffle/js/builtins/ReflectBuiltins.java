@@ -390,7 +390,6 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             Object propertyKey = JSRuntime.getArgOrUndefined(args, 1);
             Object value = JSRuntime.getArgOrUndefined(args, 2);
 
-            ensureObject(proxy);
             Object key = toPropertyKeyNode.execute(propertyKey);
             DynamicObject proxyObj = (DynamicObject) proxy;
 
@@ -409,9 +408,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         @Specialization(guards = "isModuleNamespace(args)")
         protected boolean reflectSetModuleNamespace(Object[] args,
                         @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
-            Object target = JSRuntime.getArgOrUndefined(args, 0);
             Object propertyKey = JSRuntime.getArgOrUndefined(args, 1);
-            ensureObject(target);
             toPropertyKeyNode.execute(propertyKey);
             return false;
         }
