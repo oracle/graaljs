@@ -52,6 +52,7 @@ import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ConstructDoubl
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8CreateAsyncFromSyncIteratorNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8DoublePartNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8RunMicrotasksNodeGen;
+import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8SetTimeoutNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNameNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNumberNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToPrimitiveNodeGen;
@@ -90,6 +91,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         className(1),
         createAsyncFromSyncIterator(1),
         runMicrotasks(0),
+        setTimeout(1),
         stringCompare(2),
         typedArrayDetachBuffer(1),
 
@@ -128,6 +130,8 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                 return TestV8CreateAsyncFromSyncIteratorNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case runMicrotasks:
                 return TestV8RunMicrotasksNodeGen.create(context, builtin, args().createArgumentNodes(context));
+            case setTimeout:
+                return TestV8SetTimeoutNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case stringCompare:
                 return DebugStringCompareNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case typedArrayDetachBuffer:
@@ -281,6 +285,21 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             JSContext context = getContext();
             context.processAllPendingPromiseJobs();
             return Undefined.instance;
+        }
+    }
+
+    public abstract static class TestV8SetTimeoutNode extends JSBuiltinNode {
+
+        public TestV8SetTimeoutNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object setTimeout(Object function) {
+            if (JSFunction.isJSFunction(function)) {
+                getContext().promiseEnqueueJob((DynamicObject) function);
+            }
+            return 0;
         }
     }
 

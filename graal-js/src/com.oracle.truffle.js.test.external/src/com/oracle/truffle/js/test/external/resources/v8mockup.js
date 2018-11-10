@@ -866,3 +866,7 @@ function v8WasmTierUpFunction() {
 
 function v8HandleDebuggerStatement() {
 }
+
+function setTimeout(fn) {
+    return TestV8.setTimeout(fn);
+}
