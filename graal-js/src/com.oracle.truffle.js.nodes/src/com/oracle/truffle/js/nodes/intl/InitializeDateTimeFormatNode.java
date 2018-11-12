@@ -42,11 +42,13 @@ package com.oracle.truffle.js.nodes.intl;
 
 import java.util.MissingResourceException;
 
+import com.ibm.icu.util.TimeZone;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNodeGen.ToDateTimeOptionsNodeGen;
 import com.oracle.truffle.js.runtime.Errors;
@@ -67,6 +69,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
     @Child ToDateTimeOptionsNode createOptionsNode;
+    @Child PropertyGetNode getTimeZoneNode;
 
     @Child GetStringOptionNode getLocaleMatcherOption;
     @Child GetStringOptionNode getFormatMatcherOption;
@@ -91,6 +94,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
 
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = ToDateTimeOptionsNodeGen.create(context);
+        this.getTimeZoneNode = PropertyGetNode.create("timeZone", context);
 
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, "localeMatcher", new String[]{"lookup", "best fit"}, "best fit");
         this.getFormatMatcherOption = GetStringOptionNode.create(context, "formatMatcher", new String[]{"basic", "best fit"}, "best fit");
@@ -124,10 +128,12 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
 
         // enforce validity check
         getLocaleMatcherOption.executeValue(options);
-        getFormatMatcherOption.executeValue(options);
 
-        String hcOpt = getHourCycleOption.executeValue(options);
         Boolean hour12Opt = getHour12Option.executeValue(options);
+        String hcOpt = getHourCycleOption.executeValue(options);
+
+        Object timeZoneValue = getTimeZoneNode.getValue(options);
+        TimeZone timeZone = JSDateTimeFormat.toTimeZone(timeZoneValue);
 
         String weekdayOpt = getWeekdayOption.executeValue(options);
         String eraOpt = getEraOption.executeValue(options);
@@ -139,10 +145,11 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         String secondOpt = getSecondOption.executeValue(options);
         String tzNameOpt = getTimeZoneNameOption.executeValue(options);
 
+        getFormatMatcherOption.executeValue(options);
+
         IntlUtil.ensureICU4JDataPathSet();
         try {
-            JSDateTimeFormat.setupInternalDateTimeFormat(state, locales, options, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt);
-
+            JSDateTimeFormat.setupInternalDateTimeFormat(state, locales, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt, timeZone);
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError();
         }
@@ -183,15 +190,15 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             boolean needDefaults = true;
             if (required != null) {
                 if (required.equals("date") || required.equals("any")) {
-                    if (!JSGuards.isUndefined(JSObject.get(options, "weekday")) || !JSGuards.isUndefined(JSObject.get(options, "year")) || !JSGuards.isUndefined(JSObject.get(options, "month")) ||
-                                    !JSGuards.isUndefined(JSObject.get(options, "day"))) {
-                        needDefaults = false;
-                    }
+                    needDefaults &= JSGuards.isUndefined(JSObject.get(options, "weekday"));
+                    needDefaults &= JSGuards.isUndefined(JSObject.get(options, "year"));
+                    needDefaults &= JSGuards.isUndefined(JSObject.get(options, "month"));
+                    needDefaults &= JSGuards.isUndefined(JSObject.get(options, "day"));
                 }
                 if (required.equals("time") || required.equals("any")) {
-                    if (!JSGuards.isUndefined(JSObject.get(options, "hour")) || !JSGuards.isUndefined(JSObject.get(options, "minute")) || !JSGuards.isUndefined(JSObject.get(options, "second"))) {
-                        needDefaults = false;
-                    }
+                    needDefaults &= JSGuards.isUndefined(JSObject.get(options, "hour"));
+                    needDefaults &= JSGuards.isUndefined(JSObject.get(options, "minute"));
+                    needDefaults &= JSGuards.isUndefined(JSObject.get(options, "second"));
                 }
             }
             if (defaults != null) {
