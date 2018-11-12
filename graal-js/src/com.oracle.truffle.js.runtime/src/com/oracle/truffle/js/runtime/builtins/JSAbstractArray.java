@@ -96,7 +96,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     private static final HiddenKey INDEX_OFFSET_ID = new HiddenKey("indexOffset");
     private static final HiddenKey ARRAY_OFFSET_ID = new HiddenKey("arrayOffset");
     private static final HiddenKey HOLE_COUNT_ID = new HiddenKey("holeCount");
-    private static final HiddenKey LAZY_REGEX_RESULT_ID = new HiddenKey("lazyRegexResult");
+    public static final HiddenKey LAZY_REGEX_RESULT_ID = new HiddenKey("lazyRegexResult");
     public static final Property ARRAY_PROPERTY;
     public static final Property ARRAY_TYPE_PROPERTY;
     private static final Property ALLOCATION_SITE_PROPERTY;

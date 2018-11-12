@@ -169,7 +169,6 @@ public class JSRealm {
     private final JSConstructor callSiteConstructor;
 
     private final Shape initialUserObjectShape;
-    private final Shape lazyRegexArrayShape;
     private final JSObjectFactory.RealmData objectFactories;
 
     // ES6:
@@ -299,7 +298,6 @@ public class JSRealm {
         this.initialUserObjectShape = JSObjectUtil.getProtoChildShape(this.objectPrototype, JSUserObject.INSTANCE, context);
 
         this.arrayConstructor = JSArray.createConstructor(this);
-        this.lazyRegexArrayShape = JSRegExp.makeLazyRegexArrayShape(context, arrayConstructor.getPrototype());
         this.booleanConstructor = JSBoolean.createConstructor(this);
         this.numberConstructor = JSNumber.createConstructor(this);
         this.bigIntConstructor = JSBigInt.createConstructor(this);
@@ -1291,10 +1289,6 @@ public class JSRealm {
 
     public long currentTimeMillis() {
         return nanoTime(nanoToCurrentTimeOffset) / NANOSECONDS_PER_MILLISECOND;
-    }
-
-    public Shape getLazyRegexArrayShape() {
-        return lazyRegexArrayShape;
     }
 
     public JSConsoleUtil getConsoleUtil() {

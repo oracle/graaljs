@@ -1588,7 +1588,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
     public static final class ClassPrototypePropertyGetNode extends LinkedPropertyGetNode {
 
-        @CompilationFinal private DynamicObject constantFunction = Undefined.instance;
+        @CompilationFinal private DynamicObject constantFunction;
         @Child private CreateMethodPropertyNode setConstructor;
         @CompilationFinal private int kind;
         private final JSContext context;
@@ -1599,29 +1599,32 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private static final int GENERATOR = 2;
         private static final int ASYNC_GENERATOR = 3;
 
+        private static final DynamicObject UNKNOWN_FUN = Undefined.instance;
+        private static final DynamicObject GENERIC_FUN = null;
+
         public ClassPrototypePropertyGetNode(Property property, ReceiverCheckNode receiverCheck, JSContext context) {
             super(property.getKey(), receiverCheck);
-            assert JSProperty.isData(property);
+            assert JSProperty.isData(property) && isClassPrototypeProperty(property);
             this.context = context;
-            assert isClassPrototypeProperty(property);
+            this.constantFunction = context.isMultiContext() ? GENERIC_FUN : UNKNOWN_FUN;
         }
 
         @Override
         public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
             DynamicObject functionObj = receiverCheck.getStore(thisObj);
             assert JSFunction.isJSFunction(functionObj);
-            if (constantFunction == Undefined.instance) {
+            DynamicObject constantFun = constantFunction;
+            if (constantFun == UNKNOWN_FUN) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 constantFunction = functionObj;
                 // ensure `prototype` is initialized
-                JSFunction.getClassPrototype(functionObj);
-            }
-            if (constantFunction != null) {
-                if (constantFunction == functionObj) {
-                    return JSFunction.getClassPrototypeInitialized(functionObj);
+                return JSFunction.getClassPrototype(functionObj);
+            } else if (constantFun != GENERIC_FUN) {
+                if (constantFun == functionObj) {
+                    return JSFunction.getClassPrototypeInitialized(constantFun);
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    constantFunction = null;
+                    constantFunction = GENERIC_FUN;
                 }
             }
             if (prototypeInitializedProfile.profile(JSFunction.isClassPrototypeInitialized(functionObj))) {
