@@ -40,13 +40,13 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Utility class for calls to library methods that require a {@link TruffleBoundary}.
@@ -102,32 +102,42 @@ public final class Boundaries {
         return Long.valueOf(s);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static String builderToString(StringBuilder res) {
         return res.toString();
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
+    public static void builderAppend(StringBuilder sb, int intValue) {
+        sb.append(intValue);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    public static void builderAppend(StringBuilder sb, long longValue) {
+        sb.append(longValue);
+    }
+
+    @TruffleBoundary(allowInlining = true)
     public static void builderAppend(StringBuilder sb, CharSequence seq) {
         sb.append(seq);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static void builderAppend(StringBuilder sb, String str) {
         sb.append(str);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static void builderAppend(StringBuilder sb, char chr) {
         sb.append(chr);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static void builderAppend(StringBuilder sb, CharSequence seq, int start, int end) {
         sb.append(seq, start, end);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static void builderAppend(StringBuilder sb, String str, int start, int end) {
         sb.append(str, start, end);
     }
