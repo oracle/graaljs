@@ -160,7 +160,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     @TruffleBoundary
     public static void setupInternalDateTimeFormat(
-                    InternalState state, String[] locales, DynamicObject options,
+                    InternalState state, String[] locales,
                     String weekdayOpt,
                     String eraOpt,
                     String yearOpt,
@@ -171,7 +171,8 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     Boolean hour12Opt,
                     String minuteOpt,
                     String secondOpt,
-                    String tzNameOpt) {
+                    String tzNameOpt,
+                    TimeZone timeZone) {
         String selectedTag = IntlUtil.selectedLocale(locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
@@ -237,23 +238,8 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             state.timeZoneName = tzNameOpt;
         }
 
-        // https://tc39.github.io/ecma402/#sec-initializedatetimeformat (steps 15-18)
-        Object tzVal = JSRuntime.getDataProperty(options, "timeZone");
-        TimeZone tz;
-        if (tzVal != Undefined.instance && tzVal != null) {
-            String tzId = canonicalizeTimeZone(JSRuntime.toString(tzVal));
-            if (tzId != null) {
-                tz = TimeZone.getTimeZone(tzId);
-                state.dateFormat.setTimeZone(tz);
-            } else {
-                throw Errors.createRangeError(String.format("Invalid time zone %s", tzVal));
-            }
-            state.timeZone = tzId;
-        } else {
-            tz = TimeZone.getDefault();
-            state.dateFormat.setTimeZone(tz);
-            state.timeZone = tz.getID();
-        }
+        state.dateFormat.setTimeZone(timeZone);
+        state.timeZone = timeZone.getID();
     }
 
     private static String weekdayOptToSkeleton(String weekdayOpt) {
@@ -443,6 +429,20 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             canonicalTimeZoneIDMap = map;
         }
         return map;
+    }
+
+    @TruffleBoundary
+    public static TimeZone toTimeZone(Object tzVal) {
+        if (tzVal != Undefined.instance) {
+            String tzId = JSDateTimeFormat.canonicalizeTimeZone(JSRuntime.toString(tzVal));
+            if (tzId != null) {
+                return TimeZone.getTimeZone(tzId);
+            } else {
+                throw Errors.createRangeError(String.format("Invalid time zone %s", tzVal));
+            }
+        } else {
+            return TimeZone.getDefault();
+        }
     }
 
     @TruffleBoundary

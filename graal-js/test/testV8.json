@@ -46,10 +46,6 @@
     "filePath" : "intl/date-format/calendar-with-multiple-type-subtags.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/date-format/constructor-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl/date-format/default-locale.js",
     "status" : "FAIL"
   }, {
@@ -59,10 +55,6 @@
   }, {
     "filePath" : "intl/date-format/resolved-options.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "intl/date-format/timezone-conversion.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "intl/date-format/timezone-name.js",
     "status" : "FAIL"
