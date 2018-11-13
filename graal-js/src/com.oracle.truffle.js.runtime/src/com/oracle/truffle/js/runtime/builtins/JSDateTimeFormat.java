@@ -204,6 +204,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
         if (containsOneOf(baseSkeleton, "hHKk")) {
             state.hour = hourOpt;
+            state.hourCycle = hcOpt;
             state.hour12 = containsOneOf(baseSkeleton, "hK");
         }
 
