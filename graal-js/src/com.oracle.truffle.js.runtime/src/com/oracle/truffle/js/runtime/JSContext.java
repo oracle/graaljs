@@ -1279,10 +1279,6 @@ public class JSContext {
         return contextOptions.getTimerResolution();
     }
 
-    public boolean isOptionAgentCanBlock() {
-        return contextOptions.canAgentBlock();
-    }
-
     public void initializeJavaInteropWorkers(EcmaAgent workerMain, EcmaAgent.Factory workerFactory) {
         assert mainWorker == null && javaInteropWorkersFactory == null;
         mainWorker = workerMain;

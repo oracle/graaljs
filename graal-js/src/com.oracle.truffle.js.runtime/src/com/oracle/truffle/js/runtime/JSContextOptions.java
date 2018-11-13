@@ -42,6 +42,8 @@ package com.oracle.truffle.js.runtime;
 
 import static com.oracle.truffle.js.runtime.JSTruffleOptions.JS_OPTION_PREFIX;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
@@ -158,25 +160,12 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> PERFORMANCE = new OptionKey<>(true);
     private static final String PERFORMANCE_HELP = helpWithDefault("provide 'performance' global property.", PERFORMANCE);
 
-    private static final OptionKey<?>[] PREINIT_CONTEXT_OPTION_KEYS = {
-                    ECMASCRIPT_VERSION,
-                    ANNEX_B,
-                    INTL_402,
-                    REGEXP_STATIC_RESULT,
-                    SHARED_ARRAY_BUFFER,
-                    ATOMICS,
-                    DIRECT_BYTE_BUFFER,
-                    V8_COMPATIBILITY_MODE,
-                    V8_REALM_BUILTIN,
-                    NASHORN_COMPATIBILITY_MODE,
-                    STACK_TRACE_LIMIT,
-                    DEBUG_BUILTIN,
-                    PARSE_ONLY,
-                    TIME_ZONE,
-                    JAVA_PACKAGE_GLOBALS,
-                    GLOBAL_THIS,
-                    CONSOLE,
-                    PERFORMANCE,
+    /**
+     * Options which can be patched without throwing away the pre-initialized context.
+     */
+    private static final OptionKey<?>[] PREINIT_CONTEXT_PATCHABLE_OPTIONS = {
+                    ARRAY_SORT_INHERITED,
+                    TIMER_RESOLUTION,
     };
 
     public JSContextOptions(ParserOptions parserOptions) {
@@ -286,18 +275,33 @@ public final class JSContextOptions {
         options.add(OptionDescriptor.newBuilder(PERFORMANCE, PERFORMANCE_NAME).category(OptionCategory.USER).help(PERFORMANCE_HELP).build());
     }
 
-    // check for options that are not on their default value.
-    // in such case, we cannot use the pre-initialized context for faster startup
+    /**
+     * Check for options that differ from the expected options and do not support patching, in which
+     * case we cannot use the pre-initialized context for faster startup.
+     */
     public static boolean optionsAllowPreInitializedContext(Env preinitEnv, Env env) {
-        if (!preinitEnv.getOptions().hasSetOptions() && !env.getOptions().hasSetOptions()) {
+        OptionValues preinitOptions = preinitEnv.getOptions();
+        OptionValues options = env.getOptions();
+        if (!preinitOptions.hasSetOptions() && !options.hasSetOptions()) {
+            return true;
+        } else if (preinitOptions.equals(options)) {
+            return true;
+        } else {
+            assert preinitOptions.getDescriptors().equals(options.getDescriptors());
+            Collection<OptionKey<?>> ignoredOptions = Arrays.asList(PREINIT_CONTEXT_PATCHABLE_OPTIONS);
+            for (OptionDescriptor descriptor : options.getDescriptors()) {
+                OptionKey<?> key = descriptor.getKey();
+                if (preinitOptions.hasBeenSet(key) || options.hasBeenSet(key)) {
+                    if (ignoredOptions.contains(key)) {
+                        continue;
+                    }
+                    if (!preinitOptions.get(key).equals(options.get(key))) {
+                        return false;
+                    }
+                }
+            }
             return true;
         }
-        for (OptionKey<?> key : PREINIT_CONTEXT_OPTION_KEYS) {
-            if (!preinitEnv.getOptions().get(key).equals(env.getOptions().get(key))) {
-                return false;
-            }
-        }
-        return true;
     }
 
     public int getEcmaScriptVersion() {
