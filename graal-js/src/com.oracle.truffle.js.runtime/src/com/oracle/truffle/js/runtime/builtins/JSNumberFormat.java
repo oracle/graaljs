@@ -613,9 +613,12 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         public Number maximumSignificantDigits;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
+            DynamicObject resolvedOptions = JSUserObject.create(context);
+            fillResolvedOptions(context, resolvedOptions);
+            return resolvedOptions;
+        }
 
-            DynamicObject result = JSUserObject.create(context);
-            JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
+        void fillResolvedOptions(@SuppressWarnings("unused") JSContext context, DynamicObject result) {
             if (minimumIntegerDigits != null) {
                 JSObjectUtil.defineDataProperty(result, "minimumIntegerDigits", minimumIntegerDigits, JSAttributes.getDefault());
             }
@@ -631,7 +634,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             if (maximumSignificantDigits != null) {
                 JSObjectUtil.defineDataProperty(result, "maximumSignificantDigits", maximumSignificantDigits, JSAttributes.getDefault());
             }
-            return result;
         }
     }
 
@@ -645,20 +647,18 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         DynamicObject boundFormatFunction = null;
 
         @Override
-        DynamicObject toResolvedOptionsObject(JSContext context) {
-
-            DynamicObject result = super.toResolvedOptionsObject(context);
-
+        void fillResolvedOptions(JSContext context, DynamicObject result) {
+            JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, "numberingSystem", numberingSystem, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, "style", style, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "useGrouping", useGrouping, JSAttributes.getDefault());
             if (currency != null) {
                 JSObjectUtil.defineDataProperty(result, "currency", currency, JSAttributes.getDefault());
             }
             if (currencyDisplay != null) {
                 JSObjectUtil.defineDataProperty(result, "currencyDisplay", currencyDisplay, JSAttributes.getDefault());
             }
-            return result;
+            super.fillResolvedOptions(context, result);
+            JSObjectUtil.defineDataProperty(result, "useGrouping", useGrouping, JSAttributes.getDefault());
         }
     }
 
