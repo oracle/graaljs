@@ -41,7 +41,7 @@ local common = import '../common.jsonnet';
     run+: [
       ['mx', 'build'],
       ['mx', '-v', 'maven-deploy', '--validate', 'full', '--licenses', 'UPL,MIT', '--dry-run', 'ossrh', 'https://this-is-only-a-test'],
-      ['mx', '--dynamicimports', '/tools,/regex,/compiler,/truffle,/sdk', 'build'],
+      ['mx', '--dynamicimports', '/tools,/compiler', 'build'],
       ['mx', '--dynamicimports', '/tools,/regex,/compiler,/truffle,/sdk', 'maven-deploy', '--all-suites', '--all-distribution-types', '--version-string', 'GATE'],
       ['git', 'clone', '--depth', '1', 'https://github.com/graalvm/graal-js-jdk11-maven-demo.git', 'graal-js-jdk11-maven-demo'],
       ['cd', 'graal-js-jdk11-maven-demo'],
