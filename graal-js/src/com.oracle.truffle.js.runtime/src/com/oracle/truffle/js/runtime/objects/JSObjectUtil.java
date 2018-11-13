@@ -281,8 +281,7 @@ public final class JSObjectUtil {
     private static Shape getProtoChildShapeSlowPath(DynamicObject obj, JSClass jsclass, JSContext context) {
         JSPrototypeData prototypeData = getPrototypeData(obj);
         if (prototypeData == null) {
-            prototypeData = new JSPrototypeData();
-            putPrototypeData(obj, prototypeData);
+            prototypeData = putPrototypeData(obj);
         }
         return prototypeData.getOrAddProtoChildTree(jsclass, createChildRootShape(obj, jsclass, context));
     }
@@ -290,6 +289,14 @@ public final class JSObjectUtil {
     private static Shape createChildRootShape(DynamicObject obj, JSClass jsclass, JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
         return JSShape.makeRootShape(JSObject.LAYOUT, new JSSharedData(context, JSShape.makePrototypeProperty(obj)), jsclass);
+    }
+
+    public static JSPrototypeData putPrototypeData(DynamicObject obj) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert getPrototypeData(obj) == null;
+        JSPrototypeData prototypeData = new JSPrototypeData();
+        putPrototypeData(obj, prototypeData);
+        return prototypeData;
     }
 
     private static void putPrototypeData(DynamicObject obj, JSPrototypeData prototypeData) {
