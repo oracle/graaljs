@@ -1990,10 +1990,6 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
-    "filePath" : "intl402/Collator/prototype/resolvedOptions/order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl402/Collator/usage-de.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
@@ -2005,10 +2001,6 @@
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/resolved-locale-with-hc-unicode.js",
     "status" : "FAIL",
@@ -2694,19 +2686,11 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl402/NumberFormat/prototype/resolvedOptions/order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl402/NumberFormat/prototype/toStringTag/configurable.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/toStringTag/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/PluralRules/prototype/resolvedOptions/order.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
