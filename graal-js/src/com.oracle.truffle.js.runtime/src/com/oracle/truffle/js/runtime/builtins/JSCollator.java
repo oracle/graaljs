@@ -254,8 +254,8 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
             JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, "usage", usage, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, "sensitivity", sensitivity, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "collation", collation, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, "ignorePunctuation", ignorePunctuation, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, "collation", collation, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, "numeric", numeric, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, "caseFirst", caseFirst, JSAttributes.getDefault());
             return result;
