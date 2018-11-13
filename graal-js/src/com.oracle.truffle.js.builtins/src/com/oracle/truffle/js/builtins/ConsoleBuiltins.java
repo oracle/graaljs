@@ -63,6 +63,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSConsoleUtil;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -72,7 +73,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<ConsoleBuiltins.Console> {
     protected ConsoleBuiltins() {
-        super("Console", Console.class);
+        super(JSRealm.CONSOLE_CLASS_NAME, Console.class);
     }
 
     public enum Console implements BuiltinEnum<Console> {

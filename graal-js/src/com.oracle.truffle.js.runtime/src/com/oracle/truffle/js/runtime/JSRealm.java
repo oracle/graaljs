@@ -133,6 +133,7 @@ public class JSRealm {
     private static final String JAVA_WORKER_PROPERTY_NAME = "Worker";
     public static final String PERFORMANCE_CLASS_NAME = "performance";
     public static final String DEBUG_CLASS_NAME = "Debug";
+    public static final String CONSOLE_CLASS_NAME = "Console";
 
     private static final String ALT_GRAALVM_VERSION_PROPERTY = "graalvm.version";
     private static final String GRAALVM_VERSION_PROPERTY = "org.graalvm.version";
@@ -958,7 +959,7 @@ public class JSRealm {
 
     private void putConsoleObject(DynamicObject global) {
         DynamicObject console = JSUserObject.createInit(this);
-        JSObjectUtil.putFunctionsFromContainer(this, console, "Console");
+        JSObjectUtil.putFunctionsFromContainer(this, console, CONSOLE_CLASS_NAME);
         putGlobalProperty(global, "console", console);
     }
 
