@@ -131,8 +131,6 @@ public class JSTruffleOptions {
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = booleanOption("AnnexB", true);
 
-    /** Enable non-standard extensions. */
-    public static final boolean Extensions = booleanOption("Extensions", true);
     /** Java implementation of SIMD.js. */
     public static final boolean SIMDJS = booleanOption("SIMDJS", false);
 

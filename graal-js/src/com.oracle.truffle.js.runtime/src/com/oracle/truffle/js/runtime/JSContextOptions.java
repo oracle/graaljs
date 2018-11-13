@@ -150,6 +150,14 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> GLOBAL_THIS = new OptionKey<>(true);
     private static final String GLOBAL_THIS_HELP = helpWithDefault("provide 'global' global property.", GLOBAL_THIS);
 
+    public static final String CONSOLE_NAME = JS_OPTION_PREFIX + "console";
+    public static final OptionKey<Boolean> CONSOLE = new OptionKey<>(true);
+    private static final String CONSOLE_HELP = helpWithDefault("provide 'console' global property.", CONSOLE);
+
+    public static final String PERFORMANCE_NAME = JS_OPTION_PREFIX + "performance";
+    public static final OptionKey<Boolean> PERFORMANCE = new OptionKey<>(true);
+    private static final String PERFORMANCE_HELP = helpWithDefault("provide 'performance' global property.", PERFORMANCE);
+
     private static final OptionKey<?>[] PREINIT_CONTEXT_OPTION_KEYS = {
                     ECMASCRIPT_VERSION,
                     ANNEX_B,
@@ -167,6 +175,8 @@ public final class JSContextOptions {
                     TIME_ZONE,
                     JAVA_PACKAGE_GLOBALS,
                     GLOBAL_THIS,
+                    CONSOLE,
+                    PERFORMANCE,
     };
 
     public JSContextOptions(ParserOptions parserOptions) {
@@ -272,6 +282,8 @@ public final class JSContextOptions {
         options.add(OptionDescriptor.newBuilder(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME).category(OptionCategory.DEBUG).help(AGENT_CAN_BLOCK_HELP).build());
         options.add(OptionDescriptor.newBuilder(JAVA_PACKAGE_GLOBALS, JAVA_PACKAGE_GLOBALS_NAME).category(OptionCategory.USER).help(JAVA_PACKAGE_GLOBALS_HELP).build());
         options.add(OptionDescriptor.newBuilder(GLOBAL_THIS, GLOBAL_THIS_NAME).category(OptionCategory.USER).help(GLOBAL_THIS_HELP).build());
+        options.add(OptionDescriptor.newBuilder(CONSOLE, CONSOLE_NAME).category(OptionCategory.USER).help(CONSOLE_HELP).build());
+        options.add(OptionDescriptor.newBuilder(PERFORMANCE, PERFORMANCE_NAME).category(OptionCategory.USER).help(PERFORMANCE_HELP).build());
     }
 
     // check for options that are not on their default value.
@@ -352,6 +364,14 @@ public final class JSContextOptions {
 
     public boolean canAgentBlock() {
         return agentCanBlock;
+    }
+
+    public boolean isConsole() {
+        return CONSOLE.getValue(optionValues);
+    }
+
+    public boolean isPerformance() {
+        return PERFORMANCE.getValue(optionValues);
     }
 
     @Override

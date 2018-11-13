@@ -173,9 +173,7 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
             defineBuiltins(new PolyglotInternalBuiltins());
         }
         defineBuiltins(new DebugBuiltins());
-        if (JSTruffleOptions.Extensions) {
-            defineBuiltins(new PerformanceBuiltins());
-        }
+        defineBuiltins(new PerformanceBuiltins());
         defineBuiltins(new RealmFunctionBuiltins());
         if (!JSTruffleOptions.SubstrateVM) {
             defineJavaInterop();

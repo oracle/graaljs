@@ -831,8 +831,10 @@ public class JSRealm {
         if (JSTruffleOptions.GraalBuiltin) {
             putGraalObject(global);
         }
-        if (JSTruffleOptions.Extensions) {
+        if (context.getContextOptions().isConsole()) {
             putConsoleObject(global);
+        }
+        if (context.getContextOptions().isPerformance()) {
             putGlobalProperty(global, PERFORMANCE_CLASS_NAME, createPerformance());
         }
         if (JSTruffleOptions.ProfileTime) {
