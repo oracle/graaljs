@@ -588,7 +588,19 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);
             JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
+            if (calendar != null) {
+                JSObjectUtil.defineDataProperty(result, "calendar", calendar, JSAttributes.getDefault());
+            }
             JSObjectUtil.defineDataProperty(result, "numberingSystem", numberingSystem, JSAttributes.getDefault());
+            if (timeZone != null) {
+                JSObjectUtil.defineDataProperty(result, "timeZone", timeZone, JSAttributes.getDefault());
+            }
+            if (hourCycle != null) {
+                JSObjectUtil.defineDataProperty(result, "hourCycle", hourCycle, JSAttributes.getDefault());
+            }
+            if (hour12 != null) {
+                JSObjectUtil.defineDataProperty(result, "hour12", hour12, JSAttributes.getDefault());
+            }
             if (weekday != null) {
                 JSObjectUtil.defineDataProperty(result, "weekday", weekday, JSAttributes.getDefault());
             }
@@ -607,23 +619,11 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             if (hour != null) {
                 JSObjectUtil.defineDataProperty(result, "hour", hour, JSAttributes.getDefault());
             }
-            if (hour12 != null) {
-                JSObjectUtil.defineDataProperty(result, "hour12", hour12, JSAttributes.getDefault());
-            }
-            if (hourCycle != null) {
-                JSObjectUtil.defineDataProperty(result, "hourCycle", hourCycle, JSAttributes.getDefault());
-            }
             if (minute != null) {
                 JSObjectUtil.defineDataProperty(result, "minute", minute, JSAttributes.getDefault());
             }
             if (second != null) {
                 JSObjectUtil.defineDataProperty(result, "second", second, JSAttributes.getDefault());
-            }
-            if (calendar != null) {
-                JSObjectUtil.defineDataProperty(result, "calendar", calendar, JSAttributes.getDefault());
-            }
-            if (timeZone != null) {
-                JSObjectUtil.defineDataProperty(result, "timeZone", timeZone, JSAttributes.getDefault());
             }
             if (timeZoneName != null) {
                 JSObjectUtil.defineDataProperty(result, "timeZoneName", timeZoneName, JSAttributes.getDefault());
