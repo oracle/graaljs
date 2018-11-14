@@ -422,11 +422,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     }
 
     @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
-        return "Object";
-    }
-
-    @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
         DynamicObject numberFormatPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);

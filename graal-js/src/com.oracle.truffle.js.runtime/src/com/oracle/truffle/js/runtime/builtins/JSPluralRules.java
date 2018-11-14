@@ -101,11 +101,6 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
     }
 
     @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
-        return "Object";
-    }
-
-    @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
         DynamicObject pluralRulesPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
