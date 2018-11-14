@@ -2230,12 +2230,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * Implementation of the String.prototype.repeat() method of ECMAScript6/Harmony.
      */
     public abstract static class JSStringRepeatNode extends JSStringOperation {
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         public JSStringRepeatNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
-
-        private final BranchProfile errorBranch = BranchProfile.create();
 
         @Specialization
         protected String repeat(Object thisObj, Object count) {
@@ -2243,16 +2242,23 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String thisStr = toString(thisObj);
             Number repeatCountN = toNumber(count);
             long repeatCount = JSRuntime.toInteger(repeatCountN);
-            if (repeatCount < 0 || (repeatCountN instanceof Double && (Double.isInfinite(repeatCountN.doubleValue()))) ||
-                            (repeatCount * thisStr.length()) > JSTruffleOptions.StringLengthLimit) {
+            if (repeatCount < 0 || (repeatCountN instanceof Double && Double.isInfinite(repeatCountN.doubleValue()))) {
                 errorBranch.enter();
                 throw Errors.createRangeError("illegal repeat count");
             }
-            if (thisStr.isEmpty()) {
+            if (repeatCount == 1) {
+                return thisStr;
+            } else if (repeatCount == 0 || thisStr.length() == 0) {
                 // fast path for repeating an empty string an arbitrary number of times
+                // or repeating a string 0 times
                 return "";
             }
-            return repeatImpl(thisStr, (int) repeatCount);
+            int repeatCountInt = (int) repeatCount;
+            if (repeatCountInt != repeatCount || repeatCount * thisStr.length() > JSTruffleOptions.StringLengthLimit) {
+                errorBranch.enter();
+                throw Errors.createRangeErrorInvalidStringLength();
+            }
+            return repeatImpl(thisStr, repeatCountInt);
         }
 
         @TruffleBoundary
