@@ -190,7 +190,6 @@ public class JSTruffleOptions {
     public static final int MaxConsolePrintProperties = 20;
 
     // Truffle Interop options
-    public static final boolean TruffleInterop = booleanOption("TruffleInterop", true);
     public static final boolean BindProgramResult = booleanOption("BindProgramResult", true);
 
     public static final boolean UseTRegex = booleanOption("UseTRegex", true);

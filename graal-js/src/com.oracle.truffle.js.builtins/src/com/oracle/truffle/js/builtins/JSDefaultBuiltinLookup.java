@@ -168,10 +168,8 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         if (JSTruffleOptions.TestV8Mode) {
             defineBuiltins(new TestV8Builtins());
         }
-        if (JSTruffleOptions.TruffleInterop) {
-            defineBuiltins(new PolyglotBuiltins());
-            defineBuiltins(new PolyglotInternalBuiltins());
-        }
+        defineBuiltins(new PolyglotBuiltins());
+        defineBuiltins(new PolyglotInternalBuiltins());
         defineBuiltins(new DebugBuiltins());
         defineBuiltins(new PerformanceBuiltins());
         defineBuiltins(new RealmFunctionBuiltins());

@@ -779,9 +779,7 @@ public class JSRealm {
         if (context.isOptionNashornCompatibilityMode()) {
             initGlobalNashornExtensions(global);
         }
-        if (JSTruffleOptions.TruffleInterop) {
-            setupPolyglot(global);
-        }
+        setupPolyglot(global);
         if (isJavaInteropAvailable()) {
             setupJavaInterop(global);
         }
