@@ -54,6 +54,7 @@ public interface JSConstructorFactory {
             JSContext ctx = realm.getContext();
             DynamicObject constructor = createConstructorObject(realm);
             DynamicObject prototype = createPrototype(realm, constructor);
+            JSObjectUtil.putPrototypeData(prototype);
             JSObjectUtil.putConstructorPrototypeProperty(ctx, constructor, prototype);
             fillConstructor(realm, constructor);
             return new JSConstructor(constructor, prototype);
