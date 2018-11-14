@@ -506,6 +506,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         fieldToType.put(DateFormat.Field.YEAR, "year");
         fieldToType.put(DateFormat.Field.MONTH, "month");
         fieldToType.put(DateFormat.Field.DOW_LOCAL, "weekday");
+        fieldToType.put(DateFormat.Field.DAY_OF_WEEK, "weekday");
         fieldToType.put(DateFormat.Field.DAY_OF_MONTH, "day");
         fieldToType.put(DateFormat.Field.HOUR0, "hour");
         fieldToType.put(DateFormat.Field.HOUR1, "hour");
@@ -537,6 +538,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     if (a instanceof DateFormat.Field) {
                         String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
                         String type = fieldToType.get(a);
+                        assert type != null;
                         resultParts.add(makePart(context, type, value));
                         i = fit.getRunLimit();
                         break;
