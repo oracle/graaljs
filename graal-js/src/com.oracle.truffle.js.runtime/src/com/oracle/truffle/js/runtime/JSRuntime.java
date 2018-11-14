@@ -561,12 +561,11 @@ public final class JSRuntime {
         return toInteger(number);
     }
 
-    @TruffleBoundary
     public static long toInteger(Number number) {
         if (isNaN(number)) {
             return 0;
         }
-        return number.longValue();
+        return longValue(number);
     }
 
     /**
