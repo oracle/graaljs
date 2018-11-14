@@ -91,6 +91,7 @@ public class JSTruffleOptions {
     // Runtime options
     public static final boolean LazyStrings = booleanOption("LazyStrings", true);
     public static final int MinLazyStringLength = integerOption("MinLazyStringLength", 20);
+    public static final int ConcatToLeafLimit = integerOption("ConcatToLeafLimit", MinLazyStringLength / 2);
     public static final int MaxLoadCacheLength = integerOption("MaxLoadCacheLength", 0);
     public static final int MaxCompiledRegexCacheLength = integerOption("MaxCompiledRegexCacheLength", 4);
     public static final boolean TrimLoadCache = booleanOption("TrimLoadCache", false);

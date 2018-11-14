@@ -158,6 +158,11 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
+    public static String charSequenceToString(CharSequence value) {
+        return value.toString();
+    }
+
+    @TruffleBoundary
     public static String substring(String s, int begin, int end) {
         return s.substring(begin, end);
     }
@@ -215,6 +220,11 @@ public final class Boundaries {
     @TruffleBoundary
     public static int stringCodePointAt(String s, int pos) {
         return s.codePointAt(pos);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    public static String stringConcat(String left, String right) {
+        return left.concat(right);
     }
 
     @TruffleBoundary
