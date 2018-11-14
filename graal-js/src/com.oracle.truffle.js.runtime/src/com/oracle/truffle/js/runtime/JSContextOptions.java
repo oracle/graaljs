@@ -159,12 +159,17 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> PERFORMANCE = new OptionKey<>(true);
     private static final String PERFORMANCE_HELP = "provide 'performance' global property.";
 
+    public static final String SHELL_NAME = JS_OPTION_PREFIX + "shell";
+    public static final OptionKey<Boolean> SHELL = new OptionKey<>(false);
+    private static final String SHELL_HELP = "provide global functions for js shell.";
+
     /**
      * Options which can be patched without throwing away the pre-initialized context.
      */
     private static final OptionKey<?>[] PREINIT_CONTEXT_PATCHABLE_OPTIONS = {
                     ARRAY_SORT_INHERITED,
                     TIMER_RESOLUTION,
+                    SHELL,
     };
 
     public JSContextOptions(ParserOptions parserOptions) {
@@ -276,6 +281,7 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(GLOBAL_THIS, GLOBAL_THIS_NAME, OptionCategory.USER, GLOBAL_THIS_HELP));
         options.add(newOptionDescriptor(CONSOLE, CONSOLE_NAME, OptionCategory.USER, CONSOLE_HELP));
         options.add(newOptionDescriptor(PERFORMANCE, PERFORMANCE_NAME, OptionCategory.USER, PERFORMANCE_HELP));
+        options.add(newOptionDescriptor(SHELL, SHELL_NAME, OptionCategory.USER, SHELL_HELP));
     }
 
     /**
@@ -379,6 +385,10 @@ public final class JSContextOptions {
 
     public boolean isPerformance() {
         return PERFORMANCE.getValue(optionValues);
+    }
+
+    public boolean isShell() {
+        return SHELL.getValue(optionValues);
     }
 
     @Override

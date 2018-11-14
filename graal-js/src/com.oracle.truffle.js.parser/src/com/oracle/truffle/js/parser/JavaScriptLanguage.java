@@ -457,6 +457,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     protected void initializeContext(JSRealm realm) {
         realm.setArguments(realm.getEnv().getApplicationArguments());
 
+        realm.addOptionalGlobals();
         if (((GraalJSParserOptions) realm.getContext().getParserOptions()).isScripting()) {
             realm.addScriptingObjects();
         }
@@ -487,6 +488,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         context.setInteropRuntime(interopRuntime());
         realm.setArguments(newEnv.getApplicationArguments());
 
+        realm.addOptionalGlobals();
         if (((GraalJSParserOptions) context.getParserOptions()).isScripting()) {
             realm.addScriptingObjects();
         }

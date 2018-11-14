@@ -68,6 +68,7 @@ public class TestV8Runnable extends TestRunnable {
         options.put(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
         options.put(JSContextOptions.V8_REALM_BUILTIN_NAME, "true");
         options.put(JSContextOptions.INTL_402_NAME, "true");
+        options.put(JSContextOptions.SHELL_NAME, "true"); // readbuffer
         commonOptions = Collections.unmodifiableMap(options);
     }
 

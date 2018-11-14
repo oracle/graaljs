@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SplittableRandom;
+import java.util.function.Consumer;
 
 import org.graalvm.options.OptionValues;
 
@@ -843,13 +844,31 @@ public class JSRealm {
     private void initGlobalNashornExtensions(DynamicObject global) {
         assert getContext().isOptionNashornCompatibilityMode();
         putGlobalProperty(global, JSAdapter.CLASS_NAME, jsAdapterConstructor.getFunctionObject());
+        putGlobalProperty(global, "exit", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exit"));
+        putGlobalProperty(global, "quit", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "quit"));
         DynamicObject parseToJSON = lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "parseToJSON");
         JSObjectUtil.putOrSetDataProperty(getContext(), global, "parseToJSON", parseToJSON, JSAttributes.getDefaultNotEnumerable());
     }
 
     private void initGlobalScriptingExtensions(DynamicObject global) {
-        DynamicObject exec = lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exec");
-        JSObjectUtil.putOrSetDataProperty(getContext(), global, "$EXEC", exec, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putOrSetDataProperty(getContext(), global, "$EXEC", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exec"), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putOrSetDataProperty(getContext(), global, "readFully", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readFully"), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putOrSetDataProperty(getContext(), global, "readLine", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readLine"), JSAttributes.getDefaultNotEnumerable());
+    }
+
+    /**
+     * Add or set optional global properties. Used by initializeContext and patchContext.
+     */
+    public void addOptionalGlobals() {
+        if (getContext().getContextOptions().isShell()) {
+            getContext().getFunctionLookup().iterateBuiltinFunctions(JSGlobalObject.CLASS_NAME_SHELL_EXTENSIONS, new Consumer<Builtin>() {
+                @Override
+                public void accept(Builtin builtin) {
+                    JSFunctionData functionData = builtin.createFunctionData(getContext());
+                    JSObjectUtil.putOrSetDataProperty(getContext(), getGlobalObject(), builtin.getKey(), JSFunction.create(JSRealm.this, functionData), builtin.getAttributeFlags());
+                }
+            });
+        }
     }
 
     private void putGraalObject(DynamicObject global) {
