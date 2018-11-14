@@ -538,6 +538,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         fieldToType.put(NumberFormat.Field.FRACTION, "fraction");
         fieldToType.put(NumberFormat.Field.GROUPING_SEPARATOR, "group");
         fieldToType.put(NumberFormat.Field.CURRENCY, "currency");
+        fieldToType.put(NumberFormat.Field.PERCENT, "percentSign");
     }
 
     @TruffleBoundary
@@ -559,7 +560,22 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                 for (AttributedCharacterIterator.Attribute a : attKeySet) {
                     if (a instanceof NumberFormat.Field) {
                         String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
-                        String type = fieldToType.get(a);
+                        String type;
+                        if (a == NumberFormat.Field.INTEGER) {
+                            double xDouble = x.doubleValue();
+                            if (Double.isNaN(xDouble)) {
+                                type = "nan";
+                            } else if (Double.isInfinite(xDouble)) {
+                                type = "infinite";
+                            } else {
+                                type = "integer";
+                            }
+                        } else if (a == NumberFormat.Field.SIGN) {
+                            type = isPlusSign(value) ? "plusSign" : "minusSign";
+                        } else {
+                            type = fieldToType.get(a);
+                            assert type != null;
+                        }
                         resultParts.add(makePart(context, type, value));
                         i = fit.getRunLimit();
                         break;
@@ -574,6 +590,10 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             }
         }
         return JSArray.createConstant(context, resultParts.toArray());
+    }
+
+    private static boolean isPlusSign(String str) {
+        return str.length() == 1 && str.charAt(0) == '+';
     }
 
     private static Number toInternalNumberRepresentation(Object o) {
