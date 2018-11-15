@@ -95,11 +95,7 @@ try {
 }
 ```
 
-### Global methods
-
-#### `exit(status)` or `quit(status)`
-
-Exits the engine and returns the specified status code.
+### Global properties
 
 #### `load(source)`
 
@@ -113,9 +109,9 @@ Source can be of type:
 * a JavaScript object: the object is queried for a `name` and a `script` property, which represent the source name and code, respectively.
 * all other types: the source is converted to a String.
 
-#### `print(...arg)`
+#### `print(...arg)` and `printErr(...arg)`
 
-Prints the arguments on the console.
+Prints the arguments on the console (stdout and stderr, respectively).
 Provides a best-effort human readable output.
 
 #### Methods of the `console` global object
@@ -134,7 +130,13 @@ Node.js provides its own implementation that is used instead.
 * `console.group`, and `console.groupEnd`: increases or decreases the indentation for succeeding outputs to the console
 * `console.time()`, `console.timeLog()`, and `console.timeEnd()`: starts a timer, prints the duration the timer has been active, or prints the duration and stops the timer, respectively
 
-#### `read(file)` or `readFully(file)`
+### Additional global functions in the `js` shell
+
+#### `quit(status)`
+
+Exits the engine and returns the specified status code.
+
+#### `read(file)`
 
 This function reads the content of `file`.
 The result is returned as String.
@@ -149,13 +151,10 @@ The argument `file` can be of type:
 This function reads the content of `file` similar to the `read` function.
 The result is returned as a JavaScript `ArrayBuffer` object.
 
-#### `readLine(prompt)` or `readline(prompt)`
+#### `readline()`
 
 This function reads one line of input from the input stream.
 It returns a String as result.
-
-An optional `prompt` value can be provided, that is print to the output stream.
-`prompt` is ignored when its value is `undefined`.
 
 ### Object
 
@@ -191,7 +190,7 @@ It is enabled with the `js.scripting` option:
 $ js --js.scripting=true
 ```
 
-In scripting mode, several properties and functions are added to the global object, including `$ARG`, `$ENV`, and `$EXEC`.
+In scripting mode, several properties and functions are added to the global object, including [readFully](#readfile), [readLine](#readline), `$ARG`, `$ENV`, and `$EXEC`.
 
 ## Graal JavaScript extensions
 
