@@ -827,7 +827,7 @@ public class JSRealm {
         if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
             putGlobalProperty(global, "globalThis", global);
         }
-        if (JSTruffleOptions.GraalBuiltin) {
+        if (context.getContextOptions().isGraalBuiltin()) {
             putGraalObject(global);
         }
         if (context.getContextOptions().isConsole()) {

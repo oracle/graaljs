@@ -195,8 +195,6 @@ public class JSTruffleOptions {
     public static final boolean UseTRegex = booleanOption("UseTRegex", true);
     public static final boolean RegexRegressionTestMode = booleanOption("RegexRegressionTestMode", false);
 
-    public static final boolean GraalBuiltin = booleanOption("GraalBuiltin", true);
-
     /** ECMA Promises are automatically resolved or rejected when crossing an interop boundary. */
     public static final boolean InteropCompletePromises = booleanOption("InteropCompletePromises", false);
 

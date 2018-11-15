@@ -163,6 +163,10 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SHELL = new OptionKey<>(false);
     private static final String SHELL_HELP = "provide global functions for js shell.";
 
+    public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
+    public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
+    private static final String GRAAL_BUILTIN_HELP = "provide 'Graal' global property.";
+
     /**
      * Options which can be patched without throwing away the pre-initialized context.
      */
@@ -282,6 +286,7 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(CONSOLE, CONSOLE_NAME, OptionCategory.USER, CONSOLE_HELP));
         options.add(newOptionDescriptor(PERFORMANCE, PERFORMANCE_NAME, OptionCategory.USER, PERFORMANCE_HELP));
         options.add(newOptionDescriptor(SHELL, SHELL_NAME, OptionCategory.USER, SHELL_HELP));
+        options.add(newOptionDescriptor(GRAAL_BUILTIN, GRAAL_BUILTIN_NAME, OptionCategory.USER, GRAAL_BUILTIN_HELP));
     }
 
     /**
@@ -389,6 +394,10 @@ public final class JSContextOptions {
 
     public boolean isShell() {
         return SHELL.getValue(optionValues);
+    }
+
+    public boolean isGraalBuiltin() {
+        return GRAAL_BUILTIN.getValue(optionValues);
     }
 
     @Override
