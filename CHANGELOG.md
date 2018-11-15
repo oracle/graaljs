@@ -8,6 +8,7 @@ The main focus is on user-observable behavior of the engine.
 * `Atomics.wake` available under its new name (`Atomics.notify`) as well.
 * [Well-formed JSON.stringify](https://github.com/tc39/proposal-well-formed-stringify) proposal implemented.
 * [globalThis](https://github.com/tc39/proposal-global) proposal implemented.
+* Added `Java.addToClasspath(path)` for adding jar files and directories to the host classpath dynamically.
 * Disabled non-standard global functions `quit`, `read`, `readbuffer`, and `readline` by default, except for the `js` launcher (`js.shell` option).
 * Disabled non-standard global functions `readFully` and `readLine` by default, now available only in Nashorn scripting mode (`--js.scripting`).
 * Disabled Nashorn syntax extensions by default (`js.syntax-extensions` option), barring `ScriptEngine`.

@@ -59,6 +59,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -75,6 +76,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaAddToClasspathNodeGen;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaAsJSONCompatibleNodeGen;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaExtendNodeGen;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaFromNodeGen;
@@ -134,6 +136,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         isType(1),
         typeName(1),
         synchronized_(2),
+        addToClasspath(1),
 
         extend(1),
         super_(1),
@@ -182,6 +185,8 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 return JavaIsJavaObjectNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case synchronized_:
                 return JavaSynchronizedNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+            case addToClasspath:
+                return JavaAddToClasspathNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case asJSONCompatible:
                 return JavaAsJSONCompatibleNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
@@ -893,6 +898,26 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 throw Errors.createTypeError("Locking not supported on type: " + lock.getClass().getTypeName());
             }
             return lock;
+        }
+    }
+
+    abstract static class JavaAddToClasspathNode extends JSBuiltinNode {
+        JavaAddToClasspathNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object doString(String fileName) {
+            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            TruffleFile file = env.getTruffleFile(fileName);
+            env.addToHostClassPath(file);
+            return Undefined.instance;
+        }
+
+        @Specialization(replaces = "doString")
+        protected Object doObject(Object fileName,
+                        @Cached("create()") JSToStringNode toStringNode) {
+            return doString(toStringNode.executeString(fileName));
         }
     }
 
