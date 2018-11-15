@@ -148,7 +148,7 @@ public class TestNashornRunnable extends TestRunnable {
     private static String readExpectedOutput(File testFile) {
         File expectedFile = new File(testFile.getAbsolutePath() + ".EXPECTED");
         if (expectedFile.exists()) {
-            List<String> expectedContent = TestSuite.readFileContentList(expectedFile);
+            List<String> expectedContent = TestSuite.readFileContentList(expectedFile, false);
             return TestSuite.toPrintableCode(expectedContent);
         } else {
             return "";
