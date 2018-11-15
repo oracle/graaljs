@@ -57,7 +57,7 @@ import com.oracle.truffle.js.runtime.ParserOptions;
 @SuppressWarnings("hiding")
 public final class GraalJSParserOptions implements ParserOptions {
     public static final String SYNTAX_EXTENSIONS_NAME = JS_OPTION_PREFIX + "syntax-extensions";
-    private static final OptionKey<Boolean> SYNTAX_EXTENSIONS = new OptionKey<>(true);
+    private static final OptionKey<Boolean> SYNTAX_EXTENSIONS = new OptionKey<>(false);
     private static final String SYNTAX_EXTENSIONS_HELP = "enable Nashorn syntax extensions";
 
     public static final String SCRIPTING_NAME = JS_OPTION_PREFIX + "scripting";
