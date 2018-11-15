@@ -450,7 +450,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 // same element type => bulk copy
                 if (isDirectProf.profile(targetType.isDirect())) {
                     ((ByteBuffer) ((ByteBuffer) targetBackingBuffer).duplicate().position(targetByteIndex)).put(
-                                    ((ByteBuffer) ((ByteBuffer) sourceBackingBuffer).duplicate().position(sourceByteIndex).limit(sourceByteIndex + sourceByteLength)).slice());
+                                    ((ByteBuffer) ((ByteBuffer) sourceBackingBuffer).duplicate().position(sourceByteIndex).limit(sourceByteLength)).slice());
                 } else {
                     System.arraycopy(sourceBackingBuffer, sourceByteIndex, targetBackingBuffer, targetByteIndex, sourceByteLength);
                 }
