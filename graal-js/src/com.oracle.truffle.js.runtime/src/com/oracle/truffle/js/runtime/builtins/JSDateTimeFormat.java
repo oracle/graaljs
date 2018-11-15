@@ -72,6 +72,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -122,17 +123,13 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     }
 
     @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
-        return "Object";
-    }
-
-    @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
         DynamicObject numberFormatPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, numberFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, PROTOTYPE_NAME);
         JSObjectUtil.putConstantAccessorProperty(ctx, numberFormatPrototype, "format", createFormatFunctionGetter(realm, ctx), Undefined.instance);
+        JSObjectUtil.putDataProperty(ctx, numberFormatPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Object", JSAttributes.configurableNotEnumerableNotWritable());
         return numberFormatPrototype;
     }
 
@@ -506,6 +503,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         fieldToType.put(DateFormat.Field.YEAR, "year");
         fieldToType.put(DateFormat.Field.MONTH, "month");
         fieldToType.put(DateFormat.Field.DOW_LOCAL, "weekday");
+        fieldToType.put(DateFormat.Field.DAY_OF_WEEK, "weekday");
         fieldToType.put(DateFormat.Field.DAY_OF_MONTH, "day");
         fieldToType.put(DateFormat.Field.HOUR0, "hour");
         fieldToType.put(DateFormat.Field.HOUR1, "hour");
@@ -537,6 +535,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     if (a instanceof DateFormat.Field) {
                         String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
                         String type = fieldToType.get(a);
+                        assert type != null;
                         resultParts.add(makePart(context, type, value));
                         i = fit.getRunLimit();
                         break;

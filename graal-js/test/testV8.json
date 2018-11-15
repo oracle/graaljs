@@ -349,9 +349,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl/toStringTag.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/accessors-on-global-object.js",
     "status" : "SKIP",
     "comment" : "__defineGetter__, __defineSetter__, __lookupSetter__, __lookupGetter__ not according to spec"

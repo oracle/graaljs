@@ -164,7 +164,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         Number mnid = getMinIntDigitsOption.executeValue(options, 1, 1);
         Number mnfd = getMinFracDigitsOption.executeValue(options, 0, mnfdDefault);
         int mxfdActualDefault = Math.max(mnfd.intValue(), mxfdDefault);
-        Number mxfd = getMaxFracDigitsOption.executeValue(options, mnfdDefault, mxfdActualDefault);
+        Number mxfd = getMaxFracDigitsOption.executeValue(options, mnfd, mxfdActualDefault);
         state.minimumIntegerDigits = mnid.intValue();
         state.minimumFractionDigits = mnfd.intValue();
         state.maximumFractionDigits = mxfd.intValue();

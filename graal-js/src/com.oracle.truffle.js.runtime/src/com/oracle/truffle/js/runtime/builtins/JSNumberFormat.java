@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -421,17 +422,13 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     }
 
     @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
-        return "Object";
-    }
-
-    @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
         DynamicObject numberFormatPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, numberFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, PROTOTYPE_NAME);
         JSObjectUtil.putConstantAccessorProperty(ctx, numberFormatPrototype, "format", createFormatFunctionGetter(realm, ctx), Undefined.instance);
+        JSObjectUtil.putDataProperty(ctx, numberFormatPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Object", JSAttributes.configurableNotEnumerableNotWritable());
         return numberFormatPrototype;
     }
 
@@ -538,6 +535,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         fieldToType.put(NumberFormat.Field.FRACTION, "fraction");
         fieldToType.put(NumberFormat.Field.GROUPING_SEPARATOR, "group");
         fieldToType.put(NumberFormat.Field.CURRENCY, "currency");
+        fieldToType.put(NumberFormat.Field.PERCENT, "percentSign");
     }
 
     @TruffleBoundary
@@ -559,7 +557,22 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                 for (AttributedCharacterIterator.Attribute a : attKeySet) {
                     if (a instanceof NumberFormat.Field) {
                         String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
-                        String type = fieldToType.get(a);
+                        String type;
+                        if (a == NumberFormat.Field.INTEGER) {
+                            double xDouble = x.doubleValue();
+                            if (Double.isNaN(xDouble)) {
+                                type = "nan";
+                            } else if (Double.isInfinite(xDouble)) {
+                                type = "infinite";
+                            } else {
+                                type = "integer";
+                            }
+                        } else if (a == NumberFormat.Field.SIGN) {
+                            type = isPlusSign(value) ? "plusSign" : "minusSign";
+                        } else {
+                            type = fieldToType.get(a);
+                            assert type != null;
+                        }
                         resultParts.add(makePart(context, type, value));
                         i = fit.getRunLimit();
                         break;
@@ -574,6 +587,10 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             }
         }
         return JSArray.createConstant(context, resultParts.toArray());
+    }
+
+    private static boolean isPlusSign(String str) {
+        return str.length() == 1 && str.charAt(0) == '+';
     }
 
     private static Number toInternalNumberRepresentation(Object o) {
