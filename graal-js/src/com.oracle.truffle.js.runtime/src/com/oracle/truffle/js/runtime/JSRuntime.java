@@ -1154,10 +1154,10 @@ public final class JSRuntime {
         return lengthIntl(cs);
     }
 
-    public static int length(CharSequence cs, ConditionProfile profile1, ConditionProfile profile2) {
-        if (profile1.profile(cs instanceof String)) {
+    public static int length(CharSequence cs, ConditionProfile stringProfile, ConditionProfile lazyStringProfile) {
+        if (stringProfile.profile(cs instanceof String)) {
             return ((String) cs).length();
-        } else if (profile2.profile(cs instanceof JSLazyString)) {
+        } else if (lazyStringProfile.profile(cs instanceof JSLazyString)) {
             return ((JSLazyString) cs).length();
         }
         return lengthIntl(cs);
