@@ -261,6 +261,11 @@ describe('Object', function () {
             assert.strictEqual(module.Object_HasRealNamedProperty(oParent, "b"), true);
             assert.strictEqual(module.Object_HasRealNamedProperty(oParent, "c"), false);
         });
+        it('should return true for an accessor property', function() {
+            var o = {};
+            Object.defineProperty(o, "accessor", { get: function() {}, set: function() {} });
+            assert.strictEqual(module.Object_HasRealNamedProperty(o, "accessor"), true);
+        });
     });
     describe('HasRealIndexedProperty', function () {
         it('should report correct indexed properties', function () {
@@ -382,6 +387,31 @@ describe('Object', function () {
             assert.strictEqual(module.Object_SetAccessorNoSetterReadOnly(o, "myAccess"), true);
             assert.throws(function() { o.myAccess = 211; }, TypeError);
             assert.strictEqual(o.mySetValue, 42);
+        });
+    });
+    describe('GetRealNamedPropertyAttributes', function() {
+        it('should return correct attributes for data properties', function () {
+            var o = {};
+            Object.defineProperty(o, "nonWritable", { enumerable: true, configurable: true });
+            Object.defineProperty(o, "nonEnumerable", { configurable: true, writable: true });
+            Object.defineProperty(o, "nonConfigurable", { enumerable: true, writable: true });
+            Object.defineProperty(o, "full", { enumerable: true, configurable: true, writable: true });
+            Object.defineProperty(o, "empty", { });
+            assert.strictEqual(module.Object_GetRealNamedPropertyAttributes(o, "nonWritable"), 1 /* ReadOnly */);
+            assert.strictEqual(module.Object_GetRealNamedPropertyAttributes(o, "nonEnumerable"), 2 /* DontEnum */);
+            assert.strictEqual(module.Object_GetRealNamedPropertyAttributes(o, "nonConfigurable"), 4 /* DontDelete */);
+            assert.strictEqual(module.Object_GetRealNamedPropertyAttributes(o, "full"), 0);
+            assert.strictEqual(module.Object_GetRealNamedPropertyAttributes(o, "empty"), 7 /* ReadOnly | DontEnum | DontDelete */);
+        });
+        it('should return correct attributes for accessor properties', function () {
+            var o = {};
+            Object.defineProperty(o, "setter", { enumerable: true, set: function() {} });
+            Object.defineProperty(o, "getter", { configurable: true, get: function() {} });
+            Object.defineProperty(o, "accessor", { get: function() {}, set: function() {} });
+            // accessor property is never ReadOnly
+            assert.strictEqual(module.Object_GetRealNamedPropertyAttributes(o, "setter"), 4 /* DontDelete */);
+            assert.strictEqual(module.Object_GetRealNamedPropertyAttributes(o, "getter"), 2 /* DontEnum */);
+            assert.strictEqual(module.Object_GetRealNamedPropertyAttributes(o, "accessor"), 6 /* DontEnum | DontDelete */);
         });
     });
 });
