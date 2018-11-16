@@ -139,12 +139,10 @@ test-gc-net-timeout                                                : SKIP
 test-http2-response-splitting                                      : SKIP
 test-net-connect-memleak                                           : FAIL
 test-repl                                                          : FAIL
-test-repl-context                                                  : FAIL
 test-repl-tab-complete                                             : FAIL
 test-repl-top-level-await                                          : FAIL
 test-repl-underscore                                               : FAIL
 test-tls-connect-memleak                                           : FAIL
-test-vm-create-context-accessors                                   : FAIL
 test-vm-low-stack-space                                            : SKIP
 test-vm-new-script-new-context                                     : FAIL
 test-vm-syntax-error-stderr                                        : FAIL
