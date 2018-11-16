@@ -907,7 +907,7 @@ public final class GraalJSAccess {
                 PropertyDescriptor descriptor = JSObject.getOwnProperty(currentDO, propertyKey);
                 if (descriptor != null) {
                     int attributes = 0;
-                    if (!descriptor.getWritable()) {
+                    if (!descriptor.isAccessorDescriptor() && !descriptor.getWritable()) {
                         attributes |= 1; /* v8::PropertyAttribute::ReadOnly */
                     }
                     if (!descriptor.getEnumerable()) {
