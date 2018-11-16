@@ -78,8 +78,6 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
 
     public abstract Object executeWithReceiver(Object proxy, Object receiver, Object key);
 
-    public abstract Object executeWithReceiverInt(Object proxy, Object receiver, int key);
-
     @Specialization
     protected Object doGeneric(DynamicObject proxy, Object receiver, Object key,
                     @Cached("createBinaryProfile()") ConditionProfile hasTrap) {

@@ -86,8 +86,6 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
 
     public abstract boolean executeWithReceiverAndValueInt(Object proxy, Object receiver, int value, Object key);
 
-    public abstract boolean executeWithReceiverAndValueIntKey(Object proxy, Object receiver, Object value, int key);
-
     public static JSProxyPropertySetNode create(JSContext context, boolean isStrict) {
         return JSProxyPropertySetNodeGen.create(context, isStrict);
     }
