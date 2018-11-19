@@ -46,6 +46,7 @@ Functionality only available under this flag includes:
 ## Nashorn syntax extensions
 
 [Nashorn syntax extensions](https://wiki.openjdk.java.net/display/Nashorn/Nashorn+extensions) can be enabled using the `js.syntax-extensions` option.
+They're also enabled by default in Nashorn compatibility mode (`js.nashorn-compat`).
 
 ## Intentional design differences
 Graal JavaScript differs from Nashorn in some aspects that were intentional design decisions.

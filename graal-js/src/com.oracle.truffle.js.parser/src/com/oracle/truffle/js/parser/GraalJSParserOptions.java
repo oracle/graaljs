@@ -182,7 +182,7 @@ public final class GraalJSParserOptions implements ParserOptions {
     public GraalJSParserOptions putOptions(OptionValues optionValues) {
         GraalJSParserOptions opts = this;
         opts = opts.putEcmaScriptVersion(JSContextOptions.ECMASCRIPT_VERSION.getValue(optionValues));
-        opts = opts.putSyntaxExtensions(SYNTAX_EXTENSIONS.getValue(optionValues));
+        opts = opts.putSyntaxExtensions(SYNTAX_EXTENSIONS.hasBeenSet(optionValues) ? SYNTAX_EXTENSIONS.getValue(optionValues) : JSContextOptions.NASHORN_COMPATIBILITY_MODE.getValue(optionValues));
         opts = opts.putScripting(SCRIPTING.getValue(optionValues));
         opts = opts.putShebang(SHEBANG.getValue(optionValues));
         opts = opts.putStrict(STRICT.getValue(optionValues));

@@ -106,7 +106,7 @@ public final class JSContextOptions {
     @CompilationFinal private boolean v8RealmBuiltin;
 
     public static final String NASHORN_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "nashorn-compat";
-    private static final OptionKey<Boolean> NASHORN_COMPATIBILITY_MODE = new OptionKey<>(false);
+    public static final OptionKey<Boolean> NASHORN_COMPATIBILITY_MODE = new OptionKey<>(false);
     private static final String NASHORN_COMPATIBILITY_MODE_HELP = "provide compatibility with the OpenJDK Nashorn engine";
     @CompilationFinal private boolean nashornCompatibilityMode;
 
