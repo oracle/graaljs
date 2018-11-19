@@ -12,15 +12,24 @@ Nashorn features available by default:
 
 ## Nashorn compatibility mode
 Graal JavaScript provides a Nashorn compatibility mode.
-Some of the functionality necessary for Nashorn compatibility is only available when this flag is set.
+Some of the functionality necessary for Nashorn compatibility is only available when the `js.nashorn.compat` option is enabled.
 This is the case for Nashorn-specific extensions that Graal JavaScript does not want to expose by default.
 
+The `js.nashorn-compat` option can be set using a command line option:
 ```
 $ js --js.nashorn-compat=true
 ```
 
-When you start from a Java application, set the flag on Java invocation:
+Or using the polyglot API:
+```java
+import org.graalvm.polyglot.Context;
 
+try (Context context = Context.newBuilder().option("js.nashorn-compat", "true").build()) {
+    context.eval("js", "print(__LINE__)");
+}
+```
+
+Or using a system property when starting a Java application:
 ```
 $ java -Dpolyglot.js.nashorn-compat=true MyApplication
 ```
@@ -32,8 +41,12 @@ Functionality only available under this flag includes:
 * `JSAdapter`
 * `java.lang.String` methods on string values
 * `load("nashorn:parser.js")`, `load("nashorn:mozilla_compat.js")`
+* `exit`, `quit`
 
-Nashorn syntax extensions can be enabled using `--js.syntax-extensions=true` or `-Dpolyglot.js.syntax-extensions=true`.
+## Nashorn syntax extensions
+
+[Nashorn syntax extensions](https://wiki.openjdk.java.net/display/Nashorn/Nashorn+extensions) can be enabled using the `js.syntax-extensions` option.
+They're also enabled by default in Nashorn compatibility mode (`js.nashorn-compat`).
 
 ## Intentional design differences
 Graal JavaScript differs from Nashorn in some aspects that were intentional design decisions.

@@ -132,8 +132,6 @@ public class JSTruffleOptions {
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = booleanOption("AnnexB", true);
 
-    /** Enable non-standard extensions. */
-    public static final boolean Extensions = booleanOption("Extensions", true);
     /** Java implementation of SIMD.js. */
     public static final boolean SIMDJS = booleanOption("SIMDJS", false);
 
@@ -193,13 +191,10 @@ public class JSTruffleOptions {
     public static final int MaxConsolePrintProperties = 20;
 
     // Truffle Interop options
-    public static final boolean TruffleInterop = booleanOption("TruffleInterop", true);
     public static final boolean BindProgramResult = booleanOption("BindProgramResult", true);
 
     public static final boolean UseTRegex = booleanOption("UseTRegex", true);
     public static final boolean RegexRegressionTestMode = booleanOption("RegexRegressionTestMode", false);
-
-    public static final boolean GraalBuiltin = booleanOption("GraalBuiltin", true);
 
     /** ECMA Promises are automatically resolved or rejected when crossing an interop boundary. */
     public static final boolean InteropCompletePromises = booleanOption("InteropCompletePromises", false);
