@@ -732,10 +732,6 @@
     "filePath" : "mjsunit/es6/sloppy-restrictive-block-function.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/string-iterator2.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/es6/super.js",
     "status" : "FAIL"
   }, {
