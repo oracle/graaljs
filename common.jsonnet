@@ -17,12 +17,12 @@
     },
   },
 
-  deploy:    {targets: ['deploy']},
-  gate:      {targets: ['gate']},
-  postMerge: {targets: ['post-merge']},
-  bench:     {targets: ['bench', 'post-merge']},
-  daily:     {targets: ['daily']},
-  weekly:    {targets: ['weekly']},
+  deploy:      {targets: ['deploy']},
+  gate:        {targets: ['gate']},
+  postMerge:   {targets: ['post-merge']},
+  bench:       {targets: ['bench', 'post-merge']},
+  dailyBench:  {targets: ['bench', 'daily']},
+  weeklyBench: {targets: ['bench', 'weekly']},
 
   local common = {
     packages+: {
