@@ -372,10 +372,6 @@
     "filePath" : "mjsunit/array-join.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/array-lastindexof.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/array-length.js",
     "status" : "FAIL"
   }, {

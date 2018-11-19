@@ -131,7 +131,7 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
     public long previousObjectViaIteration(TruffleObject object, long currentIndex, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create()") JSHasPropertyNode hasPropertyNode) {
         long index = currentIndex - 1;
-        while (!hasPropertyNode.executeBoolean(object, index) && index > 0) {
+        while (index >= 0 && !hasPropertyNode.executeBoolean(object, index)) {
             index--;
         }
         return index;
