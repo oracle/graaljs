@@ -112,6 +112,7 @@ import com.oracle.truffle.js.runtime.array.dyn.HolesObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsObject;
@@ -408,7 +409,9 @@ public class WriteElementNode extends JSTargetableNode {
                 return new NumberWriteElementTypeCacheNode(context, isStrict, target.getClass(), writeOwn);
             } else if (target instanceof Symbol) {
                 return new SymbolWriteElementTypeCacheNode(context, isStrict, writeOwn);
-            } else if (target instanceof TruffleObject && !(target instanceof Symbol)) {
+            } else if (target instanceof BigInt) {
+                return new BigIntWriteElementTypeCacheNode(context, isStrict, writeOwn);
+            } else if (target instanceof TruffleObject) {
                 return new TruffleObjectWriteElementTypeCacheNode(context, isStrict, (Class<? extends TruffleObject>) target.getClass(), writeOwn);
             } else {
                 assert JSTruffleOptions.NashornJavaInterop : target;
@@ -1590,6 +1593,29 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         public boolean guard(Object target) {
             return target instanceof Symbol;
+        }
+    }
+
+    private static class BigIntWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
+        BigIntWriteElementTypeCacheNode(JSContext context, boolean isStrict, boolean writeOwn) {
+            super(context, isStrict, writeOwn);
+        }
+
+        @Override
+        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
+            BigInt bigInt = (BigInt) target;
+            JSObject.set(JSBigInt.create(context, bigInt), toPropertyKey(index), value, isStrict, classProfile);
+        }
+
+        @Override
+        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
+            BigInt bigInt = (BigInt) target;
+            JSObject.set(JSBigInt.create(context, bigInt), index, value, isStrict, classProfile);
+        }
+
+        @Override
+        public boolean guard(Object target) {
+            return target instanceof BigInt;
         }
     }
 
