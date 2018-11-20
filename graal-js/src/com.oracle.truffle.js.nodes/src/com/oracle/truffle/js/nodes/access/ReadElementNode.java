@@ -1276,14 +1276,15 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
-            Object convertedIndex = toArrayIndexNode.execute(index);
+            Object propertyKey = toPropertyKey(index);
+            Object convertedIndex = toArrayIndexNode.execute(propertyKey);
             if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
                 int intIndex = ((Long) convertedIndex).intValue();
                 if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < charSequence.length())) {
                     return String.valueOf(charSequence.charAt(intIndex));
                 }
             }
-            return JSObject.get(JSString.create(context, charSequence), toPropertyKey(convertedIndex), jsclassProfile);
+            return JSObject.get(JSString.create(context, charSequence), propertyKey, jsclassProfile);
         }
 
         @Override
