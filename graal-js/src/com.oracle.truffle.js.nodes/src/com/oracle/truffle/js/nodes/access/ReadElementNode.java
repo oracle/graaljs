@@ -364,7 +364,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             } else if (target instanceof Number) {
                 return new NumberReadElementTypeCacheNode(context, target.getClass());
             } else if (target instanceof Symbol) {
-                return new SymbolReadElementTypeCacheNode(context, target.getClass());
+                return new SymbolReadElementTypeCacheNode(context);
             } else if (target instanceof TruffleObject) {
                 assert !(target instanceof Symbol);
                 return new TruffleObjectReadElementTypeCacheNode(context, (Class<? extends TruffleObject>) target.getClass());
@@ -1388,11 +1388,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private static class SymbolReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
-        private final Class<?> numberClass;
 
-        SymbolReadElementTypeCacheNode(JSContext context, Class<?> stringClass) {
+        SymbolReadElementTypeCacheNode(JSContext context) {
             super(context);
-            this.numberClass = stringClass;
         }
 
         @Override
@@ -1409,7 +1407,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         public boolean guard(Object target) {
-            return numberClass.isInstance(target);
+            return target instanceof Symbol;
         }
     }
 
