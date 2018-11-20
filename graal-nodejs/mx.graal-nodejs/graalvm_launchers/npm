@@ -18,16 +18,47 @@ PROGRAM_ARGS=()
 
 NODE_DIR="--nodedir=${parent_bin_dir}"
 
+JVM_USED=0
+TRUFFLE_FUNCTION_INLINING_SET=0
+TRUFFLE_COMPILATION_THRESHOLD_SET=0
+
 for opt in "${@:1}"; do
     case "${opt}" in
         --nodedir=*)
             NODE_DIR="${opt}" ;;
-        --jvm*|--native*)
+        --jvm*)
+            VM_ARGS+=("${opt}")
+            JVM_USED=1 ;;
+        --native*)
             VM_ARGS+=("${opt}") ;;
         *)
             PROGRAM_ARGS+=("${opt}") ;;
     esac
+
+    if [[ "${opt}" =~ "TruffleFunctionInlining" ]]; then
+        TRUFFLE_FUNCTION_INLINING_SET=1
+    fi
+    if [[ "${opt}" =~ "TruffleCompilationThreshold" ]]; then
+        TRUFFLE_COMPILATION_THRESHOLD_SET=1
+    fi
 done
+
+# if the user didn't set TruffleFunctionInlining and/or TruffleCompilationThreshold
+# explizitly, disable it; this improves npm performance quite significantly
+if [[ $JVM_USED == 1 ]]; then
+    # in JVM mode, both options need to be set for best performance
+    if [[ $TRUFFLE_FUNCTION_INLINING_SET == 0 ]]; then
+        VM_ARGS+=("--jvm.Dgraal.TruffleFunctionInlining=false")
+    fi
+    if [[ $TRUFFLE_COMPILATION_THRESHOLD_SET == 0 ]]; then
+        VM_ARGS+=("--jvm.Dgraal.TruffleCompilationThreshold=10000")
+    fi
+else
+    # in native mode, only TruffleFunctionInlining needs to be deactivated
+    if [[ $TRUFFLE_FUNCTION_INLINING_SET == 0 ]]; then
+        VM_ARGS+=("--native.XX:-TruffleFunctionInlining")
+    fi
+fi
 
 PATH="${bin_dir}:$PATH"
 
