@@ -69,11 +69,12 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
+import com.oracle.truffle.trufflenode.threading.SharedMemoryEncodingContext;
+
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -98,18 +99,14 @@ public class Serializer {
     private final Map<Object, Integer> transferMap = new IdentityHashMap<>();
     /** Determines whether {@code ArrayBuffer}s should be serialized as host objects. */
     private boolean treatArrayBufferViewsAsHostObjects;
-    /** VM-level communication channels to share Java objects between threads. */
-    private final Deque<Object> channel;
-    /** Unique id of the shared-memory channel used to send Java host objects to workers. */
-    private final int channelId;
 
     private final Env env;
+    private final GraalJSAccess access;
 
-    public Serializer(JSContext mainJSContext, Deque<Object> channel, long delegate) {
+    public Serializer(JSContext mainJSContext, GraalJSAccess access, long delegate) {
         this.delegate = delegate;
         this.env = mainJSContext.getRealm().getEnv();
-        this.channel = channel;
-        this.channelId = System.identityHashCode(channel);
+        this.access = access;
     }
 
     public void setTreatArrayBufferViewsAsHostObjects(boolean treatArrayBufferViewsAsHostObjects) {
@@ -171,11 +168,12 @@ public class Serializer {
         } else if (JSRuntime.isBigInt(value)) {
             writeTag(SerializationTag.BIG_INT);
             writeBigIntContents((BigInt) value);
-        } else if (env.isHostObject(value)) {
+        } else if (env.isHostObject(value) && access.getCurrentEncodingTarget() != null) {
+            SharedMemoryEncodingContext messagePort = access.getCurrentEncodingTarget();
             writeTag(SerializationTag.SHARED_JAVA_OBJECT);
-            writeVarInt(channelId);
+            writeVarInt(System.identityHashCode(messagePort));
             assignId(value);
-            channel.push(env.asHostObject(value));
+            messagePort.getEncodingQueue().push(env.asHostObject(value));
         } else {
             writeObject(value);
         }

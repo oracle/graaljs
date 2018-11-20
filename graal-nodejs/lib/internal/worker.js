@@ -494,3 +494,30 @@ module.exports = {
   isMainThread,
   workerStdio
 };
+
+// ##### Graal.js Java interop messages handling
+
+// Passed by Graal.js init phase during global module loading.
+const graalSharedChannelInit = arguments.length === 5 ? arguments[4] : undefined;
+if (!graalSharedChannelInit) {
+  assert.fail(`Fatal: cannot initialize Worker`);
+}
+
+const baseStart = MessagePort.prototype.start;
+MessagePort.prototype.start = function() {
+    baseStart.call(this);
+    this.graalPort = graalSharedChannelInit();
+    this.on('close', function() {
+      this.graalPort.dispose();
+    });
+}
+
+const basePostMessage = MessagePort.prototype.postMessage;
+MessagePort.prototype.postMessage = function(...args) {
+  try {
+    this.graalPort.enter();
+    basePostMessage.apply(this, args);
+  } finally {
+    this.graalPort.leave();
+  }
+}

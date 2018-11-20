@@ -67,6 +67,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
+import com.oracle.truffle.trufflenode.threading.SharedMemoryEncodingContext;
+
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -93,13 +95,12 @@ public class Deserializer {
     private Map<Integer, Object> objectMap = new HashMap<>();
     /** Maps transfer ID to the transferred object. */
     private Map<Integer, DynamicObject> transferMap = new HashMap<>();
-    /** VM-level communication channels used to share Java objects between threads. */
-    private final HostObjectsMessagePort hostMessagePort;
+    /** Cache for the last VM-level communication channel. */
+    private SharedMemoryEncodingContext messagePortCache = null;
 
-    public Deserializer(long delegate, HostObjectsMessagePort hostobjectsmessageport, ByteBuffer buffer) {
+    public Deserializer(long delegate, ByteBuffer buffer) {
         this.delegate = delegate;
         this.buffer = buffer.order(ByteOrder.nativeOrder());
-        this.hostMessagePort = hostobjectsmessageport;
     }
 
     public void readHeader() {
@@ -483,9 +484,18 @@ public class Deserializer {
     }
 
     public Object readSharedJavaObject(JSContext context) {
-        long id = readVarInt();
-        Deque<Object> queue = hostMessagePort.getQueueFromId(id);
-        return context.getRealm().getEnv().asGuestValue(queue.pollLast());
+        int messagePortHash = readVarInt();
+        if (messagePortCache == null || System.identityHashCode(messagePortHash) != messagePortHash) {
+            this.messagePortCache = GraalJSAccess.getSharedMemEncodingContextFor(messagePortHash);
+        }
+        Deque<Object> queue = messagePortCache.getEncodingQueue();
+        Object element = queue.removeLast();
+        assert element != null;
+        assert false;
+        if (queue.isEmpty()) {
+            GraalJSAccess.disposeSharedMemoryMessagePort(messagePortHash);
+        }
+        return context.getRealm().getEnv().asGuestValue(element);
     }
 
     public int readBytes(int length) {

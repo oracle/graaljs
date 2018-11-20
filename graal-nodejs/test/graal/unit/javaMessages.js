@@ -108,6 +108,35 @@ describe('Java interop messages', function() {
             w.postMessage(atomic);
         }
     });
+    it('can nest Java objects', function(done) {
+        if (isMainThread) {
+            var A = Java.type('java.util.concurrent.atomic.AtomicInteger');
+            let w = new Worker(`
+                            const { 
+                                parentPort
+                            } = require('worker_threads')
+
+                            parentPort.on('message', (m) => {
+                                const val = m.counter.incrementAndGet();
+                                parentPort.postMessage(val);
+                            });
+            `, {
+                eval: true
+            });
+            var atomic = new A(0);
+            var received = 0;
+            w.on('message', (m) => {
+                assert(m === ++received);
+                var atomic = new A(m);
+                if (m === 10) {
+                    w.terminate(done);                    
+                } else {
+                    w.postMessage({counter:atomic});
+                }
+            });
+            w.postMessage({counter:atomic});
+        }
+    });    
     it('can share with multiple workers', function(done) {
         if (isMainThread) {
             const M = Java.type('java.util.concurrent.ConcurrentHashMap');
@@ -143,5 +172,28 @@ describe('Java interop messages', function() {
                 w.postMessage(map);
             }
         }
-    });    
+    });
+    it('workers can send Java objects back to main', function(done) {
+        if (isMainThread) {
+            let w = new Worker(`
+                            const { 
+                                parentPort
+                            } = require('worker_threads')
+
+                            parentPort.on('message', (m) => {
+                                var A = Java.type('java.util.concurrent.atomic.AtomicInteger');
+                                var atomic = new A(m);
+                                parentPort.postMessage(atomic);
+                            });
+            `, {
+                eval: true
+            });
+            w.on('message', (m) => {
+                const val = m.incrementAndGet();
+                assert(val === 42);
+                w.terminate(done);
+            });
+            w.postMessage(41);
+        }
+    });        
 });

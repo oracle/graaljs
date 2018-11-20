@@ -38,58 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode.serialization;
+package com.oracle.truffle.trufflenode.threading;
 
 import java.util.Deque;
-import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.trufflenode.GraalJSAccess;
+public class SharedMemoryEncodingContext {
 
-public class HostObjectsMessagePort {
+    private final Deque<Object> queue;
 
-    private final Lock guard;
-    private final Map<GraalJSAccess, Deque<Object>> channels;
-
-    public HostObjectsMessagePort() {
-        this.guard = new ReentrantLock();
-        this.channels = new WeakHashMap<>();
+    public SharedMemoryEncodingContext() {
+        this.queue = new ConcurrentLinkedDeque<>();
     }
 
-    @TruffleBoundary
-    public Deque<Object> register(GraalJSAccess graalJSAccess) {
-        guard.lock();
-        try {
-            if (channels.containsKey(graalJSAccess)) {
-                return channels.get(graalJSAccess);
-            } else {
-                Deque<Object> channel = new ConcurrentLinkedDeque<>();
-                channels.put(graalJSAccess, channel);
-                return channel;
-            }
-        } finally {
-            guard.unlock();
-        }
-    }
-
-    @TruffleBoundary
-    public Deque<Object> getQueueFromId(long id) {
-        guard.lock();
-        try {
-            for (Deque<Object> q : channels.values()) {
-                if (System.identityHashCode(q) == id) {
-                    return q;
-                }
-            }
-            throw Errors.createError("Cannot receive host object message: unknown worker receiver!");
-        } finally {
-            guard.unlock();
-        }
+    public Deque<Object> getEncodingQueue() {
+        return queue;
     }
 
 }

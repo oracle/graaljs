@@ -93,6 +93,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -207,8 +208,9 @@ import com.oracle.truffle.trufflenode.node.ExecuteNativeFunctionNode;
 import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
 import com.oracle.truffle.trufflenode.node.debug.SetBreakPointNode;
 import com.oracle.truffle.trufflenode.serialization.Deserializer;
-import com.oracle.truffle.trufflenode.serialization.HostObjectsMessagePort;
 import com.oracle.truffle.trufflenode.serialization.Serializer;
+import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBindings;
+import com.oracle.truffle.trufflenode.threading.SharedMemoryEncodingContext;
 
 /**
  * Entry point for any access to the JavaScript engine from the native code.
@@ -267,12 +269,7 @@ public final class GraalJSAccess {
      * Communication channels factory. Used to establish a communication channels between node
      * workers when they attempt to exchange Java host objects.
      */
-    private static final HostObjectsMessagePort hostObjectsMessagePort = new HostObjectsMessagePort();
-
-    /**
-     * Per-isolate queue used to share host objects between workers.
-     */
-    private final Deque<Object> hostObjectsQueue;
+    private static final Map<Integer, SharedMemoryEncodingContext> pendingEncodingContexts = new ConcurrentHashMap<>();
 
     private final boolean exposeGC;
 
@@ -307,7 +304,6 @@ public final class GraalJSAccess {
         mainJSContext.setJSAgent(agent);
         deallocator = new Deallocator();
         envForInstruments = mainJSRealm.getEnv();
-        hostObjectsQueue = hostObjectsMessagePort.register(this);
     }
 
     private static String[] prepareArguments(String[] args) {
@@ -1717,6 +1713,12 @@ public final class GraalJSAccess {
             System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
             extendedArgs[userArgs.length] = setBreakPoint;
             return extendedArgs;
+        } else if ("internal/worker.js".equals(moduleName)) {
+            // The Shared-mem channel initialization is similar to NIO-based buffers.
+            Object[] extendedArgs = new Object[userArgs.length + 1];
+            System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
+            extendedArgs[userArgs.length] = GraalSharedChannelBindings.createInitFunction(this, node);
+            return extendedArgs;
         } else {
             return userArgs;
         }
@@ -2822,7 +2824,7 @@ public final class GraalJSAccess {
     }
 
     public Object valueSerializerNew(long delegatePointer) {
-        return new Serializer(mainJSContext, hostObjectsQueue, delegatePointer);
+        return new Serializer(mainJSContext, this, delegatePointer);
     }
 
     public int valueSerializerSize(Object serializer) {
@@ -2866,7 +2868,8 @@ public final class GraalJSAccess {
     }
 
     public Object valueDeserializerNew(long delegate, Object buffer) {
-        return new Deserializer(delegate, hostObjectsMessagePort, (ByteBuffer) buffer);
+        // inbox is allowed to be null if the serializer was used by non-workers
+        return new Deserializer(delegate, (ByteBuffer) buffer);
     }
 
     public void valueDeserializerReadHeader(Object deserializer) {
@@ -3053,6 +3056,34 @@ public final class GraalJSAccess {
         public JSModuleRecord loadModule(Source moduleSource) {
             throw new UnsupportedOperationException();
         }
+    }
+
+    private SharedMemoryEncodingContext currentEncodingContext = null;
+
+    public void unsetCurrentEncodingTarget() {
+        currentEncodingContext = null;
+    }
+
+    public void setCurrentEncodingContext(SharedMemoryEncodingContext context) {
+        assert context != null;
+        assert currentEncodingContext == null;
+        this.currentEncodingContext = context;
+        pendingEncodingContexts.put(System.identityHashCode(context), context);
+    }
+
+    public SharedMemoryEncodingContext getCurrentEncodingTarget() {
+        assert currentEncodingContext != null;
+        return currentEncodingContext;
+    }
+
+    public static void disposeSharedMemoryMessagePort(int contextHash) {
+        assert pendingEncodingContexts.containsKey(contextHash);
+        pendingEncodingContexts.remove(contextHash);
+    }
+
+    public static SharedMemoryEncodingContext getSharedMemEncodingContextFor(int contextHash) {
+        assert pendingEncodingContexts.containsKey(contextHash);
+        return pendingEncodingContexts.get(contextHash);
     }
 
 }
