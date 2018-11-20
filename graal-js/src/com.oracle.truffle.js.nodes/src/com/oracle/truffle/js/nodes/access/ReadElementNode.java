@@ -68,7 +68,7 @@ import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
@@ -1241,7 +1241,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private abstract static class ToPropertyKeyCachedReadElementTypeCacheNode extends CachedReadElementTypeCacheNode {
-        @Child private JSToStringNode indexToStringNode;
+        @Child private JSToPropertyKeyNode indexToPropertyKeyNode;
         protected final JSClassProfile jsclassProfile = JSClassProfile.create();
 
         ToPropertyKeyCachedReadElementTypeCacheNode(JSContext context) {
@@ -1249,14 +1249,11 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         protected final Object toPropertyKey(Object index) {
-            if (index instanceof Symbol) {
-                return index;
-            }
-            if (indexToStringNode == null) {
+            if (indexToPropertyKeyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                indexToStringNode = insert(JSToStringNode.create());
+                indexToPropertyKeyNode = insert(JSToPropertyKeyNode.create());
             }
-            return indexToStringNode.executeString(index);
+            return indexToPropertyKeyNode.execute(index);
         }
     }
 
