@@ -76,6 +76,7 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNodeGen;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNodeGen;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -97,6 +98,7 @@ import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsObject;
@@ -365,6 +367,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 return new NumberReadElementTypeCacheNode(context, target.getClass());
             } else if (target instanceof Symbol) {
                 return new SymbolReadElementTypeCacheNode(context);
+            } else if (target instanceof BigInt) {
+                return new BigIntReadElementTypeCacheNode(context);
             } else if (target instanceof TruffleObject) {
                 assert !(target instanceof Symbol);
                 return new TruffleObjectReadElementTypeCacheNode(context, (Class<? extends TruffleObject>) target.getClass());
@@ -1408,6 +1412,30 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         public boolean guard(Object target) {
             return target instanceof Symbol;
+        }
+    }
+
+    private static class BigIntReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+
+        BigIntReadElementTypeCacheNode(JSContext context) {
+            super(context);
+        }
+
+        @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
+            BigInt bigInt = (BigInt) target;
+            return JSObject.get(JSBigInt.create(context, bigInt), toPropertyKey(index), jsclassProfile);
+        }
+
+        @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
+            BigInt bigInt = (BigInt) target;
+            return JSObject.get(JSBigInt.create(context, bigInt), index, jsclassProfile);
+        }
+
+        @Override
+        public boolean guard(Object target) {
+            return target instanceof BigInt;
         }
     }
 
