@@ -1270,21 +1270,20 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         StringReadElementTypeCacheNode(JSContext context, Class<?> stringClass) {
             super(context);
             this.stringClass = stringClass;
-            this.toArrayIndexNode = ToArrayIndexNode.create();
+            this.toArrayIndexNode = ToArrayIndexNode.createNoToPropertyKey();
         }
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
-            Object propertyKey = toPropertyKey(index);
-            Object convertedIndex = toArrayIndexNode.execute(propertyKey);
+            Object convertedIndex = toArrayIndexNode.execute(index);
             if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
                 int intIndex = ((Long) convertedIndex).intValue();
                 if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < charSequence.length())) {
                     return String.valueOf(charSequence.charAt(intIndex));
                 }
             }
-            return JSObject.get(JSString.create(context, charSequence), propertyKey, jsclassProfile);
+            return JSObject.get(JSString.create(context, charSequence), toPropertyKey(index), jsclassProfile);
         }
 
         @Override
@@ -1311,7 +1310,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         LazyStringReadElementTypeCacheNode(JSContext context) {
             super(context);
-            this.toArrayIndexNode = ToArrayIndexNode.create();
+            this.toArrayIndexNode = ToArrayIndexNode.createNoToPropertyKey();
         }
 
         @Override
@@ -1324,7 +1323,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return String.valueOf(charSequence.charAt(intIndex));
                 }
             }
-            return JSObject.get(JSString.create(context, charSequence), toPropertyKey(convertedIndex), jsclassProfile);
+            return JSObject.get(JSString.create(context, charSequence), toPropertyKey(index), jsclassProfile);
         }
 
         @Override
