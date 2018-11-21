@@ -869,6 +869,13 @@ public final class JSRuntime {
             return JSObject.safeToString((DynamicObject) value);
         } else if (value instanceof Symbol) {
             return value.toString();
+        } else if (isNumber(value)) {
+            Number number = (Number) value;
+            if (JSRuntime.isNegativeZero(number.doubleValue())) {
+                return "-0";
+            } else {
+                return numberToString(number);
+            }
         } else {
             return toString(value);
         }
