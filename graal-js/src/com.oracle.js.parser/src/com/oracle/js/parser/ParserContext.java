@@ -215,7 +215,7 @@ class ParserContext {
     public ParserContextBlockNode getFunctionBody(final ParserContextFunctionNode functionNode) {
         for (int i = sp - 1; i >= 0; i--) {
             if (stack[i] == functionNode) {
-                return (ParserContextBlockNode) stack[i + 1];
+                return (functionNode.getKind()  == FunctionNode.Kind.MODULE) ? (ParserContextBlockNode) stack[i + 2] : (ParserContextBlockNode) stack[i + 1];
             }
         }
         throw new AssertionError(functionNode.getName() + " not on context stack");
