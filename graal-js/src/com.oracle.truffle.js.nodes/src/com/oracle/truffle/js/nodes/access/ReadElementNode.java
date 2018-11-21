@@ -370,7 +370,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             } else if (target instanceof BigInt) {
                 return new BigIntReadElementTypeCacheNode(context);
             } else if (target instanceof TruffleObject) {
-                assert !(target instanceof Symbol);
+                assert JSRuntime.isForeignObject(target);
                 return new TruffleObjectReadElementTypeCacheNode(context, (Class<? extends TruffleObject>) target.getClass());
             } else {
                 assert JSTruffleOptions.NashornJavaInterop : target;
@@ -1564,7 +1564,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         public boolean guard(Object target) {
-            return targetClass.isInstance(target);
+            return targetClass.isInstance(target) && !JSObject.isJSObject(target);
         }
     }
 

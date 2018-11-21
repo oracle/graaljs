@@ -412,6 +412,7 @@ public class WriteElementNode extends JSTargetableNode {
             } else if (target instanceof BigInt) {
                 return new BigIntWriteElementTypeCacheNode(context, isStrict, writeOwn);
             } else if (target instanceof TruffleObject) {
+                assert JSRuntime.isForeignObject(target);
                 return new TruffleObjectWriteElementTypeCacheNode(context, isStrict, (Class<? extends TruffleObject>) target.getClass(), writeOwn);
             } else {
                 assert JSTruffleOptions.NashornJavaInterop : target;
@@ -1667,7 +1668,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         public boolean guard(Object target) {
-            return targetClass.isInstance(target);
+            return targetClass.isInstance(target) && !JSObject.isJSObject(target);
         }
 
         private void tryInvokeSetter(TruffleObject thisObj, String key, Object value) {
