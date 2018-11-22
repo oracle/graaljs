@@ -463,8 +463,12 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     public NodeCost getCost() {
         if (cacheNode == null) {
             return NodeCost.UNINITIALIZED;
+        } else if (isGeneric(cacheNode)) {
+            return NodeCost.MEGAMORPHIC;
+        } else if (cacheNode.nextNode != null) {
+            return NodeCost.POLYMORPHIC;
         } else {
-            return cacheNode.getCost();
+            return NodeCost.MONOMORPHIC;
         }
     }
 
@@ -1095,11 +1099,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        public NodeCost getCost() {
-            if (nextNode != null) {
-                return NodeCost.POLYMORPHIC;
-            }
-            return NodeCost.MONOMORPHIC;
+        public final NodeCost getCost() {
+            return NodeCost.NONE;
         }
     }
 
@@ -1697,11 +1698,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        public NodeCost getCost() {
-            return NodeCost.MEGAMORPHIC;
-        }
-
-        @Override
         protected boolean accept(Object function) {
             return JSFunction.isJSFunction(function);
         }
@@ -1863,11 +1859,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 }
             }
             return Errors.createTypeErrorNotAFunction(expressionStr != null ? expressionStr : function, this);
-        }
-
-        @Override
-        public NodeCost getCost() {
-            return NodeCost.MEGAMORPHIC;
         }
     }
 
