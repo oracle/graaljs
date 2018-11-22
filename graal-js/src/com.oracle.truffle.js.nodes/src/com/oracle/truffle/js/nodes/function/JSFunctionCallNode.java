@@ -371,9 +371,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             } else {
                 newNode = createCallableNode(functionObj, functionData, isNew(flags), isNewTarget(flags), false);
             }
-            if (getCachedCount(head) > 1) {
-                reportPolymorphicSpecialize();
-            }
             return replaceCached(newNode, head, obsoleteNode, previousNode);
         }
     }
@@ -455,6 +452,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         insert(newNode);
         newNode.nextNode = head;
         this.cacheNode = newNode;
+        if (head != null) {
+            reportPolymorphicSpecialize();
+        }
         return newNode;
     }
 
