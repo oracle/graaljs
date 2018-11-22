@@ -88,7 +88,8 @@ def _build(args, debug, shared_library, threading, parallelism, debug_mode, outp
         ] + debug + shared_library + threading,
         cwd=_suite.dir, verbose=True)
 
-    _mxrun([mx.gmake_cmd(), '-j%d' % parallelism], cwd=_suite.dir, verbose=True)
+    verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
+    _mxrun([mx.gmake_cmd(), '-j%d' % parallelism, verbose], cwd=_suite.dir, verbose=True)
 
     if _currentOs == 'darwin':
         nodePath = join(_suite.dir, 'out', 'Debug' if debug_mode else 'Release', 'node')
