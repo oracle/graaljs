@@ -884,10 +884,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/harmony/bigint/turbo.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/harmony/default-parameter-do-expression.js",
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"

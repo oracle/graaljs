@@ -153,7 +153,7 @@ public abstract class LocalVarIncNode extends FrameSlotNode {
 
         @Override
         public BigInt doBigInt(BigInt value) {
-            return value.add(BigInt.ONE);
+            return value.subtract(BigInt.ONE);
         }
 
         @Override
