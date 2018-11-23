@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -91,5 +92,10 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
     @Specialization
     public Symbol doSymbol(Symbol value) {
         return value;
+    }
+
+    @Specialization
+    public BigInt doBigInt(BigInt bigInt) {
+        return bigInt;
     }
 }
