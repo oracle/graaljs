@@ -770,8 +770,8 @@ function v8StringIteratorProtector() {
     return v8IgnoreResult;
 }
 
-function v8CreateIterResultObject() {
-    throw new Error("v8 internal method not implemented");
+function v8CreateIterResultObject(value, done) {
+    return { value: value, done: !!done };
 }
 
 function v8ConstructSlicedString(string, index) {
