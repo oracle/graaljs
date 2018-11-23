@@ -40,9 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.dsl.Cached;
+import java.math.BigInteger;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -65,14 +66,25 @@ public abstract class JSNumberToBigIntNode extends JavaScriptBaseNode {
         return BigInt.valueOf(value);
     }
 
-    @Specialization
-    protected BigInt doDouble(double value,
-                    @Cached("createBinaryProfile()") ConditionProfile isNotInteger) {
+    @Specialization(guards = "isDoubleRepresentableAsLong(value)")
+    protected BigInt doDoubleAsLong(double value) {
+        return BigInt.valueOf((long) value);
+    }
 
-        if (isNotInteger.profile(!JSRuntime.isInteger(value))) {
+    @TruffleBoundary
+    @Specialization(guards = "!isDoubleRepresentableAsLong(value)")
+    protected BigInt doDoubleOther(double value) {
+        if (!JSRuntime.isInteger(value)) {
             throw Errors.createRangeError("BigInt out of range");
         }
-        return BigInt.valueOf((long) value);
+        long bits = Double.doubleToLongBits(value);
+        boolean negative = (bits & 0x8000000000000000L) != 0;
+        int exponentOffset = 1023;
+        int mantissaLength = 52;
+        int exponent = (int) ((bits & 0x7ff0000000000000L) >> mantissaLength) - exponentOffset - mantissaLength;
+        long mantissa = (bits & 0x000fffffffffffffL) | 0x0010000000000000L;
+        BigInteger bigInteger = BigInteger.valueOf(negative ? -mantissa : mantissa).shiftLeft(exponent);
+        return new BigInt(bigInteger);
     }
 
     @Specialization(guards = "isJSNull(value)")
