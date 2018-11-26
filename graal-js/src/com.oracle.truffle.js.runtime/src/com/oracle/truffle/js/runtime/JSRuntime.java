@@ -1094,15 +1094,7 @@ public final class JSRuntime {
         if (!first) {
             sb.append(", ");
         }
-        if (isString(key)) {
-            sb.append('"');
-            sb.append(key);
-            sb.append('"');
-        } else if (JSObject.isDynamicObject(key)) {
-            sb.append("{...}");
-        } else {
-            sb.append(key);
-        }
+        sb.append(toPrintableValue(key));
         if (isMap) {
             sb.append(" => ");
             sb.append(toPrintableValue(value));
