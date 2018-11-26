@@ -247,7 +247,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             getToJSONProperty = insert(PropertyGetNode.create("toJSON", false, context));
         }
         Object toJSON = getToJSONProperty.getValue(valueObj);
-        if (JSFunction.isJSFunction(toJSON)) {
+        if (JSRuntime.isCallable(toJSON)) {
             return jsonStrPrepareObjectFunction(key, value, (DynamicObject) toJSON);
         }
         return value;
