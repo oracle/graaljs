@@ -869,6 +869,8 @@ public final class JSRuntime {
             return JSObject.safeToString((DynamicObject) value);
         } else if (value instanceof Symbol) {
             return value.toString();
+        } else if (value instanceof BigInt) {
+            return value.toString() + "n";
         } else if (isNumber(value)) {
             Number number = (Number) value;
             if (JSRuntime.isNegativeZero(number.doubleValue())) {
