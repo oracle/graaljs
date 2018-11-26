@@ -247,18 +247,18 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             getToJSONProperty = insert(PropertyGetNode.create("toJSON", false, context));
         }
         Object toJSON = getToJSONProperty.getValue(valueObj);
-        if (JSFunction.isJSFunction(toJSON)) {
-            return jsonStrPrepareObjectFunction(key, valueObj, (DynamicObject) toJSON);
+        if (JSRuntime.isCallable(toJSON)) {
+            return jsonStrPrepareObjectFunction(key, value, (DynamicObject) toJSON);
         }
         return value;
     }
 
-    private Object jsonStrPrepareObjectFunction(Object key, DynamicObject valueObj, DynamicObject toJSON) {
+    private Object jsonStrPrepareObjectFunction(Object key, Object value, DynamicObject toJSON) {
         if (callToJSONFunction == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callToJSONFunction = insert(JSFunctionCallNode.createCall());
         }
-        return callToJSONFunction.executeCall(JSArguments.createOneArg(valueObj, toJSON, key));
+        return callToJSONFunction.executeCall(JSArguments.createOneArg(value, toJSON, key));
     }
 
     @TruffleBoundary
