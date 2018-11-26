@@ -91,6 +91,11 @@ def _build(args, debug, shared_library, threading, parallelism, debug_mode, outp
     verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
     _mxrun([mx.gmake_cmd(), '-j%d' % parallelism, verbose], cwd=_suite.dir, verbose=True)
 
+    # put headers for native modules into out/headers
+    _setEnvVar('HEADERS_ONLY', '1')
+    out = None if mx.get_opts().verbose else open(os.devnull, 'w')
+    _mxrun([join(_suite.mxDir, 'python2', 'python'), 'tools/install.py', 'install', 'out/headers', '/'], out=out)
+
     if _currentOs == 'darwin':
         nodePath = join(_suite.dir, 'out', 'Debug' if debug_mode else 'Release', 'node')
         _mxrun(['install_name_tool', '-add_rpath', join(_getJdkHome(), 'jre', 'lib'), nodePath], verbose=True)
@@ -365,10 +370,10 @@ def parse_js_args(args):
 
     return vmArgs, progArgs
 
-def _mxrun(args, cwd=_suite.dir, verbose=False):
+def _mxrun(args, cwd=_suite.dir, verbose=False, out=None):
     if verbose:
         mx.log('Running \'{}\''.format(' '.join(args)))
-    status = mx.run(args, nonZeroIsFatal=False, cwd=cwd)
+    status = mx.run(args, nonZeroIsFatal=False, cwd=cwd, out=out)
     if status:
         mx.abort(status)
 
