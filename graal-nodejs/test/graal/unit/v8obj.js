@@ -58,11 +58,6 @@ describe('V8', function () {
             assert.strictEqual(module.V8Obj_SetEntropySource(), true);
         });
     });
-    describe('SetFlagsFromCommandLine', function () {
-        it('should be possible to call SetFlagsFromCommandLine', function () {
-            assert.strictEqual(module.V8Obj_SetFlagsFromCommandLine(), true);
-        });
-    });
     describe('SetFlagsFromString', function () {
         it('setting simple flag', function () {
             assert.strictEqual(module.V8Obj_SetFlagsFromString(), true);

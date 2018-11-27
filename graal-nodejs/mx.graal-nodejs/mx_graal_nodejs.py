@@ -50,7 +50,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
     with Task('UnitTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.unitTests]) as t:
         if t:
-            commonArgs = ['-ea']
+            commonArgs = ['-ea', '-esa']
             unitTestDir = join('test', 'graal')
             mx.run(['rm', '-rf', 'node_modules', 'build'], cwd=unitTestDir)
             npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
@@ -69,7 +69,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
 
     with Task('JniProfilerTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.jniProfilerTests]) as t:
         if t:
-            commonArgs = ['-ea']
+            commonArgs = ['-ea', '-esa']
             unitTestDir = join(mx.project('com.oracle.truffle.trufflenode.jniboundaryprofiler').dir, 'tests')
             mx.run(['rm', '-rf', 'node_modules', 'build'], cwd=unitTestDir)
             npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
@@ -277,7 +277,7 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     mode, vmArgs, progArgs = setupNodeEnvironment(args)
     if mode == 'Debug':
         progArgs += ['-m', 'debug']
-    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-Xrs'] + vmArgs))
+    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-esa', '-Xrs'] + vmArgs))
     _setEnvVar('NODE_STACK_SIZE', '4000000')
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
     return mx.run([join(_suite.mxDir, 'python2', 'python'), 'tools/test.py'] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))

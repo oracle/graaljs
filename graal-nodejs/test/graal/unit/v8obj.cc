@@ -87,15 +87,6 @@ EXPORT_TO_JS(SetEntropySource) {
     args.GetReturnValue().Set(true);
 }
 
-// V8::SetFlagsFromCommandLine
-
-EXPORT_TO_JS(SetFlagsFromCommandLine) {
-    char const *argv[3] = {"one", "two", "three"};
-    int argc = 3;
-    V8::SetFlagsFromCommandLine(&argc, (char**) argv, false);
-    args.GetReturnValue().Set(true);
-}
-
 // ResourceConstraints::ResourceConstraints
 
 EXPORT_TO_JS(ResourceConstraints) {
