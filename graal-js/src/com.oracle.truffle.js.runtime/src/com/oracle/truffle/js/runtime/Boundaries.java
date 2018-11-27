@@ -162,12 +162,12 @@ public final class Boundaries {
         return value.toString();
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static String substring(String s, int begin, int end) {
         return s.substring(begin, end);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     public static String substring(String s, int begin) {
         return s.substring(begin);
     }

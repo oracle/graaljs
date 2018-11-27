@@ -178,6 +178,13 @@ public class JSContext {
     @CompilationFinal private Assumption typedArrayNotDetachedAssumption;
 
     /**
+     * Assumption: Static RegExp results (RegExp.$1 etc) are never used. As long as this assumption
+     * holds, just the arguments of the last RegExp execution are stored, allowing RegExp result
+     * objects to be virtualized in RegExp#exec().
+     */
+    private final Assumption regExpStaticResultUnusedAssumption;
+
+    /**
      * Local time zone information. Initialized lazily.
      */
     private LocalTimeZoneHolder localTimeZoneHolder;
@@ -392,6 +399,7 @@ public class JSContext {
         this.typedArrayNotDetachedAssumption = Truffle.getRuntime().createAssumption("typedArrayNotDetachedAssumption");
         this.fastArrayAssumption = Truffle.getRuntime().createAssumption("fastArrayAssumption");
         this.fastArgumentsObjectAssumption = Truffle.getRuntime().createAssumption("fastArgumentsObjectAssumption");
+        this.regExpStaticResultUnusedAssumption = Truffle.getRuntime().createAssumption("regExpStaticResultUnusedAssumption");
 
         this.evaluator = evaluator;
         this.nodeFactory = evaluator.getDefaultNodeFactory();
@@ -566,6 +574,10 @@ public class JSContext {
 
     public final Assumption getTypedArrayNotDetachedAssumption() {
         return typedArrayNotDetachedAssumption;
+    }
+
+    public final Assumption getRegExpStaticResultUnusedAssumption() {
+        return regExpStaticResultUnusedAssumption;
     }
 
     public static JSContext createContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {

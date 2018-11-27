@@ -52,8 +52,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.Boundaries;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -110,8 +108,9 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     public static final HiddenKey GROUPS_RESULT_ID = new HiddenKey("regexResult");
     private static final Property GROUPS_RESULT_PROPERTY;
 
-    private static final TRegexUtil.TRegexCompiledRegexSingleFlagAccessor STATIC_MULTILINE_ACCESSOR = TRegexUtil.TRegexCompiledRegexSingleFlagAccessor.create(TRegexUtil.Props.Flags.MULTILINE);
-    private static final TRegexUtil.TRegexResultAccessor STATIC_RESULT_ACCESSOR = TRegexUtil.TRegexResultAccessor.create();
+    private static final String[] STATIC_REGEXP_RESULT_PROPERTIES_NASHORN_ONLY = {"input", "multiline", "lastMatch", "lastParen", "leftContext", "rightContext"};
+    private static final String[] STATIC_REGEXP_RESULT_PROPERTIES_NO_NASHORN = {"input", "lastMatch", "lastParen", "leftContext", "rightContext"};
+    private static final String[] STATIC_REGEXP_RESULT_PROPERTIES_NO_NASHORN_ALIASES = {"$_", "$&", "$+", "$`", "$'"};
 
     /**
      * Since we cannot use nodes here, access to this property is special-cased in
@@ -184,7 +183,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         return (TruffleObject) COMPILED_REGEX_PROPERTY.get(thisObj, isJSRegExp(thisObj));
     }
 
-    public static TruffleObject getCompiledRegex(DynamicObject thisObj, boolean guard) {
+    public static TruffleObject getCompiledRegexUnchecked(DynamicObject thisObj, boolean guard) {
         assert isJSRegExp(thisObj);
         return (TruffleObject) COMPILED_REGEX_PROPERTY.get(thisObj, guard);
     }
@@ -192,6 +191,11 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     public static JSObjectFactory getGroupsFactory(DynamicObject thisObj) {
         assert isJSRegExp(thisObj);
         return (JSObjectFactory) GROUPS_FACTORY_PROPERTY.get(thisObj, isJSRegExp(thisObj));
+    }
+
+    public static JSObjectFactory getGroupsFactoryUnchecked(DynamicObject thisObj, boolean guard) {
+        assert isJSRegExp(thisObj);
+        return (JSObjectFactory) GROUPS_FACTORY_PROPERTY.get(thisObj, guard);
     }
 
     /**
@@ -304,9 +308,8 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     }
 
     private static void putRegExpPropertyAccessor(JSRealm realm, DynamicObject prototype, String name) {
-        JSContext ctx = realm.getContext();
         DynamicObject getter = realm.lookupFunction(PROTOTYPE_GETTER_NAME, name);
-        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, name, getter, Undefined.instance);
+        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), prototype, name, getter, Undefined.instance);
     }
 
     private static Object compileEarly(String pattern, String flags) {
@@ -347,178 +350,38 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         final JSContext context = realm.getContext();
         putConstructorSpeciesGetter(realm, constructor);
         if (context.isOptionRegexpStaticResult()) {
-            Object defaultValue = "";
-
-            RegExpPropertyGetter getInput = obj -> {
-                TruffleObject result = context.getRealm().getRegexResult();
-                return staticResultGetInput(defaultValue, result);
-            };
-            RegExpPropertyGetter getMultiline = obj -> {
-                TruffleObject result = context.getRealm().getRegexResult();
-                return staticResultGetMultiline(false, result);
-            };
-            RegExpPropertyGetter getLastMatch = obj -> {
-                TruffleObject result = context.getRealm().getRegexResult();
-                return staticResultGetLastMatch(defaultValue, result);
-            };
-            RegExpPropertyGetter getLastParen = obj -> {
-                TruffleObject result = context.getRealm().getRegexResult();
-                return staticResultGetLastParen(defaultValue, result);
-            };
-            RegExpPropertyGetter getLeftContext = obj -> {
-                TruffleObject result = context.getRealm().getRegexResult();
-                return staticResultGetLeftContext(defaultValue, result);
-            };
-            RegExpPropertyGetter getRightContext = obj -> {
-                TruffleObject result = context.getRealm().getRegexResult();
-                return staticResultGetRightContext(defaultValue, result);
-            };
-
-            putRegExpStaticResultPropertyAccessor(realm, constructor, "input", getInput);
-            if (!JSTruffleOptions.NashornCompatibilityMode) {
-                putRegExpStaticResultPropertyAccessor(realm, constructor, "$_", getInput);
-            }
-
             if (JSTruffleOptions.NashornCompatibilityMode) {
-                putRegExpStaticResultPropertyAccessor(realm, constructor, "multiline", getMultiline);
+                for (String prop : STATIC_REGEXP_RESULT_PROPERTIES_NASHORN_ONLY) {
+                    putRegExpStaticPropertyAccessor(realm, constructor, prop, prop);
+                }
+            } else {
+                for (String prop : STATIC_REGEXP_RESULT_PROPERTIES_NO_NASHORN) {
+                    putRegExpStaticPropertyAccessor(realm, constructor, prop, prop);
+                }
+                for (int i = 0; i < STATIC_REGEXP_RESULT_PROPERTIES_NO_NASHORN_ALIASES.length; i++) {
+                    putRegExpStaticPropertyAccessor(realm, constructor, STATIC_REGEXP_RESULT_PROPERTIES_NO_NASHORN[i], STATIC_REGEXP_RESULT_PROPERTIES_NO_NASHORN_ALIASES[i]);
+                }
             }
-
-            putRegExpStaticResultPropertyAccessor(realm, constructor, "lastMatch", getLastMatch);
-            if (!JSTruffleOptions.NashornCompatibilityMode) {
-                putRegExpStaticResultPropertyAccessor(realm, constructor, "$&", getLastMatch);
-            }
-
-            putRegExpStaticResultPropertyAccessor(realm, constructor, "lastParen", getLastParen);
-            if (!JSTruffleOptions.NashornCompatibilityMode) {
-                putRegExpStaticResultPropertyAccessor(realm, constructor, "$+", getLastParen);
-            }
-
-            putRegExpStaticResultPropertyAccessor(realm, constructor, "leftContext", getLeftContext);
-            if (!JSTruffleOptions.NashornCompatibilityMode) {
-                putRegExpStaticResultPropertyAccessor(realm, constructor, "$`", getLeftContext);
-            }
-
-            putRegExpStaticResultPropertyAccessor(realm, constructor, "rightContext", getRightContext);
-            if (!JSTruffleOptions.NashornCompatibilityMode) {
-                putRegExpStaticResultPropertyAccessor(realm, constructor, "$'", getRightContext);
-            }
-
             for (int i = 1; i <= 9; i++) {
-                putRegExpStaticResultPropertyWithIndexAccessor(realm, constructor, "$" + i, i);
+                String name = "$" + i;
+                putRegExpStaticPropertyAccessor(realm, constructor, name, name);
             }
         }
     }
 
-    @TruffleBoundary
-    private static Object staticResultGetInput(Object defaultValue, TruffleObject result) {
-        if (STATIC_RESULT_ACCESSOR.isMatch(result)) {
-            return STATIC_RESULT_ACCESSOR.input(result);
-        } else {
-            return defaultValue;
-        }
-    }
-
-    @TruffleBoundary
-    private static Object staticResultGetMultiline(Object defaultValue, TruffleObject result) {
-        if (!JSTruffleOptions.NashornCompatibilityMode && STATIC_RESULT_ACCESSOR.isMatch(result)) {
-            return STATIC_MULTILINE_ACCESSOR.get(STATIC_RESULT_ACCESSOR.regex(result));
-        } else {
-            return defaultValue;
-        }
-    }
-
-    @TruffleBoundary
-    private static Object staticResultGetLastMatch(Object defaultValue, TruffleObject result) {
-        if (STATIC_RESULT_ACCESSOR.isMatch(result)) {
-            return Boundaries.substring(STATIC_RESULT_ACCESSOR.input(result), STATIC_RESULT_ACCESSOR.captureGroupStart(result, 0), STATIC_RESULT_ACCESSOR.captureGroupEnd(result, 0));
-        } else {
-            return defaultValue;
-        }
-    }
-
-    @TruffleBoundary
-    private static Object staticResultGetLastParen(Object defaultValue, TruffleObject result) {
-        if (STATIC_RESULT_ACCESSOR.isMatch(result)) {
-            int groupNumber = STATIC_RESULT_ACCESSOR.groupCount(result) - 1;
-            if (groupNumber > 0) {
-                int start = STATIC_RESULT_ACCESSOR.captureGroupStart(result, groupNumber);
-                if (start >= 0) {
-                    return Boundaries.substring(STATIC_RESULT_ACCESSOR.input(result), start, STATIC_RESULT_ACCESSOR.captureGroupEnd(result, groupNumber));
-                }
-            }
-            return defaultValue;
-        } else {
-            return defaultValue;
-        }
-    }
-
-    @TruffleBoundary
-    private static Object staticResultGetLeftContext(Object defaultValue, TruffleObject result) {
-        if (STATIC_RESULT_ACCESSOR.isMatch(result)) {
-            int start = STATIC_RESULT_ACCESSOR.captureGroupStart(result, 0);
-            return Boundaries.substring(STATIC_RESULT_ACCESSOR.input(result), 0, start);
-        } else {
-            return defaultValue;
-        }
-    }
-
-    @TruffleBoundary
-    private static Object staticResultGetRightContext(Object defaultValue, TruffleObject result) {
-        if (STATIC_RESULT_ACCESSOR.isMatch(result)) {
-            int end = STATIC_RESULT_ACCESSOR.captureGroupEnd(result, 0);
-            return Boundaries.substring(STATIC_RESULT_ACCESSOR.input(result), end);
-        } else {
-            return defaultValue;
-        }
-    }
-
-    private static void putRegExpStaticResultPropertyAccessor(JSRealm realm, DynamicObject prototype, String name, RegExpPropertyGetter getterImpl) {
+    private static void putRegExpStaticPropertyAccessor(JSRealm realm, DynamicObject constructor, String getterName, String propertyName) {
         JSContext ctx = realm.getContext();
-        DynamicObject getter = JSFunction.create(realm, JSFunctionData.createCallOnly(ctx, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(ctx.getLanguage(), null, null) {
+        DynamicObject getter = realm.lookupFunction(CLASS_NAME, getterName);
 
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object obj = JSArguments.getThisObject(frame.getArguments());
-                DynamicObject view = JSObject.castJSObject(obj);
-                return getterImpl.get(view);
-            }
-        }), 0, "get " + name));
+        // set empty setter for V8 compatibility, see testv8/mjsunit/regress/regress-5566.js
         DynamicObject setter = JSFunction.create(realm, JSFunctionData.createCallOnly(ctx, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(ctx.getLanguage(), null, null) {
 
             @Override
             public Object execute(VirtualFrame frame) {
                 return Undefined.instance;
             }
-        }), 0, "set " + name));
-        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, name, getter, setter, getRegExpStaticResultPropertyAccessorJSAttributes());
-    }
-
-    private static void putRegExpStaticResultPropertyWithIndexAccessor(JSRealm realm, DynamicObject prototype, String name, int index) {
-        JSContext ctx = realm.getContext();
-        DynamicObject getter = JSFunction.create(realm, JSFunctionData.createCallOnly(ctx, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(ctx.getLanguage(), null, null) {
-
-            @Child TRegexUtil.TRegexResultAccessor resultAccessor = TRegexUtil.TRegexResultAccessor.create();
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                TruffleObject result = ctx.getRealm().getRegexResult();
-                if (resultAccessor.isMatch(result) && resultAccessor.groupCount(result) > index) {
-                    int start = resultAccessor.captureGroupStart(result, index);
-                    if (start >= 0) {
-                        return Boundaries.substring(resultAccessor.input(result), start, resultAccessor.captureGroupEnd(result, index));
-                    }
-                }
-                return "";
-            }
-        }), 0, "get " + name));
-        DynamicObject setter = JSFunction.create(realm, JSFunctionData.createCallOnly(ctx, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(ctx.getLanguage(), null, null) {
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return Undefined.instance;
-            }
-        }), 0, "set " + name));
-        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, name, getter, setter, getRegExpStaticResultPropertyAccessorJSAttributes());
+        }), 0, "set " + propertyName));
+        JSObjectUtil.putConstantAccessorProperty(ctx, constructor, propertyName, getter, setter, getRegExpStaticResultPropertyAccessorJSAttributes());
     }
 
     // https://github.com/tc39/proposal-regexp-legacy-features#additional-properties-of-the-regexp-constructor
@@ -558,10 +421,6 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getRegExpConstructor().getPrototype();
-    }
-
-    interface RegExpPropertyGetter {
-        Object get(DynamicObject obj);
     }
 
     @TruffleBoundary
