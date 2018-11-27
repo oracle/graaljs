@@ -447,6 +447,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
     }
 
+    /**
+     * @throws SecurityException
+     */
     static TruffleFile resolveRelativeFilePath(String path, TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
         TruffleFile file = env.getTruffleFile(path);
@@ -1100,9 +1103,13 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 }
             }
 
-            TruffleFile file = resolveRelativeFilePath(path, realm.getEnv());
-            if (file.isRegularFile()) {
-                source = sourceFromTruffleFile(file);
+            try {
+                TruffleFile file = resolveRelativeFilePath(path, realm.getEnv());
+                if (file.isRegularFile()) {
+                    source = sourceFromTruffleFile(file);
+                }
+            } catch (SecurityException e) {
+                throw Errors.createErrorFromException(e);
             }
 
             if (source == null) {
@@ -1339,23 +1346,26 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
     static Object getFileFromArgument(Object arg, TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
-        String path;
-        if (JSRuntime.isString(arg)) {
-            path = arg.toString();
-        } else if (!JSTruffleOptions.SubstrateVM && env.isHostObject(arg) && env.asHostObject(arg) instanceof File) {
-            return verifyFile((File) env.asHostObject(arg));
-        } else if (JSTruffleOptions.NashornJavaInterop && arg instanceof File) {
-            return verifyFile((File) arg);
-        } else {
-            path = JSRuntime.toString(arg);
-        }
+        try {
+            String path;
+            if (JSRuntime.isString(arg)) {
+                path = arg.toString();
+            } else if (!JSTruffleOptions.SubstrateVM && env.isHostObject(arg) && env.asHostObject(arg) instanceof File) {
+                return verifyFile((File) env.asHostObject(arg));
+            } else if (JSTruffleOptions.NashornJavaInterop && arg instanceof File) {
+                return verifyFile((File) arg);
+            } else {
+                path = JSRuntime.toString(arg);
+            }
 
-        TruffleFile file = resolveRelativeFilePath(path, env);
-
-        if (!file.isRegularFile()) {
-            throw Errors.createNotAFileError(path);
+            TruffleFile file = resolveRelativeFilePath(path, env);
+            if (!file.isRegularFile()) {
+                throw Errors.createNotAFileError(path);
+            }
+            return file;
+        } catch (SecurityException e) {
+            throw Errors.createErrorFromException(e);
         }
-        return file;
     }
 
     private static File verifyFile(File file) {
@@ -1388,7 +1398,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     return readImpl(Files.newBufferedReader(((File) file).toPath()));
                 }
             } catch (Exception ex) {
-                throw JSException.create(JSErrorType.Error, ex.getMessage(), ex, this);
+                throw Errors.createErrorFromException(ex);
             }
         }
 
@@ -1439,7 +1449,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 }
                 return arrayBuffer;
             } catch (Exception ex) {
-                throw JSException.create(JSErrorType.Error, ex.getMessage(), ex, this);
+                throw Errors.createErrorFromException(ex);
             }
         }
     }
