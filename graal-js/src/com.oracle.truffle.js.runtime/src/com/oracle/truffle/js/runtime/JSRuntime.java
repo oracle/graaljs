@@ -2056,10 +2056,14 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object parseRawFitsLong(String string, int radix) {
+        return parseRawFitsLong(string, radix, string.length());
+    }
+
+    @TruffleBoundary
+    public static Object parseRawFitsLong(String string, int radix, int len) {
         char firstChar = string.charAt(0);
 
         int pos = 0;
-        int len = string.length();
         boolean negate = false;
 
         if (firstChar == '-') {
@@ -2107,10 +2111,14 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static double parseRawDontFitLong(String string, int radix) {
+        return parseRawDontFitLong(string, radix, string.length());
+    }
+
+    @TruffleBoundary
+    public static double parseRawDontFitLong(String string, int radix, int len) {
         char firstChar = string.charAt(0);
 
         int pos = 0;
-        int len = string.length();
         boolean negate = false;
 
         if (firstChar == '-') {
