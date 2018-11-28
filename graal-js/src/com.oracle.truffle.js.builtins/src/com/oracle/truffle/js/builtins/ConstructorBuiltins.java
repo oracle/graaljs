@@ -1164,12 +1164,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return (arg0 == Undefined.instance) || (arg0 == Null.instance);
         }
 
+        @Specialization(guards = {"isNewTargetCase"})
+        protected DynamicObject constructObjectNewTarget(DynamicObject newTarget, @SuppressWarnings("unused") Object[] arguments) {
+            return newObject(newTarget);
+        }
+
         @Specialization(guards = {"arguments.length == 0"})
         protected DynamicObject constructObject0(DynamicObject newTarget, @SuppressWarnings("unused") Object[] arguments) {
             return newObject(newTarget);
         }
 
-        @Specialization(guards = {"arguments.length > 0", "!arg0NullOrUndefined(arguments)"})
+        @Specialization(guards = {"!isNewTargetCase", "arguments.length > 0", "!arg0NullOrUndefined(arguments)"})
         protected TruffleObject constructObjectJSObject(@SuppressWarnings("unused") DynamicObject newTarget, Object[] arguments,
                         @Cached("createToObject(getContext())") JSToObjectNode toObjectNode) {
             return toObjectNode.executeTruffleObject(arguments[0]);
