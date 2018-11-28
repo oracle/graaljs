@@ -814,11 +814,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     return JSRuntime.parseRawDontFitLong(valueString, radix);
                 }
             }
-            try {
-                return JSRuntime.parseRawFitsLong(valueString, radix);
-            } catch (NumberFormatException e) {
-                return Double.NaN;
-            }
+            return JSRuntime.parseRawFitsLong(valueString, radix);
         }
 
         @TruffleBoundary

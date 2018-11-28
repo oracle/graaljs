@@ -2069,7 +2069,7 @@ public final class JSRuntime {
             pos = 1;
         }
         if (pos == len) {
-            throw new NumberFormatException();
+            return Double.NaN;
         }
 
         int firstPos = pos;
@@ -2081,7 +2081,7 @@ public final class JSRuntime {
                 if (pos != firstPos) {
                     break;
                 } else {
-                    throw new NumberFormatException();
+                    return Double.NaN;
                 }
             }
             value *= radix;
@@ -2120,7 +2120,7 @@ public final class JSRuntime {
             pos = 1;
         }
         if (pos == len) {
-            throw new NumberFormatException();
+            return Double.NaN;
         }
 
         int firstPos = pos;
@@ -2132,7 +2132,7 @@ public final class JSRuntime {
                 if (pos != firstPos) {
                     break;
                 } else {
-                    throw new NumberFormatException();
+                    return Double.NaN;
                 }
             }
             value *= radix;
