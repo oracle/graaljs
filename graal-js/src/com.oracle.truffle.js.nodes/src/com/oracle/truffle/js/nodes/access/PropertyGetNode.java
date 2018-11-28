@@ -1490,7 +1490,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         Shape cacheShape = ((DynamicObject) thisObj).getShape();
 
-        if (JSProperty.isData(property) && !JSProperty.isProxy(property) && (property.getLocation().isFinal() || property.getLocation().isAssumedFinal())) {
+        if ((JSProperty.isData(property) && !JSProperty.isProxy(property) || JSProperty.isAccessor(property)) &&
+                        (property.getLocation().isFinal() || property.getLocation().isAssumedFinal())) {
             /**
              * if property is final and: <br>
              * (1) shape not in cache: specialize on final property with constant object [prototype
@@ -1501,41 +1502,27 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
              *
              * (3) evict cache entry and treat property as non-final.
              */
-            GetCacheNode existingNode = getCacheEntryByShape(cacheShape, currentHead);
-            boolean existingNodeIsFinal = isFinalData(existingNode);
-
-            boolean finalSpecializationAllowed = existingNode == null || existingNode.receiverCheck instanceof ConstantObjectPrototypeShapeCheckNode ||
-                            existingNode.receiverCheck instanceof ConstantObjectPrototypeChainShapeCheckNode;
-
-            if (existingNode != null && existingNodeIsFinal) {
-                // evict existing node from cache
-                GetCacheNode newNext = evictCached(currentHead, existingNode);
-                assert newNext != currentHead;
+            boolean isConstantObjectFinal = isPropertyAssumptionCheckEnabled();
+            for (GetCacheNode cur = currentHead; cur != null; cur = cur.next) {
+                if (isFinalSpecialization(cur)) {
+                    if (cur.receiverCheck instanceof ConstantObjectReceiverCheck) {
+                        // invalidate the specialization and disable constant object checks
+                        ((ConstantObjectReceiverCheck) cur.receiverCheck).clearExpectedObject();
+                        setPropertyAssumptionCheckEnabled(false);
+                        return null; // clean up cache
+                    }
+                    assert !(cur.receiverCheck instanceof ConstantObjectReceiverCheck) || ((ConstantObjectReceiverCheck) cur.receiverCheck).getExpectedObject() == thisObj;
+                }
             }
 
-            boolean isConstantObjectFinal = existingNode == null;
-            if (finalSpecializationAllowed && isEligibleForFinalSpecialization(cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal)) {
-                return createFinalSpecialization(property, cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal);
-            }
-        } else if (JSProperty.isAccessor(property) && (property.getLocation().isFinal() || property.getLocation().isAssumedFinal())) {
-            GetCacheNode existingNode = getCacheEntryByShape(cacheShape, currentHead);
-            boolean existingNodeIsFinal = isFinalAccessor(existingNode);
-
-            boolean finalSpecializationAllowed = existingNode == null || existingNode.receiverCheck instanceof ConstantObjectPrototypeShapeCheckNode ||
-                            existingNode.receiverCheck instanceof ConstantObjectPrototypeChainShapeCheckNode;
-
-            if (existingNode != null && existingNodeIsFinal) {
-                // evict existing node from cache
-                GetCacheNode newNext = evictCached(currentHead, existingNode);
-                assert newNext != currentHead;
-            }
-
-            boolean isConstantObjectFinal = existingNode == null;
-            if (finalSpecializationAllowed && isEligibleForFinalSpecialization(cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal)) {
-                AbstractShapeCheckNode finalShapeCheckNode = createShapeCheckNode(cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal, false);
-                finalShapeCheckNode.adoptChildren();
-                DynamicObject store = finalShapeCheckNode.getStore(thisObj);
-                return new FinalAccessorPropertyGetNode(property, finalShapeCheckNode, (Accessor) property.get(store, null));
+            if (JSProperty.isData(property) && !JSProperty.isProxy(property)) {
+                if (isEligibleForFinalSpecialization(cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal)) {
+                    return createFinalSpecialization(property, cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal);
+                }
+            } else if (JSProperty.isAccessor(property)) {
+                if (isEligibleForFinalSpecialization(cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal)) {
+                    return createFinalAccessorSpecialization(property, cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal);
+                }
             }
         }
 
@@ -1548,12 +1535,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    private static boolean isFinalData(GetCacheNode existingNode) {
-        return existingNode instanceof AbstractFinalDataPropertyGetNode;
-    }
-
-    private static boolean isFinalAccessor(GetCacheNode existingNode) {
-        return existingNode instanceof FinalAccessorPropertyGetNode;
+    private static boolean isFinalSpecialization(GetCacheNode existingNode) {
+        return existingNode instanceof AbstractFinalDataPropertyGetNode || existingNode instanceof FinalAccessorPropertyGetNode;
     }
 
     private boolean isEligibleForFinalSpecialization(Shape cacheShape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
@@ -1631,8 +1614,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         AbstractShapeCheckNode finalShapeCheckNode = createShapeCheckNode(cacheShape, thisObj, depth, isConstantObjectFinal, false);
         finalShapeCheckNode.adoptChildren();
         DynamicObject store = finalShapeCheckNode.getStore(thisObj);
-
-        assert property.getLocation().isFinal() || property.getLocation().isAssumedFinal();
         return createFinalSpecializationImpl(property, finalShapeCheckNode, store);
     }
 
@@ -1651,13 +1632,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    private static GetCacheNode getCacheEntryByShape(Shape theShape, GetCacheNode head) {
-        for (GetCacheNode cur = head; cur != null; cur = cur.next) {
-            if (cur.receiverCheck != null && cur.receiverCheck.getShape() == theShape) {
-                return cur;
-            }
-        }
-        return null;
+    private GetCacheNode createFinalAccessorSpecialization(Property property, Shape cacheShape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
+        AbstractShapeCheckNode finalShapeCheckNode = createShapeCheckNode(cacheShape, thisObj, depth, isConstantObjectFinal, false);
+        finalShapeCheckNode.adoptChildren();
+        DynamicObject store = finalShapeCheckNode.getStore(thisObj);
+        Accessor accessor = (Accessor) property.get(store, null);
+        return new FinalAccessorPropertyGetNode(property, finalShapeCheckNode, accessor);
     }
 
     @Override

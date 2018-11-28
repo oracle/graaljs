@@ -453,10 +453,16 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
     }
 
+    protected interface ConstantObjectReceiverCheck {
+        Object getExpectedObject();
+
+        void clearExpectedObject();
+    }
+
     /**
      * Checks that the object is constant and the shape by comparison.
      */
-    protected static final class ConstantObjectShapeCheckNode extends AbstractShapeCheckNode {
+    protected static final class ConstantObjectShapeCheckNode extends AbstractShapeCheckNode implements ConstantObjectReceiverCheck {
         private final Assumption shapeValidAssumption;
         private final WeakReference<DynamicObject> expectedObjectRef;
 
@@ -490,6 +496,16 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             }
             return true;
         }
+
+        @Override
+        public Object getExpectedObject() {
+            return expectedObjectRef.get();
+        }
+
+        @Override
+        public void clearExpectedObject() {
+            expectedObjectRef.clear();
+        }
     }
 
     /**
@@ -497,7 +513,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      *
      * @see JSTruffleOptions#SkipFinalShapeCheck
      */
-    protected static final class ConstantObjectAssumptionShapeCheckNode extends AbstractAssumptionShapeCheckNode {
+    protected static final class ConstantObjectAssumptionShapeCheckNode extends AbstractAssumptionShapeCheckNode implements ConstantObjectReceiverCheck {
 
         private final Assumption shapeValidAssumption;
         private final Assumption unchangedAssumption;
@@ -542,6 +558,16 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         protected boolean isUnstable() {
             return shapeValidAssumption.isValid() && !unchangedAssumption.isValid();
         }
+
+        @Override
+        public Object getExpectedObject() {
+            return expectedObjectRef.get();
+        }
+
+        @Override
+        public void clearExpectedObject() {
+            expectedObjectRef.clear();
+        }
     }
 
     /**
@@ -550,7 +576,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      *
      * @see JSTruffleOptions#SkipFinalShapeCheck
      */
-    protected static final class ConstantObjectPrototypeChainShapeCheckNode extends AbstractAssumptionShapeCheckNode {
+    protected static final class ConstantObjectPrototypeChainShapeCheckNode extends AbstractAssumptionShapeCheckNode implements ConstantObjectReceiverCheck {
 
         private final Assumption shapeValidAssumption;
         private final Assumption shapeUnchangedAssumption;
@@ -622,6 +648,16 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         protected boolean isUnstable() {
             return shapeValidAssumption.isValid() && !shapeUnchangedAssumption.isValid();
         }
+
+        @Override
+        public Object getExpectedObject() {
+            return expectedObjectRef.get();
+        }
+
+        @Override
+        public void clearExpectedObject() {
+            expectedObjectRef.clear();
+        }
     }
 
     /**
@@ -630,7 +666,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      *
      * @see JSTruffleOptions#SkipFinalShapeCheck
      */
-    protected static final class ConstantObjectPrototypeShapeCheckNode extends AbstractAssumptionShapeCheckNode {
+    protected static final class ConstantObjectPrototypeShapeCheckNode extends AbstractAssumptionShapeCheckNode implements ConstantObjectReceiverCheck {
 
         private final Assumption shapeValidAssumption;
         private final Assumption unchangedAssumption;
@@ -698,6 +734,16 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @Override
         protected boolean isUnstable() {
             return shapeValidAssumption.isValid() && !unchangedAssumption.isValid();
+        }
+
+        @Override
+        public Object getExpectedObject() {
+            return expectedObjectRef.get();
+        }
+
+        @Override
+        public void clearExpectedObject() {
+            expectedObjectRef.clear();
         }
     }
 
@@ -1104,12 +1150,15 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                             if (res == null && c.accepts(thisObj) && c.acceptsValue(value)) {
                                 res = c;
                                 // continue checking for invalid cache entries
+                            } else if (isUnexpectedConstantObject(c, thisObj)) {
+                                invalid = true;
+                                break;
                             }
                         }
                     }
                 }
                 if (invalid) {
-                    checkForUnstableAssumption(currentHead);
+                    checkForUnstableAssumption(currentHead, thisObj);
                     currentHead = filterValid(currentHead);
                     this.cacheNode = currentHead;
                     traceAssumptionInvalidated();
@@ -1176,6 +1225,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             Property property = cacheShape.getProperty(key);
             if (property != null) {
                 specialized = createCachedPropertyNode(property, thisObj, depth, value, currentHead);
+                if (specialized == null) {
+                    return null;
+                }
                 break;
             } else if (JSProxy.isProxy(store)) {
                 specialized = createUndefinedPropertyNode(thisObj, store, depth, value);
@@ -1239,18 +1291,18 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         if (cachedCount > 0) {
             reportPolymorphicSpecialize();
             polymorphicCount.inc();
-            if (JSTruffleOptions.TracePolymorphicPropertyAccess) {
-                System.out.printf("POLYMORPHIC PROPERTY ACCESS key='%s' %s\n%s\n---\n", key, getEncapsulatingSourceSection(), currentHead.debugString());
-            }
         }
 
+        assert currentHead == this.cacheNode;
         // insert specialization at the front
         invalidateCache();
         insert(specialized);
-        T next = this.cacheNode;
-        specialized.setNext(next);
+        specialized.setNext(currentHead);
         this.cacheNode = specialized;
         traceRewriteInsert(specialized, cachedCount);
+        if (JSTruffleOptions.TracePolymorphicPropertyAccess && cachedCount > 0) {
+            System.out.printf("POLYMORPHIC PROPERTY ACCESS key='%s' %s\n%s\n---\n", key, getEncapsulatingSourceSection(), specialized.debugString());
+        }
         return specialized;
     }
 
@@ -1260,6 +1312,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             System.out.printf("MEGAMORPHIC PROPERTY ACCESS key='%s' %s\n%s\n---\n", key, getEncapsulatingSourceSection(), currentHead.debugString());
         }
 
+        assert currentHead == this.cacheNode;
         // replace the entire cache with the generic case
         T newNode = createGenericPropertyNode();
         invalidateCache();
@@ -1269,13 +1322,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         return newNode;
     }
 
-    protected T evictCached(T currentHead, T evicted) {
-        // drop specialization to be replaced
+    protected T rewriteCached(T currentHead, T newHead) {
+        assert currentHead == this.cacheNode;
         invalidateCache();
-        T newNode = dropElement(currentHead, evicted);
-        this.cacheNode = newNode;
-        traceRewriteEvict(newNode);
-        return newNode;
+        this.cacheNode = newHead;
+        return newHead;
     }
 
     /**
@@ -1305,17 +1356,28 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         return result;
     }
 
-    protected void checkForUnstableAssumption(T head) {
-        if (!isPropertyAssumptionCheckEnabled()) {
-            return;
-        }
+    protected void checkForUnstableAssumption(T head, Object thisObj) {
         for (T cur = head; cur != null; cur = cur.next) {
-            if (cur.receiverCheck != null && cur.receiverCheck.isUnstable()) {
+            ReceiverCheckNode check = cur.receiverCheck;
+            if (check == null) {
+                continue;
+            }
+            if (check.isUnstable()) {
                 setPropertyAssumptionCheckEnabled(false);
                 propertyAssumptionCheckFailedCount.inc();
-                break;
+            }
+            if (isUnexpectedConstantObject(cur, thisObj)) {
+                // constant object is null or another object
+                ((ConstantObjectReceiverCheck) check).clearExpectedObject();
+                setPropertyAssumptionCheckEnabled(false);
+                constantObjectCheckFailedCount.inc();
+                traceRewriteEvictFinal(cur);
             }
         }
+    }
+
+    private boolean isUnexpectedConstantObject(T cache, Object thisObj) {
+        return cache.receiverCheck instanceof ConstantObjectReceiverCheck && ((ConstantObjectReceiverCheck) cache.receiverCheck).getExpectedObject() != thisObj;
     }
 
     protected static <T extends CacheNode<T>> T filterValid(T cache) {
@@ -1547,10 +1609,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
     }
 
-    protected void traceRewriteEvict(Node evicted) {
+    protected void traceRewriteEvictFinal(Node evicted) {
         if (TruffleOptions.TraceRewrites) {
             PrintStream out = System.out;
-            out.printf("[truffle]   rewrite %-50s |Property %s |Node %s |Reason evict existing cache node%n", this, key, evicted);
+            out.printf("[truffle]   rewrite %-50s |Property %s |Node %s |Reason evict final%n", this, key, evicted);
         }
     }
 
@@ -1581,6 +1643,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     private static final DebugCounter cacheAssumptionInitializedCount = DebugCounter.create("Property cache assumptions initialized");
     private static final DebugCounter cacheAssumptionInvalidatedCount = DebugCounter.create("Property cache assumptions invalidated");
     private static final DebugCounter propertyAssumptionCheckFailedCount = DebugCounter.create("Property assumption checks failed");
+    private static final DebugCounter constantObjectCheckFailedCount = DebugCounter.create("Constant object checks failed");
     private static final DebugCounter traversePrototypeShapeCheckCount = DebugCounter.create("TraversePrototypeShapeCheckNode count");
     private static final DebugCounter traversePrototypeChainShapeCheckCount = DebugCounter.create("TraversePrototypeChainShapeCheckNode count");
 }
