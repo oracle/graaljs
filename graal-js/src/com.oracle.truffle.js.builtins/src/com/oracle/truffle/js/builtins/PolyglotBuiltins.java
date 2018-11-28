@@ -688,7 +688,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                 throw Errors.createError("Cannot evaluate file " + fileName + ": permission denied");
             } catch (NoSuchFileException e) {
                 throw Errors.createError("Cannot evaluate file " + fileName + ": no such file");
-            } catch (IOException e) {
+            } catch (IOException | SecurityException e) {
                 throw Errors.createError("Cannot evaluate file: " + e.getMessage());
             }
 

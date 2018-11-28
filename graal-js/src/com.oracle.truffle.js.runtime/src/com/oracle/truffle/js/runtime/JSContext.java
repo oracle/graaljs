@@ -975,8 +975,8 @@ public class JSContext {
                         JSModuleRecord newModule = getEvaluator().parseModule(JSContext.this, source, this);
                         moduleMap.put(canonicalPath, newModule);
                         return newModule;
-                    } catch (IOException e) {
-                        throw Errors.createError(e.getMessage());
+                    } catch (IOException | SecurityException e) {
+                        throw Errors.createErrorFromException(e);
                     }
                 }
 

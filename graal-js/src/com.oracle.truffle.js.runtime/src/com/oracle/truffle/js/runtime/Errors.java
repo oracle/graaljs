@@ -546,6 +546,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createErrorFromException(Exception e) {
+        return JSException.create(JSErrorType.Error, e.getMessage(), e, null);
+    }
+
+    @TruffleBoundary
     public static JSException createICU4JDataError() {
         return Errors.createError("ICU4J library not properly configured to work with native image. " +
                         "Please either set system property, " +
