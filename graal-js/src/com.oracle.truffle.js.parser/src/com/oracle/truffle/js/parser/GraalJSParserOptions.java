@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.js.parser;
 
+import static com.oracle.truffle.js.runtime.JSContextOptions.newOptionDescriptor;
 import static com.oracle.truffle.js.runtime.JSTruffleOptions.JS_OPTION_PREFIX;
-import static com.oracle.truffle.js.runtime.JSContextOptions.helpWithDefault;
 
 import java.util.List;
 
@@ -57,28 +57,28 @@ import com.oracle.truffle.js.runtime.ParserOptions;
 @SuppressWarnings("hiding")
 public final class GraalJSParserOptions implements ParserOptions {
     public static final String SYNTAX_EXTENSIONS_NAME = JS_OPTION_PREFIX + "syntax-extensions";
-    private static final OptionKey<Boolean> SYNTAX_EXTENSIONS = new OptionKey<>(true);
-    private static final String SYNTAX_EXTENSIONS_HELP = helpWithDefault("enable Nashorn syntax extensions", SYNTAX_EXTENSIONS);
+    private static final OptionKey<Boolean> SYNTAX_EXTENSIONS = new OptionKey<>(false);
+    private static final String SYNTAX_EXTENSIONS_HELP = "enable Nashorn syntax extensions";
 
     public static final String SCRIPTING_NAME = JS_OPTION_PREFIX + "scripting";
     private static final OptionKey<Boolean> SCRIPTING = new OptionKey<>(false);
-    private static final String SCRIPTING_HELP = helpWithDefault("enable scripting features (Nashorn compatibility option)", SCRIPTING);
+    private static final String SCRIPTING_HELP = "enable scripting features (Nashorn compatibility option)";
 
     public static final String SHEBANG_NAME = JS_OPTION_PREFIX + "shebang";
     private static final OptionKey<Boolean> SHEBANG = new OptionKey<>(true);
-    private static final String SHEBANG_HELP = helpWithDefault("support files starting with #!", SHEBANG);
+    private static final String SHEBANG_HELP = "support files starting with #!";
 
     public static final String STRICT_NAME = JS_OPTION_PREFIX + "strict";
     private static final OptionKey<Boolean> STRICT = new OptionKey<>(false);
-    private static final String STRICT_HELP = helpWithDefault("run in strict mode", STRICT);
+    private static final String STRICT_HELP = "run in strict mode";
 
     public static final String CONST_AS_VAR_NAME = JS_OPTION_PREFIX + "const-as-var";
     private static final OptionKey<Boolean> CONST_AS_VAR = new OptionKey<>(false);
-    private static final String CONST_AS_VAR_HELP = helpWithDefault("parse const declarations as a var", CONST_AS_VAR);
+    private static final String CONST_AS_VAR_HELP = "parse const declarations as a var";
 
     public static final String FUNCTION_STATEMENT_ERROR_NAME = JS_OPTION_PREFIX + "function-statement-error";
     private static final OptionKey<Boolean> FUNCTION_STATEMENT_ERROR = new OptionKey<>(false);
-    private static final String FUNCTION_STATEMENT_ERROR_HELP = helpWithDefault("Treat hoistable function statements in blocks as an error (in ES5 mode)", FUNCTION_STATEMENT_ERROR);
+    private static final String FUNCTION_STATEMENT_ERROR_HELP = "Treat hoistable function statements in blocks as an error (in ES5 mode)";
 
     private final boolean strict;
     // Note: disregarding the value of the scripting option, scripting mode might be forced by
@@ -170,19 +170,19 @@ public final class GraalJSParserOptions implements ParserOptions {
     }
 
     public static void describeOptions(List<OptionDescriptor> options) {
-        options.add(OptionDescriptor.newBuilder(SYNTAX_EXTENSIONS, SYNTAX_EXTENSIONS_NAME).category(OptionCategory.USER).help(SYNTAX_EXTENSIONS_HELP).build());
-        options.add(OptionDescriptor.newBuilder(SCRIPTING, SCRIPTING_NAME).category(OptionCategory.USER).help(SCRIPTING_HELP).build());
-        options.add(OptionDescriptor.newBuilder(STRICT, STRICT_NAME).category(OptionCategory.USER).help(STRICT_HELP).build());
-        options.add(OptionDescriptor.newBuilder(SHEBANG, SHEBANG_NAME).category(OptionCategory.USER).help(SHEBANG_HELP).build());
-        options.add(OptionDescriptor.newBuilder(CONST_AS_VAR, CONST_AS_VAR_NAME).category(OptionCategory.USER).help(CONST_AS_VAR_HELP).build());
-        options.add(OptionDescriptor.newBuilder(FUNCTION_STATEMENT_ERROR, FUNCTION_STATEMENT_ERROR_NAME).category(OptionCategory.USER).help(FUNCTION_STATEMENT_ERROR_HELP).build());
+        options.add(newOptionDescriptor(SYNTAX_EXTENSIONS, SYNTAX_EXTENSIONS_NAME, OptionCategory.USER, SYNTAX_EXTENSIONS_HELP));
+        options.add(newOptionDescriptor(SCRIPTING, SCRIPTING_NAME, OptionCategory.USER, SCRIPTING_HELP));
+        options.add(newOptionDescriptor(STRICT, STRICT_NAME, OptionCategory.USER, STRICT_HELP));
+        options.add(newOptionDescriptor(SHEBANG, SHEBANG_NAME, OptionCategory.USER, SHEBANG_HELP));
+        options.add(newOptionDescriptor(CONST_AS_VAR, CONST_AS_VAR_NAME, OptionCategory.USER, CONST_AS_VAR_HELP));
+        options.add(newOptionDescriptor(FUNCTION_STATEMENT_ERROR, FUNCTION_STATEMENT_ERROR_NAME, OptionCategory.USER, FUNCTION_STATEMENT_ERROR_HELP));
     }
 
     @Override
     public GraalJSParserOptions putOptions(OptionValues optionValues) {
         GraalJSParserOptions opts = this;
         opts = opts.putEcmaScriptVersion(JSContextOptions.ECMASCRIPT_VERSION.getValue(optionValues));
-        opts = opts.putSyntaxExtensions(SYNTAX_EXTENSIONS.getValue(optionValues));
+        opts = opts.putSyntaxExtensions(SYNTAX_EXTENSIONS.hasBeenSet(optionValues) ? SYNTAX_EXTENSIONS.getValue(optionValues) : JSContextOptions.NASHORN_COMPATIBILITY_MODE.getValue(optionValues));
         opts = opts.putScripting(SCRIPTING.getValue(optionValues));
         opts = opts.putShebang(SHEBANG.getValue(optionValues));
         opts = opts.putStrict(STRICT.getValue(optionValues));

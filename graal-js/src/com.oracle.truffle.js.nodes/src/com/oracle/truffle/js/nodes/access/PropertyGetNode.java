@@ -670,6 +670,40 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
     }
 
+    public static final class FinalAccessorPropertyGetNode extends LinkedPropertyGetNode {
+
+        @Child private JSFunctionCallNode callNode;
+        private final BranchProfile undefinedGetterBranch = BranchProfile.create();
+        private final Accessor finalAccessor;
+        private final Assumption finalAssumption;
+
+        public FinalAccessorPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, Accessor finalAccessor) {
+            super(property.getKey(), receiverCheck);
+            assert JSProperty.isAccessor(property);
+            this.callNode = JSFunctionCallNode.createCall();
+            this.finalAccessor = finalAccessor;
+            this.finalAssumption = property.getLocation().isAssumedFinal() ? property.getLocation().getFinalAssumption() : null;
+        }
+
+        @Override
+        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+            if (finalAssumption != null) {
+                try {
+                    finalAssumption.check();
+                } catch (InvalidAssumptionException e) {
+                    return rewrite(reasonFinalAssumptionInvalidated(key)).getValue(thisObj, receiver);
+                }
+            }
+            DynamicObject getter = finalAccessor.getGetter();
+            if (getter != Undefined.instance) {
+                return callNode.executeCall(JSArguments.createZeroArg(receiver, getter));
+            } else {
+                undefinedGetterBranch.enter();
+                return Undefined.instance;
+            }
+        }
+    }
+
     /**
      * For use when a property is undefined. Returns undefined.
      */
@@ -1554,7 +1588,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
     public static final class ClassPrototypePropertyGetNode extends LinkedPropertyGetNode {
 
-        @CompilationFinal private DynamicObject constantFunction = Undefined.instance;
+        @CompilationFinal private DynamicObject constantFunction;
         @Child private CreateMethodPropertyNode setConstructor;
         @CompilationFinal private int kind;
         private final JSContext context;
@@ -1565,29 +1599,32 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private static final int GENERATOR = 2;
         private static final int ASYNC_GENERATOR = 3;
 
+        private static final DynamicObject UNKNOWN_FUN = Undefined.instance;
+        private static final DynamicObject GENERIC_FUN = null;
+
         public ClassPrototypePropertyGetNode(Property property, ReceiverCheckNode receiverCheck, JSContext context) {
             super(property.getKey(), receiverCheck);
-            assert JSProperty.isData(property);
+            assert JSProperty.isData(property) && isClassPrototypeProperty(property);
             this.context = context;
-            assert isClassPrototypeProperty(property);
+            this.constantFunction = context.isMultiContext() ? GENERIC_FUN : UNKNOWN_FUN;
         }
 
         @Override
         public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
             DynamicObject functionObj = receiverCheck.getStore(thisObj);
             assert JSFunction.isJSFunction(functionObj);
-            if (constantFunction == Undefined.instance) {
+            DynamicObject constantFun = constantFunction;
+            if (constantFun == UNKNOWN_FUN) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 constantFunction = functionObj;
                 // ensure `prototype` is initialized
-                JSFunction.getClassPrototype(functionObj);
-            }
-            if (constantFunction != null) {
-                if (constantFunction == functionObj) {
-                    return JSFunction.getClassPrototypeInitialized(functionObj);
+                return JSFunction.getClassPrototype(functionObj);
+            } else if (constantFun != GENERIC_FUN) {
+                if (constantFun == functionObj) {
+                    return JSFunction.getClassPrototypeInitialized(constantFun);
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    constantFunction = null;
+                    constantFunction = GENERIC_FUN;
                 }
             }
             if (prototypeInitializedProfile.profile(JSFunction.isClassPrototypeInitialized(functionObj))) {
@@ -1765,6 +1802,25 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             boolean isConstantObjectFinal = existingNode == null;
             if (finalSpecializationAllowed && isEligibleForFinalSpecialization(cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal)) {
                 return createFinalSpecialization(property, cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal);
+            }
+        } else if (JSProperty.isAccessor(property) && (property.getLocation().isFinal() || property.getLocation().isAssumedFinal())) {
+            PropertyGetNode existingNode = getCacheEntryByShape(cacheShape);
+            boolean existingNodeIsFinal = existingNode instanceof FinalAccessorPropertyGetNode;
+
+            boolean finalSpecializationAllowed = existingNode == null || ((LinkedPropertyGetNode) existingNode).receiverCheck instanceof ConstantObjectPrototypeShapeCheckNode ||
+                            ((LinkedPropertyGetNode) existingNode).receiverCheck instanceof ConstantObjectPrototypeChainShapeCheckNode;
+
+            if (existingNode != null && existingNodeIsFinal) {
+                // evict existing createNode from cache
+                ((LinkedPropertyGetNode) existingNode).rewrite("evict existing cache node");
+            }
+
+            boolean isConstantObjectFinal = existingNode == null;
+            if (finalSpecializationAllowed && isEligibleForFinalSpecialization(cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal)) {
+                AbstractShapeCheckNode finalShapeCheckNode = createShapeCheckNode(cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal, false);
+                finalShapeCheckNode.adoptChildren();
+                DynamicObject store = finalShapeCheckNode.getStore(thisObj);
+                return new FinalAccessorPropertyGetNode(property, finalShapeCheckNode, (Accessor) property.get(store, null));
             }
         }
 

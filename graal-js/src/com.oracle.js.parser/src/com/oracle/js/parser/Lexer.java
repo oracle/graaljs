@@ -1333,7 +1333,7 @@ public class Lexer extends Scanner {
             }
         }
 
-        if (ch0 == 'n' && type != FLOATING) {
+        if (ch0 == 'n' && (type == DECIMAL || type == BINARY_NUMBER || type == OCTAL || type == HEXADECIMAL)) {
             // Skip n
             skip(1);
             type = BIGINT;

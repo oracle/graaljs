@@ -40,14 +40,11 @@
  */
 package com.oracle.truffle.js.test.external.suite;
 
-import java.io.BufferedReader;
 import java.io.Console;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
@@ -910,20 +907,27 @@ public abstract class TestSuite {
     }
 
     public static List<String> readFileContentList(File pfile) {
-        return readFileContentList(pfile, false);
+        return readFileContentList(pfile, true);
     }
 
-    public static List<String> readFileContentList(File pfile, boolean ignoreEmptyAndComments) {
+    public static List<String> readFileContentList(File pfile, boolean keepCRfromCRLF) {
         List<String> list = new ArrayList<>();
-        try (FileInputStream fis = new FileInputStream(pfile)) {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(fis, "UTF-8"))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (ignoreEmptyAndComments && (line.equals("") || line.startsWith("#"))) {
-                        // ignore empty lines of lines starting with a comment ("#")
-                    } else {
-                        list.add(line);
+        try {
+            byte[] bytes = Files.readAllBytes(pfile.toPath());
+            String content = new String(bytes, "UTF-8");
+            int lastIndex = 0;
+            while (lastIndex < content.length()) {
+                int index = content.indexOf('\n', lastIndex);
+                if (index == -1) {
+                    list.add(content.substring(lastIndex));
+                    break;
+                } else {
+                    String line = content.substring(lastIndex, index);
+                    if (!keepCRfromCRLF && line.endsWith("\r")) {
+                        line = line.substring(0, line.length() - 1);
                     }
+                    list.add(line);
+                    lastIndex = index + 1;
                 }
             }
         } catch (IOException ex) {

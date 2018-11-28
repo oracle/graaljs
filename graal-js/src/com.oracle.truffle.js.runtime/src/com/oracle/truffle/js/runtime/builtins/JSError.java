@@ -399,6 +399,12 @@ public final class JSError extends JSBuiltinObject {
         if (methodName.isEmpty()) {
             return ANONYMOUS_FUNCTION_NAME_STACK_TRACE;
         }
+        if (Boundaries.stringEndsWith(methodName, "]")) {
+            int idx = Boundaries.stringLastIndexOf(methodName, '[');
+            if (idx >= 0) {
+                return Boundaries.substring(methodName, idx);
+            }
+        }
         int idx = Boundaries.stringLastIndexOf(methodName, '.');
         if (idx >= 0) {
             return Boundaries.substring(methodName, idx + 1);

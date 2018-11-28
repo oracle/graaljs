@@ -107,7 +107,6 @@ import com.oracle.truffle.js.parser.foreign.InteropBoundFunctionForeign;
 import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.parser.foreign.JSMetaObject;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
-import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -298,13 +297,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 type = ((JSMetaObject) value).getType();
             }
             return type;
-        } else if (value instanceof Symbol) {
-            return value.toString();
-        } else if (value instanceof JSLazyString) {
-            return value.toString();
-        } else if (value instanceof BigInt) {
-            return value.toString() + "n";
-        } else if (value instanceof TruffleObject && !JSObject.isJSObject(value)) {
+        } else if (JSRuntime.isForeignObject(value)) {
             TruffleObject truffleObject = (TruffleObject) value;
             Env env = realm.getEnv();
             try {
@@ -333,13 +326,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 }
             } catch (Exception e) {
                 return "Object";
-            }
-        }
-        if (value instanceof Double && ((Double) value) == 0d) {
-            if (Double.doubleToLongBits((Double) value) != 0) {
-                return "-0";
-            } else {
-                return "0";
             }
         }
         return JSRuntime.safeToString(value);
@@ -457,6 +443,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     protected void initializeContext(JSRealm realm) {
         realm.setArguments(realm.getEnv().getApplicationArguments());
 
+        realm.addOptionalGlobals();
         if (((GraalJSParserOptions) realm.getContext().getParserOptions()).isScripting()) {
             realm.addScriptingObjects();
         }
@@ -487,6 +474,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         context.setInteropRuntime(interopRuntime());
         realm.setArguments(newEnv.getApplicationArguments());
 
+        realm.addOptionalGlobals();
         if (((GraalJSParserOptions) context.getParserOptions()).isScripting()) {
             realm.addScriptingObjects();
         }

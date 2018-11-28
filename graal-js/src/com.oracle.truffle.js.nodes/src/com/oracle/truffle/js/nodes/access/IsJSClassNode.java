@@ -66,7 +66,7 @@ public abstract class IsJSClassNode extends JSUnaryNode {
     protected static boolean doIsInstanceShape(DynamicObject object, //
                     @Cached("object.getShape()") Shape cachedShape, //
                     @Cached("doIsInstance(object)") boolean cachedResult) {
-        return cachedResult;
+        return cachedResult && cachedShape.check(object);
     }
 
     @Specialization(replaces = "doIsInstanceShape")

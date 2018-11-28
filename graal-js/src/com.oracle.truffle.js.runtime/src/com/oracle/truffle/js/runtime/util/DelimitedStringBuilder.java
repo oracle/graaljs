@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.js.runtime.*;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 /**
  * A special implementation (wrapper) of a StringBuilder. Provides some additional support required
@@ -56,56 +58,54 @@ public final class DelimitedStringBuilder {
         this.builder = new StringBuilder();
     }
 
-    @TruffleBoundary(allowInlining = true)
     public DelimitedStringBuilder(int capacity) {
         this.builder = new StringBuilder(Math.max(16, Math.min(capacity, JSTruffleOptions.StringLengthLimit)));
     }
 
     @Override
-    @TruffleBoundary(allowInlining = true)
     public String toString() {
-        return builder.toString();
+        return Boundaries.builderToString(builder);
     }
 
-    @TruffleBoundary(allowInlining = true)
-    public void append(String str) {
+    public void append(String str, BranchProfile profile) {
         if ((builder.length() + str.length()) > JSTruffleOptions.StringLengthLimit) {
+            profile.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
-        builder.append(str);
+        Boundaries.builderAppend(builder, str);
     }
 
-    @TruffleBoundary(allowInlining = true)
-    public void append(char c) {
+    public void append(char c, BranchProfile profile) {
         if (builder.length() > JSTruffleOptions.StringLengthLimit) {
+            profile.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
-        builder.append(c);
+        Boundaries.builderAppend(builder, c);
     }
 
-    @TruffleBoundary(allowInlining = true)
-    public void append(int intValue) {
+    public void append(int intValue, BranchProfile profile) {
         if (builder.length() > JSTruffleOptions.StringLengthLimit) {
+            profile.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
-        builder.append(intValue);
+        Boundaries.builderAppend(builder, intValue);
     }
 
-    @TruffleBoundary(allowInlining = true)
-    public void append(long longValue) {
+    public void append(long longValue, BranchProfile profile) {
         if (builder.length() > JSTruffleOptions.StringLengthLimit) {
+            profile.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
-        builder.append(longValue);
+        Boundaries.builderAppend(builder, longValue);
     }
 
-    @TruffleBoundary(allowInlining = true)
-    public void append(String charSequence, int start, int end) {
+    public void append(String charSequence, int start, int end, BranchProfile profile) {
         assert start <= end;
         if (builder.length() + (end - start) > JSTruffleOptions.StringLengthLimit) {
+            profile.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
-        builder.append(charSequence, start, end);
+        Boundaries.builderAppend(builder, charSequence, start, end);
     }
 
     public int length() {

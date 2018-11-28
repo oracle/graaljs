@@ -239,6 +239,7 @@ public final class GraalJSAccess {
 
     private final Context evaluator;
     private final JSContext mainJSContext;
+    private final JSRealm mainJSRealm;
     private final NodeJSAgent agent;
     private final Deallocator deallocator;
     private ESModuleLoader moduleLoader;
@@ -285,7 +286,7 @@ public final class GraalJSAccess {
             throw iaex; // avoids compiler complaints that final fields are not initialized
         }
 
-        JSRealm mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
+        mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
         mainJSContext = mainJSRealm.getContext();
         assert mainJSContext != null : "JSContext initialized";
         GraalJSJavaInteropMainWorker worker = new GraalJSJavaInteropMainWorker(this, loopAddress);
@@ -359,6 +360,8 @@ public final class GraalJSAccess {
             return SYMBOL_VALUE;
         } else if (value instanceof BigInt) {
             return BIG_INT_VALUE;
+        } else if (value instanceof Boolean) {
+            return ((Boolean) value).booleanValue() ? BOOLEAN_VALUE_TRUE : BOOLEAN_VALUE_FALSE;
         }
         if (JSTruffleOptions.NashornJavaInterop) {
             return ORDINARY_OBJECT;
@@ -905,7 +908,7 @@ public final class GraalJSAccess {
                 PropertyDescriptor descriptor = JSObject.getOwnProperty(currentDO, propertyKey);
                 if (descriptor != null) {
                     int attributes = 0;
-                    if (!descriptor.getWritable()) {
+                    if (!descriptor.isAccessorDescriptor() && !descriptor.getWritable()) {
                         attributes |= 1; /* v8::PropertyAttribute::ReadOnly */
                     }
                     if (!descriptor.getEnumerable()) {
@@ -2174,11 +2177,11 @@ public final class GraalJSAccess {
         JSRealm realm;
         JSContext context;
         if (createChildContext) {
-            realm = mainJSContext.getRealm().createChildRealm();
+            realm = mainJSRealm.createChildRealm();
             context = realm.getContext();
             context.setJSAgent(agent);
         } else {
-            realm = mainJSContext.getRealm();
+            realm = mainJSRealm;
             context = mainJSContext;
             context.setEmbedderData(new ContextData(context));
             createChildContext = true;
@@ -2478,7 +2481,7 @@ public final class GraalJSAccess {
             list = new LinkedList<>();
             isolateStack.set(list);
         }
-        Object previous = mainJSContext.getRealm().getTruffleContext().enter();
+        Object previous = mainJSRealm.getTruffleContext().enter();
         if (list.isEmpty()) {
             agent.setThread(Thread.currentThread());
         }
@@ -2489,7 +2492,7 @@ public final class GraalJSAccess {
         Deque<Pair<Long, Object>> list = isolateStack.get();
         Pair<Long, Object> pair = list.pop();
         assert pair.getFirst() == isolate;
-        mainJSContext.getRealm().getTruffleContext().leave(pair.getSecond());
+        mainJSRealm.getTruffleContext().leave(pair.getSecond());
         if (list.isEmpty()) {
             agent.setThread(null);
             return 0;

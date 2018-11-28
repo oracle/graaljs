@@ -112,21 +112,15 @@ suite = {
       "platformDependent" : True,
       "description" : "Graal.nodejs support distribution for the GraalVM",
       "layout" : {
-        "./" : ["file:deps/npm"],
+        "./" : [
+          "file:deps/npm",
+          "file:out/headers/*",
+        ],
         "NODE_README.md" : "file:README.md",
         "bin/" : [
           "dependency:trufflenodeNative/Release/node"
         ],
         "bin/npm" : "file:mx.graal-nodejs/graalvm_launchers/npm",
-        "include/node/" : [
-          "file:common.gypi",
-          "file:src/node.h",
-          "file:src/node_buffer.h",
-          "file:src/node_object_wrap.h",
-          "file:src/node_version.h",
-          "file:deps/uv/include/*",
-          "file:deps/v8/include/*",
-        ],
         "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
       },
     },

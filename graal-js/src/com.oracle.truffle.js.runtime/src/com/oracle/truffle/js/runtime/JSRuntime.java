@@ -561,12 +561,11 @@ public final class JSRuntime {
         return toInteger(number);
     }
 
-    @TruffleBoundary
     public static long toInteger(Number number) {
         if (isNaN(number)) {
             return 0;
         }
-        return number.longValue();
+        return longValue(number);
     }
 
     /**
@@ -870,6 +869,15 @@ public final class JSRuntime {
             return JSObject.safeToString((DynamicObject) value);
         } else if (value instanceof Symbol) {
             return value.toString();
+        } else if (value instanceof BigInt) {
+            return value.toString() + "n";
+        } else if (isNumber(value)) {
+            Number number = (Number) value;
+            if (JSRuntime.isNegativeZero(number.doubleValue())) {
+                return "-0";
+            } else {
+                return numberToString(number);
+            }
         } else {
             return toString(value);
         }
@@ -1086,15 +1094,7 @@ public final class JSRuntime {
         if (!first) {
             sb.append(", ");
         }
-        if (isString(key)) {
-            sb.append('"');
-            sb.append(key);
-            sb.append('"');
-        } else if (JSObject.isDynamicObject(key)) {
-            sb.append("{...}");
-        } else {
-            sb.append(key);
-        }
+        sb.append(toPrintableValue(key));
         if (isMap) {
             sb.append(" => ");
             sb.append(toPrintableValue(value));
@@ -1155,10 +1155,10 @@ public final class JSRuntime {
         return lengthIntl(cs);
     }
 
-    public static int length(CharSequence cs, ConditionProfile profile1, ConditionProfile profile2) {
-        if (profile1.profile(cs instanceof String)) {
+    public static int length(CharSequence cs, ConditionProfile stringProfile, ConditionProfile lazyStringProfile) {
+        if (stringProfile.profile(cs instanceof String)) {
             return ((String) cs).length();
-        } else if (profile2.profile(cs instanceof JSLazyString)) {
+        } else if (lazyStringProfile.profile(cs instanceof JSLazyString)) {
             return ((JSLazyString) cs).length();
         }
         return lengthIntl(cs);

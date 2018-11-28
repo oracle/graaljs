@@ -40,10 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
@@ -71,6 +67,10 @@ import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
+
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
 
 /**
  * Methods for dealing with JS objects (access, creation, instanceof, cast).
@@ -181,8 +181,14 @@ public final class JSObject {
     public static DynamicObject createInit(JSContext context, DynamicObject prototype, JSClass builtinObject) {
         CompilerAsserts.neverPartOfCompilation();
         assert prototype == Null.instance || JSRuntime.isObject(prototype);
-        if (context.isMultiContext() && builtinObject == JSUserObject.INSTANCE) {
-            Shape shape = context.getEmptyShapePrototypeInObject();
+        if (context.isMultiContext()) {
+            Shape shape;
+            if (builtinObject == JSUserObject.INSTANCE) {
+                shape = context.getEmptyShapePrototypeInObject();
+            } else {
+                shape = context.makeEmptyShapeWithPrototypeInObject(builtinObject, JSObject.PROTO_PROPERTY);
+            }
+            assert JSShape.getPrototypeProperty(shape) == JSObject.PROTO_PROPERTY;
             DynamicObject obj = JSObject.createInit(shape);
             JSObject.PROTO_PROPERTY.setSafe(obj, prototype, shape);
             return obj;
@@ -218,6 +224,10 @@ public final class JSObject {
      */
     public static boolean isJSObject(Object object) {
         return isDynamicObject(object) && ((DynamicObject) object).getShape().getObjectType() instanceof JSClass;
+    }
+
+    public static boolean isJSObjectShape(Shape shape) {
+        return shape.getObjectType() instanceof JSClass;
     }
 
     /**

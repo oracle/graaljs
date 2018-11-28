@@ -40,13 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import java.text.Collator;
-import java.text.Normalizer;
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Locale;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -95,7 +88,8 @@ import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToU
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringTrimLeftNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringTrimNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringTrimRightNodeGen;
-import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode;
+import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode;
+import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode.JSRegExpExecIntlRunNode;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
@@ -138,6 +132,13 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+
+import java.text.Collator;
+import java.text.Normalizer;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Locale;
 
 /**
  * Contains builtins for {@linkplain JSString}.prototype.
@@ -440,7 +441,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     public abstract static class JSStringOperationWithRegExpArgument extends JSStringOperation {
-        @Child protected JSRegExpExecIntlNode regExpNode;
+        @Child protected JSRegExpExecIntlRunNode regExpNode;
+        @Child protected JSRegExpExecIntlIgnoreLastIndexNode regExpIgnoreLastIndexNode;
 
         @Child private JSFunctionCallNode callNode;
         @Child private PropertyGetNode getSymbolNode;
@@ -455,16 +457,25 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         protected final TruffleObject matchIgnoreLastIndex(DynamicObject regExp, String input, int fromIndex) {
             assert getContext().getEcmaScriptVersion() <= 5;
-            return (TruffleObject) getRegExpNode().executeIgnoreLastIndex(regExp, input, fromIndex);
+            return (TruffleObject) getRegExpIgnoreLastIndexNode().execute(regExp, input, fromIndex);
         }
 
         // only used in ES5 mode
-        protected JSRegExpExecIntlNode getRegExpNode() {
+        protected JSRegExpExecIntlRunNode getRegExpNode() {
             if (regExpNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                regExpNode = insert(JSRegExpExecIntlNode.create(getContext()));
+                regExpNode = insert(JSRegExpExecIntlRunNode.create(getContext()));
             }
             return regExpNode;
+        }
+
+        // only used in ES5 mode
+        protected JSRegExpExecIntlIgnoreLastIndexNode getRegExpIgnoreLastIndexNode() {
+            if (regExpIgnoreLastIndexNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                regExpIgnoreLastIndexNode = insert(JSRegExpExecIntlIgnoreLastIndexNode.create(getContext()));
+            }
+            return regExpIgnoreLastIndexNode;
         }
 
         protected final Object call(Object function, Object target, Object[] args) {
@@ -1047,6 +1058,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     public abstract static class JSStringConcatNode extends JSStringOperation {
 
+        private final BranchProfile sbAppendProfile = BranchProfile.create();
+
         public JSStringConcatNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -1056,9 +1069,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached("create()") JSToStringNode toString2Node) {
             requireObjectCoercible(thisObj);
             DelimitedStringBuilder builder = new DelimitedStringBuilder();
-            builder.append(toString(thisObj));
+            builder.append(toString(thisObj), sbAppendProfile);
             for (Object o : args) {
-                builder.append(toString2Node.executeString(o));
+                builder.append(toString2Node.executeString(o), sbAppendProfile);
             }
             return builder.toString();
         }
@@ -1167,7 +1180,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return pos;
         }
 
-        @TruffleBoundary
         private static int appendSubstitutionIntl(StringBuilder sb, String input, int pos, int startPos, int endPos, String replaceStr, String matched) {
             if (pos == replaceStr.length()) {
                 Boundaries.builderAppend(sb, '$');
@@ -2218,12 +2230,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * Implementation of the String.prototype.repeat() method of ECMAScript6/Harmony.
      */
     public abstract static class JSStringRepeatNode extends JSStringOperation {
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         public JSStringRepeatNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
-
-        private final BranchProfile errorBranch = BranchProfile.create();
 
         @Specialization
         protected String repeat(Object thisObj, Object count) {
@@ -2231,16 +2242,23 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String thisStr = toString(thisObj);
             Number repeatCountN = toNumber(count);
             long repeatCount = JSRuntime.toInteger(repeatCountN);
-            if (repeatCount < 0 || (repeatCountN instanceof Double && (Double.isInfinite(repeatCountN.doubleValue()))) ||
-                            (repeatCount * thisStr.length()) > JSTruffleOptions.StringLengthLimit) {
+            if (repeatCount < 0 || (repeatCountN instanceof Double && Double.isInfinite(repeatCountN.doubleValue()))) {
                 errorBranch.enter();
                 throw Errors.createRangeError("illegal repeat count");
             }
-            if (thisStr.isEmpty()) {
+            if (repeatCount == 1) {
+                return thisStr;
+            } else if (repeatCount == 0 || thisStr.length() == 0) {
                 // fast path for repeating an empty string an arbitrary number of times
+                // or repeating a string 0 times
                 return "";
             }
-            return repeatImpl(thisStr, (int) repeatCount);
+            int repeatCountInt = (int) repeatCount;
+            if (repeatCountInt != repeatCount || repeatCount * thisStr.length() > JSTruffleOptions.StringLengthLimit) {
+                errorBranch.enter();
+                throw Errors.createRangeErrorInvalidStringLength();
+            }
+            return repeatImpl(thisStr, repeatCountInt);
         }
 
         @TruffleBoundary

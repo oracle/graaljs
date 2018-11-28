@@ -72,6 +72,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -122,17 +123,13 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     }
 
     @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
-        return "Object";
-    }
-
-    @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
         DynamicObject numberFormatPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, numberFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, PROTOTYPE_NAME);
         JSObjectUtil.putConstantAccessorProperty(ctx, numberFormatPrototype, "format", createFormatFunctionGetter(realm, ctx), Undefined.instance);
+        JSObjectUtil.putDataProperty(ctx, numberFormatPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Object", JSAttributes.configurableNotEnumerableNotWritable());
         return numberFormatPrototype;
     }
 
@@ -160,7 +157,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     @TruffleBoundary
     public static void setupInternalDateTimeFormat(
-                    InternalState state, String[] locales, DynamicObject options,
+                    InternalState state, String[] locales,
                     String weekdayOpt,
                     String eraOpt,
                     String yearOpt,
@@ -171,7 +168,8 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     Boolean hour12Opt,
                     String minuteOpt,
                     String secondOpt,
-                    String tzNameOpt) {
+                    String tzNameOpt,
+                    TimeZone timeZone) {
         String selectedTag = IntlUtil.selectedLocale(locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
@@ -203,6 +201,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
         if (containsOneOf(baseSkeleton, "hHKk")) {
             state.hour = hourOpt;
+            state.hourCycle = hcOpt;
             state.hour12 = containsOneOf(baseSkeleton, "hK");
         }
 
@@ -237,23 +236,8 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             state.timeZoneName = tzNameOpt;
         }
 
-        // https://tc39.github.io/ecma402/#sec-initializedatetimeformat (steps 15-18)
-        Object tzVal = JSRuntime.getDataProperty(options, "timeZone");
-        TimeZone tz;
-        if (tzVal != Undefined.instance && tzVal != null) {
-            String tzId = canonicalizeTimeZone(JSRuntime.toString(tzVal));
-            if (tzId != null) {
-                tz = TimeZone.getTimeZone(tzId);
-                state.dateFormat.setTimeZone(tz);
-            } else {
-                throw Errors.createRangeError(String.format("Invalid time zone %s", tzVal));
-            }
-            state.timeZone = tzId;
-        } else {
-            tz = TimeZone.getDefault();
-            state.dateFormat.setTimeZone(tz);
-            state.timeZone = tz.getID();
-        }
+        state.dateFormat.setTimeZone(timeZone);
+        state.timeZone = timeZone.getID();
     }
 
     private static String weekdayOptToSkeleton(String weekdayOpt) {
@@ -446,6 +430,20 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     }
 
     @TruffleBoundary
+    public static TimeZone toTimeZone(Object tzVal) {
+        if (tzVal != Undefined.instance) {
+            String tzId = JSDateTimeFormat.canonicalizeTimeZone(JSRuntime.toString(tzVal));
+            if (tzId != null) {
+                return TimeZone.getTimeZone(tzId);
+            } else {
+                throw Errors.createRangeError(String.format("Invalid time zone %s", tzVal));
+            }
+        } else {
+            return TimeZone.getDefault();
+        }
+    }
+
+    @TruffleBoundary
     // https://tc39.github.io/ecma402/#sec-canonicalizetimezonename
     private static String canonicalizeTimeZone(String tzId) {
         String ucTzId = IntlUtil.toUpperCase(tzId);
@@ -505,6 +503,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         fieldToType.put(DateFormat.Field.YEAR, "year");
         fieldToType.put(DateFormat.Field.MONTH, "month");
         fieldToType.put(DateFormat.Field.DOW_LOCAL, "weekday");
+        fieldToType.put(DateFormat.Field.DAY_OF_WEEK, "weekday");
         fieldToType.put(DateFormat.Field.DAY_OF_MONTH, "day");
         fieldToType.put(DateFormat.Field.HOUR0, "hour");
         fieldToType.put(DateFormat.Field.HOUR1, "hour");
@@ -536,6 +535,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     if (a instanceof DateFormat.Field) {
                         String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
                         String type = fieldToType.get(a);
+                        assert type != null;
                         resultParts.add(makePart(context, type, value));
                         i = fit.getRunLimit();
                         break;
@@ -588,7 +588,19 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);
             JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
+            if (calendar != null) {
+                JSObjectUtil.defineDataProperty(result, "calendar", calendar, JSAttributes.getDefault());
+            }
             JSObjectUtil.defineDataProperty(result, "numberingSystem", numberingSystem, JSAttributes.getDefault());
+            if (timeZone != null) {
+                JSObjectUtil.defineDataProperty(result, "timeZone", timeZone, JSAttributes.getDefault());
+            }
+            if (hourCycle != null) {
+                JSObjectUtil.defineDataProperty(result, "hourCycle", hourCycle, JSAttributes.getDefault());
+            }
+            if (hour12 != null) {
+                JSObjectUtil.defineDataProperty(result, "hour12", hour12, JSAttributes.getDefault());
+            }
             if (weekday != null) {
                 JSObjectUtil.defineDataProperty(result, "weekday", weekday, JSAttributes.getDefault());
             }
@@ -607,23 +619,11 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             if (hour != null) {
                 JSObjectUtil.defineDataProperty(result, "hour", hour, JSAttributes.getDefault());
             }
-            if (hour12 != null) {
-                JSObjectUtil.defineDataProperty(result, "hour12", hour12, JSAttributes.getDefault());
-            }
-            if (hourCycle != null) {
-                JSObjectUtil.defineDataProperty(result, "hourCycle", hourCycle, JSAttributes.getDefault());
-            }
             if (minute != null) {
                 JSObjectUtil.defineDataProperty(result, "minute", minute, JSAttributes.getDefault());
             }
             if (second != null) {
                 JSObjectUtil.defineDataProperty(result, "second", second, JSAttributes.getDefault());
-            }
-            if (calendar != null) {
-                JSObjectUtil.defineDataProperty(result, "calendar", calendar, JSAttributes.getDefault());
-            }
-            if (timeZone != null) {
-                JSObjectUtil.defineDataProperty(result, "timeZone", timeZone, JSAttributes.getDefault());
             }
             if (timeZoneName != null) {
                 JSObjectUtil.defineDataProperty(result, "timeZoneName", timeZoneName, JSAttributes.getDefault());

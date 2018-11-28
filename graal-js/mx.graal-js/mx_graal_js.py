@@ -151,7 +151,7 @@ def parse_js_args(args, default_cp=None, useDoubleDash=False):
         if skip:
             skip = False
             continue
-        elif any(arg.startswith(prefix) for prefix in ['-X', '-G:', '-D', '-verbose', '-ea', '-javaagent']) or arg in ['-esa', '-d64']:
+        elif any(arg.startswith(prefix) for prefix in ['-X', '-G:', '-D', '-verbose', '-ea', '-javaagent']) or arg in ['-esa', '-d64', '-server']:
             vm_args += [arg]
         elif useDoubleDash and arg == '--':
             remainder += args[i:]

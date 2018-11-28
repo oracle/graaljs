@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SplittableRandom;
+import java.util.function.Consumer;
 
 import org.graalvm.options.OptionValues;
 
@@ -133,6 +134,7 @@ public class JSRealm {
     private static final String JAVA_WORKER_PROPERTY_NAME = "Worker";
     public static final String PERFORMANCE_CLASS_NAME = "performance";
     public static final String DEBUG_CLASS_NAME = "Debug";
+    public static final String CONSOLE_CLASS_NAME = "Console";
 
     private static final String ALT_GRAALVM_VERSION_PROPERTY = "graalvm.version";
     private static final String GRAALVM_VERSION_PROPERTY = "org.graalvm.version";
@@ -169,7 +171,6 @@ public class JSRealm {
     private final JSConstructor callSiteConstructor;
 
     private final Shape initialUserObjectShape;
-    private final Shape lazyRegexArrayShape;
     private final JSObjectFactory.RealmData objectFactories;
 
     // ES6:
@@ -299,7 +300,6 @@ public class JSRealm {
         this.initialUserObjectShape = JSObjectUtil.getProtoChildShape(this.objectPrototype, JSUserObject.INSTANCE, context);
 
         this.arrayConstructor = JSArray.createConstructor(this);
-        this.lazyRegexArrayShape = JSRegExp.makeLazyRegexArrayShape(context, arrayConstructor.getPrototype());
         this.booleanConstructor = JSBoolean.createConstructor(this);
         this.numberConstructor = JSNumber.createConstructor(this);
         this.bigIntConstructor = JSBigInt.createConstructor(this);
@@ -780,9 +780,7 @@ public class JSRealm {
         if (context.isOptionNashornCompatibilityMode()) {
             initGlobalNashornExtensions(global);
         }
-        if (JSTruffleOptions.TruffleInterop) {
-            setupPolyglot(global);
-        }
+        setupPolyglot(global);
         if (isJavaInteropAvailable()) {
             setupJavaInterop(global);
         }
@@ -826,11 +824,16 @@ public class JSRealm {
         if (getEnv() != null && JSContextOptions.GLOBAL_THIS.getValue(getEnv().getOptions()) && !context.isOptionV8CompatibilityMode()) {
             putGlobalProperty(global, "global", global);
         }
-        if (JSTruffleOptions.GraalBuiltin) {
+        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
+            putGlobalProperty(global, "globalThis", global);
+        }
+        if (context.getContextOptions().isGraalBuiltin()) {
             putGraalObject(global);
         }
-        if (JSTruffleOptions.Extensions) {
+        if (context.getContextOptions().isConsole()) {
             putConsoleObject(global);
+        }
+        if (context.getContextOptions().isPerformance()) {
             putGlobalProperty(global, PERFORMANCE_CLASS_NAME, createPerformance());
         }
         if (JSTruffleOptions.ProfileTime) {
@@ -841,13 +844,31 @@ public class JSRealm {
     private void initGlobalNashornExtensions(DynamicObject global) {
         assert getContext().isOptionNashornCompatibilityMode();
         putGlobalProperty(global, JSAdapter.CLASS_NAME, jsAdapterConstructor.getFunctionObject());
+        putGlobalProperty(global, "exit", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exit"));
+        putGlobalProperty(global, "quit", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "quit"));
         DynamicObject parseToJSON = lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "parseToJSON");
         JSObjectUtil.putOrSetDataProperty(getContext(), global, "parseToJSON", parseToJSON, JSAttributes.getDefaultNotEnumerable());
     }
 
     private void initGlobalScriptingExtensions(DynamicObject global) {
-        DynamicObject exec = lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exec");
-        JSObjectUtil.putOrSetDataProperty(getContext(), global, "$EXEC", exec, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putOrSetDataProperty(getContext(), global, "$EXEC", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exec"), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putOrSetDataProperty(getContext(), global, "readFully", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readFully"), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putOrSetDataProperty(getContext(), global, "readLine", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readLine"), JSAttributes.getDefaultNotEnumerable());
+    }
+
+    /**
+     * Add or set optional global properties. Used by initializeContext and patchContext.
+     */
+    public void addOptionalGlobals() {
+        if (getContext().getContextOptions().isShell()) {
+            getContext().getFunctionLookup().iterateBuiltinFunctions(JSGlobalObject.CLASS_NAME_SHELL_EXTENSIONS, new Consumer<Builtin>() {
+                @Override
+                public void accept(Builtin builtin) {
+                    JSFunctionData functionData = builtin.createFunctionData(getContext());
+                    JSObjectUtil.putOrSetDataProperty(getContext(), getGlobalObject(), builtin.getKey(), JSFunction.create(JSRealm.this, functionData), builtin.getAttributeFlags());
+                }
+            });
+        }
     }
 
     private void putGraalObject(DynamicObject global) {
@@ -952,12 +973,11 @@ public class JSRealm {
             JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_INTERNAL_CLASS_NAME);
         }
         putGlobalProperty(global, POLYGLOT_CLASS_NAME, obj);
-        putGlobalProperty(global, "Interop", obj); // temporary workaround to fix gates
     }
 
     private void putConsoleObject(DynamicObject global) {
         DynamicObject console = JSUserObject.createInit(this);
-        JSObjectUtil.putFunctionsFromContainer(this, console, "Console");
+        JSObjectUtil.putFunctionsFromContainer(this, console, CONSOLE_CLASS_NAME);
         putGlobalProperty(global, "console", console);
     }
 
@@ -1288,10 +1308,6 @@ public class JSRealm {
 
     public long currentTimeMillis() {
         return nanoTime(nanoToCurrentTimeOffset) / NANOSECONDS_PER_MILLISECOND;
-    }
-
-    public Shape getLazyRegexArrayShape() {
-        return lazyRegexArrayShape;
     }
 
     public JSConsoleUtil getConsoleUtil() {

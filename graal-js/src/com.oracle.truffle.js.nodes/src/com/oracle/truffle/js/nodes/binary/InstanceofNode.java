@@ -55,11 +55,10 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.access.PropertyNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.IsBoundFunctionCacheNodeGen;
 import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.OrdinaryHasInstanceNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -208,7 +207,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
         protected final JSContext context;
         @CompilationFinal private boolean lessThan4 = true;
-        @Child private PropertyNode getPrototypeNode;
+        @Child private PropertyGetNode getPrototypeNode;
         @Child private IsBoundFunctionCacheNode boundFuncCacheNode;
         @Child private IsObjectNode isObjectNode;
         private final BranchProfile invalidPrototypeBranch = BranchProfile.create();
@@ -217,8 +216,8 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
         protected OrdinaryHasInstanceNode(JSContext context) {
             this.context = context;
-            this.getPrototypeNode = NodeFactory.getInstance(context).createProperty(context, null, JSObject.PROTOTYPE);
-            this.boundFuncCacheNode = IsBoundFunctionCacheNode.create();
+            this.getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, context);
+            this.boundFuncCacheNode = IsBoundFunctionCacheNode.create(context);
             this.isObjectNode = IsObjectNode.create();
         }
 
@@ -232,7 +231,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
         }
 
         private DynamicObject getConstructorPrototype(DynamicObject rhs) {
-            Object proto = getPrototypeNode.executeWithTarget(rhs);
+            Object proto = getPrototypeNode.getValue(rhs);
             if (!(JSRuntime.isObject(proto))) {
                 invalidPrototypeBranch.enter();
                 throw typeErrorInvalidPrototype(rhs, proto);
@@ -353,17 +352,20 @@ public abstract class InstanceofNode extends JSBinaryNode {
      * Bound functions have internal slots due to which we can identify them with a shape check.
      */
     public abstract static class IsBoundFunctionCacheNode extends JavaScriptBaseNode {
+        final boolean multiContext;
+
         public abstract boolean executeBoolean(DynamicObject func);
 
-        protected IsBoundFunctionCacheNode() {
+        protected IsBoundFunctionCacheNode(boolean multiContext) {
+            this.multiContext = multiContext;
         }
 
-        public static IsBoundFunctionCacheNode create() {
-            return IsBoundFunctionCacheNodeGen.create();
+        public static IsBoundFunctionCacheNode create(JSContext context) {
+            return IsBoundFunctionCacheNodeGen.create(context.isMultiContext());
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "func == cachedFunction", limit = "1")
+        @Specialization(guards = {"!multiContext", "func == cachedFunction"}, limit = "1")
         protected static boolean doCachedInstance(DynamicObject func,
                         @Cached("func") DynamicObject cachedFunction,
                         @Cached("isBoundFunction(func)") boolean cachedIsBound) {

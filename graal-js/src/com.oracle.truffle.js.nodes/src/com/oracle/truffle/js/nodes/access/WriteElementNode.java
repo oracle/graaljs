@@ -73,7 +73,7 @@ import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
@@ -112,6 +112,7 @@ import com.oracle.truffle.js.runtime.array.dyn.HolesObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsObject;
@@ -408,7 +409,10 @@ public class WriteElementNode extends JSTargetableNode {
                 return new NumberWriteElementTypeCacheNode(context, isStrict, target.getClass(), writeOwn);
             } else if (target instanceof Symbol) {
                 return new SymbolWriteElementTypeCacheNode(context, isStrict, writeOwn);
-            } else if (target instanceof TruffleObject && !(target instanceof Symbol)) {
+            } else if (target instanceof BigInt) {
+                return new BigIntWriteElementTypeCacheNode(context, isStrict, writeOwn);
+            } else if (target instanceof TruffleObject) {
+                assert JSRuntime.isForeignObject(target);
                 return new TruffleObjectWriteElementTypeCacheNode(context, isStrict, (Class<? extends TruffleObject>) target.getClass(), writeOwn);
             } else {
                 assert JSTruffleOptions.NashornJavaInterop : target;
@@ -1449,24 +1453,24 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private abstract static class IndexToStringCachedWriteElementTypeCacheNode extends CachedWriteElementTypeCacheNode {
-        @Child private JSToStringNode indexToStringNode;
+    private abstract static class ToPropertyKeyCachedWriteElementTypeCacheNode extends CachedWriteElementTypeCacheNode {
+        @Child private JSToPropertyKeyNode indexToPropertyKeyNode;
         protected final JSClassProfile classProfile = JSClassProfile.create();
 
-        IndexToStringCachedWriteElementTypeCacheNode(JSContext context, boolean isStrict, boolean writeOwn) {
+        ToPropertyKeyCachedWriteElementTypeCacheNode(JSContext context, boolean isStrict, boolean writeOwn) {
             super(context, isStrict, writeOwn);
         }
 
-        protected final String indexToString(Object index) {
-            if (indexToStringNode == null) {
+        protected final Object toPropertyKey(Object index) {
+            if (indexToPropertyKeyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                indexToStringNode = insert(JSToStringNode.create());
+                indexToPropertyKeyNode = insert(JSToPropertyKeyNode.create());
             }
-            return indexToStringNode.executeString(index);
+            return indexToPropertyKeyNode.execute(index);
         }
     }
 
-    private static class StringWriteElementTypeCacheNode extends IndexToStringCachedWriteElementTypeCacheNode {
+    private static class StringWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
         private final Class<?> stringClass;
         private final BranchProfile intIndexBranch = BranchProfile.create();
         private final BranchProfile stringIndexBranch = BranchProfile.create();
@@ -1492,7 +1496,7 @@ public class WriteElementNode extends JSTargetableNode {
                 }
             }
             stringIndexBranch.enter();
-            JSObject.set(JSString.create(context, charSequence), indexToString(index), value, isStrict, classProfile);
+            JSObject.set(JSString.create(context, charSequence), toPropertyKey(index), value, isStrict, classProfile);
         }
 
         @Override
@@ -1515,7 +1519,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class NumberWriteElementTypeCacheNode extends IndexToStringCachedWriteElementTypeCacheNode {
+    private static class NumberWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
         private final Class<?> numberClass;
 
         NumberWriteElementTypeCacheNode(JSContext context, boolean isStrict, Class<?> numberClass, boolean writeOwn) {
@@ -1526,7 +1530,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
             Number number = (Number) target;
-            JSObject.set(JSNumber.create(context, number), indexToString(index), value, isStrict, classProfile);
+            JSObject.set(JSNumber.create(context, number), toPropertyKey(index), value, isStrict, classProfile);
         }
 
         @Override
@@ -1541,7 +1545,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class BooleanWriteElementTypeCacheNode extends IndexToStringCachedWriteElementTypeCacheNode {
+    private static class BooleanWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
         BooleanWriteElementTypeCacheNode(JSContext context, boolean isStrict, boolean writeOwn) {
             super(context, isStrict, writeOwn);
         }
@@ -1549,7 +1553,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
             Boolean bool = (Boolean) target;
-            JSObject.set(JSBoolean.create(context, bool), indexToString(index), value, isStrict, classProfile);
+            JSObject.set(JSBoolean.create(context, bool), toPropertyKey(index), value, isStrict, classProfile);
         }
 
         @Override
@@ -1564,7 +1568,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class SymbolWriteElementTypeCacheNode extends IndexToStringCachedWriteElementTypeCacheNode {
+    private static class SymbolWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
         SymbolWriteElementTypeCacheNode(JSContext context, boolean isStrict, boolean writeOwn) {
             super(context, isStrict, writeOwn);
         }
@@ -1575,7 +1579,7 @@ public class WriteElementNode extends JSTargetableNode {
                 throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
             }
             Symbol symbol = (Symbol) target;
-            JSObject.set(JSSymbol.create(context, symbol), indexToString(index), value, isStrict, classProfile);
+            JSObject.set(JSSymbol.create(context, symbol), toPropertyKey(index), value, isStrict, classProfile);
         }
 
         @Override
@@ -1590,6 +1594,29 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         public boolean guard(Object target) {
             return target instanceof Symbol;
+        }
+    }
+
+    private static class BigIntWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
+        BigIntWriteElementTypeCacheNode(JSContext context, boolean isStrict, boolean writeOwn) {
+            super(context, isStrict, writeOwn);
+        }
+
+        @Override
+        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
+            BigInt bigInt = (BigInt) target;
+            JSObject.set(JSBigInt.create(context, bigInt), toPropertyKey(index), value, isStrict, classProfile);
+        }
+
+        @Override
+        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
+            BigInt bigInt = (BigInt) target;
+            JSObject.set(JSBigInt.create(context, bigInt), index, value, isStrict, classProfile);
+        }
+
+        @Override
+        public boolean guard(Object target) {
+            return target instanceof BigInt;
         }
     }
 
@@ -1641,7 +1668,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         public boolean guard(Object target) {
-            return targetClass.isInstance(target);
+            return targetClass.isInstance(target) && !JSObject.isJSObject(target);
         }
 
         private void tryInvokeSetter(TruffleObject thisObj, String key, Object value) {

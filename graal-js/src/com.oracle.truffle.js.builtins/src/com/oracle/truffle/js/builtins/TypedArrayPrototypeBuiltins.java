@@ -445,9 +445,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             int targetElementSize = targetType.bytesPerElement();
             int sourceElementSize = sourceType.bytesPerElement();
             int targetByteIndex = targetByteOffset + targetOffset * targetElementSize;
-            int sourceByteLength = sourceByteIndex + sourceLength * sourceElementSize;
             if (sourceType == targetType) {
                 // same element type => bulk copy
+                int sourceByteLength = sourceLength * sourceElementSize;
                 if (isDirectProf.profile(targetType.isDirect())) {
                     ((ByteBuffer) ((ByteBuffer) targetBackingBuffer).duplicate().position(targetByteIndex)).put(
                                     ((ByteBuffer) ((ByteBuffer) sourceBackingBuffer).duplicate().position(sourceByteIndex).limit(sourceByteIndex + sourceByteLength)).slice());

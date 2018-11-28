@@ -68,7 +68,7 @@ import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
@@ -76,6 +76,7 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNodeGen;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNodeGen;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -97,6 +98,7 @@ import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsObject;
@@ -364,9 +366,11 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             } else if (target instanceof Number) {
                 return new NumberReadElementTypeCacheNode(context, target.getClass());
             } else if (target instanceof Symbol) {
-                return new SymbolReadElementTypeCacheNode(context, target.getClass());
+                return new SymbolReadElementTypeCacheNode(context);
+            } else if (target instanceof BigInt) {
+                return new BigIntReadElementTypeCacheNode(context);
             } else if (target instanceof TruffleObject) {
-                assert !(target instanceof Symbol);
+                assert JSRuntime.isForeignObject(target);
                 return new TruffleObjectReadElementTypeCacheNode(context, (Class<? extends TruffleObject>) target.getClass());
             } else {
                 assert JSTruffleOptions.NashornJavaInterop : target;
@@ -1241,7 +1245,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private abstract static class ToPropertyKeyCachedReadElementTypeCacheNode extends CachedReadElementTypeCacheNode {
-        @Child private JSToStringNode indexToStringNode;
+        @Child private JSToPropertyKeyNode indexToPropertyKeyNode;
         protected final JSClassProfile jsclassProfile = JSClassProfile.create();
 
         ToPropertyKeyCachedReadElementTypeCacheNode(JSContext context) {
@@ -1249,14 +1253,11 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         protected final Object toPropertyKey(Object index) {
-            if (index instanceof Symbol) {
-                return index;
-            }
-            if (indexToStringNode == null) {
+            if (indexToPropertyKeyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                indexToStringNode = insert(JSToStringNode.create());
+                indexToPropertyKeyNode = insert(JSToPropertyKeyNode.create());
             }
-            return indexToStringNode.executeString(index);
+            return indexToPropertyKeyNode.execute(index);
         }
     }
 
@@ -1269,7 +1270,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         StringReadElementTypeCacheNode(JSContext context, Class<?> stringClass) {
             super(context);
             this.stringClass = stringClass;
-            this.toArrayIndexNode = ToArrayIndexNode.create();
+            this.toArrayIndexNode = ToArrayIndexNode.createNoToPropertyKey();
         }
 
         @Override
@@ -1282,7 +1283,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return String.valueOf(charSequence.charAt(intIndex));
                 }
             }
-            return JSObject.get(JSString.create(context, charSequence), toPropertyKey(convertedIndex), jsclassProfile);
+            return JSObject.get(JSString.create(context, charSequence), toPropertyKey(index), jsclassProfile);
         }
 
         @Override
@@ -1309,7 +1310,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         LazyStringReadElementTypeCacheNode(JSContext context) {
             super(context);
-            this.toArrayIndexNode = ToArrayIndexNode.create();
+            this.toArrayIndexNode = ToArrayIndexNode.createNoToPropertyKey();
         }
 
         @Override
@@ -1322,7 +1323,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return String.valueOf(charSequence.charAt(intIndex));
                 }
             }
-            return JSObject.get(JSString.create(context, charSequence), toPropertyKey(convertedIndex), jsclassProfile);
+            return JSObject.get(JSString.create(context, charSequence), toPropertyKey(index), jsclassProfile);
         }
 
         @Override
@@ -1391,11 +1392,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     private static class SymbolReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
-        private final Class<?> numberClass;
 
-        SymbolReadElementTypeCacheNode(JSContext context, Class<?> stringClass) {
+        SymbolReadElementTypeCacheNode(JSContext context) {
             super(context);
-            this.numberClass = stringClass;
         }
 
         @Override
@@ -1412,7 +1411,31 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         public boolean guard(Object target) {
-            return numberClass.isInstance(target);
+            return target instanceof Symbol;
+        }
+    }
+
+    private static class BigIntReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+
+        BigIntReadElementTypeCacheNode(JSContext context) {
+            super(context);
+        }
+
+        @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
+            BigInt bigInt = (BigInt) target;
+            return JSObject.get(JSBigInt.create(context, bigInt), toPropertyKey(index), jsclassProfile);
+        }
+
+        @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
+            BigInt bigInt = (BigInt) target;
+            return JSObject.get(JSBigInt.create(context, bigInt), index, jsclassProfile);
+        }
+
+        @Override
+        public boolean guard(Object target) {
+            return target instanceof BigInt;
         }
     }
 
@@ -1540,7 +1563,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         public boolean guard(Object target) {
-            return targetClass.isInstance(target);
+            return targetClass.isInstance(target) && !JSObject.isJSObject(target);
         }
     }
 

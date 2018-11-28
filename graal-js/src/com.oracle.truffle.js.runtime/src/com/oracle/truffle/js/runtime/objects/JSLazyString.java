@@ -66,19 +66,19 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
                 throw Errors.createRangeErrorInvalidStringLength();
             }
             if (resultLength < JSTruffleOptions.MinLazyStringLength) {
-                return left.toString() + right.toString();
+                return left.toString().concat(right.toString());
             }
             return new JSLazyString(left, right, resultLength);
         } else {
-            return left.toString() + right.toString();
+            return left.toString().concat(right.toString());
         }
     }
 
     /**
      * Only use when invariants are checked already, e.g. from specializing nodes.
      */
-    @TruffleBoundary
-    public static CharSequence createChecked(CharSequence left, CharSequence right, int length) {
+    @TruffleBoundary(allowInlining = true)
+    public static JSLazyString createChecked(CharSequence left, CharSequence right, int length) {
         assert assertChecked(left, right, length);
         return new JSLazyString(left, right, length);
     }
@@ -94,28 +94,39 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
     }
 
     /**
-     * Variant of {@link #createChecked} that tries to concatenate a very short string to an already
-     * short root leaf up-front, e.g. when appending single characters.
+     * Try to concatenate a very short string (e.g. a single character) to an already short root
+     * leaf, in order to avoid an excess of lazy string nodes when concatenating many tiny strings.
      */
-    @TruffleBoundary
-    public static CharSequence createCheckedShort(CharSequence left, CharSequence right, int length) {
-        assertChecked(left, right, length);
-        final int tinyLimit = 1;
-        final int appendToLeafLimit = JSTruffleOptions.MinLazyStringLength / 2;
-        if (left instanceof JSLazyString && right instanceof String && right.length() <= tinyLimit) {
-            CharSequence ll = ((JSLazyString) left).left;
-            CharSequence lr = ((JSLazyString) left).right;
-            if (lr != null && lr instanceof String && lr.length() + right.length() <= appendToLeafLimit) {
-                return new JSLazyString(ll, lr.toString() + right.toString(), length);
-            }
-        } else if (left instanceof String && left.length() <= tinyLimit && right instanceof JSLazyString) {
-            CharSequence ll = ((JSLazyString) right).left;
-            CharSequence lr = ((JSLazyString) right).right;
-            if (lr != null && ll instanceof String && left.length() + ll.length() <= appendToLeafLimit) {
-                return new JSLazyString(left.toString() + ll.toString(), lr, length);
-            }
+    public static JSLazyString concatToLeafMaybe(CharSequence left, CharSequence right, int length) {
+        assert assertChecked(left, right, length);
+        if (left instanceof JSLazyString && right instanceof String) {
+            return concatToLeafMaybe((JSLazyString) left, (String) right, length);
+        } else if (left instanceof String && right instanceof JSLazyString) {
+            return concatToLeafMaybe((String) left, (JSLazyString) right, length);
         }
-        return new JSLazyString(left, right, length);
+        return null;
+    }
+
+    @TruffleBoundary
+    public static JSLazyString concatToLeafMaybe(JSLazyString left, String right, int length) {
+        assert assertChecked(left, right, length);
+        CharSequence ll = left.left;
+        CharSequence lr = left.right;
+        if (lr != null && lr instanceof String && lr.length() + right.length() <= JSTruffleOptions.ConcatToLeafLimit) {
+            return createChecked(ll, lr.toString().concat(right), length);
+        }
+        return null;
+    }
+
+    @TruffleBoundary
+    public static JSLazyString concatToLeafMaybe(String left, JSLazyString right, int length) {
+        assert assertChecked(left, right, length);
+        CharSequence ll = right.left;
+        CharSequence lr = right.right;
+        if (lr != null && ll instanceof String && left.length() + ll.length() <= JSTruffleOptions.ConcatToLeafLimit) {
+            return createChecked(left.concat(ll.toString()), lr, length);
+        }
+        return null;
     }
 
     /**

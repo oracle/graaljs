@@ -218,6 +218,7 @@ public class JSContext {
     private volatile CallTarget boundFunctionConstructNewTargetCache;
 
     public enum BuiltinFunctionKey {
+        ArrayFlattenIntoArray,
         AwaitFulfilled,
         AwaitRejected,
         AsyncGeneratorReturnFulfilled,
@@ -1278,10 +1279,6 @@ public class JSContext {
         return contextOptions.getTimerResolution();
     }
 
-    public boolean isOptionAgentCanBlock() {
-        return contextOptions.canAgentBlock();
-    }
-
     public void initializeJavaInteropWorkers(EcmaAgent workerMain, EcmaAgent.Factory workerFactory) {
         assert mainWorker == null && javaInteropWorkersFactory == null;
         mainWorker = workerMain;
@@ -1428,7 +1425,7 @@ public class JSContext {
     }
 
     public final boolean isSingleRealm() {
-        return singleRealmAssumption.isValid();
+        return !isMultiContext() && singleRealmAssumption.isValid();
     }
 
     public final void assumeSingleRealm() throws InvalidAssumptionException {

@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltins.ErrorPrototypeNashornCompatBuiltins;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltins.FunctionPrototypeNashornCompatBuiltins;
-import com.oracle.truffle.js.builtins.GlobalBuiltins.GlobalNashornExtensionsBuiltins;
 import com.oracle.truffle.js.builtins.JavaBuiltins.JavaNashornCompatBuiltins;
 import com.oracle.truffle.js.builtins.PolyglotBuiltins.PolyglotInternalBuiltins;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.RegExpPrototypeGetterBuiltins;
@@ -59,8 +58,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionLookup;
-import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
-import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDBool16x8;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDBool32x4;
@@ -87,7 +84,7 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         defineBuiltins(new MathBuiltins());
 
         defineBuiltins(new StringPrototypeBuiltins());
-        defineBuiltins(JSString.CLASS_NAME_EXTENSIONS, new StringPrototypeExtensionBuiltins());
+        defineBuiltins(new StringPrototypeExtensionBuiltins());
         defineBuiltins(new StringFunctionBuiltins());
 
         defineBuiltins(new ArrayPrototypeBuiltins());
@@ -119,8 +116,9 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
 
         defineBuiltins(new JSONBuiltins());
 
-        defineBuiltins(JSGlobalObject.CLASS_NAME, new GlobalBuiltins());
-        defineBuiltins(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, new GlobalNashornExtensionsBuiltins());
+        defineBuiltins(new GlobalBuiltins());
+        defineBuiltins(new GlobalBuiltins.GlobalNashornScriptingBuiltins());
+        defineBuiltins(new GlobalBuiltins.GlobalShellBuiltins());
 
         defineBuiltins(JSConstructor.BUILTINS, new ConstructorBuiltins());
 
@@ -168,14 +166,10 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         if (JSTruffleOptions.TestV8Mode) {
             defineBuiltins(new TestV8Builtins());
         }
-        if (JSTruffleOptions.TruffleInterop) {
-            defineBuiltins(new PolyglotBuiltins());
-            defineBuiltins(new PolyglotInternalBuiltins());
-        }
+        defineBuiltins(new PolyglotBuiltins());
+        defineBuiltins(new PolyglotInternalBuiltins());
         defineBuiltins(new DebugBuiltins());
-        if (JSTruffleOptions.Extensions) {
-            defineBuiltins(new PerformanceBuiltins());
-        }
+        defineBuiltins(new PerformanceBuiltins());
         defineBuiltins(new RealmFunctionBuiltins());
         if (!JSTruffleOptions.SubstrateVM) {
             defineJavaInterop();

@@ -58,25 +58,25 @@ import com.oracle.truffle.js.runtime.Symbol;
  * Converts value to array index according to ES5 15.4 Array Objects.
  */
 public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
-    protected final boolean convertToString;
-
-    public abstract int executeInt(Object operand) throws UnexpectedResultException;
+    protected final boolean convertToPropertyKey;
 
     public abstract Object execute(Object operand);
+
+    public abstract long executeLong(Object operand) throws UnexpectedResultException;
 
     public final boolean isArrayIndex(Object operand) {
         return execute(operand) instanceof Long;
     }
 
-    protected ToArrayIndexNode(boolean convertToString) {
-        this.convertToString = convertToString;
+    protected ToArrayIndexNode(boolean convertToPropertyKey) {
+        this.convertToPropertyKey = convertToPropertyKey;
     }
 
     public static ToArrayIndexNode create() {
         return ToArrayIndexNodeGen.create(true);
     }
 
-    public static ToArrayIndexNode createNoToString() {
+    public static ToArrayIndexNode createNoToPropertyKey() {
         return ToArrayIndexNodeGen.create(false);
     }
 
@@ -147,15 +147,15 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
                         (!(o instanceof Long) || !JSGuards.isLongArrayIndex((long) o)) && !(o instanceof String) && !(o instanceof Symbol);
     }
 
-    @Specialization(guards = {"!convertToString", "notArrayIndex(value)"})
+    @Specialization(guards = {"!convertToPropertyKey", "notArrayIndex(value)"})
     protected static Object doNonArrayIndex(Object value) {
         return value;
     }
 
-    @Specialization(guards = {"convertToString", "notArrayIndex(value)"})
-    protected static String doNonArrayIndex(Object value,
-                    @Cached("create()") JSToStringNode toStringNode) {
-        return toStringNode.executeString(value);
+    @Specialization(guards = {"convertToPropertyKey", "notArrayIndex(value)"})
+    protected static Object doNonArrayIndex(Object value,
+                    @Cached("create()") JSToPropertyKeyNode toPropertyKey) {
+        return toPropertyKey.execute(value);
     }
 
     public abstract static class ToArrayIndexWrapperNode extends JSUnaryNode {

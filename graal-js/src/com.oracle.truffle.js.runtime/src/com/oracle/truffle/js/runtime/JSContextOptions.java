@@ -42,6 +42,8 @@ package com.oracle.truffle.js.runtime;
 
 import static com.oracle.truffle.js.runtime.JSTruffleOptions.JS_OPTION_PREFIX;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
@@ -60,113 +62,118 @@ public final class JSContextOptions {
 
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSTruffleOptions.MaxECMAScriptVersion);
-    private static final String ECMASCRIPT_VERSION_HELP = helpWithDefault("ECMAScript Version.", ECMASCRIPT_VERSION);
+    private static final String ECMASCRIPT_VERSION_HELP = "ECMAScript Version.";
     @CompilationFinal private int ecmascriptVersion;
 
     public static final String ANNEX_B_NAME = JS_OPTION_PREFIX + "annex-b";
     public static final OptionKey<Boolean> ANNEX_B = new OptionKey<>(JSTruffleOptions.AnnexB);
-    private static final String ANNEX_B_HELP = helpWithDefault("Enable ECMAScript Annex B features.", ANNEX_B);
+    private static final String ANNEX_B_HELP = "Enable ECMAScript Annex B features.";
     @CompilationFinal private boolean annexB;
 
     public static final String INTL_402_NAME = JS_OPTION_PREFIX + "intl-402";
     public static final OptionKey<Boolean> INTL_402 = new OptionKey<>(false);
-    private static final String INTL_402_HELP = helpWithDefault("Enable ECMAScript Internationalization API", INTL_402);
+    private static final String INTL_402_HELP = "Enable ECMAScript Internationalization API";
     @CompilationFinal private boolean intl402;
 
     public static final String REGEXP_STATIC_RESULT_NAME = JS_OPTION_PREFIX + "regexp-static-result";
     private static final OptionKey<Boolean> REGEXP_STATIC_RESULT = new OptionKey<>(true);
-    private static final String REGEXP_STATIC_RESULT_HELP = helpWithDefault("provide last RegExp match in RegExp global var, e.g. RegExp.$1", REGEXP_STATIC_RESULT);
+    private static final String REGEXP_STATIC_RESULT_HELP = "provide last RegExp match in RegExp global var, e.g. RegExp.$1";
     @CompilationFinal private boolean regexpStaticResult;
 
     public static final String ARRAY_SORT_INHERITED_NAME = JS_OPTION_PREFIX + "array-sort-inherited";
     private static final OptionKey<Boolean> ARRAY_SORT_INHERITED = new OptionKey<>(true);
-    private static final String ARRAY_SORT_INHERITED_HELP = helpWithDefault("implementation-defined behavior in Array.protoype.sort: sort inherited keys?", ARRAY_SORT_INHERITED);
+    private static final String ARRAY_SORT_INHERITED_HELP = "implementation-defined behavior in Array.protoype.sort: sort inherited keys?";
     @CompilationFinal private boolean arraySortInherited;
 
     public static final String SHARED_ARRAY_BUFFER_NAME = JS_OPTION_PREFIX + "shared-array-buffer";
     private static final OptionKey<Boolean> SHARED_ARRAY_BUFFER = new OptionKey<>(true);
-    private static final String SHARED_ARRAY_BUFFER_HELP = helpWithDefault("ES2017 SharedArrayBuffer", SHARED_ARRAY_BUFFER);
+    private static final String SHARED_ARRAY_BUFFER_HELP = "ES2017 SharedArrayBuffer";
     @CompilationFinal private boolean sharedArrayBuffer;
 
     public static final String ATOMICS_NAME = JS_OPTION_PREFIX + "atomics";
     private static final OptionKey<Boolean> ATOMICS = new OptionKey<>(true);
-    private static final String ATOMICS_HELP = helpWithDefault("ES2017 Atomics", ATOMICS);
+    private static final String ATOMICS_HELP = "ES2017 Atomics";
     @CompilationFinal private boolean atomics;
 
     public static final String V8_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "v8-compat";
     private static final OptionKey<Boolean> V8_COMPATIBILITY_MODE = new OptionKey<>(false);
-    private static final String V8_COMPATIBILITY_MODE_HELP = helpWithDefault("provide compatibility with the Google V8 engine", V8_COMPATIBILITY_MODE);
+    private static final String V8_COMPATIBILITY_MODE_HELP = "provide compatibility with the Google V8 engine";
     @CompilationFinal private boolean v8CompatibilityMode;
 
     public static final String V8_REALM_BUILTIN_NAME = JS_OPTION_PREFIX + "v8-realm-builtin";
     private static final OptionKey<Boolean> V8_REALM_BUILTIN = new OptionKey<>(false);
-    private static final String V8_REALM_BUILTIN_HELP = helpWithDefault("Provide Realm builtin compatible with V8's d8 shell.", V8_REALM_BUILTIN);
+    private static final String V8_REALM_BUILTIN_HELP = "Provide Realm builtin compatible with V8's d8 shell.";
     @CompilationFinal private boolean v8RealmBuiltin;
 
     public static final String NASHORN_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "nashorn-compat";
-    private static final OptionKey<Boolean> NASHORN_COMPATIBILITY_MODE = new OptionKey<>(false);
-    private static final String NASHORN_COMPATIBILITY_MODE_HELP = helpWithDefault("provide compatibility with the OpenJDK Nashorn engine", NASHORN_COMPATIBILITY_MODE);
+    public static final OptionKey<Boolean> NASHORN_COMPATIBILITY_MODE = new OptionKey<>(false);
+    private static final String NASHORN_COMPATIBILITY_MODE_HELP = "provide compatibility with the OpenJDK Nashorn engine";
     @CompilationFinal private boolean nashornCompatibilityMode;
 
     public static final String STACK_TRACE_LIMIT_NAME = JS_OPTION_PREFIX + "stack-trace-limit";
     public static final OptionKey<Integer> STACK_TRACE_LIMIT = new OptionKey<>(JSTruffleOptions.StackTraceLimit);
-    private static final String STACK_TRACE_LIMIT_HELP = helpWithDefault("number of stack frames to capture", STACK_TRACE_LIMIT);
+    private static final String STACK_TRACE_LIMIT_HELP = "number of stack frames to capture";
 
     public static final String DEBUG_BUILTIN_NAME = JS_OPTION_PREFIX + "debug-builtin";
     private static final OptionKey<Boolean> DEBUG_BUILTIN = new OptionKey<>(false);
-    private static final String DEBUG_BUILTIN_HELP = helpWithDefault("provide a non-API Debug builtin. Behaviour will likely change. Don't depend on this in production code.", DEBUG_BUILTIN);
+    private static final String DEBUG_BUILTIN_HELP = "provide a non-API Debug builtin. Behaviour will likely change. Don't depend on this in production code.";
     @CompilationFinal private boolean debug;
 
     public static final String DIRECT_BYTE_BUFFER_NAME = JS_OPTION_PREFIX + "direct-byte-buffer";
     private static final OptionKey<Boolean> DIRECT_BYTE_BUFFER = new OptionKey<>(JSTruffleOptions.DirectByteBuffer);
-    private static final String DIRECT_BYTE_BUFFER_HELP = helpWithDefault("Use direct (off-heap) byte buffer for typed arrays.", DIRECT_BYTE_BUFFER);
+    private static final String DIRECT_BYTE_BUFFER_HELP = "Use direct (off-heap) byte buffer for typed arrays.";
     @CompilationFinal private boolean directByteBuffer;
 
     public static final String PARSE_ONLY_NAME = JS_OPTION_PREFIX + "parse-only";
     private static final OptionKey<Boolean> PARSE_ONLY = new OptionKey<>(false);
-    private static final String PARSE_ONLY_HELP = helpWithDefault("Only parse source code, do not run it.", PARSE_ONLY);
+    private static final String PARSE_ONLY_HELP = "Only parse source code, do not run it.";
     @CompilationFinal private boolean parseOnly;
 
     public static final String TIME_ZONE_NAME = JS_OPTION_PREFIX + "timezone";
     public static final OptionKey<String> TIME_ZONE = new OptionKey<>("");
-    private static final String TIME_ZONE_HELP = helpWithDefault("Set custom timezone.", TIME_ZONE);
+    private static final String TIME_ZONE_HELP = "Set custom timezone.";
 
     public static final String TIMER_RESOLUTION_NAME = JS_OPTION_PREFIX + "timer-resolution";
     private static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
-    private static final String TIMER_RESOLUTION_HELP = helpWithDefault("Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.",
-                    TIMER_RESOLUTION);
+    private static final String TIMER_RESOLUTION_HELP = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.";
     @CompilationFinal private long timerResolution;
 
     public static final String AGENT_CAN_BLOCK_NAME = JS_OPTION_PREFIX + "agent-can-block";
     public static final OptionKey<Boolean> AGENT_CAN_BLOCK = new OptionKey<>(true);
-    private static final String AGENT_CAN_BLOCK_HELP = helpWithDefault("Determines whether agents can block or not.", AGENT_CAN_BLOCK);
+    private static final String AGENT_CAN_BLOCK_HELP = "Determines whether agents can block or not.";
     @CompilationFinal private boolean agentCanBlock;
 
     public static final String JAVA_PACKAGE_GLOBALS_NAME = JS_OPTION_PREFIX + "java-package-globals";
     public static final OptionKey<Boolean> JAVA_PACKAGE_GLOBALS = new OptionKey<>(true);
-    private static final String JAVA_PACKAGE_GLOBALS_HELP = helpWithDefault("provide Java package globals: Packages, java, javafx, javax, com, org, edu.", JAVA_PACKAGE_GLOBALS);
+    private static final String JAVA_PACKAGE_GLOBALS_HELP = "provide Java package globals: Packages, java, javafx, javax, com, org, edu.";
 
     public static final String GLOBAL_THIS_NAME = JS_OPTION_PREFIX + "global-this";
     public static final OptionKey<Boolean> GLOBAL_THIS = new OptionKey<>(true);
-    private static final String GLOBAL_THIS_HELP = helpWithDefault("provide 'global' global property.", JAVA_PACKAGE_GLOBALS);
+    private static final String GLOBAL_THIS_HELP = "provide 'global' global property.";
 
-    private static final OptionKey<?>[] PREINIT_CONTEXT_OPTION_KEYS = {
-                    ECMASCRIPT_VERSION,
-                    ANNEX_B,
-                    INTL_402,
-                    REGEXP_STATIC_RESULT,
-                    SHARED_ARRAY_BUFFER,
-                    ATOMICS,
-                    DIRECT_BYTE_BUFFER,
-                    V8_COMPATIBILITY_MODE,
-                    V8_REALM_BUILTIN,
-                    NASHORN_COMPATIBILITY_MODE,
-                    STACK_TRACE_LIMIT,
-                    DEBUG_BUILTIN,
-                    PARSE_ONLY,
-                    TIME_ZONE,
-                    JAVA_PACKAGE_GLOBALS,
-                    GLOBAL_THIS,
+    public static final String CONSOLE_NAME = JS_OPTION_PREFIX + "console";
+    public static final OptionKey<Boolean> CONSOLE = new OptionKey<>(true);
+    private static final String CONSOLE_HELP = "provide 'console' global property.";
+
+    public static final String PERFORMANCE_NAME = JS_OPTION_PREFIX + "performance";
+    public static final OptionKey<Boolean> PERFORMANCE = new OptionKey<>(true);
+    private static final String PERFORMANCE_HELP = "provide 'performance' global property.";
+
+    public static final String SHELL_NAME = JS_OPTION_PREFIX + "shell";
+    public static final OptionKey<Boolean> SHELL = new OptionKey<>(false);
+    private static final String SHELL_HELP = "provide global functions for js shell.";
+
+    public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
+    public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
+    private static final String GRAAL_BUILTIN_HELP = "provide 'Graal' global property.";
+
+    /**
+     * Options which can be patched without throwing away the pre-initialized context.
+     */
+    private static final OptionKey<?>[] PREINIT_CONTEXT_PATCHABLE_OPTIONS = {
+                    ARRAY_SORT_INHERITED,
+                    TIMER_RESOLUTION,
+                    SHELL,
     };
 
     public JSContextOptions(ParserOptions parserOptions) {
@@ -252,40 +259,63 @@ public final class JSContextOptions {
         return helpMessage + " (default:" + key.getDefaultValue() + ")";
     }
 
-    public static void describeOptions(List<OptionDescriptor> options) {
-        options.add(OptionDescriptor.newBuilder(ECMASCRIPT_VERSION, ECMASCRIPT_VERSION_NAME).category(OptionCategory.USER).help(ECMASCRIPT_VERSION_HELP).build());
-        options.add(OptionDescriptor.newBuilder(ANNEX_B, ANNEX_B_NAME).category(OptionCategory.USER).help(ANNEX_B_HELP).build());
-        options.add(OptionDescriptor.newBuilder(INTL_402, INTL_402_NAME).category(OptionCategory.USER).help(INTL_402_HELP).build());
-        options.add(OptionDescriptor.newBuilder(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME).category(OptionCategory.USER).help(REGEXP_STATIC_RESULT_HELP).build());
-        options.add(OptionDescriptor.newBuilder(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME).category(OptionCategory.USER).help(ARRAY_SORT_INHERITED_HELP).build());
-        options.add(OptionDescriptor.newBuilder(SHARED_ARRAY_BUFFER, SHARED_ARRAY_BUFFER_NAME).category(OptionCategory.USER).help(SHARED_ARRAY_BUFFER_HELP).build());
-        options.add(OptionDescriptor.newBuilder(ATOMICS, ATOMICS_NAME).category(OptionCategory.USER).help(ATOMICS_HELP).build());
-        options.add(OptionDescriptor.newBuilder(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME).category(OptionCategory.USER).help(V8_COMPATIBILITY_MODE_HELP).build());
-        options.add(OptionDescriptor.newBuilder(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME).category(OptionCategory.DEBUG).help(V8_REALM_BUILTIN_HELP).build());
-        options.add(OptionDescriptor.newBuilder(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME).category(OptionCategory.USER).help(NASHORN_COMPATIBILITY_MODE_HELP).build());
-        options.add(OptionDescriptor.newBuilder(STACK_TRACE_LIMIT, STACK_TRACE_LIMIT_NAME).category(OptionCategory.USER).help(STACK_TRACE_LIMIT_HELP).build());
-        options.add(OptionDescriptor.newBuilder(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME).category(OptionCategory.DEBUG).help(DEBUG_BUILTIN_HELP).build());
-        options.add(OptionDescriptor.newBuilder(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME).category(OptionCategory.USER).help(DIRECT_BYTE_BUFFER_HELP).build());
-        options.add(OptionDescriptor.newBuilder(PARSE_ONLY, PARSE_ONLY_NAME).category(OptionCategory.USER).help(PARSE_ONLY_HELP).build());
-        options.add(OptionDescriptor.newBuilder(TIME_ZONE, TIME_ZONE_NAME).category(OptionCategory.USER).help(TIME_ZONE_HELP).build());
-        options.add(OptionDescriptor.newBuilder(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME).category(OptionCategory.USER).help(TIMER_RESOLUTION_HELP).build());
-        options.add(OptionDescriptor.newBuilder(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME).category(OptionCategory.DEBUG).help(AGENT_CAN_BLOCK_HELP).build());
-        options.add(OptionDescriptor.newBuilder(JAVA_PACKAGE_GLOBALS, JAVA_PACKAGE_GLOBALS_NAME).category(OptionCategory.USER).help(JAVA_PACKAGE_GLOBALS_HELP).build());
-        options.add(OptionDescriptor.newBuilder(GLOBAL_THIS, GLOBAL_THIS_NAME).category(OptionCategory.USER).help(GLOBAL_THIS_HELP).build());
+    public static OptionDescriptor newOptionDescriptor(OptionKey<?> key, String name, OptionCategory category, String help) {
+        return OptionDescriptor.newBuilder(key, name).category(category).help(helpWithDefault(help, key)).build();
     }
 
-    // check for options that are not on their default value.
-    // in such case, we cannot use the pre-initialized context for faster startup
+    public static void describeOptions(List<OptionDescriptor> options) {
+        options.add(newOptionDescriptor(ECMASCRIPT_VERSION, ECMASCRIPT_VERSION_NAME, OptionCategory.USER, ECMASCRIPT_VERSION_HELP));
+        options.add(newOptionDescriptor(ANNEX_B, ANNEX_B_NAME, OptionCategory.USER, ANNEX_B_HELP));
+        options.add(newOptionDescriptor(INTL_402, INTL_402_NAME, OptionCategory.USER, INTL_402_HELP));
+        options.add(newOptionDescriptor(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME, OptionCategory.USER, REGEXP_STATIC_RESULT_HELP));
+        options.add(newOptionDescriptor(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, OptionCategory.USER, ARRAY_SORT_INHERITED_HELP));
+        options.add(newOptionDescriptor(SHARED_ARRAY_BUFFER, SHARED_ARRAY_BUFFER_NAME, OptionCategory.USER, SHARED_ARRAY_BUFFER_HELP));
+        options.add(newOptionDescriptor(ATOMICS, ATOMICS_NAME, OptionCategory.USER, ATOMICS_HELP));
+        options.add(newOptionDescriptor(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, OptionCategory.USER, V8_COMPATIBILITY_MODE_HELP));
+        options.add(newOptionDescriptor(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME, OptionCategory.DEBUG, V8_REALM_BUILTIN_HELP));
+        options.add(newOptionDescriptor(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME, OptionCategory.USER, NASHORN_COMPATIBILITY_MODE_HELP));
+        options.add(newOptionDescriptor(STACK_TRACE_LIMIT, STACK_TRACE_LIMIT_NAME, OptionCategory.USER, STACK_TRACE_LIMIT_HELP));
+        options.add(newOptionDescriptor(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME, OptionCategory.DEBUG, DEBUG_BUILTIN_HELP));
+        options.add(newOptionDescriptor(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, OptionCategory.USER, DIRECT_BYTE_BUFFER_HELP));
+        options.add(newOptionDescriptor(PARSE_ONLY, PARSE_ONLY_NAME, OptionCategory.USER, PARSE_ONLY_HELP));
+        options.add(newOptionDescriptor(TIME_ZONE, TIME_ZONE_NAME, OptionCategory.USER, TIME_ZONE_HELP));
+        options.add(newOptionDescriptor(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, OptionCategory.USER, TIMER_RESOLUTION_HELP));
+        options.add(newOptionDescriptor(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME, OptionCategory.DEBUG, AGENT_CAN_BLOCK_HELP));
+        options.add(newOptionDescriptor(JAVA_PACKAGE_GLOBALS, JAVA_PACKAGE_GLOBALS_NAME, OptionCategory.USER, JAVA_PACKAGE_GLOBALS_HELP));
+        options.add(newOptionDescriptor(GLOBAL_THIS, GLOBAL_THIS_NAME, OptionCategory.USER, GLOBAL_THIS_HELP));
+        options.add(newOptionDescriptor(CONSOLE, CONSOLE_NAME, OptionCategory.USER, CONSOLE_HELP));
+        options.add(newOptionDescriptor(PERFORMANCE, PERFORMANCE_NAME, OptionCategory.USER, PERFORMANCE_HELP));
+        options.add(newOptionDescriptor(SHELL, SHELL_NAME, OptionCategory.USER, SHELL_HELP));
+        options.add(newOptionDescriptor(GRAAL_BUILTIN, GRAAL_BUILTIN_NAME, OptionCategory.USER, GRAAL_BUILTIN_HELP));
+    }
+
+    /**
+     * Check for options that differ from the expected options and do not support patching, in which
+     * case we cannot use the pre-initialized context for faster startup.
+     */
     public static boolean optionsAllowPreInitializedContext(Env preinitEnv, Env env) {
-        if (!preinitEnv.getOptions().hasSetOptions() && !env.getOptions().hasSetOptions()) {
+        OptionValues preinitOptions = preinitEnv.getOptions();
+        OptionValues options = env.getOptions();
+        if (!preinitOptions.hasSetOptions() && !options.hasSetOptions()) {
+            return true;
+        } else if (preinitOptions.equals(options)) {
+            return true;
+        } else {
+            assert preinitOptions.getDescriptors().equals(options.getDescriptors());
+            Collection<OptionKey<?>> ignoredOptions = Arrays.asList(PREINIT_CONTEXT_PATCHABLE_OPTIONS);
+            for (OptionDescriptor descriptor : options.getDescriptors()) {
+                OptionKey<?> key = descriptor.getKey();
+                if (preinitOptions.hasBeenSet(key) || options.hasBeenSet(key)) {
+                    if (ignoredOptions.contains(key)) {
+                        continue;
+                    }
+                    if (!preinitOptions.get(key).equals(options.get(key))) {
+                        return false;
+                    }
+                }
+            }
             return true;
         }
-        for (OptionKey<?> key : PREINIT_CONTEXT_OPTION_KEYS) {
-            if (!preinitEnv.getOptions().get(key).equals(env.getOptions().get(key))) {
-                return false;
-            }
-        }
-        return true;
     }
 
     public int getEcmaScriptVersion() {
@@ -352,6 +382,22 @@ public final class JSContextOptions {
 
     public boolean canAgentBlock() {
         return agentCanBlock;
+    }
+
+    public boolean isConsole() {
+        return CONSOLE.getValue(optionValues);
+    }
+
+    public boolean isPerformance() {
+        return PERFORMANCE.getValue(optionValues);
+    }
+
+    public boolean isShell() {
+        return SHELL.getValue(optionValues);
+    }
+
+    public boolean isGraalBuiltin() {
+        return GRAAL_BUILTIN.getValue(optionValues);
     }
 
     @Override

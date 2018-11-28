@@ -82,7 +82,18 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
     }
 
     public static CreateObjectWithPrototypeNode createWithCachedPrototype(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
+        if (context.isMultiContext()) {
+            return createWithInstancePrototype(context, prototypeExpression, jsclass);
+        }
         return new CreateObjectWithCachedPrototypeNode(context, prototypeExpression, jsclass);
+    }
+
+    static CreateObjectWithPrototypeNode createWithInstancePrototype(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
+        if (jsclass == JSUserObject.INSTANCE) {
+            return new CreateOrdinaryObjectWithPrototypeInObjectNode(context, prototypeExpression);
+        } else {
+            return new CreateObjectWithUncachedPrototypeNode(context, prototypeExpression, jsclass);
+        }
     }
 
     static CreateObjectNode createDictionary(JSContext context) {
@@ -168,13 +179,9 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
                 return JSObject.create(context, protoChildShape);
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                CreateObjectWithPrototypeNode uncached;
-                if (jsclass == JSUserObject.INSTANCE) {
-                    uncached = new CreateOrdinaryObjectWithPrototypeInObjectNode(context, prototypeExpression);
-                } else {
-                    uncached = new CreateObjectWithUncachedPrototypeNode(context, prototypeExpression, jsclass);
-                }
-                return this.replace(uncached).executeDynamicObject(frame, prototype);
+                CreateObjectWithPrototypeNode uncached = createWithInstancePrototype(context, prototypeExpression, jsclass);
+                this.replace(uncached);
+                return uncached.executeDynamicObject(frame, prototype);
             }
         }
 

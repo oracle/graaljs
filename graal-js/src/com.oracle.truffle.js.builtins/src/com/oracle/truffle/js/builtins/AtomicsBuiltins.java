@@ -104,7 +104,10 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         exchange(3),
         wake(3),
         wait(4),
-        isLockFree(1);
+        isLockFree(1),
+
+        // ES9?
+        notify(3);
 
         private final int length;
 
@@ -115,6 +118,14 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Override
         public int getLength() {
             return length;
+        }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (this.equals(notify)) {
+                return JSTruffleOptions.ECMAScript2019;
+            }
+            return JSTruffleOptions.ECMAScript2017;
         }
     }
 
@@ -141,6 +152,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             case exchange:
                 return AtomicsComputeNodeGen.create(context, builtin, (a, b) -> b, (a, b) -> b, args().fixedArgs(3).createArgumentNodes(context));
             case wake:
+            case notify:
                 return AtomicsWakeNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
             case wait:
                 return AtomicsWaitNodeGen.create(context, builtin, args().fixedArgs(4).createArgumentNodes(context));

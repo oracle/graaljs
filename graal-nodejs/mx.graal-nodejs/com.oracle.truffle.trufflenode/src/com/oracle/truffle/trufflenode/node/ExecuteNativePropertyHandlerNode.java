@@ -190,7 +190,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                 if (indexedHandler.getQuery() != 0) {
                     return (NativeAccess.executePropertyHandlerQuery(indexedHandler.getQuery(), holder, nativeCallArgs, indexedHandlerData, false) != null);
                 } else if (indexedHandler.getDescriptor() != 0) {
-                    Object result = (NativeAccess.executePropertyHandlerDescriptor(indexedHandler.getDescriptor(), holder, nativeCallArgs, indexedHandlerData, false) != null);
+                    Object result = NativeAccess.executePropertyHandlerDescriptor(indexedHandler.getDescriptor(), holder, nativeCallArgs, indexedHandlerData, false);
                     if (result != null) {
                         return true;
                     }

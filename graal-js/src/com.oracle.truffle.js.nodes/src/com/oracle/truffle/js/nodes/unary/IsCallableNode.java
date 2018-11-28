@@ -47,6 +47,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
@@ -70,7 +71,14 @@ public abstract class IsCallableNode extends JSUnaryNode {
     public abstract boolean executeBoolean(Object operand);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = "isJSFunction(function)")
+    @Specialization(guards = {"shape.check(function)", "isJSFunctionShape(shape)"}, limit = "1")
+    protected static boolean doJSFunctionShape(DynamicObject function,
+                    @Cached("function.getShape()") Shape shape) {
+        return true;
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = "isJSFunction(function)", replaces = "doJSFunctionShape")
     protected static boolean doJSFunction(DynamicObject function) {
         return true;
     }
@@ -88,7 +96,7 @@ public abstract class IsCallableNode extends JSUnaryNode {
 
     @SuppressWarnings("unused")
     @Specialization
-    protected static boolean doString(String string) {
+    protected static boolean doCharSequence(CharSequence string) {
         return false;
     }
 

@@ -140,7 +140,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltins.Global> {
 
     protected GlobalBuiltins() {
-        super(null, Global.class);
+        super(JSGlobalObject.CLASS_NAME, Global.class);
     }
 
     public enum Global implements BuiltinEnum<Global> {
@@ -162,14 +162,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         print(1),
         printErr(1),
         load(1),
-        loadWithNewGlobal(-1),
-        exit(1),
-        quit(1),
-        readline(1),
-        readLine(1),
-        read(1),
-        readFully(1),
-        readbuffer(1);
+        loadWithNewGlobal(1);
 
         private final int length;
 
@@ -221,36 +214,27 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return JSGlobalLoadNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case loadWithNewGlobal:
                 return JSGlobalLoadWithNewGlobalNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
-            case exit:
-            case quit:
-                return JSGlobalExitNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
-            case readline:
-                return JSGlobalReadLineNodeGen.create(context, builtin, new JavaScriptNode[]{JSConstantNode.createUndefined()});
-            case readLine:
-                return JSGlobalReadLineNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case readFully:
-            case read:
-                return JSGlobalReadFullyNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case readbuffer:
-                return JSGlobalReadBufferNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
 
-    public static final class GlobalNashornExtensionsBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalNashornExtensionsBuiltins.GlobalNashornExtensions> {
-        protected GlobalNashornExtensionsBuiltins() {
-            super(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, GlobalNashornExtensions.class);
+    /**
+     * Built-ins for js shell (for compatibility with e.g. d8).
+     */
+    public static final class GlobalShellBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalShellBuiltins.GlobalShell> {
+        protected GlobalShellBuiltins() {
+            super(JSGlobalObject.CLASS_NAME_SHELL_EXTENSIONS, GlobalShell.class);
         }
 
-        // attention: those are manually added in JSRealm.initGlobalNashornExtensions or
-        // JSRealm.initGlobalScriptingExtensions.
-        public enum GlobalNashornExtensions implements BuiltinEnum<GlobalNashornExtensions> {
-            exec(1), // $EXEC
-            parseToJSON(3);
+        public enum GlobalShell implements BuiltinEnum<GlobalShell> {
+            quit(1),
+            readline(1),
+            read(1),
+            readbuffer(1);
 
             private final int length;
 
-            GlobalNashornExtensions(int length) {
+            GlobalShell(int length) {
                 this.length = length;
             }
 
@@ -261,8 +245,62 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Override
-        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalNashornExtensions builtinEnum) {
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalShell builtinEnum) {
             switch (builtinEnum) {
+                case quit:
+                    return JSGlobalExitNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+                case readline:
+                    return JSGlobalReadLineNodeGen.create(context, builtin, new JavaScriptNode[]{JSConstantNode.createUndefined()});
+                case read:
+                    return JSGlobalReadFullyNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case readbuffer:
+                    return JSGlobalReadBufferNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            }
+            return null;
+        }
+    }
+
+    public static final class GlobalNashornScriptingBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalNashornScriptingBuiltins.GlobalNashornScripting> {
+        protected GlobalNashornScriptingBuiltins() {
+            super(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, GlobalNashornScripting.class);
+        }
+
+        /**
+         * Manually added in initGlobalNashornExtensions or initGlobalScriptingExtensions.
+         *
+         * @see JSRealm
+         */
+        public enum GlobalNashornScripting implements BuiltinEnum<GlobalNashornScripting> {
+            exit(1),
+            quit(1),
+            readLine(1),
+            readFully(1),
+            exec(1), // $EXEC
+            parseToJSON(3);
+
+            private final int length;
+
+            GlobalNashornScripting(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalNashornScripting builtinEnum) {
+            switch (builtinEnum) {
+                case exit:
+                case quit:
+                    return JSGlobalExitNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+                case readLine:
+                    return JSGlobalReadLineNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case readFully:
+                    return JSGlobalReadFullyNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+
                 case parseToJSON:
                     return GlobalNashornExtensionParseToJSONNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
                 case exec:

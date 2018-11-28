@@ -112,11 +112,6 @@ public class TestScriptEngineInterop {
             engine.getInterface(TestInterface.class);
             return null;
         });
-
-        expectIllegalState(() -> {
-            engine.getInterface("", TestInterface.class);
-            return null;
-        });
     }
 
     private static void expectIllegalState(Callable<?> r) {

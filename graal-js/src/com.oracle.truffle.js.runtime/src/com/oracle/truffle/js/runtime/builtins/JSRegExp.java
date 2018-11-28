@@ -40,16 +40,11 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
-
-import java.util.EnumSet;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -57,9 +52,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.runtime.Boundaries;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -80,6 +73,10 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
 import com.oracle.truffle.regex.RegexEngine;
 import com.oracle.truffle.regex.RegexOptions;
+
+import java.util.EnumSet;
+
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
 
 public final class JSRegExp extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
 
@@ -187,6 +184,11 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         return (TruffleObject) COMPILED_REGEX_PROPERTY.get(thisObj, isJSRegExp(thisObj));
     }
 
+    public static TruffleObject getCompiledRegex(DynamicObject thisObj, boolean guard) {
+        assert isJSRegExp(thisObj);
+        return (TruffleObject) COMPILED_REGEX_PROPERTY.get(thisObj, guard);
+    }
+
     public static JSObjectFactory getGroupsFactory(DynamicObject thisObj) {
         assert isJSRegExp(thisObj);
         return (JSObjectFactory) GROUPS_FACTORY_PROPERTY.get(thisObj, isJSRegExp(thisObj));
@@ -279,38 +281,32 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext ctx = realm.getContext();
         DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), ctx.getEcmaScriptVersion() < 6 ? JSRegExp.INSTANCE : JSUserObject.INSTANCE);
-
         if (ctx.getEcmaScriptVersion() < 6) {
             JSObjectUtil.putHiddenProperty(prototype, COMPILED_REGEX_PROPERTY, compileEarly("", ""));
             JSObjectUtil.putDataProperty(ctx, prototype, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
         }
-        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, FLAGS, realm.lookupFunction(PROTOTYPE_GETTER_NAME, "get " + FLAGS), Undefined.instance);
-
-        putRegExpPropertyAccessor(realm, prototype, MULTILINE,
-                        new CompiledRegexFlagPropertyAccessor(prototype, TRegexUtil.Props.Flags.MULTILINE, Undefined.instance));
-        putRegExpPropertyAccessor(realm, prototype, GLOBAL,
-                        new CompiledRegexFlagPropertyAccessor(prototype, TRegexUtil.Props.Flags.GLOBAL, Undefined.instance));
-        putRegExpPropertyAccessor(realm, prototype, IGNORE_CASE,
-                        new CompiledRegexFlagPropertyAccessor(prototype, TRegexUtil.Props.Flags.IGNORE_CASE, Undefined.instance));
-        putRegExpPropertyAccessor(realm, prototype, SOURCE, new CompiledRegexPatternAccessor(prototype));
-
+        putRegExpPropertyAccessor(realm, prototype, SOURCE);
+        putRegExpPropertyAccessor(realm, prototype, FLAGS);
+        putRegExpPropertyAccessor(realm, prototype, MULTILINE);
+        putRegExpPropertyAccessor(realm, prototype, GLOBAL);
+        putRegExpPropertyAccessor(realm, prototype, IGNORE_CASE);
         if (ctx.getEcmaScriptVersion() >= 6) {
-            putRegExpPropertyAccessor(realm, prototype, STICKY,
-                            new CompiledRegexFlagPropertyAccessor(prototype, TRegexUtil.Props.Flags.STICKY, Undefined.instance));
-            putRegExpPropertyAccessor(realm, prototype, UNICODE,
-                            new CompiledRegexFlagPropertyAccessor(prototype, TRegexUtil.Props.Flags.UNICODE, Undefined.instance));
+            putRegExpPropertyAccessor(realm, prototype, STICKY);
+            putRegExpPropertyAccessor(realm, prototype, UNICODE);
         }
-
         if (ctx.getEcmaScriptVersion() >= 9) {
-            putRegExpPropertyAccessor(realm, prototype, DOT_ALL,
-                            new CompiledRegexFlagPropertyAccessor(prototype, TRegexUtil.Props.Flags.DOT_ALL, Undefined.instance));
+            putRegExpPropertyAccessor(realm, prototype, DOT_ALL);
         }
-
         // ctor and functions
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
-
         return prototype;
+    }
+
+    private static void putRegExpPropertyAccessor(JSRealm realm, DynamicObject prototype, String name) {
+        JSContext ctx = realm.getContext();
+        DynamicObject getter = realm.lookupFunction(PROTOTYPE_GETTER_NAME, name);
+        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, name, getter, Undefined.instance);
     }
 
     private static Object compileEarly(String pattern, String flags) {
@@ -568,71 +564,8 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         Object get(DynamicObject obj);
     }
 
-    private static class CompiledRegexPatternAccessor extends JavaScriptRootNode {
-
-        private static final String DEFAULT_RETURN = "(?:)";
-
-        private final ConditionProfile isObject = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isRegExp = ConditionProfile.createBinaryProfile();
-        private final Object regexPrototype;
-        @Child Node readNode = Message.READ.createNode();
-
-        CompiledRegexPatternAccessor(Object regexPrototype) {
-            this.regexPrototype = regexPrototype;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            Object obj = JSArguments.getThisObject(frame.getArguments());
-            if (isObject.profile(JSObject.isDynamicObject(obj))) {
-                DynamicObject view = JSObject.castJSObject(obj);
-                if (isRegExp.profile(isJSRegExp(view))) {
-                    return escapeRegExpPattern(TRegexUtil.readPattern(readNode, getCompiledRegex(view)));
-                } else if (obj == regexPrototype) {
-                    return DEFAULT_RETURN;
-                }
-            }
-            throw Errors.createTypeErrorIncompatibleReceiver(obj);
-        }
-    }
-
-    private static class CompiledRegexFlagPropertyAccessor extends JavaScriptRootNode {
-
-        private final ConditionProfile isObject = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isRegExp = ConditionProfile.createBinaryProfile();
-        private final Object regexPrototype;
-        private final Object defaultReturn;
-        @Child TRegexUtil.TRegexCompiledRegexSingleFlagAccessor readNode;
-
-        CompiledRegexFlagPropertyAccessor(Object regexPrototype, String flagName, Object defaultReturn) {
-            this.regexPrototype = regexPrototype;
-            this.defaultReturn = defaultReturn;
-            readNode = TRegexUtil.TRegexCompiledRegexSingleFlagAccessor.create(flagName);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            Object obj = JSArguments.getThisObject(frame.getArguments());
-            if (isObject.profile(JSObject.isDynamicObject(obj))) {
-                DynamicObject view = JSObject.castJSObject(obj);
-                if (isRegExp.profile(isJSRegExp(view))) {
-                    return readNode.get(getCompiledRegex(view));
-                } else if (obj == regexPrototype) {
-                    return defaultReturn;
-                }
-            }
-            throw Errors.createTypeErrorIncompatibleReceiver(obj);
-        }
-    }
-
-    private static void putRegExpPropertyAccessor(JSRealm realm, DynamicObject prototype, String name, JavaScriptRootNode accessor) {
-        JSContext ctx = realm.getContext();
-        DynamicObject getter = JSFunction.create(realm, JSFunctionData.createCallOnly(ctx, Truffle.getRuntime().createCallTarget(accessor), 0, "get " + name));
-        JSObjectUtil.putConstantAccessorProperty(ctx, prototype, name, getter, Undefined.instance);
-    }
-
     @TruffleBoundary
-    private static Object escapeRegExpPattern(CharSequence pattern) {
+    public static CharSequence escapeRegExpPattern(CharSequence pattern) {
         if (pattern.length() == 0) {
             return "(?:)";
         }
@@ -717,7 +650,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
      * @return the escaped pattern
      */
     @TruffleBoundary
-    private static Object escapeRegExpPattern(CharSequence pattern, int extraChars) {
+    private static String escapeRegExpPattern(CharSequence pattern, int extraChars) {
         StringBuilder sb = new StringBuilder(pattern.length() + extraChars);
         boolean insideCharClass = false;
         int i = 0;
