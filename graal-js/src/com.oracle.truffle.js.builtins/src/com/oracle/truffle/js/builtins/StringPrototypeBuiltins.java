@@ -825,7 +825,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 } else if (dVal > Integer.MAX_VALUE) {
                     pos = len;
                 } else {
-                    pos = within((int) JSRuntime.toInteger(numPos), 0, len);
+                    pos = within((int) dVal, 0, len);
                 }
             }
             if (searchStrZero.profile(searchStr.length() == 0)) {
