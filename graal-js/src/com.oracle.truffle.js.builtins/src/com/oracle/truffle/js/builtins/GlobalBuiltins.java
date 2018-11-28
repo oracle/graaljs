@@ -800,8 +800,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return Double.NaN;
             }
 
-            String valueString = trimInvalidChars(inputString, radix);
-            int len = valueString.length();
+            int len = validStringLength(inputString, radix);
             if (len <= 0) {
                 needsNaN.enter();
                 return Double.NaN;
@@ -812,16 +811,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     // parseRawDontFitLong() can produce an incorrect result
                     // due to subtle rounding errors (for radix 10) but the spec.
                     // requires exact processing for this radix
-                    return parseDouble(valueString);
+                    return parseDouble(Boundaries.substring(inputString, 0, len));
                 } else {
-                    return JSRuntime.parseRawDontFitLong(valueString, radix);
+                    return JSRuntime.parseRawDontFitLong(inputString, radix, len);
                 }
             }
-            try {
-                return JSRuntime.parseRawFitsLong(valueString, radix);
-            } catch (NumberFormatException e) {
-                return Double.NaN;
-            }
+            return JSRuntime.parseRawFitsLong(inputString, radix, len);
         }
 
         @TruffleBoundary
@@ -888,10 +883,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary
-        private static String trimInvalidChars(String thing, int radix) {
-            return thing.substring(0, validStringLength(thing, radix));
-        }
-
         private static int validStringLength(String thing, int radix) {
             boolean hasSign = false;
             int pos = 0;

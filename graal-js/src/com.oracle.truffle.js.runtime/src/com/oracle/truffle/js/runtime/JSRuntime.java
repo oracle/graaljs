@@ -2056,10 +2056,14 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object parseRawFitsLong(String string, int radix) {
+        return parseRawFitsLong(string, radix, string.length());
+    }
+
+    @TruffleBoundary
+    public static Object parseRawFitsLong(String string, int radix, int len) {
         char firstChar = string.charAt(0);
 
         int pos = 0;
-        int len = string.length();
         boolean negate = false;
 
         if (firstChar == '-') {
@@ -2069,7 +2073,7 @@ public final class JSRuntime {
             pos = 1;
         }
         if (pos == len) {
-            throw new NumberFormatException();
+            return Double.NaN;
         }
 
         int firstPos = pos;
@@ -2081,7 +2085,7 @@ public final class JSRuntime {
                 if (pos != firstPos) {
                     break;
                 } else {
-                    throw new NumberFormatException();
+                    return Double.NaN;
                 }
             }
             value *= radix;
@@ -2107,10 +2111,14 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static double parseRawDontFitLong(String string, int radix) {
+        return parseRawDontFitLong(string, radix, string.length());
+    }
+
+    @TruffleBoundary
+    public static double parseRawDontFitLong(String string, int radix, int len) {
         char firstChar = string.charAt(0);
 
         int pos = 0;
-        int len = string.length();
         boolean negate = false;
 
         if (firstChar == '-') {
@@ -2120,7 +2128,7 @@ public final class JSRuntime {
             pos = 1;
         }
         if (pos == len) {
-            throw new NumberFormatException();
+            return Double.NaN;
         }
 
         int firstPos = pos;
@@ -2132,7 +2140,7 @@ public final class JSRuntime {
                 if (pos != firstPos) {
                     break;
                 } else {
-                    throw new NumberFormatException();
+                    return Double.NaN;
                 }
             }
             value *= radix;
