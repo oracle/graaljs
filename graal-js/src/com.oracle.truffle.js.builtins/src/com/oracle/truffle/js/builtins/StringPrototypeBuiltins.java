@@ -820,13 +820,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (posNaN.profile(Double.isNaN(dVal))) {
                 pos = len;
             } else {
-                if (Double.isInfinite(dVal)) {
-                    pos = (dVal > 0) ? len : 0;
-                } else if (dVal > Integer.MAX_VALUE) {
-                    pos = len;
-                } else {
-                    pos = within((int) dVal, 0, len);
-                }
+                pos = within((int) dVal, 0, len);
             }
             if (searchStrZero.profile(searchStr.length() == 0)) {
                 return pos;
