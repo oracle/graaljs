@@ -1279,6 +1279,10 @@ public class JSContext {
         return contextOptions.getTimerResolution();
     }
 
+    public boolean usePromiseResolve() {
+        return contextOptions.isAwaitOptimization();
+    }
+
     public void initializeJavaInteropWorkers(EcmaAgent workerMain, EcmaAgent.Factory workerFactory) {
         assert mainWorker == null && javaInteropWorkersFactory == null;
         mainWorker = workerMain;

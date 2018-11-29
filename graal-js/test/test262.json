@@ -3615,22 +3615,6 @@
     "filePath" : "language/expressions/async-generator/expression-yield-star-before-newline.js",
     "status" : "SKIP"
   }, {
-    "filePath" : "language/expressions/await/async-await-interleaved.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/await/async-generator-interleaved.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/await/await-monkey-patched-promise.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/await/for-await-of-interleaved.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
     "filePath" : "language/expressions/call/eval-spread-empty-leading.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"

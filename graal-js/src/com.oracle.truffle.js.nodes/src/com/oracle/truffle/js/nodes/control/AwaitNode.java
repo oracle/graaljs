@@ -55,6 +55,7 @@ import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
+import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -74,6 +75,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     @Child protected JSReadFrameSlotNode readAsyncContextNode;
     @Child private NewPromiseCapabilityNode newPromiseCapability;
     @Child private PerformPromiseThenNode performPromiseThenNode;
+    @Child private PromiseResolveNode promiseResolveNode;
     @Child private JSFunctionCallNode callPromiseResolveNode;
     @Child private JSFunctionCallNode callPerformPromiseThen;
     @Child private PropertySetNode setPromiseIsHandled;
@@ -94,7 +96,6 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         this.readAsyncResultNode = readAsyncResultNode;
         this.readAsyncContextNode = readAsyncContextNode;
 
-        this.callPromiseResolveNode = JSFunctionCallNode.createCall();
         this.setPromiseIsHandled = PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context);
         this.setAsyncContext = PropertySetNode.createSetHidden(ASYNC_CONTEXT, context);
         this.setAsyncTarget = PropertySetNode.createSetHidden(ASYNC_TARGET, context);
@@ -102,6 +103,11 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
 
         this.newPromiseCapability = NewPromiseCapabilityNode.create(context);
         this.performPromiseThenNode = PerformPromiseThenNode.create(context);
+        if (context.usePromiseResolve()) {
+            this.promiseResolveNode = PromiseResolveNode.create(context);
+        } else {
+            this.callPromiseResolveNode = JSFunctionCallNode.createCall();
+        }
     }
 
     public static AwaitNode create(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode) {
@@ -125,18 +131,26 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
             context.notifyPromiseHook(-1 /* parent info */, (DynamicObject) parentPromise);
         }
 
-        PromiseCapabilityRecord promiseCapability = newPromiseCapability();
-        Object resolve = promiseCapability.getResolve();
-        callPromiseResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, resolve, value));
+        DynamicObject promise = promiseResolve(value);
         DynamicObject onFulfilled = createAwaitFulfilledFunction(resumeTarget, asyncContext, generatorOrCapability);
         DynamicObject onRejected = createAwaitRejectedFunction(resumeTarget, asyncContext, generatorOrCapability);
         PromiseCapabilityRecord throwawayCapability = newPromiseCapability();
         setPromiseIsHandled.setValueBoolean(throwawayCapability.getPromise(), true);
 
-        DynamicObject promise = promiseCapability.getPromise();
         context.notifyPromiseHook(-1 /* parent info */, promise);
         performPromiseThenNode.execute(promise, onFulfilled, onRejected, throwawayCapability);
         throw YieldException.AWAIT_NULL; // value is ignored
+    }
+
+    private DynamicObject promiseResolve(Object value) {
+        if (context.usePromiseResolve()) {
+            return promiseResolveNode.execute(context.getRealm().getPromiseConstructor(), value);
+        } else {
+            PromiseCapabilityRecord promiseCapability = newPromiseCapability();
+            Object resolve = promiseCapability.getResolve();
+            callPromiseResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, resolve, value));
+            return promiseCapability.getPromise();
+        }
     }
 
     @Override
