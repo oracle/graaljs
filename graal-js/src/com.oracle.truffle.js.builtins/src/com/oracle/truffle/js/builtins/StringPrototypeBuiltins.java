@@ -2364,6 +2364,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return thisStr;
             }
             int len = Math.max(0, toInteger(args[0]));
+            if (len > JSTruffleOptions.StringLengthLimit) {
+                CompilerDirectives.transferToInterpreter();
+                throw Errors.createRangeErrorInvalidStringLength();
+            }
             String fillStr;
             if (args.length <= 1 || args[1] == Undefined.instance) {
                 fillStr = " ";

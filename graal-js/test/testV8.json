@@ -896,14 +896,6 @@
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
   }, {
-    "filePath" : "mjsunit/harmony/harmony-string-pad-end.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/harmony/harmony-string-pad-start.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/harmony/import-from-compilation-errored.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
