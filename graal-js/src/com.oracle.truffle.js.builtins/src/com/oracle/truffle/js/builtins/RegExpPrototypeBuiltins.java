@@ -42,9 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import static com.oracle.truffle.js.runtime.builtins.JSRegExp.getCompiledRegex;
 
-import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -108,6 +106,7 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 /**
@@ -696,6 +695,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final ConditionProfile noMatchProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile validPositionProfile = ConditionProfile.createBinaryProfile();
         private final BranchProfile sbAppendProfile = BranchProfile.create();
+        private final BranchProfile growProfile = BranchProfile.create();
 
         JSRegExpReplaceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -765,9 +765,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 fullUnicode = unicodeProfile.profile(getFlag(rx, getGetUnicodeNode()));
                 getSetLastIndexNode().setValue(rx, 0);
             }
-            List<DynamicObject> results = null;
+            SimpleArrayList<DynamicObject> results = null;
             if (functionalReplace) {
-                results = new ArrayList<>();
+                results = new SimpleArrayList<>();
             }
             int length = s.length();
             DelimitedStringBuilder accumulatedResult = new DelimitedStringBuilder(replaceEmpty ? length : length + 16);
@@ -787,7 +787,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     matchLength = processNonLazy(result);
                 }
                 if (functionalReplace) {
-                    results.add(result);
+                    results.add(result, growProfile);
                 } else {
                     nextSourcePosition = processResult(accumulatedResult, result, s, replaceString, nextSourcePosition, matchLength, replaceEmpty, replaceRaw);
                 }

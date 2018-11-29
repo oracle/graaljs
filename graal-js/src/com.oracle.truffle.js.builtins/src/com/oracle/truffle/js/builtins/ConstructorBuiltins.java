@@ -46,7 +46,6 @@ import static com.oracle.truffle.js.runtime.JSTruffleOptions.ECMAScript2018;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.WeakHashMap;
@@ -150,7 +149,6 @@ import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.EcmaAgent;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
@@ -198,6 +196,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.WeakMap;
 
@@ -1682,10 +1681,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructJavaImporter(Object... args) {
-            List<DynamicObject> pkgs = new ArrayList<>();
+            SimpleArrayList<DynamicObject> pkgs = new SimpleArrayList<>(args.length);
             for (Object pkg : args) {
                 if (JavaPackage.isJavaPackage(pkg)) {
-                    Boundaries.listAdd(pkgs, (DynamicObject) pkg);
+                    pkgs.addUnchecked((DynamicObject) pkg);
                 }
             }
             return JavaImporter.create(getContext(), pkgs.toArray(new DynamicObject[pkgs.size()]));

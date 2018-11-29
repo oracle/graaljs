@@ -40,6 +40,13 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import java.text.Collator;
+import java.text.Normalizer;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Locale;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -131,14 +138,8 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
-
-import java.text.Collator;
-import java.text.Normalizer;
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Locale;
 
 /**
  * Contains builtins for {@linkplain JSString}.prototype.
@@ -854,6 +855,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final BranchProfile isUndefinedBranch = BranchProfile.create();
         private final BranchProfile isStringBranch = BranchProfile.create();
         private final BranchProfile isRegexpBranch = BranchProfile.create();
+        private final BranchProfile growProfile = BranchProfile.create();
 
         @Child private JSToUInt32Node toUInt32Node;
         @Child private JSToStringNode toString2Node;
@@ -963,23 +965,23 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 if (parent.match.profile(end == -1)) {
                     return new Object[]{input};
                 }
-                return regularSplitIntl(input, limit, separator, end);
+                return regularSplitIntl(input, limit, separator, end, parent);
             }
 
             @TruffleBoundary
-            private static Object[] regularSplitIntl(String input, int limit, String separator, int endParam) {
-                List<String> splits = new ArrayList<>();
+            private static Object[] regularSplitIntl(String input, int limit, String separator, int endParam, JSStringSplitNode parent) {
+                SimpleArrayList<String> splits = SimpleArrayList.create(limit);
                 int start = 0;
                 int end = endParam;
                 while (end != -1) {
-                    splits.add(input.substring(start, end));
+                    splits.add(input.substring(start, end), parent.growProfile);
                     if (splits.size() == limit) {
                         return splits.toArray();
                     }
                     start = end + separator.length();
                     end = input.indexOf(separator, start);
                 }
-                splits.add(input.substring(start));
+                splits.add(input.substring(start), parent.growProfile);
                 return splits.toArray();
             }
 
@@ -1016,7 +1018,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 if (parent.match.profile(!parent.getResultAccessor().isMatch(result))) {
                     return new Object[]{input};
                 }
-                List<Object> splits = new ArrayList<>();
+                SimpleArrayList<Object> splits = new SimpleArrayList<>();
                 int start = 0;
                 while (parent.getResultAccessor().isMatch(result)) {
                     int matchStart = parent.getResultAccessor().captureGroupStart(result, 0);
@@ -1030,24 +1032,24 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         continue;
                     }
                     String split = Boundaries.substring(input, start, matchStart);
-                    Boundaries.listAdd(splits, split);
+                    splits.add(split, parent.growProfile);
                     int count = Math.min(parent.getResultAccessor().groupCount(result) - 1, limit - splits.size());
                     for (int i = 1; i <= count; i++) {
                         int groupStart = parent.getResultAccessor().captureGroupStart(result, i);
                         if (groupStart == TRegexUtil.Constants.CAPTURE_GROUP_NO_MATCH) {
-                            Boundaries.listAdd(splits, Undefined.instance);
+                            splits.add(Undefined.instance, parent.growProfile);
                         } else {
-                            Boundaries.listAdd(splits, Boundaries.substring(input, groupStart, parent.getResultAccessor().captureGroupEnd(result, i)));
+                            splits.add(Boundaries.substring(input, groupStart, parent.getResultAccessor().captureGroupEnd(result, i)), parent.growProfile);
                         }
                     }
                     if (splits.size() == limit) {
-                        return Boundaries.listToArray(splits);
+                        return splits.toArray();
                     }
                     start = matchEnd + (matchEnd == start ? 1 : 0);
                     result = parent.matchIgnoreLastIndex(regExp, input, start);
                 }
-                Boundaries.listAdd(splits, Boundaries.substring(input, start));
-                return Boundaries.listToArray(splits);
+                splits.add(Boundaries.substring(input, start), parent.growProfile);
+                return splits.toArray();
             }
         }
     }

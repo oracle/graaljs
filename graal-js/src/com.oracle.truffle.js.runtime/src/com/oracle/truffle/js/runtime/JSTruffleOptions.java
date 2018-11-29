@@ -190,6 +190,9 @@ public class JSTruffleOptions {
     /** When printing to console/inspector, only print that many properties. */
     public static final int MaxConsolePrintProperties = 20;
 
+    // Spreading options
+    public static final int SpreadArgumentPlaceholderCount = integerOption("SpreadArgumentPlaceholderCount", 3);
+
     // Truffle Interop options
     public static final boolean BindProgramResult = booleanOption("BindProgramResult", true);
 
