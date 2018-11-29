@@ -100,6 +100,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionLookup;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSJavaWorkerBuiltin;
+import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -368,6 +369,7 @@ public class JSContext {
     private final JSObjectFactory numberFormatFactory;
     private final JSObjectFactory pluralRulesFactory;
     private final JSObjectFactory dateTimeFormatFactory;
+    private final JSObjectFactory listFormatFactory;
 
     private final JSObjectFactory javaImporterFactory;
     private final JSObjectFactory javaPackageFactory;
@@ -511,6 +513,7 @@ public class JSContext {
         this.numberFormatFactory = intl402 ? builder.create(JSNumberFormat.INSTANCE) : null;
         this.dateTimeFormatFactory = intl402 ? builder.create(JSDateTimeFormat.INSTANCE) : null;
         this.pluralRulesFactory = intl402 ? builder.create(JSPluralRules.INSTANCE) : null;
+        this.listFormatFactory = intl402 ? builder.create(JSListFormat.INSTANCE) : null;
 
         boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
         boolean nashornJavaInterop = JSRealm.isJavaInteropAvailable() && (isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop);
@@ -896,6 +899,10 @@ public class JSContext {
 
     public final JSObjectFactory getPluralRulesFactory() {
         return pluralRulesFactory;
+    }
+
+    public final JSObjectFactory getListFormatFactory() {
+        return listFormatFactory;
     }
 
     public final JSObjectFactory getDateTimeFormatFactory() {
