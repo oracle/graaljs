@@ -40,14 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
-import java.util.ArrayList;
-
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
 
@@ -172,6 +171,8 @@ class JSFunctionOneArgumentNode extends AbstractFunctionArgumentsNode {
 }
 
 class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {
+    private final BranchProfile growProfile = BranchProfile.create();
+
     protected SpreadFunctionArgumentsNode(JavaScriptNode[] args) {
         super(args);
     }
@@ -183,19 +184,20 @@ class SpreadFunctionArgumentsNode extends JSFunctionArgumentsNode {
 
     @Override
     @ExplodeLoop
-    public Object[] executeFillObjectArray(VirtualFrame frame, Object[] arguments, int delta) {
-        ArrayList<Object> argList = new ArrayList<>(args.length + delta);
-        for (int i = 0; i < delta; i++) {
-            Boundaries.listAdd(argList, arguments[i]);
+    public Object[] executeFillObjectArray(VirtualFrame frame, Object[] arguments, int fixedArgumentsLength) {
+        // assume size that avoids growing
+        SimpleArrayList<Object> argList = SimpleArrayList.create(fixedArgumentsLength + args.length + 3);
+        for (int i = 0; i < fixedArgumentsLength; i++) {
+            argList.addUnchecked(arguments[i]);
         }
         for (int i = 0; i < args.length; i++) {
             if (args[i] instanceof SpreadArgumentNode) {
-                ((SpreadArgumentNode) args[i]).executeToList(frame, argList);
+                ((SpreadArgumentNode) args[i]).executeToList(frame, argList, growProfile);
             } else {
-                Boundaries.listAdd(argList, args[i].execute(frame));
+                argList.add(args[i].execute(frame), growProfile);
             }
         }
-        return Boundaries.listToArray(argList);
+        return argList.toArray();
     }
 
     @Override
