@@ -1479,9 +1479,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/regress/regress-5664.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-5669.js",
     "status" : "FAIL"
   }, {

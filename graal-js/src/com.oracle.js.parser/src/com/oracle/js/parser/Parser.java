@@ -5259,6 +5259,11 @@ loop:
                     throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
                 }
             }
+            if (lc.getCurrentNonArrowFunction().getFlag(FunctionNode.USES_THIS) != 0) {
+                // this may be used by the initializer (and enclosing function
+                // was marked as using 'this' from parenthesizedExpressionAndArrowParameterList())
+                currentFunction.setFlag(FunctionNode.USES_THIS);
+            }
             if (lhs instanceof IdentNode) {
                 // default parameter
                 IdentNode ident = (IdentNode) lhs;
