@@ -246,13 +246,14 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
 
     private static JSFunctionData createPromiseRejectFunctionImpl(JSContext context) {
         class PromiseRejectRootNode extends JavaScriptRootNode {
-            @Child private JavaScriptNode reasonNode = AccessIndexedArgumentNode.create(0);
-            @Child private PropertyGetNode getPromise = PropertyGetNode.createGetHidden(PROMISE_KEY, context);
+            @Child private JavaScriptNode reasonNode;
+            @Child private PropertyGetNode getPromise;
             @Child private PropertyGetNode getAlreadyResolved = PropertyGetNode.createGetHidden(ALREADY_RESOLVED_KEY, context);
-            @Child private RejectPromiseNode rejectPromise = RejectPromiseNode.create(context);
+            @Child private RejectPromiseNode rejectPromise;
 
             @Override
             public Object execute(VirtualFrame frame) {
+                init();
                 DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
                 AlreadyResolved alreadyResolved = (AlreadyResolved) getAlreadyResolved.getValue(functionObject);
                 if (alreadyResolved.value) {
@@ -263,6 +264,14 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
 
                 Object reason = reasonNode.execute(frame);
                 return rejectPromise.execute(promise, reason);
+            }
+
+            public void init() {
+                if (reasonNode == null || getPromise == null || rejectPromise == null) {
+                    reasonNode = insert(AccessIndexedArgumentNode.create(0));
+                    getPromise = insert(PropertyGetNode.createGetHidden(PROMISE_KEY, context));
+                    rejectPromise = insert(RejectPromiseNode.create(context));
+                }
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseRejectRootNode());
