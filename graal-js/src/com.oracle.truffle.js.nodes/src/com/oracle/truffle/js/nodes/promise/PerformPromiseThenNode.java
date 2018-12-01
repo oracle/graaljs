@@ -90,6 +90,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
         assert JSPromise.isJSPromise(promise);
         DynamicObject onFulfilledHandler = isCallableFulfill.executeBoolean(onFulfilled) ? (DynamicObject) onFulfilled : Undefined.instance;
         DynamicObject onRejectedHandler = isCallableReject.executeBoolean(onRejected) ? (DynamicObject) onRejected : Undefined.instance;
+        assert resultCapability != null || (onFulfilledHandler != Undefined.instance && onRejectedHandler != Undefined.instance);
         PromiseReactionRecord fulfillReaction = PromiseReactionRecord.create(resultCapability, onFulfilledHandler, true);
         PromiseReactionRecord rejectReaction = PromiseReactionRecord.create(resultCapability, onRejectedHandler, false);
 
@@ -111,6 +112,9 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
             context.promiseEnqueueJob(job);
         }
         setPromiseIsHandled.setValueBoolean(promise, true);
+        if (resultCapability == null) {
+            return Undefined.instance;
+        }
         return resultCapability.getPromise();
     }
 
