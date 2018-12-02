@@ -468,6 +468,11 @@ public final class Errors {
         throw new IllegalStateException("should not reach here: " + message);
     }
 
+    public static RuntimeException shouldNotReachHere(Throwable exception) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new IllegalStateException("should not reach here", exception);
+    }
+
     @TruffleBoundary
     public static JSException createTypeErrorConfigurableExpected() {
         return createTypeError("configurable expected");

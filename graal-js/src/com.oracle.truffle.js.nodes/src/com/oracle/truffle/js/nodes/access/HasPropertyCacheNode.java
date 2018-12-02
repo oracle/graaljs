@@ -43,10 +43,10 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -72,100 +72,65 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 /**
  * @see PropertyGetNode
  */
-public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode> {
+public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode.HasCacheNode> {
+    private final boolean hasOwnProperty;
+    @CompilationFinal private boolean isMethod;
+    private boolean propertyAssumptionCheckEnabled = true;
+
     public static HasPropertyCacheNode create(Object key, JSContext context, boolean hasOwnProperty) {
-        if (JSTruffleOptions.PropertyCacheLimit > 0) {
-            return new UninitializedHasPropertyCacheNode(key, context, hasOwnProperty);
-        } else {
-            return createGeneric(key, hasOwnProperty);
-        }
+        return new HasPropertyCacheNode(key, context, hasOwnProperty);
     }
 
     public static HasPropertyCacheNode create(Object key, JSContext context) {
         return create(key, context, false);
     }
 
-    protected HasPropertyCacheNode(Object key) {
-        super(key);
+    protected HasPropertyCacheNode(Object key, JSContext context, boolean hasOwnProperty) {
+        super(key, context);
+        this.hasOwnProperty = hasOwnProperty;
     }
 
-    public abstract boolean hasProperty(Object obj);
-
-    public abstract static class LinkedHasPropertyCacheNode extends HasPropertyCacheNode {
-
-        @Child private HasPropertyCacheNode next;
-        @Child protected ReceiverCheckNode receiverCheck;
-
-        public LinkedHasPropertyCacheNode(Object key, ReceiverCheckNode receiverCheckNode) {
-            super(key);
-            this.receiverCheck = receiverCheckNode;
-        }
-
-        @Override
-        public final boolean hasProperty(Object thisObj) {
-            try {
-                boolean condition = receiverCheck.accept(thisObj);
-                if (condition) {
-                    return hasPropertyUnchecked(thisObj, condition);
-                } else {
-                    return next.hasProperty(thisObj);
-                }
-            } catch (InvalidAssumptionException e) {
-                return rewrite().hasProperty(thisObj);
+    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    public boolean hasProperty(Object thisObj) {
+        for (HasCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c.isGeneric()) {
+                return c.hasProperty(thisObj, this);
+            }
+            if (!c.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                break;
+            }
+            boolean guard = c.accepts(thisObj);
+            if (guard) {
+                return c.hasProperty(thisObj, this);
             }
         }
+        deoptimize();
+        return specialize(thisObj).hasProperty(thisObj, this);
+    }
 
-        @Override
-        public NodeCost getCost() {
-            if (next != null && next.getCost() == NodeCost.MONOMORPHIC) {
-                return NodeCost.POLYMORPHIC;
-            }
-            return super.getCost();
+    public abstract static class HasCacheNode extends PropertyCacheNode.CacheNode<HasCacheNode> {
+        protected HasCacheNode(ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
         }
 
-        public abstract boolean hasPropertyUnchecked(Object thisObj, boolean floatingCondition);
+        protected abstract boolean hasProperty(Object thisObj, HasPropertyCacheNode root);
+    }
 
-        protected HasPropertyCacheNode rewrite() {
-            assert next != null;
-            HasPropertyCacheNode replacedNext = replace(next);
-            return replacedNext;
-        }
+    public abstract static class LinkedHasPropertyCacheNode extends HasCacheNode {
 
-        @Override
-        protected final Shape getShape() {
-            return receiverCheck.getShape();
-        }
-
-        @Override
-        @TruffleBoundary
-        public String debugString() {
-            return getClass().getSimpleName() + "<property=" + key + ",shape=" + getShape() + ">\n" + ((next == null) ? "" : next.debugString());
-        }
-
-        @Override
-        @TruffleBoundary
-        public String toString() {
-            return super.toString() + " property=" + key;
-        }
-
-        @Override
-        public HasPropertyCacheNode getNext() {
-            return next;
-        }
-
-        @Override
-        protected final void setNext(HasPropertyCacheNode to) {
-            next = to;
+        protected LinkedHasPropertyCacheNode(ReceiverCheckNode receiverCheckNode) {
+            super(receiverCheckNode);
         }
     }
 
     public static final class PresentHasPropertyCacheNode extends LinkedHasPropertyCacheNode {
-        public PresentHasPropertyCacheNode(Object key, ReceiverCheckNode shapeCheck) {
-            super(key, shapeCheck);
+        public PresentHasPropertyCacheNode(ReceiverCheckNode shapeCheck) {
+            super(shapeCheck);
         }
 
         @Override
-        public boolean hasPropertyUnchecked(Object thisObj, boolean floatingCondition) {
+        protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
             return true;
         }
     }
@@ -175,12 +140,12 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
      */
     public static final class AbsentHasPropertyCacheNode extends LinkedHasPropertyCacheNode {
 
-        public AbsentHasPropertyCacheNode(Object key, ReceiverCheckNode shapeCheckNode) {
-            super(key, shapeCheckNode);
+        public AbsentHasPropertyCacheNode(ReceiverCheckNode shapeCheckNode) {
+            super(shapeCheckNode);
         }
 
         @Override
-        public boolean hasPropertyUnchecked(Object thisObj, boolean floatingCondition) {
+        protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
             return false;
         }
     }
@@ -189,17 +154,17 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
         private final boolean isMethod;
 
         public JSAdapterHasPropertyCacheNode(Object key, ReceiverCheckNode receiverCheckNode, boolean isMethod) {
-            super(key, receiverCheckNode);
+            super(receiverCheckNode);
             assert JSRuntime.isPropertyKey(key);
             this.isMethod = isMethod;
         }
 
         @Override
-        public boolean hasPropertyUnchecked(Object thisObj, boolean floatingCondition) {
+        protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
             if (isMethod) {
                 throw new UnsupportedOperationException();
             } else {
-                return JSObject.hasOwnProperty((DynamicObject) thisObj, key);
+                return JSObject.hasOwnProperty((DynamicObject) thisObj, root.getKey());
             }
         }
     }
@@ -210,14 +175,15 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
         @Child private JSProxyHasPropertyNode proxyGet;
 
         public JSProxyDispatcherPropertyHasNode(JSContext context, Object key, ReceiverCheckNode receiverCheck, boolean hasOwnProperty) {
-            super(key, receiverCheck);
+            super(receiverCheck);
             this.hasOwnProperty = hasOwnProperty;
             assert JSRuntime.isPropertyKey(key);
             this.proxyGet = hasOwnProperty ? null : JSProxyHasPropertyNodeGen.create(context);
         }
 
         @Override
-        public boolean hasPropertyUnchecked(Object thisObj, boolean floatingCondition) {
+        protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
+            Object key = root.getKey();
             if (hasOwnProperty) {
                 return JSObject.getOwnProperty(receiverCheck.getStore(thisObj), key) != null;
             } else {
@@ -227,136 +193,52 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
     }
 
     public static final class UnspecializedHasPropertyCacheNode extends LinkedHasPropertyCacheNode {
-        private final boolean hasOwnProperty;
 
-        public UnspecializedHasPropertyCacheNode(Object key, ReceiverCheckNode receiverCheckNode, boolean hasOwnProperty) {
-            super(key, receiverCheckNode);
-            this.hasOwnProperty = hasOwnProperty;
+        public UnspecializedHasPropertyCacheNode(ReceiverCheckNode receiverCheckNode) {
+            super(receiverCheckNode);
         }
 
         @Override
-        public boolean hasPropertyUnchecked(Object thisObj, boolean floatingCondition) {
-            if (isOwnProperty()) {
+        protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
+            Object key = root.getKey();
+            if (root.isOwnProperty()) {
                 return JSObject.hasOwnProperty((DynamicObject) thisObj, key);
             } else {
                 return JSObject.hasProperty((DynamicObject) thisObj, key);
             }
         }
-
-        @Override
-        protected boolean isOwnProperty() {
-            return hasOwnProperty;
-        }
-    }
-
-    public abstract static class TerminalPropertyGetNode extends HasPropertyCacheNode {
-
-        public TerminalPropertyGetNode(Object key) {
-            super(key);
-        }
-
-        @Override
-        protected final HasPropertyCacheNode getNext() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected final void setNext(HasPropertyCacheNode next) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected final Shape getShape() {
-            return null;
-        }
     }
 
     @NodeInfo(cost = NodeCost.MEGAMORPHIC)
-    public static final class GenericHasPropertyCacheNode extends TerminalPropertyGetNode {
+    public static final class GenericHasPropertyCacheNode extends HasCacheNode {
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
-        private final boolean hasOwnProperty;
 
-        public GenericHasPropertyCacheNode(Object key, boolean hasOwnProperty) {
-            super(key);
-            this.hasOwnProperty = hasOwnProperty;
+        public GenericHasPropertyCacheNode() {
+            super(null);
         }
 
         @Override
-        public boolean hasProperty(Object thisObj) {
-            if (hasOwnProperty) {
+        protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
+            Object key = root.getKey();
+            if (root.isOwnProperty()) {
                 return JSObject.hasOwnProperty((DynamicObject) thisObj, key, jsclassProfile);
             } else {
                 return JSObject.hasProperty((DynamicObject) thisObj, key, jsclassProfile);
             }
-        }
-
-        @Override
-        protected boolean isOwnProperty() {
-            return hasOwnProperty;
         }
     }
 
     public static final class ForeignHasPropertyCacheNode extends LinkedHasPropertyCacheNode {
         @Child private Node keyInfoNode;
 
-        public ForeignHasPropertyCacheNode(Object key) {
-            super(key, new ForeignLanguageCheckNode());
+        public ForeignHasPropertyCacheNode() {
+            super(new ForeignLanguageCheckNode());
             this.keyInfoNode = Message.KEY_INFO.createNode();
         }
 
         @Override
-        public boolean hasPropertyUnchecked(Object thisObj, boolean floatingCondition) {
-            return JSInteropNodeUtil.hasProperty((TruffleObject) thisObj, key, keyInfoNode);
-        }
-    }
-
-    @NodeInfo(cost = NodeCost.UNINITIALIZED)
-    public static final class UninitializedHasPropertyCacheNode extends TerminalPropertyGetNode {
-        @CompilationFinal private boolean isMethod;
-        private boolean propertyAssumptionCheckEnabled = true;
-        private final JSContext context;
-        private final boolean hasOwnProperty;
-
-        public UninitializedHasPropertyCacheNode(Object key, JSContext context, boolean hasOwnProperty) {
-            super(key);
-            this.context = context;
-            this.hasOwnProperty = hasOwnProperty;
-        }
-
-        @Override
-        public boolean hasProperty(Object thisObject) {
-            return rewrite(context, thisObject, null).hasProperty(thisObject);
-        }
-
-        @Override
-        protected boolean isMethod() {
-            return isMethod;
-        }
-
-        @Override
-        protected void setMethod() {
-            CompilerAsserts.neverPartOfCompilation();
-            isMethod = true;
-        }
-
-        @Override
-        protected boolean isPropertyAssumptionCheckEnabled() {
-            return propertyAssumptionCheckEnabled && context.isSingleRealm();
-        }
-
-        @Override
-        protected void setPropertyAssumptionCheckEnabled(boolean value) {
-            this.propertyAssumptionCheckEnabled = value;
-        }
-
-        @Override
-        public JSContext getContext() {
-            return context;
-        }
-
-        @Override
-        protected boolean isOwnProperty() {
-            return hasOwnProperty;
+        protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
+            return JSInteropNodeUtil.hasProperty((TruffleObject) thisObj, root.getKey(), keyInfoNode);
         }
     }
 
@@ -364,44 +246,23 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
         protected final boolean isMethod;
         protected final boolean allowReflection;
 
-        public JavaClassHasPropertyCacheNode(Object key, ReceiverCheckNode receiverCheckNode, boolean isMethod, boolean allowReflection) {
-            super(key, receiverCheckNode);
+        public JavaClassHasPropertyCacheNode(ReceiverCheckNode receiverCheckNode, boolean isMethod, boolean allowReflection) {
+            super(receiverCheckNode);
             this.isMethod = isMethod;
             this.allowReflection = allowReflection;
         }
 
         @Override
-        public boolean hasPropertyUnchecked(Object thisObj, boolean floatingCondition) {
-            return hasMember((JavaClass) thisObj);
+        protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
+            return hasMember((JavaClass) thisObj, (String) root.getKey());
         }
 
-        protected final boolean hasMember(JavaClass type) {
-            JavaMember member = type.getMember((String) key, JavaClass.STATIC, getJavaMemberTypes(isMethod), allowReflection);
+        protected final boolean hasMember(JavaClass type, String key) {
+            JavaMember member = type.getMember(key, JavaClass.STATIC, getJavaMemberTypes(isMethod), allowReflection);
             if (member != null) {
                 return true;
             }
-            return type.getInnerClass((String) key) != null;
-        }
-    }
-
-    public static final class CachedJavaClassHasPropertyCacheNode extends JavaClassHasPropertyCacheNode {
-        private final JavaClass javaClass;
-        private final boolean cachedResult;
-
-        public CachedJavaClassHasPropertyCacheNode(Object key, ReceiverCheckNode receiverCheckNode, boolean isMethod, boolean allowReflection, JavaClass javaClass) {
-            super(key, receiverCheckNode, isMethod, allowReflection);
-            this.javaClass = javaClass;
-            this.cachedResult = hasMember(javaClass);
-        }
-
-        @Override
-        public boolean hasPropertyUnchecked(Object thisObj, boolean floatingCondition) {
-            if (javaClass == thisObj) {
-                return cachedResult;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                return this.replace(new JavaClassHasPropertyCacheNode(key, receiverCheck, isMethod, allowReflection)).hasPropertyUnchecked(thisObj, floatingCondition);
-            }
+            return type.getInnerClass(key) != null;
         }
     }
 
@@ -411,21 +272,21 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
      * @param property The particular entry of the property being accessed.
      */
     @Override
-    protected LinkedHasPropertyCacheNode createCachedPropertyNode(Property property, Object thisObj, int depth, JSContext context, Object value) {
+    protected HasCacheNode createCachedPropertyNode(Property property, Object thisObj, int depth, Object value, HasCacheNode currentHead) {
         assert !isOwnProperty() || depth == 0;
         ReceiverCheckNode check;
         if (JSObject.isDynamicObject(thisObj)) {
             Shape cacheShape = ((DynamicObject) thisObj).getShape();
             check = createShapeCheckNode(cacheShape, (DynamicObject) thisObj, depth, false, false);
         } else {
-            check = createPrimitiveReceiverCheck(thisObj, depth, context);
+            check = createPrimitiveReceiverCheck(thisObj, depth);
         }
-        return new PresentHasPropertyCacheNode(property.getKey(), check);
+        return new PresentHasPropertyCacheNode(check);
     }
 
     @Override
-    protected LinkedHasPropertyCacheNode createUndefinedPropertyNode(Object thisObj, Object store, int depth, JSContext context, Object value) {
-        LinkedHasPropertyCacheNode specialized = createJavaPropertyNodeMaybe(thisObj, depth, context);
+    protected HasCacheNode createUndefinedPropertyNode(Object thisObj, Object store, int depth, Object value) {
+        HasCacheNode specialized = createJavaPropertyNodeMaybe(thisObj, depth);
         if (specialized != null) {
             return specialized;
         }
@@ -439,24 +300,24 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
             } else if (JSProxy.isProxy(store)) {
                 return new JSProxyDispatcherPropertyHasNode(context, key, receiverCheck, isOwnProperty());
             } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
-                return new UnspecializedHasPropertyCacheNode(key, receiverCheck, isOwnProperty());
+                return new UnspecializedHasPropertyCacheNode(receiverCheck);
             } else {
-                return new AbsentHasPropertyCacheNode(key, shapeCheck);
+                return new AbsentHasPropertyCacheNode(shapeCheck);
             }
         } else {
-            return new AbsentHasPropertyCacheNode(key, new InstanceofCheckNode(thisObj.getClass(), context));
+            return new AbsentHasPropertyCacheNode(new InstanceofCheckNode(thisObj.getClass(), context));
         }
     }
 
     @Override
-    protected LinkedHasPropertyCacheNode createJavaPropertyNodeMaybe(Object thisObj, int depth, JSContext context) {
+    protected HasCacheNode createJavaPropertyNodeMaybe(Object thisObj, int depth) {
         if (JSTruffleOptions.SubstrateVM) {
             return null;
         }
         if (JavaPackage.isJavaPackage(thisObj)) {
-            return new PresentHasPropertyCacheNode(key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
+            return new PresentHasPropertyCacheNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
         } else if (JavaImporter.isJavaImporter(thisObj)) {
-            return new UnspecializedHasPropertyCacheNode(key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)), isOwnProperty());
+            return new UnspecializedHasPropertyCacheNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
         }
         if (!JSTruffleOptions.NashornJavaInterop) {
             return null;
@@ -464,17 +325,17 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
             assert !JSJavaWrapper.isJSJavaWrapper(thisObj);
             return null;
         } else if (thisObj instanceof JavaClass) {
-            return new CachedJavaClassHasPropertyCacheNode(key, new InstanceofCheckNode(JavaClass.class, context), isMethod(), JavaAccess.isReflectionAllowed(context), (JavaClass) thisObj);
+            return new JavaClassHasPropertyCacheNode(new InstanceofCheckNode(JavaClass.class, context), isMethod(), JavaAccess.isReflectionAllowed(context));
         } else {
-            JavaMember member = getInstanceMember(thisObj, context);
+            JavaMember member = getInstanceMember(thisObj);
             if (member != null) {
-                return new PresentHasPropertyCacheNode(key, new InstanceofCheckNode(thisObj.getClass(), context));
+                return new PresentHasPropertyCacheNode(new InstanceofCheckNode(thisObj.getClass(), context));
             }
             return null;
         }
     }
 
-    private JavaMember getInstanceMember(Object thisObj, JSContext context) {
+    private JavaMember getInstanceMember(Object thisObj) {
         if (thisObj == null) {
             return null;
         }
@@ -490,20 +351,27 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
      * Make a generic-case node, for when polymorphism becomes too high.
      */
     @Override
-    protected HasPropertyCacheNode createGenericPropertyNode(JSContext context) {
-        return createGeneric(key, isOwnProperty());
-    }
-
-    private static HasPropertyCacheNode createGeneric(Object key, boolean hasOwnProperty) {
-        return new GenericHasPropertyCacheNode(key, hasOwnProperty);
+    protected HasCacheNode createGenericPropertyNode() {
+        return new GenericHasPropertyCacheNode();
     }
 
     protected boolean isMethod() {
-        throw new UnsupportedOperationException();
+        return isMethod;
     }
 
     protected void setMethod() {
-        throw new UnsupportedOperationException();
+        CompilerAsserts.neverPartOfCompilation();
+        isMethod = true;
+    }
+
+    @Override
+    protected boolean isPropertyAssumptionCheckEnabled() {
+        return propertyAssumptionCheckEnabled && context.isSingleRealm();
+    }
+
+    @Override
+    protected void setPropertyAssumptionCheckEnabled(boolean value) {
+        this.propertyAssumptionCheckEnabled = value;
     }
 
     @Override
@@ -513,22 +381,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
 
     @Override
     protected boolean isOwnProperty() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public JSContext getContext() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    protected final Class<HasPropertyCacheNode> getBaseClass() {
-        return HasPropertyCacheNode.class;
-    }
-
-    @Override
-    protected Class<? extends HasPropertyCacheNode> getUninitializedNodeClass() {
-        return UninitializedHasPropertyCacheNode.class;
+        return hasOwnProperty;
     }
 
     protected static Class<? extends JavaMember>[] getJavaMemberTypes(boolean isMethod) {
@@ -536,7 +389,7 @@ public abstract class HasPropertyCacheNode extends PropertyCacheNode<HasProperty
     }
 
     @Override
-    protected HasPropertyCacheNode createTruffleObjectPropertyNode(TruffleObject thisObject, JSContext context) {
-        return new ForeignHasPropertyCacheNode(key);
+    protected HasCacheNode createTruffleObjectPropertyNode(TruffleObject thisObject) {
+        return new ForeignHasPropertyCacheNode();
     }
 }
