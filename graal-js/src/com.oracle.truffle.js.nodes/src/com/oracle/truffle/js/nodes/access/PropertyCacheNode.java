@@ -42,9 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.io.PrintStream;
 import java.lang.ref.WeakReference;
-import java.util.Objects;
 import java.util.concurrent.locks.Lock;
-import java.util.function.Predicate;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -1159,8 +1157,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 }
                 if (invalid) {
                     checkForUnstableAssumption(currentHead, thisObj);
-                    currentHead = filterValid(currentHead);
-                    this.cacheNode = currentHead;
+                    currentHead = rewriteCached(currentHead, filterValid(currentHead));
                     traceAssumptionInvalidated();
                     res = null;
                     continue; // restart
@@ -1393,55 +1390,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             }
         } else {
             return filteredNext;
-        }
-    }
-
-    protected static <T extends CacheNode<T>> T filterIf(T cache, Predicate<T> predicate) {
-        Objects.requireNonNull(predicate);
-        if (cache == null) {
-            return null;
-        }
-        T filteredNext = filterIf(cache.next, predicate);
-        if (predicate.test(cache)) {
-            if (filteredNext == cache.next) {
-                return cache;
-            } else {
-                return cache.withNext(filteredNext);
-            }
-        } else {
-            return filteredNext;
-        }
-    }
-
-    protected static <T extends CacheNode<T>> T dropElement(T cache, T element) {
-        if (cache == null) {
-            return null;
-        }
-        T filteredNext = dropElement(cache.next, element);
-        if (cache == element) {
-            return filteredNext;
-        } else {
-            if (filteredNext == cache.next) {
-                return cache;
-            } else {
-                return cache.withNext(filteredNext);
-            }
-        }
-    }
-
-    protected static <T extends CacheNode<T>> T swapElement(T cache, T search, T replace) {
-        if (cache == null) {
-            return null;
-        }
-        T filteredNext = swapElement(cache.next, search, replace);
-        if (cache == search) {
-            return replace.withNext(filteredNext);
-        } else {
-            if (filteredNext == cache.next) {
-                return cache;
-            } else {
-                return cache.withNext(filteredNext);
-            }
         }
     }
 
