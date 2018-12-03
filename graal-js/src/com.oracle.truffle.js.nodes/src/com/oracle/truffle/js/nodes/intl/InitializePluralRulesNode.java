@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.intl;
 
 import java.util.MissingResourceException;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -51,6 +50,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
+import com.oracle.truffle.js.runtime.builtins.JSNumberFormat.BasicInternalState;
 import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -58,6 +58,8 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
  * https://tc39.github.io/ecma402/#sec-initializepluralrules
  */
 public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
+
+    private final JSContext context;
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
     @Child CreateOptionsObjectNode createOptionsNode;
@@ -75,6 +77,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getTypeOption;
 
     protected InitializePluralRulesNode(JSContext context) {
+        this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, "localeMatcher", new String[]{"lookup", "best fit"}, "best fit");
@@ -95,33 +98,34 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    @TruffleBoundary
     public DynamicObject initializePluralRules(DynamicObject pluralRulesObj, Object localesArg, Object optionsArg) {
 
-        JSPluralRules.InternalState state = JSPluralRules.getInternalState(pluralRulesObj);
+        // must be invoked before any code that tries to access ICU library data
+        IntlUtil.ensureICU4JDataPathSet(context);
 
-        String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-        DynamicObject options = createOptionsNode.execute(optionsArg);
-
-        getLocaleMatcherOption.executeValue(options);
-        String optType = getTypeOption.executeValue(options);
-
-        state.initialized = true;
-
-        state.type = optType;
-
-        IntlUtil.ensureICU4JDataPathSet();
         try {
-            JSNumberFormat.setLocaleAndNumberingSystem(state, locales);
+            JSPluralRules.InternalState state = JSPluralRules.getInternalState(pluralRulesObj);
+
+            String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
+            DynamicObject options = createOptionsNode.execute(optionsArg);
+
+            getLocaleMatcherOption.executeValue(options);
+            String optType = getTypeOption.executeValue(options);
+
+            state.initialized = true;
+
+            state.type = optType;
+
+            JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales);
             JSPluralRules.setupInternalPluralRulesAndNumberFormat(state);
+
+            int mnfdDefault = 0;
+            int mxfdDefault = 3;
+            setPluralRulesDigitOptions(state, options, mnfdDefault, mxfdDefault);
 
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError();
         }
-
-        int mnfdDefault = 0;
-        int mxfdDefault = 3;
-        setPluralRulesDigitOptions(state, options, mnfdDefault, mxfdDefault);
         return pluralRulesObj;
     }
 
@@ -134,9 +138,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
         state.minimumIntegerDigits = mnid.intValue();
         state.minimumFractionDigits = mnfd.intValue();
         state.maximumFractionDigits = mxfd.intValue();
-        state.numberFormat.setMinimumIntegerDigits(state.minimumIntegerDigits.intValue());
-        state.numberFormat.setMinimumFractionDigits(state.minimumFractionDigits.intValue());
-        state.numberFormat.setMaximumFractionDigits(state.maximumFractionDigits.intValue());
+        BasicInternalState.setStateNumberFormatDigits(state);
         Object mnsd = getMinSignificantDigitsOption.getValue(options);
         Object mxsd = getMaxSignificantDigitsOption.getValue(options);
         if (!JSGuards.isUndefined(mnsd) || !JSGuards.isUndefined(mxsd)) {

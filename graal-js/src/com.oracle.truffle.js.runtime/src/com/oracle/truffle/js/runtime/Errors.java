@@ -374,6 +374,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createRangeErrorCurrencyNotWellFormed(String currencyCode) {
+        return createRangeError(String.format("Currency, %s, is not well formed.", currencyCode));
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorDetachedBuffer() {
         return Errors.createTypeError("Detached buffer");
     }

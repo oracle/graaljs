@@ -144,8 +144,8 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static List<Object> supportedLocales(String[] locales) {
-        return IntlUtil.supportedLocales(locales);
+    public static List<Object> supportedLocales(JSContext ctx, String[] locales) {
+        return IntlUtil.supportedLocales(ctx, locales);
     }
 
     public static DynamicObject create(JSContext context) {
@@ -157,6 +157,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     @TruffleBoundary
     public static void setupInternalDateTimeFormat(
+                    JSContext ctx,
                     InternalState state, String[] locales,
                     String weekdayOpt,
                     String eraOpt,
@@ -170,7 +171,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     String secondOpt,
                     String tzNameOpt,
                     TimeZone timeZone) {
-        String selectedTag = IntlUtil.selectedLocale(locales);
+        String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
         String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt);

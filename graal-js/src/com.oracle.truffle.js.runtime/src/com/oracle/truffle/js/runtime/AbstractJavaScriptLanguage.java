@@ -66,4 +66,8 @@ public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm
     }
 
     public abstract boolean isMultiContext();
+
+    public String getTruffleLanguageHome() {
+        return getLanguageHome();
+    }
 }

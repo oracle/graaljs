@@ -478,8 +478,8 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     }
 
     @TruffleBoundary
-    public static void setLocaleAndNumberingSystem(BasicInternalState state, String[] locales) {
-        String selectedTag = IntlUtil.selectedLocale(locales);
+    public static void setLocaleAndNumberingSystem(JSContext ctx, BasicInternalState state, String[] locales) {
+        String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
         if (selectedLocale.getUnicodeLocaleKeys().contains("nu")) {
@@ -651,6 +651,13 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             if (maximumSignificantDigits != null) {
                 JSObjectUtil.defineDataProperty(result, "maximumSignificantDigits", maximumSignificantDigits, JSAttributes.getDefault());
             }
+        }
+
+        @TruffleBoundary
+        public static void setStateNumberFormatDigits(JSNumberFormat.BasicInternalState state) {
+            state.numberFormat.setMinimumIntegerDigits(state.minimumIntegerDigits.intValue());
+            state.numberFormat.setMinimumFractionDigits(state.minimumFractionDigits.intValue());
+            state.numberFormat.setMaximumFractionDigits(state.maximumFractionDigits.intValue());
         }
     }
 

@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.intl;
 
 import java.util.MissingResourceException;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -51,12 +50,15 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
+import com.oracle.truffle.js.runtime.builtins.JSNumberFormat.BasicInternalState;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
  * https://tc39.github.io/ecma402/#sec-initializenumberformat
  */
 public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
+
+    private final JSContext context;
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
     @Child CreateOptionsObjectNode createOptionsNode;
@@ -79,6 +81,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
     @Child GetBooleanOptionNode getUseGroupingOption;
 
     protected InitializeNumberFormatNode(JSContext context) {
+        this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, "localeMatcher", new String[]{"lookup", "best fit"}, "best fit");
@@ -102,60 +105,62 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    @TruffleBoundary
     public DynamicObject initializeNumberFormat(DynamicObject numberFormatObj, Object localesArg, Object optionsArg) {
 
-        JSNumberFormat.InternalState state = JSNumberFormat.getInternalState(numberFormatObj);
+        // must be invoked before any code that tries to access ICU library data
+        IntlUtil.ensureICU4JDataPathSet(context);
 
-        String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-        DynamicObject options = createOptionsNode.execute(optionsArg);
-
-        getLocaleMatcherOption.executeValue(options);
-        String optStyle = getStyleOption.executeValue(options);
-
-        String optCurrency = getCurrencyOption.executeValue(options);
-        String optCurrencyDisplay = getCurrencyDisplayOption.executeValue(options);
-        Boolean optUseGrouping = getUseGroupingOption.executeValue(options);
-
-        state.initialized = true;
-
-        JSNumberFormat.setLocaleAndNumberingSystem(state, locales);
-
-        state.style = optStyle;
-        String currencyCode = optCurrency;
-        if (currencyCode != null && !JSNumberFormat.isWellFormedCurrencyCode(currencyCode)) {
-            throw Errors.createRangeError(String.format("Currency, %s, is not well formed.", currencyCode));
-        }
-        if (optStyle.equals("currency")) {
-            if (currencyCode == null) {
-                throw Errors.createTypeError("Currency can not be undefined when style is \"currency\"");
-            } else {
-                state.currency = IntlUtil.toUpperCase(currencyCode);
-            }
-        }
-        int cDigits = JSNumberFormat.currencyDigits(state.currency);
-        int mnfdDefault = cDigits;
-        int mxfdDefault = cDigits;
-        if (state.style.equals("currency")) {
-            state.currencyDisplay = optCurrencyDisplay;
-        } else {
-            mnfdDefault = 0;
-            if (state.style.equals("percent")) {
-                mxfdDefault = 0;
-            } else {
-                mxfdDefault = 3;
-            }
-        }
-        state.useGrouping = optUseGrouping;
-
-        IntlUtil.ensureICU4JDataPathSet();
         try {
+            JSNumberFormat.InternalState state = JSNumberFormat.getInternalState(numberFormatObj);
+
+            String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
+            DynamicObject options = createOptionsNode.execute(optionsArg);
+
+            getLocaleMatcherOption.executeValue(options);
+            String optStyle = getStyleOption.executeValue(options);
+
+            String optCurrency = getCurrencyOption.executeValue(options);
+            String optCurrencyDisplay = getCurrencyDisplayOption.executeValue(options);
+            Boolean optUseGrouping = getUseGroupingOption.executeValue(options);
+
+            state.initialized = true;
+
+            JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales);
+
+            state.style = optStyle;
+            String currencyCode = optCurrency;
+            if (currencyCode != null && !JSNumberFormat.isWellFormedCurrencyCode(currencyCode)) {
+                throw Errors.createRangeErrorCurrencyNotWellFormed(currencyCode);
+            }
+            if (optStyle.equals("currency")) {
+                if (currencyCode == null) {
+                    throw Errors.createTypeError("Currency can not be undefined when style is \"currency\"");
+                } else {
+                    state.currency = IntlUtil.toUpperCase(currencyCode);
+                }
+            }
+            int cDigits = JSNumberFormat.currencyDigits(state.currency);
+            int mnfdDefault = cDigits;
+            int mxfdDefault = cDigits;
+            if (state.style.equals("currency")) {
+                state.currencyDisplay = optCurrencyDisplay;
+            } else {
+                mnfdDefault = 0;
+                if (state.style.equals("percent")) {
+                    mxfdDefault = 0;
+                } else {
+                    mxfdDefault = 3;
+                }
+            }
+            state.useGrouping = optUseGrouping;
+
             JSNumberFormat.setupInternalNumberFormat(state);
+
+            setNumberFormatDigitOptions(state, options, mnfdDefault, mxfdDefault);
 
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError();
         }
-        setNumberFormatDigitOptions(state, options, mnfdDefault, mxfdDefault);
         return numberFormatObj;
     }
 
@@ -168,9 +173,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         state.minimumIntegerDigits = mnid.intValue();
         state.minimumFractionDigits = mnfd.intValue();
         state.maximumFractionDigits = mxfd.intValue();
-        state.numberFormat.setMinimumIntegerDigits(state.minimumIntegerDigits.intValue());
-        state.numberFormat.setMinimumFractionDigits(state.minimumFractionDigits.intValue());
-        state.numberFormat.setMaximumFractionDigits(state.maximumFractionDigits.intValue());
+        BasicInternalState.setStateNumberFormatDigits(state);
         Object mnsd = getMinSignificantDigitsOption.getValue(options);
         Object mxsd = getMaxSignificantDigitsOption.getValue(options);
         if (!JSGuards.isUndefined(mnsd) || !JSGuards.isUndefined(mxsd)) {

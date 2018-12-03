@@ -94,7 +94,7 @@ public final class CollatorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
 
         @Specialization
         protected Object getSupportedLocales(Object locales) {
-            return JSRuntime.createArrayFromList(getContext(), IntlUtil.supportedLocales(toCanonicalizedLocaleListNode.executeLanguageTags(locales)));
+            return JSRuntime.createArrayFromList(getContext(), IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales)));
         }
     }
 }
