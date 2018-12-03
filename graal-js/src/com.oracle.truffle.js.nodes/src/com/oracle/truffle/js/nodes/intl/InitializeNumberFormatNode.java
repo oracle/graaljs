@@ -105,7 +105,6 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    @TruffleBoundary
     public DynamicObject initializeNumberFormat(DynamicObject numberFormatObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data

@@ -98,7 +98,6 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    @TruffleBoundary
     public DynamicObject initializePluralRules(DynamicObject pluralRulesObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data

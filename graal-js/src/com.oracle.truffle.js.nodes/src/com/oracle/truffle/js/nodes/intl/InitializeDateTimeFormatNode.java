@@ -117,7 +117,6 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    @TruffleBoundary
     public DynamicObject initializeDateTimeFormat(DynamicObject dateTimeFormatObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
