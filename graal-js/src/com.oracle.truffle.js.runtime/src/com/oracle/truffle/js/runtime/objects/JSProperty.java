@@ -50,6 +50,7 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
 /**
@@ -103,7 +104,7 @@ public class JSProperty {
     private static Object getValueAccessor(Object thisObj, Object value) {
         DynamicObject getter = ((Accessor) value).getGetter();
         if (getter != Undefined.instance) {
-            return JSFunction.call(getter, thisObj, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+            return JSRuntime.call(getter, thisObj, JSArguments.EMPTY_ARGUMENTS_ARRAY);
         } else {
             return Undefined.instance;
         }
