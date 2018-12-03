@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.intl;
 import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -59,6 +60,8 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
  */
 public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
 
+    private final JSContext jsContext;
+
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
     @Child CreateOptionsObjectNode createOptionsNode;
 
@@ -70,6 +73,7 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
     @Child GetBooleanOptionNode getIgnorePunctuationOption;
 
     protected InitializeCollatorNode(JSContext context) {
+        this.jsContext = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
         this.getUsageOption = GetStringOptionNode.create(context, "usage", new String[]{"sort", "search"}, "sort");
@@ -87,22 +91,24 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
     }
 
     @Specialization
+    @TruffleBoundary
     public DynamicObject initializeCollator(DynamicObject collatorObj, Object localesArg, Object optionsArg) {
 
-        JSCollator.InternalState state = JSCollator.getInternalState(collatorObj);
+        // must be invoked before any code that tries to access ICU library data
+        IntlUtil.ensureICU4JDataPathSet(jsContext);
 
-        String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-        DynamicObject options = createOptionsNode.execute(optionsArg);
-        String usage = getUsageOption.executeValue(options);
-        String optLocaleMatcher = getLocaleMatcherOption.executeValue(options);
-        Boolean optkn = getNumericOption.executeValue(options);
-        String optkf = getCaseFirstOption.executeValue(options);
-        String sensitivity = getSensitivityOption.executeValue(options);
-        Boolean ignorePunctuation = getIgnorePunctuationOption.executeValue(options);
-
-        IntlUtil.ensureICU4JDataPathSet();
         try {
-            JSCollator.initializeCollator(state, locales, usage, optLocaleMatcher, optkn, optkf, sensitivity, ignorePunctuation);
+            JSCollator.InternalState state = JSCollator.getInternalState(collatorObj);
+            String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
+            DynamicObject options = createOptionsNode.execute(optionsArg);
+            String usage = getUsageOption.executeValue(options);
+            String optLocaleMatcher = getLocaleMatcherOption.executeValue(options);
+            Boolean optkn = getNumericOption.executeValue(options);
+            String optkf = getCaseFirstOption.executeValue(options);
+            String sensitivity = getSensitivityOption.executeValue(options);
+            Boolean ignorePunctuation = getIgnorePunctuationOption.executeValue(options);
+
+            JSCollator.initializeCollator(jsContext, state, locales, usage, optLocaleMatcher, optkn, optkf, sensitivity, ignorePunctuation);
 
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError();

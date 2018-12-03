@@ -59,6 +59,8 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
  */
 public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
 
+    private final JSContext jsContext;
+
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
     @Child CreateOptionsObjectNode createOptionsNode;
 
@@ -75,6 +77,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getTypeOption;
 
     protected InitializePluralRulesNode(JSContext context) {
+        this.jsContext = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, "localeMatcher", new String[]{"lookup", "best fit"}, "best fit");
@@ -98,30 +101,32 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
     @TruffleBoundary
     public DynamicObject initializePluralRules(DynamicObject pluralRulesObj, Object localesArg, Object optionsArg) {
 
-        JSPluralRules.InternalState state = JSPluralRules.getInternalState(pluralRulesObj);
+        // must be invoked before any code that tries to access ICU library data
+        IntlUtil.ensureICU4JDataPathSet(jsContext);
 
-        String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-        DynamicObject options = createOptionsNode.execute(optionsArg);
-
-        getLocaleMatcherOption.executeValue(options);
-        String optType = getTypeOption.executeValue(options);
-
-        state.initialized = true;
-
-        state.type = optType;
-
-        IntlUtil.ensureICU4JDataPathSet();
         try {
-            JSNumberFormat.setLocaleAndNumberingSystem(state, locales);
+            JSPluralRules.InternalState state = JSPluralRules.getInternalState(pluralRulesObj);
+
+            String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
+            DynamicObject options = createOptionsNode.execute(optionsArg);
+
+            getLocaleMatcherOption.executeValue(options);
+            String optType = getTypeOption.executeValue(options);
+
+            state.initialized = true;
+
+            state.type = optType;
+
+            JSNumberFormat.setLocaleAndNumberingSystem(jsContext, state, locales);
             JSPluralRules.setupInternalPluralRulesAndNumberFormat(state);
+
+            int mnfdDefault = 0;
+            int mxfdDefault = 3;
+            setPluralRulesDigitOptions(state, options, mnfdDefault, mxfdDefault);
 
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError();
         }
-
-        int mnfdDefault = 0;
-        int mxfdDefault = 3;
-        setPluralRulesDigitOptions(state, options, mnfdDefault, mxfdDefault);
         return pluralRulesObj;
     }
 

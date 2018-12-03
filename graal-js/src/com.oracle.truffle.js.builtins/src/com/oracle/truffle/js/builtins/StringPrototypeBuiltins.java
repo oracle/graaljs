@@ -1658,7 +1658,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Override
         protected String toXCase(String thisStr, String[] locales) {
-            return IntlUtil.toLowerCase(thisStr, locales);
+            return IntlUtil.toLowerCase(getContext(), thisStr, locales);
         }
     }
 
@@ -1675,7 +1675,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Override
         protected String toXCase(String thisStr, String[] locales) {
-            return IntlUtil.toUpperCase(thisStr, locales);
+            return IntlUtil.toUpperCase(getContext(), thisStr, locales);
         }
     }
 
