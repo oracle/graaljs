@@ -83,6 +83,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.JSReflectUtils;
 
 /**
@@ -164,7 +165,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         protected void ensureObject(Object target) {
             if (!JSRuntime.isObject(target)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("called on non-object");
+                throw Errors.createTypeErrorCalledOnNonObject();
             }
         }
     }
@@ -272,16 +273,27 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             super(context, builtin);
         }
 
-        @Specialization
-        protected Object reflectGet(Object[] args,
-                        @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
-            Object target = JSRuntime.getArgOrUndefined(args, 0);
+        @Specialization(guards = "!targetIsObject(args)")
+        protected Object doNonObject(@SuppressWarnings("unused") Object[] args) {
+            throw Errors.createTypeErrorCalledOnNonObject();
+        }
+
+        @Specialization(guards = "targetIsObject(args)")
+        protected Object doObject(Object[] args,
+                        @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode,
+                        @Cached("create()") JSClassProfile classProfile) {
+            Object target = args[0];
             Object propertyKey = JSRuntime.getArgOrUndefined(args, 1);
             Object receiver = JSRuntime.getArg(args, 2, target);
-            ensureObject(target);
             Object key = toPropertyKeyNode.execute(propertyKey);
-            return JSReflectUtils.performOrdinaryGet((DynamicObject) target, key, receiver);
+            DynamicObject store = (DynamicObject) target;
+            return JSRuntime.nullToUndefined(classProfile.getJSClass(store).getHelper(store, receiver, key));
         }
+
+        protected static boolean targetIsObject(Object[] args) {
+            return args.length != 0 && JSRuntime.isObject(args[0]);
+        }
+
     }
 
     public abstract static class ReflectGetOwnPropertyDescriptorNode extends ReflectOperation {

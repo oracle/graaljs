@@ -144,6 +144,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorCalledOnNonObject() {
+        return createTypeError("called on non-object");
+    }
+
+    @TruffleBoundary
     public static JSException createSyntaxError(String message, Throwable cause, Node originatingNode) {
         return JSException.create(JSErrorType.SyntaxError, message, cause, originatingNode);
     }
