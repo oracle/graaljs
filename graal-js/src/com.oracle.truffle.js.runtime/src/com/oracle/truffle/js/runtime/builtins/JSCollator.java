@@ -120,13 +120,13 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
     // localeMatcher unused as our lookup matcher and best fit matcher are the same at the moment
     @TruffleBoundary
-    public static void initializeCollator(JSCollator.InternalState state, String[] locales, String usage, @SuppressWarnings("unused") String localeMatcher, Boolean optkn, String optkf,
+    public static void initializeCollator(JSContext ctx, JSCollator.InternalState state, String[] locales, String usage, @SuppressWarnings("unused") String localeMatcher, Boolean optkn, String optkf,
                     String sensitivity, Boolean ignorePunctuation) {
         Boolean kn = optkn;
         String kf = optkf;
         state.initializedCollator = true;
         state.usage = usage;
-        String selectedTag = IntlUtil.selectedLocale(locales);
+        String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
         for (String ek : selectedLocale.getUnicodeLocaleKeys()) {

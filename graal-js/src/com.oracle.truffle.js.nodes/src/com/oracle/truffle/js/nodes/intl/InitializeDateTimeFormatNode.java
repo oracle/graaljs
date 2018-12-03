@@ -44,6 +44,7 @@ import java.util.MissingResourceException;
 
 import com.ibm.icu.util.TimeZone;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -87,7 +88,11 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getSecondOption;
     @Child GetStringOptionNode getTimeZoneNameOption;
 
+    private final JSContext jsContext;
+
     protected InitializeDateTimeFormatNode(JSContext context, String required, String defaults) {
+
+        this.jsContext = context;
 
         this.required = required;
         this.defaults = defaults;
@@ -119,37 +124,42 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     }
 
     @Specialization
+    @TruffleBoundary
     public DynamicObject initializeDateTimeFormat(DynamicObject dateTimeFormatObj, Object localesArg, Object optionsArg) {
 
-        JSDateTimeFormat.InternalState state = JSDateTimeFormat.getInternalState(dateTimeFormatObj);
+        // must be invoked before any code that tries to access ICU library data
+        IntlUtil.ensureICU4JDataPathSet(jsContext);
 
-        String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-        DynamicObject options = createOptionsNode.execute(optionsArg, required, defaults);
-
-        // enforce validity check
-        getLocaleMatcherOption.executeValue(options);
-
-        Boolean hour12Opt = getHour12Option.executeValue(options);
-        String hcOpt = getHourCycleOption.executeValue(options);
-
-        Object timeZoneValue = getTimeZoneNode.getValue(options);
-        TimeZone timeZone = JSDateTimeFormat.toTimeZone(timeZoneValue);
-
-        String weekdayOpt = getWeekdayOption.executeValue(options);
-        String eraOpt = getEraOption.executeValue(options);
-        String yearOpt = getYearOption.executeValue(options);
-        String monthOpt = getMonthOption.executeValue(options);
-        String dayOpt = getDayOption.executeValue(options);
-        String hourOpt = getHourOption.executeValue(options);
-        String minuteOpt = getMinuteOption.executeValue(options);
-        String secondOpt = getSecondOption.executeValue(options);
-        String tzNameOpt = getTimeZoneNameOption.executeValue(options);
-
-        getFormatMatcherOption.executeValue(options);
-
-        IntlUtil.ensureICU4JDataPathSet();
         try {
-            JSDateTimeFormat.setupInternalDateTimeFormat(state, locales, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt, timeZone);
+            JSDateTimeFormat.InternalState state = JSDateTimeFormat.getInternalState(dateTimeFormatObj);
+
+            String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
+            DynamicObject options = createOptionsNode.execute(optionsArg, required, defaults);
+
+            // enforce validity check
+            getLocaleMatcherOption.executeValue(options);
+
+            Boolean hour12Opt = getHour12Option.executeValue(options);
+            String hcOpt = getHourCycleOption.executeValue(options);
+
+            Object timeZoneValue = getTimeZoneNode.getValue(options);
+            TimeZone timeZone = JSDateTimeFormat.toTimeZone(timeZoneValue);
+
+            String weekdayOpt = getWeekdayOption.executeValue(options);
+            String eraOpt = getEraOption.executeValue(options);
+            String yearOpt = getYearOption.executeValue(options);
+            String monthOpt = getMonthOption.executeValue(options);
+            String dayOpt = getDayOption.executeValue(options);
+            String hourOpt = getHourOption.executeValue(options);
+            String minuteOpt = getMinuteOption.executeValue(options);
+            String secondOpt = getSecondOption.executeValue(options);
+            String tzNameOpt = getTimeZoneNameOption.executeValue(options);
+
+            getFormatMatcherOption.executeValue(options);
+
+            JSDateTimeFormat.setupInternalDateTimeFormat(jsContext, state, locales, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt,
+                            timeZone);
+
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError();
         }
