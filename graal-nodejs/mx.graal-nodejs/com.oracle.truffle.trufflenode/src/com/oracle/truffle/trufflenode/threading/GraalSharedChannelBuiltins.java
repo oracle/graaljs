@@ -49,7 +49,9 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBuiltinsFactory.DisposeNodeGen;
+import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBuiltinsFactory.EncodedRefsNodeGen;
 import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBuiltinsFactory.EnterNodeGen;
+import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBuiltinsFactory.FreeNodeGen;
 import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBuiltinsFactory.LeaveNodeGen;
 
 public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<GraalSharedChannelBuiltins.API> {
@@ -60,6 +62,8 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
     public enum API implements BuiltinEnum<API> {
         enter(0),
         leave(0),
+        free(0),
+        encodedJavaRefs(0),
         dispose(0);
 
         private final int length;
@@ -78,11 +82,15 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, API builtinEnum) {
         switch (builtinEnum) {
             case enter:
-                return EnterNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
+                return EnterNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case leave:
                 return LeaveNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
+            case free:
+                return FreeNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
+            case encodedJavaRefs:
+                return EncodedRefsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case dispose:
-                return DisposeNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
+                return DisposeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -94,11 +102,38 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
         }
 
         @Specialization
+        public Object enter(DynamicObject self, DynamicObject external) {
+            GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
+            SharedMemoryEncodingContext encodingContext = new SharedMemoryEncodingContext(external);
+            access.setCurrentEncodingContext(encodingContext);
+            return this;
+        }
+    }
+
+    public static abstract class FreeNode extends JSBuiltinNode {
+
+        protected FreeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public Object free(DynamicObject self) {
+            GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
+            access.freeCurrentEncodingContext();
+            return this;
+        }
+    }
+
+    public static abstract class EncodedRefsNode extends JSBuiltinNode {
+
+        protected EncodedRefsNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
         public Object enter(DynamicObject self) {
             GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
-
-            access.setCurrentEncodingContext(new SharedMemoryEncodingContext());
-            return self;
+            return access.getCurrentEncodingTarget().getEncodingQueue().size() > 0;
         }
     }
 
@@ -123,9 +158,9 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
         }
 
         @Specialization
-        public Object dispose(DynamicObject self) {
-// GraalJSAccess.disposeSharedMemoryMessagePort(self);
-// TODO??
+        public Object dispose(DynamicObject self, DynamicObject external) {
+            GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
+            access.disposeAllReferencesTo(external);
             return self;
         }
     }

@@ -43,16 +43,26 @@ package com.oracle.truffle.trufflenode.threading;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.trufflenode.JSExternalObject;
+
 public class SharedMemoryEncodingContext {
 
+    private final long messageData;
     private final Deque<Object> queue;
 
-    public SharedMemoryEncodingContext() {
+    public SharedMemoryEncodingContext(DynamicObject external) {
+        assert JSExternalObject.isJSExternalObject(external);
         this.queue = new ConcurrentLinkedDeque<>();
+        this.messageData = JSExternalObject.getPointer(external);
     }
 
     public Deque<Object> getEncodingQueue() {
         return queue;
+    }
+
+    public long getMessageData() {
+        return messageData;
     }
 
 }

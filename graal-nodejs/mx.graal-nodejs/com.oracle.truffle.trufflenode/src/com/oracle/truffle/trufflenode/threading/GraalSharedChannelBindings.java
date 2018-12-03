@@ -115,11 +115,10 @@ public class GraalSharedChannelBindings extends JSBuiltinObject {
         JavaScriptRootNode wrapperNode = new JavaScriptRootNode() {
             @Override
             public Object execute(VirtualFrame frame) {
-                DynamicObject instance = create(context, graalJSAccess);
-                return instance;
+                return create(context, graalJSAccess);
             }
         };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(wrapperNode), 2, "GraalSharedChannelInitFunction");
+        JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(wrapperNode), 2, "GraalSharedChannelInit");
         return JSFunction.create(realm, functionData);
     }
 

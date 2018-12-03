@@ -44,6 +44,7 @@ var module = require('./_unit');
 
 const {
     Worker,
+    MessagePort,
     isMainThread,
     workerData
 } = require('worker_threads')
@@ -195,5 +196,19 @@ describe('Java interop messages', function() {
             });
             w.postMessage(41);
         }
-    });        
+    });
+    it('MesasgePort not bound to a worker cannot encode Java objects', function(done) {
+        if (isMainThread) {
+            const mp = new MessagePort();
+            const Obj = Java.type('java.lang.Object');
+            var seenException = false;
+            try {
+                mp.postMessage({x : new Obj()});
+            } catch (e) {
+                seenException = true;
+            }
+            assert(seenException === true);
+            done();
+        }
+    });    
 });
