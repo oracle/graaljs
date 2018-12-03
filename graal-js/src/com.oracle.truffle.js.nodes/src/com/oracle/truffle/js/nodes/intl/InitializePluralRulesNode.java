@@ -137,9 +137,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
         state.minimumIntegerDigits = mnid.intValue();
         state.minimumFractionDigits = mnfd.intValue();
         state.maximumFractionDigits = mxfd.intValue();
-        state.numberFormat.setMinimumIntegerDigits(state.minimumIntegerDigits.intValue());
-        state.numberFormat.setMinimumFractionDigits(state.minimumFractionDigits.intValue());
-        state.numberFormat.setMaximumFractionDigits(state.maximumFractionDigits.intValue());
+        InitializeNumberFormatNode.setStateNumberFormatDigits(state);
         Object mnsd = getMinSignificantDigitsOption.getValue(options);
         Object mxsd = getMaxSignificantDigitsOption.getValue(options);
         if (!JSGuards.isUndefined(mnsd) || !JSGuards.isUndefined(mxsd)) {
