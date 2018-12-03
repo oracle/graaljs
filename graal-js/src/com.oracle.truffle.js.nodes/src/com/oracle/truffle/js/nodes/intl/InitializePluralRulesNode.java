@@ -50,6 +50,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
+import com.oracle.truffle.js.runtime.builtins.JSNumberFormat.BasicInternalState;
 import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -137,7 +138,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
         state.minimumIntegerDigits = mnid.intValue();
         state.minimumFractionDigits = mnfd.intValue();
         state.maximumFractionDigits = mxfd.intValue();
-        InitializeNumberFormatNode.setStateNumberFormatDigits(state);
+        BasicInternalState.setStateNumberFormatDigits(state);
         Object mnsd = getMinSignificantDigitsOption.getValue(options);
         Object mxsd = getMaxSignificantDigitsOption.getValue(options);
         if (!JSGuards.isUndefined(mnsd) || !JSGuards.isUndefined(mxsd)) {
