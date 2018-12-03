@@ -42,17 +42,12 @@ package com.oracle.truffle.js.nodes.intl;
 
 import java.util.MissingResourceException;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
-import com.oracle.truffle.js.nodes.intl.InitializeCollatorNodeGen.CreateOptionsObjectNodeGen;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSCollator;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
@@ -60,7 +55,7 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
  */
 public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
 
-    private final JSContext jsContext;
+    private final JSContext context;
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
     @Child CreateOptionsObjectNode createOptionsNode;
@@ -73,7 +68,7 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
     @Child GetBooleanOptionNode getIgnorePunctuationOption;
 
     protected InitializeCollatorNode(JSContext context) {
-        this.jsContext = context;
+        this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
         this.getUsageOption = GetStringOptionNode.create(context, "usage", new String[]{"sort", "search"}, "sort");
@@ -91,11 +86,10 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    @TruffleBoundary
     public DynamicObject initializeCollator(DynamicObject collatorObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
-        IntlUtil.ensureICU4JDataPathSet(jsContext);
+        IntlUtil.ensureICU4JDataPathSet(context);
 
         try {
             JSCollator.InternalState state = JSCollator.getInternalState(collatorObj);
@@ -108,48 +102,12 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
             String sensitivity = getSensitivityOption.executeValue(options);
             Boolean ignorePunctuation = getIgnorePunctuationOption.executeValue(options);
 
-            JSCollator.initializeCollator(jsContext, state, locales, usage, optLocaleMatcher, optkn, optkf, sensitivity, ignorePunctuation);
+            JSCollator.initializeCollator(context, state, locales, usage, optLocaleMatcher, optkn, optkf, sensitivity, ignorePunctuation);
 
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError();
         }
 
         return collatorObj;
-    }
-
-    public abstract static class CreateOptionsObjectNode extends JavaScriptBaseNode {
-
-        @Child JSToObjectNode toObjectNode;
-        private final JSContext context;
-
-        public JSContext getContext() {
-            return context;
-        }
-
-        public CreateOptionsObjectNode(JSContext context) {
-            super();
-            this.context = context;
-        }
-
-        public abstract DynamicObject execute(Object opts);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "isUndefined(opts)")
-        public DynamicObject fromUndefined(Object opts) {
-            return JSUserObject.createWithNullPrototype(getContext());
-        }
-
-        @Specialization(guards = "!isUndefined(opts)")
-        public DynamicObject fromOtherThenUndefined(Object opts) {
-            return toDynamicObject(opts);
-        }
-
-        private DynamicObject toDynamicObject(Object o) {
-            if (toObjectNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
-            }
-            return (DynamicObject) toObjectNode.executeTruffleObject(o);
-        }
     }
 }

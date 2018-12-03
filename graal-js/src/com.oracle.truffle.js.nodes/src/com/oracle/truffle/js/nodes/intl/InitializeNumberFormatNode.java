@@ -58,7 +58,7 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
  */
 public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
 
-    private final JSContext jsContext;
+    private final JSContext context;
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
     @Child CreateOptionsObjectNode createOptionsNode;
@@ -81,7 +81,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
     @Child GetBooleanOptionNode getUseGroupingOption;
 
     protected InitializeNumberFormatNode(JSContext context) {
-        this.jsContext = context;
+        this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, "localeMatcher", new String[]{"lookup", "best fit"}, "best fit");
@@ -109,7 +109,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
     public DynamicObject initializeNumberFormat(DynamicObject numberFormatObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
-        IntlUtil.ensureICU4JDataPathSet(jsContext);
+        IntlUtil.ensureICU4JDataPathSet(context);
 
         try {
             JSNumberFormat.InternalState state = JSNumberFormat.getInternalState(numberFormatObj);
@@ -126,7 +126,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
 
             state.initialized = true;
 
-            JSNumberFormat.setLocaleAndNumberingSystem(jsContext, state, locales);
+            JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales);
 
             state.style = optStyle;
             String currencyCode = optCurrency;
