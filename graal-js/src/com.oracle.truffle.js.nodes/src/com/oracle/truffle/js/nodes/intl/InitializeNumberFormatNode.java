@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.intl;
 
 import java.util.MissingResourceException;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -172,9 +173,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         state.minimumIntegerDigits = mnid.intValue();
         state.minimumFractionDigits = mnfd.intValue();
         state.maximumFractionDigits = mxfd.intValue();
-        state.numberFormat.setMinimumIntegerDigits(state.minimumIntegerDigits.intValue());
-        state.numberFormat.setMinimumFractionDigits(state.minimumFractionDigits.intValue());
-        state.numberFormat.setMaximumFractionDigits(state.maximumFractionDigits.intValue());
+        setStateNumberFormatDigits(state);
         Object mnsd = getMinSignificantDigitsOption.getValue(options);
         Object mxsd = getMaxSignificantDigitsOption.getValue(options);
         if (!JSGuards.isUndefined(mnsd) || !JSGuards.isUndefined(mxsd)) {
@@ -184,5 +183,12 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
             state.maximumSignificantDigits = mxsdNumber.intValue();
             JSNumberFormat.setSignificantDigits(state);
         }
+    }
+
+    @TruffleBoundary
+    static void setStateNumberFormatDigits(JSNumberFormat.BasicInternalState state) {
+        state.numberFormat.setMinimumIntegerDigits(state.minimumIntegerDigits.intValue());
+        state.numberFormat.setMinimumFractionDigits(state.minimumFractionDigits.intValue());
+        state.numberFormat.setMaximumFractionDigits(state.maximumFractionDigits.intValue());
     }
 }
