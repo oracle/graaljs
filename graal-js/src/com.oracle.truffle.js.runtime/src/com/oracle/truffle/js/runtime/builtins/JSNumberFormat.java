@@ -652,6 +652,13 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                 JSObjectUtil.defineDataProperty(result, "maximumSignificantDigits", maximumSignificantDigits, JSAttributes.getDefault());
             }
         }
+
+        @TruffleBoundary
+        public static void setStateNumberFormatDigits(JSNumberFormat.BasicInternalState state) {
+            state.numberFormat.setMinimumIntegerDigits(state.minimumIntegerDigits.intValue());
+            state.numberFormat.setMinimumFractionDigits(state.minimumFractionDigits.intValue());
+            state.numberFormat.setMaximumFractionDigits(state.maximumFractionDigits.intValue());
+        }
     }
 
     public static class InternalState extends BasicInternalState {
