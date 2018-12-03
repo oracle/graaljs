@@ -59,7 +59,7 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
  */
 public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
 
-    private final JSContext jsContext;
+    private final JSContext context;
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
     @Child CreateOptionsObjectNode createOptionsNode;
@@ -77,7 +77,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getTypeOption;
 
     protected InitializePluralRulesNode(JSContext context) {
-        this.jsContext = context;
+        this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, "localeMatcher", new String[]{"lookup", "best fit"}, "best fit");
@@ -102,7 +102,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
     public DynamicObject initializePluralRules(DynamicObject pluralRulesObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
-        IntlUtil.ensureICU4JDataPathSet(jsContext);
+        IntlUtil.ensureICU4JDataPathSet(context);
 
         try {
             JSPluralRules.InternalState state = JSPluralRules.getInternalState(pluralRulesObj);
@@ -117,7 +117,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
 
             state.type = optType;
 
-            JSNumberFormat.setLocaleAndNumberingSystem(jsContext, state, locales);
+            JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales);
             JSPluralRules.setupInternalPluralRulesAndNumberFormat(state);
 
             int mnfdDefault = 0;

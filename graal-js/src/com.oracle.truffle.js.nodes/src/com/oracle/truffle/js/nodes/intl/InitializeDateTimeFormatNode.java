@@ -43,21 +43,14 @@ package com.oracle.truffle.js.nodes.intl;
 import java.util.MissingResourceException;
 
 import com.ibm.icu.util.TimeZone;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
-import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNodeGen.ToDateTimeOptionsNodeGen;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
@@ -88,11 +81,11 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getSecondOption;
     @Child GetStringOptionNode getTimeZoneNameOption;
 
-    private final JSContext jsContext;
+    private final JSContext context;
 
     protected InitializeDateTimeFormatNode(JSContext context, String required, String defaults) {
 
-        this.jsContext = context;
+        this.context = context;
 
         this.required = required;
         this.defaults = defaults;
@@ -128,7 +121,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     public DynamicObject initializeDateTimeFormat(DynamicObject dateTimeFormatObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
-        IntlUtil.ensureICU4JDataPathSet(jsContext);
+        IntlUtil.ensureICU4JDataPathSet(context);
 
         try {
             JSDateTimeFormat.InternalState state = JSDateTimeFormat.getInternalState(dateTimeFormatObj);
@@ -157,7 +150,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
 
             getFormatMatcherOption.executeValue(options);
 
-            JSDateTimeFormat.setupInternalDateTimeFormat(jsContext, state, locales, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt,
+            JSDateTimeFormat.setupInternalDateTimeFormat(context, state, locales, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt,
                             timeZone);
 
         } catch (MissingResourceException e) {
@@ -165,73 +158,5 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         }
 
         return dateTimeFormatObj;
-    }
-
-    // https://tc39.github.io/ecma402/#sec-todatetimeoptions
-    public abstract static class ToDateTimeOptionsNode extends JavaScriptBaseNode {
-
-        @Child JSToObjectNode toObjectNode;
-        private final JSContext context;
-
-        public JSContext getContext() {
-            return context;
-        }
-
-        public ToDateTimeOptionsNode(JSContext context) {
-            super();
-            this.context = context;
-        }
-
-        public abstract DynamicObject execute(Object opts, String required, String defaults);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "isUndefined(opts)")
-        public DynamicObject fromUndefined(Object opts, String required, String defaults) {
-            return setDefaultsIfNeeded(JSUserObject.createWithNullPrototype(getContext()), required, defaults);
-        }
-
-        @Specialization(guards = "!isUndefined(opts)")
-        public DynamicObject fromOtherThenUndefined(Object opts, String required, String defaults) {
-            return setDefaultsIfNeeded(JSUserObject.createWithPrototype(toDynamicObject(opts), getContext()), required, defaults);
-        }
-
-        // from step 4 (Let needDefaults be true)
-        private static DynamicObject setDefaultsIfNeeded(DynamicObject options, String required, String defaults) {
-            boolean needDefaults = true;
-            if (required != null) {
-                if (required.equals("date") || required.equals("any")) {
-                    needDefaults &= JSGuards.isUndefined(JSObject.get(options, "weekday"));
-                    needDefaults &= JSGuards.isUndefined(JSObject.get(options, "year"));
-                    needDefaults &= JSGuards.isUndefined(JSObject.get(options, "month"));
-                    needDefaults &= JSGuards.isUndefined(JSObject.get(options, "day"));
-                }
-                if (required.equals("time") || required.equals("any")) {
-                    needDefaults &= JSGuards.isUndefined(JSObject.get(options, "hour"));
-                    needDefaults &= JSGuards.isUndefined(JSObject.get(options, "minute"));
-                    needDefaults &= JSGuards.isUndefined(JSObject.get(options, "second"));
-                }
-            }
-            if (defaults != null) {
-                if (needDefaults && (defaults.equals("date") || defaults.equals("all"))) {
-                    JSRuntime.createDataPropertyOrThrow(options, "year", "numeric");
-                    JSRuntime.createDataPropertyOrThrow(options, "month", "numeric");
-                    JSRuntime.createDataPropertyOrThrow(options, "day", "numeric");
-                }
-                if (needDefaults && (defaults.equals("time") || defaults.equals("all"))) {
-                    JSRuntime.createDataPropertyOrThrow(options, "hour", "numeric");
-                    JSRuntime.createDataPropertyOrThrow(options, "minute", "numeric");
-                    JSRuntime.createDataPropertyOrThrow(options, "second", "numeric");
-                }
-            }
-            return options;
-        }
-
-        private DynamicObject toDynamicObject(Object o) {
-            if (toObjectNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
-            }
-            return (DynamicObject) toObjectNode.executeTruffleObject(o);
-        }
     }
 }
