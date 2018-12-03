@@ -38,7 +38,7 @@ In addition, some popular extensions of other engines are supported, see [`JavaS
 Graal JavaScript can execute Node.js applications.
 It provides high compatibility with existing npm packages, with high likelyhood that your application will run out of the box.
 This includes npm packages with native implementations.
-Note that you will need to re-compile from source with Graal JavaScript if you want to run binaries that have beeen compiled for Node.js based on V8, or any other compatible engine.
+Note that you will need to re-compile from source with Graal JavaScript if you want to run binaries that have been compiled for Node.js based on V8, or any other compatible engine.
 
 ## Graal JavaScript Reference Manual
 
