@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.intl;
 
 import java.util.MissingResourceException;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -130,7 +129,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
             state.style = optStyle;
             String currencyCode = optCurrency;
             if (currencyCode != null && !JSNumberFormat.isWellFormedCurrencyCode(currencyCode)) {
-                throw Errors.createRangeError(String.format("Currency, %s, is not well formed.", currencyCode));
+                throw Errors.createRangeErrorCurrencyNotWellFormed(currencyCode);
             }
             if (optStyle.equals("currency")) {
                 if (currencyCode == null) {
