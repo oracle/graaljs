@@ -69,14 +69,14 @@ public class ForkJoinTest {
 
         @Override
         public Value get() {
-            String src = "function(n) {" +
+            String src = "(function(n) {" +
                             "   if (n <= 1) " +
                             "      return n;" +
                             "   var f1 = fib.task(n - 1);" +
                             "   f1.fork();" +
                             "   var f2 = fib.task(n - 2);" +
                             "   return f2.compute() + f1.join();" +
-                            "}";
+                            "})";
 
             Context cx = Context.newBuilder("js").engine(engine).build();
             cx.getBindings("js").putMember("fib", new FibTaskCreator(tl));

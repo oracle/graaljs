@@ -63,7 +63,7 @@ public class ConcurrentAccess {
 
         final Context cx = Context.create("js");
 
-        Value code = cx.eval("js", "function() { return 42;};");
+        Value code = cx.eval("js", "(function() { return 42;})");
 
         Thread t = new Thread(new Runnable() {
 
@@ -115,7 +115,7 @@ public class ConcurrentAccess {
         final Context cx = Context.create("js");
 
         cx.enter();
-        Value code = cx.eval("js", "function() { return 42;};");
+        Value code = cx.eval("js", "(function() { return 42;})");
         cx.leave();
 
         Thread t = new Thread(new Runnable() {
