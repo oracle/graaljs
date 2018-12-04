@@ -175,9 +175,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         if (!JSGuards.isUndefined(mnsd) || !JSGuards.isUndefined(mxsd)) {
             Number mnsdNumber = getMnsdDNO.executeValue(mnsd, 1);
             Number mxsdNumber = getMxsdDNO.executeValue(mxsd, mnsdNumber.intValue());
-            state.minimumSignificantDigits = mnsdNumber.intValue();
-            state.maximumSignificantDigits = mxsdNumber.intValue();
-            JSNumberFormat.setSignificantDigits(state);
+            state.setSignificantDigits(mnsdNumber.intValue(), mxsdNumber.intValue());
         }
     }
 }

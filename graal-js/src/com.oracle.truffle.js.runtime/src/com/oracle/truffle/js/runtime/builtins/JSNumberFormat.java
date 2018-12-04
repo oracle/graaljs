@@ -507,15 +507,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         state.numberFormat.setGroupingUsed(state.useGrouping);
     }
 
-    @TruffleBoundary
-    public static void setSignificantDigits(BasicInternalState state) {
-        if (state.numberFormat instanceof DecimalFormat) {
-            DecimalFormat df = (DecimalFormat) state.numberFormat;
-            df.setMinimumSignificantDigits(state.minimumSignificantDigits);
-            df.setMaximumSignificantDigits(state.maximumSignificantDigits);
-        }
-    }
-
     public static NumberFormat getNumberFormatProperty(DynamicObject obj) {
         return getInternalState(obj).numberFormat;
     }
@@ -655,6 +646,17 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             numberFormat.setMinimumIntegerDigits(minimumIntegerDigits);
             numberFormat.setMinimumFractionDigits(minimumFractionDigits);
             numberFormat.setMaximumFractionDigits(maximumFractionDigits);
+        }
+
+        @TruffleBoundary
+        public void setSignificantDigits(int minimumSignificantDigits, int maximumSignificantDigits) {
+            this.minimumSignificantDigits = minimumSignificantDigits;
+            this.maximumSignificantDigits = maximumSignificantDigits;
+            if (numberFormat instanceof DecimalFormat) {
+                DecimalFormat df = (DecimalFormat) numberFormat;
+                df.setMinimumSignificantDigits(minimumSignificantDigits);
+                df.setMaximumSignificantDigits(maximumSignificantDigits);
+            }
         }
     }
 
