@@ -555,7 +555,7 @@ suite = {
     },
 
     "TRUFFLE_JS_TESTS" : {
-      "dependencies" : ["com.oracle.truffle.js.test.external", "com.oracle.truffle.js.test.instrumentation"],
+      "dependencies" : ["com.oracle.truffle.js.test.external", "com.oracle.truffle.js.test.instrumentation", "com.oracle.truffle.js.test.threading"],
       "exclude" : [
         "mx:HAMCREST",
         "mx:JUNIT",
