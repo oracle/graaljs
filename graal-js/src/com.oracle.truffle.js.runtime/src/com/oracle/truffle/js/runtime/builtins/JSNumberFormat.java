@@ -511,8 +511,8 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     public static void setSignificantDigits(BasicInternalState state) {
         if (state.numberFormat instanceof DecimalFormat) {
             DecimalFormat df = (DecimalFormat) state.numberFormat;
-            df.setMinimumSignificantDigits(state.minimumSignificantDigits.intValue());
-            df.setMaximumSignificantDigits(state.maximumSignificantDigits.intValue());
+            df.setMinimumSignificantDigits(state.minimumSignificantDigits);
+            df.setMaximumSignificantDigits(state.maximumSignificantDigits);
         }
     }
 
@@ -623,11 +623,11 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
         public String numberingSystem = "latn";
 
-        public Number minimumIntegerDigits = 1;
-        public Number minimumFractionDigits = 0;
-        public Number maximumFractionDigits = 3;
-        public Number minimumSignificantDigits;
-        public Number maximumSignificantDigits;
+        public int minimumIntegerDigits = 1;
+        public int minimumFractionDigits = 0;
+        public int maximumFractionDigits = 3;
+        public Integer minimumSignificantDigits;
+        public Integer maximumSignificantDigits;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject resolvedOptions = JSUserObject.create(context);
@@ -636,15 +636,9 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         }
 
         void fillResolvedOptions(@SuppressWarnings("unused") JSContext context, DynamicObject result) {
-            if (minimumIntegerDigits != null) {
-                JSObjectUtil.defineDataProperty(result, "minimumIntegerDigits", minimumIntegerDigits, JSAttributes.getDefault());
-            }
-            if (minimumFractionDigits != null) {
-                JSObjectUtil.defineDataProperty(result, "minimumFractionDigits", minimumFractionDigits, JSAttributes.getDefault());
-            }
-            if (maximumFractionDigits != null) {
-                JSObjectUtil.defineDataProperty(result, "maximumFractionDigits", maximumFractionDigits, JSAttributes.getDefault());
-            }
+            JSObjectUtil.defineDataProperty(result, "minimumIntegerDigits", minimumIntegerDigits, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, "minimumFractionDigits", minimumFractionDigits, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, "maximumFractionDigits", maximumFractionDigits, JSAttributes.getDefault());
             if (minimumSignificantDigits != null) {
                 JSObjectUtil.defineDataProperty(result, "minimumSignificantDigits", minimumSignificantDigits, JSAttributes.getDefault());
             }
@@ -655,9 +649,9 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
         @TruffleBoundary
         public static void setStateNumberFormatDigits(JSNumberFormat.BasicInternalState state) {
-            state.numberFormat.setMinimumIntegerDigits(state.minimumIntegerDigits.intValue());
-            state.numberFormat.setMinimumFractionDigits(state.minimumFractionDigits.intValue());
-            state.numberFormat.setMaximumFractionDigits(state.maximumFractionDigits.intValue());
+            state.numberFormat.setMinimumIntegerDigits(state.minimumIntegerDigits);
+            state.numberFormat.setMinimumFractionDigits(state.minimumFractionDigits);
+            state.numberFormat.setMaximumFractionDigits(state.maximumFractionDigits);
         }
     }
 
