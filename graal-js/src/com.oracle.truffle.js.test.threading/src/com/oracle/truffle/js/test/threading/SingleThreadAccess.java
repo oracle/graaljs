@@ -81,7 +81,7 @@ public class SingleThreadAccess {
 
             @Override
             public Value call() throws Exception {
-                return cx.eval("js", "function() { return 42; };");
+                return cx.eval("js", "(function() { return 42; })");
             }
         });
 
