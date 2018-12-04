@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -70,7 +69,6 @@ import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -87,6 +85,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * The %TypedArray% intrinsic constructor function object (ES6 22.2.1).
@@ -353,7 +352,8 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @Cached("create(getContext())") IteratorValueNode getIteratorValueNode,
                     @Cached("createGetLength()") JSGetLengthNode getLengthNode,
                     @Cached("create(getContext())") ReadElementNode readNode,
-                    @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode) {
+                    @Cached("create(NEXT, getContext())") PropertyGetNode getNextMethodNode,
+                    @Cached("create()") BranchProfile growProfile) {
         assert JSRuntime.isObject(object) && !JSArrayBufferView.isJSArrayBufferView(object) && !JSAbstractBuffer.isJSAbstractBuffer(object);
 
         DynamicObject proto = getPrototypeFromConstructorView(newTarget);
@@ -361,14 +361,13 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
         Object usingIterator = getIteratorMethodNode.executeWithTarget(object);
         if (isIterableProfile.profile(usingIterator != Undefined.instance)) {
-            ArrayList<Object> values = iterableToList(object, usingIterator, iteratorCallNode, isObjectNode, iteratorStepNode, getIteratorValueNode, getNextMethodNode, this);
-
-            int len = Boundaries.listSize(values);
+            SimpleArrayList<Object> values = iterableToList(object, usingIterator, iteratorCallNode, isObjectNode, iteratorStepNode, getIteratorValueNode, getNextMethodNode, this, growProfile);
+            int len = values.size();
             DynamicObject arrayBuffer = createTypedArrayBuffer(len);
             TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);
             DynamicObject obj = integerIndexObjectCreate(arrayBuffer, typedArray, 0, len, proto);
             for (int k = 0; k < len; k++) {
-                Object kValue = Boundaries.listGet(values, k);
+                Object kValue = values.get(k);
                 writeOwnNode.executeWithTargetAndIndexAndValue(obj, k, kValue);
             }
             return obj;
@@ -387,9 +386,9 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         return obj;
     }
 
-    private static ArrayList<Object> iterableToList(DynamicObject object, Object usingIterator, JSFunctionCallNode iteratorCallNode, IsObjectNode isObjectNode,
-                    IteratorStepNode iteratorStepNode, IteratorValueNode getIteratorValueNode, PropertyGetNode getNextMethodNode, JavaScriptBaseNode origin) {
-        ArrayList<Object> values = new ArrayList<>();
+    private static SimpleArrayList<Object> iterableToList(DynamicObject object, Object usingIterator, JSFunctionCallNode iteratorCallNode, IsObjectNode isObjectNode,
+                    IteratorStepNode iteratorStepNode, IteratorValueNode getIteratorValueNode, PropertyGetNode getNextMethodNode, JavaScriptBaseNode origin, BranchProfile growProfile) {
+        SimpleArrayList<Object> values = new SimpleArrayList<>();
         IteratorRecord iterator = GetIteratorNode.getIterator(object, usingIterator, iteratorCallNode, isObjectNode, getNextMethodNode, origin);
         while (true) {
             Object next = iteratorStepNode.execute(iterator);
@@ -397,7 +396,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                 break;
             }
             Object nextValue = getIteratorValueNode.execute((DynamicObject) next);
-            Boundaries.listAdd(values, nextValue);
+            values.add(nextValue, growProfile);
         }
         return values;
     }

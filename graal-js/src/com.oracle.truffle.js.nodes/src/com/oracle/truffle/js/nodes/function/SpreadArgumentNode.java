@@ -41,16 +41,16 @@
 package com.oracle.truffle.js.nodes.function;
 
 import java.util.Arrays;
-import java.util.List;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepSpecialNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public final class SpreadArgumentNode extends JavaScriptNode {
     @Child private GetIteratorNode getIteratorNode;
@@ -109,14 +109,14 @@ public final class SpreadArgumentNode extends JavaScriptNode {
         return executeObjectArray(frame);
     }
 
-    public void executeToList(VirtualFrame frame, List<Object> argList) {
+    public void executeToList(VirtualFrame frame, SimpleArrayList<Object> argList, BranchProfile growProfile) {
         IteratorRecord iteratorRecord = getIteratorNode.execute(frame);
         for (;;) {
             Object nextArg = iteratorStepNode.execute(frame, iteratorRecord);
             if (nextArg == null) {
                 break;
             }
-            Boundaries.listAdd(argList, nextArg);
+            argList.add(nextArg, growProfile);
         }
     }
 

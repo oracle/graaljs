@@ -91,7 +91,6 @@ import com.oracle.truffle.js.nodes.interop.ExportArgumentsNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.unary.FlattenNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -116,6 +115,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
 import com.oracle.truffle.js.runtime.util.Pair;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaScriptFunctionCallNode {
     private static final DebugCounter megamorphicCount = DebugCounter.create("Megamorphic call site count");
@@ -487,19 +487,20 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     @ExplodeLoop
-    protected static Object[] executeFillObjectArraySpread(JavaScriptNode[] arguments, VirtualFrame frame, Object[] args, int delta) {
-        ArrayList<Object> argList = new ArrayList<>(arguments.length + delta);
-        for (int i = 0; i < delta; i++) {
-            Boundaries.listAdd(argList, args[i]);
+    protected static Object[] executeFillObjectArraySpread(JavaScriptNode[] arguments, VirtualFrame frame, Object[] args, int fixedArgumentsLength, BranchProfile growProfile) {
+        // assume size that avoids growing
+        SimpleArrayList<Object> argList = SimpleArrayList.create(fixedArgumentsLength + arguments.length + JSTruffleOptions.SpreadArgumentPlaceholderCount);
+        for (int i = 0; i < fixedArgumentsLength; i++) {
+            argList.addUnchecked(args[i]);
         }
         for (int i = 0; i < arguments.length; i++) {
             if (arguments[i] instanceof SpreadArgumentNode) {
-                ((SpreadArgumentNode) arguments[i]).executeToList(frame, argList);
+                ((SpreadArgumentNode) arguments[i]).executeToList(frame, argList, growProfile);
             } else {
-                Boundaries.listAdd(argList, arguments[i].execute(frame));
+                argList.add(arguments[i].execute(frame), growProfile);
             }
         }
-        return Boundaries.listToArray(argList);
+        return argList.toArray();
     }
 
     abstract static class CallNode extends JSFunctionCallNode {
@@ -680,13 +681,16 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     static class CallSpreadNode extends CallNNode {
+
+        private final BranchProfile growProfile = BranchProfile.create();
+
         protected CallSpreadNode(JavaScriptNode targetNode, JavaScriptNode functionNode, JavaScriptNode[] arguments, byte flags) {
             super(targetNode, functionNode, arguments, flags);
         }
 
         @Override
         protected Object[] executeFillObjectArray(VirtualFrame frame, Object[] args, int delta) {
-            return executeFillObjectArraySpread(arguments, frame, args, delta);
+            return executeFillObjectArraySpread(arguments, frame, args, delta, growProfile);
         }
 
         @Override
@@ -905,6 +909,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     static class InvokeSpreadNode extends InvokeNNode {
+        private final BranchProfile growProfile = BranchProfile.create();
+
         protected InvokeSpreadNode(JSTargetableNode functionNode, JavaScriptNode[] arguments, byte flags) {
             this(null, functionNode, arguments, flags);
         }
@@ -915,7 +921,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected Object[] executeFillObjectArray(VirtualFrame frame, Object[] args, int delta) {
-            return executeFillObjectArraySpread(arguments, frame, args, delta);
+            return executeFillObjectArraySpread(arguments, frame, args, delta, growProfile);
         }
 
         @Override
