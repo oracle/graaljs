@@ -50,7 +50,6 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
-import com.oracle.truffle.js.runtime.builtins.JSNumberFormat.BasicInternalState;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /*
@@ -170,10 +169,7 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         Number mnfd = getMinFracDigitsOption.executeValue(options, 0, mnfdDefault);
         int mxfdActualDefault = Math.max(mnfd.intValue(), mxfdDefault);
         Number mxfd = getMaxFracDigitsOption.executeValue(options, mnfd, mxfdActualDefault);
-        state.minimumIntegerDigits = mnid.intValue();
-        state.minimumFractionDigits = mnfd.intValue();
-        state.maximumFractionDigits = mxfd.intValue();
-        BasicInternalState.setStateNumberFormatDigits(state);
+        state.setIntegerAndFractionsDigits(mnid.intValue(), mnfd.intValue(), mxfd.intValue());
         Object mnsd = getMinSignificantDigitsOption.getValue(options);
         Object mxsd = getMaxSignificantDigitsOption.getValue(options);
         if (!JSGuards.isUndefined(mnsd) || !JSGuards.isUndefined(mxsd)) {

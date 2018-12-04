@@ -648,10 +648,13 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         }
 
         @TruffleBoundary
-        public static void setStateNumberFormatDigits(JSNumberFormat.BasicInternalState state) {
-            state.numberFormat.setMinimumIntegerDigits(state.minimumIntegerDigits);
-            state.numberFormat.setMinimumFractionDigits(state.minimumFractionDigits);
-            state.numberFormat.setMaximumFractionDigits(state.maximumFractionDigits);
+        public void setIntegerAndFractionsDigits(int minimumIntegerDigits, int minimumFractionDigits, int maximumFractionDigits) {
+            this.minimumIntegerDigits = minimumIntegerDigits;
+            this.minimumFractionDigits = minimumFractionDigits;
+            this.maximumFractionDigits = maximumFractionDigits;
+            numberFormat.setMinimumIntegerDigits(minimumIntegerDigits);
+            numberFormat.setMinimumFractionDigits(minimumFractionDigits);
+            numberFormat.setMaximumFractionDigits(maximumFractionDigits);
         }
     }
 
