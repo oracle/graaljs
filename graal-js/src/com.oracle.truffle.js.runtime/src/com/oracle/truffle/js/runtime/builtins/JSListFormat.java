@@ -130,8 +130,8 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
     }
 
     @TruffleBoundary
-    public static void setLocale(InternalState state, String[] locales) {
-        String selectedTag = IntlUtil.selectedLocale(locales);
+    public static void setLocale(JSContext ctx, InternalState state, String[] locales) {
+        String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
         state.locale = strippedLocale.toLanguageTag();

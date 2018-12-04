@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.intl;
 
 import java.util.MissingResourceException;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -53,6 +52,8 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
 
+    private final JSContext context;
+
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
     @Child CreateOptionsObjectNode createOptionsNode;
 
@@ -62,6 +63,7 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getStyleOption;
 
     protected InitializeListFormatNode(JSContext context) {
+        this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
         this.getTypeOption = GetStringOptionNode.create(context, "type", new String[]{"conjunction", "disjunction", "unit"}, "conjunction");
@@ -76,30 +78,33 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    @TruffleBoundary
     public DynamicObject initializeListFormat(DynamicObject listFormatObj, Object localesArg, Object optionsArg) {
 
-        JSListFormat.InternalState state = JSListFormat.getInternalState(listFormatObj);
+        // must be invoked before any code that tries to access ICU library data
+        IntlUtil.ensureICU4JDataPathSet(context);
 
-        String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-        DynamicObject options = createOptionsNode.execute(optionsArg);
-
-        getLocaleMatcherOption.executeValue(options);
-        String optType = getTypeOption.executeValue(options);
-        String optStyle = getStyleOption.executeValue(options);
-
-        if ("narrow".equals(optStyle) && !"unit".equals(optType)) {
-            throw Errors.createRangeError("When style is 'narrow', 'unit' is the only allowed value for the type option.", this);
-        }
-
-        state.initialized = true;
-
-        state.type = optType;
-        state.style = optStyle;
-
-        IntlUtil.ensureICU4JDataPathSet();
         try {
-            JSListFormat.setLocale(state, locales);
+
+            JSListFormat.InternalState state = JSListFormat.getInternalState(listFormatObj);
+
+            String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
+            DynamicObject options = createOptionsNode.execute(optionsArg);
+
+            getLocaleMatcherOption.executeValue(options);
+            String optType = getTypeOption.executeValue(options);
+            String optStyle = getStyleOption.executeValue(options);
+
+            if ("narrow".equals(optStyle) && !"unit".equals(optType)) {
+                throw Errors.createRangeError(
+                        "When style is 'narrow', 'unit' is the only allowed value for the type option.", this);
+            }
+
+            state.initialized = true;
+
+            state.type = optType;
+            state.style = optStyle;
+
+            JSListFormat.setLocale(context, state, locales);
             JSListFormat.setupInternalListFormatter(state);
 
         } catch (MissingResourceException e) {
