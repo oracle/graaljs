@@ -45,6 +45,7 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags.TryBlockTag;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -267,6 +268,9 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         }
 
         private Object doJSException(JSException exception) {
+            // fill in any missing stack trace elements
+            TruffleStackTraceElement.fillIn(exception);
+
             DynamicObject errorObj = exception.getErrorObject();
             // not thread safe, but should be alright in this case
             if (errorObj == null) {

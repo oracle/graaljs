@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -88,9 +87,6 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
     }
 
     public DynamicObject execute(DynamicObject errorObj, GraalJSException exception) {
-        // fill in any missing stack trace elements
-        TruffleStackTraceElement.fillIn(exception);
-
         setException.setValue(errorObj, exception);
         // stack is not formatted until it is accessed
         setFormattedStack.setValue(errorObj, null);
