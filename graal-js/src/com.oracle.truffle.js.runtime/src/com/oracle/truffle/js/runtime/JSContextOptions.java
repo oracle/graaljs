@@ -167,6 +167,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
     private static final String GRAAL_BUILTIN_HELP = "provide 'Graal' global property.";
 
+    public static final String AWAIT_OPTIMIZATION_NAME = JS_OPTION_PREFIX + "await-optimization";
+    public static final OptionKey<Boolean> AWAIT_OPTIMIZATION = new OptionKey<>(true);
+    private static final String AWAIT_OPTIMIZATION_HELP = "Use PromiseResolve for Await.";
+    @CompilationFinal private boolean awaitOptimization;
+
     /**
      * Options which can be patched without throwing away the pre-initialized context.
      */
@@ -213,6 +218,7 @@ public final class JSContextOptions {
         this.debug = readBooleanOption(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME);
         this.timerResolution = readLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME);
         this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME);
+        this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME);
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key, String name) {
@@ -287,6 +293,7 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(PERFORMANCE, PERFORMANCE_NAME, OptionCategory.USER, PERFORMANCE_HELP));
         options.add(newOptionDescriptor(SHELL, SHELL_NAME, OptionCategory.USER, SHELL_HELP));
         options.add(newOptionDescriptor(GRAAL_BUILTIN, GRAAL_BUILTIN_NAME, OptionCategory.USER, GRAAL_BUILTIN_HELP));
+        options.add(newOptionDescriptor(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME, OptionCategory.DEBUG, AWAIT_OPTIMIZATION_HELP));
     }
 
     /**
@@ -384,6 +391,10 @@ public final class JSContextOptions {
         return agentCanBlock;
     }
 
+    public boolean isAwaitOptimization() {
+        return awaitOptimization;
+    }
+
     public boolean isConsole() {
         return CONSOLE.getValue(optionValues);
     }
@@ -419,6 +430,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.parseOnly ? 1 : 0);
         hash = 53 * hash + (int) this.timerResolution;
         hash = 53 * hash + (this.agentCanBlock ? 1 : 0);
+        hash = 53 * hash + (this.awaitOptimization ? 1 : 0);
         return hash;
     }
 
@@ -477,6 +489,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.agentCanBlock != other.agentCanBlock) {
+            return false;
+        }
+        if (this.awaitOptimization != other.awaitOptimization) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

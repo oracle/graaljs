@@ -657,14 +657,14 @@ public class JSContext {
     /**
      * ECMA 8.4.1 EnqueueJob.
      */
-    public final void promiseEnqueueJob(DynamicObject newTarget) {
+    public final void promiseEnqueueJob(DynamicObject job) {
         invalidatePromiseQueueNotUsedAssumption();
-        promiseJobQueueAdd(newTarget);
+        promiseJobQueueAdd(job);
     }
 
     @TruffleBoundary
-    private void promiseJobQueueAdd(DynamicObject newTarget) {
-        promiseJobsQueue.push(newTarget);
+    private void promiseJobQueueAdd(DynamicObject job) {
+        promiseJobsQueue.push(job);
     }
 
     private void invalidatePromiseQueueNotUsedAssumption() {
@@ -1277,6 +1277,10 @@ public class JSContext {
 
     public long getTimerResolution() {
         return contextOptions.getTimerResolution();
+    }
+
+    public boolean usePromiseResolve() {
+        return contextOptions.isAwaitOptimization();
     }
 
     public void initializeJavaInteropWorkers(EcmaAgent workerMain, EcmaAgent.Factory workerFactory) {

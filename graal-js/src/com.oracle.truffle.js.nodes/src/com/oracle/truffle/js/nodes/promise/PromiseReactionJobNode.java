@@ -107,34 +107,39 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
 
                 PromiseCapabilityRecord promiseCapability = reaction.getCapability();
                 DynamicObject handler = reaction.getHandler();
+                assert promiseCapability != null || handler != Undefined.instance;
 
-                context.notifyPromiseHook(PromiseHook.TYPE_BEFORE, promiseCapability.getPromise());
+                if (promiseCapability != null) {
+                    context.notifyPromiseHook(PromiseHook.TYPE_BEFORE, promiseCapability.getPromise());
+                }
 
-                Object resolve = promiseCapability.getResolve();
-                Object reject = promiseCapability.getReject();
-                Object status;
+                Object handlerResult;
+                boolean fulfill;
                 if (handlerProf.profile(handler == Undefined.instance)) {
-                    if (reaction.isFulfill()) {
-                        status = callResolve().executeCall(JSArguments.createOneArg(Undefined.instance, resolve, argument));
-                    } else {
-                        assert reaction.isReject();
-                        status = callReject().executeCall(JSArguments.createOneArg(Undefined.instance, reject, argument));
-                    }
+                    handlerResult = argument;
+                    fulfill = reaction.isFulfill();
                 } else {
-                    Object handlerResult;
-                    Object resolutionFn;
                     try {
                         handlerResult = callHandler().executeCall(JSArguments.createOneArg(Undefined.instance, handler, argument));
-                        resolutionFn = resolve;
+                        // If promiseCapability is undefined, return NormalCompletion(empty).
+                        if (promiseCapability == null) {
+                            return Undefined.instance;
+                        }
+                        fulfill = true;
                     } catch (Throwable ex) {
                         if (shouldCatch(ex)) {
                             handlerResult = getErrorObjectNode.execute(ex);
-                            resolutionFn = reject;
+                            fulfill = false;
                         } else {
                             throw ex;
                         }
                     }
-                    status = callResolve().executeCall(JSArguments.createOneArg(Undefined.instance, resolutionFn, handlerResult));
+                }
+                Object status;
+                if (fulfill) {
+                    status = callResolve().executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), handlerResult));
+                } else {
+                    status = callReject().executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), handlerResult));
                 }
 
                 context.notifyPromiseHook(PromiseHook.TYPE_AFTER, promiseCapability.getPromise());
