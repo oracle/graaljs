@@ -40,23 +40,22 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
-import java.util.ArrayList;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public class PerformPromiseThenNode extends JavaScriptBaseNode {
     private final JSContext context;
@@ -72,6 +71,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
     private final ConditionProfile pendingProf = ConditionProfile.createBinaryProfile();
     private final ConditionProfile fulfilledProf = ConditionProfile.createBinaryProfile();
     private final ConditionProfile unhandledProf = ConditionProfile.createBinaryProfile();
+    private final BranchProfile growProfile = BranchProfile.create();
 
     protected PerformPromiseThenNode(JSContext context) {
         this.context = context;
@@ -96,8 +96,8 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
 
         int promiseState = getPromiseState(promise);
         if (pendingProf.profile(promiseState == JSPromise.PENDING)) {
-            Boundaries.listAdd((ArrayList<? super PromiseReactionRecord>) getPromiseFulfillReactions.getValue(promise), fulfillReaction);
-            Boundaries.listAdd((ArrayList<? super PromiseReactionRecord>) getPromiseRejectReactions.getValue(promise), rejectReaction);
+            ((SimpleArrayList<? super PromiseReactionRecord>) getPromiseFulfillReactions.getValue(promise)).add(fulfillReaction, growProfile);
+            ((SimpleArrayList<? super PromiseReactionRecord>) getPromiseRejectReactions.getValue(promise)).add(rejectReaction, growProfile);
         } else if (fulfilledProf.profile(promiseState == JSPromise.FULFILLED)) {
             Object value = getPromiseResult(promise);
             DynamicObject job = getPromiseReactionJob(fulfillReaction, value);
