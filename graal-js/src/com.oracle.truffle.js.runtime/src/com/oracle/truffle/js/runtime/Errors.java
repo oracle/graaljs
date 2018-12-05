@@ -68,6 +68,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createEvalError(String message) {
+        return JSException.create(JSErrorType.EvalError, message);
+    }
+
+    @TruffleBoundary
     public static JSException createRangeError(String message) {
         return JSException.create(JSErrorType.RangeError, message);
     }
@@ -578,5 +583,10 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorStringExpected() {
         return Errors.createTypeError("string expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createEvalDisabled() {
+        return Errors.createEvalError("dynamic evaluation of code is disabled.");
     }
 }
