@@ -45,7 +45,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.ErrorFunctionBuiltinsFactory.ErrorCaptureStackTraceNodeGen;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
-import com.oracle.truffle.js.nodes.control.TryCatchNode.InitErrorObjectNode;
+import com.oracle.truffle.js.nodes.access.InitErrorObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -76,7 +76,7 @@ public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.Lambda {
 
         public ErrorCaptureStackTraceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.initErrorObjectNode = InitErrorObjectNode.create(context, false);
+            this.initErrorObjectNode = InitErrorObjectNode.create(context);
             this.stackTraceLimitNode = ErrorStackTraceLimitNode.create(context);
         }
 

@@ -65,7 +65,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -436,21 +435,34 @@ public final class JSError extends JSBuiltinObject {
         if (JSTruffleOptions.NashornCompatibilityMode) {
             return super.safeToString(obj);
         } else {
-            String message = getPropertyWithoutSideEffect(obj, MESSAGE).toString();
-            String name = getPropertyWithoutSideEffect(obj, NAME).toString();
-            if (name.equals(Null.NAME)) {
-                name = getPropertyWithoutSideEffect(JSObject.getPrototype(obj), NAME).toString();
+            Object name = getPropertyWithoutSideEffect(obj, NAME);
+            Object message = getPropertyWithoutSideEffect(obj, MESSAGE);
+            String nameStr = name != null && !isJSError(name) ? JSRuntime.safeToString(name) : CLASS_NAME;
+            String messageStr = message != null && !isJSError(message) ? JSRuntime.safeToString(message) : "";
+            if (nameStr.isEmpty()) {
+                if (messageStr.isEmpty()) {
+                    return CLASS_NAME;
+                }
+                return messageStr;
+            } else if (messageStr.isEmpty()) {
+                return nameStr;
+            } else {
+                return nameStr + ": " + messageStr;
             }
-            return name + ": " + message;
         }
     }
 
     private static Object getPropertyWithoutSideEffect(DynamicObject obj, String key) {
         Object value = obj.get(key);
         if (value == null) {
-            return Null.NAME;
+            if (!JSProxy.isProxy(obj)) {
+                return getPropertyWithoutSideEffect(JSObject.getPrototype(obj), key);
+            }
+            return null;
         } else if (value instanceof Accessor) {
             return "{Accessor}";
+        } else if (value instanceof PropertyProxy) {
+            return null;
         } else {
             return value;
         }
