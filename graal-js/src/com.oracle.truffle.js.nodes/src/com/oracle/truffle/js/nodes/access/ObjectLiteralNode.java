@@ -366,7 +366,14 @@ public class ObjectLiteralNode extends JavaScriptNode {
                     } catch (InvalidAssumptionException e) {
                         break;
                     }
-                    Accessor accessor = new Accessor((DynamicObject) getterV, (DynamicObject) setterV);
+                    Accessor accessor;
+                    if ((getterNode == null || setterNode == null) && resolved.oldShape == resolved.newShape) {
+                        // No full accessor information and there is an accessor property already
+                        // => merge the new and existing accessor functions
+                        accessor = mergedAccessor(obj, resolved.property, getterV, setterV);
+                    } else {
+                        accessor = new Accessor((DynamicObject) getterV, (DynamicObject) setterV);
+                    }
                     if (resolved.property.getLocation().canStore(accessor)) {
                         resolved.property.setSafe(obj, accessor, resolved.oldShape, resolved.newShape);
                         return;
@@ -397,7 +404,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             Shape newShape;
             if (property != null) {
                 if (JSProperty.isAccessor(property)) {
-                    property.setGeneric(obj, value, null);
+                    property.setGeneric(obj, mergedAccessor(obj, property, getterV, setterV), null);
                 } else {
                     JSObjectUtil.defineAccessorProperty(obj, name, value, attributes);
                 }
@@ -409,6 +416,13 @@ public class ObjectLiteralNode extends JavaScriptNode {
                 newProperty = newShape.getLastProperty();
             }
             insertIntoCache(oldShape, newShape, newProperty, newShape.getValidAssumption());
+        }
+
+        private static Accessor mergedAccessor(DynamicObject obj, Property property, Object getterV, Object setterV) {
+            Accessor oldAccessor = (Accessor) property.get(obj, null);
+            DynamicObject mergedGetter = (getterV == null) ? oldAccessor.getGetter() : (DynamicObject) getterV;
+            DynamicObject mergedSetter = (setterV == null) ? oldAccessor.getSetter() : (DynamicObject) setterV;
+            return new Accessor(mergedGetter, mergedSetter);
         }
 
         @Override
