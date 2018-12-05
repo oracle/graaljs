@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -155,7 +156,7 @@ public final class JSFunctionData {
             return result;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        return ensureInitialized(Target.Call);
+        return ensureInitializedCall();
     }
 
     public CallTarget getConstructTarget() {
@@ -164,7 +165,7 @@ public final class JSFunctionData {
             return result;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        return ensureInitialized(Target.Construct);
+        return ensureInitializedConstruct();
     }
 
     public CallTarget getConstructNewTarget() {
@@ -173,7 +174,7 @@ public final class JSFunctionData {
             return result;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        return ensureInitialized(Target.ConstructNewTarget);
+        return ensureInitializedConstructNewTarget();
     }
 
     public JSContext getContext() {
@@ -250,6 +251,48 @@ public final class JSFunctionData {
 
     public int getFlags() {
         return flags;
+    }
+
+    public CallTarget getCallTarget(BranchProfile initBranch) {
+        CallTarget result = callTarget;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, result != null)) {
+            return result;
+        }
+        initBranch.enter();
+        return ensureInitializedCall();
+    }
+
+    public CallTarget getConstructTarget(BranchProfile initBranch) {
+        CallTarget result = constructTarget;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, result != null)) {
+            return result;
+        }
+        initBranch.enter();
+        return ensureInitializedConstruct();
+    }
+
+    public CallTarget getConstructNewTarget(BranchProfile initBranch) {
+        CallTarget result = constructNewTarget;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, result != null)) {
+            return result;
+        }
+        initBranch.enter();
+        return ensureInitializedConstructNewTarget();
+    }
+
+    @TruffleBoundary
+    private CallTarget ensureInitializedCall() {
+        return ensureInitialized(Target.Call);
+    }
+
+    @TruffleBoundary
+    private CallTarget ensureInitializedConstruct() {
+        return ensureInitialized(Target.Construct);
+    }
+
+    @TruffleBoundary
+    private CallTarget ensureInitializedConstructNewTarget() {
+        return ensureInitialized(Target.ConstructNewTarget);
     }
 
     public CallTarget setCallTarget(CallTarget callTarget) {

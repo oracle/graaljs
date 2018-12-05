@@ -63,6 +63,7 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
@@ -334,24 +335,6 @@ public final class JSFunction extends JSBuiltinObject {
         return getCallTarget((DynamicObject) JSArguments.getFunctionObject(jsArguments)).call(jsArguments);
     }
 
-    public static Object indirectCall(IndirectCallNode indirectCallNode, Object[] jsArguments) {
-        assert JSFunction.isJSFunction(JSArguments.getFunctionObject(jsArguments));
-        assert JSArguments.getThisObject(jsArguments) != null;
-        return indirectCallNode.call(getCallTarget((DynamicObject) JSArguments.getFunctionObject(jsArguments)), jsArguments);
-    }
-
-    public static Object indirectConstruct(IndirectCallNode indirectCallNode, Object[] jsArguments) {
-        assert JSFunction.isJSFunction(JSArguments.getFunctionObject(jsArguments));
-        assert JSArguments.getThisObject(jsArguments) != null;
-        return indirectCallNode.call(getConstructTarget((DynamicObject) JSArguments.getFunctionObject(jsArguments)), jsArguments);
-    }
-
-    public static Object indirectConstructNewTarget(IndirectCallNode indirectCallNode, Object[] jsArguments) {
-        assert JSFunction.isJSFunction(JSArguments.getFunctionObject(jsArguments));
-        assert JSArguments.getThisObject(jsArguments) != null;
-        return indirectCallNode.call(getConstructNewTarget((DynamicObject) JSArguments.getFunctionObject(jsArguments)), jsArguments);
-    }
-
     @TruffleBoundary
     public static DynamicObject bind(JSRealm realm, DynamicObject thisFnObj, Object thisArg, Object[] boundArguments) {
         assert JSFunction.isJSFunction(thisFnObj);
@@ -555,6 +538,7 @@ public final class JSFunction extends JSBuiltinObject {
         private static final SourceSection SOURCE_SECTION = createBuiltinSourceSection("bound function");
 
         @Child protected IndirectCallNode callNode;
+        protected final BranchProfile initProfile = BranchProfile.create();
 
         BoundRootNode(JSContext context) {
             super(context.getLanguage(), SOURCE_SECTION, null);
@@ -571,7 +555,7 @@ public final class JSFunction extends JSBuiltinObject {
             Object[] argumentValues = JSArguments.extractUserArguments(originalArguments);
             Object[] arguments = prependBoundArguments(boundArguments, argumentValues);
             Object[] newArguments = JSArguments.create(boundThis, boundTargetFunction, arguments);
-            return callNode.call(JSFunction.getCallTarget(boundTargetFunction), newArguments);
+            return callNode.call(JSFunction.getFunctionData(boundTargetFunction).getCallTarget(initProfile), newArguments);
         }
 
         protected static Object[] prependBoundArguments(Object[] boundArguments, Object[] argumentValues) {
@@ -605,7 +589,7 @@ public final class JSFunction extends JSBuiltinObject {
             Object[] arguments = prependBoundArguments(boundArguments, argumentValues);
             Object originalThis = JSArguments.getThisObject(originalArguments);
             Object[] newArguments = JSArguments.create(originalThis, boundTargetFunction, arguments);
-            return callNode.call(JSFunction.getConstructTarget(boundTargetFunction), newArguments);
+            return callNode.call(JSFunction.getFunctionData(boundTargetFunction).getConstructTarget(initProfile), newArguments);
         }
     }
 
@@ -628,7 +612,7 @@ public final class JSFunction extends JSBuiltinObject {
                 newTarget = boundTargetFunction;
             }
             Object[] newArguments = JSArguments.createWithNewTarget(originalThis, boundTargetFunction, newTarget, arguments);
-            return callNode.call(JSFunction.getConstructNewTarget(boundTargetFunction), newArguments);
+            return callNode.call(JSFunction.getFunctionData(boundTargetFunction).getConstructNewTarget(initProfile), newArguments);
         }
     }
 

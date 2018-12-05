@@ -957,7 +957,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     protected static JSFunctionCacheNode createCallableNode(DynamicObject function, JSFunctionData functionData, boolean isNew, boolean isNewTarget, boolean cacheOnInstance) {
-        CallTarget callTarget = getCallTarget(function, isNew, isNewTarget);
+        CallTarget callTarget = getCallTarget(functionData, isNew, isNewTarget);
         assert callTarget != null;
         if (JSFunction.isBoundFunction(function)) {
             if (cacheOnInstance) {
@@ -979,13 +979,13 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    protected static CallTarget getCallTarget(DynamicObject function, boolean isNew, boolean isNewTarget) {
+    protected static CallTarget getCallTarget(JSFunctionData functionData, boolean isNew, boolean isNewTarget) {
         if (isNewTarget) {
-            return JSFunction.getConstructNewTarget(function);
+            return functionData.getConstructNewTarget();
         } else if (isNew) {
-            return JSFunction.getConstructTarget(function);
+            return functionData.getConstructTarget();
         } else {
-            return JSFunction.getCallTarget(function);
+            return functionData.getCallTarget();
         }
     }
 
@@ -1677,29 +1677,27 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Child private IndirectCallNode indirectCallNode;
         @Child private AbstractCacheNode next;
+        private final BranchProfile initBranch;
 
         GenericJSFunctionCacheNode(byte flags, AbstractCacheNode next) {
             this.flags = flags;
             this.indirectCallNode = Truffle.getRuntime().createIndirectCallNode();
             this.next = next;
+            this.initBranch = BranchProfile.create();
             megamorphicCount.inc();
         }
 
         @Override
         public Object executeCall(Object[] arguments) {
             Object function = JSArguments.getFunctionObject(arguments);
-            Object target = JSArguments.getThisObject(arguments);
-            return executeCallFunction(arguments, (DynamicObject) function, target);
-        }
-
-        private Object executeCallFunction(Object[] arguments, DynamicObject functionObject, Object target) {
-            assert functionObject == JSArguments.getFunctionObject(arguments) && target == JSArguments.getThisObject(arguments);
+            DynamicObject functionObject = (DynamicObject) function;
+            JSFunctionData functionData = JSFunction.getFunctionData(functionObject);
             if (isNewTarget(flags)) {
-                return JSFunction.indirectConstructNewTarget(indirectCallNode, arguments);
+                return indirectCallNode.call(functionData.getConstructNewTarget(initBranch), arguments);
             } else if (isNew(flags)) {
-                return JSFunction.indirectConstruct(indirectCallNode, arguments);
+                return indirectCallNode.call(functionData.getConstructTarget(initBranch), arguments);
             } else {
-                return JSFunction.indirectCall(indirectCallNode, arguments);
+                return indirectCallNode.call(functionData.getCallTarget(initBranch), arguments);
             }
         }
 
