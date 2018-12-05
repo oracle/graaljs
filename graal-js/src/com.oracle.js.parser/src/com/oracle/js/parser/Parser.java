@@ -3226,7 +3226,7 @@ loop:
         // Object context.
         // Prepare to accumulate elements.
         final ArrayList<PropertyNode> elements = new ArrayList<>();
-        final Map<String, Integer> map = new HashMap<>();
+        final Map<String, PropertyNode> map = new HashMap<>();
 
         // Create a block for the object literal.
         boolean commaSeen = true;
@@ -3254,23 +3254,20 @@ loop:
                     commaSeen = false;
                     // Get and add the next property.
                     final PropertyNode property = propertyDefinition(yield, await);
+                    elements.add(property);
                     hasCoverInitializedName = hasCoverInitializedName || property.isCoverInitializedName() || hasCoverInitializedName(property.getValue());
 
                     if (property.isComputed() || property.getKey().isTokenType(SPREAD_OBJECT)) {
-                        elements.add(property);
                         break;
                     }
 
                     final String key = property.getKeyName();
-                    final Integer existing = map.get(key);
+                    final PropertyNode existingProperty = map.get(key);
 
-                    if (existing == null) {
-                        map.put(key, elements.size());
-                        elements.add(property);
+                    if (existingProperty == null) {
+                        map.put(key, property);
                         break;
                     }
-
-                    final PropertyNode existingProperty = elements.get(existing);
 
                     // ECMA section 11.1.5 Object Initialiser
                     // point # 4 on property assignment production
@@ -3290,15 +3287,16 @@ loop:
                         }
                     }
 
-                    if (value != null || prevValue != null) {
-                        map.put(key, elements.size());
-                        elements.add(property);
-                    } else if (getter != null) {
-                        assert prevGetter != null || prevSetter != null;
-                        elements.set(existing, existingProperty.setGetter(getter));
-                    } else if (setter != null) {
-                        assert prevGetter != null || prevSetter != null;
-                        elements.set(existing, existingProperty.setSetter(setter));
+                    if (!isES6() && value == null && prevValue == null) {
+                        // Update the map with existing (merged accessor) properties
+                        // for the purpose of checkPropertyRedefinition() above
+                        if (getter != null) {
+                            assert prevGetter != null || prevSetter != null;
+                            map.put(key, existingProperty.setGetter(getter));
+                        } else if (setter != null) {
+                            assert prevGetter != null || prevSetter != null;
+                            map.put(key, existingProperty.setSetter(setter));
+                        }
                     }
                     break;
             }
