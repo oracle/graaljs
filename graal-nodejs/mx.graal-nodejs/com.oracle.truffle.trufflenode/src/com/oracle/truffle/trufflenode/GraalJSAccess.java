@@ -107,6 +107,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
@@ -1894,7 +1895,7 @@ public final class GraalJSAccess {
     }
 
     public boolean tryCatchHasTerminated(Object exception) {
-        return (exception instanceof GraalJSKillException);
+        return (exception instanceof GraalJSKillException) || (exception instanceof TruffleException && ((TruffleException) exception).isCancelled());
     }
 
     private static GraalJSException.JSStackTraceElement messageGraalJSExceptionStackFrame(Object exception) {
@@ -2346,8 +2347,8 @@ public final class GraalJSAccess {
     }
 
     public void isolateInternalErrorCheck(Object exception) {
-        boolean internalError = !(exception instanceof GraalJSException) && !(exception instanceof StackOverflowError) && !(exception instanceof OutOfMemoryError) &&
-                        !(exception instanceof ControlFlowException) && !(exception instanceof ExitException) && !(exception instanceof GraalJSKillException);
+        boolean internalError = !(exception instanceof TruffleException) && !(exception instanceof StackOverflowError) && !(exception instanceof OutOfMemoryError) &&
+                        !(exception instanceof ControlFlowException) && !(exception instanceof GraalJSKillException);
         if (internalError) {
             ((Throwable) exception).printStackTrace();
             exit(1);
@@ -2373,6 +2374,9 @@ public final class GraalJSAccess {
 
     public synchronized void isolateCancelTerminateExecution() {
         terminateExecution = false;
+        if (Thread.currentThread() == agent.getThread()) {
+            Thread.interrupted(); // Clear the interrupted flag
+        }
     }
 
     public synchronized void isolateTerminateExecution() {
@@ -2380,6 +2384,10 @@ public final class GraalJSAccess {
             return; // termination in progress already
         }
         terminateExecution = true;
+        Thread thread = agent.getThread();
+        if (thread != null) {
+            thread.interrupt();
+        }
         Debugger debugger = lookupInstrument("debugger", Debugger.class);
         if (debugger == null) {
             System.err.println("Debugger is not available!");

@@ -38,61 +38,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode;
 
-import com.oracle.truffle.js.runtime.EcmaAgent;
-import com.oracle.truffle.js.runtime.JSAgent;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+var assert = require('assert');
+var Worker = require('worker_threads').Worker;
 
-public class NodeJSAgent extends JSAgent {
-    // The set of active agents, i.e., agents that entered an isolate
-    private static final Set<NodeJSAgent> agents = Collections.synchronizedSet(new HashSet<>());
-    private Thread thread;
-
-    NodeJSAgent() {
-        super(true);
+describe('Worker', function () {
+    if (typeof java !== 'undefined') {
+        it('terminate should terminate Thread.sleep()', function (done) {
+            var worker = new Worker('java.lang.Thread.sleep(1000000)', {eval: true});
+            worker.on('online', function () {
+                setTimeout(function () {
+                    worker.terminate(done);
+                }, 1000);
+            });
+        }).timeout(5000);
     }
-
-    void setThread(Thread thread) {
-        this.thread = thread;
-        if (thread == null) {
-            agents.remove(this);
-        } else {
-            agents.add(this);
-        }
-    }
-
-    Thread getThread() {
-        return thread;
-    }
-
-    @Override
-    public void wakeAgent(int w) {
-        synchronized (agents) {
-            for (NodeJSAgent agent : agents) {
-                if (agent.getSignifier() == w) {
-                    agent.thread.interrupt();
-                    break;
-                }
-            }
-        }
-    }
-
-    @Override
-    public void execute(EcmaAgent owner, Runnable task) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean isTerminated() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void terminate(int timeout) {
-        throw new UnsupportedOperationException();
-    }
-
-}
+});
