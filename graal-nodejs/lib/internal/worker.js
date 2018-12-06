@@ -535,17 +535,24 @@ MessagePort.prototype.postMessage = function(...args) {
     this.graalPort = javaMessagesPort;
   }
   try {
-    // Signal that we are ready to transfer Java objets.
-    this.graalPort.enter(getMessageInternalData.call(this));
-    // Post message: might encode Java objects as a side effect.
-    const enqueued = basePostMessage.apply(this, args);
-    const encodedJavaRefs = this.graalPort.encodedJavaRefs();
+    const messageInternalData = getMessageInternalData.call(this);
+    if (messageInternalData === undefined) {
+      // Cannot retrieve message internal metadata. The channel is probably
+      // closed, so we don't care about encoding Java messages.
+      basePostMessage.apply(this, args);
+    } else {
+      // Signal that we are ready to transfer Java objets.
+      this.graalPort.enter(messageInternalData);
+      // Post message: might encode Java objects as a side effect.
+      const enqueued = basePostMessage.apply(this, args);
+      const encodedJavaRefs = this.graalPort.encodedJavaRefs();
 
-    if (encodedJavaRefs === true && enqueued !== true) {
-      // The message was not delivered to any worker threads.
-      // In this case, we free any Java reference, as the message
-      // will anyway be discarded.
-      this.graalPort.free();
+      if (encodedJavaRefs === true && enqueued !== true) {
+        // The message was not delivered to any worker threads.
+        // In this case, we free any Java reference, as the message
+        // will anyway be discarded.
+        this.graalPort.free();
+      }
     }
   } finally {
     this.graalPort.leave();

@@ -94,6 +94,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -269,7 +270,7 @@ public final class GraalJSAccess {
      * Communication channels factory. Used to establish a communication channels between node
      * workers when they attempt to exchange Java host objects.
      */
-    private static final Map<Integer, SharedMemoryEncodingContext> pendingEncodingContexts = new HashMap<>();
+    private static final Map<Integer, SharedMemoryEncodingContext> pendingEncodingContexts = new ConcurrentHashMap<>();
 
     private final boolean exposeGC;
 
@@ -3068,9 +3069,7 @@ public final class GraalJSAccess {
         assert context != null;
         assert currentEncodingContext == null;
         this.currentEncodingContext = context;
-        synchronized (pendingEncodingContexts) {
-            pendingEncodingContexts.put(System.identityHashCode(context), context);
-        }
+        pendingEncodingContexts.put(System.identityHashCode(context), context);
     }
 
     public SharedMemoryEncodingContext getCurrentEncodingTarget() {
@@ -3078,37 +3077,29 @@ public final class GraalJSAccess {
     }
 
     public static void disposeSharedMemoryMessagePort(int contextHash) {
-        synchronized (pendingEncodingContexts) {
-            assert pendingEncodingContexts.containsKey(contextHash);
-            pendingEncodingContexts.remove(contextHash);
-        }
+        assert pendingEncodingContexts.containsKey(contextHash);
+        pendingEncodingContexts.remove(contextHash);
     }
 
     public static SharedMemoryEncodingContext getSharedMemEncodingContextFor(int contextHash) {
-        synchronized (pendingEncodingContexts) {
-            assert pendingEncodingContexts.containsKey(contextHash);
-            return pendingEncodingContexts.get(contextHash);
-        }
+        assert pendingEncodingContexts.containsKey(contextHash);
+        return pendingEncodingContexts.get(contextHash);
     }
 
     public void freeCurrentEncodingContext() {
         int contextHash = System.identityHashCode(currentEncodingContext);
-        synchronized (pendingEncodingContexts) {
-            assert pendingEncodingContexts.containsKey(contextHash);
-            pendingEncodingContexts.remove(contextHash);
-        }
+        assert pendingEncodingContexts.containsKey(contextHash);
+        pendingEncodingContexts.remove(contextHash);
     }
 
     public void disposeAllReferencesTo(DynamicObject external) {
-        synchronized (pendingEncodingContexts) {
-            assert JSExternalObject.isJSExternalObject(external);
-            long externalValue = JSExternalObject.getPointer(external);
-            Iterator<SharedMemoryEncodingContext> values = pendingEncodingContexts.values().iterator();
-            while (values.hasNext()) {
-                SharedMemoryEncodingContext next = values.next();
-                if (next.getMessageData() == externalValue) {
-                    values.remove();
-                }
+        assert JSExternalObject.isJSExternalObject(external);
+        long externalValue = JSExternalObject.getPointer(external);
+        Iterator<SharedMemoryEncodingContext> values = pendingEncodingContexts.values().iterator();
+        while (values.hasNext()) {
+            SharedMemoryEncodingContext next = values.next();
+            if (next.getMessageData() == externalValue) {
+                values.remove();
             }
         }
     }
