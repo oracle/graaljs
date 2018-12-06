@@ -62,7 +62,7 @@ describe('Java interop messages', function() {
             let w = new Worker(`
                             const { 
                                 parentPort
-                            } = require('worker_threads')
+                            } = require('worker_threads');
 
                             parentPort.on('message', (m) => {
                                 const val = m.incrementAndGet();
@@ -86,7 +86,7 @@ describe('Java interop messages', function() {
             let w = new Worker(`
                             const { 
                                 parentPort
-                            } = require('worker_threads')
+                            } = require('worker_threads');
 
                             parentPort.on('message', (m) => {
                                 const val = m.incrementAndGet();
@@ -115,7 +115,7 @@ describe('Java interop messages', function() {
             let w = new Worker(`
                             const { 
                                 parentPort
-                            } = require('worker_threads')
+                            } = require('worker_threads');
 
                             parentPort.on('message', (m) => {
                                 const val = m.counter.incrementAndGet();
@@ -149,7 +149,7 @@ describe('Java interop messages', function() {
                                 const { 
                                     parentPort,
                                     workerData,
-                                } = require('worker_threads')
+                                } = require('worker_threads');
 
                                 parentPort.on('message', (m) => {
                                     m.put(workerData, true);
@@ -179,7 +179,7 @@ describe('Java interop messages', function() {
             let w = new Worker(`
                             const { 
                                 parentPort
-                            } = require('worker_threads')
+                            } = require('worker_threads');
 
                             parentPort.on('message', (m) => {
                                 var A = Java.type('java.util.concurrent.atomic.AtomicInteger');
@@ -197,18 +197,23 @@ describe('Java interop messages', function() {
             w.postMessage(41);
         }
     });
-    it('MesasgePort not bound to a worker cannot encode Java objects', function(done) {
+    it('Child workers can send messages, too', function(done) {
         if (isMainThread) {
-            const mp = new MessagePort();
-            const Obj = Java.type('java.lang.Object');
-            var seenException = false;
-            try {
-                mp.postMessage({x : new Obj()});
-            } catch (e) {
-                seenException = true;
-            }
-            assert(seenException === true);
-            done();
+            let w = new Worker(`
+                            const { 
+                                parentPort
+                            } = require('worker_threads');
+
+                            var point = Java.type('java.awt.Point');
+                            parentPort.postMessage({point:new point(40, 2)});
+            `, {
+                eval: true
+            });
+            w.on('message', (m) => {
+                const val = m.point.x + m.point.y;
+                assert(val === 42);
+                w.terminate(done);
+            });
         }
     });    
 });
