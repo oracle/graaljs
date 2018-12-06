@@ -95,7 +95,7 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
         return null;
     }
 
-    public static abstract class EnterNode extends JSBuiltinNode {
+    public abstract static class EnterNode extends JSBuiltinNode {
 
         protected EnterNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -110,7 +110,7 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
         }
     }
 
-    public static abstract class FreeNode extends JSBuiltinNode {
+    public abstract static class FreeNode extends JSBuiltinNode {
 
         protected FreeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -124,7 +124,7 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
         }
     }
 
-    public static abstract class EncodedRefsNode extends JSBuiltinNode {
+    public abstract static class EncodedRefsNode extends JSBuiltinNode {
 
         protected EncodedRefsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -138,7 +138,7 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
         }
     }
 
-    public static abstract class LeaveNode extends JSBuiltinNode {
+    public abstract static class LeaveNode extends JSBuiltinNode {
 
         protected LeaveNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -152,7 +152,7 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
         }
     }
 
-    public static abstract class DisposeNode extends JSBuiltinNode {
+    public abstract static class DisposeNode extends JSBuiltinNode {
 
         protected DisposeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);

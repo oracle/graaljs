@@ -61,7 +61,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
-public class GraalSharedChannelBindings extends JSBuiltinObject {
+public final class GraalSharedChannelBindings extends JSBuiltinObject {
 
     private static final GraalSharedChannelBindings INSTANCE = new GraalSharedChannelBindings();
 
