@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -83,7 +82,6 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
         return cachedCompiledRegex;
     }
 
-    @TruffleBoundary
     protected static boolean stringEquals(String a, String b) {
         return a.equals(b);
     }

@@ -106,6 +106,7 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
 
         defineBuiltins(new ConsoleBuiltins());
 
+        defineBuiltins(new RegExpBuiltins());
         defineBuiltins(new RegExpPrototypeBuiltins());
         defineBuiltins(new RegExpPrototypeGetterBuiltins());
 

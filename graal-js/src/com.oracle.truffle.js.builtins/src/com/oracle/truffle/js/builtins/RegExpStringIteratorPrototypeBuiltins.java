@@ -145,7 +145,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
             }
 
             // JSRegExpExecIntlNode supports DynamicObjects only
-            Object match = getRegexExecIntlNode().execute((DynamicObject) regex, string);
+            Object match = regexExecIntl((DynamicObject) regex, string);
 
             if (noMatchProfile.profile(match == Null.instance)) {
                 getSetDoneNode().setValueBoolean(iterator, true);
@@ -154,9 +154,9 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
                 if (globalProfile.profile(global)) {
                     String matchStr = getToStringNode().executeString(read(match, 0));
                     if (matchStr.isEmpty()) {
-                        int thisIndex = (int) getToLengthNode().executeLong(getGetLastIndexNode().getValue(regex));
+                        int thisIndex = (int) getToLengthNode().executeLong(getLastIndex(regex));
                         int nextIndex = fullUnicode ? advanceStringIndexUnicode(string, thisIndex) : thisIndex + 1;
-                        getSetLastIndexNode().setValue(regex, nextIndex);
+                        setLastIndex(regex, nextIndex);
                     }
                     return getCreateIterResultObjectNode().execute(frame, match, false);
                 } else {

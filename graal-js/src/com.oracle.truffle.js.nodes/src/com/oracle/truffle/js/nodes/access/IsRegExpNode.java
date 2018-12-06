@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -58,27 +59,36 @@ public abstract class IsRegExpNode extends JavaScriptBaseNode {
 
     @Child private PropertyGetNode getSymbolMatchNode;
 
-    public abstract boolean executeBoolean(Object obj);
-
-    protected IsRegExpNode(JSContext context) {
+    IsRegExpNode(JSContext context) {
         this.getSymbolMatchNode = insert(PropertyGetNode.create(Symbol.SYMBOL_MATCH, false, context));
     }
 
-    @Specialization(guards = "isJSObject(obj)")
-    protected boolean doIsObject(DynamicObject obj,
+    public abstract boolean executeBoolean(Object obj);
+
+    @Specialization
+    boolean doIsObject(DynamicObject obj,
+                    @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToBooleanNode toBooleanNode,
+                    @Cached("createIsJSRegExpNode()") IsJSClassNode isJSRegExpNode,
                     @Cached("createBinaryProfile()") ConditionProfile hasMatchSymbol) {
+        if (!isObjectNode.executeBoolean(obj)) {
+            return false;
+        }
         Object isRegExp = getSymbolMatchNode.getValue(obj);
         if (hasMatchSymbol.profile(isRegExp != Undefined.instance)) {
             return toBooleanNode.executeBoolean(isRegExp);
         } else {
-            return JSRegExp.isJSRegExp(obj);
+            return isJSRegExpNode.executeBoolean(obj);
         }
     }
 
-    @Specialization(guards = "!isJSObject(obj)")
-    protected boolean doNonObject(@SuppressWarnings("unused") Object obj) {
+    @Fallback
+    boolean doNonObject(@SuppressWarnings("unused") Object obj) {
         return false;
+    }
+
+    static IsJSClassNode createIsJSRegExpNode() {
+        return IsJSClassNode.create(JSRegExp.INSTANCE);
     }
 
     public static IsRegExpNode create(JSContext context) {

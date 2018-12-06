@@ -177,7 +177,8 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
             return true;
         } else if (key instanceof String) {
             String name = (String) key;
-            if (!name.isEmpty() && !name.endsWith("_") && !name.startsWith("_") || (name.startsWith("__") && name.endsWith("__"))) {
+            // "get $_" is needed for JSRegExp
+            if (!name.isEmpty() && (!name.endsWith("_") || name.equals("get $_")) && !name.startsWith("_") || (name.startsWith("__") && name.endsWith("__"))) {
                 return true;
             }
         }
