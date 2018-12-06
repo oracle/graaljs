@@ -131,8 +131,9 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
         }
 
         @Specialization
-        public Object enter(DynamicObject self) {
+        public Object encodedJavaRefs(DynamicObject self) {
             GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
+            assert access.getCurrentEncodingTarget() != null;
             return access.getCurrentEncodingTarget().getEncodingQueue().size() > 0;
         }
     }

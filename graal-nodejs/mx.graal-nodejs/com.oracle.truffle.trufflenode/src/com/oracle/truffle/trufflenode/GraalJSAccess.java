@@ -3074,7 +3074,6 @@ public final class GraalJSAccess {
     }
 
     public SharedMemoryEncodingContext getCurrentEncodingTarget() {
-        assert currentEncodingContext != null;
         return currentEncodingContext;
     }
 

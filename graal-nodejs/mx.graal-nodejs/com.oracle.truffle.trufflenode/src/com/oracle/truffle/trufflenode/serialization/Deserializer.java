@@ -485,13 +485,12 @@ public class Deserializer {
 
     public Object readSharedJavaObject(JSContext context) {
         int messagePortHash = readVarInt();
-        if (messagePortCache == null || System.identityHashCode(messagePortHash) != messagePortHash) {
-            this.messagePortCache = GraalJSAccess.getSharedMemEncodingContextFor(messagePortHash);
+        if (messagePortCache == null || System.identityHashCode(messagePortCache) != messagePortHash) {
+            messagePortCache = GraalJSAccess.getSharedMemEncodingContextFor(messagePortHash);
         }
         Deque<Object> queue = messagePortCache.getEncodingQueue();
         Object element = queue.removeLast();
         assert element != null;
-        assert false;
         if (queue.isEmpty()) {
             GraalJSAccess.disposeSharedMemoryMessagePort(messagePortHash);
         }
