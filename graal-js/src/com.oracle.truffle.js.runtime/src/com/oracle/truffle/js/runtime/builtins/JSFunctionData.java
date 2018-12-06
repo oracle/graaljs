@@ -44,11 +44,15 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 public final class JSFunctionData {
 
@@ -152,7 +156,7 @@ public final class JSFunctionData {
             return result;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        return ensureInitialized(Target.Call);
+        return ensureInitializedCall();
     }
 
     public CallTarget getConstructTarget() {
@@ -161,7 +165,7 @@ public final class JSFunctionData {
             return result;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        return ensureInitialized(Target.Construct);
+        return ensureInitializedConstruct();
     }
 
     public CallTarget getConstructNewTarget() {
@@ -170,7 +174,7 @@ public final class JSFunctionData {
             return result;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        return ensureInitialized(Target.ConstructNewTarget);
+        return ensureInitializedConstructNewTarget();
     }
 
     public JSContext getContext() {
@@ -249,39 +253,77 @@ public final class JSFunctionData {
         return flags;
     }
 
-    public CallTarget setCallTarget(CallTarget callTarget) {
-        assert callTarget != null;
-        if (UPDATER_CALL_TARGET.compareAndSet(this, null, callTarget)) {
-            return callTarget;
-        } else {
-            return this.callTarget;
+    public CallTarget getCallTarget(BranchProfile initBranch) {
+        CallTarget result = callTarget;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, result != null)) {
+            return result;
         }
+        initBranch.enter();
+        return ensureInitializedCall();
+    }
+
+    public CallTarget getConstructTarget(BranchProfile initBranch) {
+        CallTarget result = constructTarget;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, result != null)) {
+            return result;
+        }
+        initBranch.enter();
+        return ensureInitializedConstruct();
+    }
+
+    public CallTarget getConstructNewTarget(BranchProfile initBranch) {
+        CallTarget result = constructNewTarget;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, result != null)) {
+            return result;
+        }
+        initBranch.enter();
+        return ensureInitializedConstructNewTarget();
+    }
+
+    @TruffleBoundary
+    private CallTarget ensureInitializedCall() {
+        return ensureInitialized(Target.Call);
+    }
+
+    @TruffleBoundary
+    private CallTarget ensureInitializedConstruct() {
+        return ensureInitialized(Target.Construct);
+    }
+
+    @TruffleBoundary
+    private CallTarget ensureInitializedConstructNewTarget() {
+        return ensureInitialized(Target.ConstructNewTarget);
+    }
+
+    public CallTarget setCallTarget(CallTarget callTarget) {
+        return setAndGetCallTarget(UPDATER_CALL_TARGET, callTarget);
     }
 
     public CallTarget setConstructTarget(CallTarget constructTarget) {
-        assert constructTarget != null;
-        if (UPDATER_CONSTRUCT_TARGET.compareAndSet(this, null, constructTarget)) {
-            return constructTarget;
-        } else {
-            return this.constructTarget;
-        }
+        return setAndGetCallTarget(UPDATER_CONSTRUCT_TARGET, constructTarget);
     }
 
     public CallTarget setConstructNewTarget(CallTarget constructNewTarget) {
-        assert constructNewTarget != null;
-        if (UPDATER_CONSTRUCT_NEW_TARGET.compareAndSet(this, null, constructNewTarget)) {
-            return constructNewTarget;
-        } else {
-            return this.constructNewTarget;
-        }
+        return setAndGetCallTarget(UPDATER_CONSTRUCT_NEW_TARGET, constructNewTarget);
     }
 
     public CallTarget setRootTarget(CallTarget rootTarget) {
-        assert rootTarget != null;
+        CompilerAsserts.neverPartOfCompilation();
+        Objects.requireNonNull(rootTarget);
         if (UPDATER_ROOT_TARGET.compareAndSet(this, null, rootTarget)) {
             return rootTarget;
         } else {
-            return this.rootTarget;
+            throw Errors.shouldNotReachHere("call target created more than once");
+        }
+    }
+
+    private CallTarget setAndGetCallTarget(AtomicReferenceFieldUpdater<JSFunctionData, CallTarget> updater, CallTarget newTarget) {
+        CompilerAsserts.neverPartOfCompilation();
+        Objects.requireNonNull(newTarget);
+        if (updater.compareAndSet(this, null, newTarget)) {
+            return newTarget;
+        } else {
+            return updater.get(this);
         }
     }
 
@@ -292,6 +334,7 @@ public final class JSFunctionData {
     }
 
     public void setLazyInit(Initializer lazyInit) {
+        assert JSTruffleOptions.LazyFunctionData;
         assert this.lazyInit == null;
         this.lazyInit = lazyInit;
     }
@@ -301,12 +344,18 @@ public final class JSFunctionData {
     }
 
     private CallTarget ensureInitialized(Target target) {
+        CompilerAsserts.neverPartOfCompilation();
         Initializer init = lazyInit;
         assert init != null;
         if (rootTarget == null) {
-            init.initializeRoot(this);
-            if (!(init instanceof CallTargetInitializer)) {
-                lazyInit = init = (CallTargetInitializer) ((RootCallTarget) rootTarget).getRootNode();
+            // synchronizing on context so we do not need one lock per function
+            synchronized (context) {
+                if (rootTarget == null) {
+                    init.initializeRoot(this);
+                    if (!(init instanceof CallTargetInitializer)) {
+                        lazyInit = init = (CallTargetInitializer) ((RootCallTarget) rootTarget).getRootNode();
+                    }
+                }
             }
         }
         AtomicReferenceFieldUpdater<JSFunctionData, CallTarget> updater = target.getUpdater();
@@ -347,6 +396,7 @@ public final class JSFunctionData {
         void initializeCallTarget(JSFunctionData functionData, Target target, CallTarget rootTarget);
 
         default void initializeEager(JSFunctionData functionData) {
+            assert functionData.rootTarget == null;
             initializeRoot(functionData);
             CallTarget rootTarget = Objects.requireNonNull(functionData.rootTarget);
             initializeCallTarget(functionData, Target.Call, rootTarget);
