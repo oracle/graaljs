@@ -40,12 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
-import java.util.ArrayList;
-
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public class TriggerPromiseReactionsNode extends JavaScriptBaseNode {
     private final JSContext context;
@@ -65,7 +64,7 @@ public class TriggerPromiseReactionsNode extends JavaScriptBaseNode {
      * EnqueueJob("PromiseJobs", PromiseReactionJob, << reaction, argument >>).
      */
     public Object execute(Object reactions, Object argument) {
-        ArrayList<?> list = (ArrayList<?>) reactions;
+        SimpleArrayList<?> list = (SimpleArrayList<?>) reactions;
         for (int i = 0; i < list.size(); i++) {
             Object reaction = list.get(i);
             DynamicObject job = promiseReactionJob.execute(reaction, argument);

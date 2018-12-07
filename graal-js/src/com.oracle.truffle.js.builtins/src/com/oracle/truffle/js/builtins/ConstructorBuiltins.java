@@ -44,7 +44,6 @@ import static com.oracle.truffle.js.runtime.JSTruffleOptions.ECMAScript2017;
 import static com.oracle.truffle.js.runtime.JSTruffleOptions.ECMAScript2018;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -1975,8 +1974,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected DynamicObject construct(VirtualFrame frame, DynamicObject newTarget, Object executor) {
             DynamicObject promise = createPromiseFromConstructor.executeWithConstructor(frame, newTarget);
             setPromiseState.setValueInt(promise, JSPromise.PENDING);
-            setPromiseFulfillReactions.setValue(promise, new ArrayList<>());
-            setPromiseRejectReactions.setValue(promise, new ArrayList<>());
+            setPromiseFulfillReactions.setValue(promise, new SimpleArrayList<>());
+            setPromiseRejectReactions.setValue(promise, new SimpleArrayList<>());
             setPromiseIsHandled.setValueBoolean(promise, false);
 
             getContext().notifyPromiseHook(PromiseHook.TYPE_INIT, promise);

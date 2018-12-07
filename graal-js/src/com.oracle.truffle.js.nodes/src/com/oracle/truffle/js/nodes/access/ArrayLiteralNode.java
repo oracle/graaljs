@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -56,13 +53,14 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.EmptyNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractConstantArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantByteArray;
@@ -72,6 +70,7 @@ import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesIntArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 @GenerateWrapper
 public abstract class ArrayLiteralNode extends JavaScriptNode {
@@ -548,6 +547,8 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
 
     private static final class DefaultArrayLiteralWithSpreadNode extends DefaultArrayLiteralNode {
 
+        private final BranchProfile growProfile = BranchProfile.create();
+
         DefaultArrayLiteralWithSpreadNode(JSContext context, JavaScriptNode[] elements) {
             super(context, elements);
             assert elements.length > 0;
@@ -556,7 +557,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         @ExplodeLoop
         @Override
         public DynamicObject executeDynamicObject(VirtualFrame frame) {
-            List<Object> evaluatedElements = new ArrayList<>();
+            SimpleArrayList<Object> evaluatedElements = new SimpleArrayList<>(elements.length + JSTruffleOptions.SpreadArgumentPlaceholderCount);
             int holeCount = 0;
             int arrayOffset = 0;
             int usedLength = 0;
@@ -566,19 +567,19 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                     node = ((WrapperNode) elements[i]).getDelegateNode();
                 }
                 if (node instanceof EmptyNode) {
-                    Boundaries.listAdd(evaluatedElements, null);
+                    evaluatedElements.add(null, growProfile);
                     holeCount++;
                     if (i == arrayOffset) {
                         arrayOffset = i + 1;
                     }
                 } else if (node instanceof SpreadArrayNode) {
-                    usedLength += ((SpreadArrayNode) node).executeToList(frame, evaluatedElements);
+                    usedLength += ((SpreadArrayNode) node).executeToList(frame, evaluatedElements, growProfile);
                 } else {
-                    Boundaries.listAdd(evaluatedElements, elements[i].execute(frame));
+                    evaluatedElements.add(elements[i].execute(frame), growProfile);
                     usedLength++;
                 }
             }
-            return JSArray.createZeroBasedHolesObjectArray(context, Boundaries.listToArray(evaluatedElements), usedLength, arrayOffset, holeCount);
+            return JSArray.createZeroBasedHolesObjectArray(context, evaluatedElements.toArray(), usedLength, arrayOffset, holeCount);
         }
 
         @Override
@@ -600,7 +601,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
             return new SpreadArrayNode(context, arg);
         }
 
-        public int executeToList(VirtualFrame frame, List<Object> toList) {
+        public int executeToList(VirtualFrame frame, SimpleArrayList<Object> toList, BranchProfile growProfile) {
             IteratorRecord iteratorRecord = getIteratorNode.execute(frame);
             int count = 0;
             for (;;) {
@@ -608,7 +609,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                 if (nextArg == null) {
                     break;
                 }
-                Boundaries.listAdd(toList, nextArg);
+                toList.add(nextArg, growProfile);
                 count++;
             }
             return count;
