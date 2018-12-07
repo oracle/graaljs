@@ -78,7 +78,7 @@ abstract class AbstractRepeatingNode extends JavaScriptNode implements Repeating
 
     private void checkThreadInterrupted() {
         CompilerAsserts.neverPartOfCompilation("do not check thread interruption from compiled code");
-        if (Thread.currentThread().isInterrupted()) {
+        if (Thread.interrupted()) {
             throw new JSCancelledExecutionException("Thread was interrupted.", this);
         }
     }
