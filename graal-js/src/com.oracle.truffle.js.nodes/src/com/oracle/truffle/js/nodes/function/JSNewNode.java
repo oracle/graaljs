@@ -79,7 +79,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
-import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -212,7 +211,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     @TruffleBoundary
     @Specialization(guards = "isJavaPackage(target)")
     public Object createClassNotFoundError(DynamicObject target) {
-        throw UserScriptException.createJavaException(new ClassNotFoundException(JavaPackage.getPackageName(target)), this);
+        throw Errors.createTypeErrorClassNotFound(JavaPackage.getPackageName(target));
     }
 
     @Specialization
